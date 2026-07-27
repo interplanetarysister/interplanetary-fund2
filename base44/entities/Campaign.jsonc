@@ -1,0 +1,63 @@
+{
+  "name": "Campaign",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "story": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "medical",
+        "emergency",
+        "education",
+        "community",
+        "animals",
+        "business",
+        "memorial",
+        "disaster_relief",
+        "creative",
+        "other"
+      ],
+      "default": "other"
+    },
+    "goal_amount": {
+      "type": "number"
+    },
+    "raised_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "donor_count": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "paused",
+        "completed"
+      ],
+      "default": "active"
+    },
+    "cover_image_url": {
+      "type": "string"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "title",
+    "goal_amount"
+  ]
+}

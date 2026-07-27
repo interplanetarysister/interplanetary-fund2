@@ -1,0 +1,19 @@
+{
+  "name": "CampaignUpdate",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "content"
+  ]
+}

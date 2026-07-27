@@ -1,0 +1,26 @@
+{
+  "name": "Donation",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "donor_name": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "campaign_id",
+    "amount"
+  ]
+}
