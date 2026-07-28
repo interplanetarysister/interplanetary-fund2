@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { Flame, LayoutDashboard, Compass, PlusCircle, Menu, X } from "lucide-react";
+import { Flame, LayoutDashboard, Compass, PlusCircle, HeartHandshake, Menu, X } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Discover", icon: Compass },
+  { to: "/giving", label: "My Giving", icon: HeartHandshake },
   { to: "/create", label: "New Campaign", icon: PlusCircle },
 ];
 

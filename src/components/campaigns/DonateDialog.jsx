@@ -24,10 +24,12 @@ export default function DonateDialog({ campaign, onDonated }) {
     setSaving(true);
     await base44.entities.Donation.create({
       campaign_id: campaign.id,
+      campaign_title: campaign.title,
       amount: value,
       donor_name: name || "Anonymous",
       message,
       is_recurring: recurring,
+      ...(recurring ? { recurring_status: "active" } : {}),
     });
     await base44.entities.Campaign.update(campaign.id, {
       raised_amount: (campaign.raised_amount || 0) + value,

@@ -5,6 +5,9 @@
     "campaign_id": {
       "type": "string"
     },
+    "campaign_title": {
+      "type": "string"
+    },
     "amount": {
       "type": "number"
     },
@@ -17,6 +20,14 @@
     "is_recurring": {
       "type": "boolean",
       "default": false
+    },
+    "recurring_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "cancelled"
+      ]
     }
   },
   "required": [
