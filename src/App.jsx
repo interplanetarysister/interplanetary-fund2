@@ -18,6 +18,7 @@ import Dashboard from './pages/Dashboard';
 import Discover from './pages/Discover';
 import CreateCampaign from './pages/CreateCampaign';
 import CampaignDetail from './pages/CampaignDetail';
+import MyGiving from './pages/MyGiving';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -56,6 +57,7 @@ const AuthenticatedApp = () => {
           <Route path="/discover" element={<Discover />} />
           <Route path="/create" element={<CreateCampaign />} />
           <Route path="/campaign/:id" element={<CampaignDetail />} />
+          <Route path="/giving" element={<MyGiving />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

@@ -6,39 +6,46 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Heart, Loader2 } from "lucide-react";
+import { Heart, Loader2, Lock } from "lucide-react";
 
 const presets = [25, 50, 100, 250];
 
-export default function DonateDialog({ campaign, onDonated }) {
+export default function DonateDialog({ campaign }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const submit = async () => {
     const value = parseFloat(amount);
     if (!value || value <= 0) return;
+    if (window.self !== window.top) {
+      setError("Checkout only works from the published app. Open your app in a new tab to donate.");
+      return;
+    }
     setSaving(true);
-    await base44.entities.Donation.create({
-      campaign_id: campaign.id,
-      campaign_title: campaign.title,
-      amount: value,
-      donor_name: name || "Anonymous",
-      message,
-      is_recurring: recurring,
-      ...(recurring ? { recurring_status: "active" } : {}),
-    });
-    await base44.entities.Campaign.update(campaign.id, {
-      raised_amount: (campaign.raised_amount || 0) + value,
-      donor_count: (campaign.donor_count || 0) + 1,
-    });
+    setError("");
+    try {
+      const { data } = await base44.functions.invoke("createDonationCheckout", {
+        campaign_id: campaign.id,
+        amount: value,
+        donor_name: name,
+        message,
+        is_recurring: recurring,
+        origin: window.location.origin,
+      });
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setError("Could not start checkout. Please try again.");
+    } catch (e) {
+      setError("Could not start checkout. Please try again.");
+    }
     setSaving(false);
-    setOpen(false);
-    setAmount(""); setName(""); setMessage(""); setRecurring(false);
-    onDonated?.();
   };
 
   return (
@@ -70,9 +77,13 @@ export default function DonateDialog({ campaign, onDonated }) {
             <Label htmlFor="recurring" className="text-sm text-stone-700">Give monthly</Label>
             <Switch id="recurring" checked={recurring} onCheckedChange={setRecurring} />
           </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <Button onClick={submit} disabled={saving || !amount} className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : `Donate ${amount ? `$${amount}` : ""}${recurring ? " / month" : ""}`}
           </Button>
+          <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400">
+            <Lock className="w-3 h-3" /> Secure payment powered by Stripe
+          </p>
         </div>
       </DialogContent>
     </Dialog>

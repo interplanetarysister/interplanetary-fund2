@@ -28,6 +28,12 @@
         "paused",
         "cancelled"
       ]
+    },
+    "donor_user_id": {
+      "type": "string"
+    },
+    "stripe_session_id": {
+      "type": "string"
     }
   },
   "required": [

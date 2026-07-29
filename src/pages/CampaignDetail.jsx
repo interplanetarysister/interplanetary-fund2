@@ -42,9 +42,15 @@ export default function CampaignDetail() {
 
   const isOwner = user && campaign.created_by_id === user.id;
   const pct = Math.min(100, ((campaign.raised_amount || 0) / campaign.goal_amount) * 100);
+  const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      {justDonated && (
+        <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
+          Thank you for your donation! It may take a moment to appear on the campaign.
+        </div>
+      )}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
