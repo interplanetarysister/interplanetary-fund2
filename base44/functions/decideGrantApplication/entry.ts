@@ -23,6 +23,33 @@ export default async function(req) {
 
     await sr.entities.GrantApplication.update(application_id, { status, decision_note: decision_note || '' });
 
+    // When an application is awarded, record it as an institutional donation that
+    // requires admin clearing before it can be withdrawn (only on the transition
+    // into 'awarded' so re-decisions don't double-count).
+    if (status === 'awarded' && app.status !== 'awarded') {
+      const amount = parseFloat(app.requested_amount) || 0;
+      if (amount > 0 && app.campaign_id) {
+        const campaign = await sr.entities.Campaign.get(app.campaign_id).catch(() => null);
+        await sr.entities.Donation.create({
+          campaign_id: app.campaign_id,
+          campaign_title: app.campaign_title || (campaign ? campaign.title : undefined),
+          amount,
+          donor_name: app.institution_name || 'Institutional Grant',
+          message: app.opportunity_title ? `Grant award: ${app.opportunity_title}` : 'Grant award',
+          donor_user_id: app.applicant_user_id,
+          payment_method: 'other',
+          is_institutional: true,
+          cleared: false,
+        });
+        if (campaign) {
+          await sr.entities.Campaign.update(campaign.id, {
+            raised_amount: (campaign.raised_amount || 0) + amount,
+            donor_count: (campaign.donor_count || 0) + 1,
+          });
+        }
+      }
+    }
+
     if (app.applicant_user_id) {
       await sr.entities.Notification.create({
         user_id: app.applicant_user_id,

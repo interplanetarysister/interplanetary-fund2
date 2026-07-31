@@ -46,6 +46,16 @@
       "default": "paypal",
       "description": "How the supporter sent their gift."
     },
+    "is_institutional": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for grant or foundation awards, which require admin clearing before they can be withdrawn."
+    },
+    "cleared": {
+      "type": "boolean",
+      "default": false,
+      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn."
+    },
     "withdrawal_id": {
       "type": "string",
       "description": "Set to the Withdrawal id once these funds have been cashed out. Null means the funds are still available to withdraw."

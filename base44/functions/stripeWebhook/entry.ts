@@ -73,6 +73,57 @@ export default async function(req) {
       }
     }
 
+    // ---- AI subscription lifecycle: renewal paid, status change, cancellation ----
+    else if (event.type === 'invoice.paid') {
+      const invoice = event.data.object;
+      if (invoice.customer) {
+        const users = await base44.asServiceRole.entities.User.filter({ stripe_customer_id: invoice.customer });
+        const u = users && users[0];
+        if (u) {
+          const periodEnd = invoice.lines && invoice.lines.data && invoice.lines.data[0] && invoice.lines.data[0].period && invoice.lines.data[0].period.end;
+          await base44.asServiceRole.entities.User.update(u.id, {
+            subscription_status: 'active',
+            ...(periodEnd ? { subscription_renews_at: new Date(periodEnd * 1000).toISOString() } : {}),
+          });
+        }
+      }
+    } else if (event.type === 'customer.subscription.updated') {
+      const sub = event.data.object;
+      if (sub.customer) {
+        const users = await base44.asServiceRole.entities.User.filter({ stripe_customer_id: sub.customer });
+        const u = users && users[0];
+        if (u) {
+          const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
+          const interval = sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].price && sub.items.data[0].price.recurring && sub.items.data[0].price.recurring.interval;
+          await base44.asServiceRole.entities.User.update(u.id, {
+            subscription_status: statusMap[sub.status] || 'none',
+            ...(sub.current_period_end ? { subscription_renews_at: new Date(sub.current_period_end * 1000).toISOString() } : {}),
+            ...(interval === 'month' ? { subscription_interval: 'monthly' } : interval === 'year' ? { subscription_interval: 'annual' } : {}),
+          });
+        }
+      }
+    } else if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      if (sub.customer) {
+        const users = await base44.asServiceRole.entities.User.filter({ stripe_customer_id: sub.customer });
+        const u = users && users[0];
+        if (u) {
+          await base44.asServiceRole.entities.User.update(u.id, {
+            subscription_status: 'canceled',
+            subscription_tier: 'free',
+            subscription_renews_at: null,
+          });
+          await base44.asServiceRole.entities.Notification.create({
+            user_id: u.id,
+            title: 'Subscription canceled',
+            body: 'Your AI subscription has been canceled. You are now on the Free tier.',
+            type: 'system',
+            link: '/subscriptions',
+          });
+        }
+      }
+    }
+
     return Response.json({ received: true });
   } catch (error) {
     console.error('stripeWebhook error:', error.message);

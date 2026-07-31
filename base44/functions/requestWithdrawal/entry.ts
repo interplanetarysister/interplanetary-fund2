@@ -21,6 +21,16 @@ export default async function(req) {
     const body = await req.json();
     const action = body.action || "request";
 
+    // ---- Admin: clear an institutional donation for withdrawal ----
+    if (action === "clear") {
+      if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
+      const d = await sr.entities.Donation.get(body.donation_id);
+      if (!d) return Response.json({ error: "Donation not found." }, { status: 404 });
+      if (!d.is_institutional) return Response.json({ error: "Only institutional donations need clearing." }, { status: 400 });
+      await sr.entities.Donation.update(d.id, { cleared: true });
+      return Response.json({ ok: true, donation_id: d.id, cleared: true });
+    }
+
     // ---- Admin: approve a withdrawal held for review ----
     if (action === "approve") {
       if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
@@ -72,7 +82,9 @@ export default async function(req) {
     // Cleared, unconsumed donations (7-day holding period for fraud protection).
     const cutoff = new Date(Date.now() - CLEARING_DAYS * 86400000);
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
-    const available = (allDonations || []).filter((d) => !d.withdrawal_id && new Date(d.created_date) <= cutoff);
+    // Cleared, unconsumed donations. Regular gifts clear after the 7-day holding
+    // period; institutional (grant) gifts require explicit admin clearing first.
+    const available = (allDonations || []).filter((d) => !d.withdrawal_id && (d.is_institutional ? d.cleared : new Date(d.created_date) <= cutoff));
     const gross = round2(available.reduce((s, d) => s + (d.amount || 0), 0));
     if (gross <= 0) {
       return Response.json({ error: "No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period." }, { status: 400 });
