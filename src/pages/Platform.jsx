@@ -7,6 +7,7 @@ import TimelinePanel from "@/components/platform/TimelinePanel";
 import KnowledgePanel from "@/components/platform/KnowledgePanel";
 import BlueprintPanel from "@/components/platform/BlueprintPanel";
 import ConstitutionPanel from "@/components/platform/ConstitutionPanel";
+import StandardsPanel from "@/components/platform/StandardsPanel";
 import { Loader2, ShieldAlert } from "lucide-react";
 
 export default function Platform() {
@@ -42,6 +43,7 @@ export default function Platform() {
           <TabsTrigger value="health">Health</TabsTrigger>
           <TabsTrigger value="blueprint">Blueprint</TabsTrigger>
           <TabsTrigger value="constitution">Constitution</TabsTrigger>
+          <TabsTrigger value="standards">Engineering</TabsTrigger>
           <TabsTrigger value="config">Configuration</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
@@ -49,6 +51,7 @@ export default function Platform() {
         <TabsContent value="health"><ServiceHealthPanel /></TabsContent>
         <TabsContent value="blueprint"><BlueprintPanel /></TabsContent>
         <TabsContent value="constitution"><ConstitutionPanel /></TabsContent>
+        <TabsContent value="standards"><StandardsPanel /></TabsContent>
         <TabsContent value="config"><FeatureFlagsPanel /></TabsContent>
         <TabsContent value="timeline"><TimelinePanel /></TabsContent>
         <TabsContent value="knowledge"><KnowledgePanel /></TabsContent>
