@@ -45,6 +45,15 @@ export default async function(req) {
               raised_amount: (campaign.raised_amount || 0) + value,
               donor_count: (campaign.donor_count || 0) + 1,
             });
+            if (campaign.created_by_id) {
+              await base44.asServiceRole.entities.Notification.create({
+                user_id: campaign.created_by_id,
+                title: 'New donation received',
+                body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to "${campaign.title}"`,
+                type: 'donation',
+                link: `/campaign/${campaign.id}`,
+              });
+            }
           }
         }
       }
