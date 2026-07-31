@@ -1,4 +1,4 @@
-// Platform Digital Blueprint — the authoritative ownership matrix for FundForge.
+// Platform Digital Blueprint — the authoritative ownership matrix for Interplanetary Fund.
 // One capability, one owner. Systems interact only via APIs, the Event Bus,
 // the Workflow Engine, and shared Base44 platform services.
 

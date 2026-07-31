@@ -1,4 +1,4 @@
-// FundForge Platform Constitution — the permanent governing reference.
+// Interplanetary Fund Platform Constitution — the permanent governing reference.
 // Version 1.0. Every operating system, AI agent, workflow, API, integration,
 // plugin, and future module derives authority from this document.
 

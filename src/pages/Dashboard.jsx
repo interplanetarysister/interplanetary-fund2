@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import MissionControl from "@/components/dashboard/MissionControl";
 import CampaignCard from "@/components/campaigns/CampaignCard";
+import BrandHero from "@/components/brand/BrandHero";
 import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
@@ -32,13 +33,15 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <BrandHero firstName={user?.full_name ? user.full_name.split(" ")[0] : ""} />
+
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p className="text-sm text-stone-500 mb-1">Welcome back{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}</p>
+          <p className="text-sm text-stone-500 mb-1">Your mission control</p>
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your fundraising HQ</h1>
         </div>
         <Link to="/create">
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+          <Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
             <PlusCircle className="w-4 h-4 mr-2" /> New Campaign
           </Button>
         </Link>
@@ -46,7 +49,7 @@ export default function Dashboard() {
 
       {needsOnboarding && (
         <Link to="/onboarding" className="block mb-6">
-          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white p-4">
+          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-violet-600 text-white p-4">
             <span className="shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </span>
@@ -70,8 +73,8 @@ export default function Dashboard() {
           <h2 className="font-display text-xl text-stone-900 mb-4">Your campaigns</h2>
           {campaigns.length === 0 ? (
             <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
-              <p className="font-display text-lg text-stone-700 mb-2">No campaigns yet</p>
-              <p className="text-sm text-stone-500 mb-5">Launch your first campaign in minutes with the guided builder.</p>
+              <p className="font-display text-lg text-stone-700 mb-1">What if you started today?</p>
+              <p className="text-sm text-stone-500 mb-5">Launch your first campaign in minutes and reach supporters anywhere in the world.</p>
               <Link to="/create"><Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">Start a campaign</Button></Link>
             </div>
           ) : (

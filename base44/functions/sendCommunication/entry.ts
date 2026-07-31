@@ -44,7 +44,7 @@ export default async function(req) {
             to: r.email,
             subject,
             body: content,
-            from_name: user.full_name || 'Crowdfund',
+            from_name: user.full_name || 'Interplanetary Fund',
           });
           emailCount++;
         } catch (e) {

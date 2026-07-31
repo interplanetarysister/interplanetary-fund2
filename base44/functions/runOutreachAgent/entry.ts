@@ -62,7 +62,7 @@ export default async function(req) {
       const updates = await sr.entities.CampaignUpdate.filter({ campaign_id: campaign.id });
       const context = buildContext(campaign, donations.length, updates.length);
 
-      const prompt = `You are an autonomous fundraising outreach agent working on behalf of a Crowdfund campaign creator. The creator approves every action you propose.
+      const prompt = `You are an autonomous fundraising outreach agent working on behalf of an Interplanetary Fund campaign creator. The creator approves every action you propose.
 ${COMPLIANCE}
 
 Based on the campaign below, produce:

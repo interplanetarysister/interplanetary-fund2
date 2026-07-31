@@ -12,41 +12,41 @@
     --card-foreground: 215 28% 17%;
     --popover: 0 0% 100%;
     --popover-foreground: 215 28% 17%;
-    --primary: 199 89% 48%;
+    --primary: 217 91% 55%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 215 28% 17%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 215 28% 17%;
+    --secondary: 214 40% 96%;
+    --secondary-foreground: 222 40% 16%;
+    --muted: 214 40% 96%;
+    --muted-foreground: 217 16% 47%;
+    --accent: 214 40% 96%;
+    --accent-foreground: 222 40% 16%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 199 89% 48%;
-    --chart-1: 199 89% 48%;
-    --chart-2: 187 85% 43%;
-    --chart-3: 215 25% 27%;
-    --chart-4: 174 60% 51%;
-    --chart-5: 210 80% 56%;
+    --ring: 217 91% 55%;
+    --chart-1: 217 91% 55%;
+    --chart-2: 189 94% 48%;
+    --chart-3: 262 83% 63%;
+    --chart-4: 199 89% 48%;
+    --chart-5: 226 71% 40%;
     --radius: 0.5rem;
     --font-heading: 'Fraunces', ui-serif, serif;
     --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
     --font-display: 'Fraunces', ui-serif, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    --sidebar-background: 215 28% 17%;
-    --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 199 89% 48%;
+    --sidebar-background: 229 45% 7%;
+    --sidebar-foreground: 214 40% 90%;
+    --sidebar-primary: 189 94% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 28% 22%;
-    --sidebar-accent-foreground: 210 40% 96%;
-    --sidebar-border: 215 28% 24%;
-    --sidebar-ring: 199 89% 48%;
+    --sidebar-accent: 229 40% 14%;
+    --sidebar-accent-foreground: 214 40% 96%;
+    --sidebar-border: 229 35% 18%;
+    --sidebar-ring: 189 94% 48%;
   }
 
   .dark {
-    --background: 215 28% 12%;
+    --background: 229 45% 7%;
     --foreground: 210 40% 98%;
     --card: 215 28% 14%;
     --card-foreground: 210 40% 98%;
@@ -90,5 +90,38 @@
 
   body {
     @apply bg-background text-foreground font-body;
+  }
+}
+
+/* Interplanetary Fund visual language: deep space surfaces, soft glows,
+   glassmorphism, and premium transitions. */
+@layer components {
+  .deep-space {
+    background-image: radial-gradient(120% 100% at 15% 0%, hsl(262 83% 24% / 0.55) 0%, transparent 55%),
+      radial-gradient(90% 80% at 95% 10%, hsl(189 94% 40% / 0.35) 0%, transparent 55%),
+      linear-gradient(160deg, hsl(229 45% 7%) 0%, hsl(232 47% 5%) 100%);
+  }
+
+  .glass-panel {
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+  }
+
+  .brand-gradient-text {
+    @apply bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px hsl(217 91% 55% / 0.35);
+  }
+}
+
+@layer utilities {
+  @keyframes brand-fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-up {
+    animation: brand-fade-up 0.5s ease-out both;
   }
 }

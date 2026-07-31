@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { Droplet, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import BrandLogo from "@/components/brand/BrandLogo";
+import { SLOGAN, TAGLINE } from "@/components/brand/brand";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -54,27 +56,24 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-slate-950 py-6 z-40">
-        <div className="flex items-center justify-between px-6 mb-10">
-          <Link to="/" className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
-              <Droplet className="w-5 h-5 text-white" strokeWidth={2} />
-            </span>
-            <span className="font-display text-xl text-slate-100 tracking-tight">Crowdfund</span>
-          </Link>
-          <NotificationBell />
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
+        <div className="px-5 mb-8">
+          <div className="flex items-start justify-between gap-2">
+            <Link to="/" className="min-w-0">
+              <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
+            </Link>
+            <NotificationBell />
+          </div>
+          <p className="mt-3 font-display text-lg brand-gradient-text">{SLOGAN}</p>
         </div>
         {nav}
-        <p className="mt-auto px-6 text-[11px] text-slate-500">AI-powered fundraising OS</p>
+        <p className="mt-auto px-6 text-[11px] text-slate-500">{TAGLINE}</p>
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between bg-slate-950 px-4 py-3">
-        <Link to="/" className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
-            <Droplet className="w-4 h-4 text-white" />
-          </span>
-          <span className="font-display text-lg text-slate-100">Crowdfund</span>
+      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between deep-space px-4 py-3">
+        <Link to="/" className="min-w-0">
+          <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
         </Link>
         <div className="flex items-center gap-1">
         <NotificationBell />
@@ -83,10 +82,10 @@ export default function Layout() {
         </button>
         </div>
       </header>
-      {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 bg-slate-950 pb-4 pt-2 shadow-xl">{nav}</div>}
+      {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>}
 
       {/* Mobile bottom navigation — one-handed access to core surfaces */}
-      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-slate-950 border-t border-white/10 flex">
+      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex">
         {bottomNavItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}

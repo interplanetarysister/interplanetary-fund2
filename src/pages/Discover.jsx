@@ -21,13 +21,17 @@ export default function Discover() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-3xl sm:text-4xl text-stone-900 mb-2">Discover campaigns</h1>
-      <p className="text-stone-500 mb-6">Causes that need your support right now.</p>
+      <p className="text-stone-500 mb-6">
+        What if your support changed everything for someone today? These causes need help right now.
+      </p>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-1 px-1">
         {categories.map((c) => (
           <button key={c} onClick={() => setCategory(c)}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              category === c ? "bg-stone-900 text-white" : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300"
+              category === c
+                ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-md shadow-blue-500/20"
+                : "bg-white border border-stone-200 text-stone-600 hover:border-primary/40 hover:text-primary"
             }`}>
             {c === "all" ? "All" : categoryLabels[c]}
           </button>
@@ -35,7 +39,9 @@ export default function Discover() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-stone-400 text-sm py-16 text-center">No active campaigns in this category yet.</p>
+        <p className="text-stone-400 text-sm py-16 text-center">
+          No active campaigns in this category yet — what if yours was the first?
+        </p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((c) => <CampaignCard key={c.id} campaign={c} />)}
