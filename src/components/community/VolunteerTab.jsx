@@ -45,25 +45,13 @@ export default function VolunteerTab({ community, isMember, canManage }) {
 
   const signUp = async (opp) => {
     setJoining(opp.id);
-    const me = await base44.auth.me();
-    await base44.entities.VolunteerSignup.create({
-      opportunity_id: opp.id,
-      community_id: community.id,
-      user_id: me.id,
-      user_name: me.full_name || me.email,
-    });
-    await base44.entities.VolunteerOpportunity.update(opp.id, { volunteer_count: (opp.volunteer_count || 0) + 1 });
-    if (opp.created_by_id && opp.created_by_id !== me.id) {
-      await base44.entities.Notification.create({
-        user_id: opp.created_by_id,
-        title: "New volunteer signup",
-        body: `${me.full_name || me.email} signed up for "${opp.role_title}" in ${community.name}`,
-        type: "system",
-        link: `/community/${community.id}`,
-      });
+    const { data } = await base44.functions.invoke("volunteerSignup", { opportunity_id: opp.id });
+    if (data?.signup) {
+      setMySignups((prev) => [...prev, opp.id]);
+      setOpportunities((prev) => prev.map((o) => (o.id === opp.id ? { ...o, volunteer_count: (o.volunteer_count || 0) + 1 } : o)));
+    } else if (data?.error) {
+      alert(data.error);
     }
-    setMySignups((prev) => [...prev, opp.id]);
-    setOpportunities((prev) => prev.map((o) => (o.id === opp.id ? { ...o, volunteer_count: (o.volunteer_count || 0) + 1 } : o)));
     setJoining(null);
   };
 

@@ -1,0 +1,46 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+
+// Joins or leaves a community. The membership record is written as the user so
+// the author owns it under RLS, and the community's member_count is updated as
+// the service role — Community.update is owner-only under RLS, so a joining
+// member could not write the counter directly.
+export default async function(req) {
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Sign in to join or leave a community.' }, { status: 401 });
+
+    const { action, community_id } = await req.json();
+    if (!community_id) return Response.json({ error: 'Missing community_id' }, { status: 400 });
+
+    const sr = base44.asServiceRole;
+    const community = await sr.entities.Community.get(community_id).catch(() => null);
+    if (!community) return Response.json({ error: 'Community not found' }, { status: 404 });
+
+    if (action === 'leave') {
+      const members = await sr.entities.CommunityMember.filter({ community_id, user_id: user.id });
+      const m = members && members[0];
+      if (!m) return Response.json({ error: 'You are not a member of this community.' }, { status: 400 });
+      await base44.entities.CommunityMember.delete(m.id);
+      const count = Math.max(0, (community.member_count || 1) - 1);
+      await sr.entities.Community.update(community_id, { member_count: count });
+      return Response.json({ ok: true, member_count: count });
+    }
+
+    // join (default)
+    const existing = await sr.entities.CommunityMember.filter({ community_id, user_id: user.id });
+    if (existing && existing.length) return Response.json({ error: 'You are already a member.' }, { status: 400 });
+    await base44.entities.CommunityMember.create({
+      community_id,
+      user_id: user.id,
+      user_name: user.full_name || user.email,
+      role: 'member',
+    });
+    const count = (community.member_count || 0) + 1;
+    await sr.entities.Community.update(community_id, { member_count: count });
+    return Response.json({ ok: true, member_count: count });
+  } catch (error) {
+    console.error('communityMembership error:', error.message);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+}

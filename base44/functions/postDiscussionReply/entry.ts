@@ -1,0 +1,34 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+
+// Posts a reply to a discussion thread. Creates the reply as the user (so the
+// author owns it under RLS) and increments the parent post's reply_count as the
+// service role — DiscussionPost.update is author-only under RLS, so a replier
+// could not update the counter directly.
+export default async function(req) {
+  try {
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Sign in to reply.' }, { status: 401 });
+
+    const { post_id, community_id, content } = await req.json();
+    if (!post_id || !content || !content.trim()) {
+      return Response.json({ error: 'Missing reply details' }, { status: 400 });
+    }
+
+    const sr = base44.asServiceRole;
+    const post = await sr.entities.DiscussionPost.get(post_id).catch(() => null);
+    if (!post) return Response.json({ error: 'Post not found' }, { status: 404 });
+
+    const reply = await base44.entities.DiscussionReply.create({
+      post_id,
+      community_id: community_id || post.community_id,
+      content,
+      author_name: user.full_name || user.email,
+    });
+    await sr.entities.DiscussionPost.update(post_id, { reply_count: (post.reply_count || 0) + 1 });
+    return Response.json({ reply });
+  } catch (error) {
+    console.error('postDiscussionReply error:', error.message);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+}

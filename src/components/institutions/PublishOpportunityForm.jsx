@@ -17,14 +17,16 @@ export default function PublishOpportunityForm({ institution, onCreated, onCance
 
   const publish = async () => {
     setSaving(true);
-    const opp = await base44.entities.InstitutionOpportunity.create({
+    const { data } = await base44.functions.invoke("publishInstitutionOpportunity", {
       ...form,
       deadline: form.deadline || undefined,
       institution_id: institution.id,
-      institution_name: institution.name,
-      status: "open",
     });
-    onCreated(opp);
+    if (data?.opportunity) {
+      onCreated(data.opportunity);
+    } else if (data?.error) {
+      alert(data.error);
+    }
     setSaving(false);
   };
 

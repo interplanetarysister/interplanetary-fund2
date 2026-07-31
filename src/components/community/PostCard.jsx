@@ -31,17 +31,18 @@ export default function PostCard({ post, isMember }) {
 
   const sendReply = async () => {
     setSending(true);
-    const me = await base44.auth.me();
-    const reply = await base44.entities.DiscussionReply.create({
+    const { data } = await base44.functions.invoke("postDiscussionReply", {
       post_id: post.id,
       community_id: post.community_id,
       content: replyText,
-      author_name: me.full_name || me.email,
     });
-    setReplies((prev) => [...(prev || []), reply]);
-    setReplyCount((c) => c + 1);
-    await base44.entities.DiscussionPost.update(post.id, { reply_count: replyCount + 1 });
-    setReplyText("");
+    if (data?.reply) {
+      setReplies((prev) => [...(prev || []), data.reply]);
+      setReplyCount((c) => c + 1);
+      setReplyText("");
+    } else if (data?.error) {
+      alert(data.error);
+    }
     setSending(false);
   };
 

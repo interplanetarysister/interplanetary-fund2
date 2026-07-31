@@ -45,22 +45,17 @@ export default function CommunityDetail() {
 
   const join = async () => {
     setBusy(true);
-    await base44.entities.CommunityMember.create({
-      community_id: id,
-      user_id: me.id,
-      user_name: me.full_name || me.email,
-      role: "member",
-    });
-    await base44.entities.Community.update(id, { member_count: (community.member_count || 0) + 1 });
-    await load();
+    const { data } = await base44.functions.invoke("communityMembership", { action: "join", community_id: id });
+    if (!data?.error) await load();
+    else alert(data.error);
     setBusy(false);
   };
 
   const leave = async () => {
     setBusy(true);
-    await base44.entities.CommunityMember.delete(myMembership.id);
-    await base44.entities.Community.update(id, { member_count: Math.max(0, (community.member_count || 1) - 1) });
-    await load();
+    const { data } = await base44.functions.invoke("communityMembership", { action: "leave", community_id: id });
+    if (!data?.error) await load();
+    else alert(data.error);
     setBusy(false);
   };
 

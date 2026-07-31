@@ -45,34 +45,20 @@ Write in first person plural, specific and evidence-based. Return only the narra
 
   const submit = async () => {
     setSaving(true);
-    const me = await base44.auth.me();
-    const app = await base44.entities.GrantApplication.create({
+    const { data } = await base44.functions.invoke("applyInstitutionOpportunity", {
       opportunity_id: opportunity.id,
-      opportunity_title: opportunity.title,
       institution_id: institution.id,
-      institution_name: institution.name,
       campaign_id: campaignId,
       campaign_title: campaign?.title,
-      applicant_name: me.full_name || me.email,
-      applicant_user_id: me.id,
       narrative,
       requested_amount: amount ? Number(amount) : undefined,
-      status: "submitted",
     });
-    await base44.entities.InstitutionOpportunity.update(opportunity.id, {
-      application_count: (opportunity.application_count || 0) + 1,
-    });
-    if (opportunity.created_by_id && opportunity.created_by_id !== me.id) {
-      await base44.entities.Notification.create({
-        user_id: opportunity.created_by_id,
-        title: "New application received",
-        body: `${campaign?.title} applied to "${opportunity.title}"`,
-        type: "system",
-        link: `/institutions/${institution.id}`,
-      });
+    if (data?.application) {
+      onApplied(data.application);
+      setOpen(false);
+    } else if (data?.error) {
+      alert(data.error);
     }
-    onApplied(app);
-    setOpen(false);
     setSaving(false);
   };
 
