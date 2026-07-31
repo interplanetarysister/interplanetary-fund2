@@ -7,6 +7,7 @@ import RecommendationsPanel from "@/components/mission/RecommendationsPanel";
 import OpportunitiesPanel from "@/components/mission/OpportunitiesPanel";
 import AutomationPanel from "@/components/mission/AutomationPanel";
 import { Sparkles, Loader2 } from "lucide-react";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 export default function MissionControlPage() {
   const [brief, setBrief] = useState(null);
@@ -38,7 +39,7 @@ export default function MissionControlPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={load} className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
         <div>
           <h1 className="flex items-center gap-2.5 font-display text-3xl sm:text-4xl text-stone-900">
@@ -79,6 +80,6 @@ export default function MissionControlPage() {
           </TabsContent>
         </Tabs>
       )}
-    </div>
+    </PullToRefresh>
   );
 }

@@ -20,6 +20,7 @@ import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
 import { Loader2, Users, CalendarDays } from "lucide-react";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
@@ -56,7 +57,7 @@ export default function CampaignDetail() {
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={load} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {justDonated && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
           Thank you for your donation! It may take a moment to appear on the campaign.
@@ -132,6 +133,6 @@ export default function CampaignDetail() {
           {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
         </div>
       </div>
-    </div>
+    </PullToRefresh>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Bell, Loader2, CheckCheck } from "lucide-react";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { Button } from "@/components/ui/button";
 
 export default function Notifications() {
@@ -33,7 +34,7 @@ export default function Notifications() {
   const unread = items.filter((n) => !n.read).length;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={load} className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <div className="flex items-end justify-between mb-6">
         <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900">
           <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
@@ -69,6 +70,6 @@ export default function Notifications() {
           ))}
         </div>
       )}
-    </div>
+    </PullToRefresh>
   );
 }

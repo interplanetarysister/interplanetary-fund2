@@ -1,9 +1,27 @@
 import React, { useState } from "react";
-import { Outlet, NavLink, Link } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart } from "lucide-react";
+import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
+import useSwipeBack from "@/hooks/useSwipeBack";
+import OfflineBanner from "@/components/mobile/OfflineBanner";
+import { hapticTap } from "@/lib/haptics";
+
+const PAGE_TITLES = {
+  "/discover": "Discover", "/giving": "My Giving", "/communications": "Messages",
+  "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control",
+  "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
+  "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
+  "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
+};
+function pageTitle(pathname) {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  if (pathname.startsWith("/campaign/")) return "Campaign";
+  if (pathname.startsWith("/community/")) return "Community";
+  if (pathname.startsWith("/institutions/")) return "Institution";
+  return "Interplanetary Fund";
+}
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -35,6 +53,10 @@ const bottomNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const isRoot = pathname === "/";
+  useSwipeBack(!isRoot);
 
   const nav = (
     <nav className="flex flex-col gap-1 px-3">
@@ -75,26 +97,37 @@ export default function Layout() {
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between deep-space px-4 py-3">
-        <Link to="/profile" className="min-w-0" aria-label="Account settings">
-          <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
-        </Link>
-        <div className="flex items-center gap-1">
-        <NotificationBell />
-        <button onClick={() => setOpen(!open)} className="text-stone-300 p-2" aria-label="Toggle menu">
-          {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
+        {isRoot ? (
+          <Link to="/profile" className="min-w-0" aria-label="Account settings">
+            <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
+          </Link>
+        ) : (
+          <div className="flex items-center gap-1 min-w-0">
+            <button onClick={() => navigate(-1)} aria-label="Back" className="text-stone-300 p-2 -ml-1 hover:text-white transition-colors">
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1 shrink-0">
+          <NotificationBell />
+          <button onClick={() => setOpen(!open)} className="text-stone-300 p-2" aria-label="Toggle menu">
+            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
       </header>
+      <OfflineBanner />
       {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>}
 
       {/* Mobile bottom navigation — one-handed access to core surfaces */}
-      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex">
+      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
         {bottomNavItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             end={to === "/"}
+            onClick={() => hapticTap()}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
                 isActive ? "text-cyan-400" : "text-slate-400"
@@ -107,7 +140,7 @@ export default function Layout() {
         ))}
       </nav>
 
-      <main className="md:pl-60 pb-16 md:pb-0">
+      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
         <Outlet />
       </main>
     </div>

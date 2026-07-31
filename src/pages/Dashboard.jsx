@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import MissionControl from "@/components/dashboard/MissionControl";
 import FollowFeed from "@/components/dashboard/FollowFeed";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
+import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
 import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-react";
@@ -12,6 +14,7 @@ import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -20,10 +23,10 @@ export default function Dashboard() {
       const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
       setCampaigns(mine);
     })();
-  }, []);
+  }, [refreshKey]);
 
   if (!campaigns) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={4} /></div>;
   }
 
   const needsOnboarding = !user?.onboarding_completed;
@@ -33,7 +36,7 @@ export default function Dashboard() {
   const active = campaigns.filter((c) => c.status === "active").length;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <BrandHero firstName={user?.full_name ? user.full_name.split(" ")[0] : ""} />
 
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
@@ -89,6 +92,6 @@ export default function Dashboard() {
           <MissionControl campaigns={campaigns} />
         </div>
       </div>
-    </div>
+    </PullToRefresh>
   );
 }

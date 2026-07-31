@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MailOpen } from "lucide-react";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
 import { platformName } from "@/components/connections/platformCatalog";
 
@@ -12,6 +13,7 @@ import { platformName } from "@/components/connections/platformCatalog";
 // donations to your campaigns, and your notifications.
 export default function Inbox() {
   const [items, setItems] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [tab, setTab] = useState("open");
   const [platform, setPlatform] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
@@ -51,7 +53,7 @@ export default function Inbox() {
 
       setItems(merged);
     })();
-  }, []);
+  }, [refreshKey]);
 
   if (!items) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -68,7 +70,7 @@ export default function Inbox() {
   );
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900 mb-1">
         <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
           <MailOpen className="w-5 h-5 text-white" />
@@ -111,6 +113,6 @@ export default function Inbox() {
           ))}
         </div>
       )}
-    </div>
+    </PullToRefresh>
   );
 }

@@ -2,24 +2,27 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { Loader2 } from "lucide-react";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
+import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100).then(setCampaigns);
-  }, []);
+  }, [refreshKey]);
 
   if (!campaigns) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={6} /></div>;
   }
 
   const filtered = category === "all" ? campaigns : campaigns.filter((c) => c.category === category);
   const categories = ["all", ...Object.keys(categoryLabels)];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-3xl sm:text-4xl text-stone-900 mb-2">Discover campaigns</h1>
       <p className="text-stone-500 mb-6">
         What if your support changed everything for someone today? These causes need help right now.
@@ -47,6 +50,6 @@ export default function Discover() {
           {filtered.map((c) => <CampaignCard key={c.id} campaign={c} />)}
         </div>
       )}
-    </div>
+    </PullToRefresh>
   );
 }

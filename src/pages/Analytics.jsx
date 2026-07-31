@@ -7,9 +7,11 @@ import CampaignPerformance from "@/components/analytics/CampaignPerformance";
 import AlertCenter from "@/components/analytics/AlertCenter";
 import ReportsPanel from "@/components/analytics/ReportsPanel";
 import { Loader2 } from "lucide-react";
+import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 export default function Analytics() {
   const [data, setData] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -39,14 +41,14 @@ export default function Analytics() {
         signups: signupLists.flat(),
       });
     })();
-  }, []);
+  }, [refreshKey]);
 
   if (!data) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Command Center</h1>
       <p className="text-stone-500 mt-1 mb-6">
         What happened, why, what's likely next, and what to do about it.
@@ -76,6 +78,6 @@ export default function Analytics() {
           <ReportsPanel data={data} />
         </TabsContent>
       </Tabs>
-    </div>
+    </PullToRefresh>
   );
 }

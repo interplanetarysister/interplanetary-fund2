@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { motion } from "framer-motion";
 import { Heart, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { hapticTap, hapticSuccess } from "@/lib/haptics";
 
 // Persistent follow heart. Tapping saves the campaign to the user's
 // Followed Campaigns collection, animates the heart fill, and toasts a
@@ -26,6 +27,7 @@ export default function FollowButton({ campaign }) {
   }, [campaign.id]);
 
   const toggle = async () => {
+    hapticTap();
     setBusy(true);
     try {
       if (follow) {
@@ -48,6 +50,7 @@ export default function FollowButton({ campaign }) {
           },
         });
         setFollow(created);
+        hapticSuccess();
         toast({ title: "Campaign Added to Followed", description: "You'll get updates in your Follow Feed." });
       }
     } catch (e) {
