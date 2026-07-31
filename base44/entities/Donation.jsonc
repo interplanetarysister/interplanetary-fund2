@@ -34,6 +34,17 @@
     },
     "stripe_session_id": {
       "type": "string"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "paypal",
+        "cashapp",
+        "stripe",
+        "other"
+      ],
+      "default": "paypal",
+      "description": "How the supporter sent their gift."
     }
   },
   "required": [

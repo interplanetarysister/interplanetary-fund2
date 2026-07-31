@@ -55,6 +55,10 @@
       "type": "string",
       "format": "date"
     },
+    "cashapp_tag": {
+      "type": "string",
+      "description": "The creator's Cash App $Cashtag, so supporters can give with Cash App."
+    },
     "ai_profile": {
       "type": "object",
       "description": "The campaign's permanent AI profile \u2014 answers from the AI Instructions step, used by every AI feature to represent and promote the campaign consistently and truthfully.",

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import { Sparkles, Compass, Globe2, ShieldCheck, LifeBuoy } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
-import { SLOGAN, BRAND_PROMISES } from "@/components/brand/brand";
+import { SLOGAN, SLOGAN_LONG, BRAND_PROMISES, ACCOUNT_CTA } from "@/components/brand/brand";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 
@@ -36,15 +36,20 @@ export default function BrandHero({ firstName }) {
           </span>
         </h1>
 
-        <p className="text-slate-300 text-base sm:text-lg leading-relaxed mb-7 max-w-xl">
-          What if one idea, one act of kindness, or one community could completely change someone's future?
-          Interplanetary Fund uses AI and global reach to connect people who need help with people ready to give it.
+        <p className="text-slate-200 text-base sm:text-lg leading-relaxed mb-3 max-w-xl">
+          One idea can change a life. One act of kindness can change a future.
+        </p>
+        <p className="text-slate-400 text-sm sm:text-base leading-relaxed mb-2 max-w-xl">
+          Anyone can ask for help. Anyone can help. Our AI connects your cause to supporters worldwide.
+        </p>
+        <p className="font-display text-sm sm:text-base text-cyan-300/90 mb-7 max-w-xl">
+          {SLOGAN_LONG}.
         </p>
 
         <div className="flex flex-wrap gap-3 mb-8">
           <Link to="/create">
             <Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/25 hover:opacity-90">
-              <Sparkles className="w-4 h-4 mr-2" /> Start a campaign
+              <Sparkles className="w-4 h-4 mr-2" /> {ACCOUNT_CTA}
             </Button>
           </Link>
           <Link to="/discover">

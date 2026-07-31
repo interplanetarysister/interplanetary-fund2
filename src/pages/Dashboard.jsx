@@ -37,8 +37,8 @@ export default function Dashboard() {
 
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
-          <p className="text-sm text-stone-500 mb-1">Your mission control</p>
-          <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your fundraising HQ</h1>
+          <p className="text-sm text-stone-500 mb-1">Every gift you receive, in one place</p>
+          <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your Interplanetary Fund</h1>
         </div>
         <Link to="/create">
           <Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
@@ -74,8 +74,8 @@ export default function Dashboard() {
           {campaigns.length === 0 ? (
             <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
               <p className="font-display text-lg text-stone-700 mb-1">What if you started today?</p>
-              <p className="text-sm text-stone-500 mb-5">Launch your first campaign in minutes and reach supporters anywhere in the world.</p>
-              <Link to="/create"><Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">Start a campaign</Button></Link>
+              <p className="text-sm text-stone-500 mb-5">Open your Interplanetary Fund and start receiving support now.</p>
+              <Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90">Start your own Interplanetary Fund</Button></Link>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">

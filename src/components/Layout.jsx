@@ -3,7 +3,7 @@ import { Outlet, NavLink, Link } from "react-router-dom";
 import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
-import { SLOGAN, TAGLINE } from "@/components/brand/brand";
+import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -67,7 +67,7 @@ export default function Layout() {
           <p className="mt-3 font-display text-lg brand-gradient-text">{SLOGAN}</p>
         </div>
         {nav}
-        <p className="mt-auto px-6 text-[11px] text-slate-500">{TAGLINE}</p>
+        <p className="mt-auto px-6 text-[11px] leading-relaxed text-slate-500">{SLOGAN_LONG}</p>
       </aside>
 
       {/* Mobile top bar */}
