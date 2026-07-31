@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
-import StripeDonateButton from "@/components/payments/StripeDonateButton";
+import GooglePayButton from "@/components/payments/GooglePayButton";
 import { Heart, Loader2, Lock, CheckCircle2 } from "lucide-react";
 
 const presets = [25, 50, 100, 250];
@@ -94,9 +94,16 @@ export default function DonateDialog({ campaign, onDonated }) {
             </div>
 
             <div className="rounded-xl border border-stone-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with card or Google Pay</p>
-              <StripeDonateButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={recurring} label={amount ? `Donate $${amount}` : "Donate now!"} />
-              <p className="text-[11px] text-stone-400 mt-2 text-center">Powered by Stripe — Google Pay, Apple Pay & cards accepted.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p>
+              <GooglePayButton
+                campaign={campaign}
+                amount={amount}
+                donorName={name}
+                message={message}
+                recurring={recurring}
+                onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }}
+              />
+              <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by your PayPal business account — fast &amp; secure.</p>
             </div>
 
             {campaign.cashapp_tag && (
@@ -111,7 +118,7 @@ export default function DonateDialog({ campaign, onDonated }) {
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400">
-              <Lock className="w-3 h-3" /> Payments are handled securely by PayPal, Cash App & Stripe
+              <Lock className="w-3 h-3" /> Payments are handled securely by PayPal and Cash App
             </p>
           </div>
         )}
