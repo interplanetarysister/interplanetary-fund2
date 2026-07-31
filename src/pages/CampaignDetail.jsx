@@ -13,9 +13,12 @@ import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
 import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
+import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
 import { Loader2, Users, CalendarDays } from "lucide-react";
+
+const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -59,8 +62,10 @@ export default function CampaignDetail() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
-          {campaign.cover_image_url && (
-            <Image src={campaign.cover_image_url} alt={campaign.title} className="w-full h-56 sm:h-80 rounded-2xl" />
+          {isVideo(campaign.cover_image_url) ? (
+            <video src={campaign.cover_image_url} controls className="w-full h-56 sm:h-80 rounded-2xl object-cover" />
+          ) : (
+            <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={campaign.title} className="w-full h-56 sm:h-80 rounded-2xl object-cover" />
           )}
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">

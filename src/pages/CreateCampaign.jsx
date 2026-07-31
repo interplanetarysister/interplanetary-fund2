@@ -11,9 +11,13 @@ import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { useToast } from "@/components/ui/use-toast";
 import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIInstructionsStep";
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
+import MediaUpload from "@/components/media/MediaUpload";
+import { buildCoverPrompt } from "@/lib/coverPrompt";
+import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
 
 const steps = ["AI Setup", "Basics", "Story", "Launch"];
+const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -21,6 +25,7 @@ export default function CreateCampaign() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
+  const [regenCount, setRegenCount] = useState(0);
   const [form, setForm] = useState({
     title: "", category: "other", goal_amount: "", end_date: "",
     summary: "", story: "", cover_image_url: "",
@@ -30,10 +35,13 @@ export default function CreateCampaign() {
 
   const generateCover = async () => {
     setGeneratingImage(true);
-    const { url } = await base44.integrations.Core.GenerateImage({
-      prompt: `Warm, hopeful, photorealistic cover image for a fundraising campaign titled "${form.title}" in the ${categoryLabels[form.category]} category. Soft natural light, emotionally uplifting, no text overlay.`,
-    });
-    set("cover_image_url", url);
+    try {
+      const { url } = await base44.integrations.Core.GenerateImage({
+        prompt: buildCoverPrompt({ title: form.title, category: form.category, regenCount }),
+      });
+      set("cover_image_url", url);
+      setRegenCount((c) => c + 1);
+    } catch (e) { /* ignore */ }
     setGeneratingImage(false);
   };
 
@@ -129,17 +137,40 @@ export default function CreateCampaign() {
           </div>
           <div className="space-y-2">
             <Label>Cover image</Label>
-            {form.cover_image_url && <Image src={form.cover_image_url} alt="Cover preview" className="w-full h-44 rounded-xl" />}
-            <Button variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="rounded-xl">
-              {generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}
-              {form.cover_image_url ? "Regenerate with AI" : "Generate cover with AI"}
-            </Button>
+            {form.cover_image_url ? (
+              isVideo(form.cover_image_url) ? (
+                <video src={form.cover_image_url} controls className="w-full h-44 rounded-xl object-cover" />
+              ) : (
+                <Image src={form.cover_image_url} alt="Cover preview" className="w-full h-44 rounded-xl object-cover" />
+              )
+            ) : (
+              <Image src={FALLBACK_IMAGE} alt="Default cover" className="w-full h-44 rounded-xl object-cover" />
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="rounded-xl">
+                {generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}
+                {form.cover_image_url ? "Regenerate with AI" : "Generate with AI"}
+              </Button>
+              <div className="flex-1 min-w-[12rem]">
+                <MediaUpload
+                  value={form.cover_image_url}
+                  onChange={(url) => set("cover_image_url", url)}
+                  label="Upload your own"
+                  previewClassName="hidden"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-stone-400">Upload your own photo or video, or generate a cover with AI. Each regeneration gives you a fresh style.</p>
           </div>
         </>)}
 
         {step === 3 && (
           <div className="space-y-4">
-            {form.cover_image_url && <Image src={form.cover_image_url} alt="Cover" className="w-full h-44 rounded-xl" />}
+            {form.cover_image_url && (isVideo(form.cover_image_url) ? (
+              <video src={form.cover_image_url} controls className="w-full h-44 rounded-xl object-cover" />
+            ) : (
+              <Image src={form.cover_image_url} alt="Cover" className="w-full h-44 rounded-xl object-cover" />
+            ))}
             <div>
               <p className="text-[11px] font-medium uppercase tracking-wider text-primary">{categoryLabels[form.category]}</p>
               <h2 className="font-display text-2xl text-stone-900">{form.title}</h2>

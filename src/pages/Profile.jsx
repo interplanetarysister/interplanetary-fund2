@@ -4,6 +4,9 @@ import { Sparkles, Link2, Zap, User, Loader2 } from "lucide-react";
 import { CAPABILITY_MODULES } from "@/components/onboarding/onboardingSteps";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { Image } from "@/components/ui/image";
+import MediaUpload from "@/components/media/MediaUpload";
+import { FALLBACK_IMAGE } from "@/components/brand/brand";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -27,6 +30,13 @@ export default function Profile() {
 
   const onboarding = user?.onboarding || {};
   const selectedPlatforms = onboarding.platforms || [];
+  const photoUrl = user?.photo_url || FALLBACK_IMAGE;
+
+  const savePhoto = async (url) => {
+    if (!url) return;
+    await base44.auth.updateMe({ photo_url: url });
+    setUser((u) => ({ ...u, photo_url: url }));
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -39,9 +49,23 @@ export default function Profile() {
       <p className="text-stone-500 mb-8">Your account, AI configuration, and connected platforms.</p>
 
       <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Account</p>
-        <p className="font-display text-lg text-stone-900">{user?.full_name || "Unnamed user"}</p>
-        <p className="text-sm text-stone-500">{user?.email}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Account</p>
+        <div className="flex items-center gap-4">
+          <Image src={photoUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover shrink-0" />
+          <div>
+            <p className="font-display text-lg text-stone-900">{user?.full_name || "Unnamed user"}</p>
+            <p className="text-sm text-stone-500">{user?.email}</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <MediaUpload
+            value={user?.photo_url || ""}
+            onChange={savePhoto}
+            label="Upload profile photo"
+            accept="image/*"
+            previewClassName="hidden"
+          />
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-5">

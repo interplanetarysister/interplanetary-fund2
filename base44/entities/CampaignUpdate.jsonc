@@ -10,6 +10,19 @@
     },
     "content": {
       "type": "string"
+    },
+    "media_url": {
+      "type": "string",
+      "description": "A photo or video the creator attached to this update."
+    },
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "none"
+      ],
+      "default": "none"
     }
   },
   "required": [

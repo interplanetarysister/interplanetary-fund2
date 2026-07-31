@@ -2,6 +2,9 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Image } from "@/components/ui/image";
 import { Progress } from "@/components/ui/progress";
+import { FALLBACK_IMAGE } from "@/components/brand/brand";
+
+const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
 export const categoryLabels = {
   medical: "Medical", emergency: "Emergency", education: "Education", community: "Community",
@@ -14,10 +17,14 @@ export default function CampaignCard({ campaign }) {
   return (
     <Link to={`/campaign/${campaign.id}`} className="group bg-white rounded-2xl border border-stone-200/70 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
       <div className="h-40 bg-stone-100 overflow-hidden">
-        {campaign.cover_image_url ? (
-          <Image src={campaign.cover_image_url} alt={campaign.title} className="w-full h-full group-hover:scale-[1.03] transition-transform duration-500" />
+        {isVideo(campaign.cover_image_url) ? (
+          <video src={campaign.cover_image_url} muted loop playsInline className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-cyan-50 via-sky-50 to-slate-100" />
+          <Image
+            src={campaign.cover_image_url || FALLBACK_IMAGE}
+            alt={campaign.title}
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+          />
         )}
       </div>
       <div className="p-5">
