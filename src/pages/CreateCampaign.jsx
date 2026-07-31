@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Image } from "@/components/ui/image";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
+import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
 
 const steps = ["Basics", "Story", "Launch"];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [generatingImage, setGeneratingImage] = useState(false);
@@ -34,13 +36,18 @@ export default function CreateCampaign() {
 
   const launch = async (status) => {
     setSaving(true);
-    const campaign = await base44.entities.Campaign.create({
-      ...form,
-      goal_amount: parseFloat(form.goal_amount),
-      end_date: form.end_date || undefined,
-      status,
-    });
-    navigate(`/campaign/${campaign.id}`);
+    try {
+      const campaign = await base44.entities.Campaign.create({
+        ...form,
+        goal_amount: parseFloat(form.goal_amount),
+        end_date: form.end_date || undefined,
+        status,
+      });
+      navigate(`/campaign/${campaign.id}`);
+    } catch (e) {
+      toast({ title: "Couldn't launch campaign", description: e.message, variant: "destructive" });
+      setSaving(false);
+    }
   };
 
   const canNext = step === 0 ? form.title && parseFloat(form.goal_amount) > 0 : true;

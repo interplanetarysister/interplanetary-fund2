@@ -6,17 +6,23 @@ import { Sparkles, Loader2 } from "lucide-react";
 export default function AICoach({ campaign, updatesCount }) {
   const [tips, setTips] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const ask = async () => {
     setLoading(true);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are an AI fundraising coach. Give 3 short, specific, actionable tips (one sentence each, with a brief why) to improve this campaign. Never guarantee outcomes. Campaign: title "${campaign.title}", category ${campaign.category}, goal $${campaign.goal_amount}, raised $${campaign.raised_amount || 0}, donors ${campaign.donor_count || 0}, story length ${campaign.story?.length || 0} chars, updates posted ${updatesCount}, has cover image: ${!!campaign.cover_image_url}.`,
-      response_json_schema: {
-        type: "object",
-        properties: { tips: { type: "array", items: { type: "string" } } },
-      },
-    });
-    setTips(res.tips || []);
+    setError("");
+    try {
+      const res = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are an AI fundraising coach. Give 3 short, specific, actionable tips (one sentence each, with a brief why) to improve this campaign. Never guarantee outcomes. Campaign: title "${campaign.title}", category ${campaign.category}, goal $${campaign.goal_amount}, raised $${campaign.raised_amount || 0}, donors ${campaign.donor_count || 0}, story length ${campaign.story?.length || 0} chars, updates posted ${updatesCount}, has cover image: ${!!campaign.cover_image_url}.`,
+        response_json_schema: {
+          type: "object",
+          properties: { tips: { type: "array", items: { type: "string" } } },
+        },
+      });
+      setTips(res.tips || []);
+    } catch (e) {
+      setError("Couldn't generate tips right now. Please try again.");
+    }
     setLoading(false);
   };
 
@@ -31,7 +37,8 @@ export default function AICoach({ campaign, updatesCount }) {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get tips"}
         </Button>
       </div>
-      {!tips && <p className="text-xs text-slate-500">Personalized coaching for this campaign, on demand.</p>}
+      {error && <p className="text-xs text-red-400">{error}</p>}
+      {!tips && !error && <p className="text-xs text-slate-500">Personalized coaching for this campaign, on demand.</p>}
       {tips && (
         <ul className="space-y-2.5">
           {tips.map((t, i) => (
