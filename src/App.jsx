@@ -30,6 +30,7 @@ import Platform from './pages/Platform';
 import Onboarding from './pages/Onboarding';
 import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
+import Subscriptions from './pages/Subscriptions';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -79,6 +80,7 @@ const AuthenticatedApp = () => {
           <Route path="/institutions/:id" element={<InstitutionDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/notifications" element={<Notifications />} />
+          <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
         </Route>

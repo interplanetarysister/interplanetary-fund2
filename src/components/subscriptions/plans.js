@@ -18,8 +18,8 @@ export const PLANS = [
       "On-demand AI coaching tips",
       "Single campaign at a time",
     ],
-    monthly: { amount: 1200, stripe_price_id: "" },
-    annual: { amount: 11500, stripe_price_id: "" },
+    monthly: { amount: 1200, stripe_price_id: "price_1Tz8iSEkntycHB4NlQlYd0Gs" },
+    annual: { amount: 11500, stripe_price_id: "price_1Tz8iSEkntycHB4N8J7EXq42" },
   },
   {
     id: "outreach",
@@ -37,8 +37,8 @@ export const PLANS = [
       "Full activity log with approve / reject / pause",
       "Works across all your campaigns",
     ],
-    monthly: { amount: 4900, stripe_price_id: "" },
-    annual: { amount: 47000, stripe_price_id: "" },
+    monthly: { amount: 4900, stripe_price_id: "price_1Tz8iSEkntycHB4NESNtjyOx" },
+    annual: { amount: 47000, stripe_price_id: "price_1Tz8iSEkntycHB4N5iujmlJZ" },
   },
   {
     id: "professional",

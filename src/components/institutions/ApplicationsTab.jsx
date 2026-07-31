@@ -13,7 +13,9 @@ export default function ApplicationsTab({ institution }) {
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
-    base44.entities.GrantApplication.filter({ institution_id: institution.id }, "-created_date").then(setApps);
+    base44.functions.invoke("listInstitutionApplications", { institution_id: institution.id })
+      .then(({ data }) => setApps(data.applications || []))
+      .catch(() => setApps([]));
   }, [institution.id]);
 
   if (!apps) {
@@ -23,17 +25,14 @@ export default function ApplicationsTab({ institution }) {
   const decide = async (app, status) => {
     setBusy(app.id);
     const decision_note = notes[app.id] || "";
-    await base44.entities.GrantApplication.update(app.id, { status, decision_note });
-    if (app.applicant_user_id) {
-      await base44.entities.Notification.create({
-        user_id: app.applicant_user_id,
-        title: status === "awarded" ? "Your application was awarded" : `Application ${applicationStatuses[status].label.toLowerCase()}`,
-        body: `${institution.name} updated your application for "${app.opportunity_title}"${decision_note ? `: ${decision_note}` : ""}`,
-        type: "system",
-        link: "/institutions",
+    try {
+      const { data } = await base44.functions.invoke("decideGrantApplication", {
+        application_id: app.id, status, decision_note,
       });
+      setApps((prev) => prev.map((a) => (a.id === app.id ? { ...a, status: data.status, decision_note: data.decision_note } : a)));
+    } catch (e) {
+      /* keep current state on error */
     }
-    setApps((prev) => prev.map((a) => (a.id === app.id ? { ...a, status, decision_note } : a)));
     setBusy(null);
   };
 

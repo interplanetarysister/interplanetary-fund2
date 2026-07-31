@@ -20,8 +20,22 @@ export default async function(req) {
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const m = session.metadata || {};
+
+      // Subscription activation — AI tier checkout.
+      if (session.mode === 'subscription' || m.subscription_tier) {
+        if (m.user_id) {
+          await base44.asServiceRole.entities.User.update(m.user_id, {
+            subscription_tier: m.subscription_tier,
+            subscription_status: 'active',
+            subscription_interval: m.subscription_interval || 'monthly',
+            stripe_customer_id: session.customer || undefined,
+          });
+        }
+        return Response.json({ received: true });
+      }
+
+      // Donation checkout.
       if (m.campaign_id) {
-        // Idempotency: skip if this session was already recorded
         const existing = await base44.asServiceRole.entities.Donation.filter({ stripe_session_id: session.id });
         if (existing.length === 0) {
           const value = (session.amount_total || 0) / 100;
