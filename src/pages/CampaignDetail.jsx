@@ -8,6 +8,7 @@ import DonateDialog from "@/components/campaigns/DonateDialog";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
+import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
 import { Loader2, Users, CalendarDays } from "lucide-react";
@@ -101,6 +102,7 @@ export default function CampaignDetail() {
             </div>
           )}
 
+          {isOwner && <EditAIInstructionsDialog campaign={campaign} onSaved={load} />}
           {isOwner && <CampaignHealth campaign={campaign} updatesCount={updates.length} />}
           {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
         </div>

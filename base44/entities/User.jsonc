@@ -42,6 +42,48 @@
           "type": "boolean"
         }
       }
+    },
+    "subscription_tier": {
+      "type": "string",
+      "description": "Active AI subscription tier id (from the plans catalog). 'free' when none.",
+      "enum": [
+        "free",
+        "basic",
+        "outreach",
+        "professional",
+        "enterprise",
+        "nonprofit"
+      ],
+      "default": "free"
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "active",
+        "trialing",
+        "past_due",
+        "canceled"
+      ],
+      "default": "none"
+    },
+    "subscription_interval": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "annual"
+      ]
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    },
+    "subscription_renews_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trial_end": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [

@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Image } from "@/components/ui/image";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { useToast } from "@/components/ui/use-toast";
+import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIInstructionsStep";
+import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
 
-const steps = ["Basics", "Story", "Launch"];
+const steps = ["AI Setup", "Basics", "Story", "Launch"];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -22,6 +24,7 @@ export default function CreateCampaign() {
   const [form, setForm] = useState({
     title: "", category: "other", goal_amount: "", end_date: "",
     summary: "", story: "", cover_image_url: "",
+    ai_profile: emptyAiProfile, story_versions: [],
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -50,7 +53,7 @@ export default function CreateCampaign() {
     }
   };
 
-  const canNext = step === 0 ? form.title && parseFloat(form.goal_amount) > 0 : true;
+  const canNext = step === 0 ? true : step === 1 ? form.title && parseFloat(form.goal_amount) > 0 : true;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -69,13 +72,18 @@ export default function CreateCampaign() {
       </div>
 
       <h1 className="font-display text-3xl text-stone-900 mb-6">
-        {step === 0 && "Let's set the basics"}
-        {step === 1 && "Tell your story"}
-        {step === 2 && "Review & launch"}
+        {step === 0 && "Set up your AI"}
+        {step === 1 && "Let's set the basics"}
+        {step === 2 && "Tell your story"}
+        {step === 3 && "Review & launch"}
       </h1>
 
       <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm space-y-5">
-        {step === 0 && (<>
+        {step === 0 && (
+          <AIInstructionsStep value={form.ai_profile} onChange={(p) => set("ai_profile", p)} />
+        )}
+
+        {step === 1 && (<>
           <div className="space-y-1.5">
             <Label>Campaign title</Label>
             <Input placeholder="e.g. Help Maria's Recovery Journey" value={form.title} onChange={(e) => set("title", e.target.value)} />
@@ -101,11 +109,19 @@ export default function CreateCampaign() {
           </div>
         </>)}
 
-        {step === 1 && (<>
+        {step === 2 && (<>
           <div className="space-y-1.5">
             <Label>Short summary</Label>
             <Input placeholder="One sentence that captures your cause" value={form.summary} onChange={(e) => set("summary", e.target.value)} />
           </div>
+          <AIStoryGenerator
+            form={form}
+            aiProfile={form.ai_profile}
+            versions={form.story_versions}
+            onApply={(text) => set("story", text)}
+            onSaveVersion={(ver) => setForm((f) => ({ ...f, story_versions: [...(f.story_versions || []), ver] }))}
+            onRestoreVersion={(ver) => set("story", ver.text)}
+          />
           <div className="space-y-1.5">
             <Label>Your story</Label>
             <Textarea rows={8} placeholder="Share the background, why help is needed, and how funds will be used…" value={form.story} onChange={(e) => set("story", e.target.value)} />
@@ -121,7 +137,7 @@ export default function CreateCampaign() {
           </div>
         </>)}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="space-y-4">
             {form.cover_image_url && <Image src={form.cover_image_url} alt="Cover" className="w-full h-44 rounded-xl" />}
             <div>
@@ -139,7 +155,7 @@ export default function CreateCampaign() {
         <Button variant="ghost" onClick={() => setStep((s) => s - 1)} disabled={step === 0} className="rounded-xl">
           <ArrowLeft className="w-4 h-4 mr-2" /> Back
         </Button>
-        {step < 2 ? (
+        {step < 3 ? (
           <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext} className="bg-stone-900 hover:bg-stone-800 text-white rounded-xl">
             Continue <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
