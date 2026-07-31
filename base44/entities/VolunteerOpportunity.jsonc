@@ -1,0 +1,51 @@
+{
+  "name": "VolunteerOpportunity",
+  "type": "object",
+  "properties": {
+    "community_id": {
+      "type": "string"
+    },
+    "community_name": {
+      "type": "string"
+    },
+    "role_title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "skills_needed": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "remote_ok": {
+      "type": "boolean",
+      "default": false
+    },
+    "schedule": {
+      "type": "string"
+    },
+    "estimated_hours": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "filled",
+        "closed"
+      ],
+      "default": "open"
+    },
+    "volunteer_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "community_id",
+    "role_title"
+  ]
+}

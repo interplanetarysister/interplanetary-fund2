@@ -1,0 +1,77 @@
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Loader2 } from "lucide-react";
+import { communityTypes } from "./communityTypes";
+
+export default function CreateCommunityDialog() {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [type, setType] = useState("interest");
+  const [location, setLocation] = useState("");
+  const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
+
+  const create = async () => {
+    setSaving(true);
+    const me = await base44.auth.me();
+    const community = await base44.entities.Community.create({ name, description, type, location, member_count: 1 });
+    await base44.entities.CommunityMember.create({
+      community_id: community.id,
+      user_id: me.id,
+      user_name: me.full_name || me.email,
+      role: "owner",
+    });
+    navigate(`/community/${community.id}`);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+          <Plus className="w-4 h-4" /> New Community
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl">Create a community</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Name</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Oakland Mutual Aid Network" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Description</Label>
+            <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What brings this community together?" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <Select value={type} onValueChange={setType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(communityTypes).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Location</Label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Optional" />
+            </div>
+          </div>
+          <Button onClick={create} disabled={saving || !name} className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 rounded-xl">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create community"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

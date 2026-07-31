@@ -1,0 +1,22 @@
+{
+  "name": "DiscussionReply",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string"
+    },
+    "community_id": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "post_id",
+    "content"
+  ]
+}

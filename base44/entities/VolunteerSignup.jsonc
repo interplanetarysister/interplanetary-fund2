@@ -1,0 +1,22 @@
+{
+  "name": "VolunteerSignup",
+  "type": "object",
+  "properties": {
+    "opportunity_id": {
+      "type": "string"
+    },
+    "community_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "user_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "opportunity_id",
+    "user_id"
+  ]
+}
