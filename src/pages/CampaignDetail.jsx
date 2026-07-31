@@ -15,6 +15,7 @@ import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
 import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
 import DistributionPanel from "@/components/distribution/DistributionPanel";
+import FollowButton from "@/components/campaigns/FollowButton";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
@@ -74,7 +75,10 @@ export default function CampaignDetail() {
               <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">{categoryLabels[campaign.category] || "Other"}</Badge>
               {campaign.status !== "active" && <Badge variant="outline" className="capitalize">{campaign.status}</Badge>}
             </div>
-            <h1 className="font-display text-3xl sm:text-4xl text-stone-900 leading-tight">{campaign.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="font-display text-3xl sm:text-4xl text-stone-900 leading-tight">{campaign.title}</h1>
+              {!isOwner && <FollowButton campaign={campaign} />}
+            </div>
             {campaign.summary && <p className="text-stone-600 mt-2 text-lg">{campaign.summary}</p>}
           </div>
           {campaign.story && (

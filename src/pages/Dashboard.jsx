@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import MissionControl from "@/components/dashboard/MissionControl";
+import FollowFeed from "@/components/dashboard/FollowFeed";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
 import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-react";
@@ -83,7 +84,10 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <MissionControl campaigns={campaigns} />
+        <div>
+          <FollowFeed />
+          <MissionControl campaigns={campaigns} />
+        </div>
       </div>
     </div>
   );

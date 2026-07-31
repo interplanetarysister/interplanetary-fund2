@@ -5,8 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Image } from "@/components/ui/image";
 import MediaUpload from "@/components/media/MediaUpload";
+import { useToast } from "@/components/ui/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
-import { Megaphone, Loader2 } from "lucide-react";
+import { Megaphone, Loader2, Share2 } from "lucide-react";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
@@ -14,18 +16,34 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [crossPost, setCrossPost] = useState(true);
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
   const post = async () => {
     if (!content.trim()) return;
     setSaving(true);
-    await base44.entities.CampaignUpdate.create({
-      campaign_id: campaignId,
-      title,
-      content,
-      media_url: mediaUrl || undefined,
-      media_type: mediaUrl ? (isVideo(mediaUrl) ? "video" : "image") : "none",
-    });
+    try {
+      const { data } = await base44.functions.invoke("postCampaignUpdate", {
+        campaign_id: campaignId,
+        title,
+        content,
+        media_url: mediaUrl || undefined,
+        media_type: mediaUrl ? (isVideo(mediaUrl) ? "video" : "image") : "none",
+        cross_post: crossPost,
+      });
+      if (data?.error) {
+        toast({ title: "Couldn't post update", description: data.error, variant: "destructive" });
+      } else {
+        const cp = data?.crosspost || {};
+        const summary = crossPost && (cp.published || cp.pending || cp.drafts || cp.failed)
+          ? ` Published ${cp.published} · ${cp.pending} awaiting approval · ${cp.drafts} draft${cp.drafts === 1 ? "" : "s"}${cp.failed ? ` · ${cp.failed} failed` : ""}. Notified ${data.followers_notified} follower${data.followers_notified === 1 ? "" : "s"}.`
+          : ` Notified ${data.followers_notified || 0} follower${(data.followers_notified || 0) === 1 ? "" : "s"}.`;
+        toast({ title: "Update posted", description: summary });
+      }
+    } catch (e) {
+      toast({ title: "Couldn't post update", description: e.response?.data?.error || "Please try again.", variant: "destructive" });
+    }
     setTitle(""); setContent(""); setMediaUrl("");
     setSaving(false);
     onPosted?.();
@@ -47,6 +65,11 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
             label="Attach a photo or video"
             previewClassName="w-full h-40 rounded-xl object-cover"
           />
+          <label className="flex items-center gap-2 text-sm text-stone-600">
+            <Checkbox checked={crossPost} onCheckedChange={setCrossPost} />
+            <Share2 className="w-3.5 h-3.5 text-stone-400" />
+            Cross-post to connected platforms (AI per your automation settings)
+          </label>
           <Button onClick={post} disabled={saving || !content.trim()} className="bg-stone-900 hover:bg-stone-800 text-white rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post update"}
           </Button>

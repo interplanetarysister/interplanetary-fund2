@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/giving", label: "My Giving", icon: HeartHandshake },
   { to: "/communications", label: "Communications", icon: MessageSquare },
   { to: "/inbox", label: "Inbox", icon: MailOpen },
+  { to: "/following", label: "Following", icon: Heart },
   { to: "/mission", label: "Mission Control", icon: Sparkles },
   { to: "/connections", label: "Connections", icon: Link2 },
   { to: "/community", label: "Community", icon: Users },
