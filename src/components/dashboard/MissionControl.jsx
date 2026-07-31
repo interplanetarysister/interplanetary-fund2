@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
@@ -63,7 +64,10 @@ export default function MissionControl({ campaigns }) {
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Analyze"}
         </Button>
       </div>
-      <p className="text-xs text-stone-500 mb-4">AI recommendations — you always make the final call.</p>
+      <p className="text-xs text-stone-500 mb-4">
+        AI recommendations — you always make the final call.{" "}
+        <Link to="/mission" className="text-orange-500 hover:text-orange-400 font-medium">Open full Mission Control →</Link>
+      </p>
       {campaigns.length === 0 && <p className="text-sm text-stone-500">Create your first campaign and Mission Control will start advising you.</p>}
       {insights && (
         <ul className="space-y-3">

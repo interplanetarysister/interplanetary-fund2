@@ -1,0 +1,57 @@
+{
+  "name": "MissionBrief",
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "today_priorities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "week_priorities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "long_term": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "predictions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "forecast": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "recommended_action": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

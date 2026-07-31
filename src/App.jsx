@@ -20,6 +20,7 @@ import CreateCampaign from './pages/CreateCampaign';
 import CampaignDetail from './pages/CampaignDetail';
 import MyGiving from './pages/MyGiving';
 import Communications from './pages/Communications';
+import MissionControlPage from './pages/MissionControlPage';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -60,6 +61,7 @@ const AuthenticatedApp = () => {
           <Route path="/campaign/:id" element={<CampaignDetail />} />
           <Route path="/giving" element={<MyGiving />} />
           <Route path="/communications" element={<Communications />} />
+          <Route path="/mission" element={<MissionControlPage />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

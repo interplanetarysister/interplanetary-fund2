@@ -1,0 +1,62 @@
+{
+  "name": "Recommendation",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string"
+    },
+    "campaign_title": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "reasoning": {
+      "type": "string"
+    },
+    "evidence": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "expected_impact": {
+      "type": "string"
+    },
+    "estimated_effort": {
+      "type": "string"
+    },
+    "agent": {
+      "type": "string",
+      "enum": [
+        "strategy",
+        "growth",
+        "communications",
+        "story",
+        "finance"
+      ],
+      "default": "strategy"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "accepted",
+        "dismissed"
+      ],
+      "default": "open"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
