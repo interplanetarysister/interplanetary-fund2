@@ -27,6 +27,9 @@ import Institutions from './pages/Institutions';
 import InstitutionDetail from './pages/InstitutionDetail';
 import Analytics from './pages/Analytics';
 import Platform from './pages/Platform';
+import Onboarding from './pages/Onboarding';
+import Profile from './pages/Profile';
+import Notifications from './pages/Notifications';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -60,6 +63,8 @@ const AuthenticatedApp = () => {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        {/* Full-screen onboarding experience, outside the Layout chrome */}
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/discover" element={<Discover />} />
@@ -72,6 +77,8 @@ const AuthenticatedApp = () => {
           <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/institutions" element={<Institutions />} />
           <Route path="/institutions/:id" element={<InstitutionDetail />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/notifications" element={<Notifications />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
         </Route>

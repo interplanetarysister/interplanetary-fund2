@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { Flame, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X } from "lucide-react";
+import { Flame, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 
 const navItems = [
@@ -14,6 +14,16 @@ const navItems = [
   { to: "/analytics", label: "Command Center", icon: BarChart3 },
   { to: "/platform", label: "Platform", icon: Server },
   { to: "/create", label: "New Campaign", icon: PlusCircle },
+];
+
+// One-handed mobile navigation. AI Assistant surfaces Mission Control — the
+// platform's central intelligence hub — under its most user-friendly label.
+const bottomNavItems = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/discover", label: "Campaigns", icon: Compass },
+  { to: "/mission", label: "AI Assistant", icon: Sparkles },
+  { to: "/notifications", label: "Alerts", icon: Bell },
+  { to: "/profile", label: "Profile", icon: User },
 ];
 
 export default function Layout() {
@@ -74,7 +84,26 @@ export default function Layout() {
       </header>
       {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 bg-[#171310] pb-4 pt-2 shadow-xl">{nav}</div>}
 
-      <main className="md:pl-60">
+      {/* Mobile bottom navigation — one-handed access to core surfaces */}
+      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-[#171310] border-t border-white/10 flex">
+        {bottomNavItems.map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) =>
+              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+                isActive ? "text-orange-400" : "text-stone-400"
+              }`
+            }
+          >
+            <Icon className="w-5 h-5" strokeWidth={1.75} />
+            {label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <main className="md:pl-60 pb-16 md:pb-0">
         <Outlet />
       </main>
     </div>

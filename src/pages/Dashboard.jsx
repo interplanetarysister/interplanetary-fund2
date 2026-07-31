@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import MissionControl from "@/components/dashboard/MissionControl";
 import CampaignCard from "@/components/campaigns/CampaignCard";
-import { DollarSign, Users, Flame, PlusCircle, Loader2 } from "lucide-react";
+import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
@@ -24,6 +24,8 @@ export default function Dashboard() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
   }
 
+  const needsOnboarding = !user?.onboarding_completed;
+
   const totalRaised = campaigns.reduce((s, c) => s + (c.raised_amount || 0), 0);
   const totalDonors = campaigns.reduce((s, c) => s + (c.donor_count || 0), 0);
   const active = campaigns.filter((c) => c.status === "active").length;
@@ -41,6 +43,21 @@ export default function Dashboard() {
           </Button>
         </Link>
       </div>
+
+      {needsOnboarding && (
+        <Link to="/onboarding" className="block mb-6">
+          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 text-white p-4">
+            <span className="shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </span>
+            <div className="flex-1">
+              <p className="font-medium text-sm">Set up your intelligent fundraising OS</p>
+              <p className="text-xs text-white/80">Connect platforms, activate the AI Growth Engine, and automate your fundraising.</p>
+            </div>
+            <PlusCircle className="w-5 h-5 shrink-0" />
+          </div>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Total Raised" value={`$${totalRaised.toLocaleString()}`} icon={DollarSign} />
