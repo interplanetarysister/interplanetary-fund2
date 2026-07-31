@@ -30,6 +30,7 @@ import Platform from './pages/Platform';
 import Onboarding from './pages/Onboarding';
 import Profile from './pages/Profile';
 import Connections from './pages/Connections';
+import Inbox from './pages/Inbox';
 import Notifications from './pages/Notifications';
 import Subscriptions from './pages/Subscriptions';
 import Withdrawals from './pages/Withdrawals';
@@ -82,6 +83,7 @@ const AuthenticatedApp = () => {
           <Route path="/institutions/:id" element={<InstitutionDetail />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/connections" element={<Connections />} />
+          <Route path="/inbox" element={<Inbox />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/withdrawals" element={<Withdrawals />} />

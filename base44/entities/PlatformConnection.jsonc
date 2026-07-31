@@ -69,6 +69,31 @@
       "default": "manual",
       "description": "AI publishing authorization for this destination: publish automatically, ask before every post, generate drafts only, or manual posting only."
     },
+    "credentials": {
+      "type": "object",
+      "description": "Per-platform integration credentials, visible only to the connection owner under RLS. Enables live sync/publishing where the platform supports it.",
+      "properties": {
+        "kofi_verification_token": {
+          "type": "string",
+          "description": "Ko-fi webhook verification token \u2014 enables live donation sync."
+        },
+        "bluesky_handle": {
+          "type": "string"
+        },
+        "bluesky_app_password": {
+          "type": "string",
+          "description": "Bluesky app password \u2014 enables direct publishing."
+        },
+        "mastodon_instance": {
+          "type": "string",
+          "description": "e.g. mastodon.social"
+        },
+        "mastodon_access_token": {
+          "type": "string",
+          "description": "Mastodon access token \u2014 enables direct publishing."
+        }
+      }
+    },
     "external_total": {
       "type": "number",
       "default": 0,

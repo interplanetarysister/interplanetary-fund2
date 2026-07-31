@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import BriefingPanel from "@/components/mission/BriefingPanel";
 import RecommendationsPanel from "@/components/mission/RecommendationsPanel";
 import OpportunitiesPanel from "@/components/mission/OpportunitiesPanel";
+import AutomationPanel from "@/components/mission/AutomationPanel";
 import { Sparkles, Loader2 } from "lucide-react";
 
 export default function MissionControlPage() {
@@ -62,6 +63,7 @@ export default function MissionControlPage() {
             <TabsTrigger value="briefing">Briefing</TabsTrigger>
             <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
             <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+            <TabsTrigger value="automation">Automation</TabsTrigger>
           </TabsList>
           <TabsContent value="briefing">
             <BriefingPanel brief={brief} />
@@ -71,6 +73,9 @@ export default function MissionControlPage() {
           </TabsContent>
           <TabsContent value="opportunities">
             <OpportunitiesPanel />
+          </TabsContent>
+          <TabsContent value="automation">
+            <AutomationPanel />
           </TabsContent>
         </Tabs>
       )}

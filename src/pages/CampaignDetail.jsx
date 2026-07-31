@@ -14,6 +14,7 @@ import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
 import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
+import DistributionPanel from "@/components/distribution/DistributionPanel";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
@@ -83,6 +84,7 @@ export default function CampaignDetail() {
             </div>
           )}
           <UpdatesSection campaignId={campaign.id} updates={updates} isOwner={isOwner} onPosted={load} />
+          {isOwner && <DistributionPanel campaign={campaign} />}
         </div>
 
         {/* Sidebar */}

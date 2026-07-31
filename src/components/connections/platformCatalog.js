@@ -10,7 +10,7 @@ export const CROWDFUNDING_PLATFORMS = [
   { id: "fundrazr", name: "FundRazr", api: "API access requires approval — link now, live sync activates when approved." },
   { id: "givesendgo", name: "GiveSendGo", api: "No public API — link your campaign; totals sync is owner-reported." },
   { id: "spotfund", name: "Spotfund", api: "No public API — link your campaign; totals sync is owner-reported." },
-  { id: "kofi", name: "Ko-fi", api: "Webhook API supported — live donation sync activates with your Ko-fi webhook token." },
+  { id: "kofi", name: "Ko-fi", api: "Live donation sync — paste your Ko-fi verification token and set the webhook URL shown when connecting." },
   { id: "buymeacoffee", name: "Buy Me a Coffee", api: "API supported — live sync activates with your access token." },
   { id: "patreon", name: "Patreon", api: "OAuth API supported — live sync activates when OAuth credentials are approved." },
   { id: "custom", name: "Custom Campaign URL", api: "Link any external campaign page and track its totals here." },
@@ -27,8 +27,8 @@ export const SOCIAL_PLATFORMS = [
   { id: "reddit", name: "Reddit", api: "OAuth posting pending platform approval." },
   { id: "youtube", name: "YouTube Community", api: "OAuth posting pending platform approval." },
   { id: "discord", name: "Discord", api: "OAuth posting pending platform approval." },
-  { id: "bluesky", name: "Bluesky", api: "App-password posting activates with your credentials." },
-  { id: "mastodon", name: "Mastodon", api: "API posting activates with your instance token." },
+  { id: "bluesky", name: "Bluesky", api: "Direct publishing supported — connect with your handle and an app password." },
+  { id: "mastodon", name: "Mastodon", api: "Direct publishing supported — connect with your instance and an access token." },
 ];
 
 export const ALL_PLATFORMS = [...CROWDFUNDING_PLATFORMS, ...SOCIAL_PLATFORMS];

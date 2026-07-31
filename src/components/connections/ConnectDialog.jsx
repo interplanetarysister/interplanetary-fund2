@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { AUTOMATION_MODES } from "./platformCatalog";
+import CredentialFields from "./CredentialFields";
 
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
@@ -14,6 +15,7 @@ import { AUTOMATION_MODES } from "./platformCatalog";
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_donor_count: "" });
+  const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
 
@@ -27,6 +29,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_total: existing?.external_total ?? "",
       external_donor_count: existing?.external_donor_count ?? "",
     });
+    setCredentials(existing?.credentials || {});
     (async () => {
       const me = await base44.auth.me();
       setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
@@ -45,6 +48,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_url: form.external_url,
       campaign_id: form.campaign_id || undefined,
       automation_mode: form.automation_mode,
+      credentials,
       external_total: isCrowd ? Number(form.external_total) || 0 : 0,
       external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
       status: "connected",
@@ -79,6 +83,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
           </div>
+          <CredentialFields platformId={platform.id} credentials={credentials} onChange={setCredentials} />
           <div className="space-y-1.5">
             <Label>Linked Interplanetary Fund campaign</Label>
             <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
