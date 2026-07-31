@@ -7,6 +7,41 @@
         "admin",
         "user"
       ]
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user has completed the intelligent onboarding flow."
+    },
+    "onboarding": {
+      "type": "object",
+      "description": "Saved onboarding selections (fundraising goal, platforms, automation preferences).",
+      "properties": {
+        "goal": {
+          "type": "string"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "automation": {
+          "type": "object"
+        }
+      }
+    },
+    "comm_prefs": {
+      "type": "object",
+      "description": "Notification delivery preferences for messages from organizers.",
+      "properties": {
+        "email_updates": {
+          "type": "boolean"
+        },
+        "in_app_updates": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "required": [
