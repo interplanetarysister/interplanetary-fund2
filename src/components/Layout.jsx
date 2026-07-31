@@ -118,7 +118,12 @@ export default function Layout() {
         </div>
       </header>
       <OfflineBanner />
-      {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>}
+      {open && (
+        <>
+          <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
+        </>
+      )}
 
       {/* Mobile bottom navigation — one-handed access to core surfaces */}
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">

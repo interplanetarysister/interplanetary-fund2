@@ -41,7 +41,9 @@ export default function CreateCampaign() {
       });
       set("cover_image_url", url);
       setRegenCount((c) => c + 1);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      toast({ title: "Couldn't generate cover", description: "Please try again or upload your own image.", variant: "destructive" });
+    }
     setGeneratingImage(false);
   };
 

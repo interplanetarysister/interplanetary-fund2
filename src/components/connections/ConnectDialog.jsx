@@ -18,6 +18,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -59,12 +60,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         { at: now, event: existing ? "synced" : "connected", detail: existing ? "Details and totals updated" : `Connected ${platform.name}` },
       ].slice(-30),
     };
-    const saved = existing
-      ? await base44.entities.PlatformConnection.update(existing.id, data)
-      : await base44.entities.PlatformConnection.create(data);
-    onSaved(saved || { ...existing, ...data });
-    onOpenChange(false);
-    setSaving(false);
+    try {
+      const saved = existing
+        ? await base44.entities.PlatformConnection.update(existing.id, data)
+        : await base44.entities.PlatformConnection.create(data);
+      onSaved(saved || { ...existing, ...data });
+      onOpenChange(false);
+    } catch (e) {
+      setError(e.message || "Couldn't save this connection. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -121,6 +127,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
                 : "Accept the AI Publishing Authorization above to enable automation options."}
             </p>
           </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
           <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
           </Button>

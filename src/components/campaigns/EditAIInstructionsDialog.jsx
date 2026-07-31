@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIInstructionsStep";
 import { Sparkles, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function EditAIInstructionsDialog({ campaign, onSaved }) {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({ ...emptyAiProfile, ...(campaign.ai_profile || {}) });
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
   const save = async () => {
     setSaving(true);
@@ -16,8 +18,8 @@ export default function EditAIInstructionsDialog({ campaign, onSaved }) {
       await base44.entities.Campaign.update(campaign.id, { ai_profile: profile });
       onSaved?.();
       setOpen(false);
-    } catch {
-      /* keep open so the user can retry */
+    } catch (e) {
+      toast({ title: "Couldn't save AI profile", description: e.message, variant: "destructive" });
     }
     setSaving(false);
   };

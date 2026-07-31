@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Sparkles, Link2, Zap, User, Loader2 } from "lucide-react";
+import { Sparkles, Link2, Zap, User, Loader2, LogOut } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 import { CAPABILITY_MODULES } from "@/components/onboarding/onboardingSteps";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -11,6 +12,8 @@ import { FALLBACK_IMAGE } from "@/components/brand/brand";
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     (async () => {
@@ -34,8 +37,18 @@ export default function Profile() {
 
   const savePhoto = async (url) => {
     if (!url) return;
-    await base44.auth.updateMe({ photo_url: url });
-    setUser((u) => ({ ...u, photo_url: url }));
+    try {
+      await base44.auth.updateMe({ photo_url: url });
+      setUser((u) => ({ ...u, photo_url: url }));
+      toast({ title: "Profile photo updated" });
+    } catch (e) {
+      toast({ title: "Couldn't update photo", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const signOut = async () => {
+    setSigningOut(true);
+    await base44.auth.logout("/login");
   };
 
   return (
@@ -107,8 +120,12 @@ export default function Profile() {
         )}
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <Link to="/onboarding"><Button variant="outline" className="rounded-xl">Revisit setup</Button></Link>
+        <Button variant="outline" onClick={signOut} disabled={signingOut} className="rounded-xl text-red-600">
+          {signingOut ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogOut className="w-4 h-4 mr-2" />}
+          Sign out
+        </Button>
       </div>
     </div>
   );

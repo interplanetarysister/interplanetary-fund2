@@ -49,6 +49,7 @@ export default function Onboarding() {
       isLast={isLast}
       onBack={() => setCurrent((c) => Math.max(0, c - 1))}
       onNext={() => setCurrent((c) => Math.min(STEPS.length - 1, c + 1))}
+      onSkip={() => navigate("/")}
       onFinish={finish}
     >
       {saving ? (
