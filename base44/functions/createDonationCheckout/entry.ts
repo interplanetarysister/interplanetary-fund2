@@ -5,8 +5,8 @@ import { secrets } from 'base44:runtime';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    let user = null;
+    try { user = await base44.auth.me(); } catch (_) { /* public donors may be signed out */ }
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
     const value = Number(amount);
@@ -34,7 +34,7 @@ export default async function(req) {
       metadata: {
         base44_app_id: secrets.get('BASE44_APP_ID'),
         campaign_id,
-        donor_user_id: user.id,
+        donor_user_id: user?.id,
         donor_name: donor_name || 'Anonymous',
         message: (message || '').slice(0, 450),
         is_recurring: is_recurring ? 'true' : 'false',

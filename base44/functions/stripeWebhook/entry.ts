@@ -51,6 +51,7 @@ export default async function(req) {
             is_recurring: isRecurring,
             ...(isRecurring ? { recurring_status: 'active' } : {}),
             donor_user_id: m.donor_user_id,
+            payment_method: 'stripe',
             stripe_session_id: session.id,
           });
 
