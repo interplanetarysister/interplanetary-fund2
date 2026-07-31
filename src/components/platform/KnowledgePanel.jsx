@@ -33,7 +33,7 @@ export default function KnowledgePanel() {
   }, []);
 
   if (!articles) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const publish = async () => {
@@ -71,7 +71,7 @@ export default function KnowledgePanel() {
           <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the knowledge repository…" className="pl-9" />
         </div>
         {!showForm && (
-          <Button onClick={() => setShowForm(true)} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+          <Button onClick={() => setShowForm(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
             <Plus className="w-4 h-4" /> New document
           </Button>
         )}
@@ -91,7 +91,7 @@ export default function KnowledgePanel() {
           <Textarea rows={8} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Document content…" />
           <p className="text-xs text-stone-400 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> A plain-language AI summary is generated on publish.</p>
           <div className="flex gap-2">
-            <Button onClick={publish} disabled={saving || !form.title || !form.content} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+            <Button onClick={publish} disabled={saving || !form.title || !form.content} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Publish"}
             </Button>
             <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
@@ -114,7 +114,7 @@ export default function KnowledgePanel() {
               <Badge variant="secondary" className="shrink-0">{categories[a.category] || a.category}</Badge>
             </div>
             {a.summary && <p className="text-sm text-stone-600 mt-2">{a.summary}</p>}
-            <button onClick={() => setExpanded(expanded === a.id ? null : a.id)} className="text-xs font-medium text-orange-600 hover:text-orange-500 mt-3">
+            <button onClick={() => setExpanded(expanded === a.id ? null : a.id)} className="text-xs font-medium text-primary hover:text-primary/80 mt-3">
               {expanded === a.id ? "Hide full document" : "Read full document"}
             </button>
             {expanded === a.id && (

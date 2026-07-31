@@ -50,7 +50,7 @@ export default function ServiceHealthPanel() {
   useEffect(() => { run(false); }, [run]);
 
   if (!results) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const healthy = results.filter((r) => r.status === "operational").length;
@@ -58,12 +58,12 @@ export default function ServiceHealthPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#171310] rounded-2xl p-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-slate-900 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-display text-3xl text-white">{healthy}/{results.length} operational</p>
           <p className="text-sm text-stone-400 mt-1">Average response time {avg}ms · infrastructure managed by Base44</p>
         </div>
-        <Button onClick={() => run(true)} disabled={running} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button onClick={() => run(true)} disabled={running} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Run health check
         </Button>
       </div>

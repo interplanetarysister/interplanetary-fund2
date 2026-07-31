@@ -14,21 +14,21 @@ function Section({ icon, title, children }) {
 export default function OperationsPanel() {
   return (
     <div className="space-y-2">
-      <div className="bg-[#171310] rounded-2xl p-6">
+      <div className="bg-slate-900 rounded-2xl p-6">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-orange-500" />
+          <TrendingUp className="w-5 h-5 text-primary" />
           <p className="font-display text-2xl text-white">Operational Maturity & Governance</p>
         </div>
         <p className="text-sm text-stone-400 mt-1.5">
-          The capstone of Phase 5 — how FundForge evolves from manual operations to an intelligent, self-improving enterprise while governance keeps it coherent.
+          The capstone of Phase 5 — how Crowdfund evolves from manual operations to an intelligent, self-improving enterprise while governance keeps it coherent.
         </p>
       </div>
 
-      <Section icon={<TrendingUp className="w-5 h-5 text-orange-600" />} title="Operational Maturity Model">
+      <Section icon={<TrendingUp className="w-5 h-5 text-primary" />} title="Operational Maturity Model">
         <div className="space-y-3">
           {maturityLevels.map((m, i) => (
             <div key={m.level} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5 flex items-start gap-4">
-              <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${i === maturityLevels.length - 1 ? "bg-orange-600 text-white" : "bg-stone-900 text-white"}`}>{m.level}</span>
+              <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${i === maturityLevels.length - 1 ? "bg-primary text-white" : "bg-stone-900 text-white"}`}>{m.level}</span>
               <div>
                 <p className="font-semibold text-stone-900">{m.name}</p>
                 <p className="text-sm text-stone-500 mt-1">{m.desc}</p>
@@ -38,7 +38,7 @@ export default function OperationsPanel() {
         </div>
       </Section>
 
-      <Section icon={<Users className="w-5 h-5 text-orange-600" />} title="Governance Bodies">
+      <Section icon={<Users className="w-5 h-5 text-primary" />} title="Governance Bodies">
         <div className="grid sm:grid-cols-2 gap-3">
           {governanceBodies.map((g) => (
             <div key={g.name} className="bg-white rounded-xl border border-stone-200/70 shadow-sm p-4">
@@ -49,7 +49,7 @@ export default function OperationsPanel() {
         </div>
       </Section>
 
-      <Section icon={<Gauge className="w-5 h-5 text-orange-600" />} title="Site Reliability Engineering">
+      <Section icon={<Gauge className="w-5 h-5 text-primary" />} title="Site Reliability Engineering">
         <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm divide-y divide-stone-100">
           {sreObjectives.map((s) => (
             <div key={s.label} className="px-5 py-3.5">
@@ -60,7 +60,7 @@ export default function OperationsPanel() {
         </div>
       </Section>
 
-      <Section icon={<GitMerge className="w-5 h-5 text-orange-600" />} title="DevSecOps Lifecycle">
+      <Section icon={<GitMerge className="w-5 h-5 text-primary" />} title="DevSecOps Lifecycle">
         <div className="flex flex-wrap items-center gap-2">
           {devSecOpsLifecycle.map((step, i) => (
             <React.Fragment key={step}>
@@ -71,7 +71,7 @@ export default function OperationsPanel() {
         </div>
       </Section>
 
-      <Section icon={<CheckCircle2 className="w-5 h-5 text-orange-600" />} title="Release Certification Gates">
+      <Section icon={<CheckCircle2 className="w-5 h-5 text-primary" />} title="Release Certification Gates">
         <div className="flex flex-wrap gap-1.5">
           {qualityGates.map((g) => (
             <span key={g} className="text-xs rounded-md bg-emerald-50 text-emerald-700 px-2 py-1">{g}</span>

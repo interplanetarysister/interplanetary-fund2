@@ -18,11 +18,11 @@ export default function ConstitutionPanel() {
   return (
     <div className="space-y-2">
       {/* Charter */}
-      <div className="bg-[#171310] rounded-2xl p-6">
+      <div className="bg-slate-900 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-3">
-          <ScrollText className="w-5 h-5 text-orange-500" />
-          <p className="font-display text-2xl text-white">FundForge Platform Constitution</p>
-          <Badge className="ml-1 bg-orange-600 text-white hover:bg-orange-600">v{charter.version}</Badge>
+          <ScrollText className="w-5 h-5 text-primary" />
+          <p className="font-display text-2xl text-white">Crowdfund Platform Constitution</p>
+          <Badge className="ml-1 bg-primary text-primary-foreground hover:bg-primary/90">v{charter.version}</Badge>
         </div>
         <p className="text-sm text-stone-400">{charter.status}</p>
       </div>
@@ -39,7 +39,7 @@ export default function ConstitutionPanel() {
       </div>
 
       {/* Core values */}
-      <SectionTitle icon={<Scale className="w-5 h-5 text-orange-600" />}>Core Values</SectionTitle>
+      <SectionTitle icon={<Scale className="w-5 h-5 text-primary" />}>Core Values</SectionTitle>
       <div className="grid sm:grid-cols-2 gap-3">
         {coreValues.map((v) => (
           <div key={v.id} className="bg-white rounded-xl border border-stone-200/70 shadow-sm p-4">
@@ -53,7 +53,7 @@ export default function ConstitutionPanel() {
       </div>
 
       {/* Immutable laws */}
-      <SectionTitle icon={<ShieldCheck className="w-5 h-5 text-orange-600" />}>Immutable Architectural Laws</SectionTitle>
+      <SectionTitle icon={<ShieldCheck className="w-5 h-5 text-primary" />}>Immutable Architectural Laws</SectionTitle>
       <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm divide-y divide-stone-100">
         {immutableLaws.map((l) => (
           <div key={l.id} className="flex gap-3 px-5 py-3.5">
@@ -64,7 +64,7 @@ export default function ConstitutionPanel() {
       </div>
 
       {/* Governance hierarchy */}
-      <SectionTitle icon={<Scale className="w-5 h-5 text-orange-600" />}>Governance Hierarchy</SectionTitle>
+      <SectionTitle icon={<Scale className="w-5 h-5 text-primary" />}>Governance Hierarchy</SectionTitle>
       <div className="grid sm:grid-cols-2 gap-3">
         {governanceHierarchy.map((g) => (
           <div key={g.layer} className="bg-white rounded-xl border border-stone-200/70 shadow-sm p-4">
@@ -75,7 +75,7 @@ export default function ConstitutionPanel() {
       </div>
 
       {/* Architecture layers */}
-      <SectionTitle icon={<Layers className="w-5 h-5 text-orange-600" />}>Master Architecture — Ten Layers</SectionTitle>
+      <SectionTitle icon={<Layers className="w-5 h-5 text-primary" />}>Master Architecture — Ten Layers</SectionTitle>
       <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm divide-y divide-stone-100">
         {architectureLayers.map((l) => (
           <div key={l.n} className="flex items-start gap-3 px-5 py-3.5">
@@ -89,7 +89,7 @@ export default function ConstitutionPanel() {
       </div>
 
       {/* Shared services */}
-      <SectionTitle icon={<Layers className="w-5 h-5 text-orange-600" />}>Shared Platform Services</SectionTitle>
+      <SectionTitle icon={<Layers className="w-5 h-5 text-primary" />}>Shared Platform Services</SectionTitle>
       <div className="flex flex-wrap gap-1.5">
         {sharedServices.map((s) => (
           <span key={s} className="text-xs rounded-md bg-stone-100 text-stone-600 px-2 py-1">{s}</span>
@@ -97,12 +97,12 @@ export default function ConstitutionPanel() {
       </div>
 
       {/* Release roadmap */}
-      <SectionTitle icon={<Map className="w-5 h-5 text-orange-600" />}>Implementation Roadmap</SectionTitle>
+      <SectionTitle icon={<Map className="w-5 h-5 text-primary" />}>Implementation Roadmap</SectionTitle>
       <div className="space-y-3">
         {releaseRoadmap.map((r, i) => (
           <div key={r.release} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5">
             <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-orange-50 text-orange-700 text-sm font-bold flex items-center justify-center">{i + 1}</span>
+              <span className="w-7 h-7 rounded-lg bg-cyan-50 text-cyan-700 text-sm font-bold flex items-center justify-center">{i + 1}</span>
               <p className="font-semibold text-stone-900">{r.release}</p>
             </div>
             <p className="text-sm text-stone-500 mt-2">{r.goal}</p>

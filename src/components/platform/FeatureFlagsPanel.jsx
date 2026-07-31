@@ -19,7 +19,7 @@ export default function FeatureFlagsPanel() {
   }, []);
 
   if (!flags) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const create = async () => {
@@ -51,7 +51,7 @@ export default function FeatureFlagsPanel() {
   return (
     <div className="space-y-4">
       {!showForm && (
-        <Button onClick={() => setShowForm(true)} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button onClick={() => setShowForm(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <Plus className="w-4 h-4" /> New flag
         </Button>
       )}
@@ -71,7 +71,7 @@ export default function FeatureFlagsPanel() {
             </SelectContent>
           </Select>
           <div className="flex gap-2">
-            <Button onClick={create} disabled={saving || !form.key} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+            <Button onClick={create} disabled={saving || !form.key} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create"}
             </Button>
             <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>

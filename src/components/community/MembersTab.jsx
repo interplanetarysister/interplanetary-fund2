@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
 const roleStyles = {
-  owner: "bg-orange-100 text-orange-700 hover:bg-orange-100",
-  moderator: "bg-amber-100 text-amber-700 hover:bg-amber-100",
+  owner: "bg-cyan-100 text-cyan-700 hover:bg-cyan-100",
+  moderator: "bg-sky-100 text-sky-700 hover:bg-sky-100",
   member: "bg-stone-100 text-stone-600 hover:bg-stone-100",
 };
 
@@ -14,7 +14,7 @@ export default function MembersTab({ members }) {
       {members.map((m) => (
         <div key={m.id} className="flex items-center justify-between px-5 py-3.5">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-white text-sm font-semibold">
+            <span className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-semibold">
               {(m.user_name || "?").charAt(0).toUpperCase()}
             </span>
             <div>
