@@ -45,6 +45,10 @@
       ],
       "default": "paypal",
       "description": "How the supporter sent their gift."
+    },
+    "withdrawal_id": {
+      "type": "string",
+      "description": "Set to the Withdrawal id once these funds have been cashed out. Null means the funds are still available to withdraw."
     }
   },
   "required": [
