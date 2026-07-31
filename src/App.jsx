@@ -23,6 +23,8 @@ import Communications from './pages/Communications';
 import MissionControlPage from './pages/MissionControlPage';
 import Community from './pages/Community';
 import CommunityDetail from './pages/CommunityDetail';
+import Institutions from './pages/Institutions';
+import InstitutionDetail from './pages/InstitutionDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -66,6 +68,8 @@ const AuthenticatedApp = () => {
           <Route path="/mission" element={<MissionControlPage />} />
           <Route path="/community" element={<Community />} />
           <Route path="/community/:id" element={<CommunityDetail />} />
+          <Route path="/institutions" element={<Institutions />} />
+          <Route path="/institutions/:id" element={<InstitutionDetail />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
