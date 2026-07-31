@@ -5,6 +5,7 @@ import ServiceHealthPanel from "@/components/platform/ServiceHealthPanel";
 import FeatureFlagsPanel from "@/components/platform/FeatureFlagsPanel";
 import TimelinePanel from "@/components/platform/TimelinePanel";
 import KnowledgePanel from "@/components/platform/KnowledgePanel";
+import BlueprintPanel from "@/components/platform/BlueprintPanel";
 import { Loader2, ShieldAlert } from "lucide-react";
 
 export default function Platform() {
@@ -32,17 +33,19 @@ export default function Platform() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Platform Foundation</h1>
       <p className="text-stone-500 mt-1 mb-6">
-        Service health, configuration, audit history, and engineering knowledge.
+        Service health, architecture blueprint, configuration, audit history, and engineering knowledge.
       </p>
 
       <Tabs defaultValue="health">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="health">Health</TabsTrigger>
+          <TabsTrigger value="blueprint">Blueprint</TabsTrigger>
           <TabsTrigger value="config">Configuration</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
         </TabsList>
         <TabsContent value="health"><ServiceHealthPanel /></TabsContent>
+        <TabsContent value="blueprint"><BlueprintPanel /></TabsContent>
         <TabsContent value="config"><FeatureFlagsPanel /></TabsContent>
         <TabsContent value="timeline"><TimelinePanel /></TabsContent>
         <TabsContent value="knowledge"><KnowledgePanel /></TabsContent>
