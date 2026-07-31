@@ -26,6 +26,7 @@ import CommunityDetail from './pages/CommunityDetail';
 import Institutions from './pages/Institutions';
 import InstitutionDetail from './pages/InstitutionDetail';
 import Analytics from './pages/Analytics';
+import Platform from './pages/Platform';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -72,6 +73,7 @@ const AuthenticatedApp = () => {
           <Route path="/institutions" element={<Institutions />} />
           <Route path="/institutions/:id" element={<InstitutionDetail />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/platform" element={<Platform />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

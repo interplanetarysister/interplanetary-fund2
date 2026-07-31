@@ -1,0 +1,43 @@
+{
+  "name": "PlatformEvent",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "configuration",
+        "health_check",
+        "knowledge",
+        "deployment",
+        "security",
+        "recovery",
+        "other"
+      ],
+      "default": "other"
+    },
+    "actor_name": {
+      "type": "string"
+    },
+    "affected_resource": {
+      "type": "string"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failure",
+        "warning"
+      ],
+      "default": "success"
+    },
+    "details": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "action"
+  ]
+}

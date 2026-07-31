@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { Flame, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Menu, X } from "lucide-react";
+import { Flame, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { to: "/community", label: "Community", icon: Users },
   { to: "/institutions", label: "Institutions", icon: Building2 },
   { to: "/analytics", label: "Command Center", icon: BarChart3 },
+  { to: "/platform", label: "Platform", icon: Server },
   { to: "/create", label: "New Campaign", icon: PlusCircle },
 ];
 

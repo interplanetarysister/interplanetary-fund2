@@ -1,0 +1,39 @@
+{
+  "name": "KnowledgeArticle",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "architecture_decision",
+        "runbook",
+        "playbook",
+        "standard",
+        "data_model",
+        "release_notes",
+        "troubleshooting",
+        "other"
+      ],
+      "default": "other"
+    },
+    "content": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "author_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
