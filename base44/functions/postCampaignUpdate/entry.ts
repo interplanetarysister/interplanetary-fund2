@@ -25,6 +25,16 @@ const PLATFORM_RULES = {
   discord: 'Discord: community announcement, short, emoji ok, no hashtags.',
   bluesky: 'Bluesky: under 280 chars, authentic update, 1-2 hashtags.',
   mastodon: 'Mastodon: under 480 chars, genuine update, 2-3 hashtags.',
+  gofundme: 'GoFundMe update: heartfelt progress update, 1-3 paragraphs, thank supporters, no hashtags.',
+  kickstarter: 'Kickstarter update: backer update, milestone-focused, 2-3 paragraphs, no hashtags.',
+  indiegogo: 'Indiegogo update: backer/perk update, progress and gratitude, 2-3 paragraphs.',
+  fundrazr: 'FundRazr update: community update, concise, gratitude and progress.',
+  givesendgo: 'GiveSendGo update: faith-friendly community update, gratitude and progress.',
+  spotfund: 'Spotfund update: brief community update, thank supporters, progress.',
+  kofi: 'Ko-fi post: casual community update, thank supporters, share progress.',
+  buymeacoffee: 'Buy Me a Coffee post: casual update, gratitude and progress.',
+  patreon: 'Patreon post: patron update, behind-the-scenes, gratitude, 2-3 paragraphs.',
+  custom: 'Custom site update: general campaign update, gratitude and progress.',
 };
 
 const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts, names, or urgency; use only the update and campaign context; no spam; no false promises.`;
@@ -57,7 +67,7 @@ export default async function(req) {
     const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0 };
     if (cross_post !== false) {
       // User-scoped read respects RLS — only the owner's connections come back.
-      const connections = await base44.entities.PlatformConnection.filter({ kind: 'social' });
+      const connections = await base44.entities.PlatformConnection.filter({});
       const targets = connections.filter((c) => c.automation_mode !== 'manual');
       crosspost.skipped = connections.length - targets.length;
 

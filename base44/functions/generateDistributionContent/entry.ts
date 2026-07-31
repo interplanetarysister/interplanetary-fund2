@@ -1,8 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 // AI Campaign Distribution Engine — generates platform-tailored post content
-// for each connected social destination (never identical copies), saved as
-// DistributedPost drafts the owner can approve, schedule, edit, or publish.
+// for each connected social AND crowdfunding destination (never identical
+// copies), saved as DistributedPost drafts the owner can approve before
+// broadcasting — direct-publish where an API exists, copy-to-post otherwise.
 
 const PLATFORM_RULES = {
   facebook: 'Facebook: warm, story-driven, 2-4 short paragraphs, up to 400 words, 2-3 hashtags at the end.',
@@ -17,6 +18,18 @@ const PLATFORM_RULES = {
   discord: 'Discord: community announcement tone, short, emoji ok, no hashtags.',
   bluesky: 'Bluesky: under 280 chars, authentic, 1-2 hashtags.',
   mastodon: 'Mastodon: under 480 chars, genuine and community-minded, 2-3 hashtags.',
+  // Crowdfunding destinations — update-style posts the owner copies into the
+  // external campaign page (no posting API available).
+  gofundme: 'GoFundMe update: heartfelt progress update, 1-3 paragraphs, thank supporters and share progress toward goal, no hashtags.',
+  kickstarter: 'Kickstarter update: backer update tone, milestone-focused, 2-3 paragraphs, no hashtags.',
+  indiegogo: 'Indiegogo update: backer/perk update, progress and gratitude, 2-3 paragraphs.',
+  fundrazr: 'FundRazr update: community update, concise, gratitude and progress, 1-2 paragraphs.',
+  givesendgo: 'GiveSendGo update: faith-friendly community update, gratitude and progress, 1-2 paragraphs.',
+  spotfund: 'Spotfund update: brief community update, thank supporters, progress toward goal.',
+  kofi: 'Ko-fi post: casual community update, thank supporters, share progress, 1-2 short paragraphs.',
+  buymeacoffee: 'Buy Me a Coffee post: casual update to supporters, gratitude and progress, 1-2 paragraphs.',
+  patreon: 'Patreon post: patron update, behind-the-scenes tone, gratitude, 2-3 paragraphs.',
+  custom: 'Custom site update: general campaign update, gratitude and progress, 2-3 paragraphs.',
 };
 
 export default async function(req) {
@@ -37,7 +50,8 @@ export default async function(req) {
     }
 
     // Connections are read user-scoped — RLS guarantees they belong to the caller.
-    const all = await base44.entities.PlatformConnection.filter({ kind: 'social' });
+    // Both social and crowdfunding destinations are eligible for distribution.
+    const all = await base44.entities.PlatformConnection.filter({});
     const targets = all.filter((c) => connection_ids.includes(c.id) && c.automation_mode !== 'manual');
     if (!targets.length) {
       return Response.json({ error: 'No selected platforms allow AI content. Check each connection\'s automation setting.' }, { status: 400 });
