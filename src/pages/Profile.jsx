@@ -90,8 +90,11 @@ export default function Profile() {
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">
           <Link2 className="w-3.5 h-3.5" /> Connected Platforms
         </p>
+        <div className="mb-3">
+          <Link to="/connections"><Button size="sm" className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">Open Connections Center</Button></Link>
+        </div>
         {selectedPlatforms.length === 0 ? (
-          <p className="text-sm text-stone-500">No platforms selected. Connect from Mission Control.</p>
+          <p className="text-sm text-stone-500">No platforms selected yet — connect crowdfunding platforms and social accounts in the Connections Center.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {selectedPlatforms.map((id) => {

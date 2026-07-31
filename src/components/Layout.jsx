@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -11,6 +11,7 @@ const navItems = [
   { to: "/giving", label: "My Giving", icon: HeartHandshake },
   { to: "/communications", label: "Communications", icon: MessageSquare },
   { to: "/mission", label: "Mission Control", icon: Sparkles },
+  { to: "/connections", label: "Connections", icon: Link2 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/institutions", label: "Institutions", icon: Building2 },
   { to: "/analytics", label: "Command Center", icon: BarChart3 },
@@ -60,7 +61,7 @@ export default function Layout() {
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
-            <Link to="/" className="min-w-0">
+            <Link to="/profile" className="min-w-0" aria-label="Account settings">
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
             <NotificationBell />
@@ -73,7 +74,7 @@ export default function Layout() {
 
       {/* Mobile top bar */}
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between deep-space px-4 py-3">
-        <Link to="/" className="min-w-0">
+        <Link to="/profile" className="min-w-0" aria-label="Account settings">
           <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
         </Link>
         <div className="flex items-center gap-1">

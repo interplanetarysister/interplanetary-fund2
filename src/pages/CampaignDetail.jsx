@@ -5,7 +5,8 @@ import { Image } from "@/components/ui/image";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import DonateDialog from "@/components/campaigns/DonateDialog";
-import CampaignQRCode from "@/components/campaigns/CampaignQRCode";
+import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
+import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
@@ -100,7 +101,9 @@ export default function CampaignDetail() {
             </div>
           </div>
 
-          <CampaignQRCode campaign={campaign} />
+          <ShareCampaignKit campaign={campaign} />
+
+          {isOwner && <CrossPlatformTotals campaign={campaign} />}
 
           {donations.length > 0 && (
             <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">

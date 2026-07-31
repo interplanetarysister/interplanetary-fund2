@@ -3,7 +3,16 @@
 export const BRAND_NAME = "Interplanetary Fund";
 export const SLOGAN = "What If?";
 export const SLOGAN_LONG = "Where platforms once worlds apart become one universe of funding";
-export const TAGLINE = "AI-powered fundraising for everyone, everywhere";
+export const TAGLINE = "The Universal Fundraising Operating System";
+
+// Platform positioning — Interplanetary Fund is not just a crowdfunding site.
+export const POSITIONING = "The Universal Fundraising Operating System";
+export const POSITIONING_LINES = [
+  "Your Fundraising Mission Control",
+  "One Campaign. Unlimited Reach.",
+  "Connect Once. Fund Everywhere.",
+  "Where platforms once worlds apart become one universe of funding.",
+];
 
 // The official Interplanetary Fund logo. Shown whenever a campaign, profile,
 // or update has no photo, video, or generated image of its own.
