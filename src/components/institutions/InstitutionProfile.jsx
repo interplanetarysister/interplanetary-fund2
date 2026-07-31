@@ -38,7 +38,7 @@ export default function InstitutionProfile({ institution }) {
           icon={Globe}
           label="Website"
           value={institution.website ? (
-            <a href={institution.website} target="_blank" rel="noreferrer" className="text-orange-600 hover:text-orange-500 break-all">
+            <a href={institution.website} target="_blank" rel="noreferrer" className="text-primary hover:text-primary/80 break-all">
               {institution.website}
             </a>
           ) : null}

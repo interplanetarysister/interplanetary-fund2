@@ -10,7 +10,7 @@ export default function CompleteStep({ data }) {
 
   return (
     <div className="text-center max-w-md mx-auto">
-      <span className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 mb-5">
+      <span className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 mb-5">
         <Sparkles className="w-7 h-7 text-white" />
       </span>
       <h2 className="font-display text-2xl sm:text-3xl text-stone-900 mb-3">You're ready to fundraise smarter</h2>

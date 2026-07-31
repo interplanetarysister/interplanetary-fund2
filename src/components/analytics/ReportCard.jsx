@@ -39,7 +39,7 @@ export default function ReportCard({ report }) {
       <List title="Concerns" items={report.concerns} tone="text-red-600" />
       {report.forecast && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-orange-700 mb-1.5">Forecast (projected, not historical)</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary mb-1.5">Forecast (projected, not historical)</p>
           <p className="text-sm text-stone-600">{report.forecast}</p>
         </div>
       )}

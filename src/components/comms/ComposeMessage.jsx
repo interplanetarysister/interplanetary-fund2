@@ -147,7 +147,7 @@ export default function ComposeMessage({ onSent }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label>Subject</Label>
-          <Button variant="outline" size="sm" onClick={draftWithAI} disabled={drafting} className="text-orange-700 border-orange-200 hover:bg-orange-50">
+          <Button variant="outline" size="sm" onClick={draftWithAI} disabled={drafting} className="text-primary border-primary/20 hover:bg-primary/10">
             {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
             Draft with AI
           </Button>
@@ -178,11 +178,11 @@ export default function ComposeMessage({ onSent }) {
         </p>
       )}
 
-      <Button onClick={send} disabled={sending || !subject || !content || channels.length === 0} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl h-11 px-6">
+      <Button onClick={send} disabled={sending || !subject || !content || channels.length === 0} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-11 px-6">
         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         Send message
       </Button>
-      <p className="text-xs text-stone-400">Emails reach supporters registered on FundForge. Recipient consent preferences are always respected.</p>
+      <p className="text-xs text-stone-400">Emails reach supporters registered on Crowdfund. Recipient consent preferences are always respected.</p>
     </div>
   );
 }

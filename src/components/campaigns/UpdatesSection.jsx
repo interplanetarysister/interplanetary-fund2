@@ -23,7 +23,7 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-5">
-        <Megaphone className="w-4 h-4 text-orange-600" />
+        <Megaphone className="w-4 h-4 text-primary" />
         <h3 className="font-display text-xl text-stone-900">Updates</h3>
       </div>
       {isOwner && (

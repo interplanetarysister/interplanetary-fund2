@@ -17,8 +17,8 @@ export default function EngineStep() {
           const Icon = ICONS[c.icon] || Sparkles;
           return (
             <div key={c.id} className="flex gap-3 bg-white rounded-xl border border-stone-200 p-4">
-              <span className="shrink-0 w-9 h-9 rounded-lg bg-orange-600/10 flex items-center justify-center">
-                <Icon className="w-4 h-4 text-orange-600" />
+              <span className="shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-primary" />
               </span>
               <div>
                 <p className="font-medium text-stone-800 text-sm">{c.title}</p>

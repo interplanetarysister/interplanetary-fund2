@@ -9,11 +9,11 @@ export default function OnboardingShell({ steps, current, onNext, onBack, childr
       <header className="px-6 pt-6">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-3">
-            <span className="font-display text-lg text-stone-900">Crowdfund Setup</span>
+            <span className="font-display text-lg text-slate-900">Crowdfund Setup</span>
             <span className="text-xs text-stone-500">{current + 1} / {steps.length}</span>
           </div>
-          <div className="h-1.5 w-full rounded-full bg-stone-200 overflow-hidden">
-            <div className="h-full bg-orange-500 transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
         </div>
       </header>
@@ -26,11 +26,11 @@ export default function OnboardingShell({ steps, current, onNext, onBack, childr
             <ChevronLeft className="w-4 h-4" /> Back
           </Button>
           {isLast ? (
-            <Button onClick={onFinish} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+            <Button onClick={onFinish} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               <Sparkles className="w-4 h-4" /> Enter Mission Control
             </Button>
           ) : (
-            <Button onClick={onNext} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+            <Button onClick={onNext} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               Continue <ChevronRight className="w-4 h-4" />
             </Button>
           )}

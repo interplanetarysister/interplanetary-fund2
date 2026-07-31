@@ -25,7 +25,7 @@ export default function MyApplications() {
           return (
             <div key={a.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
               <div className="min-w-0">
-                <Link to={`/institutions/${a.institution_id}`} className="text-sm font-medium text-stone-900 hover:text-orange-700 truncate block">
+                <Link to={`/institutions/${a.institution_id}`} className="text-sm font-medium text-stone-900 hover:text-primary truncate block">
                   {a.opportunity_title}
                 </Link>
                 <p className="text-xs text-stone-400 truncate">{a.institution_name} · for {a.campaign_title}</p>

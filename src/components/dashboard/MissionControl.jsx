@@ -52,32 +52,32 @@ export default function MissionControl({ campaigns }) {
   };
 
   return (
-    <div className="bg-[#171310] rounded-2xl p-6 text-stone-200">
+    <div className="bg-slate-950 rounded-2xl p-6 text-slate-200">
       <div className="flex items-center justify-between gap-4 mb-1">
         <div className="flex items-center gap-2.5">
-          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
           </span>
-          <h2 className="font-display text-lg text-stone-100">Mission Control</h2>
+          <h2 className="font-display text-lg text-slate-100">Mission Control</h2>
         </div>
-        <Button size="sm" onClick={generate} disabled={loading || campaigns.length === 0} className="bg-orange-600 hover:bg-orange-500 text-white">
+        <Button size="sm" onClick={generate} disabled={loading || campaigns.length === 0} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Analyze"}
         </Button>
       </div>
-      <p className="text-xs text-stone-500 mb-4">
+      <p className="text-xs text-slate-500 mb-4">
         AI recommendations — you always make the final call.{" "}
-        <Link to="/mission" className="text-orange-500 hover:text-orange-400 font-medium">Open full Mission Control →</Link>
+        <Link to="/mission" className="text-cyan-400 hover:text-cyan-300 font-medium">Open full Mission Control →</Link>
       </p>
-      {campaigns.length === 0 && <p className="text-sm text-stone-500">Create your first campaign and Mission Control will start advising you.</p>}
+      {campaigns.length === 0 && <p className="text-sm text-slate-500">Create your first campaign and Mission Control will start advising you.</p>}
       {insights && (
         <ul className="space-y-3">
           {insights.map((r, i) => (
             <li key={i} className="bg-white/5 rounded-xl p-4">
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-stone-100">{r.title}</p>
+                <p className="text-sm font-medium text-slate-100">{r.title}</p>
                 <Badge variant="outline" className={`shrink-0 capitalize ${priorityStyles[r.priority] || priorityStyles.low}`}>{r.priority}</Badge>
               </div>
-              <p className="text-xs text-stone-400 mt-1.5 leading-relaxed">{r.reason}</p>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{r.reason}</p>
             </li>
           ))}
         </ul>

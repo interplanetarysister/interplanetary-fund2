@@ -51,7 +51,7 @@ export default function DonateDialog({ campaign }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg" className="w-full bg-orange-600 hover:bg-orange-500 text-white rounded-xl h-12 text-base">
+        <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 text-base">
           <Heart className="w-4 h-4 mr-2" /> Donate
         </Button>
       </DialogTrigger>
@@ -64,7 +64,7 @@ export default function DonateDialog({ campaign }) {
             {presets.map((p) => (
               <button key={p} onClick={() => setAmount(String(p))}
                 className={`rounded-xl border py-2.5 text-sm font-semibold transition-colors ${
-                  amount === String(p) ? "border-orange-600 bg-orange-50 text-orange-700" : "border-stone-200 text-stone-700 hover:border-stone-300"
+                  amount === String(p) ? "border-primary bg-primary/10 text-primary" : "border-slate-200 text-slate-700 hover:border-slate-300"
                 }`}>
                 ${p}
               </button>
@@ -78,7 +78,7 @@ export default function DonateDialog({ campaign }) {
             <Switch id="recurring" checked={recurring} onCheckedChange={setRecurring} />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button onClick={submit} disabled={saving || !amount} className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 rounded-xl">
+          <Button onClick={submit} disabled={saving || !amount} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : `Donate ${amount ? `$${amount}` : ""}${recurring ? " / month" : ""}`}
           </Button>
           <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400">

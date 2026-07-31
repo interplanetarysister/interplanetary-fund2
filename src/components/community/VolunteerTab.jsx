@@ -68,13 +68,13 @@ export default function VolunteerTab({ community, isMember, canManage }) {
   };
 
   if (!opportunities) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="space-y-4">
       {canManage && !showForm && (
-        <Button onClick={() => setShowForm(true)} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button onClick={() => setShowForm(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <HandHeart className="w-4 h-4" /> Publish opportunity
         </Button>
       )}
@@ -92,7 +92,7 @@ export default function VolunteerTab({ community, isMember, canManage }) {
             <Checkbox checked={form.remote_ok} onCheckedChange={(v) => setForm({ ...form, remote_ok: !!v })} /> Remote-friendly
           </label>
           <div className="flex gap-2">
-            <Button onClick={publish} disabled={saving || !form.role_title} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+            <Button onClick={publish} disabled={saving || !form.role_title} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Publish"}
             </Button>
             <Button variant="outline" onClick={() => setShowForm(false)} className="rounded-xl">Cancel</Button>
@@ -126,7 +126,7 @@ export default function VolunteerTab({ community, isMember, canManage }) {
                 <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium"><Check className="w-4 h-4" /> Signed up</span>
               ) : (
                 isMember && o.status === "open" && o.created_by_id !== userId && (
-                  <Button size="sm" onClick={() => signUp(o)} disabled={joining === o.id} className="bg-orange-600 hover:bg-orange-500 text-white rounded-lg">
+                  <Button size="sm" onClick={() => signUp(o)} disabled={joining === o.id} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">
                     {joining === o.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "I'm interested"}
                   </Button>
                 )

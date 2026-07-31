@@ -22,7 +22,7 @@ export default function Profile() {
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   const onboarding = user?.onboarding || {};
@@ -31,7 +31,7 @@ export default function Profile() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900 mb-1">
-        <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+        <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
           <User className="w-5 h-5 text-white" />
         </span>
         Profile
@@ -55,7 +55,7 @@ export default function Profile() {
         )}
         <div className="mt-3 flex flex-wrap gap-2">
           {onboarding.automation && Object.entries(onboarding.automation).filter(([, v]) => v).map(([k]) => (
-            <span key={k} className="inline-flex items-center gap-1 rounded-md bg-orange-50 text-orange-700 text-xs px-2 py-1">
+            <span key={k} className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary text-xs px-2 py-1">
               <Zap className="w-3 h-3" /> {k.replace(/_/g, " ")}
             </span>
           ))}

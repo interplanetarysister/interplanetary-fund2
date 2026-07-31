@@ -34,7 +34,7 @@ export default function CreateInstitutionDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <Plus className="w-4 h-4" /> Add Institution
         </Button>
       </DialogTrigger>
@@ -96,7 +96,7 @@ export default function CreateInstitutionDialog() {
               </label>
             ))}
           </div>
-          <Button onClick={create} disabled={saving || !form.name} className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 rounded-xl">
+          <Button onClick={create} disabled={saving || !form.name} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Register institution"}
           </Button>
         </div>

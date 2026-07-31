@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link } from "react-router-dom";
-import { Flame, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User } from "lucide-react";
+import { Droplet, LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 
 const navItems = [
@@ -38,9 +38,9 @@ export default function Layout() {
           end={to === "/"}
           onClick={() => setOpen(false)}
           className={({ isActive }) =>
-            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-              isActive ? "bg-orange-600/15 text-orange-400" : "text-stone-400 hover:text-stone-100 hover:bg-white/5"
-            }`
+          `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+            isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
+          }`
           }
         >
           <Icon className="w-4 h-4" strokeWidth={1.75} />
@@ -53,27 +53,27 @@ export default function Layout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-[#171310] py-6 z-40">
+      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col bg-slate-950 py-6 z-40">
         <div className="flex items-center justify-between px-6 mb-10">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
-              <Flame className="w-5 h-5 text-white" strokeWidth={2} />
+            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+              <Droplet className="w-5 h-5 text-white" strokeWidth={2} />
             </span>
-            <span className="font-display text-xl text-stone-100 tracking-tight">FundForge</span>
+            <span className="font-display text-xl text-slate-100 tracking-tight">Crowdfund</span>
           </Link>
           <NotificationBell />
         </div>
         {nav}
-        <p className="mt-auto px-6 text-[11px] text-stone-600">AI-powered fundraising OS</p>
+        <p className="mt-auto px-6 text-[11px] text-slate-500">AI-powered fundraising OS</p>
       </aside>
 
       {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between bg-[#171310] px-4 py-3">
+      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between bg-slate-950 px-4 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
-            <Flame className="w-4 h-4 text-white" />
+          <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+            <Droplet className="w-4 h-4 text-white" />
           </span>
-          <span className="font-display text-lg text-stone-100">FundForge</span>
+          <span className="font-display text-lg text-slate-100">Crowdfund</span>
         </Link>
         <div className="flex items-center gap-1">
         <NotificationBell />
@@ -82,10 +82,10 @@ export default function Layout() {
         </button>
         </div>
       </header>
-      {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 bg-[#171310] pb-4 pt-2 shadow-xl">{nav}</div>}
+      {open && <div className="md:hidden fixed inset-x-0 top-14 z-40 bg-slate-950 pb-4 pt-2 shadow-xl">{nav}</div>}
 
       {/* Mobile bottom navigation — one-handed access to core surfaces */}
-      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-[#171310] border-t border-white/10 flex">
+      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 bg-slate-950 border-t border-white/10 flex">
         {bottomNavItems.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -93,7 +93,7 @@ export default function Layout() {
             end={to === "/"}
             className={({ isActive }) =>
               `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
-                isActive ? "text-orange-400" : "text-stone-400"
+                isActive ? "text-cyan-400" : "text-slate-400"
               }`
             }
           >

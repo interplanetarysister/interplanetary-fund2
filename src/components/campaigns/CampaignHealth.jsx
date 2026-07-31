@@ -16,7 +16,7 @@ export default function CampaignHealth({ campaign, updatesCount }) {
     <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Activity className="w-4 h-4 text-orange-600" />
+          <Activity className="w-4 h-4 text-primary" />
           <h3 className="font-display text-lg text-stone-900">Campaign Health</h3>
         </div>
         <span className={`font-display text-2xl ${score >= 70 ? "text-emerald-600" : score >= 40 ? "text-amber-600" : "text-red-500"}`}>{score}%</span>

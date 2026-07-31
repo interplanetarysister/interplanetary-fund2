@@ -52,7 +52,7 @@ export default function CreateCampaign() {
           <React.Fragment key={s}>
             <div className={`flex items-center gap-2 ${i <= step ? "text-stone-900" : "text-stone-300"}`}>
               <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold ${
-                i < step ? "bg-orange-600 text-white" : i === step ? "bg-stone-900 text-white" : "bg-stone-100"
+                i < step ? "bg-primary text-primary-foreground" : i === step ? "bg-slate-900 text-white" : "bg-slate-100"
               }`}>{i + 1}</span>
               <span className="text-sm font-medium hidden sm:block">{s}</span>
             </div>
@@ -108,7 +108,7 @@ export default function CreateCampaign() {
             <Label>Cover image</Label>
             {form.cover_image_url && <Image src={form.cover_image_url} alt="Cover preview" className="w-full h-44 rounded-xl" />}
             <Button variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="rounded-xl">
-              {generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-orange-600" />}
+              {generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}
               {form.cover_image_url ? "Regenerate with AI" : "Generate cover with AI"}
             </Button>
           </div>
@@ -118,7 +118,7 @@ export default function CreateCampaign() {
           <div className="space-y-4">
             {form.cover_image_url && <Image src={form.cover_image_url} alt="Cover" className="w-full h-44 rounded-xl" />}
             <div>
-              <p className="text-[11px] font-medium uppercase tracking-wider text-orange-600">{categoryLabels[form.category]}</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-primary">{categoryLabels[form.category]}</p>
               <h2 className="font-display text-2xl text-stone-900">{form.title}</h2>
               {form.summary && <p className="text-stone-600 mt-1">{form.summary}</p>}
             </div>
@@ -139,7 +139,7 @@ export default function CreateCampaign() {
         ) : (
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => launch("draft")} disabled={saving} className="rounded-xl">Save draft</Button>
-            <Button onClick={() => launch("active")} disabled={saving} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+            <Button onClick={() => launch("active")} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}
             </Button>
           </div>

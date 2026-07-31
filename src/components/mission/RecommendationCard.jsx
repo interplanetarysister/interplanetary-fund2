@@ -29,7 +29,7 @@ export default function RecommendationCard({ rec, onStatus }) {
       </div>
       {rec.description && <p className="text-sm text-stone-600 mt-2">{rec.description}</p>}
 
-      <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1 text-xs font-medium text-orange-600 hover:text-orange-500 mt-3">
+      <button onClick={() => setExpanded(!expanded)} className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 mt-3">
         {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         Why this recommendation?
       </button>
@@ -45,7 +45,7 @@ export default function RecommendationCard({ rec, onStatus }) {
       <div className="flex items-center gap-2 mt-4">
         {isOpen ? (
           <>
-            <Button size="sm" onClick={() => onStatus(rec, "accepted")} className="bg-orange-600 hover:bg-orange-500 text-white rounded-lg">
+            <Button size="sm" onClick={() => onStatus(rec, "accepted")} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">
               <Check className="w-3.5 h-3.5" /> Accept
             </Button>
             <Button size="sm" variant="outline" onClick={() => onStatus(rec, "dismissed")} className="rounded-lg">

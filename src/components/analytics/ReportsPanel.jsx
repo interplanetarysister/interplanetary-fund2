@@ -47,7 +47,7 @@ export default function ReportsPanel({ data }) {
     };
 
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are the executive analyst for FundForge, a fundraising platform. Produce a ${reportTypes.find((t) => t.value === type).label} for this organization's activity.
+      prompt: `You are the executive analyst for Crowdfund, a fundraising platform. Produce a ${reportTypes.find((t) => t.value === type).label} for this organization's activity.
 
 Platform snapshot:
 - Total raised: $${snapshot.total_raised}
@@ -88,14 +88,14 @@ Never invent data that isn't in the snapshot.`,
             {reportTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Button onClick={generate} disabled={generating} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button onClick={generate} disabled={generating} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} Generate report
         </Button>
       </div>
       {generating && <p className="text-xs text-stone-400">Analyzing platform activity and drafting your report…</p>}
 
       {reports === null ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
       ) : reports.length === 0 ? (
         <p className="text-sm text-stone-400 text-center py-12">No reports yet — generate your first executive report.</p>
       ) : (

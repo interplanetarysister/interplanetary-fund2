@@ -50,7 +50,7 @@ export default function PostCard({ post, isMember }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-stone-900 flex items-center gap-1.5">
-            {post.pinned && <Pin className="w-3.5 h-3.5 text-orange-600" />}
+            {post.pinned && <Pin className="w-3.5 h-3.5 text-primary" />}
             {post.title}
           </p>
           <p className="text-xs text-stone-400 mt-0.5">
@@ -61,7 +61,7 @@ export default function PostCard({ post, isMember }) {
       </div>
       {post.content && <p className="text-sm text-stone-600 mt-2 whitespace-pre-line">{post.content}</p>}
 
-      <button onClick={toggleReplies} className="flex items-center gap-1.5 text-xs font-medium text-orange-600 hover:text-orange-500 mt-3">
+      <button onClick={toggleReplies} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 mt-3">
         <MessageCircle className="w-3.5 h-3.5" />
         {replyCount} {replyCount === 1 ? "reply" : "replies"}
       </button>
@@ -77,7 +77,7 @@ export default function PostCard({ post, isMember }) {
           {isMember && (
             <div className="flex gap-2">
               <Textarea rows={1} value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Write a reply…" className="min-h-[40px]" />
-              <Button size="sm" onClick={sendReply} disabled={sending || !replyText.trim()} className="bg-orange-600 hover:bg-orange-500 text-white self-end">
+              <Button size="sm" onClick={sendReply} disabled={sending || !replyText.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground self-end">
                 {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Reply"}
               </Button>
             </div>

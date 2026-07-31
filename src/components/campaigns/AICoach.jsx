@@ -21,22 +21,22 @@ export default function AICoach({ campaign, updatesCount }) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#171310] to-[#241a12] rounded-2xl p-5 text-stone-200">
+    <div className="bg-gradient-to-br from-slate-950 to-slate-900 rounded-2xl p-5 text-slate-200">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-orange-400" />
-          <h3 className="font-display text-lg text-stone-100">AI Coach</h3>
+          <Sparkles className="w-4 h-4 text-cyan-400" />
+          <h3 className="font-display text-lg text-slate-100">AI Coach</h3>
         </div>
-        <Button size="sm" variant="ghost" onClick={ask} disabled={loading} className="text-orange-400 hover:text-orange-300 hover:bg-white/5">
+        <Button size="sm" variant="ghost" onClick={ask} disabled={loading} className="text-cyan-400 hover:text-cyan-300 hover:bg-white/5">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get tips"}
         </Button>
       </div>
-      {!tips && <p className="text-xs text-stone-500">Personalized coaching for this campaign, on demand.</p>}
+      {!tips && <p className="text-xs text-slate-500">Personalized coaching for this campaign, on demand.</p>}
       {tips && (
         <ul className="space-y-2.5">
           {tips.map((t, i) => (
-            <li key={i} className="text-sm text-stone-300 leading-relaxed flex gap-2.5">
-              <span className="text-orange-500 font-display shrink-0">{i + 1}.</span>{t}
+            <li key={i} className="text-sm text-slate-300 leading-relaxed flex gap-2.5">
+              <span className="text-cyan-400 font-display shrink-0">{i + 1}.</span>{t}
             </li>
           ))}
         </ul>

@@ -41,13 +41,13 @@ export default function MissionControlPage() {
       <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
         <div>
           <h1 className="flex items-center gap-2.5 font-display text-3xl sm:text-4xl text-stone-900">
-            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+            <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </span>
             Mission Control
           </h1>
         </div>
-        <Button onClick={analyze} disabled={analyzing} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl h-11 px-5">
+        <Button onClick={analyze} disabled={analyzing} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-11 px-5">
           {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           Run analysis
         </Button>

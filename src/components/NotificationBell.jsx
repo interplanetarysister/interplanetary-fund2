@@ -53,7 +53,7 @@ export default function NotificationBell() {
         <button className="relative p-2 text-stone-400 hover:text-stone-100 transition-colors" aria-label="Notifications">
           <Bell className="w-5 h-5" strokeWidth={1.75} />
           {unread > 0 && (
-            <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-orange-600 text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
               {unread > 9 ? "9+" : unread}
             </span>
           )}
@@ -63,7 +63,7 @@ export default function NotificationBell() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
           <p className="font-semibold text-sm text-stone-900">Notifications</p>
           {unread > 0 && (
-            <button onClick={markAllRead} className="text-xs text-orange-600 hover:text-orange-500 font-medium">
+            <button onClick={markAllRead} className="text-xs text-primary hover:text-primary/80 font-medium">
               Mark all read
             </button>
           )}
@@ -74,9 +74,9 @@ export default function NotificationBell() {
           ) : (
             notifications.map((n) => (
               <button key={n.id} onClick={() => openItem(n)}
-                className={`w-full text-left px-4 py-3 border-b border-stone-50 hover:bg-stone-50 transition-colors ${!n.read ? "bg-orange-50/50" : ""}`}>
+                className={`w-full text-left px-4 py-3 border-b border-stone-50 hover:bg-stone-50 transition-colors ${!n.read ? "bg-primary/10" : ""}`}>
                 <div className="flex items-start gap-2">
-                  {!n.read && <span className="w-2 h-2 rounded-full bg-orange-600 mt-1.5 shrink-0" />}
+                  {!n.read && <span className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />}
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-stone-900 truncate">{n.title}</p>
                     {n.body && <p className="text-xs text-stone-500 line-clamp-2 mt-0.5">{n.body}</p>}

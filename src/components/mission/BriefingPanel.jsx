@@ -8,12 +8,12 @@ function PriorityList({ icon: Icon, title, items }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5">
       <h3 className="flex items-center gap-2 font-semibold text-sm text-stone-900 mb-3">
-        <Icon className="w-4 h-4 text-orange-600" /> {title}
+        <Icon className="w-4 h-4 text-primary" /> {title}
       </h3>
       <ul className="space-y-2">
         {items.map((item, i) => (
-          <li key={i} className="flex gap-2 text-sm text-stone-600">
-            <span className="text-orange-600 font-semibold">{i + 1}.</span> {item}
+          <li key={i} className="flex gap-2 text-sm text-slate-600">
+            <span className="text-primary font-semibold">{i + 1}.</span> {item}
           </li>
         ))}
       </ul>
@@ -32,10 +32,10 @@ export default function BriefingPanel({ brief }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#171310] rounded-2xl p-6">
-        <p className="text-stone-200 leading-relaxed">{brief.summary}</p>
+      <div className="bg-slate-950 rounded-2xl p-6">
+        <p className="text-slate-200 leading-relaxed">{brief.summary}</p>
         {brief.generated_at && (
-          <p className="text-[11px] text-stone-500 mt-3">
+          <p className="text-[11px] text-slate-500 mt-3">
             Updated {formatDistanceToNow(new Date(brief.generated_at), { addSuffix: true })}
           </p>
         )}
@@ -61,7 +61,7 @@ export default function BriefingPanel({ brief }) {
       {brief.predictions?.length > 0 && (
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 font-semibold text-sm text-stone-900">
-            <TrendingUp className="w-4 h-4 text-orange-600" /> Predictions
+            <TrendingUp className="w-4 h-4 text-primary" /> Predictions
             <span className="text-xs font-normal text-stone-400">— estimates, never guarantees</span>
           </h3>
           {brief.predictions.map((p, i) => (
@@ -71,7 +71,7 @@ export default function BriefingPanel({ brief }) {
                 <ConfidenceBadge level={p.confidence} />
               </div>
               {p.evidence && <p className="text-xs text-stone-500 mt-2"><span className="font-semibold">Evidence:</span> {p.evidence}</p>}
-              {p.recommended_action && <p className="text-xs text-orange-700 mt-1.5"><span className="font-semibold">Recommended:</span> {p.recommended_action}</p>}
+              {p.recommended_action && <p className="text-xs text-primary mt-1.5"><span className="font-semibold">Recommended:</span> {p.recommended_action}</p>}
             </div>
           ))}
         </div>

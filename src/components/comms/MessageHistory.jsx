@@ -25,7 +25,7 @@ export default function MessageHistory({ refreshKey }) {
   }, [refreshKey]);
 
   if (!messages) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const q = query.toLowerCase();
@@ -61,7 +61,7 @@ export default function MessageHistory({ refreshKey }) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{typeLabels[m.comm_type] || m.comm_type}</Badge>
-                  {m.ai_generated && <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">AI</Badge>}
+                  {m.ai_generated && <Badge className="bg-primary/10 text-primary hover:bg-primary/10">AI</Badge>}
                 </div>
               </div>
               <p className="text-sm text-stone-600 mt-2 line-clamp-2 whitespace-pre-line">{m.content}</p>

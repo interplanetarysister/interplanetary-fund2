@@ -25,7 +25,7 @@ export default function Community() {
   }, []);
 
   if (!communities) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   const q = query.toLowerCase();
@@ -54,7 +54,7 @@ export default function Community() {
         {[["all", "All"], ...Object.entries(communityTypes)].map(([v, l]) => (
           <button key={v} onClick={() => setTypeFilter(v)}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              typeFilter === v ? "bg-orange-600 text-white" : "bg-white border border-stone-200 text-stone-600 hover:border-stone-300"
+              typeFilter === v ? "bg-primary text-primary-foreground" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
             }`}>
             {l}
           </button>

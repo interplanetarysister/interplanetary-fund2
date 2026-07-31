@@ -25,7 +25,7 @@ export default function RecurringPlanCard({ donation, onChanged }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200/70 bg-white p-4">
       <div className="min-w-0">
-        <Link to={`/campaign/${donation.campaign_id}`} className="font-medium text-stone-900 hover:text-orange-600 transition-colors block truncate">
+        <Link to={`/campaign/${donation.campaign_id}`} className="font-medium text-stone-900 hover:text-primary transition-colors block truncate">
           {donation.campaign_title || "Campaign"}
         </Link>
         <p className="text-sm text-stone-500">

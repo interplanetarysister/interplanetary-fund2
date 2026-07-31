@@ -18,7 +18,7 @@ export default function CommPreferences() {
   }, []);
 
   if (!prefs) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const toggle = async (key, value) => {

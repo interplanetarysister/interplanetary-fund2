@@ -117,7 +117,7 @@ export default function AlertCenter(props) {
                 <div>
                   <p className="text-sm font-medium text-stone-900">{a.title}</p>
                   <p className="text-xs text-stone-400 mt-0.5">{a.category}</p>
-                  <p className="text-xs text-orange-700 mt-1.5">{a.action}</p>
+                  <p className="text-xs text-primary mt-1.5">{a.action}</p>
                 </div>
               </div>
               <Badge className={`shrink-0 capitalize ${priorityStyles[a.priority]}`}>{a.priority}</Badge>

@@ -26,7 +26,7 @@ export default function OpportunitiesTab({ institution, isOwner }) {
   }, [institution.id]);
 
   if (!opportunities) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const toggleStatus = async (opp) => {
@@ -38,7 +38,7 @@ export default function OpportunitiesTab({ institution, isOwner }) {
   return (
     <div className="space-y-4">
       {isOwner && !showForm && (
-        <Button onClick={() => setShowForm(true)} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button onClick={() => setShowForm(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <Plus className="w-4 h-4" /> Publish opportunity
         </Button>
       )}

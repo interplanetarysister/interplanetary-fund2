@@ -25,7 +25,7 @@ export default function InstitutionDetail() {
   }, [id]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
   if (!institution) {
     return <p className="text-center text-stone-400 py-20">Institution not found.</p>;

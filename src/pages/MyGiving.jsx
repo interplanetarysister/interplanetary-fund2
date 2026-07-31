@@ -17,7 +17,7 @@ export default function MyGiving() {
   useEffect(() => { load(); }, [load]);
 
   if (!donations) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   const lifetime = donations.reduce((s, d) => s + d.amount, 0);

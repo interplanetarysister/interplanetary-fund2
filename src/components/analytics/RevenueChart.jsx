@@ -21,15 +21,15 @@ export default function RevenueChart({ donations }) {
           <AreaChart data={data}>
             <defs>
               <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ea580c" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="#ea580c" stopOpacity={0} />
+                <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1efec" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
             <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#a8a29e" }} interval={6} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "#a8a29e" }} axisLine={false} tickLine={false} width={44} />
             <Tooltip formatter={(v) => `$${v.toLocaleString()}`} />
-            <Area type="monotone" dataKey="amount" stroke="#ea580c" strokeWidth={2} fill="url(#rev)" />
+            <Area type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={2} fill="url(#rev)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>

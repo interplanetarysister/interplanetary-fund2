@@ -51,7 +51,7 @@ export default function OpportunitiesPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-stone-500">Real-world grants, matching programs, and partnerships found for your campaigns.</p>
-        <Button onClick={discover} disabled={discovering} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl shrink-0">
+        <Button onClick={discover} disabled={discovering} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shrink-0">
           {discovering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
           Discover
         </Button>
@@ -60,7 +60,7 @@ export default function OpportunitiesPanel() {
       {discovering && <p className="text-xs text-stone-400">Searching the web for relevant opportunities — this can take up to a minute…</p>}
 
       {opps === null ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
       ) : opps.length === 0 && !discovering ? (
         <p className="text-sm text-stone-400 text-center py-12">No opportunities yet — hit Discover to start the search.</p>
       ) : (
@@ -72,7 +72,7 @@ export default function OpportunitiesPanel() {
                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                   <Badge variant="secondary">{typeLabels[o.type] || o.type}</Badge>
                   {o.estimated_value && <Badge variant="outline" className="text-emerald-700 border-emerald-200">{o.estimated_value}</Badge>}
-                  {o.status === "saved" && <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">Saved</Badge>}
+                  {o.status === "saved" && <Badge className="bg-primary/10 text-primary hover:bg-primary/10">Saved</Badge>}
                 </div>
               </div>
               <ConfidenceBadge level={o.confidence} />

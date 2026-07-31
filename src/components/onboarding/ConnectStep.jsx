@@ -4,7 +4,7 @@ import { CheckCircle2, Clock, Link2 } from "lucide-react";
 
 const STATUS_META = {
   connected: { label: "Connected", icon: CheckCircle2, tone: "text-emerald-600" },
-  available: { label: "Connect", icon: Link2, tone: "text-orange-600" },
+  available: { label: "Connect", icon: Link2, tone: "text-primary" },
   coming_soon: { label: "Coming soon", icon: Clock, tone: "text-stone-400" },
 };
 
@@ -46,8 +46,8 @@ export default function ConnectStep({ data, onChange }) {
                     onClick={() => toggle(item.id)}
                     className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${
                       isSelected
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-stone-200 bg-white hover:border-stone-300"
+                        ? "border-primary bg-primary/10"
+                        : "border-slate-200 bg-white hover:border-slate-300"
                     } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <span className="text-stone-800">{item.label}</span>

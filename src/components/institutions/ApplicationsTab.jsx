@@ -17,7 +17,7 @@ export default function ApplicationsTab({ institution }) {
   }, [institution.id]);
 
   if (!apps) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const decide = async (app, status) => {

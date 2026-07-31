@@ -12,7 +12,7 @@ export default function InstitutionCard({ institution }) {
           <Building2 className="w-5 h-5 text-white" />
         </span>
         <div className="min-w-0">
-          <p className="font-semibold text-stone-900 group-hover:text-orange-700 transition-colors flex items-center gap-1.5">
+          <p className="font-semibold text-stone-900 group-hover:text-primary transition-colors flex items-center gap-1.5">
             <span className="truncate">{institution.name}</span>
             {institution.verification_status === "verified" && <BadgeCheck className="w-4 h-4 text-emerald-600 shrink-0" />}
           </p>
@@ -22,7 +22,7 @@ export default function InstitutionCard({ institution }) {
       <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-stone-400">
         <Badge variant="secondary">{institutionTypes[institution.type] || institution.type}</Badge>
         {institution.offers_grants && <Badge variant="outline" className="text-emerald-700 border-emerald-200">Grants</Badge>}
-        {institution.offers_matching_gifts && <Badge variant="outline" className="text-orange-700 border-orange-200">Matching</Badge>}
+        {institution.offers_matching_gifts && <Badge variant="outline" className="text-primary border-primary/20">Matching</Badge>}
         {institution.location && <span className="flex items-center gap-1 truncate"><MapPin className="w-3 h-3" /> {institution.location}</span>}
       </div>
     </Link>

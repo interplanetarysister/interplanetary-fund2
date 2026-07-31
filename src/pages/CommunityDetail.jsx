@@ -33,7 +33,7 @@ export default function CommunityDetail() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
   if (!community) {
     return <p className="text-center text-stone-400 py-20">Community not found.</p>;
@@ -83,7 +83,7 @@ export default function CommunityDetail() {
             </Button>
           )
         ) : (
-          <Button onClick={join} disabled={busy} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+          <Button onClick={join} disabled={busy} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Join community
           </Button>
         )}

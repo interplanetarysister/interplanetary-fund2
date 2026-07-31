@@ -68,7 +68,7 @@ export default function PublishOpportunityForm({ institution, onCreated, onCance
         <Textarea rows={2} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} placeholder="Documents, reporting, or other requirements" />
       </div>
       <div className="flex gap-2">
-        <Button onClick={publish} disabled={saving || !form.title} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+        <Button onClick={publish} disabled={saving || !form.title} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Publish"}
         </Button>
         <Button variant="outline" onClick={onCancel} className="rounded-xl">Cancel</Button>

@@ -21,7 +21,7 @@ export default function Dashboard() {
   }, []);
 
   if (!campaigns) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   const needsOnboarding = !user?.onboarding_completed;
@@ -38,7 +38,7 @@ export default function Dashboard() {
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your fundraising HQ</h1>
         </div>
         <Link to="/create">
-          <Button className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
             <PlusCircle className="w-4 h-4 mr-2" /> New Campaign
           </Button>
         </Link>
@@ -46,7 +46,7 @@ export default function Dashboard() {
 
       {needsOnboarding && (
         <Link to="/onboarding" className="block mb-6">
-          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 text-white p-4">
+          <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white p-4">
             <span className="shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
               <Sparkles className="w-5 h-5" />
             </span>
@@ -72,7 +72,7 @@ export default function Dashboard() {
             <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
               <p className="font-display text-lg text-stone-700 mb-2">No campaigns yet</p>
               <p className="text-sm text-stone-500 mb-5">Launch your first campaign in minutes with the guided builder.</p>
-              <Link to="/create"><Button className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">Start a campaign</Button></Link>
+              <Link to="/create"><Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">Start a campaign</Button></Link>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-4">

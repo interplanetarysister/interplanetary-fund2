@@ -79,7 +79,7 @@ Write in first person plural, specific and evidence-based. Return only the narra
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-orange-600 hover:bg-orange-500 text-white rounded-lg">Apply</Button>
+        <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">Apply</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -103,14 +103,14 @@ Write in first person plural, specific and evidence-based. Return only the narra
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>Narrative</Label>
-              <Button size="sm" variant="ghost" onClick={draft} disabled={drafting || !campaignId} className="text-orange-600 hover:text-orange-500 h-7">
+              <Button size="sm" variant="ghost" onClick={draft} disabled={drafting || !campaignId} className="text-primary hover:text-primary/80 h-7">
                 {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI draft
               </Button>
             </div>
             <Textarea rows={8} value={narrative} onChange={(e) => setNarrative(e.target.value)} placeholder="Why this campaign is a strong fit…" />
             <p className="text-xs text-stone-400">AI drafts are suggestions — review and edit before submitting.</p>
           </div>
-          <Button onClick={submit} disabled={saving || !campaignId || !narrative.trim()} className="w-full bg-orange-600 hover:bg-orange-500 text-white h-11 rounded-xl">
+          <Button onClick={submit} disabled={saving || !campaignId || !narrative.trim()} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit application"}
           </Button>
         </div>

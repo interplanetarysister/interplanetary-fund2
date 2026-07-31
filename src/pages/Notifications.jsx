@@ -27,7 +27,7 @@ export default function Notifications() {
   };
 
   if (!items) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   const unread = items.filter((n) => !n.read).length;
@@ -36,7 +36,7 @@ export default function Notifications() {
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <div className="flex items-end justify-between mb-6">
         <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900">
-          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center">
+          <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
             <Bell className="w-5 h-5 text-white" />
           </span>
           Notifications
@@ -58,9 +58,9 @@ export default function Notifications() {
           {items.map((n) => (
             <div
               key={n.id}
-              className={`flex gap-3 rounded-xl border p-4 ${n.read ? "bg-white border-stone-200" : "bg-orange-50/50 border-orange-200"}`}
+              className={`flex gap-3 rounded-xl border p-4 ${n.read ? "bg-white border-slate-200" : "bg-primary/10 border-primary/20"}`}
             >
-              {!n.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-orange-500 shrink-0" />}
+              {!n.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-primary shrink-0" />}
               <div className={n.read ? "pl-2" : ""}>
                 <p className="font-medium text-stone-800 text-sm">{n.title}</p>
                 {n.body && <p className="text-sm text-stone-500">{n.body}</p>}

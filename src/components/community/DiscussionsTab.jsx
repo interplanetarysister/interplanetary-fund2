@@ -44,7 +44,7 @@ export default function DiscussionsTab({ communityId, isMember }) {
   };
 
   if (!posts) {
-    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-orange-600" /></div>;
+    return <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
 
   const sorted = [...posts].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
@@ -63,7 +63,7 @@ export default function DiscussionsTab({ communityId, isMember }) {
             </Select>
           </div>
           <Textarea rows={2} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Add details (optional)" />
-          <Button onClick={publish} disabled={posting || !title.trim()} className="bg-orange-600 hover:bg-orange-500 text-white rounded-xl">
+          <Button onClick={publish} disabled={posting || !title.trim()} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
             {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post"}
           </Button>
         </div>

@@ -38,7 +38,7 @@ export default function CampaignDetail() {
   }, [load]);
 
   if (notFound) return <div className="text-center py-24 text-stone-500">Campaign not found.</div>;
-  if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-orange-600" /></div>;
+  if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const isOwner = user && campaign.created_by_id === user.id;
   const pct = Math.min(100, ((campaign.raised_amount || 0) / campaign.goal_amount) * 100);
@@ -59,7 +59,7 @@ export default function CampaignDetail() {
           )}
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <Badge variant="outline" className="border-orange-200 bg-orange-50 text-orange-700">{categoryLabels[campaign.category] || "Other"}</Badge>
+              <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">{categoryLabels[campaign.category] || "Other"}</Badge>
               {campaign.status !== "active" && <Badge variant="outline" className="capitalize">{campaign.status}</Badge>}
             </div>
             <h1 className="font-display text-3xl sm:text-4xl text-stone-900 leading-tight">{campaign.title}</h1>
@@ -93,7 +93,7 @@ export default function CampaignDetail() {
               <ul className="space-y-3">
                 {donations.map((d) => (
                   <li key={d.id} className="text-sm">
-                    <p className="text-stone-800"><span className="font-medium">{d.donor_name || "Anonymous"}</span> · <span className="text-orange-600 font-semibold">${d.amount.toLocaleString()}</span>{d.is_recurring && <span className="text-stone-400 text-xs"> /mo</span>}</p>
+                    <p className="text-stone-800"><span className="font-medium">{d.donor_name || "Anonymous"}</span> · <span className="text-primary font-semibold">${d.amount.toLocaleString()}</span>{d.is_recurring && <span className="text-stone-400 text-xs"> /mo</span>}</p>
                     {d.message && <p className="text-stone-500 text-xs mt-0.5">"{d.message}"</p>}
                   </li>
                 ))}
