@@ -66,6 +66,19 @@ export default function CreateCampaign() {
   };
 
   const launch = async (status) => {
+    if (status === "active") {
+      const missing = [];
+      if (!form.title?.trim()) missing.push("title");
+      if (!form.summary?.trim()) missing.push("summary");
+      if (!form.story?.trim()) missing.push("story");
+      if (!form.cover_image_url) missing.push("cover image");
+      if (!form.end_date) missing.push("end date");
+      if (!(parseFloat(form.goal_amount) > 0)) missing.push("goal amount");
+      if (missing.length) {
+        toast({ title: "Campaign isn't ready to launch", description: `Please add: ${missing.join(", ")}.`, variant: "destructive" });
+        return;
+      }
+    }
     setSaving(true);
     try {
       const campaign = await base44.entities.Campaign.create({
