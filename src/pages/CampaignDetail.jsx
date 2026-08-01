@@ -19,7 +19,7 @@ import FollowButton from "@/components/campaigns/FollowButton";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
-import { Loader2, Users, CalendarDays } from "lucide-react";
+import { Loader2, Users, CalendarDays, Heart } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
@@ -31,6 +31,7 @@ export default function CampaignDetail() {
   const [donations, setDonations] = useState([]);
   const [user, setUser] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
 
   const load = useCallback(async () => {
     const [c, u, d] = await Promise.all([
@@ -133,6 +134,16 @@ export default function CampaignDetail() {
           {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
         </div>
       </div>
+
+      {/* Mobile floating donate button */}
+      <button
+        onClick={() => setDonateOpen(true)}
+        className="lg:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 h-14 px-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:scale-95 transition-transform"
+        aria-label="Donate"
+      >
+        <Heart className="w-5 h-5" /> Donate
+      </button>
+      <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} />
     </PullToRefresh>
   );
 }

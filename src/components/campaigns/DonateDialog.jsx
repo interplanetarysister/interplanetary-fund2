@@ -13,8 +13,11 @@ import { Heart, Loader2, Lock, CheckCircle2 } from "lucide-react";
 
 const presets = [25, 50, 100, 250];
 
-export default function DonateDialog({ campaign, onDonated }) {
-  const [open, setOpen] = useState(false);
+export default function DonateDialog({ campaign, onDonated, open: controlledOpen, onOpenChange: controlledOnOpenChange, hideTrigger }) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v) => { if (isControlled) controlledOnOpenChange?.(v); else setInternalOpen(v); };
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -49,11 +52,13 @@ export default function DonateDialog({ campaign, onDonated }) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setConfirmed(false); }}>
-      <DialogTrigger asChild>
-        <Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
-          <Heart className="w-4 h-4 mr-2" /> Donate
-        </Button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
+            <Heart className="w-4 h-4 mr-2" /> Donate
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Support this campaign</DialogTitle>

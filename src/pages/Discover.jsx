@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
+  const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -18,7 +20,8 @@ export default function Discover() {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={6} /></div>;
   }
 
-  const filtered = category === "all" ? campaigns : campaigns.filter((c) => c.category === category);
+  const filtered = (category === "all" ? campaigns : campaigns.filter((c) => c.category === category))
+    .filter((c) => !search || `${c.title} ${c.summary || ""}`.toLowerCase().includes(search.toLowerCase()));
   const categories = ["all", ...Object.keys(categoryLabels)];
 
   return (
@@ -28,6 +31,10 @@ export default function Discover() {
         What if your support changed everything for someone today? These causes need help right now.
       </p>
 
+      <div className="relative mb-6">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search campaigns by name or cause…" className="pl-9 max-w-md" />
+      </div>
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-1 px-1">
         {categories.map((c) => (
           <button key={c} onClick={() => setCategory(c)}

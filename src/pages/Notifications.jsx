@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Bell, Loader2, CheckCheck } from "lucide-react";
+import { Bell, Loader2, CheckCheck, ChevronRight } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { Button } from "@/components/ui/button";
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [user, setUser] = useState(null);
 
@@ -25,6 +27,14 @@ export default function Notifications() {
     if (!user) return;
     await base44.entities.Notification.updateMany({ user_id: user.id, read: false }, { $set: { read: true } });
     load();
+  };
+
+  const openItem = async (n) => {
+    if (!n.read) {
+      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      await base44.entities.Notification.update(n.id, { read: true });
+    }
+    if (n.link) navigate(n.link);
   };
 
   if (!items) {
@@ -56,18 +66,24 @@ export default function Notifications() {
         </div>
       ) : (
         <div className="space-y-2">
-          {items.map((n) => (
-            <div
-              key={n.id}
-              className={`flex gap-3 rounded-xl border p-4 ${n.read ? "bg-white border-slate-200" : "bg-primary/10 border-primary/20"}`}
-            >
-              {!n.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-primary shrink-0" />}
-              <div className={n.read ? "pl-2" : ""}>
-                <p className="font-medium text-stone-800 text-sm">{n.title}</p>
-                {n.body && <p className="text-sm text-stone-500">{n.body}</p>}
-              </div>
-            </div>
-          ))}
+          {items.map((n) => {
+            const clickable = !!n.link;
+            const Card = clickable ? "button" : "div";
+            return (
+              <Card
+                key={n.id}
+                {...(clickable ? { onClick: () => openItem(n) } : {})}
+                className={`w-full text-left flex gap-3 rounded-xl border p-4 transition-colors ${n.read ? "bg-white border-slate-200" : "bg-primary/10 border-primary/20"} ${clickable ? "hover:border-primary/40 cursor-pointer" : ""}`}
+              >
+                {!n.read && <span className="mt-1.5 w-2 h-2 rounded-full bg-primary shrink-0" />}
+                <div className={`flex-1 min-w-0 ${n.read ? "pl-2" : ""}`}>
+                  <p className="font-medium text-stone-800 text-sm">{n.title}</p>
+                  {n.body && <p className="text-sm text-stone-500">{n.body}</p>}
+                </div>
+                {clickable && <ChevronRight className="w-4 h-4 text-stone-400 shrink-0 self-center" />}
+              </Card>
+            );
+          })}
         </div>
       )}
     </PullToRefresh>

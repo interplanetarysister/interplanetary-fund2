@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,7 @@ const typeColors = {
 // One inbox item: source, content, deep link to the original conversation,
 // AI draft response for review, and mark-complete.
 export default function InboxItemCard({ item, onChanged }) {
+  const navigate = useNavigate();
   const [draft, setDraft] = useState(item.ai_draft || "");
   const [drafting, setDrafting] = useState(false);
   const [showDraft, setShowDraft] = useState(!!item.ai_draft);
@@ -77,9 +79,13 @@ Return only the reply text.`,
           {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI draft reply
         </Button>
         {item.link && (
-          <a href={item.link.startsWith("http") ? item.link : undefined} {...(item.link.startsWith("http") ? { target: "_blank", rel: "noopener noreferrer" } : {})}>
-            <Button size="sm" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open original</Button>
-          </a>
+          item.link.startsWith("http") ? (
+            <a href={item.link} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open original</Button>
+            </a>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => navigate(item.link)} className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open</Button>
+          )
         )}
       </div>
 
