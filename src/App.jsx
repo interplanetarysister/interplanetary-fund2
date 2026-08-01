@@ -35,6 +35,9 @@ import FollowedCampaigns from './pages/FollowedCampaigns';
 import Notifications from './pages/Notifications';
 import Subscriptions from './pages/Subscriptions';
 import Withdrawals from './pages/Withdrawals';
+import GlobalGlobe from './pages/GlobalGlobe';
+import EmbedCampaign from './pages/EmbedCampaign';
+import Agents from './pages/Agents';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -67,6 +70,8 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/globe" element={<GlobalGlobe />} />
+      <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         {/* Full-screen onboarding experience, outside the Layout chrome */}
         <Route path="/onboarding" element={<Onboarding />} />
@@ -89,6 +94,7 @@ const AuthenticatedApp = () => {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/withdrawals" element={<Withdrawals />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
         </Route>

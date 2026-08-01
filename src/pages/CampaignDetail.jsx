@@ -19,7 +19,7 @@ import FollowButton from "@/components/campaigns/FollowButton";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
-import { Loader2, Users, CalendarDays, Heart } from "lucide-react";
+import { Loader2, Users, CalendarDays, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
@@ -78,6 +78,7 @@ export default function CampaignDetail() {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <Badge variant="outline" className="border-primary/20 bg-primary/10 text-primary">{categoryLabels[campaign.category] || "Other"}</Badge>
+              {campaign.location && <Badge variant="outline" className="border-stone-200 text-stone-600"><MapPin className="w-3 h-3 mr-1" />{campaign.location}</Badge>}
               {campaign.status !== "active" && <Badge variant="outline" className="capitalize">{campaign.status}</Badge>}
             </div>
             <div className="flex items-start justify-between gap-3">

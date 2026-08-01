@@ -55,6 +55,18 @@
       "type": "string",
       "format": "date"
     },
+    "location": {
+      "type": "string",
+      "description": "The city where this campaign is based, so it can appear on the global activity globe."
+    },
+    "location_lat": {
+      "type": "number",
+      "description": "Geocoded latitude of the campaign location."
+    },
+    "location_lng": {
+      "type": "number",
+      "description": "Geocoded longitude of the campaign location."
+    },
     "cashapp_tag": {
       "type": "string",
       "description": "The creator's Cash App $Cashtag, so supporters can give with Cash App."

@@ -12,6 +12,8 @@ export default function ShareCampaignKit({ campaign }) {
 
   const embedHtml = `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);">&#128640; Donate &mdash; Interplanetary Fund</a>`;
 
+  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="420" style="border:0;border-radius:16px;overflow:hidden" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"></iframe>`;
+
   const copy = async (what, text) => {
     await navigator.clipboard.writeText(text);
     setCopied(what);
@@ -63,6 +65,24 @@ export default function ShareCampaignKit({ campaign }) {
       <p className="flex items-center gap-1.5 text-[11px] text-stone-400 mt-2">
         <QrCode className="w-3 h-3" /> Works on websites, blogs, forums, articles, and print.
       </p>
+
+      <div className="mt-4 pt-4 border-t border-stone-200">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
+          <Code2 className="w-3.5 h-3.5" /> Embed campaign card
+        </p>
+        <p className="text-[11px] text-stone-500 mb-3">A live, clickable campaign card for blogs and websites.</p>
+        <div className="rounded-xl bg-slate-50 border border-stone-200 p-3 mb-3 flex justify-center">
+          <iframe
+            src={`${window.location.origin}/embed/campaign/${campaign.id}`}
+            width="280" height="360"
+            title={`${campaign.title} preview`}
+            className="border-0 rounded-2xl overflow-hidden"
+          />
+        </div>
+        <Button onClick={() => copy("iframe", embedIframe)} variant="outline" size="sm" className="w-full rounded-xl">
+          {copied === "iframe" ? <><Check className="w-3.5 h-3.5" />Copied embed code</> : <><Copy className="w-3.5 h-3.5" />Copy embed code</>}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -9,7 +9,7 @@ import OfflineBanner from "@/components/mobile/OfflineBanner";
 import { hapticTap } from "@/lib/haptics";
 
 const PAGE_TITLES = {
-  "/discover": "Discover", "/giving": "My Giving", "/communications": "Messages",
+  "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
@@ -26,11 +26,13 @@ function pageTitle(pathname) {
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Discover", icon: Compass },
+  { to: "/globe", label: "Global Globe", icon: Globe2 },
   { to: "/giving", label: "My Giving", icon: HeartHandshake },
   { to: "/communications", label: "Communications", icon: MessageSquare },
   { to: "/inbox", label: "Inbox", icon: MailOpen },
   { to: "/following", label: "Following", icon: Heart },
   { to: "/mission", label: "Mission Control", icon: Sparkles },
+  { to: "/agents", label: "AI Agents", icon: Bot },
   { to: "/connections", label: "Connections", icon: Link2 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/institutions", label: "Institutions", icon: Building2 },

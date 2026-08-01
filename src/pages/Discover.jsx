@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import RecommendedCampaigns from "@/components/discover/RecommendedCampaigns";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 
@@ -30,6 +31,8 @@ export default function Discover() {
       <p className="text-stone-500 mb-6">
         What if your support changed everything for someone today? These causes need help right now.
       </p>
+
+      <RecommendedCampaigns allCampaigns={campaigns} />
 
       <div className="relative mb-6">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />

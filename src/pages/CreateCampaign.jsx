@@ -14,7 +14,7 @@ import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import MediaUpload from "@/components/media/MediaUpload";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
-import { Loader2, Sparkles, ArrowLeft, ArrowRight } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 
 const steps = ["AI Setup", "Basics", "Story", "Launch"];
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
@@ -29,9 +29,27 @@ export default function CreateCampaign() {
   const [form, setForm] = useState({
     title: "", category: "other", goal_amount: "", end_date: "",
     summary: "", story: "", cover_image_url: "",
+    location: "", location_lat: null, location_lng: null,
     ai_profile: emptyAiProfile, story_versions: [],
   });
+  const [locating, setLocating] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const locate = async () => {
+    if (!form.location) return;
+    setLocating(true);
+    try {
+      const res = await base44.functions.invoke("geocodeCity", { city: form.location });
+      const err = res.error || res.data?.error;
+      if (err) throw new Error(err);
+      setForm((f) => ({ ...f, location_lat: res.data.lat, location_lng: res.data.lng }));
+      toast({ title: "Location found", description: (res.data.display || form.location).split(",")[0] });
+    } catch (e) {
+      setForm((f) => ({ ...f, location_lat: null, location_lng: null }));
+      toast({ title: "Couldn't find that city", description: e.message, variant: "destructive" });
+    }
+    setLocating(false);
+  };
 
   const generateCover = async () => {
     setGeneratingImage(true);
@@ -54,6 +72,9 @@ export default function CreateCampaign() {
         ...form,
         goal_amount: parseFloat(form.goal_amount),
         end_date: form.end_date || undefined,
+        location: form.location || undefined,
+        location_lat: form.location_lat || undefined,
+        location_lng: form.location_lng || undefined,
         status,
       });
       navigate(`/campaign/${campaign.id}`);
@@ -116,6 +137,17 @@ export default function CreateCampaign() {
           <div className="space-y-1.5">
             <Label>End date (optional)</Label>
             <Input type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Location (city)</Label>
+            <div className="flex gap-2">
+              <Input placeholder="e.g. Portland, OR" value={form.location} onChange={(e) => set("location", e.target.value)} onBlur={locate} className="flex-1" />
+              <Button type="button" variant="outline" onClick={locate} disabled={locating || !form.location} className="rounded-xl shrink-0">
+                {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                Locate
+              </Button>
+            </div>
+            <p className="text-xs text-stone-400">So supporters can find your campaign on the global globe.</p>
           </div>
         </>)}
 
