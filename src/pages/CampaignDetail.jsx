@@ -17,7 +17,7 @@ import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
 import DistributionPanel from "@/components/distribution/DistributionPanel";
 import FollowButton from "@/components/campaigns/FollowButton";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
-import { categoryLabels } from "@/components/campaigns/CampaignCard";
+import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { format } from "date-fns";
 import { Loader2, Users, CalendarDays, Heart } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
@@ -32,6 +32,7 @@ export default function CampaignDetail() {
   const [user, setUser] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
+  const [related, setRelated] = useState([]);
 
   const load = useCallback(async () => {
     const [c, u, d] = await Promise.all([
@@ -43,6 +44,8 @@ export default function CampaignDetail() {
     setCampaign(c[0]);
     setUpdates(u);
     setDonations(d);
+    const rel = await base44.entities.Campaign.filter({ category: c[0].category, status: "active" }, "-raised_amount", 6);
+    setRelated(rel.filter((r) => r.id !== id).slice(0, 3));
   }, [id]);
 
   useEffect(() => {
@@ -134,6 +137,15 @@ export default function CampaignDetail() {
           {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
         </div>
       </div>
+
+      {related.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-display text-2xl text-stone-900 mb-4">Related campaigns</h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {related.map((c) => <CampaignCard key={c.id} campaign={c} />)}
+          </div>
+        </section>
+      )}
 
       {/* Mobile floating donate button */}
       <button

@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { Image } from "@/components/ui/image";
 import MediaUpload from "@/components/media/MediaUpload";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
+import AccountManagement from "@/components/account/AccountManagement";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -118,6 +119,10 @@ export default function Profile() {
             })}
           </div>
         )}
+      </div>
+
+      <div className="mt-6">
+        <AccountManagement user={user} onUserChanged={setUser} />
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
