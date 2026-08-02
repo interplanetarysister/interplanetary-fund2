@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -11,7 +11,7 @@ import { hapticTap } from "@/lib/haptics";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
-  "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control",
+  "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
@@ -34,6 +34,7 @@ const navItems = [
   { to: "/following", label: "Following", icon: Heart },
   { to: "/mission", label: "Mission Control", icon: Sparkles },
   { to: "/agents", label: "AI Agents", icon: Bot },
+  { to: "/ops", label: "Ops Center", icon: Satellite },
   { to: "/connections", label: "Connections", icon: Link2 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/institutions", label: "Institutions", icon: Building2 },
@@ -71,7 +72,7 @@ export default function Layout() {
   // community, or institution page highlights its own tab instead of Dashboard.
   const TAB_SECTIONS = {
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
-    "/mission": ["/mission", "/agents", "/analytics", "/community", "/institutions", "/connections"],
+    "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
     "/notifications": ["/notifications", "/inbox", "/communications"],
     "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
   };

@@ -39,6 +39,7 @@ import Withdrawals from './pages/Withdrawals';
 import GlobalGlobe from './pages/GlobalGlobe';
 import EmbedCampaign from './pages/EmbedCampaign';
 import Agents from './pages/Agents';
+import OpsCenter from './pages/OpsCenter';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
           <Route path="/subscriptions" element={<Subscriptions />} />
           <Route path="/withdrawals" element={<Withdrawals />} />
           <Route path="/agents" element={<Agents />} />
+          <Route path="/ops" element={<OpsCenter />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
         </Route>
