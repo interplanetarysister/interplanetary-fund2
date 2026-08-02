@@ -191,7 +191,11 @@ export default function Layout() {
         })}
       </nav>
 
-      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-hidden">
+      {/* overflow-x-clip (not overflow-hidden) keeps the page-transition slide
+          from causing sideways scroll without turning main into a nested,
+          non-scrollable container — the cause of stuck vertical scrolling in
+          the Android WebView. */}
+      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}

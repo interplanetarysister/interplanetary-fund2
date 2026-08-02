@@ -2,13 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import DonateDialog from "@/components/campaigns/DonateDialog";
+import CampaignFundingCard from "@/components/campaigns/CampaignFundingCard";
 import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
-import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
@@ -18,8 +17,7 @@ import DistributionPanel from "@/components/distribution/DistributionPanel";
 import FollowButton from "@/components/campaigns/FollowButton";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
-import { format } from "date-fns";
-import { Loader2, Users, CalendarDays, Heart, MapPin } from "lucide-react";
+import { Loader2, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
@@ -57,7 +55,6 @@ export default function CampaignDetail() {
   if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const isOwner = user && campaign.created_by_id === user.id;
-  const pct = Math.min(100, ((campaign.raised_amount || 0) / campaign.goal_amount) * 100);
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
@@ -87,6 +84,9 @@ export default function CampaignDetail() {
             </div>
             {campaign.summary && <p className="text-stone-600 mt-2 text-lg">{campaign.summary}</p>}
           </div>
+          {/* Phones: funding progress + Donate Now sit directly under the title,
+              so the primary action is visible without scrolling. */}
+          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="lg:hidden" />
           {campaign.story && (
             <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
@@ -99,19 +99,7 @@ export default function CampaignDetail() {
 
         {/* Sidebar */}
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
-          <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
-            <p className="font-display text-3xl text-stone-900">${(campaign.raised_amount || 0).toLocaleString()}</p>
-            <p className="text-sm text-stone-500 mb-3">raised of ${campaign.goal_amount.toLocaleString()} goal</p>
-            <Progress value={pct} className="h-2 mb-4" />
-            <div className="flex items-center gap-4 text-sm text-stone-500 mb-5">
-              <span className="flex items-center gap-1.5"><Users className="w-4 h-4" />{campaign.donor_count || 0} donors</span>
-              {campaign.end_date && <span className="flex items-center gap-1.5"><CalendarDays className="w-4 h-4" />Ends {format(new Date(campaign.end_date), "MMM d")}</span>}
-            </div>
-            <DonateDialog campaign={campaign} onDonated={load} />
-            <div className="mt-4 pt-4 border-t border-stone-100">
-              <PayPalDonateButton label="Donate now!" />
-            </div>
-          </div>
+          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
 
           <ShareCampaignKit campaign={campaign} />
 
@@ -148,7 +136,9 @@ export default function CampaignDetail() {
         </section>
       )}
 
-      {/* Mobile floating donate button */}
+      {/* Mobile floating donate button — hidden while the payment sheet is open
+          so it never covers the donation dialog. */}
+      {!donateOpen && (
       <button
         onClick={() => setDonateOpen(true)}
         className="lg:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 h-14 px-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:scale-95 transition-transform"
@@ -156,6 +146,7 @@ export default function CampaignDetail() {
       >
         <Heart className="w-5 h-5" /> Donate
       </button>
+      )}
       <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} />
     </PullToRefresh>
   );

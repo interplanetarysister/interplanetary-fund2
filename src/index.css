@@ -95,8 +95,16 @@
   /* Android WebView readiness: kill default rubber-band / scroll-chaining on
      the page and main scroll areas. PullToRefresh sets its own overscroll
      inline on its container, so it keeps working. */
-  html, body, main {
+  html, body {
     overscroll-behavior-y: none;
+  }
+
+  /* Android WebView: keep taps instant and never let a tap-highlight box
+     appear mid-scroll. touch-action: manipulation removes the 300ms delay
+     while leaving normal vertical panning intact. */
+  button, a, [role="tab"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Android WebView readiness: suppress the long-press text-selection menu and

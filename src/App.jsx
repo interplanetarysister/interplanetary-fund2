@@ -73,6 +73,11 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
+      {/* Public campaign page — anyone arriving from a shared link can read the
+          story and donate without signing in. */}
+      <Route element={<Layout />}>
+        <Route path="/campaign/:id" element={<CampaignDetail />} />
+      </Route>
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         {/* Full-screen onboarding experience, outside the Layout chrome */}
         <Route path="/onboarding" element={<Onboarding />} />
@@ -80,7 +85,6 @@ const AuthenticatedApp = () => {
           <Route path="/" element={<Dashboard />} />
           <Route path="/discover" element={<Discover />} />
           <Route path="/create" element={<CreateCampaign />} />
-          <Route path="/campaign/:id" element={<CampaignDetail />} />
           <Route path="/giving" element={<MyGiving />} />
           <Route path="/communications" element={<Communications />} />
           <Route path="/mission" element={<MissionControlPage />} />

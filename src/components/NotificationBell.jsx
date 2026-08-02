@@ -16,10 +16,11 @@ export default function NotificationBell() {
   }, []);
 
   useEffect(() => {
+    // Signed-out visitors on public campaign pages simply get no bell content.
     base44.auth.me().then((me) => {
       setUserId(me.id);
       load(me.id);
-    });
+    }).catch(() => {});
   }, [load]);
 
   useEffect(() => {
