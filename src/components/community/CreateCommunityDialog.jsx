@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,16 +33,16 @@ export default function CreateCommunityDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Create a community"
+      trigger={
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <Plus className="w-4 h-4" /> New Community
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">Create a community</DialogTitle>
-        </DialogHeader>
+      }
+    >
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Name</Label>
@@ -71,7 +71,6 @@ export default function CreateCommunityDialog() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Create community"}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveDialog>
   );
 }

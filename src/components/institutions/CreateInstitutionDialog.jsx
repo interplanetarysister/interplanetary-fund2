@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,16 +32,17 @@ export default function CreateInstitutionDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Register an institution"
+      desktopClassName="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto"
+      trigger={
         <Button className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <Plus className="w-4 h-4" /> Add Institution
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">Register an institution</DialogTitle>
-        </DialogHeader>
+      }
+    >
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Name</Label>
@@ -100,7 +101,6 @@ export default function CreateInstitutionDialog() {
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Register institution"}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveDialog>
   );
 }

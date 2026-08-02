@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,14 +63,13 @@ Write in first person plural, specific and evidence-based. Return only the narra
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">Apply</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl">Apply — {opportunity.title}</DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={setOpen}
+      title={`Apply — ${opportunity.title}`}
+      desktopClassName="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto"
+      trigger={<Button size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">Apply</Button>}
+    >
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>Campaign</Label>
@@ -100,7 +99,6 @@ Write in first person plural, specific and evidence-based. Return only the narra
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit application"}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+    </ResponsiveDialog>
   );
 }

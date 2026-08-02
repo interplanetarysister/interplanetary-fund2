@@ -10,6 +10,7 @@ import { hapticTap, hapticSuccess } from "@/lib/haptics";
 // confirmation. State is DB-backed so it syncs across devices automatically.
 export default function FollowButton({ campaign }) {
   const [follow, setFollow] = useState(null);
+  const [meId, setMeId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const { toast } = useToast();
@@ -19,6 +20,7 @@ export default function FollowButton({ campaign }) {
       try {
         const me = await base44.auth.me();
         if (!me) { setLoading(false); return; }
+        setMeId(me.id);
         const existing = await base44.entities.FollowedCampaign.filter({ user_id: me.id, campaign_id: campaign.id });
         setFollow(existing[0] || null);
       } catch { /* not logged in */ }
@@ -26,35 +28,48 @@ export default function FollowButton({ campaign }) {
     })();
   }, [campaign.id]);
 
+  const followPrefs = {
+    updates: true, media: true, milestones: true, goal_reached: true,
+    nearing_completion: true, comments: false, volunteer: true,
+    events: true, emergencies: true, completed: true,
+  };
+
   const toggle = async () => {
     hapticTap();
+    if (busy) return;
+    if (!meId) { base44.auth.redirectToLogin(window.location.pathname); return; }
+    const wasFollow = follow;
     setBusy(true);
-    try {
-      if (follow) {
-        await base44.entities.FollowedCampaign.delete(follow.id);
-        setFollow(null);
+    if (wasFollow) {
+      // Optimistic unfollow — clear immediately, restore only if the delete fails.
+      setFollow(null);
+      try {
+        await base44.entities.FollowedCampaign.delete(wasFollow.id);
         toast({ title: "Removed from Followed" });
-      } else {
-        const me = await base44.auth.me();
-        if (!me) { base44.auth.redirectToLogin(window.location.pathname); return; }
-        const created = await base44.entities.FollowedCampaign.create({
-          user_id: me.id,
-          campaign_id: campaign.id,
-          campaign_title: campaign.title,
-          category: campaign.category,
-          cover_image_url: campaign.cover_image_url,
-          notification_prefs: {
-            updates: true, media: true, milestones: true, goal_reached: true,
-            nearing_completion: true, comments: false, volunteer: true,
-            events: true, emergencies: true, completed: true,
-          },
-        });
+      } catch (e) {
+        setFollow(wasFollow);
+        toast({ title: "Couldn't update follow", variant: "destructive" });
+      }
+    } else {
+      // Optimistic follow — show the filled heart instantly, roll back on failure.
+      const payload = {
+        user_id: meId,
+        campaign_id: campaign.id,
+        campaign_title: campaign.title,
+        category: campaign.category,
+        cover_image_url: campaign.cover_image_url,
+        notification_prefs: followPrefs,
+      };
+      setFollow({ ...payload, id: "pending" });
+      try {
+        const created = await base44.entities.FollowedCampaign.create(payload);
         setFollow(created);
         hapticSuccess();
         toast({ title: "Campaign Added to Followed", description: "You'll get updates in your Follow Feed." });
+      } catch (e) {
+        setFollow(null);
+        toast({ title: "Couldn't update follow", variant: "destructive" });
       }
-    } catch (e) {
-      toast({ title: "Couldn't update follow", variant: "destructive" });
     }
     setBusy(false);
   };

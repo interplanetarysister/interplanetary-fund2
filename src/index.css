@@ -92,6 +92,13 @@
     @apply bg-background text-foreground font-body;
   }
 
+  /* Android WebView readiness: kill default rubber-band / scroll-chaining on
+     the page and main scroll areas. PullToRefresh sets its own overscroll
+     inline on its container, so it keeps working. */
+  html, body, main {
+    overscroll-behavior-y: none;
+  }
+
   /* Android WebView readiness: suppress the long-press text-selection menu and
      magnification highlight on tap targets and UI chrome (buttons, links, nav
      tabs, icons, headings), while keeping body content — campaign stories,

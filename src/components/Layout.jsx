@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
@@ -63,6 +63,27 @@ export default function Layout() {
   const TAB_ROOTS = ["/", "/discover", "/mission", "/notifications", "/profile"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
+
+  // Preserve each bottom tab's last sub-route so tapping a tab returns to the
+  // last screen visited within that tab instead of resetting to its root.
+  const tabStacks = useRef(Object.fromEntries(TAB_ROOTS.map((r) => [r, r])));
+  const owningRoot = (p) =>
+    p === "/" ? "/" : TAB_ROOTS.find((r) => r !== "/" && (p === r || p.startsWith(r + "/"))) || null;
+  const activeTab = useRef(owningRoot(pathname) || "/");
+  useEffect(() => {
+    const root = owningRoot(pathname);
+    if (root) activeTab.current = root;
+    tabStacks.current[activeTab.current] = pathname;
+  }, [pathname]);
+  const goTab = (root) => {
+    hapticTap();
+    activeTab.current = root;
+    navigate(tabStacks.current[root] || root);
+  };
+  const isTabActive = (root) =>
+    root === "/"
+      ? pathname === "/" || activeTab.current === "/"
+      : pathname === root || pathname.startsWith(root + "/") || activeTab.current === root;
 
   const nav = (
     <nav className="flex flex-col gap-1 px-3">
@@ -133,22 +154,21 @@ export default function Layout() {
 
       {/* Mobile bottom navigation — one-handed access to core surfaces */}
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
-        {bottomNavItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            onClick={() => hapticTap()}
-            className={({ isActive }) =>
-              `flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
-                isActive ? "text-cyan-400" : "text-slate-400"
-              }`
-            }
-          >
-            <Icon className="w-5 h-5" strokeWidth={1.75} />
-            {label}
-          </NavLink>
-        ))}
+        {bottomNavItems.map(({ to, label, icon: Icon }) => {
+          const active = isTabActive(to);
+          return (
+            <button
+              key={to}
+              onClick={() => goTab(to)}
+              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+                active ? "text-cyan-400" : "text-slate-400"
+              }`}
+            >
+              <Icon className="w-5 h-5" strokeWidth={1.75} />
+              {label}
+            </button>
+          );
+        })}
       </nav>
 
       <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-hidden">

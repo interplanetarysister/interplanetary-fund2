@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,14 +42,14 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-display">Withdraw funds</DialogTitle>
-          <DialogDescription>{campaign.title}</DialogDescription>
-        </DialogHeader>
-
-        {result ? (
+    <ResponsiveDialog
+      open={open}
+      onOpenChange={(o) => { if (!o) reset(); onOpenChange(o); }}
+      title="Withdraw funds"
+      description={campaign.title}
+      desktopClassName="sm:max-w-md"
+    >
+      {result ? (
           <div className="space-y-4 py-2">
             <div className="flex items-center gap-3">
               {result.status === "paid" ? (
@@ -105,16 +105,15 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
               </div>
             )}
 
-            <DialogFooter>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl">Cancel</Button>
               <Button onClick={submit} disabled={submitting || !email || !confirm} className="rounded-xl">
                 {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 Withdraw {money(net)}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+    </ResponsiveDialog>
   );
 }
