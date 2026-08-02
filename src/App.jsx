@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -106,6 +107,15 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  // Sync the app theme with the device system color scheme so the Android
+  // WebView picks up dark mode automatically — on startup and on change.
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = (e) => document.documentElement.classList.toggle("dark", e.matches);
+    apply(mq);
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   return (
     <AuthProvider>

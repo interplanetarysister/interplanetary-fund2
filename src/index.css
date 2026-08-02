@@ -91,6 +91,24 @@
   body {
     @apply bg-background text-foreground font-body;
   }
+
+  /* Android WebView readiness: suppress the long-press text-selection menu and
+     magnification highlight on tap targets and UI chrome (buttons, links, nav
+     tabs, icons, headings), while keeping body content — campaign stories,
+     descriptions, and notification text — copyable. */
+  button,
+  a,
+  nav,
+  [role="tab"],
+  svg,
+  h1, h2, h3, h4, h5, h6 {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  p, li, blockquote {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 /* Interplanetary Fund visual language: deep space surfaces, soft glows,

@@ -5,6 +5,7 @@ import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
 import useSwipeBack from "@/hooks/useSwipeBack";
+import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
 import { hapticTap } from "@/lib/haptics";
 
@@ -57,7 +58,10 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const isRoot = pathname === "/";
+  // Bottom-tab root views show the brand mark (no Back button); deep child
+  // pages (e.g. a campaign detail) get the ChevronLeft back affordance.
+  const TAB_ROOTS = ["/", "/discover", "/mission", "/notifications", "/profile"];
+  const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
   const nav = (
@@ -147,8 +151,18 @@ export default function Layout() {
         ))}
       </nav>
 
-      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
-        <Outlet />
+      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, x: "100%" }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: "100%" }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );
