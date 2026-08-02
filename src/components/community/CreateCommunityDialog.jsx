@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
+import useUrlDialog from "@/hooks/useUrlDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +12,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { communityTypes } from "./communityTypes";
 
 export default function CreateCommunityDialog() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useUrlDialog("newCommunity");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [type, setType] = useState("interest");

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
+import useUrlDialog from "@/hooks/useUrlDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +15,12 @@ import { Heart, Loader2, Lock, CheckCircle2 } from "lucide-react";
 const presets = [25, 50, 100, 250];
 
 export default function DonateDialog({ campaign, onDonated, open: controlledOpen, onOpenChange: controlledOnOpenChange, hideTrigger }) {
-  const [internalOpen, setInternalOpen] = useState(false);
+  // URL-driven so the Android back button closes the sheet instead of leaving
+  // the campaign page. Still supports a parent-controlled open state.
+  const [urlOpen, setUrlOpen] = useUrlDialog("donate");
   const isControlled = controlledOpen !== undefined;
-  const open = isControlled ? controlledOpen : internalOpen;
-  const setOpen = (v) => { if (isControlled) controlledOnOpenChange?.(v); else setInternalOpen(v); };
+  const open = isControlled ? controlledOpen : urlOpen;
+  const setOpen = (v) => { if (isControlled) controlledOnOpenChange?.(v); else setUrlOpen(v); };
   const [amount, setAmount] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");

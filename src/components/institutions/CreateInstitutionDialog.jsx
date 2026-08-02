@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
+import useUrlDialog from "@/hooks/useUrlDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +19,7 @@ const empty = {
 };
 
 export default function CreateInstitutionDialog() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useUrlDialog("newInstitution");
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const navigate = useNavigate();

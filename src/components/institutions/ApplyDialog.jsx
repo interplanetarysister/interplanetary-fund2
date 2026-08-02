@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
+import useUrlDialog from "@/hooks/useUrlDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Sparkles } from "lucide-react";
 
 export default function ApplyDialog({ opportunity, institution, onApplied }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useUrlDialog("apply", opportunity.id);
   const [campaigns, setCampaigns] = useState([]);
   const [campaignId, setCampaignId] = useState("");
   const [narrative, setNarrative] = useState("");

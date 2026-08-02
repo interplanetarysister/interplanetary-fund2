@@ -67,8 +67,21 @@ export default function Layout() {
   // Preserve each bottom tab's last sub-route so tapping a tab returns to the
   // last screen visited within that tab instead of resetting to its root.
   const tabStacks = useRef(Object.fromEntries(TAB_ROOTS.map((r) => [r, r])));
-  const owningRoot = (p) =>
-    p === "/" ? "/" : TAB_ROOTS.find((r) => r !== "/" && (p === r || p.startsWith(r + "/"))) || null;
+  // Which bottom tab each section of the app belongs to, so a campaign,
+  // community, or institution page highlights its own tab instead of Dashboard.
+  const TAB_SECTIONS = {
+    "/discover": ["/discover", "/campaign", "/globe", "/create"],
+    "/mission": ["/mission", "/agents", "/analytics", "/community", "/institutions", "/connections"],
+    "/notifications": ["/notifications", "/inbox", "/communications"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
+  };
+  const owningRoot = (p) => {
+    if (p === "/") return "/";
+    const hit = Object.entries(TAB_SECTIONS).find(([, prefixes]) =>
+      prefixes.some((pre) => p === pre || p.startsWith(pre + "/"))
+    );
+    return hit ? hit[0] : null;
+  };
   const activeTab = useRef(owningRoot(pathname) || "/");
   useEffect(() => {
     const root = owningRoot(pathname);
@@ -77,6 +90,13 @@ export default function Layout() {
   }, [pathname]);
   const goTab = (root) => {
     hapticTap();
+    // Re-tapping the active tab resets that tab's stack back to its root.
+    if (activeTab.current === root) {
+      tabStacks.current[root] = root;
+      activeTab.current = root;
+      navigate(root);
+      return;
+    }
     activeTab.current = root;
     navigate(tabStacks.current[root] || root);
   };
@@ -131,7 +151,7 @@ export default function Layout() {
           </Link>
         ) : (
           <div className="flex items-center gap-1 min-w-0">
-            <button onClick={() => navigate(-1)} aria-label="Back" className="text-stone-300 p-2 -ml-1 hover:text-white transition-colors">
+            <button onClick={() => navigate(-1)} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
               <ChevronLeft className="w-6 h-6" />
             </button>
             <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>
@@ -139,7 +159,7 @@ export default function Layout() {
         )}
         <div className="flex items-center gap-1 shrink-0">
           <NotificationBell />
-          <button onClick={() => setOpen(!open)} className="text-stone-300 p-2" aria-label="Toggle menu">
+          <button onClick={() => setOpen(!open)} className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -160,7 +180,7 @@ export default function Layout() {
             <button
               key={to}
               onClick={() => goTab(to)}
-              className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+              className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] text-[10px] font-medium transition-colors ${
                 active ? "text-cyan-400" : "text-slate-400"
               }`}
             >

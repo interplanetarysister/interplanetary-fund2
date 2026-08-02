@@ -20,11 +20,13 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      // min-h/min-w floors guarantee 44px tap targets on mobile without
+      // overriding any explicit height a caller sets; they lift on md+.
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "h-9 px-4 py-2 min-h-[44px] md:min-h-0",
+        sm: "h-8 rounded-md px-3 text-xs min-h-[44px] md:min-h-0",
+        lg: "h-10 rounded-md px-8 min-h-[44px] md:min-h-0",
+        icon: "h-9 w-9 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0",
       },
     },
     defaultVariants: {

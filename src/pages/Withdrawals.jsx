@@ -7,6 +7,7 @@ import { Image } from "@/components/ui/image";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { useToast } from "@/components/ui/use-toast";
 import WithdrawalDialog from "@/components/withdrawals/WithdrawalDialog";
+import { useSearchParams } from "react-router-dom";
 
 const CLEARING_DAYS = 7;
 const money = (n) => (n || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
@@ -27,7 +28,15 @@ export default function Withdrawals() {
   const [history, setHistory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState(null);
+  // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
+  // Android back button dismisses it rather than leaving the page.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeId = searchParams.get("withdraw");
+  const setActive = (campaign) => {
+    const params = new URLSearchParams(searchParams);
+    if (campaign) { params.set("withdraw", campaign.id); setSearchParams(params); }
+    else { params.delete("withdraw"); setSearchParams(params, { replace: true }); }
+  };
 
   const load = async () => {
     const me = await base44.auth.me();
@@ -72,6 +81,7 @@ export default function Withdrawals() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
+  const active = campaigns.find((c) => c.id === activeId) || null;
   const totalAvailable = campaigns.reduce((s, c) => s + c.available, 0);
   const totalClearing = campaigns.reduce((s, c) => s + c.inClearing, 0);
 
