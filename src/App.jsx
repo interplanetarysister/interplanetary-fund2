@@ -15,6 +15,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import OAuthConsent from './pages/OAuthConsent';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Discover from './pages/Discover';
@@ -74,6 +75,8 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/oauth/consent" element={<OAuthConsent />} />
+      <Route path="/mcp/consent" element={<OAuthConsent />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
       {/* Public campaign page — anyone arriving from a shared link can read the
