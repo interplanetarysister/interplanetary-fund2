@@ -41,6 +41,7 @@ import GlobalGlobe from './pages/GlobalGlobe';
 import EmbedCampaign from './pages/EmbedCampaign';
 import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
+import FacebookGroups from './pages/FacebookGroups';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -105,6 +106,7 @@ const AuthenticatedApp = () => {
           <Route path="/ops" element={<OpsCenter />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
+          <Route path="/facebook" element={<FacebookGroups />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
