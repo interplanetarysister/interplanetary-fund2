@@ -8,6 +8,7 @@ import useSwipeBack from "@/hooks/useSwipeBack";
 import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
 import { hapticTap } from "@/lib/haptics";
+import LegalFooter from "@/components/LegalFooter";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -208,6 +209,7 @@ export default function Layout() {
             <Outlet />
           </motion.div>
         </AnimatePresence>
+        <div className="md:block hidden"><LegalFooter /></div>
       </main>
     </div>
   );
