@@ -31,13 +31,25 @@ export default function FundMigrationDashboard() {
 
   useEffect(() => {
     (async () => {
-      const [c, w] = await Promise.all([
-        base44.entities.Campaign.list("-raised_amount", 100),
-        base44.entities.Withdrawal.filter({ status: "pending" }),
-      ]);
-      setCampaigns(c || []);
-      setPending(w || []);
-      setLoadingCampaigns(false);
+      try {
+        const me = await base44.auth.me();
+        if (me?.role !== "admin") {
+          setError("Admin access required.");
+          setLoadingCampaigns(false);
+          return;
+        }
+
+        const [c, w] = await Promise.all([
+          base44.entities.Campaign.list("-raised_amount", 100),
+          base44.entities.Withdrawal.filter({ status: "pending" }),
+        ]);
+        setCampaigns(c || []);
+        setPending(w || []);
+      } catch (e) {
+        setError(e?.message || "Unable to load migration data.");
+      } finally {
+        setLoadingCampaigns(false);
+      }
     })();
   }, []);
 
@@ -55,9 +67,10 @@ export default function FundMigrationDashboard() {
     });
   };
 
-  const totalGross = migrations.reduce((s, m) => s + (parseFloat(m.grossAmount) || 0), 0);
+  const billable = migrations.filter((m) => parseFloat(m.grossAmount) > 0);
+  const totalGross = billable.reduce((s, m) => s + (parseFloat(m.grossAmount) || 0), 0);
   const totalPlatformFee = totalGross * 0.05;
-  const totalProcessingFee = totalGross * 0.029 + migrations.length * 0.3;
+  const totalProcessingFee = totalGross * 0.029 + billable.length * 0.3;
   const totalNet = totalGross - totalPlatformFee - totalProcessingFee;
 
   const handleSubmit = async () => {
@@ -76,15 +89,25 @@ export default function FundMigrationDashboard() {
         const platformFee = gross * 0.05;
         const processingFee = gross * 0.029 + 0.3;
         const net = gross - platformFee - processingFee;
+
+        if (net <= 0) throw new Error("Gross amount must be large enough to cover fees.");
+
+        const camp = campaigns.find((c) => c.id === m.campaignId);
+        const ownerUserId = camp?.created_by_id;
+        if (!ownerUserId) throw new Error("Selected campaign was not found (or is missing an owner).");
+
         const w = await base44.entities.Withdrawal.create({
           campaign_id: m.campaignId,
-          amount: net,
-          gross_amount: gross,
-          platform_fee: platformFee,
-          processing_fee: processingFee,
+          campaign_title: m.campaignTitle || camp?.title,
+          owner_user_id: ownerUserId,
+          gross_amount: Math.round(gross * 100) / 100,
+          net_amount: Math.round(net * 100) / 100,
+          platform_fee: Math.round(platformFee * 100) / 100,
+          processing_fee: Math.round(processingFee * 100) / 100,
           source_platform: m.sourcePlatform,
           payout_method: payoutMethod,
           payout_destination: payoutDest,
+          paypal_email: payoutMethod === "paypal" ? payoutDest : "",
           status: "processing",
           notes: `Fund migration from ${m.sourcePlatform}`,
         });

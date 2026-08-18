@@ -9,11 +9,19 @@ export default function TermsAcceptance({ children }) {
   const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem(TERMS_KEY) === "true") setAccepted(true);
+    try {
+      if (localStorage.getItem(TERMS_KEY) === "true") setAccepted(true);
+    } catch {
+      // Storage unavailable; show the gate on each visit.
+    }
   }, []);
 
   const accept = () => {
-    localStorage.setItem(TERMS_KEY, "true");
+    try {
+      localStorage.setItem(TERMS_KEY, "true");
+    } catch {
+      // ignore
+    }
     setAccepted(true);
   };
 
@@ -21,15 +29,21 @@ export default function TermsAcceptance({ children }) {
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur flex items-center justify-center p-4 overflow-y-auto">
-      <div className="max-w-md w-full bg-white rounded-2xl p-6 border border-stone-200 shadow-2xl my-auto">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tos-title"
+        aria-describedby="tos-desc"
+        className="max-w-md w-full bg-white rounded-2xl p-6 border border-stone-200 shadow-2xl my-auto"
+      >
         <div className="text-center mb-5">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
             IF
           </div>
-          <h2 className="font-display text-xl text-stone-900">Terms of Service</h2>
+          <h2 id="tos-title" className="font-display text-xl text-stone-900">Terms of Service</h2>
           <p className="text-stone-500 text-sm mt-1">Last updated {TERMS_DATE}</p>
         </div>
-        <p className="text-stone-600 text-sm mb-4">
+        <p id="tos-desc" className="text-stone-600 text-sm mb-4">
           By using Interplanetary Fund, you agree to our Terms of Service and
           Privacy Policy.
         </p>
