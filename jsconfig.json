@@ -4,8 +4,7 @@
     "checkJs": false,
     "noEmit": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "*": ["./*"]
+      "@/*": ["./src/*"]
     },
     "jsx": "react-jsx",
     "module": "esnext",
