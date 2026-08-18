@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import TermsAcceptance from "@/components/TermsAcceptance";
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
@@ -40,6 +41,7 @@ import GlobalGlobe from './pages/GlobalGlobe';
 import EmbedCampaign from './pages/EmbedCampaign';
 import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
+import FacebookGroups from './pages/FacebookGroups';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -104,6 +106,7 @@ const AuthenticatedApp = () => {
           <Route path="/ops" element={<OpsCenter />} />
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
+          <Route path="/facebook" element={<FacebookGroups />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
@@ -128,7 +131,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <AuthenticatedApp />
+          <TermsAcceptance>
+            <AuthenticatedApp />
+          </TermsAcceptance>
         </Router>
         <Toaster />
       </QueryClientProvider>

@@ -6,6 +6,7 @@ import OpsAgentCard from "@/components/ops/OpsAgentCard";
 import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
+import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
 // Base44 entities so the dashboard works offline; Sync Now refreshes it.
@@ -72,10 +73,11 @@ export default function OpsCenter() {
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
-            <TabsList className="w-full grid grid-cols-4 bg-white/5 border border-white/10 rounded-xl h-11">
+            <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 rounded-xl h-11">
               <TabsTrigger value="agents" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Agents</TabsTrigger>
               <TabsTrigger value="campaigns" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Campaigns</TabsTrigger>
               <TabsTrigger value="treasury" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Treasury</TabsTrigger>
+              <TabsTrigger value="migrate" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Migrate</TabsTrigger>
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
@@ -88,6 +90,9 @@ export default function OpsCenter() {
             </TabsContent>
             <TabsContent value="treasury" className="mt-4">
               <TreasurySummary snapshot={treasury} />
+            </TabsContent>
+            <TabsContent value="migrate" className="mt-4">
+              <FundMigrationDashboard />
             </TabsContent>
             <TabsContent value="reports" className="mt-4">
               <OpsReports reports={reports} />
