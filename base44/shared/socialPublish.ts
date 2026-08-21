@@ -2,8 +2,11 @@
 // credentials (no partner approval needed): Bluesky (app password) and
 // Mastodon (instance access token). Used by publishPost and the sync worker.
 
-export function canAutoPublish(connection) {
+export function canAutoPublish(connection, user) {
   const c = connection?.credentials || {};
+  const consentGranted = user?.ai_publishing_consent?.granted === true;
+  const mode = connection?.automation_mode;
+  if (!consentGranted || mode !== 'auto') return false;
   if (connection?.platform === 'bluesky') return !!(c.bluesky_handle && c.bluesky_app_password);
   if (connection?.platform === 'mastodon') return !!(c.mastodon_instance && c.mastodon_access_token);
   return false;
