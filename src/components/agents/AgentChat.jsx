@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { recordAgentInteraction } from "@/lib/recordAgentInteraction";
 
 // Conversation UI for an in-app AI agent. Starts a new conversation when the
-// agent changes, streams assistant replies via the agents SDK subscription.
+// agent changes, streams assistant replies via the agents SDK subscription,
+// and persists a best-effort interaction summary to the authoritative agent runtime.
 export default function AgentChat({ agentName, agentLabel, greeting }) {
   const convRef = useRef(null);
   const [messages, setMessages] = useState([]);
@@ -19,6 +21,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     let cancelled = false;
     setStarting(true);
     setMessages([]);
+    convRef.current = null;
     (async () => {
       try {
         const conv = await base44.agents.createConversation({
@@ -34,18 +37,23 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
       } catch (e) {
         setMessages([{ role: "assistant", content: `Couldn't start a conversation with ${agentLabel}: ${e.message}` }]);
       }
-      setStarting(false);
+      if (!cancelled) setStarting(false);
     })();
     return () => { cancelled = true; unsub(); };
   }, [agentName, agentLabel]);
 
   const send = async () => {
     const content = input.trim();
-    if (!content || !convRef.current) return;
+    if (!content || !convRef.current || sending) return;
     setInput("");
     setSending(true);
     try {
       await base44.agents.addMessage(convRef.current, { role: "user", content });
+      await recordAgentInteraction({
+        agentName,
+        summary: content,
+        outcome: "conversation",
+      });
     } catch (e) {
       setMessages((m) => [...m, { role: "assistant", content: `Error: ${e.message}` }]);
     }
