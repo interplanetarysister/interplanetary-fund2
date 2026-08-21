@@ -1,11 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 
-// Broadcasts every pending/approved/failed DistributedPost for a campaign in
-// one call — the owner's "publish everything I approved" action. Direct-
-// publishes where the platform supports it (Bluesky, Mastodon); marks the rest
-// "approved" with manual=true so the owner can copy-post to crowdfunding pages
-// and social sites without a publishing API. Never auto-posts without consent.
+// Broadcasts owner-approved DistributedPosts for a campaign. Direct-publishes only
+// when the owner's AI consent and destination-level auto mode are both active;
+// otherwise returns manual results without pretending an API exists.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,13 +20,22 @@ export default async function(req) {
     }
 
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
-    const pending = posts.filter((p) =>
-      ['pending_approval', 'draft', 'approved', 'failed'].includes(p.status)
-    );
+    const now = Date.now();
+    const eligible = posts.filter((p) => {
+      if (p.status === 'approved') return true;
+      if (p.status === 'scheduled') return p.scheduled_for && new Date(p.scheduled_for).getTime() <= now;
+      return false;
+    });
 
-    const results = { published: 0, manual: 0, failed: 0, total: pending.length, posts: [] };
+    const results = { published: 0, manual: 0, failed: 0, total: eligible.length, posts: [] };
 
-    for (const post of pending) {
+    for (const post of eligible) {
+      if (post.created_by_id && post.created_by_id !== user.id && user.role !== 'admin') {
+        results.failed++;
+        results.posts.push({ id: post.id, status: 'failed', error: 'Post is owned by another user.' });
+        continue;
+      }
+
       const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
       if (!connection) {
         const updated = await base44.entities.DistributedPost.update(post.id, {
@@ -38,11 +45,35 @@ export default async function(req) {
         results.posts.push(updated);
         continue;
       }
+      if (connection.created_by_id !== user.id && user.role !== 'admin') {
+        const updated = await base44.entities.DistributedPost.update(post.id, {
+          status: 'failed', error: 'Connection is owned by another user.',
+        });
+        results.failed++;
+        results.posts.push(updated);
+        continue;
+      }
+      if (connection.platform !== post.platform) {
+        const updated = await base44.entities.DistributedPost.update(post.id, {
+          status: 'failed', error: 'Post destination does not match its connection.',
+        });
+        results.failed++;
+        results.posts.push(updated);
+        continue;
+      }
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
+      if (!text) {
+        const updated = await base44.entities.DistributedPost.update(post.id, {
+          status: 'failed', error: 'Post content is empty.',
+        });
+        results.failed++;
+        results.posts.push(updated);
+        continue;
+      }
 
-      if (!canAutoPublish(connection)) {
-        const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
+      if (!canAutoPublish(connection, user)) {
+        const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved', error: '' });
         results.manual++;
         results.posts.push(updated);
         continue;
@@ -50,16 +81,17 @@ export default async function(req) {
 
       try {
         const { url } = await publishThroughConnection(connection, text);
+        const publishedAt = new Date().toISOString();
         const updated = await base44.entities.DistributedPost.update(post.id, {
           status: 'published',
-          published_at: new Date().toISOString(),
+          published_at: publishedAt,
           external_post_url: url,
           error: '',
         });
         await base44.entities.PlatformConnection.update(connection.id, {
-          last_synced: new Date().toISOString(),
+          last_synced: publishedAt,
           history: [...(connection.history || []), {
-            at: new Date().toISOString(),
+            at: publishedAt,
             event: 'published',
             detail: `Broadcast post for "${post.campaign_title}"`,
           }].slice(-30),
