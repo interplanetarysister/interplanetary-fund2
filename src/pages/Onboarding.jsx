@@ -36,8 +36,9 @@ export default function Onboarding() {
       navigate("/mission");
     } catch (e) {
       toast({ title: "Couldn't save setup", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const step = STEPS[current];
