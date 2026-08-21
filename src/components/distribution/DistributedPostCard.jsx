@@ -16,8 +16,9 @@ const statusStyles = {
   failed: "bg-red-100 text-red-700",
 };
 
-// One AI-generated platform post: edit, approve & publish (direct API where
-// supported, copy-to-post otherwise), schedule, or discard.
+// One AI-generated platform update. Account linking supplies authorization;
+// this card edits, publishes, schedules, copies, or discards without another
+// approval click.
 export default function DistributedPostCard({ post, onChanged, onRemoved }) {
   const [content, setContent] = useState(post.content);
   const [busy, setBusy] = useState(false);
@@ -42,7 +43,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
       if (data?.error) setNotice(data.error);
       else if (data?.manual) {
         onChanged(data.post);
-        setNotice("This platform has no publishing API — the post is approved. Copy it and post it on your account.");
+        setNotice("This platform has no publishing API — the update is ready. Copy it and post it on your account.");
       } else onChanged(data.post);
     } catch (e) {
       setNotice(e.response?.data?.error || "Publishing failed.");
@@ -75,7 +76,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     <div className="rounded-xl border border-stone-200 p-4">
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="font-semibold text-stone-900 text-sm">{platformName(post.platform)}</p>
-        <Badge className={`${statusStyles[post.status] || ""} border-0 capitalize`}>{post.status.replace("_", " ")}</Badge>
+        <Badge className={`${statusStyles[post.status] || ""} border-0 capitalize`}>{post.status === "pending_approval" ? "ready" : post.status.replace("_", " ")}</Badge>
       </div>
       {post.status === "published" ? (
         <p className="text-sm text-stone-600 whitespace-pre-line">{fullText}</p>
@@ -91,7 +92,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
       <div className="flex flex-wrap gap-2 mt-3">
         {post.status !== "published" && (
           <Button size="sm" onClick={publish} disabled={busy} className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground">
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Approve & publish
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Publish
           </Button>
         )}
         {post.status !== "published" && (
