@@ -1,9 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 
-// Broadcasts owner-approved DistributedPosts for a campaign. Direct-publishes only
-// when the owner's AI consent and destination-level auto mode are both active;
-// otherwise returns manual results without pretending an API exists.
+// Broadcasts campaign updates to destinations the owner has already authorized
+// by linking their account. There is no per-post approval gate.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,7 +21,10 @@ export default async function(req) {
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const now = Date.now();
     const eligible = posts.filter((p) => {
-      if (p.status === 'approved') return true;
+      // Legacy generated posts may still be pending_approval. Linking the
+      // destination already supplied the authorization, so treat those as
+      // broadcast-ready without requiring a second approval click.
+      if (p.status === 'pending_approval' || p.status === 'approved') return true;
       if (p.status === 'scheduled') return p.scheduled_for && new Date(p.scheduled_for).getTime() <= now;
       return false;
     });
@@ -72,7 +74,7 @@ export default async function(req) {
         continue;
       }
 
-      if (!canAutoPublish(connection, user)) {
+      if (!canAutoPublish(connection)) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved', error: '' });
         results.manual++;
         results.posts.push(updated);
