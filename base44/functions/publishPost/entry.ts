@@ -20,6 +20,16 @@ export default async function(req) {
     const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
     if (!connection) return Response.json({ error: 'Connection no longer exists' }, { status: 404 });
 
+    // Publishing is always gated by an explicit approval on the post itself.
+    // Connection automation settings control how an already-approved post is
+    // delivered; they must never bypass the platform-wide approval boundary.
+    if (post.status !== 'approved') {
+      return Response.json({
+        error: 'Post must be explicitly approved before it can be published.',
+        status: post.status || 'unknown',
+      }, { status: 409 });
+    }
+
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
     if (!canAutoPublish(connection)) {
