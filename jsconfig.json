@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "checkJs": false,
+    "checkJs": true,
     "noEmit": true,
     "paths": {
+      "@/components/ui/*": ["./src/types/compat-shims/ui.d.ts"],
+      "@/lib/*": ["./src/types/compat-shims/lib.d.ts", "./src/lib/*"],
+      "@/api/*": ["./src/types/compat-shims/api.d.ts", "./src/api/*"],
       "@/*": ["./src/*"]
     },
     "jsx": "react-jsx",
@@ -17,6 +20,13 @@
     "resolveJsonModule": true,
     "types": []
   },
-  "include": ["src/**/*.js", "src/**/*.jsx"],
+  "include": [
+    "src/*.jsx",
+    "src/components/**/*.js",
+    "src/components/**/*.jsx",
+    "src/pages/**/*.js",
+    "src/pages/**/*.jsx",
+    "src/types/**/*.d.ts"
+  ],
   "exclude": ["node_modules", "dist", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
 }

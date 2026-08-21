@@ -49,7 +49,7 @@ export default function Inbox() {
           author: "", content: `${n.title}${n.body ? ` — ${n.body}` : ""}`, link: n.link,
           status: n.read ? "done" : "open", date: n.created_date,
         })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setItems(merged);
     })();

@@ -30,7 +30,7 @@ export default function FollowFeed() {
         }
         (updates[i] || []).forEach((u) => items.push({ kind: "update", campaign: campaigns[i] || { id: f.campaign_id, title: f.campaign_title, cover_image_url: f.cover_image_url }, update: u, date: u.created_date }));
       });
-      items.sort((a, b) => new Date(b.date) - new Date(a.date));
+      items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setFeed(items.slice(0, 12));
     })();
   }, []);

@@ -2,7 +2,7 @@ import React from "react";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN } from "@/components/brand/brand";
 
-export default function AuthLayout({ icon: Icon, title, subtitle, footer, children }) {
+export default function AuthLayout({ icon: Icon, title, subtitle = undefined, footer = undefined, children = null }) {
   return (
     <div className="min-h-screen deep-space flex items-center justify-center px-4 py-10 pt-safe pb-safe">
       <div className="w-full max-w-md animate-fade-up">
