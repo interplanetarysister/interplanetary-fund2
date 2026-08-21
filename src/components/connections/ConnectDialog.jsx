@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +8,15 @@ import { Loader2 } from "lucide-react";
 import { AUTOMATION_MODES } from "./platformCatalog";
 import CredentialFields from "./CredentialFields";
 
-// Connect (or edit) one destination. Crowdfunding connections link an external
-// campaign page and its totals; social connections link an account and set the
-// AI automation permission for that destination.
+const isValidUrl = (value) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_donor_count: "" });
@@ -22,6 +27,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   useEffect(() => {
     if (!open) return;
+    setError("");
     setForm({
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
@@ -32,26 +38,54 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     });
     setCredentials(existing?.credentials || {});
     (async () => {
-      const me = await base44.auth.me();
-      setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
+      try {
+        const me = await base44.auth.me();
+        setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
+      } catch {
+        setCampaigns([]);
+      }
     })();
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
+    setError("");
+    const url = form.external_url.trim();
+    const mode = form.automation_mode;
+    const externalTotal = Number(form.external_total || 0);
+    const externalDonors = Number(form.external_donor_count || 0);
+
+    if (!form.display_name.trim()) return setError("Please provide a name or handle for this connection.");
+    if (!isValidUrl(url)) return setError("Please enter a valid HTTPS URL.");
+    if (isCrowd && (!Number.isFinite(externalTotal) || externalTotal < 0 || !Number.isFinite(externalDonors) || externalDonors < 0)) {
+      return setError("External totals and donor counts must be zero or greater.");
+    }
+    if (mode !== "manual" && !aiAuthorized) {
+      return setError("AI Publishing Authorization is required before enabling automation.");
+    }
+    if (platform.id === "bluesky" && (!credentials.bluesky_handle || !credentials.bluesky_app_password)) {
+      return setError("Bluesky handle and app password are required for direct publishing.");
+    }
+    if (platform.id === "mastodon" && (!credentials.mastodon_instance || !credentials.mastodon_access_token)) {
+      return setError("Mastodon instance and access token are required for direct publishing.");
+    }
+    if (platform.id === "kofi" && !credentials.kofi_verification_token) {
+      return setError("Ko-fi verification token is required for live donation sync.");
+    }
+
     setSaving(true);
     const now = new Date().toISOString();
     const data = {
       platform: platform.id,
       kind: platform.kind,
-      display_name: form.display_name,
-      external_url: form.external_url,
+      display_name: form.display_name.trim(),
+      external_url: url,
       campaign_id: form.campaign_id || undefined,
-      automation_mode: form.automation_mode,
+      automation_mode: mode,
       credentials,
-      external_total: isCrowd ? Number(form.external_total) || 0 : 0,
-      external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
+      external_total: isCrowd ? externalTotal : 0,
+      external_donor_count: isCrowd ? externalDonors : 0,
       status: "connected",
       last_synced: now,
       last_error: "",
@@ -103,11 +137,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Raised there ($)</Label>
-                <Input type="number" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
+                <Input type="number" min="0" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
               </div>
               <div className="space-y-1.5">
                 <Label>Donors there</Label>
-                <Input type="number" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
+                <Input type="number" min="0" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
               </div>
             </div>
           )}
@@ -127,7 +161,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
                 : "Accept the AI Publishing Authorization above to enable automation options."}
             </p>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
           <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
           </Button>
