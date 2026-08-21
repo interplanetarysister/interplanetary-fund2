@@ -7,11 +7,15 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { campaign_id, subject, content, comm_type, audience, channels, ai_generated } = await req.json();
-    if (!subject || !content || !channels || channels.length === 0) {
+    if (!subject || !content || !Array.isArray(channels) || channels.length === 0) {
       return Response.json({ error: 'Subject, content and at least one channel are required' }, { status: 400 });
     }
+    const allowedChannels = ['email', 'in_app'];
+    if (channels.some((channel) => !allowedChannels.includes(channel))) {
+      return Response.json({ error: 'Unsupported communication channel.' }, { status: 400 });
+    }
 
-    // Only allow messaging donors of campaigns the sender owns
+    // Only allow messaging donors of campaigns the sender owns.
     const myCampaigns = await base44.entities.Campaign.filter({ created_by_id: user.id });
     const myIds = myCampaigns.map((c) => c.id);
     if (campaign_id && !myIds.includes(campaign_id)) {
@@ -22,7 +26,7 @@ export default async function(req) {
       return Response.json({ error: 'You have no campaigns yet' }, { status: 400 });
     }
 
-    // Resolve audience
+    // Resolve audience.
     const donations = await base44.asServiceRole.entities.Donation.filter({ campaign_id: { $in: campaignIds } });
     let pool = donations;
     if (audience === 'recurring_donors') {
@@ -33,7 +37,7 @@ export default async function(req) {
       ? await base44.asServiceRole.entities.User.filter({ id: { $in: donorIds } })
       : [];
 
-    // Deliver, respecting each recipient's consent preferences
+    // Deliver only through channels the recipient has not disabled.
     let emailCount = 0;
     const notifications = [];
     for (const r of recipients) {
@@ -65,7 +69,6 @@ export default async function(req) {
       await base44.asServiceRole.entities.Notification.bulkCreate(notifications);
     }
 
-    // Record in the communication history
     const campaign = campaign_id ? myCampaigns.find((c) => c.id === campaign_id) : null;
     const message = await base44.entities.Message.create({
       campaign_id: campaign_id || '',
