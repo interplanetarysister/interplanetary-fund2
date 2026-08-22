@@ -1,10 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 
-// Publishes an approved DistributedPost. Where the platform supports direct
-// posting with the owner's credentials (Bluesky, Mastodon), it publishes for
-// real; otherwise it returns manual=true so the UI hands the owner the
-// finished content to post themselves — never pretending an API exists.
+// Publishes only owner-approved posts through an explicitly auto-authorized connection.
+// Unsupported/manual destinations return manual=true so the UI can hand the owner
+// finished content without pretending an API exists.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -14,30 +13,45 @@ export default async function(req) {
     const { post_id } = await req.json();
     if (!post_id) return Response.json({ error: 'Missing post_id' }, { status: 400 });
 
-    // User-scoped read — RLS guarantees the post belongs to the caller.
     const post = await base44.entities.DistributedPost.get(post_id).catch(() => null);
     if (!post) return Response.json({ error: 'Post not found' }, { status: 404 });
+    if (post.created_by_id !== user.id && user.role !== 'admin') {
+      return Response.json({ error: 'You do not have permission to publish this post.' }, { status: 403 });
+    }
+
+    if (post.status !== 'approved' && post.status !== 'scheduled') {
+      return Response.json({ error: 'Post must be approved before publishing.' }, { status: 409 });
+    }
+
     const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
     if (!connection) return Response.json({ error: 'Connection no longer exists' }, { status: 404 });
+    if (connection.created_by_id !== user.id && user.role !== 'admin') {
+      return Response.json({ error: 'You do not have permission to use this connection.' }, { status: 403 });
+    }
+    if (connection.platform !== post.platform) {
+      return Response.json({ error: 'Post destination does not match its connection.' }, { status: 409 });
+    }
 
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
+    if (!text) return Response.json({ error: 'Post content is empty.' }, { status: 400 });
 
-    if (!canAutoPublish(connection)) {
+    if (!canAutoPublish(connection, user)) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
     }
 
     try {
       const { url } = await publishThroughConnection(connection, text);
+      const publishedAt = new Date().toISOString();
       const updated = await base44.entities.DistributedPost.update(post_id, {
         status: 'published',
-        published_at: new Date().toISOString(),
+        published_at: publishedAt,
         external_post_url: url,
         error: '',
       });
       await base44.entities.PlatformConnection.update(connection.id, {
-        last_synced: new Date().toISOString(),
-        history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
+        last_synced: publishedAt,
+        history: [...(connection.history || []), { at: publishedAt, event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
       });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {

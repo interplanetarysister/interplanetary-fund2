@@ -9,35 +9,62 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
-import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-react";
+import { DollarSign, Users, Flame, PlusCircle, RefreshCw, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
     (async () => {
-      const me = await base44.auth.me();
-      setUser(me);
-      const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
-      setCampaigns(mine);
+      setError(null);
+      try {
+        const me = await base44.auth.me();
+        if (!me) throw new Error("Your session has expired. Please sign in again.");
+        const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
+        if (active) {
+          setUser(me);
+          setCampaigns(Array.isArray(mine) ? mine : []);
+        }
+      } catch (e) {
+        if (active) {
+          setCampaigns([]);
+          setError(e?.message || "We couldn't load your fundraising dashboard.");
+        }
+      }
     })();
+    return () => { active = false; };
   }, [refreshKey]);
 
-  if (!campaigns) {
+  if (campaigns === null) {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={4} /></div>;
   }
 
   const needsOnboarding = !user?.onboarding_completed;
-
-  const totalRaised = campaigns.reduce((s, c) => s + (c.raised_amount || 0), 0);
-  const totalDonors = campaigns.reduce((s, c) => s + (c.donor_count || 0), 0);
+  const totalRaised = campaigns.reduce((s, c) => s + (Number(c.raised_amount) || 0), 0);
+  const totalDonors = campaigns.reduce((s, c) => s + (Number(c.donor_count) || 0), 0);
   const active = campaigns.filter((c) => c.status === "active").length;
 
   return (
     <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <BrandHero firstName={user?.full_name ? user.full_name.split(" ")[0] : ""} />
+
+      {error && (
+        <div role="alert" className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="font-medium">Dashboard data couldn't be loaded.</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setRefreshKey((k) => k + 1)} className="shrink-0 rounded-xl">
+              <RefreshCw className="w-4 h-4 mr-2" /> Retry
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
         <div>
@@ -54,9 +81,7 @@ export default function Dashboard() {
       {needsOnboarding && (
         <Link to="/onboarding" className="block mb-6">
           <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-violet-600 text-white p-4">
-            <span className="shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </span>
+            <span className="shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center"><Sparkles className="w-5 h-5" /></span>
             <div className="flex-1">
               <p className="font-medium text-sm">Set up your intelligent fundraising OS</p>
               <p className="text-xs text-white/80">Connect platforms, activate the AI Growth Engine, and automate your fundraising.</p>
@@ -82,9 +107,7 @@ export default function Dashboard() {
               <Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90">Start your own Interplanetary Fund</Button></Link>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {campaigns.map((c) => <CampaignCard key={c.id} campaign={c} />)}
-            </div>
+            <div className="grid sm:grid-cols-2 gap-4">{campaigns.map((c) => <CampaignCard key={c.id} campaign={c} />)}</div>
           )}
         </div>
         <div>
