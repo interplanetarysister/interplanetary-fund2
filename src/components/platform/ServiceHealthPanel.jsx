@@ -38,25 +38,33 @@ function sanitizeError(error) {
 export default function ServiceHealthPanel() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
+  const [settling, setSettling] = useState(false);
   const runningRef = useRef(false);
+  const inFlightChecksRef = useRef(0);
 
   const run = useCallback(async (log) => {
-    if (runningRef.current) return;
+    if (runningRef.current || inFlightChecksRef.current > 0) return;
     runningRef.current = true;
     setRunning(true);
     const runId = createIdempotencyKey("platform-health-check", new Date().toISOString());
+    inFlightChecksRef.current = services.length;
+    setSettling(false);
+
     try {
       const out = await Promise.all(
         services.map(async (s) => {
           const start = performance.now();
           try {
-            // Base44 SDK calls do not currently expose AbortSignal cancellation here.
-            // The in-flight operation may finish after the UI timeout, but the panel
-            // prevents overlapping runs so repeated checks cannot multiply requests.
+            // Base44 SDK calls do not currently expose AbortSignal cancellation.
+            // The in-flight operation may finish after the UI timeout. We therefore
+            // keep a settling counter and refuse another run until every timed-out
+            // dependency call has actually settled, preventing request accumulation.
             await withTimeout(s.check(), HEALTH_TIMEOUT_MS);
             return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
           } catch (e) {
             return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: sanitizeError(e) };
+          } finally {
+            inFlightChecksRef.current = Math.max(0, inFlightChecksRef.current - 1);
           }
         })
       );
@@ -79,6 +87,7 @@ export default function ServiceHealthPanel() {
     } finally {
       runningRef.current = false;
       setRunning(false);
+      setSettling(inFlightChecksRef.current > 0);
     }
   }, []);
 
@@ -90,6 +99,7 @@ export default function ServiceHealthPanel() {
 
   const healthy = results.filter((r) => r.status === "operational").length;
   const avg = Math.round(results.reduce((s, r) => s + r.latency, 0) / results.length);
+  const healthCheckBlocked = running || settling;
 
   return (
     <div className="space-y-4">
@@ -97,9 +107,10 @@ export default function ServiceHealthPanel() {
         <div>
           <p className="font-display text-3xl text-white">{healthy}/{results.length} operational</p>
           <p className="text-sm text-stone-400 mt-1">Average response time {avg}ms · application services across Base44 and Convex</p>
+          {settling && <p className="text-xs text-amber-300 mt-2">A timed-out dependency is still finishing; another health check will start when it settles.</p>}
         </div>
-        <Button onClick={() => run(true)} disabled={running} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-          {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Run health check
+        <Button onClick={() => run(true)} disabled={healthCheckBlocked} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+          {healthCheckBlocked ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Run health check
         </Button>
       </div>
 
