@@ -3,6 +3,12 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 
 const ALLOWED = new Set(['active', 'paused', 'cancelled']);
+const STRIPE_TERMINAL = new Set(['canceled', 'incomplete_expired']);
+
+function sanitizeError(error) {
+  const message = typeof error?.message === 'string' ? error.message.trim() : '';
+  return message ? message.slice(0, 180) : 'Unable to update recurring donation.';
+}
 
 export default async function(req) {
   try {
@@ -30,26 +36,43 @@ export default async function(req) {
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
     const subscription = await stripe.subscriptions.retrieve(donation.stripe_subscription_id);
-    if (!subscription || ['canceled', 'incomplete_expired'].includes(subscription.status)) {
-      return Response.json({ error: 'The Stripe subscription is already canceled or expired.' }, { status: 409 });
+
+    // Make retries safe when Stripe completed the transition but the local
+    // write was interrupted. Terminal Stripe cancellation is already the
+    // requested state and should reconcile the local record instead of
+    // returning an error that leaves the two systems out of sync.
+    if (subscription.status === 'canceled') {
+      if (recurring_status !== 'cancelled') {
+        return Response.json({ error: 'The Stripe subscription is already canceled.' }, { status: 409 });
+      }
+      await sr.entities.Donation.update(donation.id, { recurring_status: 'cancelled' });
+      return Response.json({ ok: true, donation_id: donation.id, recurring_status: 'cancelled' });
+    }
+
+    if (subscription.status === 'incomplete_expired') {
+      return Response.json({ error: 'The Stripe subscription is expired and cannot be resumed.' }, { status: 409 });
     }
 
     if (recurring_status === 'cancelled') {
       await stripe.subscriptions.cancel(donation.stripe_subscription_id);
     } else if (recurring_status === 'paused') {
-      await stripe.subscriptions.update(donation.stripe_subscription_id, {
-        pause_collection: { behavior: 'void' },
-      });
+      if (!subscription.pause_collection) {
+        await stripe.subscriptions.update(donation.stripe_subscription_id, {
+          pause_collection: { behavior: 'void' },
+        });
+      }
     } else if (recurring_status === 'active') {
-      await stripe.subscriptions.update(donation.stripe_subscription_id, {
-        pause_collection: null,
-      });
+      if (subscription.pause_collection) {
+        await stripe.subscriptions.update(donation.stripe_subscription_id, {
+          pause_collection: null,
+        });
+      }
     }
 
     await sr.entities.Donation.update(donation.id, { recurring_status });
     return Response.json({ ok: true, donation_id: donation.id, recurring_status });
   } catch (error) {
     console.error('updateRecurringDonation error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }
