@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { logPlatformEvent } from "./logPlatformEvent";
-import { sanitizePlatformError } from "@/lib/platform/foundationContracts";
+import { createIdempotencyKey, sanitizePlatformError } from "@/lib/platform/foundationContracts";
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 
 const HEALTH_TIMEOUT_MS = 8000;
@@ -40,12 +40,17 @@ export default function ServiceHealthPanel() {
   const [running, setRunning] = useState(false);
 
   const run = useCallback(async (log) => {
+    if (running) return;
     setRunning(true);
+    const runId = createIdempotencyKey("platform-health-check", new Date().toISOString());
     try {
       const out = await Promise.all(
         services.map(async (s) => {
           const start = performance.now();
           try {
+            // Base44 SDK calls do not currently expose AbortSignal cancellation here.
+            // The in-flight operation may finish after the UI timeout, but the panel
+            // prevents overlapping runs so repeated checks cannot multiply requests.
             await withTimeout(s.check(), HEALTH_TIMEOUT_MS);
             return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
           } catch (e) {
@@ -63,15 +68,16 @@ export default function ServiceHealthPanel() {
             affected_resource: "All operating systems",
             outcome: failed.length ? "warning" : "success",
             details: `${out.length - failed.length}/${out.length} services operational${failed.length ? ` — degraded: ${failed.map((f) => f.name).join(", ")}` : ""}`,
+            idempotency_key: runId,
           });
         } catch (e) {
-          console.error("Health check audit logging failed:", e);
+          console.error("Health check audit logging failed:", sanitizeError(e));
         }
       }
     } finally {
       setRunning(false);
     }
-  }, []);
+  }, [running]);
 
   useEffect(() => { run(false); }, [run]);
 
