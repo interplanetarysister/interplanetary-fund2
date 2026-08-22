@@ -18,7 +18,7 @@ const EVENT_BY_CATEGORY = Object.freeze({
  * @property {string} affected_resource
  * @property {string} [outcome]
  * @property {string} [details]
- * @property {string} [idempotency_key]
+ * @property {string} [idempotency_key] Stable key for the logical side effect/event. Callers that may retry must provide one.
  */
 
 /** @param {PlatformEventLogInput} input */
@@ -38,13 +38,16 @@ export async function logPlatformEvent({
   const normalizedResource = String(affected_resource || "platform");
   const normalizedOutcome = String(outcome || "success");
   const normalizedDetails = details ? String(details) : "";
+  if (!idempotency_key || typeof idempotency_key !== "string") {
+    throw new Error("Platform event logging requires a stable idempotency key");
+  }
 
   const event = createPlatformEvent({
     name: eventName,
     actorId,
     resourceType: "platform",
     resourceId: normalizedResource,
-    idempotencyKey: idempotency_key || createIdempotencyKey("platform-event", actorId, eventName, Date.now()),
+    idempotencyKey: createIdempotencyKey(idempotency_key),
     payload: {
       action: normalizedAction,
       category: String(category),
