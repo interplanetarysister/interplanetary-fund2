@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Image } from "@/components/ui/image";
-import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, Megaphone, TrendingUp, Flag } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
