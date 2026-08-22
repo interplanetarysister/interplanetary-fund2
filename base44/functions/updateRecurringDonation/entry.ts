@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import Stripe from 'npm:stripe@17.7.0';
+import { secrets } from 'base44:runtime';
 
 const ALLOWED = new Set(['active', 'paused', 'cancelled']);
 
@@ -21,6 +23,27 @@ export default async function(req) {
     }
     if (!donation.is_recurring) {
       return Response.json({ error: 'This donation is not recurring.' }, { status: 400 });
+    }
+    if (!donation.stripe_subscription_id) {
+      return Response.json({ error: 'This recurring donation is missing its Stripe subscription reference.' }, { status: 409 });
+    }
+
+    const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
+    const subscription = await stripe.subscriptions.retrieve(donation.stripe_subscription_id);
+    if (!subscription || ['canceled', 'incomplete_expired'].includes(subscription.status)) {
+      return Response.json({ error: 'The Stripe subscription is already canceled or expired.' }, { status: 409 });
+    }
+
+    if (recurring_status === 'cancelled') {
+      await stripe.subscriptions.cancel(donation.stripe_subscription_id);
+    } else if (recurring_status === 'paused') {
+      await stripe.subscriptions.update(donation.stripe_subscription_id, {
+        pause_collection: { behavior: 'void' },
+      });
+    } else if (recurring_status === 'active') {
+      await stripe.subscriptions.update(donation.stripe_subscription_id, {
+        pause_collection: null,
+      });
     }
 
     await sr.entities.Donation.update(donation.id, { recurring_status });
