@@ -24,7 +24,7 @@ function withTimeout(promise, timeoutMs) {
     promise,
     new Promise((_, reject) => {
       const error = new Error("Health check timed out");
-      error.code = "HEALTH_CHECK_TIMEOUT";
+      /** @type {Error & {code?: string}} */ (error).code = "HEALTH_CHECK_TIMEOUT";
       setTimeout(() => reject(error), timeoutMs);
     }),
   ]);
