@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Loader2, Wallet, ShieldCheck, Clock, Building2 } from "lucide-react";
+import { Loader2, Wallet, ShieldCheck, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Image } from "@/components/ui/image";
