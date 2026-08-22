@@ -28,8 +28,6 @@ export default async function(req) {
       const session = event.data.object;
       const m = session.metadata || {};
 
-      // Subscription activation — derive entitlement from the actual Stripe price,
-      // never from client-controlled metadata.
       if (session.mode === 'subscription') {
         if (m.user_id && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription);
@@ -51,7 +49,6 @@ export default async function(req) {
         return Response.json({ received: true });
       }
 
-      // Donation checkout.
       if (m.campaign_id) {
         const existing = await base44.asServiceRole.entities.Donation.filter({ stripe_session_id: session.id });
         if (existing.length === 0) {
@@ -66,7 +63,7 @@ export default async function(req) {
             donor_name: m.donor_name || 'Anonymous',
             message: m.message || '',
             is_recurring: isRecurring,
-            ...(isRecurring ? { recurring_status: 'active' } : {}),
+            ...(isRecurring ? { recurring_status: 'active', stripe_subscription_id: session.subscription || undefined } : {}),
             donor_user_id: m.donor_user_id,
             stripe_session_id: session.id,
           });
@@ -88,16 +85,13 @@ export default async function(req) {
           }
         }
       }
-    }
-
-    // ---- AI subscription lifecycle: renewal paid, status change, cancellation ----
-    else if (event.type === 'invoice.paid') {
+    } else if (event.type === 'invoice.paid') {
       const invoice = event.data.object;
       if (invoice.customer) {
         const users = await base44.asServiceRole.entities.User.filter({ stripe_customer_id: invoice.customer });
         const u = users && users[0];
         if (u) {
-          const periodEnd = invoice.lines && invoice.lines.data && invoice.lines.data[0] && invoice.lines.data[0].period && invoice.lines.data[0].period.end;
+          const periodEnd = invoice.lines?.data?.[0]?.period?.end;
           await base44.asServiceRole.entities.User.update(u.id, {
             subscription_status: 'active',
             ...(periodEnd ? { subscription_renews_at: new Date(periodEnd * 1000).toISOString() } : {}),
@@ -111,7 +105,7 @@ export default async function(req) {
         const u = users && users[0];
         if (u) {
           const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
-          const item = sub.items && sub.items.data && sub.items.data[0];
+          const item = sub.items?.data?.[0];
           const priceId = item?.price?.id;
           const entitlement = PRICE_ENTITLEMENTS[priceId];
           await base44.asServiceRole.entities.User.update(u.id, {
