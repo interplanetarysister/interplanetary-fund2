@@ -1,5 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
+const ALLOWED_CHANNELS = new Set(['email', 'in_app']);
+const ALLOWED_COMM_TYPES = new Set(['update', 'thank_you', 'announcement', 'milestone', 'volunteer', 'sponsor']);
+const ALLOWED_AUDIENCES = new Set(['campaign_donors', 'all_donors', 'recurring_donors']);
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -7,8 +11,17 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { campaign_id, subject, content, comm_type, audience, channels, ai_generated } = await req.json();
-    if (!subject || !content || !channels || channels.length === 0) {
-      return Response.json({ error: 'Subject, content and at least one channel are required' }, { status: 400 });
+    const normalizedChannels = Array.isArray(channels) ? [...new Set(channels)] : [];
+    if (
+      !subject ||
+      !content ||
+      normalizedChannels.length === 0 ||
+      normalizedChannels.some((channel) => !ALLOWED_CHANNELS.has(channel)) ||
+      (comm_type !== undefined && !ALLOWED_COMM_TYPES.has(comm_type)) ||
+      (audience !== undefined && !ALLOWED_AUDIENCES.has(audience)) ||
+      (ai_generated !== undefined && typeof ai_generated !== 'boolean')
+    ) {
+      return Response.json({ error: 'Invalid communication request.' }, { status: 400 });
     }
 
     // Only allow messaging donors of campaigns the sender owns
@@ -38,7 +51,7 @@ export default async function(req) {
     const notifications = [];
     for (const r of recipients) {
       const prefs = r.comm_prefs || {};
-      if (channels.includes('email') && prefs.email_updates !== false && r.email) {
+      if (normalizedChannels.includes('email') && prefs.email_updates !== false && r.email) {
         try {
           await base44.asServiceRole.integrations.Core.SendEmail({
             to: r.email,
@@ -48,10 +61,10 @@ export default async function(req) {
           });
           emailCount++;
         } catch (e) {
-          console.error('Email delivery failed for recipient:', e.message);
+          console.error('Email delivery failed for recipient:', e instanceof Error ? e.message : 'unknown');
         }
       }
-      if (channels.includes('in_app') && prefs.in_app_updates !== false) {
+      if (normalizedChannels.includes('in_app') && prefs.in_app_updates !== false) {
         notifications.push({
           user_id: r.id,
           title: subject,
@@ -78,13 +91,13 @@ export default async function(req) {
       content,
       comm_type: comm_type || 'update',
       audience: audience || 'campaign_donors',
-      channels,
+      channels: normalizedChannels,
       status: 'sent',
       sent_at: new Date().toISOString(),
       recipient_count: recipients.length,
       email_count: emailCount,
       in_app_count: notifications.length,
-      ai_generated: !!ai_generated,
+      ai_generated: ai_generated === true,
     });
 
     return Response.json({
@@ -95,7 +108,7 @@ export default async function(req) {
       message_id: message.id,
     });
   } catch (error) {
-    console.error('sendCommunication error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('sendCommunication error:', error instanceof Error ? error.message : 'unknown');
+    return Response.json({ error: 'Unable to send communication.' }, { status: 500 });
   }
 }
