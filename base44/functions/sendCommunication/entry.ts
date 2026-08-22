@@ -67,8 +67,11 @@ export default async function(req) {
 
     // Record communication history with service-role access so the audit entity
     // cannot be forged through the client-facing Message.create endpoint.
+    // Preserve the authenticated sender as the record owner so existing read/update
+    // rules continue to expose legitimate history to the campaign owner.
     const campaign = campaign_id ? myCampaigns.find((c) => c.id === campaign_id) : null;
     const message = await base44.asServiceRole.entities.Message.create({
+      created_by_id: user.id,
       campaign_id: campaign_id || '',
       campaign_title: campaign ? campaign.title : 'All my campaigns',
       subject,
