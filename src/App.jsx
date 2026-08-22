@@ -3,7 +3,7 @@ import TermsAcceptance from "@/components/TermsAcceptance";
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -44,6 +44,28 @@ import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
 import FacebookGroups from './pages/FacebookGroups';
 
+const PUBLIC_INTEGRATION_PATHS = new Set(["/oauth/consent", "/mcp/consent"]);
+
+const PublicIntegrationRoutes = () => (
+  <Routes>
+    <Route path="/oauth/consent" element={<OAuthConsent />} />
+    <Route path="/mcp/consent" element={<OAuthConsent />} />
+  </Routes>
+);
+
+const RoutedApp = () => {
+  const { pathname } = useLocation();
+
+  // OAuth/MCP consent is an integration callback surface. It performs its own
+  // server-side session/handle validation and must not be intercepted by the
+  // normal authenticated-app redirect before that validation can run.
+  if (PUBLIC_INTEGRATION_PATHS.has(pathname)) {
+    return <PublicIntegrationRoutes />;
+  }
+
+  return <AuthenticatedApp />;
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
@@ -75,8 +97,6 @@ const AuthenticatedApp = () => {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/oauth/consent" element={<OAuthConsent />} />
-      <Route path="/mcp/consent" element={<OAuthConsent />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
       {/* Public campaign page — anyone arriving from a shared link can read the
@@ -131,11 +151,11 @@ function App() {
 
   return (
     <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
+      <QueryClientProvider clientName={queryClientInstance}>
         <Router>
           <ScrollToTop />
           <TermsAcceptance>
-            <AuthenticatedApp />
+            <RoutedApp />
           </TermsAcceptance>
         </Router>
         <Toaster />
