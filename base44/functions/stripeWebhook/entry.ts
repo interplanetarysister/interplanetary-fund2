@@ -1,13 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
-
-const PRICE_ENTITLEMENTS = {
-  price_1Tz8iSEkntycHB4NlQlYd0Gs: { tier: 'basic', interval: 'monthly' },
-  price_1Tz8iSEkntycHB4N8J7EXq42: { tier: 'basic', interval: 'annual' },
-  price_1Tz8iSEkntycHB4NESNtjyOx: { tier: 'outreach', interval: 'monthly' },
-  price_1Tz8iSEkntycHB4N5iujmlJZ: { tier: 'outreach', interval: 'annual' },
-};
+import { getSubscriptionEntitlement } from '../../shared/subscriptionCatalog.ts';
 
 export default async function(req) {
   try {
@@ -32,10 +26,9 @@ export default async function(req) {
         if (m.user_id && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription);
           const item = subscription.items?.data?.[0];
-          const priceId = item?.price?.id;
-          const entitlement = PRICE_ENTITLEMENTS[priceId];
+          const entitlement = getSubscriptionEntitlement(item?.price?.id);
           if (!entitlement) {
-            console.error('Unrecognized subscription price:', priceId);
+            console.error('Unrecognized subscription price:', item?.price?.id);
             return Response.json({ error: 'Unrecognized subscription price' }, { status: 500 });
           }
 
@@ -106,12 +99,9 @@ export default async function(req) {
         if (u) {
           const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
           const item = sub.items?.data?.[0];
-          const priceId = item?.price?.id;
-          const entitlement = PRICE_ENTITLEMENTS[priceId];
+          const entitlement = getSubscriptionEntitlement(item?.price?.id);
           if (!entitlement) {
-            // Fail closed and ask Stripe to retry after the server catalog is corrected.
-            // Never grant or preserve an entitlement based on an unrecognized price.
-            console.error('Unrecognized subscription price on update:', priceId, 'subscription:', sub.id);
+            console.error('Unrecognized subscription price on update:', item?.price?.id, 'subscription:', sub.id);
             return Response.json({ error: 'Unrecognized subscription price; retry required' }, { status: 500 });
           }
 
