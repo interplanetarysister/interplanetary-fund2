@@ -35,6 +35,21 @@
     },
     "details": {
       "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "event_version": {
+      "type": "number"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "idempotency_key": {
+      "type": "string"
+    },
+    "occurred_at": {
+      "type": "string"
     }
   },
   "required": [

@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { logPlatformEvent } from "./logPlatformEvent";
+import { createIdempotencyKey, sanitizePlatformError } from "@/lib/platform/foundationContracts";
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
+
+const HEALTH_TIMEOUT_MS = 8000;
 
 const services = [
   { name: "Identity & Auth", check: () => base44.auth.me() },
@@ -16,34 +19,84 @@ const services = [
   { name: "Platform Intelligence", check: () => base44.entities.ExecutiveReport.list("-created_date", 1) },
 ];
 
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      const error = new Error("Health check timed out");
+      /** @type {Error & {code?: string}} */ (error).code = "HEALTH_CHECK_TIMEOUT";
+      setTimeout(() => reject(error), timeoutMs);
+    }),
+  ]);
+}
+
+function sanitizeError(error) {
+  if (error?.code === "HEALTH_CHECK_TIMEOUT") return "Dependency timed out";
+  return sanitizePlatformError(error);
+}
+
 export default function ServiceHealthPanel() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
+  const [settling, setSettling] = useState(false);
+  const runningRef = useRef(false);
+  const inFlightChecksRef = useRef(0);
 
   const run = useCallback(async (log) => {
+    if (runningRef.current || inFlightChecksRef.current > 0) return;
+    runningRef.current = true;
     setRunning(true);
-    const out = await Promise.all(
-      services.map(async (s) => {
-        const start = performance.now();
+    const runId = createIdempotencyKey("platform-health-check", new Date().toISOString());
+    inFlightChecksRef.current = services.length;
+    setSettling(false);
+
+    try {
+      const out = await Promise.all(
+        services.map(async (s) => {
+          const start = performance.now();
+          // Base44 SDK calls do not currently expose AbortSignal cancellation.
+          // Track the underlying promise separately from the UI timeout so a timed-out
+          // request keeps the run locked until it actually settles, preventing request
+          // accumulation across repeated degraded health checks.
+          const trackedCheck = Promise.resolve().then(() => s.check());
+          trackedCheck.then(
+            () => {
+              inFlightChecksRef.current = Math.max(0, inFlightChecksRef.current - 1);
+              setSettling(inFlightChecksRef.current > 0);
+            },
+            () => {
+              inFlightChecksRef.current = Math.max(0, inFlightChecksRef.current - 1);
+              setSettling(inFlightChecksRef.current > 0);
+            },
+          );
+          try {
+            await withTimeout(trackedCheck, HEALTH_TIMEOUT_MS);
+            return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
+          } catch (e) {
+            return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: sanitizeError(e) };
+          }
+        })
+      );
+      setResults(out);
+      if (log) {
+        const failed = out.filter((r) => r.status !== "operational");
         try {
-          await s.check();
-          return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
+          await logPlatformEvent({
+            action: "Health check executed",
+            category: "health_check",
+            affected_resource: "All operating systems",
+            outcome: failed.length ? "warning" : "success",
+            details: `${out.length - failed.length}/${out.length} services operational${failed.length ? ` — degraded: ${failed.map((f) => f.name).join(", ")}` : ""}`,
+            idempotency_key: runId,
+          });
         } catch (e) {
-          return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: e.message };
+          console.error("Health check audit logging failed:", sanitizeError(e));
         }
-      })
-    );
-    setResults(out);
-    setRunning(false);
-    if (log) {
-      const failed = out.filter((r) => r.status !== "operational");
-      await logPlatformEvent({
-        action: "Health check executed",
-        category: "health_check",
-        affected_resource: "All operating systems",
-        outcome: failed.length ? "warning" : "success",
-        details: `${out.length - failed.length}/${out.length} services operational${failed.length ? ` — degraded: ${failed.map((f) => f.name).join(", ")}` : ""}`,
-      });
+      }
+    } finally {
+      runningRef.current = false;
+      setRunning(false);
+      setSettling(inFlightChecksRef.current > 0);
     }
   }, []);
 
@@ -55,16 +108,18 @@ export default function ServiceHealthPanel() {
 
   const healthy = results.filter((r) => r.status === "operational").length;
   const avg = Math.round(results.reduce((s, r) => s + r.latency, 0) / results.length);
+  const healthCheckBlocked = running || settling;
 
   return (
     <div className="space-y-4">
       <div className="bg-slate-900 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-display text-3xl text-white">{healthy}/{results.length} operational</p>
-          <p className="text-sm text-stone-400 mt-1">Average response time {avg}ms · infrastructure managed by Base44</p>
+          <p className="text-sm text-stone-400 mt-1">Average response time {avg}ms · application services across Base44 and Convex</p>
+          {settling && <p className="text-xs text-amber-300 mt-2">A timed-out dependency is still finishing; another health check will start when it settles.</p>}
         </div>
-        <Button onClick={() => run(true)} disabled={running} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
-          {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Run health check
+        <Button onClick={() => run(true)} disabled={healthCheckBlocked} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+          {healthCheckBlocked ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Run health check
         </Button>
       </div>
 

@@ -15,19 +15,40 @@ import { Loader2, ShieldAlert } from "lucide-react";
 
 export default function Platform() {
   const [user, setUser] = useState(null);
+  const [authError, setAuthError] = useState(false);
 
   useEffect(() => {
-    base44.auth.me().then(setUser);
+    let active = true;
+    base44.auth.me()
+      .then((currentUser) => {
+        if (active) setUser(currentUser);
+      })
+      .catch(() => {
+        if (active) setAuthError(true);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
+  if (authError) {
+    return (
+      <div className="max-w-md mx-auto text-center py-24 px-6" role="alert">
+        <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" aria-hidden="true" />
+        <h1 className="font-display text-2xl text-stone-900 mt-4">Platform console unavailable</h1>
+        <p className="text-stone-500 mt-2">We could not verify your administrator session. Please sign in again and retry.</p>
+      </div>
+    );
+  }
+
   if (!user) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-label="Loading platform console"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   if (user.role !== "admin") {
     return (
       <div className="max-w-md mx-auto text-center py-24 px-6">
-        <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" />
+        <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" aria-hidden="true" />
         <h1 className="font-display text-2xl text-stone-900 mt-4">Administrators only</h1>
         <p className="text-stone-500 mt-2">The platform foundation console is restricted to platform administrators.</p>
       </div>

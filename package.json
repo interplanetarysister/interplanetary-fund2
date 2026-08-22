@@ -9,6 +9,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "verify:platform-foundation": "node scripts/verify-platform-foundation.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
