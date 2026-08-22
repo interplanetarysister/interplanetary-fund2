@@ -27,6 +27,8 @@ jobs:
         run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
       - name: Platform foundation verification
         run: npm run verify:platform-foundation
       - name: Production build
