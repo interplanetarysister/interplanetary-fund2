@@ -3,6 +3,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 const ALLOWED_CHANNELS = new Set(['email', 'in_app']);
 const ALLOWED_COMM_TYPES = new Set(['update', 'thank_you', 'announcement', 'milestone', 'volunteer', 'sponsor']);
 const ALLOWED_AUDIENCES = new Set(['campaign_donors', 'all_donors', 'recurring_donors']);
+const MAX_SUBJECT_LENGTH = 200;
+const MAX_CONTENT_LENGTH = 20_000;
+const MAX_CHANNELS = 2;
 
 export default async function(req) {
   try {
@@ -12,11 +15,19 @@ export default async function(req) {
 
     const { campaign_id, subject, content, comm_type, audience, channels, ai_generated } = await req.json();
     const normalizedChannels = Array.isArray(channels) ? [...new Set(channels)] : [];
+    const validCampaignId = campaign_id === undefined || typeof campaign_id === 'string';
+    const validSubject = typeof subject === 'string' && subject.trim().length > 0 && subject.length <= MAX_SUBJECT_LENGTH;
+    const validContent = typeof content === 'string' && content.trim().length > 0 && content.length <= MAX_CONTENT_LENGTH;
+    const validChannels =
+      normalizedChannels.length > 0 &&
+      normalizedChannels.length <= MAX_CHANNELS &&
+      normalizedChannels.every((channel) => typeof channel === 'string' && ALLOWED_CHANNELS.has(channel));
+
     if (
-      !subject ||
-      !content ||
-      normalizedChannels.length === 0 ||
-      normalizedChannels.some((channel) => !ALLOWED_CHANNELS.has(channel)) ||
+      !validCampaignId ||
+      !validSubject ||
+      !validContent ||
+      !validChannels ||
       (comm_type !== undefined && !ALLOWED_COMM_TYPES.has(comm_type)) ||
       (audience !== undefined && !ALLOWED_AUDIENCES.has(audience)) ||
       (ai_generated !== undefined && typeof ai_generated !== 'boolean')
