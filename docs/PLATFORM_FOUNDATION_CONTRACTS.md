@@ -41,7 +41,7 @@ Current registered application events are:
 - `platform.recovery.executed`
 - `platform.event.recorded`
 
-The authoritative Convex event/job paths still require repository-level integration verification before this contract can be called fully enforced across the entire platform.
+The authoritative Convex event/job paths are implemented in the paired backend Feature #10 branch and must pass independent runtime/CI verification before this contract can be called fully enforced across the entire platform.
 
 Event consumers must be safe to receive the same event more than once. They must not treat delivery order as guaranteed unless the event contract explicitly says so.
 
@@ -70,7 +70,7 @@ User-facing platform errors are classified into a small allowlisted set of safe 
 
 ## Environment boundary
 
-Development, preview/test, and production credentials/data must never be mixed. Secrets remain in the runtime secret store and are never committed to source. Production webhook/signing secrets must not be used by local or preview workflows.
+Development, preview/test, and production credentials/data must never be mixed. Secrets remain in the runtime secret store and are never committed to source. The Base44-to-Convex platform-event bridge URL is supplied through `CONVEX_PLATFORM_EVENT_URL`, must be HTTPS, and must point to the environment's matching Convex `/platformEvent` action. The bridge secret is supplied separately through `CONVEX_PLATFORM_BRIDGE_SECRET`; Convex uses the matching `PLATFORM_BRIDGE_SECRET`. Production webhook/signing secrets must not be used by local or preview workflows.
 
 ## Observability contract
 
@@ -86,7 +86,7 @@ Health checks use bounded UI waits so one unavailable dependency cannot hang the
 
 ## Verification
 
-Run `npm run verify:platform-foundation` to exercise the event registry, payload validation, safe error classification, retry idempotency requirement, retry ceiling behavior, and successful retry path.
+Run `npm run verify:platform-foundation` to exercise the event registry, payload validation, safe error classification, retry idempotency requirement, retry ceiling behavior, and successful retry path. Runtime verification must additionally confirm the configured bridge URL/secret pair reaches the intended Convex deployment and that duplicate concurrent event/job requests are handled transactionally.
 
 ## Change discipline
 
