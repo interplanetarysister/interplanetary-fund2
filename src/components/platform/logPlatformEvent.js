@@ -1,7 +1,7 @@
 import { base44 } from "@/api/base44Client";
 import { createIdempotencyKey, createPlatformEvent } from "@/lib/platform/foundationContracts";
 
-export async function logPlatformEvent({ action, category, affected_resource, outcome = "success", details }) {
+export async function logPlatformEvent({ action, category, affected_resource, outcome = "success", details, idempotency_key }) {
   const me = await base44.auth.me();
   const actorId = me.id || me.email;
   const event = createPlatformEvent({
@@ -9,7 +9,7 @@ export async function logPlatformEvent({ action, category, affected_resource, ou
     actorId,
     resourceType: "platform",
     resourceId: "all-operating-systems",
-    idempotencyKey: createIdempotencyKey("platform-health-check", actorId, category, affected_resource),
+    idempotencyKey: idempotency_key || createIdempotencyKey("platform-health-check", actorId, Date.now()),
     payload: {
       action: String(action || "Platform event"),
       category: String(category || "platform"),
