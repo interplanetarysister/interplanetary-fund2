@@ -11,7 +11,25 @@ const EVENT_BY_CATEGORY = Object.freeze({
   other: "platform.event.recorded",
 });
 
-export async function logPlatformEvent({ action, category = "other", affected_resource, outcome = "success", details, idempotency_key }) {
+/**
+ * @typedef {Object} PlatformEventLogInput
+ * @property {string} action
+ * @property {string} [category]
+ * @property {string} affected_resource
+ * @property {string} [outcome]
+ * @property {string} [details]
+ * @property {string} [idempotency_key]
+ */
+
+/** @param {PlatformEventLogInput} input */
+export async function logPlatformEvent({
+  action,
+  category = "other",
+  affected_resource,
+  outcome = "success",
+  details,
+  idempotency_key,
+}) {
   const me = await base44.auth.me();
   const actorId = me.id || me.email;
   const eventName = EVENT_BY_CATEGORY[category] || EVENT_BY_CATEGORY.other;
@@ -29,23 +47,18 @@ export async function logPlatformEvent({ action, category = "other", affected_re
     },
   });
 
-  let authoritative = null;
-  try {
-    authoritative = await base44.functions.invoke("recordPlatformEvent", {
-      eventId: event.id,
-      name: event.name,
-      actorId: event.actor_id,
-      resourceType: event.resource_type,
-      resourceId: event.resource_id,
-      correlationId: event.correlation_id,
-      idempotencyKey: event.idempotency_key,
-      occurredAt: event.occurred_at,
-      version: event.version,
-      payload: JSON.stringify(event.payload),
-    });
-  } catch (error) {
-    console.warn("Authoritative Convex platform event sync failed:", error);
-  }
+  const authoritative = await base44.functions.invoke("recordPlatformEvent", {
+    eventId: event.id,
+    name: event.name,
+    actorId: event.actor_id,
+    resourceType: event.resource_type,
+    resourceId: event.resource_id,
+    correlationId: event.correlation_id,
+    idempotencyKey: event.idempotency_key,
+    occurredAt: event.occurred_at,
+    version: event.version,
+    payload: JSON.stringify(event.payload),
+  });
 
   const localRecord = await base44.entities.PlatformEvent.create({
     action,
