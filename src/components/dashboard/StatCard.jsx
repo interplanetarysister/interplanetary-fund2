@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function StatCard({ label, value, icon: Icon, hint }) {
+export default function StatCard({ label, value, icon: Icon, hint = undefined }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">

@@ -3,7 +3,7 @@ import TermsAcceptance from "@/components/TermsAcceptance";
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -15,6 +15,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import OAuthConsent from './pages/OAuthConsent';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Discover from './pages/Discover';
@@ -42,6 +43,28 @@ import EmbedCampaign from './pages/EmbedCampaign';
 import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
 import FacebookGroups from './pages/FacebookGroups';
+
+const PUBLIC_INTEGRATION_PATHS = new Set(["/oauth/consent", "/mcp/consent"]);
+
+const PublicIntegrationRoutes = () => (
+  <Routes>
+    <Route path="/oauth/consent" element={<OAuthConsent />} />
+    <Route path="/mcp/consent" element={<OAuthConsent />} />
+  </Routes>
+);
+
+const RoutedApp = () => {
+  const { pathname } = useLocation();
+
+  // OAuth/MCP consent is an integration callback surface. It performs its own
+  // server-side session/handle validation and must not be intercepted by the
+  // normal authenticated-app redirect before that validation can run.
+  if (PUBLIC_INTEGRATION_PATHS.has(pathname)) {
+    return <PublicIntegrationRoutes />;
+  }
+
+  return <AuthenticatedApp />;
+};
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -132,7 +155,7 @@ function App() {
         <Router>
           <ScrollToTop />
           <TermsAcceptance>
-            <AuthenticatedApp />
+            <RoutedApp />
           </TermsAcceptance>
         </Router>
         <Toaster />

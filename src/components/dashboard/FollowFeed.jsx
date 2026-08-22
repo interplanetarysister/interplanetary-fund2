@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Image } from "@/components/ui/image";
-import { Badge } from "@/components/ui/badge";
 import { Sparkles, Loader2, Megaphone, TrendingUp, Flag } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -31,7 +30,7 @@ export default function FollowFeed() {
         }
         (updates[i] || []).forEach((u) => items.push({ kind: "update", campaign: campaigns[i] || { id: f.campaign_id, title: f.campaign_title, cover_image_url: f.cover_image_url }, update: u, date: u.created_date }));
       });
-      items.sort((a, b) => new Date(b.date) - new Date(a.date));
+      items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setFeed(items.slice(0, 12));
     })();
   }, []);

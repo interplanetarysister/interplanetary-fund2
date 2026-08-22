@@ -9,6 +9,7 @@ export default function useUrlDialog(param, value = "true") {
   const current = searchParams.get(param);
   const open = value === null ? current !== null : current === value;
 
+  /** @param {boolean} next */
   const setOpen = (next) => {
     const params = new URLSearchParams(searchParams);
     if (next) {
@@ -20,5 +21,7 @@ export default function useUrlDialog(param, value = "true") {
     }
   };
 
-  return [open, setOpen];
+  /** @type {[boolean, (next: boolean) => void]} */
+  const state = [open, setOpen];
+  return state;
 }

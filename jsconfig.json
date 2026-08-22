@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
     "paths": {
+      "@/components/ui/*": ["./src/types/compat-shims/ui.d.ts"],
+      "@/lib/*": ["./src/types/compat-shims/lib.d.ts", "./src/lib/*"],
+      "@/api/*": ["./src/types/compat-shims/api.d.ts", "./src/api/*"],
       "@/*": ["./src/*"]
     },
     "jsx": "react-jsx",
@@ -9,13 +14,19 @@
     "moduleResolution": "bundler",
     "lib": ["esnext", "dom"],
     "target": "esnext",
-    "checkJs": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "types": []
   },
-  "include": ["src/components/**/*.js", "src/pages/**/*.jsx", "src/Layout.jsx"],
+  "include": [
+    "src/*.jsx",
+    "src/components/**/*.js",
+    "src/components/**/*.jsx",
+    "src/pages/**/*.js",
+    "src/pages/**/*.jsx",
+    "src/types/**/*.d.ts"
+  ],
   "exclude": ["node_modules", "dist", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
-} 
+}

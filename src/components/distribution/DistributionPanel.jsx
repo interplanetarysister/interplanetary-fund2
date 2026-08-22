@@ -68,7 +68,7 @@ export default function DistributionPanel({ campaign }) {
           const map = new Map(prev.map((p) => [p.id, p]));
           for (const u of returned) map.set(u.id, u);
           return Array.from(map.values()).sort(
-            (a, b) => new Date(b.created_date) - new Date(a.created_date)
+            (a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()
           );
         });
         toast({

@@ -1,7 +1,7 @@
 import React from "react";
 import { DollarSign, Users, Megaphone, Users2, HandHeart, Building2 } from "lucide-react";
 
-function Metric({ icon: Icon, label, value, sub }) {
+function Metric({ icon: Icon, label, value, sub = undefined }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
       <div className="flex items-center gap-2 text-xs text-stone-400">
