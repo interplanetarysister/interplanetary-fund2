@@ -9,6 +9,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

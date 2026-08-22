@@ -13,7 +13,7 @@ export default async function(req) {
     try {
       event = await stripe.webhooks.constructEventAsync(body, signature, secrets.get('STRIPE_WEBHOOK_SECRET'));
     } catch (err) {
-      console.error('Invalid webhook signature:', err.message);
+      console.error('Invalid webhook signature:', err instanceof Error ? err.message : 'unknown');
       return Response.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
@@ -126,7 +126,7 @@ export default async function(req) {
 
     return Response.json({ received: true });
   } catch (error) {
-    console.error('stripeWebhook error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('stripeWebhook error:', error instanceof Error ? error.message : 'unknown');
+    return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });
   }
 }
