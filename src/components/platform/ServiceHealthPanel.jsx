@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { logPlatformEvent } from "./logPlatformEvent";
+import { sanitizePlatformError } from "@/lib/platform/foundationContracts";
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 
 const HEALTH_TIMEOUT_MS = 8000;
@@ -31,8 +32,7 @@ function withTimeout(promise, timeoutMs) {
 
 function sanitizeError(error) {
   if (error?.code === "HEALTH_CHECK_TIMEOUT") return "Dependency timed out";
-  const message = typeof error?.message === "string" ? error.message : "Dependency unavailable";
-  return message.slice(0, 180);
+  return sanitizePlatformError(error);
 }
 
 export default function ServiceHealthPanel() {
