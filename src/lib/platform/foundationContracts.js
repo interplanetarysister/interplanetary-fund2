@@ -13,6 +13,7 @@ const MAX_ATTEMPTS = 5;
 const DEFAULT_BACKOFF_MS = 250;
 const MAX_BACKOFF_MS = 10_000;
 const MAX_EVENT_PAYLOAD_BYTES = 32_000;
+const MAX_EVENT_STRING_LENGTH = 256;
 
 const PLATFORM_EVENT_NAMES = Object.freeze([
   "platform.configuration.changed",
@@ -58,6 +59,15 @@ function assertFiniteNonNegativeNumber(value, fallback, maximum) {
   return Math.min(maximum, value);
 }
 
+function assertBoundedString(value, field) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new TypeError(`Platform event ${field} must be a non-empty string`);
+  }
+  if (value.length > MAX_EVENT_STRING_LENGTH) {
+    throw new RangeError(`Platform event ${field} exceeds the maximum length`);
+  }
+}
+
 function assertIsoDate(value) {
   if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
     throw new TypeError("Platform event occurredAt must be a valid ISO timestamp");
@@ -68,7 +78,13 @@ function assertPayload(payload) {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw new TypeError("Platform event payload must be an object");
   }
-  if (JSON.stringify(payload).length > MAX_EVENT_PAYLOAD_BYTES) {
+  let serialized;
+  try {
+    serialized = JSON.stringify(payload);
+  } catch {
+    throw new TypeError("Platform event payload must be JSON-serializable");
+  }
+  if (serialized.length > MAX_EVENT_PAYLOAD_BYTES) {
     throw new RangeError("Platform event payload exceeds the maximum size");
   }
 }
@@ -87,9 +103,11 @@ export function createPlatformEvent({
   if (!PLATFORM_EVENT_NAMES.includes(name)) {
     throw new TypeError(`Unsupported platform event: ${String(name)}`);
   }
-  if (!actorId || !resourceType || !resourceId || !idempotencyKey) {
-    throw new Error("Platform events require actorId, resourceType, resourceId, and idempotencyKey");
-  }
+  assertBoundedString(String(actorId || ""), "actorId");
+  assertBoundedString(String(resourceType || ""), "resourceType");
+  assertBoundedString(String(resourceId || ""), "resourceId");
+  assertBoundedString(String(correlationId || ""), "correlationId");
+  assertBoundedString(String(idempotencyKey || ""), "idempotencyKey");
   if (version !== EVENT_VERSION) throw new Error(`Unsupported platform event version: ${String(version)}`);
   assertIsoDate(occurredAt);
   assertPayload(payload);
@@ -113,7 +131,9 @@ export function createIdempotencyKey(...parts) {
     .flatMap((part) => (part == null ? [] : [String(part).trim()]))
     .filter(Boolean);
   if (!normalized.length) throw new Error("At least one value is required for an idempotency key");
-  return normalized.join(":");
+  const key = normalized.join(":");
+  if (key.length > MAX_EVENT_STRING_LENGTH) throw new RangeError("Idempotency key exceeds the maximum length");
+  return key;
 }
 
 /**
@@ -125,7 +145,7 @@ export function createIdempotencyKey(...parts) {
  */
 
 /**
- * @param {() => Promise<unknown>} task
+ * @param {(context: {attempt: number, idempotencyKey: string}) => Promise<unknown>} task
  * @param {RetryOptions} options
  */
 export async function withRetry(task, {
@@ -138,6 +158,8 @@ export async function withRetry(task, {
   if (!idempotencyKey || typeof idempotencyKey !== "string") {
     throw new Error("Retryable side effects require an idempotencyKey");
   }
+  assertBoundedString(idempotencyKey, "idempotencyKey");
+  if (typeof shouldRetry !== "function") throw new TypeError("shouldRetry must be a function");
 
   const attempts = assertFinitePositiveInteger(maxAttempts, DEFAULT_MAX_ATTEMPTS, MAX_ATTEMPTS);
   const delay = assertFiniteNonNegativeNumber(backoffMs, DEFAULT_BACKOFF_MS, MAX_BACKOFF_MS);
@@ -177,4 +199,5 @@ export const PLATFORM_FOUNDATION = Object.freeze({
   defaultBackoffMs: DEFAULT_BACKOFF_MS,
   maxBackoffMs: MAX_BACKOFF_MS,
   maxEventPayloadBytes: MAX_EVENT_PAYLOAD_BYTES,
+  maxEventStringLength: MAX_EVENT_STRING_LENGTH,
 });
