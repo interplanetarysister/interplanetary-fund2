@@ -4,6 +4,7 @@ import { secrets } from 'base44:runtime';
 
 const MIN_DONATION_USD = 0.5;
 const MAX_DONATION_USD = 1000000;
+const DEFAULT_CHECKOUT_ORIGIN = 'https://interplanetary-fund.vercel.app';
 
 function parseExactUsdCents(input) {
   const text = typeof input === 'number' ? String(input) : String(input ?? '').trim();
@@ -18,6 +19,24 @@ function parseExactUsdCents(input) {
   return { value, cents };
 }
 
+function getAllowedCheckoutOrigins() {
+  const configured = Deno.env.get('ALLOWED_CHECKOUT_ORIGINS') || DEFAULT_CHECKOUT_ORIGIN;
+  return new Set(configured.split(',').map((origin) => origin.trim()).filter(Boolean));
+}
+
+function validateCheckoutOrigin(origin) {
+  if (typeof origin !== 'string' || !origin.trim()) return null;
+  let parsed;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') return null;
+  const normalized = parsed.origin;
+  return getAllowedCheckoutOrigins().has(normalized) ? normalized : null;
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -26,8 +45,9 @@ export default async function(req) {
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
     const parsedAmount = parseExactUsdCents(amount);
-    if (!campaign_id || !parsedAmount || !origin) {
-      return Response.json({ error: 'Invalid donation amount or request.' }, { status: 400 });
+    const checkoutOrigin = validateCheckoutOrigin(origin);
+    if (!campaign_id || !parsedAmount || !checkoutOrigin) {
+      return Response.json({ error: 'Invalid donation amount or checkout destination.' }, { status: 400 });
     }
 
     const campaign = await base44.entities.Campaign.get(campaign_id);
@@ -57,21 +77,21 @@ export default async function(req) {
           ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
         },
       }],
-      success_url: `${origin}/campaign/${campaign_id}?donation=success`,
-      cancel_url: `${origin}/campaign/${campaign_id}`,
+      success_url: `${checkoutOrigin}/campaign/${campaign_id}?donation=success`,
+      cancel_url: `${checkoutOrigin}/campaign/${campaign_id}`,
       metadata: {
         base44_app_id: secrets.get('BASE44_APP_ID'),
         campaign_id,
         donor_user_id: user.id,
-        donor_name: (donor_name || 'Anonymous').slice(0, 120),
-        message: (message || '').slice(0, 450),
+        donor_name: String(donor_name || 'Anonymous').slice(0, 120),
+        message: String(message || '').slice(0, 450),
         is_recurring: is_recurring ? 'true' : 'false',
       },
     });
 
     return Response.json({ url: session.url });
   } catch (error) {
-    console.error('createDonationCheckout error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('createDonationCheckout error:', error instanceof Error ? error.message : 'unknown');
+    return Response.json({ error: 'Unable to create donation checkout.' }, { status: 500 });
   }
 }
