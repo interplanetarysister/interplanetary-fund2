@@ -32,18 +32,24 @@ export async function logPlatformEvent({
 }) {
   const me = await base44.auth.me();
   const actorId = me.id || me.email;
+  if (!actorId) throw new Error("Authenticated platform event actor is unavailable");
   const eventName = EVENT_BY_CATEGORY[category] || EVENT_BY_CATEGORY.other;
+  const normalizedAction = String(action || "Platform event");
+  const normalizedResource = String(affected_resource || "platform");
+  const normalizedOutcome = String(outcome || "success");
+  const normalizedDetails = details ? String(details) : "";
+
   const event = createPlatformEvent({
     name: eventName,
     actorId,
     resourceType: "platform",
-    resourceId: String(affected_resource || "platform"),
+    resourceId: normalizedResource,
     idempotencyKey: idempotency_key || createIdempotencyKey("platform-event", actorId, eventName, Date.now()),
     payload: {
-      action: String(action || "Platform event"),
+      action: normalizedAction,
       category: String(category),
-      outcome: String(outcome),
-      details: details ? String(details).slice(0, 1000) : undefined,
+      outcome: normalizedOutcome,
+      details: normalizedDetails.slice(0, 1000),
     },
   });
 
@@ -61,12 +67,12 @@ export async function logPlatformEvent({
   });
 
   const localRecord = await base44.entities.PlatformEvent.create({
-    action,
+    action: normalizedAction,
     category,
-    affected_resource,
-    outcome,
-    details,
-    actor_name: me.full_name || me.email,
+    affected_resource: normalizedResource,
+    outcome: normalizedOutcome,
+    details: normalizedDetails,
+    actor_name: String(me.full_name || me.email || actorId),
     event_id: event.id,
     event_version: event.version,
     correlation_id: event.correlation_id,
