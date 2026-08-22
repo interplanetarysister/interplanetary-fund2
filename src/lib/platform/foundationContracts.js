@@ -2,7 +2,7 @@
 // be used by UI, service helpers, and server-side Base44 functions without creating
 // a second backend contract system.
 
-const EVENT_VERSION = "1.0";
+const EVENT_VERSION = 1;
 const MAX_ATTEMPTS = 5;
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_BACKOFF_MS = 250;
@@ -11,6 +11,13 @@ const MAX_EVENT_PAYLOAD_BYTES = 16 * 1024;
 const MAX_EVENT_STRING_LENGTH = 256;
 
 export const PLATFORM_EVENT_NAMES = Object.freeze([
+  "platform.configuration.changed",
+  "platform.health_check.executed",
+  "platform.knowledge.updated",
+  "platform.deployment.executed",
+  "platform.security.action",
+  "platform.recovery.executed",
+  "platform.event.recorded",
   "platform.health.check",
   "platform.feature.flag.updated",
   "platform.knowledge.published",
@@ -21,13 +28,14 @@ export const PLATFORM_EVENT_NAMES = Object.freeze([
 ]);
 
 const SAFE_ERROR_MESSAGES = Object.freeze({
-  UNAVAILABLE: "The platform service is temporarily unavailable. Please try again.",
-  UNAUTHORIZED: "You are not authorized to perform this action.",
-  FORBIDDEN: "You do not have permission to perform this action.",
-  NOT_FOUND: "The requested platform resource was not found.",
-  CONFLICT: "The platform could not apply this change because the request conflicts with a newer update.",
-  RATE_LIMITED: "Too many requests. Please try again shortly.",
-  VALIDATION: "The platform request could not be validated.",
+  UNAVAILABLE: "The service is temporarily unavailable",
+  UNAUTHORIZED: "You are not authorized to perform this action",
+  FORBIDDEN: "You do not have permission to perform this action",
+  NOT_FOUND: "The requested platform resource was not found",
+  CONFLICT: "The platform could not apply this change because the request conflicts with a newer update",
+  RATE_LIMITED: "Too many requests. Please try again shortly",
+  VALIDATION: "The platform request could not be validated",
+  HEALTH_CHECK_TIMEOUT: "Dependency timed out",
 });
 
 function assertBoundedString(value, name, maxLength = MAX_EVENT_STRING_LENGTH) {
@@ -45,6 +53,9 @@ function stableSerialize(value) {
 }
 
 function assertJsonPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new TypeError("payload must be an object");
+  }
   let serialized;
   try {
     serialized = stableSerialize(payload);
@@ -68,8 +79,8 @@ export function validatePlatformEvent({
   idempotencyKey,
   payload = {},
 }) {
-  if (!PLATFORM_EVENT_NAMES.includes(name)) throw new Error(`Unregistered platform event: ${name}`);
-  assertBoundedString(version, "version");
+  if (!PLATFORM_EVENT_NAMES.includes(name)) throw new Error(`Unsupported platform event: ${name}`);
+  if (!Number.isInteger(version) || version < 1) throw new TypeError("version must be a positive integer");
   assertBoundedString(timestamp, "timestamp");
   if (Number.isNaN(Date.parse(timestamp))) throw new TypeError("timestamp must be a valid ISO date");
   assertBoundedString(actorId, "actorId");
@@ -99,6 +110,49 @@ export function createIdempotencyKey(...parts) {
   const key = normalized.join(":");
   if (key.length > MAX_EVENT_STRING_LENGTH) throw new RangeError("Idempotency key exceeds the maximum length");
   return key;
+}
+
+/**
+ * Canonical event factory used by platform audit producers. It emits the field
+ * names consumed by the PlatformEvent entity while retaining the validated
+ * camelCase input contract used by application callers.
+ */
+export function createPlatformEvent({
+  name,
+  version = EVENT_VERSION,
+  actorId,
+  resourceType,
+  resourceId,
+  correlationId = createIdempotencyKey("correlation", actorId, resourceType, resourceId),
+  idempotencyKey,
+  payload = {},
+}) {
+  const validated = validatePlatformEvent({
+    name,
+    version,
+    timestamp: new Date().toISOString(),
+    actorId,
+    resourceType,
+    resourceId,
+    correlationId,
+    idempotencyKey,
+    payload,
+  });
+  const eventId = createIdempotencyKey(validated.name, validated.correlationId, validated.idempotencyKey);
+  return Object.freeze({
+    id: eventId,
+    event_id: eventId,
+    name: validated.name,
+    version: validated.version,
+    event_version: validated.version,
+    actor_id: validated.actorId,
+    resource_type: validated.resourceType,
+    resource_id: validated.resourceId,
+    correlation_id: validated.correlationId,
+    idempotency_key: validated.idempotencyKey,
+    occurred_at: validated.timestamp,
+    payload: validated.payload,
+  });
 }
 
 /**
