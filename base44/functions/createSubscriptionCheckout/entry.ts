@@ -4,6 +4,7 @@ import { secrets } from 'base44:runtime';
 import { getSubscriptionPrice, SUPPORTED_SUBSCRIPTION_INTERVALS } from '../../shared/subscriptionCatalog.ts';
 
 const DEFAULT_CHECKOUT_ORIGIN = 'https://interplanetary-fund.vercel.app';
+const MAX_TRIAL_DAYS = 30;
 
 function getAllowedCheckoutOrigins() {
   const configured = Deno.env.get('ALLOWED_CHECKOUT_ORIGINS') || DEFAULT_CHECKOUT_ORIGIN;
@@ -23,6 +24,13 @@ function validateCheckoutOrigin(origin) {
   return getAllowedCheckoutOrigins().has(normalized) ? normalized : null;
 }
 
+function validateTrialDays(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (!Number.isInteger(numeric) || numeric < 0 || numeric > MAX_TRIAL_DAYS) return null;
+  return numeric;
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -32,8 +40,17 @@ export default async function(req) {
     const { tier, interval = 'monthly', origin, trial_days } = await req.json();
     const price_id = getSubscriptionPrice(tier, interval);
     const checkoutOrigin = validateCheckoutOrigin(origin);
-    if (!tier || !checkoutOrigin || !price_id || !SUPPORTED_SUBSCRIPTION_INTERVALS.includes(interval)) {
-      return Response.json({ error: 'Invalid subscription plan or checkout destination.' }, { status: 400 });
+    const trialDays = validateTrialDays(trial_days);
+    const trialProvided = trial_days !== undefined && trial_days !== null && trial_days !== '';
+
+    if (
+      !tier ||
+      !checkoutOrigin ||
+      !price_id ||
+      !SUPPORTED_SUBSCRIPTION_INTERVALS.includes(interval) ||
+      (trialProvided && trialDays === null)
+    ) {
+      return Response.json({ error: 'Invalid subscription plan, trial period, or checkout destination.' }, { status: 400 });
     }
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
@@ -46,8 +63,8 @@ export default async function(req) {
         base44_app_id: secrets.get('BASE44_APP_ID'),
         user_id: user.id,
       },
-      ...(trial_days
-        ? { subscription_data: { trial_period_days: Math.max(0, Math.min(Number(trial_days), 30)), metadata: { user_id: user.id } } }
+      ...(trialDays !== null
+        ? { subscription_data: { trial_period_days: trialDays, metadata: { user_id: user.id } } }
         : {}),
     });
 
