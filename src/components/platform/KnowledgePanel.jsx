@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logPlatformEvent } from "./logPlatformEvent";
+import { createIdempotencyKey } from "@/lib/platform/foundationContracts";
 import { Loader2, Plus, Search, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 
@@ -38,26 +39,30 @@ export default function KnowledgePanel() {
 
   const publish = async () => {
     setSaving(true);
-    const me = await base44.auth.me();
-    const summary = await base44.integrations.Core.InvokeLLM({
-      prompt: `Summarize this engineering document in 2 plain-language sentences for a non-technical reader.\n\nTitle: ${form.title}\n\n${form.content}`,
-    });
-    const article = await base44.entities.KnowledgeArticle.create({
-      ...form,
-      summary,
-      version: 1,
-      author_name: me.full_name || me.email,
-    });
-    await logPlatformEvent({
-      action: "Knowledge asset published",
-      category: "knowledge",
-      affected_resource: article.title,
-      details: categories[article.category],
-    });
-    setArticles((prev) => [article, ...prev]);
-    setForm({ title: "", category: "runbook", content: "" });
-    setShowForm(false);
-    setSaving(false);
+    try {
+      const me = await base44.auth.me();
+      const summary = await base44.integrations.Core.InvokeLLM({
+        prompt: `Summarize this engineering document in 2 plain-language sentences for a non-technical reader.\n\nTitle: ${form.title}\n\n${form.content}`,
+      });
+      const article = await base44.entities.KnowledgeArticle.create({
+        ...form,
+        summary,
+        version: 1,
+        author_name: me.full_name || me.email,
+      });
+      await logPlatformEvent({
+        action: "Knowledge asset published",
+        category: "knowledge",
+        affected_resource: article.title,
+        details: categories[article.category],
+        idempotency_key: createIdempotencyKey("knowledge-publish", article.id),
+      });
+      setArticles((prev) => [article, ...prev]);
+      setForm({ title: "", category: "runbook", content: "" });
+      setShowForm(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const q = query.toLowerCase();
