@@ -28,7 +28,16 @@ export default async function(req) {
     const thankYou = campaign?.donor_thank_you || `Your generosity directly supports ${title}.`;
 
     const subject = `Thank you for supporting ${title}`;
-    const html = `<div style="max-width:520px;margin:0 auto;font-family:ui-sans-serif,system-ui,sans-serif;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e5"><div style="padding:28px 24px"><p>Hi ${donorName},</p><p>Thank you for your generous donation of <strong>${currency} ${amount}</strong> to <strong>${title}</strong>. ${thankYou}</p><p>A full summary of your contribution is available anytime.</p><a href="${summaryUrl}">View Your Donation Summary</a></div></div>`;
+    const html = `<div style="max-width:520px;margin:0 auto;font-family:ui-sans-serif,system-ui,sans-serif;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e7e5e4">
+      <div style="background:linear-gradient(135deg,#34d399,#0d9488);padding:32px 24px;text-align:center"><h1 style="color:#0B0F0E;margin:0;font-size:22px;font-weight:700;letter-spacing:0.02em">Thank You!</h1><p style="color:#0B0F0E;margin:6px 0 0;font-size:11px;text-transform:uppercase;letter-spacing:0.18em;opacity:0.85">Kindred · Fundraising OS</p></div>
+      <div style="padding:28px 24px">
+        <p style="color:#44403c;font-size:15px;line-height:1.6">Hi ${donorName},</p>
+        <p style="color:#44403c;font-size:15px;line-height:1.6">Thank you for your generous donation of <strong>${currency} ${amount}</strong> to <strong>${title}</strong>. ${thankYou}</p>
+        <p style="color:#44403c;font-size:14px;line-height:1.6">A full summary of your contribution is available anytime — keep it for your records or share your impact.</p>
+        <a href="${summaryUrl}" style="display:inline-block;background:#0d9488;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600;font-size:14px;margin-top:16px">View Your Donation Summary</a>
+      </div>
+      <div style="padding:24px;text-align:center;color:#78716c;font-size:12px;border-top:1px solid #e7e5e4">© 2026 Kindred · AI-Powered Fundraising</div>
+    </div>`;
 
     await base44.asServiceRole.integrations.Core.SendEmail({ to: email, subject, body: html });
     console.log('donor thank-you sent', { donation_id, email });
