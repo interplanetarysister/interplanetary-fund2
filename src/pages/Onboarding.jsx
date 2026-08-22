@@ -23,7 +23,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [current, setCurrent] = useState(0);
-  const [data, setData] = useState({ platforms: [], automation: {} });
+  const [data, setData] = useState({ full_name: "", platforms: [], automation: {} });
   const [saving, setSaving] = useState(false);
 
   const isLast = current === STEPS.length - 1;
@@ -31,13 +31,22 @@ export default function Onboarding() {
   const finish = async () => {
     setSaving(true);
     try {
-      const updates = { full_name: data.full_name || undefined };
-      await base44.auth.updateMe({ ...updates, onboarding: data, onboarding_completed: true });
+      const updates = {
+        onboarding: {
+          ...data,
+          platforms: Array.isArray(data.platforms) ? data.platforms : [],
+          automation: data.automation && typeof data.automation === "object" ? data.automation : {},
+        },
+        onboarding_completed: true,
+      };
+      if (data.full_name?.trim()) updates.full_name = data.full_name.trim();
+      await base44.auth.updateMe(updates);
       navigate("/mission");
     } catch (e) {
       toast({ title: "Couldn't save setup", description: e.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const step = STEPS[current];

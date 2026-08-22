@@ -1,11 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 
-// Broadcasts every pending/approved/failed DistributedPost for a campaign in
-// one call — the owner's "publish everything I approved" action. Direct-
-// publishes where the platform supports it (Bluesky, Mastodon); marks the rest
-// "approved" with manual=true so the owner can copy-post to crowdfunding pages
-// and social sites without a publishing API. Never auto-posts without consent.
+// Broadcasts approved DistributedPost records for a campaign in one call —
+// the owner's "publish everything I approved" action. Direct-publishes where
+// the platform supports it (Bluesky, Mastodon); marks the rest "approved"
+// with manual=true so the owner can copy-post to destinations without a
+// publishing API. Never auto-posts without explicit post approval.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -22,13 +22,13 @@ export default async function(req) {
     }
 
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
-    const pending = posts.filter((p) =>
-      ['pending_approval', 'draft', 'approved', 'failed'].includes(p.status)
-    );
+    // Approval is a hard authorization boundary. Draft, pending, and failed
+    // posts must be explicitly approved before this endpoint can publish them.
+    const approved = posts.filter((p) => p.status === 'approved');
 
-    const results = { published: 0, manual: 0, failed: 0, total: pending.length, posts: [] };
+    const results = { published: 0, manual: 0, failed: 0, total: approved.length, posts: [] };
 
-    for (const post of pending) {
+    for (const post of approved) {
       const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
       if (!connection) {
         const updated = await base44.entities.DistributedPost.update(post.id, {
@@ -42,9 +42,11 @@ export default async function(req) {
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
       if (!canAutoPublish(connection)) {
-        const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
+        // Keep the approved state intact. The caller is still authorized to
+        // copy-post the content manually; this endpoint must not manufacture
+        // approval for an unapproved record.
         results.manual++;
-        results.posts.push(updated);
+        results.posts.push(post);
         continue;
       }
 
