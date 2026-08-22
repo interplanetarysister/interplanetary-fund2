@@ -65,9 +65,10 @@ export default async function(req) {
       await base44.asServiceRole.entities.Notification.bulkCreate(notifications);
     }
 
-    // Record in the communication history
+    // Record communication history with service-role access so the audit entity
+    // cannot be forged through the client-facing Message.create endpoint.
     const campaign = campaign_id ? myCampaigns.find((c) => c.id === campaign_id) : null;
-    const message = await base44.entities.Message.create({
+    const message = await base44.asServiceRole.entities.Message.create({
       campaign_id: campaign_id || '',
       campaign_title: campaign ? campaign.title : 'All my campaigns',
       subject,
