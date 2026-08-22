@@ -54,17 +54,26 @@ export default function ServiceHealthPanel() {
       const out = await Promise.all(
         services.map(async (s) => {
           const start = performance.now();
+          // Base44 SDK calls do not currently expose AbortSignal cancellation.
+          // Track the underlying promise separately from the UI timeout so a timed-out
+          // request keeps the run locked until it actually settles, preventing request
+          // accumulation across repeated degraded health checks.
+          const trackedCheck = Promise.resolve().then(() => s.check());
+          trackedCheck.then(
+            () => {
+              inFlightChecksRef.current = Math.max(0, inFlightChecksRef.current - 1);
+              setSettling(inFlightChecksRef.current > 0);
+            },
+            () => {
+              inFlightChecksRef.current = Math.max(0, inFlightChecksRef.current - 1);
+              setSettling(inFlightChecksRef.current > 0);
+            },
+          );
           try {
-            // Base44 SDK calls do not currently expose AbortSignal cancellation.
-            // The in-flight operation may finish after the UI timeout. We therefore
-            // keep a settling counter and refuse another run until every timed-out
-            // dependency call has actually settled, preventing request accumulation.
-            await withTimeout(s.check(), HEALTH_TIMEOUT_MS);
+            await withTimeout(trackedCheck, HEALTH_TIMEOUT_MS);
             return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
           } catch (e) {
             return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: sanitizeError(e) };
-          } finally {
-            inFlightChecksRef.current = Math.max(0, inFlightChecksRef.current - 1);
           }
         })
       );
