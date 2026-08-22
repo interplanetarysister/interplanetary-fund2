@@ -46,15 +46,24 @@ export default async function(req) {
     const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
     const parsedAmount = parseExactUsdCents(amount);
     const checkoutOrigin = validateCheckoutOrigin(origin);
-    if (!campaign_id || !parsedAmount || !checkoutOrigin) {
-      return Response.json({ error: 'Invalid donation amount or checkout destination.' }, { status: 400 });
+    if (
+      !campaign_id ||
+      !parsedAmount ||
+      !checkoutOrigin ||
+      (is_recurring !== undefined && typeof is_recurring !== 'boolean')
+    ) {
+      return Response.json({ error: 'Invalid donation amount, recurring option, or checkout destination.' }, { status: 400 });
     }
 
+    const recurring = is_recurring === true;
     const campaign = await base44.entities.Campaign.get(campaign_id);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
     if (campaign.status !== 'active') {
       return Response.json({ error: 'This campaign is not accepting donations.' }, { status: 409 });
     }
+    // Campaign.end_date is a date-only field. New checkout eligibility uses
+    // UTC end-of-day semantics; existing recurring subscriptions are governed
+    // by their Stripe lifecycle and are not recreated by this endpoint.
     if (campaign.end_date) {
       const endDate = new Date(`${campaign.end_date}T23:59:59.999Z`);
       if (Number.isNaN(endDate.getTime())) {
@@ -67,14 +76,14 @@ export default async function(req) {
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
     const session = await stripe.checkout.sessions.create({
-      mode: is_recurring ? 'subscription' : 'payment',
+      mode: recurring ? 'subscription' : 'payment',
       line_items: [{
         quantity: 1,
         price_data: {
           currency: 'usd',
           unit_amount: parsedAmount.cents,
           product_data: { name: `Donation to ${campaign.title}` },
-          ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
+          ...(recurring ? { recurring: { interval: 'month' } } : {}),
         },
       }],
       success_url: `${checkoutOrigin}/campaign/${campaign_id}?donation=success`,
@@ -85,7 +94,7 @@ export default async function(req) {
         donor_user_id: user.id,
         donor_name: String(donor_name || 'Anonymous').slice(0, 120),
         message: String(message || '').slice(0, 450),
-        is_recurring: is_recurring ? 'true' : 'false',
+        is_recurring: recurring ? 'true' : 'false',
       },
     });
 
