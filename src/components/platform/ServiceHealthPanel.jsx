@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { logPlatformEvent } from "./logPlatformEvent";
 import { Loader2, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
 
+const HEALTH_TIMEOUT_MS = 8000;
+
 const services = [
   { name: "Identity & Auth", check: () => base44.auth.me() },
   { name: "Campaign OS", check: () => base44.entities.Campaign.list("-created_date", 1) },
@@ -16,34 +18,58 @@ const services = [
   { name: "Platform Intelligence", check: () => base44.entities.ExecutiveReport.list("-created_date", 1) },
 ];
 
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      const error = new Error("Health check timed out");
+      error.code = "HEALTH_CHECK_TIMEOUT";
+      setTimeout(() => reject(error), timeoutMs);
+    }),
+  ]);
+}
+
+function sanitizeError(error) {
+  if (error?.code === "HEALTH_CHECK_TIMEOUT") return "Dependency timed out";
+  const message = typeof error?.message === "string" ? error.message : "Dependency unavailable";
+  return message.slice(0, 180);
+}
+
 export default function ServiceHealthPanel() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
 
   const run = useCallback(async (log) => {
     setRunning(true);
-    const out = await Promise.all(
-      services.map(async (s) => {
-        const start = performance.now();
+    try {
+      const out = await Promise.all(
+        services.map(async (s) => {
+          const start = performance.now();
+          try {
+            await withTimeout(s.check(), HEALTH_TIMEOUT_MS);
+            return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
+          } catch (e) {
+            return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: sanitizeError(e) };
+          }
+        })
+      );
+      setResults(out);
+      if (log) {
+        const failed = out.filter((r) => r.status !== "operational");
         try {
-          await s.check();
-          return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
+          await logPlatformEvent({
+            action: "Health check executed",
+            category: "health_check",
+            affected_resource: "All operating systems",
+            outcome: failed.length ? "warning" : "success",
+            details: `${out.length - failed.length}/${out.length} services operational${failed.length ? ` — degraded: ${failed.map((f) => f.name).join(", ")}` : ""}`,
+          });
         } catch (e) {
-          return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: e.message };
+          console.error("Health check audit logging failed:", e);
         }
-      })
-    );
-    setResults(out);
-    setRunning(false);
-    if (log) {
-      const failed = out.filter((r) => r.status !== "operational");
-      await logPlatformEvent({
-        action: "Health check executed",
-        category: "health_check",
-        affected_resource: "All operating systems",
-        outcome: failed.length ? "warning" : "success",
-        details: `${out.length - failed.length}/${out.length} services operational${failed.length ? ` — degraded: ${failed.map((f) => f.name).join(", ")}` : ""}`,
-      });
+      }
+    } finally {
+      setRunning(false);
     }
   }, []);
 
