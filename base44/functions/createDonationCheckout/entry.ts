@@ -5,6 +5,19 @@ import { secrets } from 'base44:runtime';
 const MIN_DONATION_USD = 0.5;
 const MAX_DONATION_USD = 1000000;
 
+function parseExactUsdCents(input) {
+  const text = typeof input === 'number' ? String(input) : String(input ?? '').trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(text)) return null;
+
+  const [whole, fraction = ''] = text.split('.');
+  const cents = Number(`${whole}${fraction.padEnd(2, '0')}`);
+  if (!Number.isSafeInteger(cents)) return null;
+
+  const value = cents / 100;
+  if (value < MIN_DONATION_USD || value > MAX_DONATION_USD) return null;
+  return { value, cents };
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -12,17 +25,8 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
-    const value = Number(amount);
-    const cents = Math.round(value * 100);
-    const hasExactCents = Number.isFinite(value) && Math.abs(value * 100 - cents) < Number.EPSILON;
-    if (
-      !campaign_id ||
-      !Number.isFinite(value) ||
-      !hasExactCents ||
-      value < MIN_DONATION_USD ||
-      value > MAX_DONATION_USD ||
-      !origin
-    ) {
+    const parsedAmount = parseExactUsdCents(amount);
+    if (!campaign_id || !parsedAmount || !origin) {
       return Response.json({ error: 'Invalid donation amount or request.' }, { status: 400 });
     }
 
@@ -48,7 +52,7 @@ export default async function(req) {
         quantity: 1,
         price_data: {
           currency: 'usd',
-          unit_amount: cents,
+          unit_amount: parsedAmount.cents,
           product_data: { name: `Donation to ${campaign.title}` },
           ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
         },
