@@ -49,8 +49,8 @@ export default function TermsAcceptance({ children }) {
         </p>
         <div className="text-stone-500 text-xs mb-5 space-y-2 bg-stone-50 rounded-xl p-4 border border-stone-100">
           <p>The platform is provided "AS IS" without warranties of any kind.</p>
-          <p>Campaign outcomes, donations, and third-party services may involve risks. Review the applicable terms before proceeding.</p>
-          <p>Users are responsible for the campaigns, content, and actions they initiate through the platform.</p>
+          <p>Michelle Rogers is not liable for losses exceeding $50 per claim.</p>
+          <p>Users assume all risk. Donations are voluntary and may not reach campaign goals.</p>
           <p>The Interplanetary Fund name and code are proprietary — copying is prohibited.</p>
         </div>
         <button
