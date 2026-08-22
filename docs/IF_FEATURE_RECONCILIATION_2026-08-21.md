@@ -1,158 +1,147 @@
 # Interplanetary Fund — IF Features #0.5–#23 Reconciliation Baseline
 
 Date: 2026-08-21
-Status: Baseline audit — no feature implementation changes made by this document.
+Status: Baseline audit — evidence pass continued; no feature implementation changes made by this document.
 
 ## Purpose
 
-This document is the first evidence-based reconciliation pass required by IF Feature #0.5. It compares the recovered archived feature intent against the current `interplanetary-fund2` repository and records what is visibly present before implementation work is assigned.
+This document is the evidence-based reconciliation pass required by IF Feature #0.5. It compares the recovered archived feature intent against the current `interplanetary-fund2` repository and its authoritative `InterplanetaryFund` Convex backend before implementation work is assigned.
 
-This is a baseline, not a declaration that every feature is complete. A UI/file/entity proves presence of an implementation surface, not that the end-to-end behavior works.
+A UI/file/entity proves an implementation surface, not end-to-end completion.
 
 ## Repository ownership
 
 - `interplanetary-fund2` — user-facing Base44 application.
 - `InterplanetaryFund` — authoritative Convex backend / agent runtime.
-- `interplanetary-fund-backend` — legacy/reference repository; no new production backend work should be added there unless explicitly directed.
+- `interplanetary-fund-backend` — legacy/reference repository; no new production backend work unless explicitly directed.
 
-The current `AGENTS.md` explicitly defines this ownership model and says the Convex backend is the source of truth for persistent agent identity, memory, outcomes, campaigns, protocol, treasury, payments, and scheduled intelligence. Base44 mirrors selected state and provides the user-facing application/conversation layer.
+`AGENTS.md` establishes Convex as the source of truth for persistent agent identity, memory, outcomes, campaigns, protocol, treasury, payments, and scheduled intelligence.
 
 ## Status vocabulary
 
 - 🟢 Implemented surface — evidence exists; end-to-end correctness still requires verification.
-- 🟡 Partial — meaningful pieces exist but the feature's definition of done is not established.
-- 🔵 Refinement required — implementation exists but the archived specification requires stronger behavior/UX/integration.
+- 🟡 Partial — meaningful pieces exist but definition of done is not established.
+- 🔵 Refinement required — implementation exists but archived requirements demand stronger behavior/UX/integration.
 - 🟠 Broken/incorrect — evidence indicates a known defect or unsafe/inaccurate behavior.
-- 🔴 Missing — no meaningful implementation evidence found in this pass.
+- 🔴 Missing — no meaningful implementation evidence found.
 - ⚪ Deferred — intentionally set aside; do not build unless reactivated.
 - ⚫ Superseded — older direction replaced by later approved architecture.
 
-## Initial feature map
+## Feature evidence matrix
 
-| Feature | Archived intent | Evidence found in `interplanetary-fund2` | Baseline status | Next audit focus |
+| Feature | Archived intent | Evidence | Status | Remaining audit focus |
 |---|---|---|---|---|
-| #0.5 | Reconciliation/implementation control process | `AGENTS.md`, docs, existing issues, architecture files | 🟢 Process defined | Complete feature-by-feature evidence matrix |
-| #1 | Social Integration Engine / real multi-platform publishing | Connections page, platform catalog, PlatformConnection, socialPublish, broadcastPosts, publishPost, distribution UI | 🟡 Partial | Prove real OAuth, provider permissions, token handling, publishing, retries, status, E2E |
-| #2 | External crowdfunding integrations | Platform catalog/connection infrastructure, onboarding references, FundMigrationDashboard | 🟡 Partial | Verify actual provider APIs/permissions and distinguish real vs coming-soon capabilities |
-| #3 | AI Outreach / donor, sponsor, partner opportunity discovery | Opportunity entity, Outreach Agent panel, runOutreachAgent, opportunity-related UI | 🟡 Partial | Verify research, matching, consent, execution, auditability, privacy |
-| #4 | Universal Identity Graph | Agent identity/runtime mapping and platform standards exist; no conclusive full graph implementation established in this pass | 🟡 Partial / needs deeper audit | Locate authoritative identity/relationship/authorization model in Convex and Base44; verify graph queries, delegation, duplicate protection, audit |
-| #5 | Unified Communication Hub | Communication UI/functionality, Message entity, communication agents/functions, connection infrastructure | 🟡 Partial / 🔵 refinement | Verify inbox, inbound/outbound channels, permissions, delivery truth, audit trail, automation, AI execution |
-| #6 | Campaign Operating System | Campaign entity, Campaign Protocol, CampaignDetail/CreateCampaign/Campaign AI, funding, analytics, updates, tasks/outreach surfaces | 🟡 Partial | Map every Campaign OS requirement to actual implementation and runtime behavior |
-| #7 | Community OS + Institution OS | Community pages/components/entities/functions; Institutions page/components/entity; volunteer functionality | 🟡 Partial | Verify roles, memberships, moderation, institution permissions, partnerships, analytics, mobile, shared Identity Graph |
-| #8 | AI Campaign Story & Donor Optimization | AIStoryGenerator, campaignAI, AICoach, campaign content surfaces | 🟡 Partial / 🔵 refinement | Verify fact locking, voice, audience adaptation, approvals, versioning, performance learning, truth protection |
-| #9 | Trust, Verification & Transparency + research-backed budgeting + capable specialist agents | Agent system, Finance/Trust-related infrastructure, CampaignHealth, intelligence functions, budget-related agent architecture | 🟡 Partial / 🔵 refinement | Verify actual research, sources, numerical integrity, trust evidence, agent tools, execution, approvals, audit |
-| #10 | Platform Foundation + 10-OS architecture | Platform page, blueprint, constitution, standards, service health, agent runtime unification, event/infrastructure files | 🟡 Partial | Verify shared event bus, authorization, jobs, idempotency, observability, environment separation, cross-OS contracts |
-| #11 | Mission Control — Full Intelligence Layer | generateIntelligence, mission/opportunity panels, OpsCenter, agent runtime | 🟡 Partial / 🔵 refinement | Verify observe→understand→prioritize→recommend→execute→verify→learn loop and real command execution |
-| #12 | Campaign Coach — campaign-facing expert operator | AICoach and campaign AI surfaces, campaignAI, agent infrastructure | 🟡 Partial / 🔵 refinement | Verify campaign-specific memory/context, delegation, action execution, research, undo, audit, mobile UX |
-| #13 | Creative Agent / campaign visual asset system | Creative/image generation surfaces, coverPrompt, asset-related campaign UI; videos explicitly deferred | 🟡 Partial | Verify image generation/editing, campaign fact locking, asset library/versioning, preflight, accessibility; preserve video deferral |
-| #14 | Automated Campaign Opportunity Detection & Intelligence | Opportunity entity, OpportunitiesPanel, outreach agent, intelligence functions | 🟡 Partial | Verify source research, freshness, qualification, scoring, watch/alerts, execution, learning, privacy |
-| #15 | First-Success Guided Onboarding & Intelligent Setup | Onboarding page/steps, ConnectStep, AutomateStep, EngineStep, CompleteStep, onboarding state references | 🟡 Partial / 🔵 refinement | Verify adaptive paths, first-success checklist, persistence, research, intelligent defaults, child-simple UX |
-| #16 | User Profile / Preferences / Personal Context Foundation | Profile page, onboarding/profile components, user schema/history, permission/agent context references | 🟡 Partial / 🟠 known schema risk | Verify profile/onboarding/preferences persistence and frontend/backend/entity schema synchronization |
-| #17 | Automated Communication & Notification Intelligence | Notification/communication surfaces, communication functions, Message entity, agent/runtime, event infrastructure | 🟡 Partial / 🔵 refinement | Verify event routing, grouping, briefings, rules, authorized sending, delivery truth, preference enforcement |
-| #18 | Distribution / Multi-Platform Publishing | DistributionPanel, generateDistributionContent, publish/broadcast functions, connections, socialPublish | 🟡 Partial | Verify real provider execution, scheduling, retries, duplicate prevention, attribution, approvals, no fake states |
-| #19 | Analytics / Intelligence / Campaign Performance | Analytics page, CampaignPerformance, ReportsPanel, AlertCenter, intelligence functions | 🟡 Partial / 🔵 refinement | Verify real data lineage, calculations, forecasts, source transparency, agent analytics execution, simple UX |
-| #20 | Premium / Subscription AI Capabilities | Subscription plans, subscription functions/infrastructure, agent/automation surfaces | 🟡 Partial | Verify entitlements, premium capacity, monitoring, safe shutdown, spending limits, billing truth, no surprise charges |
-| #21 | Help / Guidance / User Assistance | Help page exists in the wider platform lineage; current repository needs behavior-level verification | 🟡 Partial / needs deeper audit | Verify contextual help, diagnostics, safe fixes, current-state awareness, escalation, no fake functionality |
-| #22 | Trust, Verification & Safety Intelligence | Trust/health/security/verification-related surfaces and agent architecture | 🟡 Partial | Full trust evidence, verification lifecycle, human review, appeals, suspicious activity, privacy/security audit |
-| #23 | Community & Supporter Network | Community page/detail, Community entity/member entity, discussions, volunteer, posts, follow/campaign relationships | 🟡 Partial | Verify supporter lifecycle, campaign communities, events, moderation, discovery, privacy, AI execution, analytics |
+| #0.5 | Reconciliation/implementation control process | `AGENTS.md`, reconciliation docs, GitHub issues | 🟢 | Finish evidence matrix; then convert only verified gaps to issues |
+| #1 | Social Integration Engine / real multi-platform publishing | Connections, catalog, PlatformConnection, publish/broadcast functions, real Bluesky/Mastodon publisher | 🟡 Partial | OAuth/provider permissions, token handling, approved providers, scheduling/retry/idempotency, E2E |
+| #2 | External crowdfunding integrations | Platform catalog/connection framework, campaign migration UI | 🟡 Partial | Verify each provider's actual API/partner restrictions; keep manual/owner-reported paths honest |
+| #3 | AI Outreach / donor, sponsor, partner opportunity discovery | Opportunity entity/UI, Outreach Agent, Convex agent automation | 🟡 Partial | Research quality, matching, consent, privacy, execution, audit |
+| #4 | Universal Identity Graph | Canonical agent identity registry + runtime bridge; broader relationship graph not yet proven | 🟡 Partial | Authoritative person/account/relationship/authorization graph, delegation, deduplication, audit |
+| #5 | Unified Communication Hub | Base44 communication surfaces + Convex agent/runtime infrastructure | 🟡 Partial | Inbound/outbound truth, permissions, delivery, AI actions, audit, automation |
+| #6 | Campaign Operating System | Campaign entity/protocol, campaign pages, AI, funding, updates, analytics/outreach | 🟡 Partial | Map archived requirements to actual runtime behavior and contracts |
+| #7 | Community OS + Institution OS | Community/CommunityMember, Institutions, discussions/posts/volunteer | 🟡 Partial | Roles, moderation, institution permissions, partnerships, shared identity, analytics/mobile |
+| #8 | AI Campaign Story & Donor Optimization | AIStoryGenerator, campaignAI, AICoach, AI campaign generation backend | 🟡 Partial / 🔵 | Fact locking, voice, audience adaptation, approval/versioning, learning, truth protection |
+| #9 | Trust/Verification/Transparency + research-backed budgeting + capable specialists | Agent system, Finance/Trust infrastructure, health/intelligence surfaces | 🟡 Partial / 🔵 | Research/source integrity, numerical correctness, trust evidence, specialist tools/execution |
+| #10 | Platform Foundation + 10-OS architecture | Platform blueprint/constitution/standards, service health, Convex agent runtime | 🟡 Partial | Event bus/contracts, auth, jobs, idempotency, observability, environment separation |
+| #11 | Mission Control — intelligence layer | Intelligence generation, mission/opportunity surfaces, OpsCenter, agent automation | 🟡 Partial / 🔵 | Prove observe→understand→prioritize→recommend→execute→verify→learn |
+| #12 | Campaign Coach | AICoach/campaignAI + agent infrastructure | 🟡 Partial / 🔵 | Campaign context/memory, delegation, research, execution, undo/audit, mobile UX |
+| #13 | Creative Agent / visual asset system | Cover/image generation and campaign asset surfaces; video remains deferred | 🟡 Partial | Asset lifecycle, fact locking, versioning, preflight/accessibility; preserve video deferral |
+| #14 | Automated Campaign Opportunity Detection & Intelligence | OpportunitiesPanel, Opportunity entity, outreach/intelligence automation | 🟡 Partial | Freshness, qualification/scoring, alerts, execution, learning, privacy |
+| #15 | First-Success Guided Onboarding | Onboarding steps and saved onboarding state | 🟡 Partial / 🔵 | Adaptive path, first-success checklist, persistence, defaults, child-simple UX |
+| #16 | User Profile / Preferences / Personal Context | User schema now contains onboarding, communication preferences, subscription fields | 🟡 Partial | Verify all frontend/backend writes and reads, identity/permissions, complete schema contract |
+| #17 | Automated Communication & Notification Intelligence | Notification/communication infrastructure + agent automation | 🟡 Partial / 🔵 | Event routing, grouping, briefings, authorized sending, delivery truth, preference enforcement |
+| #18 | Distribution / Multi-Platform Publishing | Distribution UI, content generation, publish/broadcast, connection framework | 🟡 Partial | Provider execution, scheduling, retry, duplicate prevention, attribution, approval modes |
+| #19 | Analytics / Intelligence / Campaign Performance | Analytics/CampaignPerformance/Reports/AlertCenter + Convex intelligence | 🟡 Partial / 🔵 | Data lineage, calculations, forecasts, attribution, source transparency |
+| #20 | Premium / Subscription AI Capabilities | Subscription plans/status fields and subscription infrastructure | 🟡 Partial | Entitlements, billing truth, capacity, spending limits, safe shutdown, no surprise charges |
+| #21 | Help / Guidance / User Assistance | Help exists in platform lineage | 🟡 Partial | Current-state-aware help, diagnostics, safe fixes, escalation, no fake functionality |
+| #22 | Trust, Verification & Safety Intelligence | Security, financial audit, automation consent, trust/health infrastructure | 🟡 Partial | Verification lifecycle, appeals, suspicious activity, privacy/security, human review |
+| #23 | Community & Supporter Network | Community pages/entities/membership/discussions/posts/volunteer/follow relationships | 🟡 Partial | Supporter lifecycle, campaign communities, events, moderation, discovery, privacy, analytics |
 
-## Evidence already confirmed
+## Continued backend evidence
 
-### Application architecture
-`interplanetary-fund2` contains a real application source tree, Base44 entities/functions, documentation, agent configuration, onboarding, campaign, community, institution, analytics, connection, distribution, and platform modules.
+### Agent identity and memory
+The authoritative Convex backend has `agentIdentity.ts` with stable canonical identities for Solene, Atlas, Post Production, Donor Relations, Scout, Platform Coordinator, and Finance, while preserving Base44 aliases. `agentBridge.ts` records Base44 interaction summaries into authoritative Convex agent working/long-term memory and outcome counters. This confirms the intended Base44→Convex runtime bridge is implemented. It does **not** prove the complete Identity Graph for people/accounts/relationships required by Feature #4. fileciteturn66file0 fileciteturn62file0
 
-### Campaign system
-Confirmed implementation surfaces include `Campaign.jsonc`, Campaign Protocol, CreateCampaign, CampaignDetail, CampaignCard, CampaignHealth, CampaignFundingCard, CampaignPerformance, AI Coach, AI story generation, campaign updates, outreach UI, and cross-platform totals.
+### Agent automation
+`agentAutomation.ts` contains per-agent enable/disable controls, automation status, and scheduled agent work across both `monitoredCampaigns` and `userCampaigns`. This is meaningful execution infrastructure, not just UI. However, individual feature acceptance still requires verification of authorization, provider execution, idempotency, and task outcomes. fileciteturn63file0
 
-### Social/distribution system
-Confirmed implementation surfaces include Connections, platform catalog, PlatformConnection, socialPublish, broadcastPosts, publishPost, DistributionPanel, and distribution-content generation. This proves substantial infrastructure exists; it does not prove every provider's production OAuth/publishing flow is complete.
+### Automation consent
+`automationConsent.ts` implements an explicit agreement/version, campaign-scoped authorization, connected providers, permissions, revocation state, and stated prohibitions on bypassing authentication, changing ownership, redirecting funds, or making unauthorized withdrawals. This materially supports Features #9, #17, #18 and #22, while still requiring verification of every execution path against those rules. fileciteturn64file0
 
-### Agent system
-Confirmed implementation surfaces include Agent entity/configuration, specialized agent definitions, Agents page, AgentChat, agent identity mapping, AgentActivity, recordAgentInteraction, runOutreachAgent, and the documented Convex/Base44 runtime bridge.
+### Financial auditability
+`financialAudit.ts` provides an immutable-style financial action logging path recording user/campaign, provider, authorization, transaction amount, before/after state, result, errors, and timestamps. It supports campaign/user/admin audit queries. This is strong infrastructure for Features #9/#22, but the existing issue history still requires the authorization and ledger-integrity findings to be reconciled rather than assumed solved. fileciteturn65file0
 
-The runtime documentation states that Convex is authoritative for agent identity, memory, outcomes and operational state; Base44 is the user-facing conversation layer; and the bridge does not itself grant new permissions or bypass human approval.
+### Security controls
+The Convex backend has explicit authentication, admin/super-admin/permission checks, and rate limiting helpers in `security.ts`. These provide security infrastructure, but individual mutations still need path-by-path authorization review. fileciteturn68file0
 
-### Community / institution system
-Confirmed implementation surfaces include Community and CommunityMember entities, Community page/detail, CreateCommunityDialog, discussions, posts, volunteer functionality, Institutions page, Institution entity, institution types, and organization-oriented platform architecture.
+### Social publishing truth
+The Base44 catalog is deliberately honest about provider limitations. Most social platforms are marked as OAuth posting pending approval; Bluesky and Mastodon have direct credential-based publishing paths. The publisher returns a manual path for unsupported providers instead of pretending an API exists. This is a positive architectural choice, but means Feature #1/#18 are definitively **partial**, not complete. fileciteturn56file0 fileciteturn57file0 fileciteturn58file0
 
-### Platform foundation
-Confirmed implementation surfaces include Platform page, blueprint, constitution, standards, ServiceHealthPanel, intelligence generation, and runtime-unification documentation.
+### Connection security
+`PlatformConnection` stores per-platform credentials under owner/admin RLS, has automation modes, sync/error state, history, and external totals. This supports the connection architecture, but real provider-specific OAuth/API completion remains outstanding for many destinations. fileciteturn59file0
 
-### Existing audit evidence
-The authoritative Convex repository contains an `AUDIT_REPORT.md` dated 2026-08-07 stating that the fundforge reference architecture had been integrated and that the IF repository had 33 pages and 26 components at that point. That report is historical evidence of prior work, not proof that every later IF Feature requirement is complete.
+### User schema
+The current Base44 `User` schema includes `onboarding_completed`, structured `onboarding`, `comm_prefs`, and subscription fields. This resolves the earlier observation that those fields were absent from the schema. Feature #16 remains partial because the complete read/write contract still needs verification across all consumers and authoritative backend identity. fileciteturn52file0
 
-## Known evidence-based issues that must remain in the reconciliation
+### Authoritative backend historical baseline
+The 2026-08-07 Convex `AUDIT_REPORT.md` states that the reference architecture had been integrated, that 21 reference pages and 18 components were covered, and that the IF backend had 40+ Convex tables at that point. It also records a successful build/deployment at that historical point. This is useful historical evidence, not proof of current feature completion. fileciteturn55file0
 
-Existing GitHub issues already document significant work that must not be lost, including:
+## Existing issue dependencies that must not be lost
 
-- Issue #1: incorporate backend/repository improvements without introducing bugs.
-- Issue #10: high-severity financial authorization and ledger-integrity findings, including donation field protection, campaign financial counters, subscription price/tier binding, and webhook idempotency.
-- Issue #11: high-severity Message audit-record authorization finding.
-- Issue #13: human-use findings that agents are too restricted, need real action capability, need stronger domain expertise, and need simpler user-facing answers; also notes social/API configuration and branding/media issues.
-- Issue #14: human-use findings around popups, globe rendering, inbox delivery, campaign posts, and external-platform interaction visibility.
-- Issue #16: missing/unimplemented code audit and implementation request.
-- Issue #17: review/commit workflow requirements for approved builds across live platform repositories.
-- Issue #19: child-simple UX and signature branding/media requirements; explicitly says no videos for now.
+The baseline already identified existing issues #1, #10, #11, #13, #14, #16, #17 and #19 as work that must be reconciled into the feature plan instead of duplicated blindly. In particular, the financial authorization/ledger findings and Message audit-record authorization finding remain dependency-sensitive and must be mapped into the relevant feature issues before implementation. 
 
-These issues should be reconciled into feature implementation references instead of duplicated blindly.
+## Important issue-number correction
 
-## Important repository issue-number correction
-
-The current repository's **Issue/PR #5 is a closed Dependabot pull request**, not the IF Features archive handoff issue. It must not be repurposed as the feature archive implementation issue merely because an earlier conversation referred to "#5." Any feature-archive implementation work should use the correct existing issue or a new dedicated issue.
+Current repository PR/Issue #5 is a closed Dependabot dependency PR. It is not the IF Feature archive handoff issue and must not be repurposed. The dedicated reconciliation issue is **#23**.
 
 ## Architectural guardrails
 
-1. Do not rebuild working systems merely because the archived rough draft describes them.
+1. Do not rebuild working systems merely because archived rough drafts describe them.
 2. Do not call a feature complete because a page, button, entity, or placeholder exists.
 3. Do not call an integration functional until the real provider/API workflow is verified.
-4. Keep Convex as the authoritative backend/agent runtime where `AGENTS.md` says it is authoritative.
-5. Do not create competing local agent-memory or production backend systems.
-6. Keep video generation deferred unless the user explicitly reactivates it.
-7. Keep the child-simple frontend rule across every feature.
-8. Use progressive disclosure for advanced capabilities.
-9. Research-backed numerical claims must identify assumptions and sources; estimates must not be presented as facts.
-10. Agents must execute authorized actions when the feature requires it, but never bypass permissions or approval boundaries.
-11. Preserve auditability, least privilege, privacy, security, and rollback where possible.
+4. Keep Convex authoritative for persistent backend/agent state.
+5. Do not create competing agent-memory or production backend systems.
+6. Keep video generation deferred unless explicitly reactivated.
+7. Keep child-simple UX and progressive disclosure.
+8. Research-backed numerical claims must identify assumptions and sources.
+9. Agents execute authorized actions where specified, never bypassing approval/permission boundaries.
+10. Preserve auditability, least privilege, privacy, security, and rollback.
 
-## Initial implementation sequencing recommendation
+## Dependency-based implementation sequence after reconciliation
 
-This is a dependency-based starting point, not a final claim that every status is complete:
+1. #0.5 — complete reconciliation/evidence matrix
+2. #10 — shared Platform Foundation / OS contracts
+3. #4 — Identity Graph / permissions / relationships
+4. #16 — profile/preferences/onboarding context/schema integrity
+5. #1 + #2 — external integration engines
+6. #5 + #17 — communication/notification execution
+7. #6 — Campaign OS
+8. #11 + #12 — Mission Control/Campaign Coach execution
+9. #3 + #14 — opportunity discovery/intelligence
+10. #8 + #13 — campaign optimization/creative execution
+11. #9 + #22 — trust/verification/research-backed budgeting/safety
+12. #18 — distribution execution
+13. #19 — analytics/forecasting/attribution
+14. #15 — onboarding refinements/first-success
+15. #7 + #23 — community/institution/supporter ecosystem
+16. #20 — premium automation/capacity hardening
+17. #21 — contextual Help/troubleshooting
 
-1. **#0.5 — reconciliation and evidence matrix**
-2. **#10 — shared Platform Foundation / 10-OS contracts**
-3. **#4 — Identity Graph / permissions / relationships**
-4. **#16 — Profile, preferences, onboarding context, schema integrity**
-5. **#1 + #2 — external integration engines**
-6. **#5 + #17 — communication and notification execution**
-7. **#6 — Campaign OS**
-8. **#11 + #12 — Mission Control and Campaign Coach execution**
-9. **#3 + #14 — opportunity discovery and intelligence**
-10. **#8 + #13 — campaign optimization and creative execution**
-11. **#9 + #22 — trust, verification, research-backed budgeting, safety**
-12. **#18 — distribution execution**
-13. **#19 — analytics/forecasting/attribution**
-14. **#15 — onboarding refinements / first-success completion**
-15. **#7 + #23 — community/institution/supporter ecosystem completion**
-16. **#20 — premium automation/capacity hardening**
-17. **#21 — contextual Help and autonomous troubleshooting**
+This order remains provisional until the remaining backend/legacy evidence and issue/PR relationships are audited.
 
-Actual implementation order may change after the remaining repository/backend evidence is inspected.
+## Next audit pass
 
-## Next required audit pass
+Continue inspecting the authoritative Convex repository and legacy/reference repository for every feature, with priority on:
 
-Before creating implementation issues, inspect the corresponding authoritative Convex files and the legacy backend for every feature, then verify:
-
-- frontend ↔ backend ↔ entity/schema contracts;
-- real provider/API behavior;
-- authorization and role/resource permissions;
-- agent tools and execution paths;
-- automation triggers and idempotency;
-- event propagation;
-- tests and CI;
+- frontend ↔ Convex ↔ Base44 schema contracts;
+- authorization and ownership on sensitive mutations;
+- financial integrity and webhook idempotency;
+- real provider/API execution;
+- agent tools, approvals and autonomous actions;
+- event propagation, crons, retries and idempotency;
+- tests/CI/build/deployment;
 - production environment separation;
-- security and privacy;
-- mobile UX;
+- mobile/accessibility;
 - existing GitHub issues/PRs;
 - deferred/superseded work.
 
-Only after that pass should individual implementation issues be finalized.
+Only after this pass should individual implementation issues be finalized.
