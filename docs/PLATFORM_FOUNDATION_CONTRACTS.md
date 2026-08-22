@@ -31,6 +31,8 @@ payload         versioned event data; no secrets; bounded in size
 
 The application event constructor rejects unregistered names, unsupported versions, invalid timestamps, missing identity/resource/idempotency fields, non-object payloads, and oversized payloads. `PlatformEvent` persists the event ID, version, correlation ID, idempotency key, and timestamp alongside the existing audit fields.
 
+The Base44 `PlatformEvent` schema deliberately keeps the new metadata fields optional and retains only `action` as a required field. This preserves compatibility with historical records and any legacy writer while allowing the current canonical writer to populate the complete metadata contract. The Feature #10 verification script explicitly guards this compatibility rule and verifies the canonical writer supplies the new metadata.
+
 Current registered application events are:
 
 - `platform.configuration.changed`
@@ -86,7 +88,7 @@ Health checks use bounded UI waits so one unavailable dependency cannot hang the
 
 ## Verification
 
-Run `npm run verify:platform-foundation` to exercise the event registry, payload validation, safe error classification, retry idempotency requirement, retry ceiling behavior, and successful retry path. Runtime verification must additionally confirm the configured bridge URL/secret pair reaches the intended Convex deployment and that duplicate concurrent event/job requests are handled transactionally.
+Run `npm run verify:platform-foundation` to exercise the event registry, payload validation, safe error classification, retry idempotency requirement, retry ceiling behavior, successful retry path, PlatformEvent schema compatibility, and canonical-writer metadata coverage. Runtime verification must additionally confirm the configured bridge URL/secret pair reaches the intended Convex deployment and that duplicate concurrent event/job requests are handled transactionally.
 
 ## Change discipline
 
