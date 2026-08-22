@@ -5,6 +5,7 @@ const sender = readFileSync('base44/functions/sendCommunication/entry.ts', 'utf8
 
 const requiredSchemaFragments = [
   '"create": false',
+  '"read": {',
   '"created_by_id": "{{user.id}}"',
 ];
 for (const fragment of requiredSchemaFragments) {
