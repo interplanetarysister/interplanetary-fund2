@@ -87,7 +87,7 @@ export default function ServiceHealthPanel() {
       <div className="bg-slate-900 rounded-2xl p-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-display text-3xl text-white">{healthy}/{results.length} operational</p>
-          <p className="text-sm text-stone-400 mt-1">Average response time {avg}ms · infrastructure managed by Base44</p>
+          <p className="text-sm text-stone-400 mt-1">Average response time {avg}ms · application services across Base44 and Convex</p>
         </div>
         <Button onClick={() => run(true)} disabled={running} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} Run health check
