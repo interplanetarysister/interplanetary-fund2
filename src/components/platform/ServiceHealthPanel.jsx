@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,9 +38,11 @@ function sanitizeError(error) {
 export default function ServiceHealthPanel() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
+  const runningRef = useRef(false);
 
   const run = useCallback(async (log) => {
-    if (running) return;
+    if (runningRef.current) return;
+    runningRef.current = true;
     setRunning(true);
     const runId = createIdempotencyKey("platform-health-check", new Date().toISOString());
     try {
@@ -75,9 +77,10 @@ export default function ServiceHealthPanel() {
         }
       }
     } finally {
+      runningRef.current = false;
       setRunning(false);
     }
-  }, [running]);
+  }, []);
 
   useEffect(() => { run(false); }, [run]);
 
