@@ -53,16 +53,6 @@
     }
   },
   "required": [
-    "action",
-    "category",
-    "actor_name",
-    "affected_resource",
-    "outcome",
-    "details",
-    "event_id",
-    "event_version",
-    "correlation_id",
-    "idempotency_key",
-    "occurred_at"
+    "action"
   ]
 }
