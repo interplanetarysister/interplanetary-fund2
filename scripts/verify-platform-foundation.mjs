@@ -39,7 +39,7 @@ assert.equal(
   sanitizePlatformError({ code: "HEALTH_CHECK_TIMEOUT" }),
   "Dependency timed out",
 );
-assert.throws(() => withRetry(async () => "ok"), /idempotencyKey/);
+assert.rejects(() => withRetry(async () => "ok"), /idempotencyKey/);
 assert.throws(
   () => createPlatformEvent({
     name: "platform.health_check.executed",
