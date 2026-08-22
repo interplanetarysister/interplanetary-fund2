@@ -1,129 +1,94 @@
-/**
- * Shared Platform Foundation contracts.
- *
- * These helpers define the minimum shape for cross-OS events and retry-safe
- * asynchronous work. They are intentionally transport-agnostic so the
- * application layer can share one convention without becoming a competing
- * persistent backend or event store.
- */
+// Shared Platform Foundation contracts. Keep this module dependency-light so it can
+// be used by UI, service helpers, and server-side Base44 functions without creating
+// a second backend contract system.
 
-const EVENT_VERSION = 1;
-const DEFAULT_MAX_ATTEMPTS = 3;
+const EVENT_VERSION = "1.0";
 const MAX_ATTEMPTS = 5;
+const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_BACKOFF_MS = 250;
-const MAX_BACKOFF_MS = 10_000;
-const MAX_EVENT_PAYLOAD_BYTES = 32_000;
+const MAX_BACKOFF_MS = 5000;
+const MAX_EVENT_PAYLOAD_BYTES = 16 * 1024;
 const MAX_EVENT_STRING_LENGTH = 256;
 
-const PLATFORM_EVENT_NAMES = Object.freeze([
-  "platform.configuration.changed",
-  "platform.health_check.executed",
-  "platform.knowledge.updated",
-  "platform.deployment.executed",
-  "platform.security.action",
-  "platform.recovery.executed",
-  "platform.event.recorded",
+export const PLATFORM_EVENT_NAMES = Object.freeze([
+  "platform.health.check",
+  "platform.feature.flag.updated",
+  "platform.knowledge.published",
+  "platform.agent.interaction.recorded",
+  "platform.connection.synced",
+  "platform.campaign.updated",
+  "platform.payment.updated",
 ]);
 
 const SAFE_ERROR_MESSAGES = Object.freeze({
-  HEALTH_CHECK_TIMEOUT: "Dependency timed out",
-  UNAUTHORIZED: "You are not authorized to perform this operation",
-  FORBIDDEN: "This operation is not permitted",
-  NOT_FOUND: "The requested resource was not found",
-  RATE_LIMITED: "Too many requests; please try again",
-  VALIDATION: "The request could not be validated",
-  CONFLICT: "The operation conflicts with current state",
-  UNAVAILABLE: "The service is temporarily unavailable",
+  UNAVAILABLE: "The platform service is temporarily unavailable. Please try again.",
+  UNAUTHORIZED: "You are not authorized to perform this action.",
+  FORBIDDEN: "You do not have permission to perform this action.",
+  NOT_FOUND: "The requested platform resource was not found.",
+  CONFLICT: "The platform could not apply this change because the request conflicts with a newer update.",
+  RATE_LIMITED: "Too many requests. Please try again shortly.",
+  VALIDATION: "The platform request could not be validated.",
 });
 
-function createId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
-}
-
-function assertFinitePositiveInteger(value, fallback, maximum) {
-  if (value == null) return fallback;
-  if (!Number.isFinite(value) || !Number.isInteger(value)) {
-    throw new TypeError("Expected a finite integer");
-  }
-  return Math.min(maximum, Math.max(1, value));
-}
-
-function assertFiniteNonNegativeNumber(value, fallback, maximum) {
-  if (value == null) return fallback;
-  if (!Number.isFinite(value) || value < 0) {
-    throw new TypeError("Expected a finite non-negative number");
-  }
-  return Math.min(maximum, value);
-}
-
-function assertBoundedString(value, field) {
+function assertBoundedString(value, name, maxLength = MAX_EVENT_STRING_LENGTH) {
   if (typeof value !== "string" || !value.trim()) {
-    throw new TypeError(`Platform event ${field} must be a non-empty string`);
+    throw new TypeError(`${name} must be a non-empty string`);
   }
-  if (value.length > MAX_EVENT_STRING_LENGTH) {
-    throw new RangeError(`Platform event ${field} exceeds the maximum length`);
-  }
+  if (value.length > maxLength) throw new RangeError(`${name} exceeds the maximum length`);
+  return value.trim();
 }
 
-function assertIsoDate(value) {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
-    throw new TypeError("Platform event occurredAt must be a valid ISO timestamp");
-  }
+function stableSerialize(value) {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize(value[key])}`).join(",")}}`;
 }
 
-function assertPayload(payload) {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new TypeError("Platform event payload must be an object");
-  }
+function assertJsonPayload(payload) {
   let serialized;
   try {
-    serialized = JSON.stringify(payload);
+    serialized = stableSerialize(payload);
   } catch {
-    throw new TypeError("Platform event payload must be JSON-serializable");
+    throw new TypeError("Event payload must be JSON serializable");
   }
-  if (serialized.length > MAX_EVENT_PAYLOAD_BYTES) {
-    throw new RangeError("Platform event payload exceeds the maximum size");
-  }
+  if (serialized === undefined) throw new TypeError("Event payload must be JSON serializable");
+  const bytes = new TextEncoder().encode(serialized).byteLength;
+  if (bytes > MAX_EVENT_PAYLOAD_BYTES) throw new RangeError("Event payload exceeds the maximum size");
+  return payload;
 }
 
-export function createPlatformEvent({
+export function validatePlatformEvent({
   name,
+  version = EVENT_VERSION,
+  timestamp = new Date().toISOString(),
   actorId,
   resourceType,
   resourceId,
-  correlationId = createId(),
+  correlationId,
   idempotencyKey,
   payload = {},
-  occurredAt = new Date().toISOString(),
-  version = EVENT_VERSION,
 }) {
-  if (!PLATFORM_EVENT_NAMES.includes(name)) {
-    throw new TypeError(`Unsupported platform event: ${String(name)}`);
-  }
-  assertBoundedString(String(actorId || ""), "actorId");
-  assertBoundedString(String(resourceType || ""), "resourceType");
-  assertBoundedString(String(resourceId || ""), "resourceId");
-  assertBoundedString(String(correlationId || ""), "correlationId");
-  assertBoundedString(String(idempotencyKey || ""), "idempotencyKey");
-  if (version !== EVENT_VERSION) throw new Error(`Unsupported platform event version: ${String(version)}`);
-  assertIsoDate(occurredAt);
-  assertPayload(payload);
-
-  return {
-    id: createId(),
+  if (!PLATFORM_EVENT_NAMES.includes(name)) throw new Error(`Unregistered platform event: ${name}`);
+  assertBoundedString(version, "version");
+  assertBoundedString(timestamp, "timestamp");
+  if (Number.isNaN(Date.parse(timestamp))) throw new TypeError("timestamp must be a valid ISO date");
+  assertBoundedString(actorId, "actorId");
+  assertBoundedString(resourceType, "resourceType");
+  assertBoundedString(resourceId, "resourceId");
+  assertBoundedString(correlationId, "correlationId");
+  assertBoundedString(idempotencyKey, "idempotencyKey");
+  assertJsonPayload(payload);
+  return Object.freeze({
     name,
     version,
-    occurred_at: occurredAt,
-    actor_id: String(actorId),
-    resource_type: String(resourceType),
-    resource_id: String(resourceId),
-    correlation_id: String(correlationId),
-    idempotency_key: String(idempotencyKey),
+    timestamp,
+    actorId,
+    resourceType,
+    resourceId,
+    correlationId,
+    idempotencyKey,
     payload,
-  };
+  });
 }
 
 export function createIdempotencyKey(...parts) {
@@ -140,13 +105,13 @@ export function createIdempotencyKey(...parts) {
  * @typedef {Object} RetryOptions
  * @property {number} [maxAttempts]
  * @property {number} [backoffMs]
- * @property {string} idempotencyKey
+ * @property {string} [idempotencyKey]
  * @property {(error: unknown, attempt: number) => boolean} [shouldRetry]
  */
 
 /**
  * @param {(context: {attempt: number, idempotencyKey: string}) => Promise<unknown>} task
- * @param {RetryOptions} options
+ * @param {RetryOptions} [options]
  */
 export async function withRetry(task, {
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
@@ -177,6 +142,18 @@ export async function withRetry(task, {
   }
 
   throw lastError;
+}
+
+function assertFinitePositiveInteger(value, fallback, max) {
+  const candidate = Number.isFinite(value) ? Math.floor(value) : fallback;
+  if (candidate < 1 || candidate > max) throw new RangeError(`maxAttempts must be between 1 and ${max}`);
+  return candidate;
+}
+
+function assertFiniteNonNegativeNumber(value, fallback, max) {
+  const candidate = Number.isFinite(value) ? value : fallback;
+  if (candidate < 0 || candidate > max) throw new RangeError(`backoffMs must be between 0 and ${max}`);
+  return candidate;
 }
 
 export function sanitizePlatformError(error, fallback = SAFE_ERROR_MESSAGES.UNAVAILABLE) {
