@@ -9,7 +9,7 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
-import { DollarSign, Users, Flame, PlusCircle, Loader2, Sparkles } from "lucide-react";
+import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
