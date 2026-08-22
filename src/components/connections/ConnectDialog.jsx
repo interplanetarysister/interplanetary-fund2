@@ -74,13 +74,31 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     setSaving(true);
     const now = new Date().toISOString();
     try {
-      // A social account is linked once and reused across campaigns. If the user
-      // opens Connect again for the same platform, update the existing account
-      // connection rather than creating a campaign-specific duplicate.
       let target = existing;
-      if (!isCrowd && !target) {
+      let socialConnections = [];
+
+      if (!isCrowd) {
         const all = await base44.entities.PlatformConnection.filter({});
-        target = all.find((c) => c.platform === platform.id && c.kind === "social" && c.status !== "disconnected") || null;
+        socialConnections = all
+          .filter((c) => c.platform === platform.id && c.kind === "social" && c.status !== "disconnected")
+          .sort((a, b) => String(a.created_date || a.id).localeCompare(String(b.created_date || b.id)));
+
+        // Establish a deterministic canonical connection for pre-existing duplicates.
+        // The oldest active connection wins; newer duplicates are explicitly disconnected
+        // before the canonical record is updated so future publishing has one authorized target.
+        if (!target) target = socialConnections[0] || null;
+        const duplicates = socialConnections.filter((c) => c.id !== target?.id);
+        if (duplicates.length) {
+          await Promise.all(duplicates.map((duplicate) => base44.entities.PlatformConnection.update(duplicate.id, {
+            status: "disconnected",
+            automation_mode: "manual",
+            last_error: "Superseded by canonical user-level connection.",
+            history: [
+              ...(duplicate.history || []),
+              { at: now, event: "superseded", detail: "Duplicate social connection reconciled to canonical account connection" },
+            ].slice(-30),
+          })));
+        }
       }
 
       const data = {
