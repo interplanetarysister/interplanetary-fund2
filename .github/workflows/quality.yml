@@ -3,7 +3,9 @@ name: Quality Gates
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - "agent1/**"
 
 permissions:
   contents: read
