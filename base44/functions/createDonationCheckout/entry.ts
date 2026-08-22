@@ -13,9 +13,12 @@ export default async function(req) {
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
     const value = Number(amount);
+    const cents = Math.round(value * 100);
+    const hasExactCents = Number.isFinite(value) && Math.abs(value * 100 - cents) < Number.EPSILON;
     if (
       !campaign_id ||
       !Number.isFinite(value) ||
+      !hasExactCents ||
       value < MIN_DONATION_USD ||
       value > MAX_DONATION_USD ||
       !origin
@@ -30,7 +33,10 @@ export default async function(req) {
     }
     if (campaign.end_date) {
       const endDate = new Date(`${campaign.end_date}T23:59:59.999Z`);
-      if (!Number.isNaN(endDate.getTime()) && endDate.getTime() < Date.now()) {
+      if (Number.isNaN(endDate.getTime())) {
+        return Response.json({ error: 'Campaign end date is invalid.' }, { status: 409 });
+      }
+      if (endDate.getTime() < Date.now()) {
         return Response.json({ error: 'This campaign has ended.' }, { status: 409 });
       }
     }
@@ -42,7 +48,7 @@ export default async function(req) {
         quantity: 1,
         price_data: {
           currency: 'usd',
-          unit_amount: Math.round(value * 100),
+          unit_amount: cents,
           product_data: { name: `Donation to ${campaign.title}` },
           ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
         },
