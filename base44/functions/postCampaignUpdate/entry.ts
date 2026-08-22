@@ -2,15 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 
 // Campaign update cross-posting + follower notifications.
-// When an owner publishes an update, this function:
-//   1. stores the CampaignUpdate,
-//   2. asks the AI Distribution Engine for platform-specific versions,
-//   3. publishes immediately on "auto" connections that support direct posting,
-//      otherwise leaves a draft / pending_approval DistributedPost per the
-//      owner's automation setting (never auto-posting without consent),
-//   4. notifies every follower who opted in to update notifications.
-// The owner stays in control — auto-publish only happens where they chose
-// "Publish automatically" AND supplied real credentials.
+// Auto-publishing is limited to the campaign owner's explicitly authorized
+// connections; all other destinations become reviewable DistributedPosts.
 
 const PLATFORM_RULES = {
   facebook: 'Facebook: warm update, 2-3 short paragraphs, up to 400 words, 2-3 hashtags.',
@@ -54,7 +47,6 @@ export default async function(req) {
       return Response.json({ error: 'Only the campaign owner can post updates.' }, { status: 403 });
     }
 
-    // 1. Store the update
     const update = await base44.entities.CampaignUpdate.create({
       campaign_id,
       title: title || undefined,
@@ -63,10 +55,8 @@ export default async function(req) {
       media_type: media_type || (media_url ? 'image' : 'none'),
     });
 
-    // 2. Cross-post to social connections (unless the owner opted out for this post)
     const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0 };
     if (cross_post !== false) {
-      // User-scoped read respects RLS — only the owner's connections come back.
       const connections = await base44.entities.PlatformConnection.filter({});
       const targets = connections.filter((c) => c.automation_mode !== 'manual');
       crosspost.skipped = connections.length - targets.length;
@@ -113,7 +103,7 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
-          if (conn.automation_mode === 'auto' && canAutoPublish(conn)) {
+          if (conn.automation_mode === 'auto' && canAutoPublish(conn, user)) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({
@@ -143,7 +133,6 @@ Return JSON only.`;
       }
     }
 
-    // 3. Notify followers who opted in to updates (service role — reads all follows)
     const sr = base44.asServiceRole;
     const followers = await sr.entities.FollowedCampaign.filter({ campaign_id, archived: false });
     let notified = 0;

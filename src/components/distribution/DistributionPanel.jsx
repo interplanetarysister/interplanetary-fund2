@@ -8,10 +8,9 @@ import { Link } from "react-router-dom";
 import DistributedPostCard from "./DistributedPostCard";
 import { platformName } from "@/components/connections/platformCatalog";
 
-// The AI Campaign Distribution Engine — generates platform-tailored content
-// for every connected social AND crowdfunding destination, saves them as
-// drafts, then lets the owner approve & broadcast all at once (direct-publish
-// where an API exists, copy-to-post otherwise).
+// The AI Campaign Distribution Engine reuses linked accounts across campaigns.
+// Linking an account supplies the durable broadcast authorization; there is no
+// second approval step for each generated update.
 export default function DistributionPanel({ campaign }) {
   const [connections, setConnections] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -28,16 +27,14 @@ export default function DistributionPanel({ campaign }) {
         base44.entities.DistributedPost.filter({ campaign_id: campaign.id }, "-created_date", 30),
       ]);
       setConnections(conns);
-      setSelected(conns.filter((c) => c.automation_mode !== "manual").map((c) => c.id));
+      setSelected(conns.filter((c) => c.status !== "disconnected").map((c) => c.id));
       setPosts(existing);
     })();
   }, [campaign.id]);
 
   if (!connections) return null;
 
-  const pending = posts.filter((p) =>
-    ["pending_approval", "draft", "approved", "failed"].includes(p.status)
-  );
+  const pending = posts.filter((p) => ["pending_approval", "approved", "scheduled"].includes(p.status));
 
   const generate = async () => {
     setGenerating(true);
@@ -67,9 +64,7 @@ export default function DistributionPanel({ campaign }) {
         setPosts((prev) => {
           const map = new Map(prev.map((p) => [p.id, p]));
           for (const u of returned) map.set(u.id, u);
-          return Array.from(map.values()).sort(
-            (a, b) => new Date(b.created_date) - new Date(a.created_date)
-          );
+          return Array.from(map.values()).sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
         });
         toast({
           title: "Broadcast complete",
@@ -88,7 +83,7 @@ export default function DistributionPanel({ campaign }) {
         <Megaphone className="w-5 h-5 text-primary" /> Distribution Engine
       </h3>
       <p className="text-sm text-stone-500 mb-4">
-        AI writes a tailored post for each connected social and crowdfunding platform — never the same content twice. Review the drafts, then approve & broadcast.
+        AI writes a tailored update for each connected destination. Linked social accounts are reusable across every campaign, and linking once authorizes broadcasts without individual post approvals.
       </p>
 
       {connections.length === 0 ? (
@@ -99,15 +94,15 @@ export default function DistributionPanel({ campaign }) {
         <>
           <div className="flex flex-wrap gap-3 mb-4">
             {connections.map((c) => (
-              <label key={c.id} className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-1.5 ${c.automation_mode === "manual" ? "opacity-50 border-stone-200 text-stone-400" : "border-stone-200 text-stone-700"}`}>
+              <label key={c.id} className={`flex items-center gap-2 text-sm rounded-lg border px-3 py-1.5 ${c.status === "disconnected" ? "opacity-50 border-stone-200 text-stone-400" : "border-stone-200 text-stone-700"}`}>
                 <Checkbox
                   checked={selected.includes(c.id)}
-                  disabled={c.automation_mode === "manual"}
+                  disabled={c.status === "disconnected"}
                   onCheckedChange={(v) => setSelected((prev) => (v ? [...prev, c.id] : prev.filter((x) => x !== c.id)))}
                 />
                 {platformName(c.platform)}
-                <span className="text-[10px] text-stone-400">{c.kind === "crowdfunding" ? "fundraiser" : "social"}</span>
-                {c.automation_mode === "manual" && <span className="text-[10px]">(manual only)</span>}
+                <span className="text-[10px] text-stone-400">{c.kind === "crowdfunding" ? "fundraiser" : "linked account"}</span>
+                {c.status === "disconnected" && <span className="text-[10px]">(disconnected)</span>}
               </label>
             ))}
           </div>
@@ -117,7 +112,7 @@ export default function DistributionPanel({ campaign }) {
             </Button>
             {pending.length > 0 && (
               <Button onClick={broadcast} disabled={broadcasting} variant="outline" className="rounded-xl">
-                {broadcasting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />} Approve all & broadcast ({pending.length})
+                {broadcasting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />} Broadcast updates ({pending.length})
               </Button>
             )}
           </div>
