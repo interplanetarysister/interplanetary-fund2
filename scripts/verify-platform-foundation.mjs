@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import {
   PLATFORM_FOUNDATION,
   createIdempotencyKey,
@@ -64,5 +65,20 @@ const result = await withRetry(
 );
 assert.equal(result, "success");
 assert.equal(attempts, 2);
+
+// Backward-compatibility guard: new PlatformEvent metadata is optional at the
+// schema level so historical records and legacy writers remain readable/writable.
+const schemaText = await fs.readFile(new URL("../base44/entities/PlatformEvent.jsonc", import.meta.url), "utf8");
+const schema = JSON.parse(schemaText);
+assert.deepEqual(schema.required, ["action"]);
+for (const field of ["event_id", "event_version", "correlation_id", "idempotency_key", "occurred_at"]) {
+  assert.ok(schema.properties?.[field], `PlatformEvent schema is missing ${field}`);
+}
+
+// The current authoritative application writer must populate the new metadata.
+const writerText = await fs.readFile(new URL("../src/components/platform/logPlatformEvent.js", import.meta.url), "utf8");
+for (const field of ["event_id", "event_version", "correlation_id", "idempotency_key", "occurred_at"]) {
+  assert.ok(writerText.includes(field), `PlatformEvent writer is missing ${field}`);
+}
 
 console.log("Platform foundation verification passed.");
