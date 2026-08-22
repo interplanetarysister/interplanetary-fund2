@@ -2,6 +2,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 
+const PRICE_ENTITLEMENTS = {
+  price_1Tz8iSEkntycHB4NlQlYd0Gs: { tier: 'basic', interval: 'monthly' },
+  price_1Tz8iSEkntycHB4N8J7EXq42: { tier: 'basic', interval: 'annual' },
+  price_1Tz8iSEkntycHB4NESNtjyOx: { tier: 'outreach', interval: 'monthly' },
+  price_1Tz8iSEkntycHB4N5iujmlJZ: { tier: 'outreach', interval: 'annual' },
+};
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -21,13 +28,23 @@ export default async function(req) {
       const session = event.data.object;
       const m = session.metadata || {};
 
-      // Subscription activation — AI tier checkout.
-      if (session.mode === 'subscription' || m.subscription_tier) {
-        if (m.user_id) {
+      // Subscription activation — derive entitlement from the actual Stripe price,
+      // never from client-controlled metadata.
+      if (session.mode === 'subscription') {
+        if (m.user_id && session.subscription) {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription);
+          const item = subscription.items?.data?.[0];
+          const priceId = item?.price?.id;
+          const entitlement = PRICE_ENTITLEMENTS[priceId];
+          if (!entitlement) {
+            console.error('Unrecognized subscription price:', priceId);
+            return Response.json({ error: 'Unrecognized subscription price' }, { status: 400 });
+          }
+
           await base44.asServiceRole.entities.User.update(m.user_id, {
-            subscription_tier: m.subscription_tier,
-            subscription_status: 'active',
-            subscription_interval: m.subscription_interval || 'monthly',
+            subscription_tier: entitlement.tier,
+            subscription_status: subscription.status === 'trialing' ? 'trialing' : 'active',
+            subscription_interval: entitlement.interval,
             stripe_customer_id: session.customer || undefined,
           });
         }
@@ -94,11 +111,13 @@ export default async function(req) {
         const u = users && users[0];
         if (u) {
           const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
-          const interval = sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].price && sub.items.data[0].price.recurring && sub.items.data[0].price.recurring.interval;
+          const item = sub.items && sub.items.data && sub.items.data[0];
+          const priceId = item?.price?.id;
+          const entitlement = PRICE_ENTITLEMENTS[priceId];
           await base44.asServiceRole.entities.User.update(u.id, {
             subscription_status: statusMap[sub.status] || 'none',
             ...(sub.current_period_end ? { subscription_renews_at: new Date(sub.current_period_end * 1000).toISOString() } : {}),
-            ...(interval === 'month' ? { subscription_interval: 'monthly' } : interval === 'year' ? { subscription_interval: 'annual' } : {}),
+            ...(entitlement ? { subscription_tier: entitlement.tier, subscription_interval: entitlement.interval } : {}),
           });
         }
       }
