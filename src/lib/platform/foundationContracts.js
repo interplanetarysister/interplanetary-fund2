@@ -116,6 +116,18 @@ export function createIdempotencyKey(...parts) {
   return normalized.join(":");
 }
 
+/**
+ * @typedef {Object} RetryOptions
+ * @property {number} [maxAttempts]
+ * @property {number} [backoffMs]
+ * @property {string} idempotencyKey
+ * @property {(error: unknown, attempt: number) => boolean} [shouldRetry]
+ */
+
+/**
+ * @param {() => Promise<unknown>} task
+ * @param {RetryOptions} options
+ */
 export async function withRetry(task, {
   maxAttempts = DEFAULT_MAX_ATTEMPTS,
   backoffMs = DEFAULT_BACKOFF_MS,
