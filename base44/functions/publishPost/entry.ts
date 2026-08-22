@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 
-// Publishes only owner-approved posts through an explicitly auto-authorized connection.
+// Publishes owner-owned posts through an explicitly linked/authorized connection.
+// Linking the account is the durable authorization; no per-post approval gate is required.
 // Unsupported/manual destinations return manual=true so the UI can hand the owner
 // finished content without pretending an API exists.
 export default async function(req) {
@@ -19,8 +20,17 @@ export default async function(req) {
       return Response.json({ error: 'You do not have permission to publish this post.' }, { status: 403 });
     }
 
-    if (post.status !== 'approved' && post.status !== 'scheduled') {
-      return Response.json({ error: 'Post must be approved before publishing.' }, { status: 409 });
+    // Legacy pending_approval posts remain publishable because the linked account
+    // itself is the durable authorization. Scheduled posts are also publishable
+    // when their scheduled time has arrived.
+    const publishableStatuses = ['pending_approval', 'approved'];
+    if (post.status === 'scheduled') {
+      const scheduledAt = post.scheduled_for ? new Date(post.scheduled_for).getTime() : NaN;
+      if (!Number.isFinite(scheduledAt) || scheduledAt > Date.now()) {
+        return Response.json({ error: 'Scheduled post is not ready to publish.' }, { status: 409 });
+      }
+    } else if (!publishableStatuses.includes(post.status)) {
+      return Response.json({ error: 'Post is not ready to publish.' }, { status: 409 });
     }
 
     const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
@@ -36,7 +46,7 @@ export default async function(req) {
     if (!text) return Response.json({ error: 'Post content is empty.' }, { status: 400 });
 
     if (!canAutoPublish(connection, user)) {
-      const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
+      const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved', error: '' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
     }
 
