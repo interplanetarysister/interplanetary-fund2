@@ -36,7 +36,7 @@ export default async function(req) {
           const entitlement = PRICE_ENTITLEMENTS[priceId];
           if (!entitlement) {
             console.error('Unrecognized subscription price:', priceId);
-            return Response.json({ error: 'Unrecognized subscription price' }, { status: 400 });
+            return Response.json({ error: 'Unrecognized subscription price' }, { status: 500 });
           }
 
           await base44.asServiceRole.entities.User.update(m.user_id, {
@@ -77,7 +77,7 @@ export default async function(req) {
               await base44.asServiceRole.entities.Notification.create({
                 user_id: campaign.created_by_id,
                 title: 'New donation received',
-                body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to "${campaign.title}"`,
+                body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to \"${campaign.title}\"`,
                 type: 'donation',
                 link: `/campaign/${campaign.id}`,
               });
@@ -108,10 +108,18 @@ export default async function(req) {
           const item = sub.items?.data?.[0];
           const priceId = item?.price?.id;
           const entitlement = PRICE_ENTITLEMENTS[priceId];
+          if (!entitlement) {
+            // Fail closed and ask Stripe to retry after the server catalog is corrected.
+            // Never grant or preserve an entitlement based on an unrecognized price.
+            console.error('Unrecognized subscription price on update:', priceId, 'subscription:', sub.id);
+            return Response.json({ error: 'Unrecognized subscription price; retry required' }, { status: 500 });
+          }
+
           await base44.asServiceRole.entities.User.update(u.id, {
             subscription_status: statusMap[sub.status] || 'none',
             ...(sub.current_period_end ? { subscription_renews_at: new Date(sub.current_period_end * 1000).toISOString() } : {}),
-            ...(entitlement ? { subscription_tier: entitlement.tier, subscription_interval: entitlement.interval } : {}),
+            subscription_tier: entitlement.tier,
+            subscription_interval: entitlement.interval,
           });
         }
       }
