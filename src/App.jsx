@@ -151,7 +151,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <QueryClientProvider clientName={queryClientInstance}>
+      <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
           <TermsAcceptance>
