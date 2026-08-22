@@ -1,21 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
-
-// Server-owned Stripe price catalog. Never trust a client-supplied price ID or
-// tier because the resulting Stripe entitlement is authoritative billing state.
-const PRICE_CATALOG = {
-  basic: {
-    monthly: 'price_1Tz8iSEkntycHB4NlQlYd0Gs',
-    annual: 'price_1Tz8iSEkntycHB4N8J7EXq42',
-  },
-  outreach: {
-    monthly: 'price_1Tz8iSEkntycHB4NESNtjyOx',
-    annual: 'price_1Tz8iSEkntycHB4N5iujmlJZ',
-  },
-};
-
-const INTERVALS = new Set(['monthly', 'annual']);
+import { getSubscriptionPrice, SUPPORTED_SUBSCRIPTION_INTERVALS } from '../../shared/subscriptionCatalog.ts';
 
 export default async function(req) {
   try {
@@ -24,12 +10,10 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { tier, interval = 'monthly', origin, trial_days } = await req.json();
-    if (!tier || !origin || !PRICE_CATALOG[tier] || !INTERVALS.has(interval)) {
+    const price_id = getSubscriptionPrice(tier, interval);
+    if (!tier || !origin || !price_id || !SUPPORTED_SUBSCRIPTION_INTERVALS.includes(interval)) {
       return Response.json({ error: 'Invalid subscription plan.' }, { status: 400 });
     }
-
-    const price_id = PRICE_CATALOG[tier][interval];
-    if (!price_id) return Response.json({ error: 'Subscription plan is not configured.' }, { status: 400 });
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
     const session = await stripe.checkout.sessions.create({
