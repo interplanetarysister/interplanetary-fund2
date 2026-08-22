@@ -15,9 +15,13 @@ const MAX_BACKOFF_MS = 10_000;
 const MAX_EVENT_PAYLOAD_BYTES = 32_000;
 
 const PLATFORM_EVENT_NAMES = Object.freeze([
+  "platform.configuration.changed",
   "platform.health_check.executed",
-  "platform.service.degraded",
-  "platform.service.recovered",
+  "platform.knowledge.updated",
+  "platform.deployment.executed",
+  "platform.security.action",
+  "platform.recovery.executed",
+  "platform.event.recorded",
 ]);
 
 const SAFE_ERROR_MESSAGES = Object.freeze({
