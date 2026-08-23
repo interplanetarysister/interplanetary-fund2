@@ -12,6 +12,10 @@ export function canAutoPublish(connection) {
   return false;
 }
 
+export function safePublishError() {
+  return 'Publishing failed. Verify the linked account and try again.';
+}
+
 export async function publishToBluesky(handle, appPassword, text) {
   const sessionRes = await fetch('https://bsky.social/xrpc/com.atproto.server.createSession', {
     method: 'POST',
