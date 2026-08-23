@@ -80,7 +80,9 @@ export function validatePlatformEvent({
   payload = {},
 }) {
   if (!PLATFORM_EVENT_NAMES.includes(name)) throw new Error(`Unsupported platform event: ${name}`);
-  if (!Number.isInteger(version) || version < 1) throw new TypeError("version must be a positive integer");
+  if (!Number.isInteger(version) || version !== EVENT_VERSION) {
+    throw new TypeError(`version must be the supported integer ${EVENT_VERSION}`);
+  }
   assertBoundedString(timestamp, "timestamp");
   if (Number.isNaN(Date.parse(timestamp))) throw new TypeError("timestamp must be a valid ISO date");
   assertBoundedString(actorId, "actorId");
@@ -199,14 +201,18 @@ export async function withRetry(task, {
 }
 
 function assertFinitePositiveInteger(value, fallback, max) {
-  const candidate = Number.isFinite(value) ? Math.floor(value) : fallback;
-  if (candidate < 1 || candidate > max) throw new RangeError(`maxAttempts must be between 1 and ${max}`);
+  const candidate = value === undefined ? fallback : value;
+  if (!Number.isFinite(candidate) || !Number.isInteger(candidate) || candidate < 1 || candidate > max) {
+    throw new RangeError(`maxAttempts must be an integer between 1 and ${max}`);
+  }
   return candidate;
 }
 
 function assertFiniteNonNegativeNumber(value, fallback, max) {
-  const candidate = Number.isFinite(value) ? value : fallback;
-  if (candidate < 0 || candidate > max) throw new RangeError(`backoffMs must be between 0 and ${max}`);
+  const candidate = value === undefined ? fallback : value;
+  if (!Number.isFinite(candidate) || candidate < 0 || candidate > max) {
+    throw new RangeError(`backoffMs must be a finite number between 0 and ${max}`);
+  }
   return candidate;
 }
 
