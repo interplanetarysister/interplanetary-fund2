@@ -1,7 +1,8 @@
 import { readFile, readdir } from "node:fs/promises";
 import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const sourceRoot = new URL("../src/", import.meta.url);
+const sourceRoot = fileURLToPath(new URL("../src/", import.meta.url));
 const termsSource = await readFile(new URL("../src/components/TermsAcceptance.jsx", import.meta.url), "utf8");
 
 const forbiddenFragments = [
