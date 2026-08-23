@@ -32,6 +32,18 @@ assert.throws(
   /Unsupported platform event/,
 );
 
+assert.throws(
+  () => createPlatformEvent({
+    name: "platform.health_check.executed",
+    version: 2,
+    actorId: "user",
+    resourceType: "platform",
+    resourceId: "resource",
+    idempotencyKey: "test:version",
+  }),
+  /supported integer 1/,
+);
+
 assert.equal(
   sanitizePlatformError(new Error("https://provider.example/private-token?query=secret")),
   "The service is temporarily unavailable",
@@ -41,6 +53,18 @@ assert.equal(
   "Dependency timed out",
 );
 await assert.rejects(() => withRetry(async () => "ok"), /idempotencyKey/);
+for (const invalidAttempts of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+  await assert.rejects(
+    () => withRetry(async () => "ok", { idempotencyKey: "verify:invalid-attempts", maxAttempts: invalidAttempts }),
+    /maxAttempts must be an integer/,
+  );
+}
+for (const invalidBackoff of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+  await assert.rejects(
+    () => withRetry(async () => "ok", { idempotencyKey: "verify:invalid-backoff", backoffMs: invalidBackoff }),
+    /backoffMs must be a finite number/,
+  );
+}
 assert.throws(
   () => createPlatformEvent({
     name: "platform.health_check.executed",
