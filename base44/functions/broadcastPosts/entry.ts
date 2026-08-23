@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, publishThroughConnection, safePublishError } from '../../shared/socialPublish.ts';
 
 // Broadcasts campaign updates to destinations the owner has already authorized
 // by linking their account. There is no per-post approval gate.
@@ -21,9 +21,6 @@ export default async function(req) {
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const now = Date.now();
     const eligible = posts.filter((p) => {
-      // Legacy generated posts may still be pending_approval. Linking the
-      // destination already supplied the authorization, so treat those as
-      // broadcast-ready without requiring a second approval click.
       if (p.status === 'pending_approval' || p.status === 'approved') return true;
       if (p.status === 'scheduled') return p.scheduled_for && new Date(p.scheduled_for).getTime() <= now;
       return false;
@@ -101,9 +98,11 @@ export default async function(req) {
         results.published++;
         results.posts.push(updated);
       } catch (pubError) {
+        console.error('broadcastPosts provider error:', pubError?.message || pubError);
+        const safeError = safePublishError();
         const updated = await base44.entities.DistributedPost.update(post.id, {
           status: 'failed',
-          error: pubError.message,
+          error: safeError,
           retry_count: (post.retry_count || 0) + 1,
         });
         results.failed++;
@@ -113,7 +112,7 @@ export default async function(req) {
 
     return Response.json(results);
   } catch (error) {
-    console.error('broadcastPosts error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('broadcastPosts error:', error?.message || error);
+    return Response.json({ error: 'Unable to broadcast campaign updates right now.' }, { status: 500 });
   }
 }
