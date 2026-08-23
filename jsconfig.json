@@ -4,7 +4,7 @@
     "checkJs": true,
     "noEmit": true,
     "paths": {
-      "@/components/ui/*": ["./src/types/compat-shims/ui.d.ts"],
+      "@/components/ui/*": ["./src/types/compat-shims/ui.d.ts", "./src/components/ui/*"],
       "@/lib/*": ["./src/types/compat-shims/lib.d.ts", "./src/lib/*"],
       "@/api/*": ["./src/types/compat-shims/api.d.ts", "./src/api/*"],
       "@/*": ["./src/*"]
@@ -21,12 +21,9 @@
     "types": []
   },
   "include": [
-    "src/*.jsx",
-    "src/components/**/*.js",
-    "src/components/**/*.jsx",
-    "src/pages/**/*.js",
-    "src/pages/**/*.jsx",
+    "src/**/*.js",
+    "src/**/*.jsx",
     "src/types/**/*.d.ts"
   ],
-  "exclude": ["node_modules", "dist", "src/vite-plugins", "src/components/ui", "src/api", "src/lib"]
+  "exclude": ["node_modules", "dist", "src/vite-plugins"]
 }
