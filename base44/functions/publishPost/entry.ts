@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, publishThroughConnection, safePublishError } from '../../shared/socialPublish.ts';
 
 // Publishes owner-owned posts through an explicitly linked/authorized connection.
 // Linking the account is the durable authorization; no per-post approval gate is required.
@@ -20,9 +20,6 @@ export default async function(req) {
       return Response.json({ error: 'You do not have permission to publish this post.' }, { status: 403 });
     }
 
-    // Legacy pending_approval posts remain publishable because the linked account
-    // itself is the durable authorization. Scheduled posts are also publishable
-    // when their scheduled time has arrived.
     const publishableStatuses = ['pending_approval', 'approved'];
     if (post.status === 'scheduled') {
       const scheduledAt = post.scheduled_for ? new Date(post.scheduled_for).getTime() : NaN;
@@ -65,15 +62,17 @@ export default async function(req) {
       });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {
+      console.error('publishPost provider error:', pubError?.message || pubError);
+      const safeError = safePublishError();
       await base44.entities.DistributedPost.update(post_id, {
         status: 'failed',
-        error: pubError.message,
+        error: safeError,
         retry_count: (post.retry_count || 0) + 1,
       });
-      return Response.json({ error: pubError.message }, { status: 502 });
+      return Response.json({ error: safeError }, { status: 502 });
     }
   } catch (error) {
-    console.error('publishPost error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('publishPost error:', error?.message || error);
+    return Response.json({ error: 'Unable to publish this post right now.' }, { status: 500 });
   }
 }
