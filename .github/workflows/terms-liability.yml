@@ -1,0 +1,33 @@
+name: Terms Liability Verification
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "scripts/verify-terms-liability.mjs"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/terms-liability.yml"
+  push:
+    branches:
+      - main
+      - "agent1/terms-liability-verification"
+
+jobs:
+  verify-terms-liability:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
+
+      - name: Verify opening-agreement liability contract
+        run: npm run verify:terms-liability
