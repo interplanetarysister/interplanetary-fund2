@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, publishThroughConnection, safePublishError } from '../../shared/socialPublish.ts';
 
 // Campaign update cross-posting + follower notifications.
 // Auto-publishing is limited to the campaign owner's explicitly authorized
@@ -113,10 +113,11 @@ Return JSON only.`;
               });
               crosspost.published++;
             } catch (e) {
+              console.error('postCampaignUpdate provider error:', e?.message || e);
               await base44.entities.DistributedPost.create({
                 campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-                status: 'failed', error: e.message, retry_count: 1,
+                status: 'failed', error: safePublishError(), retry_count: 1,
               });
               crosspost.failed++;
             }
@@ -151,7 +152,7 @@ Return JSON only.`;
 
     return Response.json({ update, crosspost, followers_notified: notified });
   } catch (error) {
-    console.error('postCampaignUpdate error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('postCampaignUpdate error:', error?.message || error);
+    return Response.json({ error: 'Unable to publish the campaign update right now.' }, { status: 500 });
   }
 }
