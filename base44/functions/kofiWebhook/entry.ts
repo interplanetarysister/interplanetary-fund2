@@ -4,11 +4,16 @@ function safeWebhookError() {
   return 'Unable to process Ko-fi webhook.';
 }
 
+function supportedDonationType(type) {
+  if (!type) return true;
+  return new Set(['Donation', 'donation', 'Payment', 'payment', 'Monthly Donation', 'monthly_donation']).has(type);
+}
+
 // Live Ko-fi donation sync. Ko-fi POSTs form-encoded webhooks with a `data`
 // JSON field containing a verification_token. The token authenticates the
 // request: it must match the token the connection owner saved when connecting
-// Ko-fi. On match, external totals update and the gift lands in the owner's
-// Universal Inbox. Public endpoint — service role, token-validated.
+// Ko-fi. The financial mutation is guarded by an atomic updateMany claim on
+// the connection, separate from the rolling activity history.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -46,36 +51,53 @@ export default async function(req) {
       return Response.json({ error: 'Invalid webhook amount' }, { status: 400 });
     }
 
+    if (!supportedDonationType(payload.type)) {
+      return Response.json({ ok: true, ignored: true });
+    }
+
     const connections = await sr.entities.PlatformConnection.filter({ platform: 'kofi' });
     const connection = connections.find((c) => c.credentials?.kofi_verification_token === token);
     if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
 
-    // Ko-fi retries failed webhook deliveries with the same message_id. Keep
-    // the identifier in the connection history so sequential replays are not
-    // counted twice. A durable atomic claim still requires a dedicated data
-    // primitive and remains a separate production gate in Issue #66.
-    const history = Array.isArray(connection.history) ? connection.history : [];
-    const alreadyProcessed = history.some((event) => event?.messageId === messageId);
-    if (alreadyProcessed) return Response.json({ ok: true, duplicate: true });
+    // Ko-fi retries reuse message_id. Use an atomic conditional update so two
+    // concurrent deliveries cannot both increment external_total. Unlike the
+    // rolling history, processed_webhook_ids is durable and is never trimmed.
+    const processedIds = Array.isArray(connection.processed_webhook_ids)
+      ? connection.processed_webhook_ids
+      : [];
+    const claim = await sr.entities.PlatformConnection.updateMany(
+      {
+        id: connection.id,
+        processed_webhook_ids: { $ne: messageId },
+      },
+      {
+        $inc: {
+          external_total: amount,
+          external_donor_count: 1,
+        },
+        $addToSet: {
+          processed_webhook_ids: messageId,
+        },
+        $set: {
+          status: 'connected',
+          last_synced: new Date().toISOString(),
+          last_error: '',
+        },
+        $push: {
+          history: {
+            at: new Date().toISOString(),
+            event: 'synced',
+            detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}`,
+          },
+        },
+      },
+    );
+
+    if (!claim.success || claim.updated !== 1) {
+      return Response.json({ ok: true, duplicate: true });
+    }
 
     const now = new Date().toISOString();
-    await sr.entities.PlatformConnection.update(connection.id, {
-      external_total: (connection.external_total || 0) + amount,
-      external_donor_count: (connection.external_donor_count || 0) + 1,
-      status: 'connected',
-      last_synced: now,
-      last_error: '',
-      history: [
-        ...history,
-        {
-          at: now,
-          event: 'synced',
-          messageId,
-          detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}`,
-        },
-      ].slice(-30),
-    });
-
     await sr.entities.InboxItem.create({
       user_id: connection.created_by_id,
       platform: 'kofi',
@@ -85,6 +107,7 @@ export default async function(req) {
       content: `Gave $${amount}${payload.message ? ` — "${payload.message}"` : ''}`,
       link: payload.url || connection.external_url || '',
       status: 'open',
+      external_event_id: `kofi:${messageId}`,
     });
     await sr.entities.Notification.create({
       user_id: connection.created_by_id,
@@ -94,7 +117,7 @@ export default async function(req) {
       link: '/inbox',
     });
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, claimed: true });
   } catch (error) {
     console.error('kofiWebhook error:', error);
     return Response.json({ error: safeWebhookError() }, { status: 500 });
