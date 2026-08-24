@@ -1,7 +1,7 @@
 import { secrets } from "base44:runtime";
 
-// Shared PayPal Payouts helper. All platform money moves in and out of the
-// single PayPal business account configured via PAYPAL_CLIENT_ID / SECRET.
+// Shared PayPal helper. All platform money moves in and out of the single
+// PayPal business account configured via PAYPAL_CLIENT_ID / SECRET.
 // Sandbox by default; set PAYPAL_MODE=live for real payouts.
 
 function apiBase() {
@@ -41,7 +41,8 @@ export async function sendPayout({ receiver, amount, note, itemId }) {
     },
     body: JSON.stringify({
       sender_batch_header: {
-        sender_batch_id: `IFW_${Date.now()}`,
+        // The withdrawal transaction id is the durable idempotency identity.
+        sender_batch_id: itemId,
         email_subject: "You received a payout from Interplanetary Fund",
         email_message: "Your campaign withdrawal has been processed.",
       },
@@ -99,6 +100,28 @@ export async function createOrder({ amount, description, metadata }) {
   return { id: data.id };
 }
 
+export async function getOrder(orderId) {
+  const token = await getAccessToken();
+  const res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || `PayPal order lookup failed (${res.status})`);
+  }
+  const unit = data.purchase_units?.[0];
+  const capture = unit?.payments?.captures?.[0];
+  const given = data.payer?.name?.given_name;
+  const sur = data.payer?.name?.surname;
+  return {
+    status: data.status,
+    campaign_id: unit?.custom_id || "",
+    amount: capture?.amount?.value || unit?.amount?.value || "0",
+    currency: capture?.amount?.currency_code || unit?.amount?.currency_code || "",
+    payer_name: given ? `${given} ${sur || ""}`.trim() : "",
+  };
+}
+
 export async function captureOrder(orderId) {
   const token = await getAccessToken();
   const res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}/capture`, {
@@ -113,11 +136,14 @@ export async function captureOrder(orderId) {
     throw new Error(data?.message || `PayPal capture failed (${res.status})`);
   }
   const capture = data.purchase_units?.[0]?.payments?.captures?.[0];
+  const unit = data.purchase_units?.[0];
   const given = data.payer?.name?.given_name;
   const sur = data.payer?.name?.surname;
   return {
     status: data.status,
+    campaign_id: unit?.custom_id || "",
     amount: capture ? parseFloat(capture.amount?.value || "0") : 0,
+    currency: capture?.amount?.currency_code || unit?.amount?.currency_code || "",
     payer_name: given ? `${given} ${sur || ""}`.trim() : "",
   };
 }
