@@ -22,6 +22,10 @@ const required = [
   'Number.isFinite(amount)',
   'processed_webhook_ids',
   'processed_webhook_ids: { $ne: messageId }',
+  'kofi_active_event_id: { $exists: false }',
+  'kofi_active_event_id: eventId',
+  'kofi_recovery_claim_token',
+  'kofi_recovery_claimed_at',
   '$addToSet',
   'external_total: amount',
   'await ensureSideEffects(sr, connection, payload, amount, eventId);',
@@ -30,6 +34,7 @@ const required = [
   'side_effects_complete: false',
   'await recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt);',
   '$pull: { processed_webhook_ids: messageId }',
+  'kofi_active_event_id: { $exists: false }',
   'return Response.json({ error: safeWebhookError() }, { status: 500 });',
 ];
 
@@ -60,6 +65,9 @@ for (const field of [
   'last_error',
   'history',
   'processed_webhook_ids',
+  'kofi_active_event_id',
+  'kofi_recovery_claim_token',
+  'kofi_recovery_claimed_at',
 ]) {
   if (!connectionSchema.includes(`"${field}"`)) {
     throw new Error(`PlatformConnection schema lost required existing/new field: ${field}`);
@@ -120,4 +128,12 @@ if (!source.includes('supportedDonationType(payload.type)')) {
   throw new Error('Ko-fi webhook must classify supported financial event types');
 }
 
-console.log('Ko-fi webhook durable claim, provider-event ledger, side-effect recovery, and schema-preservation contract verified.');
+if (!source.includes('kofi_active_event_id: eventId') || !source.includes('$unset')) {
+  throw new Error('Ko-fi financial claim must retain and explicitly clear the active event claim only after recovery completes.');
+}
+
+if (!source.includes('$or: [') || !source.includes('kofi_recovery_claimed_at: { $lt: staleBefore }')) {
+  throw new Error('Ko-fi recovery must support bounded stale-claim takeover instead of allowing concurrent recovery owners.');
+}
+
+console.log('Ko-fi webhook single-winner claim, durable provider-event ledger, side-effect recovery, and schema-preservation contract verified.');
