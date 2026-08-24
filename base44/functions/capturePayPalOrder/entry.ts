@@ -28,10 +28,10 @@ export default async function (req) {
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
     // Establish a durable single-winner boundary before the provider capture.
-    // The campaign record is used as the existing transactional coordination
-    // surface; the claim remains until all local financial side effects are
-    // reconciled, so a retry can repair partial local failure without another
-    // concurrent worker entering the same order.
+    // updateMany() conditionally commits the claim before any irreversible
+    // provider or local financial side effect. A retry for the same order can
+    // reacquire/continue its own claim for crash recovery; a competing order
+    // cannot enter the same campaign while another live claim exists.
     const now = Date.now();
     const currentClaim = campaign.paypal_capture_claim_order_id;
     const claimedAt = campaign.paypal_capture_claimed_at
@@ -72,8 +72,15 @@ export default async function (req) {
       return Response.json({ error: 'Another PayPal donation is currently being processed. Please retry shortly.' }, { status: 409 });
     }
 
+    // Re-read after the claim so recovery never relies on the pre-claim
+    // campaign snapshot for the total-applied marker or creator metadata.
+    const claimedCampaign = await sr.entities.Campaign.get(campaign_id);
+    if (!claimedCampaign) {
+      return Response.json({ error: 'Campaign could not be reloaded for payment reconciliation.' }, { status: 409 });
+    }
+
     // Sequential and crash-recovery retries are idempotent once the Donation
-    // exists. The active campaign claim prevents concurrent local side effects.
+    // exists. The committed campaign claim prevents concurrent local side effects.
     let donation = (await sr.entities.Donation.filter({ paypal_order_id: order_id }))?.[0];
 
     let payment = order;
@@ -108,7 +115,7 @@ export default async function (req) {
     if (!donation) {
       donation = await sr.entities.Donation.create({
         campaign_id,
-        campaign_title: campaign.title,
+        campaign_title: claimedCampaign.title,
         amount: value,
         donor_name: donor_name || payment.payer_name || donor?.full_name || 'Anonymous',
         message: (message || '').slice(0, 1000),
@@ -119,25 +126,42 @@ export default async function (req) {
       });
     }
 
-    // The total update and its recovery marker are one entity update. A retry
-    // after a crash can therefore tell whether the campaign total was already
-    // applied without relying on a separate mutable lock record.
-    if (!campaign.paypal_capture_total_applied) {
-      await sr.entities.Campaign.update(campaign_id, {
-        raised_amount: (campaign.raised_amount || 0) + value,
-        donor_count: (campaign.donor_count || 0) + 1,
-        paypal_capture_total_applied: true,
-      });
+    // Atomically apply the campaign financial side effect only if this order
+    // still owns the committed claim and its total has not already been
+    // applied. This makes a crash after Donation.create recoverable without
+    // double-counting, even when the retry runs with a fresh campaign snapshot.
+    const totalClaim = await sr.entities.Campaign.updateMany(
+      {
+        id: campaign_id,
+        paypal_capture_claim_order_id: order_id,
+        $or: [
+          { paypal_capture_total_applied: false },
+          { paypal_capture_total_applied: null },
+          { paypal_capture_total_applied: { $exists: false } },
+        ],
+      },
+      {
+        $inc: {
+          raised_amount: value,
+          donor_count: 1,
+        },
+        $set: {
+          paypal_capture_total_applied: true,
+        },
+      },
+    );
+    if (!totalClaim.success || totalClaim.updated > 1) {
+      throw new Error('PayPal campaign total reconciliation returned an invalid update result');
     }
 
-    if (campaign.created_by_id) {
+    if (claimedCampaign.created_by_id) {
       const eventId = `paypal-donation:${order_id}`;
       const existingNotification = await sr.entities.Notification.filter({ external_event_id: eventId });
       if (!existingNotification?.[0]) {
         await sr.entities.Notification.create({
-          user_id: campaign.created_by_id,
+          user_id: claimedCampaign.created_by_id,
           title: 'New donation received',
-          body: `${donation.donor_name} gave $${value.toLocaleString()} to "${campaign.title}" via Google Pay`,
+          body: `${donation.donor_name} gave $${value.toLocaleString()} to "${claimedCampaign.title}" via Google Pay`,
           type: 'donation',
           link: `/campaign/${campaign_id}`,
           external_event_id: eventId,
