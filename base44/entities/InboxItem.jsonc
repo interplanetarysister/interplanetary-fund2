@@ -2,108 +2,23 @@
   "name": "InboxItem",
   "type": "object",
   "properties": {
-    "user_id": {
-      "type": "string",
-      "description": "The recipient \u2014 the only user (besides admins) who can see this item."
-    },
-    "platform": {
-      "type": "string",
-      "description": "Source platform id (interplanetary, kofi, facebook, \u2026)."
-    },
-    "campaign_id": {
-      "type": "string"
-    },
-    "campaign_title": {
-      "type": "string"
-    },
-    "type": {
-      "type": "string",
-      "enum": [
-        "comment",
-        "message",
-        "donation",
-        "mention",
-        "reply",
-        "question",
-        "system"
-      ],
-      "default": "system"
-    },
-    "author": {
-      "type": "string"
-    },
-    "content": {
-      "type": "string"
-    },
-    "link": {
-      "type": "string",
-      "description": "Deep link to the original conversation when centralized replies aren't supported."
-    },
-    "status": {
-      "type": "string",
-      "enum": [
-        "open",
-        "done"
-      ],
-      "default": "open"
-    },
-    "ai_draft": {
-      "type": "string",
-      "description": "AI-generated draft response awaiting the owner's review."
-    }
+    "user_id": {"type": "string","description": "The recipient — the only user (besides admins) who can see this item."},
+    "platform": {"type": "string","description": "Source platform id (interplanetary, kofi, facebook, …)."},
+    "campaign_id": {"type": "string"},
+    "campaign_title": {"type": "string"},
+    "type": {"type": "string","enum": ["comment","message","donation","mention","reply","question","system"],"default": "system"},
+    "author": {"type": "string"},
+    "content": {"type": "string"},
+    "link": {"type": "string","description": "Deep link to the original conversation when centralized replies aren't supported."},
+    "status": {"type": "string","enum": ["open","done"],"default": "open"},
+    "ai_draft": {"type": "string","description": "AI-generated draft response awaiting the owner's review."},
+    "external_event_id": {"type": "string","description": "Stable provider event identity used to prevent duplicate InboxItem creation across webhook retries."}
   },
-  "required": [
-    "user_id",
-    "platform"
-  ],
+  "required": ["user_id","platform"],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "update": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    }
+    "read": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]},
+    "create": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]},
+    "update": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]},
+    "delete": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]}
   }
 }
