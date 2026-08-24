@@ -75,14 +75,14 @@
       "properties": {
         "kofi_verification_token": {
           "type": "string",
-          "description": "Ko-fi webhook verification token \u2014 enables live donation sync."
+          "description": "Ko-fi webhook verification token — enables live donation sync."
         },
         "bluesky_handle": {
           "type": "string"
         },
         "bluesky_app_password": {
           "type": "string",
-          "description": "Bluesky app password \u2014 enables direct publishing."
+          "description": "Bluesky app password — enables direct publishing."
         },
         "mastodon_instance": {
           "type": "string",
@@ -90,7 +90,7 @@
         },
         "mastodon_access_token": {
           "type": "string",
-          "description": "Mastodon access token \u2014 enables direct publishing."
+          "description": "Mastodon access token — enables direct publishing."
         }
       }
     },
@@ -128,6 +128,13 @@
             "type": "string"
           }
         }
+      }
+    },
+    "processed_webhook_ids": {
+      "type": "array",
+      "description": "Durable Ko-fi webhook message IDs already claimed for financial processing. This is intentionally separate from the rolling activity history so old retries remain deduplicated.",
+      "items": {
+        "type": "string"
       }
     }
   },
