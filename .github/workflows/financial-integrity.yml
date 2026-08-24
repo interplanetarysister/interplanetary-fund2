@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Subscription catalog contract
+    name: Subscription catalog and recurring-donation security
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -35,3 +35,6 @@ jobs:
 
       - name: Verify subscription catalog
         run: npm run verify:subscription-catalog
+
+      - name: Verify recurring donation error contract
+        run: npm run verify:recurring-donation-errors
