@@ -44,9 +44,9 @@ async function reconcileEventLedger(sr, eventId, connection, payload, amount, cl
   const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
   if (existing.length > 0) return existing[0];
 
-  // The connection-level claim is the single-winner boundary. Only the
-  // request that owns the active event claim may create the durable ledger.
-  // Base44 does not expose a documented unique/upsert entity primitive.
+  // Only the worker holding the connection-level active-event claim reaches
+  // this function. That claim is the atomic single-winner boundary for both
+  // the financial mutation and durable event-ledger creation.
   return sr.entities.KoFiWebhookEvent.create({
     event_id: eventId,
     provider: 'kofi',
@@ -69,18 +69,26 @@ async function completeEventLedger(sr, ledger) {
   });
 }
 
-async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
-  // A retry can arrive after the financial claim committed but before the
-  // durable ledger was written. Recovery must not race a still-running first
-  // claimant: only an absent active claim or a bounded-stale active claim may
-  // be taken over. The conditional update is the recovery worker election.
-  let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-  if (ledger) {
-    await ensureSideEffects(sr, connection, payload, amount, eventId);
-    await completeEventLedger(sr, ledger);
-    return ledger;
-  }
+async function clearActiveClaim(sr, connectionId, eventId, claimToken) {
+  await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+    },
+    {
+      $unset: {
+        kofi_active_event_id: '',
+        kofi_active_event_claimed_at: '',
+        kofi_active_event_claim_token: '',
+        kofi_recovery_claim_token: '',
+        kofi_recovery_claimed_at: '',
+      },
+    },
+  );
+}
 
+async function acquireRecoveryClaim(sr, connection, eventId) {
   const recoveryToken = `${eventId}:${crypto.randomUUID()}`;
   const staleBefore = new Date(Date.now() - RECOVERY_CLAIM_STALE_MS).toISOString();
   const recoveryClaim = await sr.entities.PlatformConnection.updateMany(
@@ -104,35 +112,54 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
     },
     {
       $set: {
+        kofi_active_event_claim_token: recoveryToken,
         kofi_recovery_claim_token: recoveryToken,
         kofi_recovery_claimed_at: new Date().toISOString(),
       },
     },
   );
 
-  if (!recoveryClaim.success || recoveryClaim.updated !== 1) {
-    ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-    if (ledger) {
-      await ensureSideEffects(sr, connection, payload, amount, eventId);
-      await completeEventLedger(sr, ledger);
-      return ledger;
-    }
-    throw new Error('Ko-fi event recovery is already owned by another worker. Retry later.');
+  return recoveryClaim.success && recoveryClaim.updated === 1 ? recoveryToken : null;
+}
+
+async function processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken) {
+  let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+  if (!ledger) {
+    ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
   }
 
-  ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
   await ensureSideEffects(sr, connection, payload, amount, eventId);
   await completeEventLedger(sr, ledger);
+  await clearActiveClaim(sr, connection.id, eventId, claimToken);
   return ledger;
 }
 
-// Live Ko-fi donation sync. Ko-fi POSTs form-encoded webhooks with a `data`
-// JSON field containing a verification_token. The token authenticates the
-// request: it must match the token the connection owner saved when connecting
-// Ko-fi. The financial mutation is guarded by an atomic updateMany claim on
-// the connection. A durable provider-event ledger records the claimed event
-// so downstream side effects can be repaired after the short-lived claim gate
-// is no longer present.
+async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
+  let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+  if (ledger?.side_effects_complete) return ledger;
+
+  const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);
+  if (!recoveryToken) {
+    ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+    if (ledger?.side_effects_complete) return ledger;
+    throw new Error('Ko-fi event recovery is already owned by another worker. Retry later.');
+  }
+
+  return processClaimedEvent(
+    sr,
+    connection,
+    payload,
+    amount,
+    eventId,
+    ledger?.claimed_at || claimedAt,
+    recoveryToken,
+  );
+}
+
+// Live Ko-fi donation sync. The financial mutation and durable event ledger
+// are serialized by one connection-level active-event claim. The claim remains
+// held until the ledger and downstream side effects are complete, then is
+// cleared only by the worker that owns the current claim token.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -179,16 +206,34 @@ export default async function(req) {
     if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
 
     const eventId = `kofi:${messageId}`;
-    const existingLedger = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
+    let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
 
-    if (existingLedger.length > 0) {
-      const ledger = existingLedger[0];
+    if (ledger?.side_effects_complete) {
+      return Response.json({ ok: true, duplicate: true });
+    }
+
+    // An incomplete durable event record is recoverable only through the same
+    // single-winner connection claim. This prevents concurrent recovery from
+    // racing InboxItem/Notification creation.
+    if (ledger) {
+      const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);
+      if (!recoveryToken) {
+        return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
+      }
+
       try {
-        await ensureSideEffects(sr, connection, payload, amount, eventId);
-        await completeEventLedger(sr, ledger);
+        await processClaimedEvent(
+          sr,
+          connection,
+          payload,
+          amount,
+          eventId,
+          ledger.claimed_at,
+          recoveryToken,
+        );
         return Response.json({ ok: true, duplicate: true, repaired: true });
       } catch (error) {
-        console.error('kofiWebhook side-effect recovery error:', error);
+        console.error('kofiWebhook ledger recovery error:', error);
         if (ledger.id) {
           await sr.entities.KoFiWebhookEvent.update(ledger.id, {
             side_effects_complete: false,
@@ -200,10 +245,10 @@ export default async function(req) {
     }
 
     const claimedAt = new Date().toISOString();
+    const claimToken = `${eventId}:${crypto.randomUUID()}`;
     const claim = await sr.entities.PlatformConnection.updateMany(
       {
         id: connection.id,
-        processed_webhook_ids: { $ne: messageId },
         kofi_active_event_id: { $exists: false },
       },
       {
@@ -211,15 +256,13 @@ export default async function(req) {
           external_total: amount,
           external_donor_count: 1,
         },
-        $addToSet: {
-          processed_webhook_ids: messageId,
-        },
         $set: {
           status: 'connected',
           last_synced: claimedAt,
           last_error: '',
           kofi_active_event_id: eventId,
           kofi_active_event_claimed_at: claimedAt,
+          kofi_active_event_claim_token: claimToken,
         },
         $push: {
           history: {
@@ -237,48 +280,23 @@ export default async function(req) {
         return Response.json({ ok: true, duplicate: true, repaired: true });
       } catch (error) {
         console.error('kofiWebhook duplicate recovery error:', error);
-        const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-        if (ledger?.id) {
-          await sr.entities.KoFiWebhookEvent.update(ledger.id, {
-            side_effects_complete: false,
-            last_error: 'Downstream side-effect recovery failed.',
-          });
-        }
-        return Response.json({ error: safeWebhookError() }, { status: 500 });
+        return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
       }
     }
 
     try {
-      const ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
-      await ensureSideEffects(sr, connection, payload, amount, eventId);
-      await completeEventLedger(sr, ledger);
+      await processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken);
     } catch (error) {
       console.error('kofiWebhook claimed-event recovery error:', error);
-      const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-      if (ledger?.id) {
-        await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+      const failedLedger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+      if (failedLedger?.id) {
+        await sr.entities.KoFiWebhookEvent.update(failedLedger.id, {
           side_effects_complete: false,
           last_error: 'Downstream side-effect recovery failed.',
         });
       }
       return Response.json({ error: safeWebhookError() }, { status: 500 });
     }
-
-    await sr.entities.PlatformConnection.updateMany(
-      {
-        id: connection.id,
-        kofi_active_event_id: eventId,
-      },
-      {
-        $pull: { processed_webhook_ids: messageId },
-        $unset: {
-          kofi_active_event_id: '',
-          kofi_active_event_claimed_at: '',
-          kofi_recovery_claim_token: '',
-          kofi_recovery_claimed_at: '',
-        },
-      },
-    );
 
     return Response.json({ ok: true, claimed: true });
   } catch (error) {
