@@ -129,6 +129,10 @@ export async function captureOrder(orderId) {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      // PayPal documents this header as the idempotency boundary for POST
+      // capture requests. Reusing the same order-scoped key makes concurrent
+      // retries converge on one provider-side capture instead of duplicating it.
+      "PayPal-Request-Id": `capture-${orderId}`,
     },
   });
   const data = await res.json();
