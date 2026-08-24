@@ -47,15 +47,51 @@ export default async function(req) {
       }
 
       if (m.campaign_id) {
+        const campaign = await base44.asServiceRole.entities.Campaign.get(m.campaign_id);
+        if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+
+        const value = (session.amount_total || 0) / 100;
+        const isRecurring = m.is_recurring === 'true';
+        const claim = await base44.asServiceRole.entities.Campaign.updateMany(
+          {
+            id: campaign.id,
+            'history.event_id': { $ne: event.id },
+          },
+          {
+            $inc: {
+              raised_amount: value,
+              donor_count: 1,
+            },
+            $push: {
+              history: {
+                event_id: event.id,
+                event: 'stripe_donation_claimed',
+                at: new Date().toISOString(),
+                stripe_session_id: session.id,
+                amount: value,
+              },
+            },
+          },
+        );
+
+        if (!claim.success || claim.updated !== 1) {
+          // The campaign-level conditional update is the durable financial
+          // claim boundary. A replay must never increment totals twice.
+          // Donation/notification recovery is handled below without another
+          // campaign-total mutation.
+          const existing = await base44.asServiceRole.entities.Donation.filter({ stripe_session_id: session.id });
+          if (existing.length === 0) {
+            console.error('Stripe donation claim already exists but Donation record is missing:', event.id);
+            return Response.json({ error: 'Donation processing is retryable' }, { status: 500 });
+          }
+          return Response.json({ received: true, duplicate: true });
+        }
+
         const existing = await base44.asServiceRole.entities.Donation.filter({ stripe_session_id: session.id });
         if (existing.length === 0) {
-          const value = (session.amount_total || 0) / 100;
-          const isRecurring = m.is_recurring === 'true';
-          const campaign = await base44.asServiceRole.entities.Campaign.get(m.campaign_id);
-
           await base44.asServiceRole.entities.Donation.create({
             campaign_id: m.campaign_id,
-            campaign_title: campaign ? campaign.title : undefined,
+            campaign_title: campaign.title,
             amount: value,
             donor_name: m.donor_name || 'Anonymous',
             message: m.message || '',
@@ -64,21 +100,22 @@ export default async function(req) {
             donor_user_id: m.donor_user_id,
             stripe_session_id: session.id,
           });
+        }
 
-          if (campaign) {
-            await base44.asServiceRole.entities.Campaign.update(campaign.id, {
-              raised_amount: (campaign.raised_amount || 0) + value,
-              donor_count: (campaign.donor_count || 0) + 1,
+        if (campaign.created_by_id) {
+          const existingNotifications = await base44.asServiceRole.entities.Notification.filter({
+            user_id: campaign.created_by_id,
+            type: 'donation',
+            link: `/campaign/${campaign.id}`,
+          });
+          if (existingNotifications.length === 0) {
+            await base44.asServiceRole.entities.Notification.create({
+              user_id: campaign.created_by_id,
+              title: 'New donation received',
+              body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to \"${campaign.title}\"`,
+              type: 'donation',
+              link: `/campaign/${campaign.id}`,
             });
-            if (campaign.created_by_id) {
-              await base44.asServiceRole.entities.Notification.create({
-                user_id: campaign.created_by_id,
-                title: 'New donation received',
-                body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to \"${campaign.title}\"`,
-                type: 'donation',
-                link: `/campaign/${campaign.id}`,
-              });
-            }
           }
         }
       }
