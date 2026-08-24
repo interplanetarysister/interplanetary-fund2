@@ -6,8 +6,11 @@ const ALLOWED = new Set(['active', 'paused', 'cancelled']);
 const STRIPE_TERMINAL = new Set(['canceled', 'incomplete_expired']);
 
 function sanitizeError(error) {
-  const message = typeof error?.message === 'string' ? error.message.trim() : '';
-  return message ? message.slice(0, 180) : 'Unable to update recurring donation.';
+  // Provider/backend exception text is diagnostic data, not a client contract.
+  // Keep the response stable so Stripe internals, configuration, URLs, and
+  // stack/provider details cannot cross the API boundary.
+  void error;
+  return 'Unable to update recurring donation. Please try again.';
 }
 
 export default async function(req) {
@@ -72,7 +75,7 @@ export default async function(req) {
     await sr.entities.Donation.update(donation.id, { recurring_status });
     return Response.json({ ok: true, donation_id: donation.id, recurring_status });
   } catch (error) {
-    console.error('updateRecurringDonation error:', error.message);
+    console.error('updateRecurringDonation error:', error);
     return Response.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }
