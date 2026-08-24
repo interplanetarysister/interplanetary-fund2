@@ -9,6 +9,8 @@ function supportedDonationType(type) {
   return new Set(['Donation', 'donation', 'Payment', 'payment', 'Monthly Donation', 'monthly_donation']).has(type);
 }
 
+const RECOVERY_CLAIM_STALE_MS = 5 * 60 * 1000;
+
 async function ensureSideEffects(sr, connection, payload, amount, eventId) {
   const existingInbox = await sr.entities.InboxItem.filter({ external_event_id: eventId });
   if (existingInbox.length === 0) {
@@ -42,9 +44,9 @@ async function reconcileEventLedger(sr, eventId, connection, payload, amount, cl
   const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
   if (existing.length > 0) return existing[0];
 
-  // Base44 does not expose a documented unique/upsert entity primitive. The
-  // financial claim remains the atomic duplicate gate; this ledger is the
-  // durable recovery record for side effects and long-after-history replays.
+  // The connection-level claim is the single-winner boundary. Only the
+  // request that owns the active event claim may create the durable ledger.
+  // Base44 does not expose a documented unique/upsert entity primitive.
   return sr.entities.KoFiWebhookEvent.create({
     event_id: eventId,
     provider: 'kofi',
@@ -69,14 +71,46 @@ async function completeEventLedger(sr, ledger) {
 
 async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
   // A retry can arrive after the financial claim committed but before the
-  // durable ledger was written. Reconstruct the ledger before repairing
-  // downstream side effects so the event remains recoverable even after the
-  // short-lived connection claim is eventually cleared.
+  // durable ledger was written. The active-event marker remains on the same
+  // connection until recovery is complete, so concurrent retries can elect
+  // only one recovery owner with updateMany's conditional compare-and-set.
   let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-  if (!ledger) {
-    ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
+  if (ledger) {
+    await ensureSideEffects(sr, connection, payload, amount, eventId);
+    await completeEventLedger(sr, ledger);
+    return ledger;
   }
 
+  const recoveryToken = `${eventId}:${crypto.randomUUID()}`;
+  const staleBefore = new Date(Date.now() - RECOVERY_CLAIM_STALE_MS).toISOString();
+  const recoveryClaim = await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connection.id,
+      kofi_active_event_id: eventId,
+      $or: [
+        { kofi_recovery_claimed_at: { $exists: false } },
+        { kofi_recovery_claimed_at: { $lt: staleBefore } },
+      ],
+    },
+    {
+      $set: {
+        kofi_recovery_claim_token: recoveryToken,
+        kofi_recovery_claimed_at: new Date().toISOString(),
+      },
+    },
+  );
+
+  if (!recoveryClaim.success || recoveryClaim.updated !== 1) {
+    ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+    if (ledger) {
+      await ensureSideEffects(sr, connection, payload, amount, eventId);
+      await completeEventLedger(sr, ledger);
+      return ledger;
+    }
+    throw new Error('Ko-fi event recovery is already owned by another worker. Retry later.');
+  }
+
+  ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
   await ensureSideEffects(sr, connection, payload, amount, eventId);
   await completeEventLedger(sr, ledger);
   return ledger;
@@ -160,6 +194,7 @@ export default async function(req) {
       {
         id: connection.id,
         processed_webhook_ids: { $ne: messageId },
+        kofi_active_event_id: { $exists: false },
       },
       {
         $inc: {
@@ -173,6 +208,7 @@ export default async function(req) {
           status: 'connected',
           last_synced: claimedAt,
           last_error: '',
+          kofi_active_event_id: eventId,
         },
         $push: {
           history: {
@@ -217,12 +253,19 @@ export default async function(req) {
       return Response.json({ error: safeWebhookError() }, { status: 500 });
     }
 
-    // Keep the atomic connection claim set small. The durable ledger now owns
-    // long-term replay identity, so this ID is removed after the ledger and
-    // downstream side effects are safely recorded.
     await sr.entities.PlatformConnection.updateMany(
-      { id: connection.id },
-      { $pull: { processed_webhook_ids: messageId } },
+      {
+        id: connection.id,
+        kofi_active_event_id: eventId,
+      },
+      {
+        $pull: { processed_webhook_ids: messageId },
+        $unset: {
+          kofi_active_event_id: '',
+          kofi_recovery_claim_token: '',
+          kofi_recovery_claimed_at: '',
+        },
+      },
     );
 
     return Response.json({ ok: true, claimed: true });
