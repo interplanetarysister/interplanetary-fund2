@@ -9,6 +9,35 @@ function supportedDonationType(type) {
   return new Set(['Donation', 'donation', 'Payment', 'payment', 'Monthly Donation', 'monthly_donation']).has(type);
 }
 
+async function ensureSideEffects(sr, connection, payload, amount, eventId) {
+  const existingInbox = await sr.entities.InboxItem.filter({ external_event_id: eventId });
+  if (existingInbox.length === 0) {
+    await sr.entities.InboxItem.create({
+      user_id: connection.created_by_id,
+      platform: 'kofi',
+      campaign_id: connection.campaign_id,
+      type: 'donation',
+      author: payload.from_name || 'Ko-fi supporter',
+      content: `Gave $${amount}${payload.message ? ` — \"${payload.message}\"` : ''}`,
+      link: payload.url || connection.external_url || '',
+      status: 'open',
+      external_event_id: eventId,
+    });
+  }
+
+  const existingNotification = await sr.entities.Notification.filter({ external_event_id: eventId });
+  if (existingNotification.length === 0) {
+    await sr.entities.Notification.create({
+      user_id: connection.created_by_id,
+      title: 'New Ko-fi donation',
+      body: `${payload.from_name || 'A supporter'} gave $${amount} on Ko-fi`,
+      type: 'donation',
+      link: '/inbox',
+      external_event_id: eventId,
+    });
+  }
+}
+
 // Live Ko-fi donation sync. Ko-fi POSTs form-encoded webhooks with a `data`
 // JSON field containing a verification_token. The token authenticates the
 // request: it must match the token the connection owner saved when connecting
@@ -59,9 +88,10 @@ export default async function(req) {
     const connection = connections.find((c) => c.credentials?.kofi_verification_token === token);
     if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
 
-    // Ko-fi retries reuse message_id. Use an atomic conditional update so two
-    // concurrent deliveries cannot both increment external_total. Unlike the
-    // rolling history, processed_webhook_ids is durable and is never trimmed.
+    const eventId = `kofi:${messageId}`;
+
+    // First attempt the durable financial claim. The claim prevents duplicate
+    // financial increments for the normal concurrent/retry path.
     const claim = await sr.entities.PlatformConnection.updateMany(
       {
         id: connection.id,
@@ -91,27 +121,14 @@ export default async function(req) {
     );
 
     if (!claim.success || claim.updated !== 1) {
-      return Response.json({ ok: true, duplicate: true });
+      // A previously claimed event may have failed after the financial write.
+      // Retry the side effects by their stable event identity instead of
+      // returning early and permanently losing the Inbox/Notification path.
+      await ensureSideEffects(sr, connection, payload, amount, eventId);
+      return Response.json({ ok: true, duplicate: true, repaired: true });
     }
 
-    await sr.entities.InboxItem.create({
-      user_id: connection.created_by_id,
-      platform: 'kofi',
-      campaign_id: connection.campaign_id,
-      type: 'donation',
-      author: payload.from_name || 'Ko-fi supporter',
-      content: `Gave $${amount}${payload.message ? ` — "${payload.message}"` : ''}`,
-      link: payload.url || connection.external_url || '',
-      status: 'open',
-      external_event_id: `kofi:${messageId}`,
-    });
-    await sr.entities.Notification.create({
-      user_id: connection.created_by_id,
-      title: 'New Ko-fi donation',
-      body: `${payload.from_name || 'A supporter'} gave $${amount} on Ko-fi`,
-      type: 'donation',
-      link: '/inbox',
-    });
+    await ensureSideEffects(sr, connection, payload, amount, eventId);
 
     return Response.json({ ok: true, claimed: true });
   } catch (error) {
