@@ -7,6 +7,8 @@ on:
       - 'base44/functions/capturePayPalOrder/**'
       - 'base44/shared/paypal.ts'
       - 'base44/entities/Donation.jsonc'
+      - 'base44/entities/Campaign.jsonc'
+      - 'base44/entities/Notification.jsonc'
       - 'scripts/verify-paypal-donation-integrity.mjs'
       - '.github/workflows/paypal-donation-integrity.yml'
   push:
@@ -16,6 +18,8 @@ on:
       - 'base44/functions/capturePayPalOrder/**'
       - 'base44/shared/paypal.ts'
       - 'base44/entities/Donation.jsonc'
+      - 'base44/entities/Campaign.jsonc'
+      - 'base44/entities/Notification.jsonc'
       - 'scripts/verify-paypal-donation-integrity.mjs'
       - '.github/workflows/paypal-donation-integrity.yml'
 
