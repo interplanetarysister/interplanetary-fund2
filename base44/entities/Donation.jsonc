@@ -58,7 +58,7 @@
     "cleared": {
       "type": "boolean",
       "default": false,
-      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn. Null means not applicable."
+      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn."
     },
     "withdrawal_id": {
       "type": "string",
