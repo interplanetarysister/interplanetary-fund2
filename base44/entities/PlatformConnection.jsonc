@@ -136,6 +136,19 @@
       "items": {
         "type": "string"
       }
+    },
+    "kofi_active_event_id": {
+      "type": "string",
+      "description": "Transient single-winner Ko-fi event claim held until the durable event ledger and downstream side effects are complete."
+    },
+    "kofi_recovery_claim_token": {
+      "type": "string",
+      "description": "Transient token identifying the worker that owns recovery of an interrupted Ko-fi event claim."
+    },
+    "kofi_recovery_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp for stale recovery-claim takeover protection."
     }
   },
   "required": [
