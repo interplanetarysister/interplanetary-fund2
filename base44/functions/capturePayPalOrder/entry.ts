@@ -44,9 +44,20 @@ export default async function (req) {
     }
 
     if (currentClaim && currentClaim !== order_id && claimIsStale) {
+      // A stale claim may be reclaimed only when PayPal definitively reports
+      // that the prior order can no longer complete. A transient provider
+      // lookup failure must not be interpreted as cancellation, because that
+      // could strand an in-flight payment and permit a competing local claim.
       const prior = await getOrder(currentClaim).catch(() => null);
-      if (prior?.status === 'COMPLETED' || prior?.status === 'APPROVED') {
+      if (!prior) {
+        return Response.json({ error: 'A prior PayPal donation could not be reconciled safely. Please retry shortly.' }, { status: 409 });
+      }
+      if (prior.status === 'COMPLETED' || prior.status === 'APPROVED') {
         return Response.json({ error: 'A prior PayPal donation requires reconciliation before another donation can be processed.' }, { status: 409 });
+      }
+      const reclaimableStatuses = new Set(['VOIDED', 'CANCELLED', 'DENIED', 'EXPIRED']);
+      if (!reclaimableStatuses.has(String(prior.status || '').toUpperCase())) {
+        return Response.json({ error: 'A prior PayPal donation has an unresolved provider state. Please retry shortly.' }, { status: 409 });
       }
     }
 
