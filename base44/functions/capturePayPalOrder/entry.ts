@@ -15,15 +15,17 @@ export default async function (req) {
       return Response.json({ error: 'Order id and campaign are required' }, { status: 400 });
     }
 
+    // Validate the provider source of truth before exposing any existing
+    // donation record or treating this request as an idempotent replay.
+    const order = await getOrder(order_id);
+    if (order.campaign_id !== campaign_id || order.currency !== 'USD') {
+      return Response.json({ error: 'Payment order does not match this campaign.' }, { status: 409 });
+    }
+
     // Sequential retries are idempotent once the Donation is recorded.
     const existing = await sr.entities.Donation.filter({ paypal_order_id: order_id });
     if (existing?.[0]) {
       return Response.json({ ok: true, donation_id: existing[0].id, amount: existing[0].amount, replay: true });
-    }
-
-    const order = await getOrder(order_id);
-    if (order.campaign_id !== campaign_id || order.currency !== 'USD') {
-      return Response.json({ error: 'Payment order does not match this campaign.' }, { status: 409 });
     }
 
     let payment = order;
