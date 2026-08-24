@@ -8,7 +8,6 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
-// Add page imports here
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Navigate } from 'react-router-dom';
 import Login from './pages/Login';
@@ -56,9 +55,6 @@ const PublicIntegrationRoutes = () => (
 const RoutedApp = () => {
   const { pathname } = useLocation();
 
-  // OAuth/MCP consent is an integration callback surface. It performs its own
-  // server-side session/handle validation and must not be intercepted by the
-  // normal authenticated-app redirect before that validation can run.
   if (PUBLIC_INTEGRATION_PATHS.has(pathname)) {
     return <PublicIntegrationRoutes />;
   }
@@ -66,10 +62,25 @@ const RoutedApp = () => {
   return <AuthenticatedApp />;
 };
 
+const IntegrationAwareApp = () => {
+  const { pathname } = useLocation();
+
+  // Integration callbacks must reach OAuthConsent before the ordinary legal
+  // gate or authenticated-app redirect can block a signed-out handshake.
+  if (PUBLIC_INTEGRATION_PATHS.has(pathname)) {
+    return <RoutedApp />;
+  }
+
+  return (
+    <TermsAcceptance>
+      <RoutedApp />
+    </TermsAcceptance>
+  );
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -78,34 +89,27 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
-      {/* Public campaign page — anyone arriving from a shared link can read the
-          story and donate without signing in. */}
       <Route element={<Layout />}>
         <Route path="/campaign/:id" element={<CampaignDetail />} />
       </Route>
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-        {/* Full-screen onboarding experience, outside the Layout chrome */}
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
@@ -137,10 +141,7 @@ const AuthenticatedApp = () => {
   );
 };
 
-
 function App() {
-  // Sync the app theme with the device system color scheme so the Android
-  // WebView picks up dark mode automatically — on startup and on change.
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = (e) => document.documentElement.classList.toggle("dark", e.matches);
@@ -154,11 +155,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <TermsAcceptance>
-            <RoutedApp />
-          </TermsAcceptance>
+          <IntegrationAwareApp />
+          <Toaster />
         </Router>
-        <Toaster />
       </QueryClientProvider>
     </AuthProvider>
   )
