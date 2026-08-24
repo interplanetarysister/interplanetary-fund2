@@ -46,7 +46,22 @@ export default function AccountManagement({ user, onUserChanged }) {
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 200),
         base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date", 200),
       ]);
-      const exportSafeConnections = connections.map(({ credentials: _credentials, ...connection }) => connection);
+      const exportSafeConnections = connections.map(({ id, created_by_id, created_date, updated_date, platform, kind, display_name, external_url, campaign_id, status, automation_mode, external_total, external_donor_count, last_synced }) => ({
+        id,
+        created_by_id,
+        created_date,
+        updated_date,
+        platform,
+        kind,
+        display_name,
+        external_url,
+        campaign_id,
+        status,
+        automation_mode,
+        external_total,
+        external_donor_count,
+        last_synced,
+      }));
       const payload = {
         exported_at: new Date().toISOString(),
         profile: me,
