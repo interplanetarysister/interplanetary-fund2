@@ -17,27 +17,30 @@ const required = [
   'async function reconcileEventLedger',
   'async function completeEventLedger',
   'async function recoverClaimedEvent',
+  'async function acquireRecoveryClaim',
+  'async function processClaimedEvent',
+  'async function clearActiveClaim',
   'const messageId = payload.message_id;',
   'const eventId = `kofi:${messageId}`;',
   'Number.isFinite(amount)',
-  'processed_webhook_ids',
-  'processed_webhook_ids: { $ne: messageId }',
   'kofi_active_event_id: { $exists: false }',
   'kofi_active_event_id: eventId',
   'kofi_active_event_claimed_at: claimedAt',
+  'kofi_active_event_claim_token: claimToken',
+  'kofi_active_event_claim_token: recoveryToken',
   'kofi_recovery_claim_token',
   'kofi_recovery_claimed_at',
   'kofi_active_event_claimed_at: { $lt: staleBefore }',
-  '$addToSet',
+  '$inc',
   'external_total: amount',
   'await ensureSideEffects(sr, connection, payload, amount, eventId);',
   'KoFiWebhookEvent.filter({ event_id: eventId })',
   'KoFiWebhookEvent.create({',
   'side_effects_complete: false',
-  'await recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt);',
-  '$pull: { processed_webhook_ids: messageId }',
-  'kofi_active_event_id: { $exists: false }',
-  'return Response.json({ error: safeWebhookError() }, { status: 500 });',
+  'await processClaimedEvent(',
+  'return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });',
+  'kofi_active_event_claim_token: claimToken',
+  '$unset:',
 ];
 
 for (const token of required) {
@@ -69,6 +72,7 @@ for (const field of [
   'processed_webhook_ids',
   'kofi_active_event_id',
   'kofi_active_event_claimed_at',
+  'kofi_active_event_claim_token',
   'kofi_recovery_claim_token',
   'kofi_recovery_claimed_at',
 ]) {
@@ -119,11 +123,13 @@ for (const field of [
 for (const pattern of [
   /return\s+Response\.json\(\{\s*error:\s*error\.message/,
   /parseFloat\(payload\.amount\)\s*\|\|\s*0/,
-  /slice\(-30\).*messageId/,
-  /if\s*\(!claim\.success\s*\|\|\s*claim\.updated\s*!==\s*1\)\s*\{\s*return\s+Response\.json\(\{\s*ok:\s*true,\s*duplicate:\s*true\s*\}\);/s,
+  /processed_webhook_ids:\s*\{\s*\$ne:/,
+  /\$addToSet:\s*\{\s*processed_webhook_ids/,
+  /\$pull:\s*\{\s*processed_webhook_ids/,
+  /filter\(\{\s*event_id:\s*eventId\s*\}\)\s*;[\s\S]{0,250}\bKoFiWebhookEvent\.create\(/,
 ]) {
   if (pattern.test(source)) {
-    throw new Error(`Unsafe Ko-fi webhook pattern remains: ${pattern}`);
+    throw new Error(`Unsafe or non-authoritative Ko-fi pattern remains: ${pattern}`);
   }
 }
 
@@ -131,11 +137,11 @@ if (!source.includes('supportedDonationType(payload.type)')) {
   throw new Error('Ko-fi webhook must classify supported financial event types');
 }
 
-if (!source.includes('kofi_active_event_id: eventId') || !source.includes('$unset')) {
-  throw new Error('Ko-fi financial claim must retain and explicitly clear the active event claim only after recovery completes.');
+if (!source.includes('kofi_active_event_id: eventId') || !source.includes('kofi_active_event_claim_token: claimToken')) {
+  throw new Error('Ko-fi financial processing must retain a durable event claim token through side-effect completion.');
 }
 
-if (!source.includes('$and: [') || !source.includes('kofi_active_event_claimed_at: { $lt: staleBefore }') || !source.includes('kofi_recovery_claimed_at: { $lt: staleBefore }')) {
+if (!source.includes('kofi_active_event_claimed_at: { $lt: staleBefore }') || !source.includes('kofi_recovery_claimed_at: { $lt: staleBefore }')) {
   throw new Error('Ko-fi recovery must require both a bounded-stale active claim and a bounded-stale recovery claim before takeover.');
 }
 
@@ -143,4 +149,8 @@ if (!source.includes('const RECOVERY_CLAIM_STALE_MS = 5 * 60 * 1000;')) {
   throw new Error('Ko-fi recovery stale-claim bound must remain explicit and finite.');
 }
 
-console.log('Ko-fi webhook single-winner claim, bounded recovery takeover, durable provider-event ledger, side-effect recovery, and schema-preservation contract verified.');
+if (!source.includes('kofi_active_event_claim_token: claimToken')) {
+  throw new Error('Ko-fi claim clearing must be conditional on the current owner token.');
+}
+
+console.log('Ko-fi webhook durable single-winner claim, event-ledger recovery, idempotent side-effect boundary, stale recovery ownership, and schema-preservation contract verified.');
