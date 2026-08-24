@@ -62,9 +62,6 @@ export default async function(req) {
     // Ko-fi retries reuse message_id. Use an atomic conditional update so two
     // concurrent deliveries cannot both increment external_total. Unlike the
     // rolling history, processed_webhook_ids is durable and is never trimmed.
-    const processedIds = Array.isArray(connection.processed_webhook_ids)
-      ? connection.processed_webhook_ids
-      : [];
     const claim = await sr.entities.PlatformConnection.updateMany(
       {
         id: connection.id,
@@ -97,7 +94,6 @@ export default async function(req) {
       return Response.json({ ok: true, duplicate: true });
     }
 
-    const now = new Date().toISOString();
     await sr.entities.InboxItem.create({
       user_id: connection.created_by_id,
       platform: 'kofi',
