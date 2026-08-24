@@ -87,13 +87,19 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
     {
       id: connection.id,
       kofi_active_event_id: eventId,
-      $or: [
-        { kofi_active_event_claimed_at: { $lt: staleBefore } },
-        { kofi_active_event_claimed_at: { $exists: false } },
-      ],
-      $or: [
-        { kofi_recovery_claimed_at: { $exists: false } },
-        { kofi_recovery_claimed_at: { $lt: staleBefore } },
+      $and: [
+        {
+          $or: [
+            { kofi_active_event_claimed_at: { $lt: staleBefore } },
+            { kofi_active_event_claimed_at: { $exists: false } },
+          ],
+        },
+        {
+          $or: [
+            { kofi_recovery_claimed_at: { $exists: false } },
+            { kofi_recovery_claimed_at: { $lt: staleBefore } },
+          ],
+        },
       ],
     },
     {
