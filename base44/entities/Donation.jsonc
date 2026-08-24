@@ -35,6 +35,10 @@
     "stripe_session_id": {
       "type": "string"
     },
+    "paypal_order_id": {
+      "type": "string",
+      "description": "Authoritative PayPal checkout order identifier for PayPal/Google Pay donations. Used for durable donation idempotency and reconciliation."
+    },
     "payment_method": {
       "type": "string",
       "enum": [
@@ -54,7 +58,7 @@
     "cleared": {
       "type": "boolean",
       "default": false,
-      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn."
+      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn. Null means not applicable."
     },
     "withdrawal_id": {
       "type": "string",
