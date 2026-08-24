@@ -1,5 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
+function safeWebhookError() {
+  return 'Unable to process Ko-fi webhook.';
+}
+
 // Live Ko-fi donation sync. Ko-fi POSTs form-encoded webhooks with a `data`
 // JSON field containing a verification_token. The token authenticates the
 // request: it must match the token the connection owner saved when connecting
@@ -23,14 +27,37 @@ export default async function(req) {
       payload = JSON.parse(raw);
     }
 
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return Response.json({ error: 'Invalid webhook payload' }, { status: 400 });
+    }
+
     const token = payload.verification_token;
-    if (!token) return Response.json({ error: 'Missing verification token' }, { status: 401 });
+    if (!token || typeof token !== 'string') {
+      return Response.json({ error: 'Missing verification token' }, { status: 401 });
+    }
+
+    const messageId = payload.message_id;
+    if (!messageId || typeof messageId !== 'string' || messageId.length > 200) {
+      return Response.json({ error: 'Missing webhook message id' }, { status: 400 });
+    }
+
+    const amount = Number(payload.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
+      return Response.json({ error: 'Invalid webhook amount' }, { status: 400 });
+    }
 
     const connections = await sr.entities.PlatformConnection.filter({ platform: 'kofi' });
     const connection = connections.find((c) => c.credentials?.kofi_verification_token === token);
     if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
 
-    const amount = parseFloat(payload.amount) || 0;
+    // Ko-fi retries failed webhook deliveries with the same message_id. Keep
+    // the identifier in the connection history so sequential replays are not
+    // counted twice. A durable atomic claim still requires a dedicated data
+    // primitive and remains a separate production gate in Issue #66.
+    const history = Array.isArray(connection.history) ? connection.history : [];
+    const alreadyProcessed = history.some((event) => event?.messageId === messageId);
+    if (alreadyProcessed) return Response.json({ ok: true, duplicate: true });
+
     const now = new Date().toISOString();
     await sr.entities.PlatformConnection.update(connection.id, {
       external_total: (connection.external_total || 0) + amount,
@@ -38,7 +65,15 @@ export default async function(req) {
       status: 'connected',
       last_synced: now,
       last_error: '',
-      history: [...(connection.history || []), { at: now, event: 'synced', detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}` }].slice(-30),
+      history: [
+        ...history,
+        {
+          at: now,
+          event: 'synced',
+          messageId,
+          detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}`,
+        },
+      ].slice(-30),
     });
 
     await sr.entities.InboxItem.create({
@@ -61,7 +96,7 @@ export default async function(req) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error('kofiWebhook error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('kofiWebhook error:', error);
+    return Response.json({ error: safeWebhookError() }, { status: 500 });
   }
 }
