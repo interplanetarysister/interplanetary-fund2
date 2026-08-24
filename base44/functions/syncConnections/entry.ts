@@ -8,7 +8,7 @@ import { canAutoPublish, publishThroughConnection } from '../../shared/socialPub
 //    their permission setting requires it.
 // 3. Retries provider failures up to 3 attempts.
 // 4. Never automatically republishes a post whose provider outcome is unknown
-//    after the local persistence step fails; stale claims are quarantined for
+//    after local persistence fails; stale claims are quarantined for
 //    reconciliation instead of risking a duplicate external publication.
 // 5. Flags stale connections (>7 days without a sync) for health monitoring.
 const MAX_RETRIES = 3;
@@ -61,17 +61,17 @@ export default async function(req) {
     ];
 
     for (const post of queue) {
-      // Claim the exact current state before the irreversible provider call.
-      // updateMany is used as the conditional write boundary: only one
-      // concurrent worker can transition this post from its observed status
-      // into publishing. If another worker won, this request does nothing.
+      // Establish the durable per-post claim using the observed status as the
+      // compare-and-set condition. Only one concurrent worker can win the
+      // transition into publishing for this exact post state.
+      const claimToken = `${post.id}:${crypto.randomUUID()}`;
       const claim = await sr.entities.DistributedPost.updateMany(
         { id: post.id, status: post.status },
         {
           $set: {
             status: 'publishing',
             publish_claimed_at: now.toISOString(),
-            publish_claim_token: `${post.id}:${crypto.randomUUID()}`,
+            publish_claim_token: claimToken,
           },
         },
       );
@@ -81,77 +81,115 @@ export default async function(req) {
         continue;
       }
 
-      const connection = await sr.entities.PlatformConnection.get(post.connection_id).catch(() => null);
+      // Re-read after claiming so later updates never rely on a stale queue
+      // snapshot for connection, authorization, or retry state.
+      const claimedPost = await sr.entities.DistributedPost.get(post.id);
+      if (!claimedPost || claimedPost.publish_claim_token !== claimToken) {
+        report.claims_skipped++;
+        continue;
+      }
+
+      const connection = await sr.entities.PlatformConnection.get(claimedPost.connection_id).catch(() => null);
       if (!connection) {
-        await sr.entities.DistributedPost.update(post.id, {
-          status: 'failed',
-          error: 'Connection was removed',
-          retry_count: MAX_RETRIES,
-          publish_claimed_at: null,
-          publish_claim_token: null,
-        });
+        await sr.entities.DistributedPost.updateMany(
+          { id: claimedPost.id, status: 'publishing', publish_claim_token: claimToken },
+          {
+            $set: {
+              status: 'failed',
+              error: 'Connection was removed',
+              retry_count: MAX_RETRIES,
+              publish_claimed_at: null,
+              publish_claim_token: null,
+            },
+          },
+        );
         report.failed++;
         continue;
       }
 
-      const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
+      const text = [claimedPost.content, ...(claimedPost.hashtags || [])].join(' ').trim();
       if (connection.automation_mode === 'auto' && canAutoPublish(connection)) {
         try {
           const { url } = await publishThroughConnection(connection, text);
-          await sr.entities.DistributedPost.update(post.id, {
-            status: 'published',
-            published_at: now.toISOString(),
-            external_post_url: url,
-            error: '',
-            publish_claimed_at: null,
-            publish_claim_token: null,
-          });
+
+          // If local persistence loses the claim, leave the post quarantined in
+          // publishing state. Automatic retry is deliberately forbidden because
+          // the provider may already have accepted the publication.
+          const persisted = await sr.entities.DistributedPost.updateMany(
+            { id: claimedPost.id, status: 'publishing', publish_claim_token: claimToken },
+            {
+              $set: {
+                status: 'published',
+                published_at: now.toISOString(),
+                external_post_url: url,
+                error: '',
+                publish_claimed_at: null,
+                publish_claim_token: null,
+              },
+            },
+          );
+          if (!persisted.success || persisted.updated !== 1) {
+            console.error('syncConnections publish persistence could not be confirmed:', claimedPost.id);
+            report.failed++;
+            continue;
+          }
           report.published++;
         } catch (error) {
           console.error('syncConnections publish error:', error);
-          const retries = (post.retry_count || 0) + 1;
-          await sr.entities.DistributedPost.update(post.id, {
-            status: retries >= MAX_RETRIES ? 'failed' : 'scheduled',
-            error: SAFE_PUBLISH_ERROR,
-            retry_count: retries,
-            publish_claimed_at: null,
-            publish_claim_token: null,
-          });
+          const retries = (claimedPost.retry_count || 0) + 1;
+          const nextStatus = retries >= MAX_RETRIES ? 'failed' : 'scheduled';
+          const persisted = await sr.entities.DistributedPost.updateMany(
+            { id: claimedPost.id, status: 'publishing', publish_claim_token: claimToken },
+            {
+              $set: {
+                status: nextStatus,
+                error: SAFE_PUBLISH_ERROR,
+                retry_count: retries,
+                publish_claimed_at: null,
+                publish_claim_token: null,
+              },
+            },
+          );
+          if (!persisted.success || persisted.updated !== 1) {
+            console.error('syncConnections failure persistence could not be confirmed:', claimedPost.id);
+            report.failed++;
+            continue;
+          }
           if (retries >= MAX_RETRIES) {
             await sr.entities.Notification.create({
-              user_id: post.created_by_id,
+              user_id: claimedPost.created_by_id,
               title: 'Post could not be published',
-              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts.`,
+              body: `Publishing to ${claimedPost.platform} failed after ${MAX_RETRIES} attempts.`,
               type: 'system',
-              link: `/campaign/${post.campaign_id}`,
+              link: `/campaign/${claimedPost.campaign_id}`,
             });
             report.failed++;
           } else report.retried++;
         }
-      } else if (post.status === 'scheduled') {
+      } else if (claimedPost.status === 'publishing') {
         // Ask/draft mode or no direct API — hand back to the owner instead of auto-posting.
-        await sr.entities.DistributedPost.update(post.id, {
-          status: 'pending_approval',
-          publish_claimed_at: null,
-          publish_claim_token: null,
-        });
+        const persisted = await sr.entities.DistributedPost.updateMany(
+          { id: claimedPost.id, status: 'publishing', publish_claim_token: claimToken },
+          {
+            $set: {
+              status: 'pending_approval',
+              publish_claimed_at: null,
+              publish_claim_token: null,
+            },
+          },
+        );
+        if (!persisted.success || persisted.updated !== 1) {
+          report.failed++;
+          continue;
+        }
         await sr.entities.Notification.create({
-          user_id: post.created_by_id,
+          user_id: claimedPost.created_by_id,
           title: 'Scheduled post is ready',
-          body: `Your ${post.platform} post for \"${post.campaign_title}\" is ready — approve it to publish.`,
+          body: `Your ${claimedPost.platform} post for \"${claimedPost.campaign_title}\" is ready — approve it to publish.`,
           type: 'system',
-          link: `/campaign/${post.campaign_id}`,
+          link: `/campaign/${claimedPost.campaign_id}`,
         });
         report.awaiting_approval++;
-      } else {
-        // Failed posts that cannot auto-publish should not remain in a claimed state.
-        await sr.entities.DistributedPost.update(post.id, {
-          status: 'failed',
-          error: SAFE_PUBLISH_ERROR,
-          publish_claimed_at: null,
-          publish_claim_token: null,
-        });
-        report.failed++;
       }
     }
 
