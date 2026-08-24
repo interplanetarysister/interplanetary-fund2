@@ -40,9 +40,7 @@ async function ensureSideEffects(sr, connection, payload, amount, eventId) {
 
 async function reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt) {
   const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
-  if (existing.length > 0) {
-    return existing[0];
-  }
+  if (existing.length > 0) return existing[0];
 
   // Base44 does not expose a documented unique/upsert entity primitive. The
   // financial claim remains the atomic duplicate gate; this ledger is the
@@ -67,6 +65,21 @@ async function completeEventLedger(sr, ledger) {
     side_effects_complete: true,
     last_error: '',
   });
+}
+
+async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
+  // A retry can arrive after the financial claim committed but before the
+  // durable ledger was written. Reconstruct the ledger before repairing
+  // downstream side effects so the event remains recoverable even after the
+  // short-lived connection claim is eventually cleared.
+  let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+  if (!ledger) {
+    ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
+  }
+
+  await ensureSideEffects(sr, connection, payload, amount, eventId);
+  await completeEventLedger(sr, ledger);
+  return ledger;
 }
 
 // Live Ko-fi donation sync. Ko-fi POSTs form-encoded webhooks with a `data`
@@ -172,13 +185,12 @@ export default async function(req) {
     );
 
     if (!claim.success || claim.updated !== 1) {
-      const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
       try {
-        await ensureSideEffects(sr, connection, payload, amount, eventId);
-        if (ledger) await completeEventLedger(sr, ledger);
+        await recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt);
         return Response.json({ ok: true, duplicate: true, repaired: true });
       } catch (error) {
         console.error('kofiWebhook duplicate recovery error:', error);
+        const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
         if (ledger?.id) {
           await sr.entities.KoFiWebhookEvent.update(ledger.id, {
             side_effects_complete: false,
@@ -189,13 +201,13 @@ export default async function(req) {
       }
     }
 
-    let ledger;
     try {
-      ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
+      const ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
       await ensureSideEffects(sr, connection, payload, amount, eventId);
       await completeEventLedger(sr, ledger);
     } catch (error) {
       console.error('kofiWebhook claimed-event recovery error:', error);
+      const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
       if (ledger?.id) {
         await sr.entities.KoFiWebhookEvent.update(ledger.id, {
           side_effects_complete: false,
