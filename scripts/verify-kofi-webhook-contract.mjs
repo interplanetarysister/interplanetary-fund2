@@ -4,14 +4,18 @@ const path = 'base44/functions/kofiWebhook/entry.ts';
 const inboxSchemaPath = 'base44/entities/InboxItem.jsonc';
 const connectionSchemaPath = 'base44/entities/PlatformConnection.jsonc';
 const notificationSchemaPath = 'base44/entities/Notification.jsonc';
+const ledgerSchemaPath = 'base44/entities/KoFiWebhookEvent.jsonc';
 const source = await readFile(path, 'utf8');
 const inboxSchema = await readFile(inboxSchemaPath, 'utf8');
 const connectionSchema = await readFile(connectionSchemaPath, 'utf8');
 const notificationSchema = await readFile(notificationSchemaPath, 'utf8');
+const ledgerSchema = await readFile(ledgerSchemaPath, 'utf8');
 
 const required = [
   'function safeWebhookError()',
   'async function ensureSideEffects',
+  'async function reconcileEventLedger',
+  'async function completeEventLedger',
   'const messageId = payload.message_id;',
   'const eventId = `kofi:${messageId}`;',
   'Number.isFinite(amount)',
@@ -20,6 +24,10 @@ const required = [
   '$addToSet',
   'external_total: amount',
   'await ensureSideEffects(sr, connection, payload, amount, eventId);',
+  'KoFiWebhookEvent.filter({ event_id: eventId })',
+  'KoFiWebhookEvent.create({',
+  'side_effects_complete: false',
+  '$pull: { processed_webhook_ids: messageId }',
   'return Response.json({ error: safeWebhookError() }, { status: 500 });',
 ];
 
@@ -33,6 +41,7 @@ for (const [name, schema] of [
   ['PlatformConnection', connectionSchema],
   ['InboxItem', inboxSchema],
   ['Notification', notificationSchema],
+  ['KoFiWebhookEvent', ledgerSchema],
 ]) {
   if (!schema.includes('"properties"')) {
     throw new Error(`${name} schema is missing its properties object`);
@@ -77,6 +86,23 @@ if (!notificationSchema.includes('"external_event_id"')) {
   throw new Error('Notification schema must retain the durable webhook event identity for recovery.');
 }
 
+for (const field of [
+  'event_id',
+  'provider',
+  'message_id',
+  'connection_id',
+  'user_id',
+  'amount',
+  'event_type',
+  'claimed_at',
+  'side_effects_complete',
+  'last_error',
+]) {
+  if (!ledgerSchema.includes(`"${field}"`)) {
+    throw new Error(`KoFiWebhookEvent schema missing durable ledger field: ${field}`);
+  }
+}
+
 for (const pattern of [
   /return\s+Response\.json\(\{\s*error:\s*error\.message/,
   /parseFloat\(payload\.amount\)\s*\|\|\s*0/,
@@ -92,4 +118,4 @@ if (!source.includes('supportedDonationType(payload.type)')) {
   throw new Error('Ko-fi webhook must classify supported financial event types');
 }
 
-console.log('Ko-fi webhook durable-claim, side-effect recovery, and schema-preservation contract verified.');
+console.log('Ko-fi webhook durable claim, provider-event ledger, side-effect recovery, and schema-preservation contract verified.');
