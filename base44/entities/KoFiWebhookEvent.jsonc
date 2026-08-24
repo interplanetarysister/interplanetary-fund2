@@ -1,0 +1,62 @@
+{
+  "name": "KoFiWebhookEvent",
+  "type": "object",
+  "description": "Durable Ko-fi provider-event ledger used to recover financial webhook side effects after a committed claim.",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "Stable provider-scoped event identity, e.g. kofi:<message_id>."
+    },
+    "provider": {
+      "type": "string",
+      "enum": ["kofi"],
+      "default": "kofi"
+    },
+    "message_id": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "connection_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number",
+      "minimum": 0
+    },
+    "event_type": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "side_effects_complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "last_error": {
+      "type": "string",
+      "maxLength": 1000
+    }
+  },
+  "required": [
+    "event_id",
+    "provider",
+    "message_id",
+    "connection_id",
+    "user_id",
+    "amount",
+    "claimed_at"
+  ],
+  "rls": {
+    "read": false,
+    "create": false,
+    "update": false,
+    "delete": false
+  }
+}
