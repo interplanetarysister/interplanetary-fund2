@@ -132,7 +132,7 @@
     },
     "processed_webhook_ids": {
       "type": "array",
-      "description": "Durable Ko-fi webhook message IDs already claimed for financial processing. This is intentionally separate from the rolling activity history so old retries remain deduplicated.",
+      "description": "Short-lived Ko-fi webhook message IDs retained only for the active financial claim; durable event identity lives in KoFiWebhookEvent.",
       "items": {
         "type": "string"
       }
@@ -140,6 +140,11 @@
     "kofi_active_event_id": {
       "type": "string",
       "description": "Transient single-winner Ko-fi event claim held until the durable event ledger and downstream side effects are complete."
+    },
+    "kofi_active_event_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the active Ko-fi financial claim; recovery may take over only after the bounded stale interval."
     },
     "kofi_recovery_claim_token": {
       "type": "string",
