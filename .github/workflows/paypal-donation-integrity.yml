@@ -1,0 +1,31 @@
+name: PayPal Donation Integrity Verification
+
+on:
+  pull_request:
+    paths:
+      - 'base44/functions/createPayPalOrder/**'
+      - 'base44/functions/capturePayPalOrder/**'
+      - 'base44/shared/paypal.ts'
+      - 'base44/entities/Donation.jsonc'
+      - 'scripts/verify-paypal-donation-integrity.mjs'
+      - '.github/workflows/paypal-donation-integrity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'base44/functions/createPayPalOrder/**'
+      - 'base44/functions/capturePayPalOrder/**'
+      - 'base44/shared/paypal.ts'
+      - 'base44/entities/Donation.jsonc'
+      - 'scripts/verify-paypal-donation-integrity.mjs'
+      - '.github/workflows/paypal-donation-integrity.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify PayPal donation integrity contract
+        run: node scripts/verify-paypal-donation-integrity.mjs
