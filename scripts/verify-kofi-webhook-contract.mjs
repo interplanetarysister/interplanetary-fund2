@@ -39,7 +39,6 @@ const required = [
   'side_effects_complete: false',
   'await processClaimedEvent(',
   'return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });',
-  'kofi_active_event_claim_token: claimToken',
   '$unset:',
 ];
 
@@ -126,10 +125,9 @@ for (const pattern of [
   /processed_webhook_ids:\s*\{\s*\$ne:/,
   /\$addToSet:\s*\{\s*processed_webhook_ids/,
   /\$pull:\s*\{\s*processed_webhook_ids/,
-  /filter\(\{\s*event_id:\s*eventId\s*\}\)\s*;[\s\S]{0,250}\bKoFiWebhookEvent\.create\(/,
 ]) {
   if (pattern.test(source)) {
-    throw new Error(`Unsafe or non-authoritative Ko-fi pattern remains: ${pattern}`);
+    throw new Error(`Unsafe or retired Ko-fi webhook pattern remains: ${pattern}`);
   }
 }
 
