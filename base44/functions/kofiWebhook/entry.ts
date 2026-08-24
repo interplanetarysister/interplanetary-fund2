@@ -38,11 +38,44 @@ async function ensureSideEffects(sr, connection, payload, amount, eventId) {
   }
 }
 
+async function reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt) {
+  const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
+  if (existing.length > 0) {
+    return existing[0];
+  }
+
+  // Base44 does not expose a documented unique/upsert entity primitive. The
+  // financial claim remains the atomic duplicate gate; this ledger is the
+  // durable recovery record for side effects and long-after-history replays.
+  return sr.entities.KoFiWebhookEvent.create({
+    event_id: eventId,
+    provider: 'kofi',
+    message_id: payload.message_id,
+    connection_id: connection.id,
+    user_id: connection.created_by_id,
+    amount,
+    event_type: payload.type || 'donation',
+    claimed_at: claimedAt,
+    side_effects_complete: false,
+    last_error: '',
+  });
+}
+
+async function completeEventLedger(sr, ledger) {
+  if (!ledger?.id) return;
+  await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+    side_effects_complete: true,
+    last_error: '',
+  });
+}
+
 // Live Ko-fi donation sync. Ko-fi POSTs form-encoded webhooks with a `data`
 // JSON field containing a verification_token. The token authenticates the
 // request: it must match the token the connection owner saved when connecting
 // Ko-fi. The financial mutation is guarded by an atomic updateMany claim on
-// the connection, separate from the rolling activity history.
+// the connection. A durable provider-event ledger records the claimed event
+// so downstream side effects can be repaired after the short-lived claim gate
+// is no longer present.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -89,9 +122,27 @@ export default async function(req) {
     if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
 
     const eventId = `kofi:${messageId}`;
+    const existingLedger = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
 
-    // First attempt the durable financial claim. The claim prevents duplicate
-    // financial increments for the normal concurrent/retry path.
+    if (existingLedger.length > 0) {
+      const ledger = existingLedger[0];
+      try {
+        await ensureSideEffects(sr, connection, payload, amount, eventId);
+        await completeEventLedger(sr, ledger);
+        return Response.json({ ok: true, duplicate: true, repaired: true });
+      } catch (error) {
+        console.error('kofiWebhook side-effect recovery error:', error);
+        if (ledger.id) {
+          await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+            side_effects_complete: false,
+            last_error: 'Downstream side-effect recovery failed.',
+          });
+        }
+        return Response.json({ error: safeWebhookError() }, { status: 500 });
+      }
+    }
+
+    const claimedAt = new Date().toISOString();
     const claim = await sr.entities.PlatformConnection.updateMany(
       {
         id: connection.id,
@@ -107,12 +158,12 @@ export default async function(req) {
         },
         $set: {
           status: 'connected',
-          last_synced: new Date().toISOString(),
+          last_synced: claimedAt,
           last_error: '',
         },
         $push: {
           history: {
-            at: new Date().toISOString(),
+            at: claimedAt,
             event: 'synced',
             detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}`,
           },
@@ -121,14 +172,46 @@ export default async function(req) {
     );
 
     if (!claim.success || claim.updated !== 1) {
-      // A previously claimed event may have failed after the financial write.
-      // Retry the side effects by their stable event identity instead of
-      // returning early and permanently losing the Inbox/Notification path.
-      await ensureSideEffects(sr, connection, payload, amount, eventId);
-      return Response.json({ ok: true, duplicate: true, repaired: true });
+      const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+      try {
+        await ensureSideEffects(sr, connection, payload, amount, eventId);
+        if (ledger) await completeEventLedger(sr, ledger);
+        return Response.json({ ok: true, duplicate: true, repaired: true });
+      } catch (error) {
+        console.error('kofiWebhook duplicate recovery error:', error);
+        if (ledger?.id) {
+          await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+            side_effects_complete: false,
+            last_error: 'Downstream side-effect recovery failed.',
+          });
+        }
+        return Response.json({ error: safeWebhookError() }, { status: 500 });
+      }
     }
 
-    await ensureSideEffects(sr, connection, payload, amount, eventId);
+    let ledger;
+    try {
+      ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
+      await ensureSideEffects(sr, connection, payload, amount, eventId);
+      await completeEventLedger(sr, ledger);
+    } catch (error) {
+      console.error('kofiWebhook claimed-event recovery error:', error);
+      if (ledger?.id) {
+        await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+          side_effects_complete: false,
+          last_error: 'Downstream side-effect recovery failed.',
+        });
+      }
+      return Response.json({ error: safeWebhookError() }, { status: 500 });
+    }
+
+    // Keep the atomic connection claim set small. The durable ledger now owns
+    // long-term replay identity, so this ID is removed after the ledger and
+    // downstream side effects are safely recorded.
+    await sr.entities.PlatformConnection.updateMany(
+      { id: connection.id },
+      { $pull: { processed_webhook_ids: messageId } },
+    );
 
     return Response.json({ ok: true, claimed: true });
   } catch (error) {
