@@ -5,9 +5,11 @@ import { canAutoPublish, publishThroughConnection } from '../../shared/socialPub
 // workflow, no user context — service-scoped like runOutreachAgent):
 // 1. Publishes due scheduled posts on auto-capable connections; asks the owner
 //    when their permission setting requires it.
-// 2. Retries failed publishes (up to 3 attempts) with error logging.
+// 2. Retries failed publishes (up to 3 attempts) with server-side error logging.
 // 3. Flags stale connections (>7 days without a sync) for health monitoring.
 const MAX_RETRIES = 3;
+const SAFE_PUBLISH_ERROR = 'Publishing failed; the connection can be retried.';
+const SAFE_SYNC_ERROR = 'Connection synchronization failed.';
 
 export default async function(req) {
   try {
@@ -40,18 +42,19 @@ export default async function(req) {
             status: 'published', published_at: now.toISOString(), external_post_url: url, error: '',
           });
           report.published++;
-        } catch (e) {
+        } catch (error) {
+          console.error('syncConnections publish error:', error);
           const retries = (post.retry_count || 0) + 1;
           await sr.entities.DistributedPost.update(post.id, {
             status: retries >= MAX_RETRIES ? 'failed' : post.status === 'failed' ? 'failed' : 'scheduled',
-            error: e.message,
+            error: SAFE_PUBLISH_ERROR,
             retry_count: retries,
           });
           if (retries >= MAX_RETRIES) {
             await sr.entities.Notification.create({
               user_id: post.created_by_id,
               title: 'Post could not be published',
-              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts: ${e.message}`,
+              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts.`,
               type: 'system',
               link: `/campaign/${post.campaign_id}`,
             });
@@ -64,7 +67,7 @@ export default async function(req) {
         await sr.entities.Notification.create({
           user_id: post.created_by_id,
           title: 'Scheduled post is ready',
-          body: `Your ${post.platform} post for "${post.campaign_title}" is ready — approve it to publish.`,
+          body: `Your ${post.platform} post for \"${post.campaign_title}\" is ready — approve it to publish.`,
           type: 'system',
           link: `/campaign/${post.campaign_id}`,
         });
@@ -88,7 +91,7 @@ export default async function(req) {
 
     return Response.json(report);
   } catch (error) {
-    console.error('syncConnections error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('syncConnections error:', error);
+    return Response.json({ error: SAFE_SYNC_ERROR }, { status: 500 });
   }
 }
