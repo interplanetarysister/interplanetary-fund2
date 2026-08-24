@@ -137,6 +137,7 @@ export default async function(req) {
 
     return Response.json({ ok: true, synced_at: now, counts });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('syncFromConvex failed', error);
+    return Response.json({ error: 'Unable to synchronize platform data' }, { status: 500 });
   }
 }
