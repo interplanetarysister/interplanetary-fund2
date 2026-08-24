@@ -68,6 +68,12 @@ npx skills add base44/skills
 - Historical/reconstructed feature material is evidence, not automatic production truth.
 - Run the relevant checks from `package.json` before finishing code changes.
 
+## Builder preservation rule
+
+When a builder agent is correcting, extending, or improving work that has already been produced, it must **edit the existing implementation/artifact rather than recreate it from scratch**. Start from the actual current implementation/commit/PR head and preserve valid existing functionality, architecture, interfaces, and history where practical. Make the smallest coherent modification that satisfies the task.
+
+A full rewrite/replacement is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. The builder must document the reason, what valid behavior is being preserved, and how equivalence/regression will be verified. This applies to code, configuration, schemas, documentation, agent definitions, workflows, prompts, generated assets, and other produced artifacts.
+
 ## Continuity rule
 
 When a new decision changes repository ownership, agent roles, workflow, or the application/backend boundary, update `docs/REPOSITORY_SOURCE_OF_TRUTH.md`, the affected role-specific documentation, and the durable project archive in `InterplanetaryFund` when the decision materially affects future work.
