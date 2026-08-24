@@ -35,7 +35,8 @@ export default function Onboarding() {
       await base44.auth.updateMe({ ...updates, onboarding: data, onboarding_completed: true });
       navigate("/mission");
     } catch (e) {
-      toast({ title: "Couldn't save setup", description: e.message, variant: "destructive" });
+      console.error("Onboarding save failed", e);
+      toast({ title: "Couldn't save setup", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
     }
     setSaving(false);
   };
