@@ -71,9 +71,9 @@ async function completeEventLedger(sr, ledger) {
 
 async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
   // A retry can arrive after the financial claim committed but before the
-  // durable ledger was written. The active-event marker remains on the same
-  // connection until recovery is complete, so concurrent retries can elect
-  // only one recovery owner with updateMany's conditional compare-and-set.
+  // durable ledger was written. Recovery must not race a still-running first
+  // claimant: only an absent active claim or a bounded-stale active claim may
+  // be taken over. The conditional update is the recovery worker election.
   let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
   if (ledger) {
     await ensureSideEffects(sr, connection, payload, amount, eventId);
@@ -87,6 +87,10 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
     {
       id: connection.id,
       kofi_active_event_id: eventId,
+      $or: [
+        { kofi_active_event_claimed_at: { $lt: staleBefore } },
+        { kofi_active_event_claimed_at: { $exists: false } },
+      ],
       $or: [
         { kofi_recovery_claimed_at: { $exists: false } },
         { kofi_recovery_claimed_at: { $lt: staleBefore } },
@@ -209,6 +213,7 @@ export default async function(req) {
           last_synced: claimedAt,
           last_error: '',
           kofi_active_event_id: eventId,
+          kofi_active_event_claimed_at: claimedAt,
         },
         $push: {
           history: {
@@ -262,6 +267,7 @@ export default async function(req) {
         $pull: { processed_webhook_ids: messageId },
         $unset: {
           kofi_active_event_id: '',
+          kofi_active_event_claimed_at: '',
           kofi_recovery_claim_token: '',
           kofi_recovery_claimed_at: '',
         },
