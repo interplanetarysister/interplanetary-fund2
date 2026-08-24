@@ -38,3 +38,6 @@ jobs:
 
       - name: Verify recurring donation error contract
         run: npm run verify:recurring-donation-errors
+
+      - name: Verify Stripe webhook security contract
+        run: npm run verify:stripe-webhook-errors
