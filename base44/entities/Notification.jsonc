@@ -29,6 +29,10 @@
     "read": {
       "type": "boolean",
       "default": false
+    },
+    "external_event_id": {
+      "type": "string",
+      "description": "Stable provider/event identity used to make externally-triggered notifications recoverable and idempotent."
     }
   },
   "required": [
