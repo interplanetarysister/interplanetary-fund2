@@ -1,0 +1,22 @@
+name: Account Export Privacy Verification
+
+on:
+  pull_request:
+    paths:
+      - "src/components/account/AccountManagement.jsx"
+      - "scripts/verify-account-export-privacy.mjs"
+      - ".github/workflows/account-export-privacy.yml"
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify account export privacy boundary
+        run: node scripts/verify-account-export-privacy.mjs
