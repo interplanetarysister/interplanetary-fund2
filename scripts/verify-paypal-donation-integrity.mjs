@@ -15,6 +15,7 @@ const required = [
   [capture, "return Response.json({ error: 'Unable to complete the PayPal donation. Please try again.' }, { status: 500 });", 'PayPal capture must use a safe client error'],
   [paypal, 'sender_batch_id: itemId', 'PayPal payout idempotency identity must come from the withdrawal transaction'],
   [paypal, 'export async function getOrder(orderId)', 'PayPal order lookup helper must exist'],
+  [paypal, '"PayPal-Request-Id": `capture-${orderId}`', 'PayPal capture retries must use a stable provider idempotency key'],
   [donation, '"paypal_order_id"', 'Donation schema must retain the PayPal provider identity'],
 ];
 
