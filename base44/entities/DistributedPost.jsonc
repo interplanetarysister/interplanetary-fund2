@@ -36,6 +36,7 @@
         "pending_approval",
         "approved",
         "scheduled",
+        "publishing",
         "published",
         "failed"
       ],
@@ -58,6 +59,15 @@
     "retry_count": {
       "type": "number",
       "default": 0
+    },
+    "publish_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the durable pre-provider publication claim. Stale claims are quarantined rather than automatically republished."
+    },
+    "publish_claim_token": {
+      "type": "string",
+      "description": "Opaque correlation token for the current publication claim; never sent to external providers."
     }
   },
   "required": [
