@@ -16,6 +16,7 @@ const required = [
   'async function ensureSideEffects',
   'async function reconcileEventLedger',
   'async function completeEventLedger',
+  'async function recoverClaimedEvent',
   'const messageId = payload.message_id;',
   'const eventId = `kofi:${messageId}`;',
   'Number.isFinite(amount)',
@@ -27,6 +28,7 @@ const required = [
   'KoFiWebhookEvent.filter({ event_id: eventId })',
   'KoFiWebhookEvent.create({',
   'side_effects_complete: false',
+  'await recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt);',
   '$pull: { processed_webhook_ids: messageId }',
   'return Response.json({ error: safeWebhookError() }, { status: 500 });',
 ];
