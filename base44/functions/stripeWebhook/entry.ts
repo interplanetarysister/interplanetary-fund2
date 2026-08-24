@@ -77,8 +77,6 @@ export default async function(req) {
         if (!claim.success || claim.updated !== 1) {
           // The campaign-level conditional update is the durable financial
           // claim boundary. A replay must never increment totals twice.
-          // Donation/notification recovery is handled below without another
-          // campaign-total mutation.
           const existing = await base44.asServiceRole.entities.Donation.filter({ stripe_session_id: session.id });
           if (existing.length === 0) {
             console.error('Stripe donation claim already exists but Donation record is missing:', event.id);
@@ -102,21 +100,17 @@ export default async function(req) {
           });
         }
 
+        // Only the request that won the campaign-level event claim reaches
+        // this side effect, preventing concurrent webhook deliveries from
+        // creating duplicate donation notifications.
         if (campaign.created_by_id) {
-          const existingNotifications = await base44.asServiceRole.entities.Notification.filter({
+          await base44.asServiceRole.entities.Notification.create({
             user_id: campaign.created_by_id,
+            title: 'New donation received',
+            body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to \"${campaign.title}\"`,
             type: 'donation',
             link: `/campaign/${campaign.id}`,
           });
-          if (existingNotifications.length === 0) {
-            await base44.asServiceRole.entities.Notification.create({
-              user_id: campaign.created_by_id,
-              title: 'New donation received',
-              body: `${m.donor_name || 'Anonymous'} donated $${value.toLocaleString()} to \"${campaign.title}\"`,
-              type: 'donation',
-              link: `/campaign/${campaign.id}`,
-            });
-          }
         }
       }
     } else if (event.type === 'invoice.paid') {
