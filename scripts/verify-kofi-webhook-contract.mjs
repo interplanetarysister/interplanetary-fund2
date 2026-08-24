@@ -24,8 +24,10 @@ const required = [
   'processed_webhook_ids: { $ne: messageId }',
   'kofi_active_event_id: { $exists: false }',
   'kofi_active_event_id: eventId',
+  'kofi_active_event_claimed_at: claimedAt',
   'kofi_recovery_claim_token',
   'kofi_recovery_claimed_at',
+  'kofi_active_event_claimed_at: { $lt: staleBefore }',
   '$addToSet',
   'external_total: amount',
   'await ensureSideEffects(sr, connection, payload, amount, eventId);',
@@ -66,6 +68,7 @@ for (const field of [
   'history',
   'processed_webhook_ids',
   'kofi_active_event_id',
+  'kofi_active_event_claimed_at',
   'kofi_recovery_claim_token',
   'kofi_recovery_claimed_at',
 ]) {
@@ -132,8 +135,12 @@ if (!source.includes('kofi_active_event_id: eventId') || !source.includes('$unse
   throw new Error('Ko-fi financial claim must retain and explicitly clear the active event claim only after recovery completes.');
 }
 
-if (!source.includes('$or: [') || !source.includes('kofi_recovery_claimed_at: { $lt: staleBefore }')) {
-  throw new Error('Ko-fi recovery must support bounded stale-claim takeover instead of allowing concurrent recovery owners.');
+if (!source.includes('$and: [') || !source.includes('kofi_active_event_claimed_at: { $lt: staleBefore }') || !source.includes('kofi_recovery_claimed_at: { $lt: staleBefore }')) {
+  throw new Error('Ko-fi recovery must require both a bounded-stale active claim and a bounded-stale recovery claim before takeover.');
 }
 
-console.log('Ko-fi webhook single-winner claim, durable provider-event ledger, side-effect recovery, and schema-preservation contract verified.');
+if (!source.includes('const RECOVERY_CLAIM_STALE_MS = 5 * 60 * 1000;')) {
+  throw new Error('Ko-fi recovery stale-claim bound must remain explicit and finite.');
+}
+
+console.log('Ko-fi webhook single-winner claim, bounded recovery takeover, durable provider-event ledger, side-effect recovery, and schema-preservation contract verified.');
