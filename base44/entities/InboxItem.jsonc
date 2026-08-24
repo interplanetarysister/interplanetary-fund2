@@ -18,7 +18,15 @@
     },
     "type": {
       "type": "string",
-      "enum": ["comment","message","donation","mention","reply","question","system"],
+      "enum": [
+        "comment",
+        "message",
+        "donation",
+        "mention",
+        "reply",
+        "question",
+        "system"
+      ],
       "default": "system"
     },
     "author": {
@@ -33,7 +41,10 @@
     },
     "status": {
       "type": "string",
-      "enum": ["open","done"],
+      "enum": [
+        "open",
+        "done"
+      ],
       "default": "open"
     },
     "ai_draft": {
@@ -45,11 +56,58 @@
       "description": "Stable provider event identity used to prevent duplicate InboxItem creation across webhook retries."
     }
   },
-  "required": ["user_id","platform"],
+  "required": [
+    "user_id",
+    "platform"
+  ],
   "rls": {
-    "read": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]},
-    "create": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]},
-    "update": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]},
-    "delete": {"$or": [{"data.user_id": "{{user.id}}"},{"user_condition": {"role": "admin"}}]}
+    "read": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
   }
 }
