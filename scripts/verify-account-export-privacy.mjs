@@ -11,12 +11,12 @@ if (!/PlatformConnection\.filter\(\{\s*created_by_id:\s*me\.id\s*\}/.test(target
   failures.push("account export must bind PlatformConnection reads to the authenticated user's created_by_id");
 }
 
-if (!/exportSafeConnections\s*=\s*connections\.map/.test(target)) {
-  failures.push("account export must create an explicit export-safe PlatformConnection projection");
+if (!/const exportSafeConnections = connections\.map\(\(\{\s*id,\s*created_by_id,\s*created_date,\s*updated_date,\s*platform,\s*kind,\s*display_name,\s*external_url,\s*campaign_id,\s*status,\s*automation_mode,\s*external_total,\s*external_donor_count,\s*last_synced\s*\}\)\s*=>/.test(target)) {
+  failures.push("account export must use an explicit allowlisted PlatformConnection projection");
 }
 
-if (!/credentials:\s*_credentials/.test(target)) {
-  failures.push("account export must strip PlatformConnection.credentials before serialization");
+if (/credentials|history|last_error/.test(target.match(/const exportSafeConnections = connections\.map\([\s\S]*?\n\s*\}\);/)?.[0] || "")) {
+  failures.push("export-safe PlatformConnection projection must exclude credentials, history, and last_error");
 }
 
 if (/PlatformConnection\.list\(/.test(target)) {
