@@ -58,11 +58,6 @@
       "description": "Connection activity log: connects, syncs, permission changes, errors.",
       "items": {"type": "object", "properties": {"at": {"type": "string", "format": "date-time"}, "event": {"type": "string"}, "detail": {"type": "string"}}}
     },
-    "processed_webhook_ids": {
-      "type": "array",
-      "description": "Legacy Ko-fi replay-history field retained for backward compatibility; it is no longer used as the authoritative claim or replay ledger.",
-      "items": {"type": "string"}
-    },
     "kofi_active_event_id": {
       "type": "string",
       "description": "Durable single-winner Ko-fi event claim held until the event ledger and downstream side effects are complete."
