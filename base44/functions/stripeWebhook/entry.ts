@@ -3,6 +3,10 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { getSubscriptionEntitlement } from '../../shared/subscriptionCatalog.ts';
 
+function safeWebhookError() {
+  return 'Unable to process Stripe webhook.';
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -137,7 +141,7 @@ export default async function(req) {
 
     return Response.json({ received: true });
   } catch (error) {
-    console.error('stripeWebhook error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('stripeWebhook error:', error?.message || error);
+    return Response.json({ error: safeWebhookError() }, { status: 500 });
   }
 }
