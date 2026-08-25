@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Ops Center freshness/source verification
+        run: npm run verify:ops-center-freshness
+
       - name: Production build
         run: npm run build
 
