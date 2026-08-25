@@ -127,6 +127,8 @@ const ledgerFnStart = source.indexOf('async function ensureEventLedgerUnderClaim
 const ledgerFnEnd = source.indexOf('\n}\n\nasync function syncFinancialStateFromLedger', ledgerFnStart);
 const ledgerFnBody = ledgerFnStart >= 0 && ledgerFnEnd > ledgerFnStart ? source.slice(ledgerFnStart, ledgerFnEnd) : '';
 if (!ledgerFnBody.includes('KoFiWebhookEvent.create({')) throw new Error('Durable provider-event ledger creation is missing.');
+if (!ledgerFnBody.includes('connection_id: connection.id')) throw new Error('Durable provider-event ledger must bind the event to its claimed connection.');
+if (!ledgerFnBody.includes('event_id: eventId')) throw new Error('Durable provider-event ledger must use the deterministic provider+connection event identity.');
 
 const ledgerCallIndex = processBody.indexOf('ledger = await ensureEventLedgerUnderClaim');
 const financialApplyIndex = processBody.indexOf('await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);');
@@ -152,8 +154,29 @@ if (!source.includes('kofi_recovery_required: true') || !source.includes('kofi_r
   throw new Error('Ko-fi recovery ownership must be explicitly transferred through the recovery-required marker.');
 }
 
+// The Base44 entity API does not document a unique-index/upsert primitive. The
+// supported exactly-once boundary is therefore the atomic connection-level
+// updateMany claim: every ledger create, financial update, and side effect must
+// execute only while that claim token is held. The durable event_id remains the
+// replay identity after the claim is cleared; a later replay must reacquire the
+// same connection claim before it can inspect or create/reconcile the ledger.
+const claimScopedCreateIndex = source.indexOf('ledger = await ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt);');
+if (claimScopedCreateIndex < 0) throw new Error('Initial durable ledger creation must be invoked only from the claimed event processor.');
+if (source.includes('KoFiWebhookEvent.create({', claimScopedCreateIndex + 1)) {
+  const createCount = (source.match(/KoFiWebhookEvent\.create\(\{/g) || []).length;
+  if (createCount !== 1) throw new Error('KoFiWebhookEvent must have exactly one create path, inside the claim-scoped ledger helper.');
+}
+const processCallFromHandler = handlerBody.indexOf('await processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken);');
+if (processCallFromHandler < 0) throw new Error('Primary webhook processing must enter the claim-scoped processor only after a successful claim.');
+if (handlerBody.indexOf('return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });') < handlerClaimIndex) {
+  throw new Error('Duplicate response must occur only after the connection claim attempt, never before it.');
+}
+if (!source.includes('const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);')) {
+  throw new Error('Recovery processing must reacquire the same connection-level claim before touching the ledger.');
+}
+
 if (!source.includes('The connection-level active-event claim is the')) {
   throw new Error('Ko-fi source must document the connection-level claim as the authoritative single-winner boundary.');
 }
 
-console.log('Ko-fi webhook claim-before-ledger lifecycle, durable event ledger, explicit recovery ownership, safe errors, financial completion marker, idempotent side-effect identity, and schema-preservation contract verified.');
+console.log('Ko-fi webhook claim-before-ledger lifecycle, atomic connection-scoped event boundary, durable replay identity, explicit recovery ownership, safe errors, financial completion marker, idempotent side-effect identity, and schema-preservation contract verified.');
