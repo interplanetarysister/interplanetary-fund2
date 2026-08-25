@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Campaign cover prompt security contract
+        run: npm run verify:cover-prompt
+
       - name: Production build
         run: npm run build
 
