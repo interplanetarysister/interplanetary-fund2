@@ -43,6 +43,12 @@ assert.match(withdrawal, /PayPal accepted the payout but local finalization is p
   "Provider-success/local-write failure must remain recoverable rather than failed");
 assert.match(withdrawal, /w\.review_action\s*===\s*["']deny["']/,
   "Approval must refuse a withdrawal already claimed by the denial workflow");
+assert.match(withdrawal, /clearMigrationClaim\(sr, withdrawal\)/,
+  "Migration withdrawals must clear their campaign claim after payout terminal success/failure");
+assert.match(withdrawal, /active_migration_request_id:\s*withdrawal\.migration_request_id/,
+  "Migration claim release must be conditionally bound to the original request identity");
+assert.match(withdrawal, /active_migration_request_id:\s*request_id|active_migration_request_id:\s*withdrawal\.migration_request_id/,
+  "Migration claim reconciliation must use the stable migration request identity");
 
 assert.match(paypal, /sender_batch_id:\s*senderBatchId/,
   "PayPal payout identity must be deterministic rather than time-based");
@@ -71,6 +77,10 @@ assert.match(moderation, /failed[\s\S]*review_action=deny|review_action=deny[\s\
   "Withdrawal denial recovery must remain explicitly owned by the denial decision");
 assert.match(moderation, /Retry the denial action/,
   "Withdrawal denial must expose a safe recoverable retry path after partial failure");
+assert.match(moderation, /clearMigrationClaim\(sr, withdrawal\)/,
+  "Migration withdrawals must release their campaign claim after a terminal denial and reservation reconciliation");
+assert.match(moderation, /active_migration_request_id:\s*withdrawal\.migration_request_id/,
+  "Fraud denial claim release must be conditionally bound to the migration request identity");
 assert.match(moderation, /action === ["']pauseCampaign["']|action === ["']restoreCampaign["']/,
   "Moderation workflow must own campaign pause/restore actions");
 assert.match(moderation, /Campaign\.updateMany\(/,
@@ -91,5 +101,6 @@ for (const field of ["title", "summary", "story", "goal_amount", "raised_amount"
 }
 assert.match(campaignSchema, /"moderated_by_id"/, "Campaign schema must persist the moderating administrator");
 assert.match(campaignSchema, /"moderation_note"/, "Campaign schema must persist the moderation reason");
+assert.match(campaignSchema, /"active_migration_request_id"/, "Campaign schema must persist the migration claim boundary");
 
-console.log("Fraud approval, deterministic payout reconciliation, denial decision ownership, recoverable reservation release, schema preservation, and campaign-moderation workflow verification passed.");
+console.log("Fraud approval, deterministic payout reconciliation, denial decision ownership, recoverable reservation release, migration claim reconciliation, schema preservation, and campaign-moderation workflow verification passed.");
