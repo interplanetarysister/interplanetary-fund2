@@ -31,8 +31,29 @@ async function getAccessToken() {
   return data.access_token;
 }
 
+export async function getPayoutBatch(payoutBatchId) {
+  const token = await getAccessToken();
+  const res = await fetch(`${apiBase()}/v1/payments/payouts/${encodeURIComponent(payoutBatchId)}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 404) return null;
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.message || `PayPal payout lookup failed (${res.status})`);
+  }
+  return {
+    payout_batch_id: data.batch_header?.payout_batch_id || payoutBatchId,
+    batch_status: data.batch_header?.batch_status || "UNKNOWN",
+    items: Array.isArray(data.items) ? data.items : [],
+  };
+}
+
 export async function sendPayout({ receiver, amount, note, itemId }) {
   const token = await getAccessToken();
+  const senderBatchId = String(itemId || "").startsWith("IFW_")
+    ? String(itemId)
+    : `IFW_${String(itemId || crypto.randomUUID())}`;
   const res = await fetch(`${apiBase()}/v1/payments/payouts`, {
     method: "POST",
     headers: {
@@ -41,7 +62,7 @@ export async function sendPayout({ receiver, amount, note, itemId }) {
     },
     body: JSON.stringify({
       sender_batch_header: {
-        sender_batch_id: `IFW_${Date.now()}`,
+        sender_batch_id: senderBatchId,
         email_subject: "You received a payout from Interplanetary Fund",
         email_message: "Your campaign withdrawal has been processed.",
       },
@@ -64,7 +85,7 @@ export async function sendPayout({ receiver, amount, note, itemId }) {
   const batchId = data.batch_header?.payout_batch_id;
   const item = data.items?.[0];
   return {
-    payout_batch_id: batchId,
+    payout_batch_id: batchId || senderBatchId,
     transaction_status: item?.transaction_status || "PENDING",
   };
 }
