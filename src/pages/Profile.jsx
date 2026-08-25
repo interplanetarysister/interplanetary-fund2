@@ -43,7 +43,8 @@ export default function Profile() {
       setUser((u) => ({ ...u, photo_url: url }));
       toast({ title: "Profile photo updated" });
     } catch (e) {
-      toast({ title: "Couldn't update photo", description: e.message, variant: "destructive" });
+      console.error("Profile photo update failed", e);
+      toast({ title: "Couldn't update photo", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
     }
   };
 
