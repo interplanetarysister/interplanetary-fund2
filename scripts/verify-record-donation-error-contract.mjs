@@ -7,6 +7,8 @@ assert.match(source, /return Response\.json\(\{ error: SAFE_ERROR \}, \{ status:
 assert.match(source, /Number\.isFinite\(value\)/);
 assert.match(source, /MAX_DONATION_AMOUNT/);
 assert.match(source, /ALLOWED_PAYMENT_METHODS/);
+assert.match(source, /normalizedPaymentMethod/);
+assert.match(source, /payment_method:\s*normalizedPaymentMethod/);
 assert.doesNotMatch(source, /return Response\.json\(\{ error: error\.message \}/);
 assert.doesNotMatch(source, /return Response\.json\(\{ error: error\?\.message/);
 console.log('recordDonation safe-error contract passed');
