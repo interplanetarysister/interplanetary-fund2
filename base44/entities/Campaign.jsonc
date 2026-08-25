@@ -72,9 +72,13 @@
       "type": "string",
       "description": "The creator's Cash App $Cashtag, so supporters can give with Cash App."
     },
+    "active_migration_request_id": {
+      "type": "string",
+      "description": "Authoritative server-side Fund Migration claim. Held while a migration withdrawal remains unresolved; never supplied by client financial calculations."
+    },
     "ai_profile": {
       "type": "object",
-      "description": "The campaign's permanent AI profile \u2014 answers from the AI Instructions step, used by every AI feature to represent and promote the campaign consistently and truthfully.",
+      "description": "The campaign's permanent AI profile — answers from the AI Instructions step, used by every AI feature to represent and promote the campaign consistently and truthfully.",
       "properties": {
         "primary_goal": {
           "type": "string"

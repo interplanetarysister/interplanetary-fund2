@@ -31,6 +31,23 @@
       "type": "string",
       "description": "The PayPal account the payout was sent to."
     },
+    "source_platform": {
+      "type": "string",
+      "description": "External platform from which the migrated funds originated."
+    },
+    "payout_method": {
+      "type": "string",
+      "enum": ["paypal"],
+      "description": "Authoritative payout method used by the current migration payout workflow."
+    },
+    "payout_destination": {
+      "type": "string",
+      "description": "Server-validated payout destination captured for auditability; never hardcoded in the UI."
+    },
+    "migration_request_id": {
+      "type": "string",
+      "description": "Stable Fund Migration request identity used for duplicate/retry reconciliation."
+    },
     "covered_donation_ids": {
       "type": "array",
       "items": {
