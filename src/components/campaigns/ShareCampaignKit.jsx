@@ -1,29 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Copy, Check, Code2, QrCode, Download } from "lucide-react";
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function buildEmbedMarkup({ url, campaignTitle, embedUrl }) {
-  const safeTitle = escapeHtml(campaignTitle || "Campaign");
-  return [
-    "<iframe",
-    `  src=\"${embedUrl}\"`,
-    '  width=\"100%\"',
-    '  style=\"display:block;width:100%;max-width:340px;min-height:420px;border:0;border-radius:16px;overflow:hidden;\"',
-    `  title=\"${safeTitle} — Interplanetary Fund campaign\"`,
-    '  loading=\"lazy\"',
-    '  referrerpolicy=\"strict-origin-when-cross-origin\"',
-    "></iframe>",
-  ].join("\n");
-}
+import { buildEmbedMarkup } from "./embedMarkup";
 
 // The Universal Donation Button — the campaign's permanent Interplanetary Fund
 // URL packaged as a branded button anyone can embed on websites, blogs, forums,
@@ -41,7 +19,6 @@ export default function ShareCampaignKit({ campaign }) {
   ].join("\n");
 
   const embedIframe = buildEmbedMarkup({
-    url,
     campaignTitle: campaign.title,
     embedUrl,
   });
@@ -129,5 +106,3 @@ export default function ShareCampaignKit({ campaign }) {
     </div>
   );
 }
-
-export { escapeHtml, buildEmbedMarkup };
