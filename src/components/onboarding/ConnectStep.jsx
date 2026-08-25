@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { CAPABILITY_MODULES } from "./onboardingSteps";
 import { CheckCircle2, Clock, Link2, Loader2 } from "lucide-react";
@@ -14,9 +14,6 @@ const CONNECTION_ID_BY_PLATFORM = {
   instagram: "instagram",
   tiktok: "tiktok",
   linkedin: "linkedin",
-  gofundme: "gofundme",
-  kickstarter: "kickstarter",
-  indiegogo: "indiegogo",
 };
 
 export default function ConnectStep({ data, onChange }) {
@@ -29,11 +26,7 @@ export default function ConnectStep({ data, onChange }) {
     (async () => {
       try {
         const connections = await base44.entities.PlatformConnection.filter({ status: "connected" });
-        const ids = new Set(
-          (connections || [])
-            .map((connection) => CONNECTION_ID_BY_PLATFORM[connection.platform])
-            .filter(Boolean)
-        );
+        const ids = new Set((connections || []).map((connection) => CONNECTION_ID_BY_PLATFORM[connection.platform]).filter(Boolean));
         if (!cancelled) setConnectedIds(ids);
       } catch (error) {
         console.error("ConnectStep connection-state lookup failed:", error);
@@ -47,9 +40,7 @@ export default function ConnectStep({ data, onChange }) {
 
   useEffect(() => {
     const normalized = selected.filter((id) => connectedIds.has(id));
-    if (!loadingConnections && normalized.length !== selected.length) {
-      onChange({ ...data, platforms: normalized });
-    }
+    if (!loadingConnections && normalized.length !== selected.length) onChange({ ...data, platforms: normalized });
   }, [connectedIds, data, loadingConnections, onChange, selected]);
 
   const toggle = (id) => {
@@ -75,15 +66,7 @@ export default function ConnectStep({ data, onChange }) {
                 const isSelected = selected.includes(item.id);
                 const disabled = effectiveStatus !== "connected" || loadingConnections;
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => toggle(item.id)}
-                    aria-disabled={disabled}
-                    aria-pressed={isSelected}
-                    className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${isSelected ? "border-primary bg-primary/10" : "border-slate-200 bg-white hover:border-slate-300"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
+                  <button key={item.id} type="button" disabled={disabled} onClick={() => toggle(item.id)} aria-disabled={disabled} aria-pressed={isSelected} className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${isSelected ? "border-primary bg-primary/10" : "border-slate-200 bg-white hover:border-slate-300"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
                     <span className="text-stone-800">{item.label}</span>
                     <span className={`flex items-center gap-1 text-xs ${meta.tone}`}><Icon className="w-3.5 h-3.5" />{meta.label}</span>
                   </button>
