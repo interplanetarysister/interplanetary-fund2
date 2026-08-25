@@ -28,9 +28,8 @@ export const ENGINE_CAPABILITIES = [
   },
 ];
 
-// Capability modules are intentionally pluggable: each entry renders a card in the
-// Connect step. New fundraising platforms, payment providers, or social channels
-// can be appended here without touching the component code.
+// Capability modules describe readiness prerequisites. Actual connected state
+// is resolved from the user's authoritative PlatformConnection records in ConnectStep.
 export const CAPABILITY_MODULES = [
   {
     id: "external_fundraising",
@@ -55,7 +54,7 @@ export const CAPABILITY_MODULES = [
     id: "payments",
     group: "Payment Providers",
     items: [
-      { id: "stripe", label: "Stripe", status: "connected" },
+      { id: "stripe", label: "Stripe", status: "setup_required" },
       { id: "paypal", label: "PayPal", status: "setup_required" },
     ],
   },
