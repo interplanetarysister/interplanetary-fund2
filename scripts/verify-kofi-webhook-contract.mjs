@@ -38,6 +38,7 @@ const required = [
   'financial_applied: false',
   'side_effects_complete: false',
   'await processClaimedEvent(',
+  'await recoverClaimedEvent(sr, eventId, current, payload, amount, current.kofi_active_event_claimed_at || claimedAt);',
   'return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });',
   '$unset:',
 ];
@@ -162,15 +163,15 @@ if (!source.includes('kofi_recovery_required: true') || !source.includes('kofi_r
 // same connection claim before it can inspect or create/reconcile the ledger.
 const claimScopedCreateIndex = source.indexOf('ledger = await ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt);');
 if (claimScopedCreateIndex < 0) throw new Error('Initial durable ledger creation must be invoked only from the claimed event processor.');
-if (source.includes('KoFiWebhookEvent.create({', claimScopedCreateIndex + 1)) {
-  const createCount = (source.match(/KoFiWebhookEvent\.create\(\{/g) || []).length;
-  if (createCount !== 1) throw new Error('KoFiWebhookEvent must have exactly one create path, inside the claim-scoped ledger helper.');
-}
+const createCount = (source.match(/KoFiWebhookEvent\.create\(\{/g) || []).length;
+if (createCount !== 1) throw new Error('KoFiWebhookEvent must have exactly one create path, inside the claim-scoped ledger helper.');
 const processCallFromHandler = handlerBody.indexOf('await processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken);');
 if (processCallFromHandler < 0) throw new Error('Primary webhook processing must enter the claim-scoped processor only after a successful claim.');
-if (handlerBody.indexOf('return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });') < handlerClaimIndex) {
-  throw new Error('Duplicate response must occur only after the connection claim attempt, never before it.');
-}
+const recoveryCallFromDuplicatePath = handlerBody.indexOf('await recoverClaimedEvent(sr, eventId, current, payload, amount, current.kofi_active_event_claimed_at || claimedAt);');
+if (recoveryCallFromDuplicatePath < 0) throw new Error('An explicit recovery marker must route a retry back into the claim-scoped recovery processor.');
+const duplicateResponseIndex = handlerBody.indexOf('return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });');
+if (duplicateResponseIndex < handlerClaimIndex) throw new Error('Duplicate response must occur only after the connection claim attempt, never before it.');
+if (recoveryCallFromDuplicatePath > duplicateResponseIndex) throw new Error('Explicit recovery must be attempted before returning the normal duplicate response.');
 if (!source.includes('const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);')) {
   throw new Error('Recovery processing must reacquire the same connection-level claim before touching the ledger.');
 }
@@ -179,4 +180,4 @@ if (!source.includes('The connection-level active-event claim is the')) {
   throw new Error('Ko-fi source must document the connection-level claim as the authoritative single-winner boundary.');
 }
 
-console.log('Ko-fi webhook claim-before-ledger lifecycle, atomic connection-scoped event boundary, durable replay identity, explicit recovery ownership, safe errors, financial completion marker, idempotent side-effect identity, and schema-preservation contract verified.');
+console.log('Ko-fi webhook claim-before-ledger lifecycle, atomic connection-scoped event boundary, explicit recovery retry routing, durable replay identity, safe errors, financial completion marker, idempotent side-effect identity, and schema-preservation contract verified.');
