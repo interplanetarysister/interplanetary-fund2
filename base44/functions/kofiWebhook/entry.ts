@@ -57,6 +57,22 @@ async function ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amo
   });
 }
 
+async function syncFinancialStateFromLedger(sr, connectionId, eventId, claimToken, ledger) {
+  if (!ledger?.financial_applied) return;
+  await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+    },
+    {
+      $set: {
+        kofi_active_event_financial_applied: true,
+      },
+    },
+  );
+}
+
 async function applyFinancialClaim(sr, connectionId, eventId, claimToken, amount) {
   const result = await sr.entities.PlatformConnection.updateMany(
     {
@@ -161,6 +177,7 @@ async function processClaimedEvent(sr, connection, payload, amount, eventId, cla
     ledger = await ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt);
   }
 
+  await syncFinancialStateFromLedger(sr, connection.id, eventId, claimToken, ledger);
   await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);
   await ensureSideEffects(sr, connection, payload, amount, eventId);
   await completeEventLedger(sr, ledger);
@@ -169,7 +186,7 @@ async function processClaimedEvent(sr, connection, payload, amount, eventId, cla
 }
 
 async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
-  let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+  const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
   if (ledger?.side_effects_complete) return ledger;
 
   const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);
@@ -190,11 +207,11 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
 
 // Live Ko-fi donation sync. The connection-level active-event claim is the
 // authoritative single-winner boundary for the entire event lifecycle. It is
-// held from claim acquisition through durable ledger creation, financial
-// application, downstream side effects, and completion. Recovery takeover is
-// only enabled after the previous worker explicitly marks the event as needing
-// recovery; a time-based lease alone is never treated as proof that a worker
-// stopped.
+// acquired before any durable event-ledger lookup or creation, so concurrent
+// identical deliveries cannot independently enter filter-then-create ledger or
+// side-effect paths. Recovery takeover is only enabled after the previous
+// worker explicitly marks the event as needing recovery; a time-based lease
+// alone is never treated as proof that a worker stopped.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -240,29 +257,7 @@ export default async function(req) {
     const connection = connections.find((c) => c.credentials?.kofi_verification_token === token);
     if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
 
-    const eventId = `kofi:${messageId}`;
-    let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-
-    if (ledger?.side_effects_complete) {
-      return Response.json({ ok: true, duplicate: true });
-    }
-
-    if (ledger) {
-      try {
-        await recoverClaimedEvent(sr, eventId, connection, payload, amount, ledger.claimed_at);
-        return Response.json({ ok: true, duplicate: true, repaired: true });
-      } catch (error) {
-        console.error('kofiWebhook ledger recovery error:', error);
-        if (ledger.id) {
-          await sr.entities.KoFiWebhookEvent.update(ledger.id, {
-            side_effects_complete: false,
-            last_error: 'Downstream side-effect recovery is awaiting an explicit recovery claim.',
-          });
-        }
-        return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
-      }
-    }
-
+    const eventId = `kofi:${connection.id}:${messageId}`;
     const claimedAt = new Date().toISOString();
     const claimToken = `${eventId}:${crypto.randomUUID()}`;
     const claim = await sr.entities.PlatformConnection.updateMany(
