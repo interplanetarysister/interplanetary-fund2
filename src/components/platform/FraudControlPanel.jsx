@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 
 const money = (n) => `$${(n || 0).toFixed(2)}`;
 
-// Fraud Control Panel — admin only
-// Approve/deny pending-review withdrawals; pause/unpause campaigns.
+// Fraud Control Panel — admin only.
+// All consequential payout/moderation state changes go through server workflows.
 export default function FraudControlPanel() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -49,34 +49,40 @@ export default function FraudControlPanel() {
     } catch (e) { msg(false, e?.message || "Approval failed."); }
   };
 
-  const deny = async (w) => {
-    if (!denyReason) { msg(false, "Reason required to deny payout."); return; }
+  const moderate = async (action, payload, successText) => {
     try {
-      await base44.entities.Withdrawal.update(w.id, { status: "failed", review_note: denyReason });
-      msg(true, "Payout denied. Funds returned to holding account.");
+      const result = await base44.functions.invoke("fraudControlAction", { action, ...payload });
+      if (!result?.data?.ok) throw new Error(result?.data?.error || "Moderation action failed.");
+      msg(true, successText);
+      load();
+      return true;
+    } catch (e) {
+      msg(false, e?.message || "Moderation action failed.");
+      return false;
+    }
+  };
+
+  const deny = async (w) => {
+    if (!denyReason.trim()) { msg(false, "Reason required to deny payout."); return; }
+    const ok = await moderate("denyWithdrawal", { withdrawal_id: w.id, reason: denyReason.trim() }, "Payout denied and reserved funds released.");
+    if (ok) {
       setDenyTarget(null);
       setDenyReason("");
-      load();
-    } catch (e) { msg(false, e.message || "Denial failed."); }
+    }
   };
 
   const unfreeze = async (c) => {
-    try {
-      await base44.entities.Campaign.update(c.id, { status: "active" });
-      msg(true, `Campaign "${c.title}" restored to active.`);
-      load();
-    } catch (e) { msg(false, e.message || "Unfreeze failed."); }
+    const ok = await moderate("restoreCampaign", { campaign_id: c.id, reason: "Restored by fraud-control administrator." }, `Campaign "${c.title}" restored to active.`);
+    if (ok) setFreezeReason("");
   };
 
   const freeze = async (campaignId, title) => {
-    if (!freezeReason) { msg(false, "Reason required to pause campaign."); return; }
-    try {
-      await base44.entities.Campaign.update(campaignId, { status: "paused" });
-      msg(true, `Campaign "${title}" paused.`);
+    if (!freezeReason.trim()) { msg(false, "Reason required to pause campaign."); return; }
+    const ok = await moderate("pauseCampaign", { campaign_id: campaignId, reason: freezeReason.trim() }, `Campaign "${title}" paused.`);
+    if (ok) {
       setFreezeTarget(null);
       setFreezeReason("");
-      load();
-    } catch (e) { msg(false, e.message || "Pause failed."); }
+    }
   };
 
   if (loading) {
@@ -93,13 +99,10 @@ export default function FraudControlPanel() {
       {error && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</p>}
       {success && <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">{success}</p>}
 
-      {/* Payout Review Queue */}
       <section>
         <h3 className="font-medium text-stone-800 mb-3">Payout Review Queue ({withdrawals.length})</h3>
         {withdrawals.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-400 text-sm">
-            No withdrawals pending review.
-          </div>
+          <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-400 text-sm">No withdrawals pending review.</div>
         ) : (
           <div className="space-y-3">
             {withdrawals.map((w) => (
@@ -124,16 +127,10 @@ export default function FraudControlPanel() {
                   </div>
                 ) : (
                   <div className="mt-3 space-y-2">
-                    <input
-                      type="text"
-                      placeholder="Reason for denial (required)"
-                      value={denyReason}
-                      onChange={(e) => setDenyReason(e.target.value)}
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300"
-                    />
+                    <input type="text" placeholder="Reason for denial (required)" value={denyReason} onChange={(e) => setDenyReason(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" />
                     <div className="flex gap-2">
                       <Button size="sm" variant="ghost" className="flex-1 text-stone-500" onClick={() => { setDenyTarget(null); setDenyReason(""); }}>Cancel</Button>
-                      <Button size="sm" className="flex-1 bg-rose-600 text-white hover:bg-rose-700" onClick={() => deny(w)} disabled={!denyReason}>Confirm Denial</Button>
+                      <Button size="sm" className="flex-1 bg-rose-600 text-white hover:bg-rose-700" onClick={() => deny(w)} disabled={!denyReason.trim()}>Confirm Denial</Button>
                     </div>
                   </div>
                 )}
@@ -143,13 +140,10 @@ export default function FraudControlPanel() {
         )}
       </section>
 
-      {/* Paused / Frozen Campaigns */}
       <section>
         <h3 className="font-medium text-stone-800 mb-3">Paused Campaigns ({campaigns.length})</h3>
         {campaigns.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-400 text-sm">
-            No campaigns paused.
-          </div>
+          <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-400 text-sm">No campaigns paused.</div>
         ) : (
           <div className="space-y-3">
             {campaigns.map((c) => (
@@ -157,6 +151,7 @@ export default function FraudControlPanel() {
                 <div>
                   <p className="font-medium text-stone-900">{c.title}</p>
                   <p className="text-xs text-stone-500">Raised: {money(c.raised_amount)}</p>
+                  {c.moderation_note && <p className="text-xs text-amber-600 mt-1">{c.moderation_note}</p>}
                 </div>
                 <Button size="sm" variant="ghost" className="bg-emerald-50 text-emerald-700 border border-emerald-200" onClick={() => unfreeze(c)}>
                   <Unlock className="w-3.5 h-3.5 mr-1" /> Restore
@@ -167,36 +162,17 @@ export default function FraudControlPanel() {
         )}
       </section>
 
-      {/* Freeze a campaign by ID */}
       <section className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
-        <h3 className="font-medium text-stone-800 mb-3 flex items-center gap-2">
-          <Lock className="w-4 h-4 text-rose-500" /> Pause a Campaign
-        </h3>
+        <h3 className="font-medium text-stone-800 mb-3 flex items-center gap-2"><Lock className="w-4 h-4 text-rose-500" /> Pause a Campaign</h3>
         {freezeTarget === null ? (
-          <Button variant="ghost" size="sm" className="text-rose-600 border border-rose-200 bg-rose-50" onClick={() => setFreezeTarget("")}>
-            Enter campaign ID to pause…
-          </Button>
+          <Button variant="ghost" size="sm" className="text-rose-600 border border-rose-200 bg-rose-50" onClick={() => setFreezeTarget("")}>Enter campaign ID to pause…</Button>
         ) : (
           <div className="space-y-2">
-            <input
-              type="text"
-              placeholder="Campaign ID"
-              value={freezeTarget}
-              onChange={(e) => setFreezeTarget(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300"
-            />
-            <input
-              type="text"
-              placeholder="Reason for pause (required)"
-              value={freezeReason}
-              onChange={(e) => setFreezeReason(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300"
-            />
+            <input type="text" placeholder="Campaign ID" value={freezeTarget} onChange={(e) => setFreezeTarget(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" />
+            <input type="text" placeholder="Reason for pause (required)" value={freezeReason} onChange={(e) => setFreezeReason(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" />
             <div className="flex gap-2">
               <Button size="sm" variant="ghost" className="flex-1 text-stone-500" onClick={() => { setFreezeTarget(null); setFreezeReason(""); }}>Cancel</Button>
-              <Button size="sm" className="flex-1 bg-rose-600 text-white hover:bg-rose-700" disabled={!freezeTarget || !freezeReason} onClick={() => freeze(freezeTarget, freezeTarget)}>
-                Pause Campaign
-              </Button>
+              <Button size="sm" className="flex-1 bg-rose-600 text-white hover:bg-rose-700" disabled={!freezeTarget || !freezeReason.trim()} onClick={() => freeze(freezeTarget, freezeTarget)}>Pause Campaign</Button>
             </div>
           </div>
         )}
