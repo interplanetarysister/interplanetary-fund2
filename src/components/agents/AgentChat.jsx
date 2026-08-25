@@ -35,7 +35,8 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
           setMessages(data.messages || []);
         });
       } catch (e) {
-        setMessages([{ role: "assistant", content: `Couldn't start a conversation with ${agentLabel}: ${e.message}` }]);
+        console.error("Agent conversation start failed", e);
+        setMessages([{ role: "assistant", content: `Couldn't start a conversation with ${agentLabel}. Please try again.` }]);
       }
       if (!cancelled) setStarting(false);
     })();
@@ -55,7 +56,8 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
         outcome: "conversation",
       });
     } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", content: `Error: ${e.message}` }]);
+      console.error("Agent message send failed", e);
+      setMessages((m) => [...m, { role: "assistant", content: "I couldn't send that message. Please try again." }]);
     }
     setSending(false);
   };
