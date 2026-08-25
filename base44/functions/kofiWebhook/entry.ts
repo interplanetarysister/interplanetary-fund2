@@ -172,6 +172,10 @@ async function acquireRecoveryClaim(sr, connection, eventId) {
 }
 
 async function processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken) {
+  // The connection-level claim is the serialized ownership boundary. The
+  // ledger and both user-visible side effects are deliberately reconciled only
+  // while this claim token is held, so concurrent deliveries cannot race their
+  // filter-then-create operations against one another.
   let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
   if (!ledger) {
     ledger = await ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt);
@@ -287,6 +291,19 @@ export default async function(req) {
     );
 
     if (!claim.success || claim.updated !== 1) {
+      const current = await sr.entities.PlatformConnection.get(connection.id);
+      if (current?.kofi_active_event_id === eventId && current?.kofi_recovery_required === true) {
+        try {
+          await recoverClaimedEvent(sr, eventId, current, payload, amount, current.kofi_active_event_claimed_at || claimedAt);
+          return Response.json({ ok: true, recovered: true });
+        } catch (error) {
+          console.error('kofiWebhook explicit recovery error:', error);
+          return Response.json({ error: safeWebhookError() }, { status: 500 });
+        }
+      }
+      // A live claim owned by another delivery is not evidence that the event
+      // completed. Return 202 and let the current owner finish; only an explicit
+      // recovery marker authorizes another worker to take ownership.
       return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
     }
 
