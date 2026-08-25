@@ -9,6 +9,7 @@ const CLEARING_DAYS = 7;
 const REVIEW_THRESHOLD = 1000; // net amounts above this require admin approval
 const SAFE_PAYOUT_ERROR = 'Unable to complete the payout. Please try again or contact support.';
 const SAFE_WITHDRAWAL_ERROR = 'Unable to complete the withdrawal request. Please try again or contact support.';
+const GENERIC_PAYOUT_REVIEW_NOTE = 'Payout failed. Detailed provider diagnostics are retained in controlled server logs.';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
@@ -54,7 +55,7 @@ export default async function(req) {
         return Response.json({ ok: true, status: "paid", payout_batch_id: payout.payout_batch_id });
       } catch (err) {
         console.error("requestWithdrawal approve payout error:", err?.message || err);
-        await sr.entities.Withdrawal.update(w.id, { status: "failed", review_note: err?.message || 'Payout failed.' });
+        await sr.entities.Withdrawal.update(w.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
         return Response.json({ error: SAFE_PAYOUT_ERROR }, { status: 500 });
       }
     }
@@ -138,7 +139,7 @@ export default async function(req) {
       // Payout failed — release the reserved donations so the user can retry.
       console.error("requestWithdrawal payout error:", err?.message || err);
       await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: "" })));
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: err?.message || 'Payout failed.' });
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
     }
   } catch (error) {
