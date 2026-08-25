@@ -46,7 +46,7 @@ export default function CreateCampaign() {
       toast({ title: "Location found", description: (res.data.display || form.location).split(",")[0] });
     } catch (e) {
       setForm((f) => ({ ...f, location_lat: null, location_lng: null }));
-      toast({ title: "Couldn't find that city", description: e.message, variant: "destructive" });
+      toast({ title: "Couldn't find that city", description: "Please check the city and try again.", variant: "destructive" });
     }
     setLocating(false);
   };
@@ -55,7 +55,12 @@ export default function CreateCampaign() {
     setGeneratingImage(true);
     try {
       const { url } = await base44.integrations.Core.GenerateImage({
-        prompt: buildCoverPrompt({ title: form.title, category: form.category, regenCount }),
+        prompt: buildCoverPrompt({
+          title: form.title,
+          category: form.category,
+          story: form.story,
+          regenCount,
+        }),
       });
       set("cover_image_url", url);
       setRegenCount((c) => c + 1);
@@ -92,7 +97,7 @@ export default function CreateCampaign() {
       });
       navigate(`/campaign/${campaign.id}`);
     } catch (e) {
-      toast({ title: "Couldn't launch campaign", description: e.message, variant: "destructive" });
+      toast({ title: "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
       setSaving(false);
     }
   };
