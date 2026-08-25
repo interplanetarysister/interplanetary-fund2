@@ -31,7 +31,7 @@ export default async function(req) {
       display: hit.display_name,
     });
   } catch (error) {
-    console.error('geocodeCity error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('geocodeCity error:', error);
+    return Response.json({ error: 'Unable to geocode this location right now' }, { status: 500 });
   }
 }
