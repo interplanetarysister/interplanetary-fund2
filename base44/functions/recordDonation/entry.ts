@@ -17,10 +17,14 @@ export default async function(req) {
 
     const { campaign_id, amount, donor_name, message, is_recurring, payment_method } = await req.json();
     const value = Number(amount);
+    const normalizedPaymentMethod = typeof payment_method === 'string'
+      ? payment_method.trim().toLowerCase()
+      : 'paypal';
+
     if (!campaign_id || !Number.isFinite(value) || value <= 0 || value > MAX_DONATION_AMOUNT) {
       return Response.json({ error: 'A campaign and a valid donation amount are required.' }, { status: 400 });
     }
-    if (!ALLOWED_PAYMENT_METHODS.has(payment_method || 'paypal')) {
+    if (!ALLOWED_PAYMENT_METHODS.has(normalizedPaymentMethod)) {
       return Response.json({ error: 'Unsupported payment method.' }, { status: 400 });
     }
 
@@ -36,7 +40,7 @@ export default async function(req) {
       is_recurring: !!is_recurring,
       ...(is_recurring ? { recurring_status: 'active' } : {}),
       donor_user_id: donor?.id,
-      payment_method: payment_method || 'paypal',
+      payment_method: normalizedPaymentMethod,
     });
 
     await sr.entities.Campaign.update(campaign_id, {
