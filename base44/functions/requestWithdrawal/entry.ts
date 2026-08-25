@@ -14,6 +14,21 @@ const GENERIC_PAYOUT_REVIEW_NOTE = 'Payout failed. Detailed provider diagnostics
 const round2 = (n) => Math.round(n * 100) / 100;
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
 
+async function clearMigrationClaim(sr, withdrawal) {
+  if (!withdrawal?.campaign_id || !withdrawal?.migration_request_id) return;
+  const result = await sr.entities.Campaign.updateMany(
+    { id: withdrawal.campaign_id, active_migration_request_id: withdrawal.migration_request_id },
+    { $unset: { active_migration_request_id: '' } },
+  );
+  if (!result?.success || result.updated !== 1) {
+    console.error('requestWithdrawal migration claim reconciliation incomplete:', {
+      campaign_id: withdrawal.campaign_id,
+      migration_request_id: withdrawal.migration_request_id,
+      withdrawal_id: withdrawal.id,
+    });
+  }
+}
+
 async function reconcileApprovedPayout(sr, withdrawal) {
   const deterministicBatchId = `IFW_${withdrawal.id}`;
   const payout = await getPayoutBatch(deterministicBatchId);
@@ -32,6 +47,10 @@ async function reconcileApprovedPayout(sr, withdrawal) {
       },
     },
   );
+
+  if (finalized.success && finalized.updated === 1) {
+    await clearMigrationClaim(sr, withdrawal);
+  }
 
   return { found: true, finalized: finalized.success && finalized.updated === 1 };
 }
@@ -64,7 +83,10 @@ export default async function(req) {
       const w = await sr.entities.Withdrawal.get(withdrawalId);
       if (!w) return Response.json({ error: "Withdrawal not found." }, { status: 404 });
       if (w.status !== "processing" || w.review_action !== "approve") {
-        if (w.status === "paid") return Response.json({ ok: true, status: "paid", withdrawal_id: w.id, payout_batch_id: w.payout_batch_id });
+        if (w.status === "paid") {
+          await clearMigrationClaim(sr, w);
+          return Response.json({ ok: true, status: "paid", withdrawal_id: w.id, payout_batch_id: w.payout_batch_id });
+        }
         return Response.json({ error: "Only an approval-owned processing withdrawal can be reconciled." }, { status: 409 });
       }
 
@@ -136,6 +158,7 @@ export default async function(req) {
           }
           return Response.json({ error: "PayPal accepted the payout but local finalization is pending. Reconcile this withdrawal before retrying approval." }, { status: 409 });
         }
+        await clearMigrationClaim(sr, w);
         return Response.json({ ok: true, status: "paid", payout_batch_id: payout.payout_batch_id });
       } catch (err) {
         console.error("requestWithdrawal approve payout error:", err?.message || err);
@@ -231,6 +254,7 @@ export default async function(req) {
       if (!finalized.success || finalized.updated !== 1) {
         return Response.json({ error: "PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation." }, { status: 409 });
       }
+      await clearMigrationClaim(sr, withdrawal);
       return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
       console.error("requestWithdrawal payout error:", err?.message || err);
@@ -244,6 +268,7 @@ export default async function(req) {
       }
       await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: "" })));
       await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
+      await clearMigrationClaim(sr, withdrawal);
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
     }
   } catch (error) {
