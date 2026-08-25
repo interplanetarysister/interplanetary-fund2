@@ -22,6 +22,8 @@ assert.match(withdrawal, /if\s*\(action\s*===\s*["']approve["']\)[\s\S]*sendPayo
   "requestWithdrawal must retain the provider-payout approval workflow");
 assert.match(withdrawal, /id:\s*w\.id,\s*status:\s*["']under_review["']/,
   "Withdrawal approval must use a conditional single-winner state claim");
+assert.match(withdrawal, /review_action:\s*["']approve["']/,
+  "Withdrawal approval must record the authoritative review decision while processing");
 assert.match(withdrawal, /payout_claim_token:\s*claimToken/,
   "Withdrawal approval must persist an opaque payout claim token");
 assert.match(withdrawal, /status:\s*["']processing["']/,
@@ -32,17 +34,19 @@ assert.match(withdrawal, /status:\s*["']paid["']/,
   "The authoritative workflow must own the paid-state transition");
 assert.match(withdrawal, /itemId:\s*`IFW_\$\{w\.id\}`/,
   "Approved payouts must retain the deterministic provider idempotency identity");
+assert.match(withdrawal, /w\.review_action\s*===\s*["']deny["']/,
+  "Approval must refuse a withdrawal already claimed by the denial workflow");
 
 assert.match(moderation, /user\.role\s*!==\s*["']admin["']/,
   "Moderation workflow must enforce server-side admin authorization");
 assert.match(moderation, /action === ["']denyWithdrawal["']/,
   "Moderation workflow must expose an explicit withdrawal-denial action");
-assert.match(moderation, /Withdrawal\.updateMany\(/,
-  "Withdrawal denial must use a conditional state transition");
-assert.match(moderation, /withdrawal_id:\s*withdrawal\.id/,
-  "Withdrawal denial must release only donations reserved by that withdrawal");
+assert.match(moderation, /status:\s*["']processing["'][\s\S]*review_action:\s*["']deny["']/,
+  "Withdrawal denial must claim the decision before releasing reserved donations");
 assert.match(moderation, /Donation\.updateMany\(/,
   "Withdrawal denial must reconcile reserved donations through the server workflow");
+assert.match(moderation, /status:\s*["']failed["'][\s\S]*review_action:\s*["']deny["']/,
+  "Withdrawal denial must finalize only its own claimed decision");
 assert.match(moderation, /action === ["']pauseCampaign["']|action === ["']restoreCampaign["']/,
   "Moderation workflow must own campaign pause/restore actions");
 assert.match(moderation, /Campaign\.updateMany\(/,
@@ -53,6 +57,8 @@ assert.match(moderation, /moderated_at:\s*now/,
   "Campaign moderation must record the decision timestamp");
 assert.match(withdrawalSchema, /"payout_claim_token"/,
   "Withdrawal schema must persist the payout claim token");
+assert.match(withdrawalSchema, /"review_action"/,
+  "Withdrawal schema must persist the authoritative review decision claim");
 assert.match(withdrawalSchema, /"reviewed_by_id"/,
   "Withdrawal schema must persist the reviewing administrator");
 assert.match(campaignSchema, /"moderated_by_id"/,
