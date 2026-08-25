@@ -30,6 +30,9 @@ for (const required of ['requested', 'processing', 'completed', 'failed', 'user_
 for (const required of ['account_deletion_status', 'account_deletion_request_id', 'account_deletion_claim_token']) {
   if (!userSchema.includes(`"${required}"`)) failures.push(`User schema missing ${required}`);
 }
+for (const preserved of ['role', 'onboarding_completed', 'onboarding', 'comm_prefs', 'subscription_tier', 'subscription_status', 'subscription_interval', 'stripe_customer_id', 'subscription_renews_at', 'trial_end']) {
+  if (!userSchema.includes(`"${preserved}"`)) failures.push(`User schema must preserve ${preserved}`);
+}
 if (/Account deleted/.test(ui) || /permanently removes your campaigns/.test(ui)) failures.push('deletion UI must not imply destructive completion from request initiation');
 if (!/Account deletion requested/.test(ui)) failures.push('deletion UI must acknowledge request state rather than completion');
 
