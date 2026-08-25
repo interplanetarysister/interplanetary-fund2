@@ -57,6 +57,7 @@ export default async function(req) {
       // Establish one authoritative denial owner. A competing approval can
       // only claim a clean under_review withdrawal, so once this succeeds the
       // denial decision cannot be reopened by another admin action.
+      let newlyClaimed = false;
       if (withdrawal.status === 'under_review') {
         const claim = await sr.entities.Withdrawal.updateMany(
           { id: withdrawal.id, status: 'under_review' },
@@ -73,6 +74,7 @@ export default async function(req) {
         if (!claim.success || claim.updated !== 1) {
           return Response.json({ error: 'This withdrawal is already being processed or has changed state. Reconcile its current status before retrying.' }, { status: 409 });
         }
+        newlyClaimed = true;
       } else if (withdrawal.status === 'processing' && withdrawal.review_action === 'deny') {
         // Retry of an already-claimed denial.
       } else if (withdrawal.status === 'failed' && withdrawal.review_action === 'deny') {
@@ -90,7 +92,7 @@ export default async function(req) {
       // If release fails, the withdrawal is already denied and remains owned by
       // review_action=deny, allowing retry without reopening approval or
       // double-releasing the same withdrawal.
-      if (withdrawal.status === 'processing') {
+      if (newlyClaimed) {
         const finalize = await sr.entities.Withdrawal.updateMany(
           { id: withdrawal.id, status: 'processing', review_action: 'deny' },
           {
