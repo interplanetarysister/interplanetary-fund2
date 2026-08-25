@@ -7,7 +7,7 @@ const expectedSetupRequired = ["facebook_pages", "instagram", "tiktok", "linkedi
 const expectedComingSoon = ["gofundme", "kickstarter", "indiegogo"];
 
 function capabilityEntry(id) {
-  const escapedId = id.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+  const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = source.match(new RegExp(`\\{\\s*id: "${escapedId}",\\s*label: "[^"]+",\\s*status: "([^"]+)"\\s*\\}`));
   assert.ok(match, `missing onboarding capability entry ${id}`);
   return match[1];
