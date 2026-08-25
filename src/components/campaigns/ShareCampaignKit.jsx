@@ -1,19 +1,21 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Copy, Check, Code2, QrCode, Download } from "lucide-react";
-import { buildEmbedMarkup } from "./embedMarkup";
+import { buildEmbedMarkup, escapeHtml } from "./embedMarkup";
 
 // The Universal Donation Button — the campaign's permanent Interplanetary Fund
 // URL packaged as a branded button anyone can embed on websites, blogs, forums,
 // and articles. Includes copy link, HTML embed, QR code, share, and a live preview.
 export default function ShareCampaignKit({ campaign }) {
   const [copied, setCopied] = useState("");
-  const url = `${window.location.origin}/campaign/${campaign.id}`;
-  const embedUrl = `${window.location.origin}/embed/campaign/${campaign.id}`;
+  const campaignId = encodeURIComponent(String(campaign.id ?? ""));
+  const url = `${window.location.origin}/campaign/${campaignId}`;
+  const embedUrl = `${window.location.origin}/embed/campaign/${campaignId}`;
+  const safeUrl = escapeHtml(url);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=${encodeURIComponent(url)}`;
 
   const embedHtml = [
-    `<a href=\"${url}\" target=\"_blank\" rel=\"noopener noreferrer\"`,
+    `<a href=\"${safeUrl}\" target=\"_blank\" rel=\"noopener noreferrer\"`,
     'style=\"display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);\">',
     "&#128640; Donate &mdash; Interplanetary Fund</a>",
   ].join("\n");
