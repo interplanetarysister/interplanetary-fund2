@@ -10,6 +10,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
+    "verify:onboarding-capabilities": "node scripts/verify-onboarding-capabilities.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
