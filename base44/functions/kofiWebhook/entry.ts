@@ -9,8 +9,6 @@ function supportedDonationType(type) {
   return new Set(['Donation', 'donation', 'Payment', 'payment', 'Monthly Donation', 'monthly_donation']).has(type);
 }
 
-const RECOVERY_CLAIM_STALE_MS = 5 * 60 * 1000;
-
 async function ensureSideEffects(sr, connection, payload, amount, eventId) {
   const existingInbox = await sr.entities.InboxItem.filter({ external_event_id: eventId });
   if (existingInbox.length === 0) {
@@ -44,11 +42,6 @@ async function ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amo
   const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
   if (existing.length > 0) return existing[0];
 
-  // Base44 does not expose a documented unique/upsert entity primitive. The
-  // connection-level active-event claim is therefore the authoritative
-  // single-winner boundary: only its current token holder may create the
-  // durable event ledger, and the claim is retained until ledger + financial
-  // state + downstream side effects are complete.
   return sr.entities.KoFiWebhookEvent.create({
     event_id: eventId,
     provider: 'kofi',
@@ -122,8 +115,22 @@ async function clearActiveClaim(sr, connectionId, eventId, claimToken) {
         kofi_active_event_claimed_at: '',
         kofi_active_event_claim_token: '',
         kofi_active_event_financial_applied: '',
-        kofi_recovery_claim_token: '',
-        kofi_recovery_claimed_at: '',
+        kofi_recovery_required: '',
+      },
+    },
+  );
+}
+
+async function markRecoveryRequired(sr, connectionId, eventId, claimToken) {
+  await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+    },
+    {
+      $set: {
+        kofi_recovery_required: true,
       },
     },
   );
@@ -131,31 +138,16 @@ async function clearActiveClaim(sr, connectionId, eventId, claimToken) {
 
 async function acquireRecoveryClaim(sr, connection, eventId) {
   const recoveryToken = `${eventId}:${crypto.randomUUID()}`;
-  const staleBefore = new Date(Date.now() - RECOVERY_CLAIM_STALE_MS).toISOString();
   const recoveryClaim = await sr.entities.PlatformConnection.updateMany(
     {
       id: connection.id,
       kofi_active_event_id: eventId,
-      $and: [
-        {
-          $or: [
-            { kofi_active_event_claimed_at: { $lt: staleBefore } },
-            { kofi_active_event_claimed_at: { $exists: false } },
-          ],
-        },
-        {
-          $or: [
-            { kofi_recovery_claimed_at: { $exists: false } },
-            { kofi_recovery_claimed_at: { $lt: staleBefore } },
-          ],
-        },
-      ],
+      kofi_recovery_required: true,
     },
     {
       $set: {
         kofi_active_event_claim_token: recoveryToken,
-        kofi_recovery_claim_token: recoveryToken,
-        kofi_recovery_claimed_at: new Date().toISOString(),
+        kofi_recovery_required: false,
       },
     },
   );
@@ -182,9 +174,7 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
 
   const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);
   if (!recoveryToken) {
-    ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
-    if (ledger?.side_effects_complete) return ledger;
-    throw new Error('Ko-fi event recovery is already owned by another worker. Retry later.');
+    throw new Error('Ko-fi event recovery is not explicitly available yet. Retry later.');
   }
 
   return processClaimedEvent(
@@ -201,9 +191,10 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
 // Live Ko-fi donation sync. The connection-level active-event claim is the
 // authoritative single-winner boundary for the entire event lifecycle. It is
 // held from claim acquisition through durable ledger creation, financial
-// application, downstream side effects, and completion. This is the supported
-// Base44 equivalent of a per-event uniqueness boundary because Base44 does not
-// expose a documented unique-index/upsert entity primitive.
+// application, downstream side effects, and completion. Recovery takeover is
+// only enabled after the previous worker explicitly marks the event as needing
+// recovery; a time-based lease alone is never treated as proof that a worker
+// stopped.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -256,8 +247,6 @@ export default async function(req) {
       return Response.json({ ok: true, duplicate: true });
     }
 
-    // Existing incomplete events are recovered only after a bounded-stale
-    // connection claim takeover, so they cannot race the current owner.
     if (ledger) {
       try {
         await recoverClaimedEvent(sr, eventId, connection, payload, amount, ledger.claimed_at);
@@ -267,10 +256,10 @@ export default async function(req) {
         if (ledger.id) {
           await sr.entities.KoFiWebhookEvent.update(ledger.id, {
             side_effects_complete: false,
-            last_error: 'Downstream side-effect recovery failed.',
+            last_error: 'Downstream side-effect recovery is awaiting an explicit recovery claim.',
           });
         }
-        return Response.json({ error: safeWebhookError() }, { status: 500 });
+        return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
       }
     }
 
@@ -290,6 +279,7 @@ export default async function(req) {
           kofi_active_event_claimed_at: claimedAt,
           kofi_active_event_claim_token: claimToken,
           kofi_active_event_financial_applied: false,
+          kofi_recovery_required: false,
         },
         $push: {
           history: {
@@ -302,13 +292,7 @@ export default async function(req) {
     );
 
     if (!claim.success || claim.updated !== 1) {
-      try {
-        await recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt);
-        return Response.json({ ok: true, duplicate: true, repaired: true });
-      } catch (error) {
-        console.error('kofiWebhook duplicate recovery error:', error);
-        return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
-      }
+      return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
     }
 
     try {
@@ -319,9 +303,10 @@ export default async function(req) {
       if (failedLedger?.id) {
         await sr.entities.KoFiWebhookEvent.update(failedLedger.id, {
           side_effects_complete: false,
-          last_error: 'Downstream side-effect recovery failed.',
+          last_error: 'Downstream side-effect recovery is explicitly required.',
         });
       }
+      await markRecoveryRequired(sr, connection.id, eventId, claimToken);
       return Response.json({ error: safeWebhookError() }, { status: 500 });
     }
 
