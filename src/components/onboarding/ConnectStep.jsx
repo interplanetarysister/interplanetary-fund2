@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { CAPABILITY_MODULES } from "./onboardingSteps";
-import { CheckCircle2, Clock, Link2 } from "lucide-react";
+import { CheckCircle2, Clock, Link2, Loader2 } from "lucide-react";
 
 const STATUS_META = {
   connected: { label: "Connected", icon: CheckCircle2, tone: "text-emerald-600" },
@@ -8,47 +9,71 @@ const STATUS_META = {
   coming_soon: { label: "Coming soon", icon: Clock, tone: "text-stone-400" },
 };
 
+const CONNECTION_ID_BY_PLATFORM = {
+  facebook: "facebook_pages",
+  instagram: "instagram",
+  tiktok: "tiktok",
+  linkedin: "linkedin",
+  gofundme: "gofundme",
+  kickstarter: "kickstarter",
+  indiegogo: "indiegogo",
+};
+
 export default function ConnectStep({ data, onChange }) {
   const selected = data.platforms || [];
-  const connectedIds = useMemo(
-    () => new Set(CAPABILITY_MODULES.flatMap((group) => group.items.filter((item) => item.status === "connected").map((item) => item.id))),
-    []
-  );
+  const [connectedIds, setConnectedIds] = useState(new Set());
+  const [loadingConnections, setLoadingConnections] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const connections = await base44.entities.PlatformConnection.filter({ status: "connected" });
+        const ids = new Set(
+          (connections || [])
+            .map((connection) => CONNECTION_ID_BY_PLATFORM[connection.platform])
+            .filter(Boolean)
+        );
+        if (!cancelled) setConnectedIds(ids);
+      } catch (error) {
+        console.error("ConnectStep connection-state lookup failed:", error);
+        if (!cancelled) setConnectedIds(new Set());
+      } finally {
+        if (!cancelled) setLoadingConnections(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const normalized = selected.filter((id) => connectedIds.has(id));
-    if (normalized.length !== selected.length) {
+    if (!loadingConnections && normalized.length !== selected.length) {
       onChange({ ...data, platforms: normalized });
     }
-  }, [connectedIds, data, onChange, selected]);
+  }, [connectedIds, data, loadingConnections, onChange, selected]);
 
   const toggle = (id) => {
     if (!connectedIds.has(id)) return;
-    const next = selected.includes(id)
-      ? selected.filter((p) => p !== id)
-      : [...selected, id];
+    const next = selected.includes(id) ? selected.filter((p) => p !== id) : [...selected, id];
     onChange({ ...data, platforms: next });
   };
 
   return (
     <div className="max-w-lg mx-auto">
       <h2 className="font-display text-2xl text-stone-900 mb-2">Connect your fundraising world</h2>
-      <p className="text-stone-600 mb-6">
-        Choose the platforms you want to use. Integrated services can be connected from Mission Control;
-        services marked setup required need workspace configuration before they can be connected.
-      </p>
+      <p className="text-stone-600 mb-6">Choose the platforms you want to use. Connection state is based on your current authorized workspace connections, not a static availability claim.</p>
+      {loadingConnections && <p className="text-xs text-stone-500 mb-4 flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking connected services…</p>}
       <div className="space-y-5">
         {CAPABILITY_MODULES.map((group) => (
           <div key={group.id}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
-              {group.group}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">{group.group}</p>
             <div className="grid grid-cols-2 gap-2">
               {group.items.map((item) => {
-                const meta = STATUS_META[item.status];
+                const effectiveStatus = connectedIds.has(item.id) ? "connected" : item.status;
+                const meta = STATUS_META[effectiveStatus];
                 const Icon = meta.icon;
                 const isSelected = selected.includes(item.id);
-                const disabled = item.status !== "connected";
+                const disabled = effectiveStatus !== "connected" || loadingConnections;
                 return (
                   <button
                     key={item.id}
@@ -56,17 +81,11 @@ export default function ConnectStep({ data, onChange }) {
                     disabled={disabled}
                     onClick={() => toggle(item.id)}
                     aria-disabled={disabled}
-                    className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${
-                      isSelected
-                        ? "border-primary bg-primary/10"
-                        : "border-slate-200 bg-white hover:border-slate-300"
-                    } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
+                    aria-pressed={isSelected}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${isSelected ? "border-primary bg-primary/10" : "border-slate-200 bg-white hover:border-slate-300"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <span className="text-stone-800">{item.label}</span>
-                    <span className={`flex items-center gap-1 text-xs ${meta.tone}`}>
-                      <Icon className="w-3.5 h-3.5" />
-                      {meta.label}
-                    </span>
+                    <span className={`flex items-center gap-1 text-xs ${meta.tone}`}><Icon className="w-3.5 h-3.5" />{meta.label}</span>
                   </button>
                 );
               })}
