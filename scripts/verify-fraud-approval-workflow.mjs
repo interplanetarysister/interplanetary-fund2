@@ -45,8 +45,16 @@ assert.match(moderation, /status:\s*["']processing["'][\s\S]*review_action:\s*["
   "Withdrawal denial must claim the decision before releasing reserved donations");
 assert.match(moderation, /Donation\.updateMany\(/,
   "Withdrawal denial must reconcile reserved donations through the server workflow");
-assert.match(moderation, /\{\s*id:\s*withdrawal\.id,\s*status:\s*["']processing["'],\s*review_action:\s*["']deny["']/,
+assert.match(moderation, /Donation\.filter\(/,
+  "Withdrawal denial must re-read reservation state after release for recoverable finalization");
+assert.match(moderation, /reconciliation\.complete/,
+  "Withdrawal denial must refuse terminal finalization until donation reconciliation is complete");
+assert.match(moderation, /status:\s*["']processing["'],\s*review_action:\s*["']deny["']/,
   "Withdrawal denial finalization must conditionally own the claimed decision");
+assert.match(moderation, /status:\s*["']failed["']/,
+  "Withdrawal denial must finalize the claimed decision only after reconciliation");
+assert.match(moderation, /Retry the denial action/,
+  "Withdrawal denial must expose a safe recoverable retry path after partial failure");
 assert.match(moderation, /action === ["']pauseCampaign["']|action === ["']restoreCampaign["']/,
   "Moderation workflow must own campaign pause/restore actions");
 assert.match(moderation, /Campaign\.updateMany\(/,
@@ -66,4 +74,4 @@ assert.match(campaignSchema, /"moderated_by_id"/,
 assert.match(campaignSchema, /"moderation_note"/,
   "Campaign schema must persist the moderation reason");
 
-console.log("Fraud approval, denial, payout-claim, and campaign-moderation workflow verification passed.");
+console.log("Fraud approval, denial, payout-claim, recoverable donation reconciliation, and campaign-moderation workflow verification passed.");
