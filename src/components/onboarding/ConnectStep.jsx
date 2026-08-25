@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { CAPABILITY_MODULES } from "./onboardingSteps";
 import { CheckCircle2, Clock, Link2 } from "lucide-react";
 
@@ -10,8 +10,20 @@ const STATUS_META = {
 
 export default function ConnectStep({ data, onChange }) {
   const selected = data.platforms || [];
+  const connectedIds = useMemo(
+    () => new Set(CAPABILITY_MODULES.flatMap((group) => group.items.filter((item) => item.status === "connected").map((item) => item.id))),
+    []
+  );
+
+  useEffect(() => {
+    const normalized = selected.filter((id) => connectedIds.has(id));
+    if (normalized.length !== selected.length) {
+      onChange({ ...data, platforms: normalized });
+    }
+  }, [connectedIds, data, onChange, selected]);
 
   const toggle = (id) => {
+    if (!connectedIds.has(id)) return;
     const next = selected.includes(id)
       ? selected.filter((p) => p !== id)
       : [...selected, id];
