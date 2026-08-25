@@ -19,13 +19,22 @@ if (/credentials|history|last_error/.test(target.match(/const exportSafeConnecti
   failures.push("export-safe PlatformConnection projection must exclude credentials, history, and last_error");
 }
 
+if (!/const exportSafeProfile = \(\(\{\s*id,\s*email,\s*full_name,\s*display_name,\s*avatar_url,\s*created_date,\s*updated_date,\s*comm_prefs\s*\}\) =>/.test(target)) {
+  failures.push("account export must use an explicit allowlisted profile projection");
+}
+
+const profileProjection = target.match(/const exportSafeProfile = \(\(\{[\s\S]*?\n\s*\}\)\(me\);/)?.[0] || "";
+if (/token|password|secret|credential|provider|access|refresh/.test(profileProjection.toLowerCase())) {
+  failures.push("export-safe profile projection must exclude token, password, secret, credential, and provider fields");
+}
+
 if (/PlatformConnection\.list\(/.test(target)) {
   failures.push("account export must not use an unscoped PlatformConnection.list call");
 }
 
 const payloadMatch = target.match(/const payload = \{[\s\S]*?\n\s*\};/);
-if (!payloadMatch || !/connections:\s*exportSafeConnections/.test(payloadMatch[0])) {
-  failures.push("downloaded payload must use the export-safe connection projection");
+if (!payloadMatch || !/profile:\s*exportSafeProfile/.test(payloadMatch[0]) || !/connections:\s*exportSafeConnections/.test(payloadMatch[0])) {
+  failures.push("downloaded payload must use the export-safe profile and connection projections");
 }
 
 if (failures.length) {
