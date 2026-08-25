@@ -15,6 +15,7 @@
     "payout_batch_id": { "type": "string", "description": "PayPal payout batch id returned once the payout is submitted." },
     "payout_claim_token": { "type": "string", "description": "Opaque server-side approval claim that serializes provider payout submission." },
     "payout_claimed_at": { "type": "string", "format": "date-time", "description": "When the server claimed the withdrawal for provider payout submission." },
+    "review_action": { "type": "string", "enum": ["approve", "deny"], "description": "Authoritative administrator decision currently owning a processing review transition." },
     "review_note": { "type": "string", "description": "Why a withdrawal was held for admin review, or why it failed." },
     "reviewed_by_id": { "type": "string", "description": "Administrator who made the final review decision." },
     "reviewed_at": { "type": "string", "format": "date-time", "description": "When the administrator made the final review decision." },
