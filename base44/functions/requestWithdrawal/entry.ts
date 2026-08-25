@@ -39,7 +39,28 @@ export default async function(req) {
       if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
       const w = await sr.entities.Withdrawal.get(body.withdrawal_id);
       if (!w) return Response.json({ error: "Withdrawal not found." }, { status: 404 });
-      if (w.status !== "under_review") return Response.json({ error: "Only held withdrawals can be approved." }, { status: 400 });
+      if (w.status !== "under_review") {
+        if (w.status === "processing") return Response.json({ error: "This payout is already being processed. Retry only after its final provider state is reconciled." }, { status: 409 });
+        return Response.json({ error: "Only held withdrawals can be approved." }, { status: 400 });
+      }
+
+      const claimToken = `IFPAYOUT_${w.id}_${crypto.randomUUID()}`;
+      const claim = await sr.entities.Withdrawal.updateMany(
+        { id: w.id, status: "under_review" },
+        {
+          $set: {
+            status: "processing",
+            payout_claim_token: claimToken,
+            payout_claimed_at: new Date().toISOString(),
+            reviewed_by_id: user.id,
+            reviewed_at: new Date().toISOString(),
+          },
+        },
+      );
+      if (!claim.success || claim.updated !== 1) {
+        return Response.json({ error: "This payout is already being processed or has changed state. Reconcile its current status before retrying." }, { status: 409 });
+      }
+
       try {
         const payout = await sendPayout({
           receiver: w.paypal_email,
@@ -47,15 +68,30 @@ export default async function(req) {
           note: `Interplanetary Fund withdrawal for "${w.campaign_title}"`,
           itemId: `IFW_${w.id}`,
         });
-        await sr.entities.Withdrawal.update(w.id, {
-          status: "paid",
-          payout_batch_id: payout.payout_batch_id,
-          processed_at: new Date().toISOString(),
-        });
+        await sr.entities.Withdrawal.updateMany(
+          { id: w.id, status: "processing", payout_claim_token: claimToken },
+          {
+            $set: {
+              status: "paid",
+              payout_batch_id: payout.payout_batch_id,
+              processed_at: new Date().toISOString(),
+            },
+            $unset: {
+              payout_claim_token: '',
+              payout_claimed_at: '',
+            },
+          },
+        );
         return Response.json({ ok: true, status: "paid", payout_batch_id: payout.payout_batch_id });
       } catch (err) {
         console.error("requestWithdrawal approve payout error:", err?.message || err);
-        await sr.entities.Withdrawal.update(w.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
+        await sr.entities.Withdrawal.updateMany(
+          { id: w.id, status: "processing", payout_claim_token: claimToken },
+          {
+            $set: { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE, processed_at: new Date().toISOString() },
+            $unset: { payout_claim_token: '', payout_claimed_at: '' },
+          },
+        );
         return Response.json({ error: SAFE_PAYOUT_ERROR }, { status: 500 });
       }
     }
@@ -72,7 +108,6 @@ export default async function(req) {
       return Response.json({ error: "You can only withdraw funds from your own campaigns." }, { status: 403 });
     }
 
-    // Once-daily limit: any non-failed withdrawal created today blocks a new one.
     const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
     const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
     const alreadyToday = (recent || []).some((w) => {
@@ -83,11 +118,8 @@ export default async function(req) {
       return Response.json({ error: "You can only withdraw once per day. Please try again tomorrow." }, { status: 400 });
     }
 
-    // Cleared, unconsumed donations (7-day holding period for fraud protection).
     const cutoff = new Date(Date.now() - CLEARING_DAYS * 86400000);
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
-    // Cleared, unconsumed donations. Regular gifts clear after the 7-day holding
-    // period; institutional (grant) gifts require explicit admin clearing first.
     const available = (allDonations || []).filter((d) => !d.withdrawal_id && (d.is_institutional ? d.cleared : new Date(d.created_date) <= cutoff));
     const gross = round2(available.reduce((s, d) => s + (d.amount || 0), 0));
     if (gross <= 0) {
@@ -110,10 +142,8 @@ export default async function(req) {
       status: "processing",
     });
 
-    // Reserve the donations so they can never be withdrawn twice.
     await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: withdrawal.id })));
 
-    // Large payouts are held for manual admin review (fraud protection).
     if (net > REVIEW_THRESHOLD) {
       await sr.entities.Withdrawal.update(withdrawal.id, {
         status: "under_review",
@@ -136,7 +166,6 @@ export default async function(req) {
       });
       return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
-      // Payout failed — release the reserved donations so the user can retry.
       console.error("requestWithdrawal payout error:", err?.message || err);
       await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: "" })));
       await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
