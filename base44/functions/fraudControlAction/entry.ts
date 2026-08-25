@@ -13,6 +13,21 @@ function uniqueIds(values) {
   return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
 }
 
+async function clearMigrationClaim(sr, withdrawal) {
+  if (!withdrawal?.campaign_id || !withdrawal?.migration_request_id) return;
+  const result = await sr.entities.Campaign.updateMany(
+    { id: withdrawal.campaign_id, active_migration_request_id: withdrawal.migration_request_id },
+    { $unset: { active_migration_request_id: '' } },
+  );
+  if (!result?.success || result.updated !== 1) {
+    console.error('Fraud denial migration claim reconciliation incomplete:', {
+      campaign_id: withdrawal.campaign_id,
+      migration_request_id: withdrawal.migration_request_id,
+      withdrawal_id: withdrawal.id,
+    });
+  }
+}
+
 async function reconcileReservedDonations(sr, withdrawalId, donationIds) {
   const ids = uniqueIds(donationIds);
   if (!ids.length) return { complete: true, remaining: [] };
@@ -123,6 +138,7 @@ export default async function(req) {
         }, { status: 409 });
       }
 
+      await clearMigrationClaim(sr, withdrawal);
       return Response.json({ ok: true, status: 'failed', withdrawal_id: withdrawal.id });
     }
 
