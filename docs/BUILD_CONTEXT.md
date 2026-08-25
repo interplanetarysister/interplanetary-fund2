@@ -7,6 +7,21 @@
 ## Platform purpose
 This repository contains the user-facing application layer for Interplanetary Fund: campaign creation and management, fundraising UX, campaign intelligence, AI-assisted outreach, subscriptions, and user-facing financial workflows.
 
+## Frontend stack — authoritative correction
+
+This application is a **React + Vite application, not a Next.js application**.
+
+Verified from `package.json`:
+- React 18 (`react`, `react-dom`)
+- Vite 6 (`vite`, `@vitejs/plugin-react`)
+- React Router (`react-router-dom`)
+- Base44 Vite integration (`@base44/vite-plugin`)
+- Production build command: `vite build`
+
+There is no `next` framework dependency and no Next.js build command. `next-themes` is present as a React-compatible theme utility; its name must not be interpreted as evidence that this repository uses Next.js.
+
+**Documentation rule:** future agents must describe the frontend as React + Vite/Base44 and must not call it Next.js unless a deliberate, reviewed architecture change introduces Next.js.
+
 ## Repository relationship
 The authoritative backend/agent-orchestration layer is `interplanetarysister/InterplanetaryFund`. Do not create a competing backend or silently move source-of-truth responsibilities without documenting and reviewing the architectural change.
 
