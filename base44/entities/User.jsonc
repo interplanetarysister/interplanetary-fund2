@@ -84,6 +84,23 @@
     "trial_end": {
       "type": "string",
       "format": "date-time"
+    },
+    "account_deletion_status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "active"
+      ],
+      "default": "idle",
+      "description": "Durable single-winner claim state for the account deletion workflow."
+    },
+    "account_deletion_request_id": {
+      "type": "string",
+      "description": "Authoritative AccountDeletionRequest identity owned by the active deletion claim."
+    },
+    "account_deletion_claim_token": {
+      "type": "string",
+      "description": "Opaque token used to release or reconcile the active deletion claim."
     }
   },
   "required": [
