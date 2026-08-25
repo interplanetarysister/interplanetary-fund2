@@ -37,10 +37,16 @@ export default function FraudControlPanel() {
 
   const approve = async (w) => {
     try {
-      await base44.entities.Withdrawal.update(w.id, { status: "paid" });
+      const result = await base44.functions.invoke("requestWithdrawal", {
+        action: "approve",
+        withdrawal_id: w.id,
+      });
+      if (!result?.data?.ok || result?.data?.status !== "paid") {
+        throw new Error(result?.data?.error || "Approval failed.");
+      }
       msg(true, `Approved — ${money(w.net_amount)} payout marked paid.`);
       load();
-    } catch (e) { msg(false, e.message || "Approval failed."); }
+    } catch (e) { msg(false, e?.message || "Approval failed."); }
   };
 
   const deny = async (w) => {
