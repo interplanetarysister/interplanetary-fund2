@@ -14,7 +14,8 @@ const ledgerSchema = await readFile(ledgerSchemaPath, 'utf8');
 const required = [
   'function safeWebhookError()',
   'async function ensureSideEffects',
-  'async function reconcileEventLedger',
+  'async function ensureEventLedgerUnderClaim',
+  'async function applyFinancialClaim',
   'async function completeEventLedger',
   'async function recoverClaimedEvent',
   'async function acquireRecoveryClaim',
@@ -28,14 +29,17 @@ const required = [
   'kofi_active_event_claimed_at: claimedAt',
   'kofi_active_event_claim_token: claimToken',
   'kofi_active_event_claim_token: recoveryToken',
+  'kofi_active_event_financial_applied: true',
   'kofi_recovery_claim_token',
   'kofi_recovery_claimed_at',
   'kofi_active_event_claimed_at: { $lt: staleBefore }',
   '$inc',
   'external_total: amount',
+  'await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);',
   'await ensureSideEffects(sr, connection, payload, amount, eventId);',
   'KoFiWebhookEvent.filter({ event_id: eventId })',
   'KoFiWebhookEvent.create({',
+  'financial_applied: false',
   'side_effects_complete: false',
   'await processClaimedEvent(',
   'return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });',
@@ -71,12 +75,17 @@ for (const field of [
   'kofi_active_event_id',
   'kofi_active_event_claimed_at',
   'kofi_active_event_claim_token',
+  'kofi_active_event_financial_applied',
   'kofi_recovery_claim_token',
   'kofi_recovery_claimed_at',
 ]) {
   if (!connectionSchema.includes(`"${field}"`)) {
     throw new Error(`PlatformConnection schema lost required existing/new field: ${field}`);
   }
+}
+
+if (connectionSchema.includes('"processed_webhook_ids"')) {
+  throw new Error('PlatformConnection must not retain the retired Ko-fi processed_webhook_ids replay array.');
 }
 
 for (const field of [
@@ -110,6 +119,7 @@ for (const field of [
   'amount',
   'event_type',
   'claimed_at',
+  'financial_applied',
   'side_effects_complete',
   'last_error',
 ]) {
@@ -121,7 +131,7 @@ for (const field of [
 for (const pattern of [
   /return\s+Response\.json\(\{\s*error:\s*error\.message/,
   /parseFloat\(payload\.amount\)\s*\|\|\s*0/,
-  /processed_webhook_ids:\s*\{\s*\$ne:/,
+  /processed_webhook_ids/,
   /\$addToSet:\s*\{\s*processed_webhook_ids/,
   /\$pull:\s*\{\s*processed_webhook_ids/,
 ]) {
@@ -138,6 +148,14 @@ if (!source.includes('kofi_active_event_id: eventId') || !source.includes('kofi_
   throw new Error('Ko-fi financial processing must retain a durable event claim token through side-effect completion.');
 }
 
+if (!source.includes('kofi_active_event_financial_applied: false')) {
+  throw new Error('Ko-fi event acquisition must persist an explicit financial-application state before processing.');
+}
+
+if (!source.includes('kofi_active_event_financial_applied: true')) {
+  throw new Error('Ko-fi financial application must atomically persist its completion marker with the counter increment.');
+}
+
 if (!source.includes('kofi_active_event_claimed_at: { $lt: staleBefore }') || !source.includes('kofi_recovery_claimed_at: { $lt: staleBefore }')) {
   throw new Error('Ko-fi recovery must require both a bounded-stale active claim and a bounded-stale recovery claim before takeover.');
 }
@@ -150,4 +168,25 @@ if (!source.includes('kofi_active_event_claim_token: claimToken')) {
   throw new Error('Ko-fi claim clearing must be conditional on the current owner token.');
 }
 
-console.log('Ko-fi webhook durable single-winner claim, event-ledger recovery, idempotent side-effect boundary, stale recovery ownership, and schema-preservation contract verified.');
+const ledgerCreateIndex = source.indexOf('KoFiWebhookEvent.create({');
+const claimTokenIndex = source.indexOf('kofi_active_event_claim_token: claimToken');
+if (ledgerCreateIndex < 0 || claimTokenIndex < 0 || ledgerCreateIndex < claimTokenIndex) {
+  throw new Error('Durable KoFiWebhookEvent creation must remain behind the connection-level claim lifecycle.');
+}
+
+const financialApplyIndex = source.indexOf('await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);');
+const ledgerCreateInProcessIndex = source.indexOf('ledger = await ensureEventLedgerUnderClaim');
+if (financialApplyIndex < 0 || ledgerCreateInProcessIndex < 0 || financialApplyIndex < ledgerCreateInProcessIndex) {
+  throw new Error('Ko-fi financial application must occur only after the durable event ledger exists.');
+}
+
+const sideEffectIndex = source.indexOf('await ensureSideEffects(sr, connection, payload, amount, eventId);');
+if (sideEffectIndex < 0 || sideEffectIndex < financialApplyIndex) {
+  throw new Error('Ko-fi downstream side effects must occur only after the financial application claim.');
+}
+
+if (!source.includes('The connection-level active-event claim is the authoritative')) {
+  throw new Error('Ko-fi source must document the connection-level claim as the authoritative supported single-winner boundary.');
+}
+
+console.log('Ko-fi webhook durable single-winner claim lifecycle, durable event recovery, atomic financial completion marker, idempotent side-effect boundary, stale recovery ownership, and schema-preservation contract verified.');
