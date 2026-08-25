@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 
 const panel = await fs.readFile(new URL("../src/components/platform/FraudControlPanel.jsx", import.meta.url), "utf8");
 const withdrawal = await fs.readFile(new URL("../base44/functions/requestWithdrawal/entry.ts", import.meta.url), "utf8");
+const paypal = await fs.readFile(new URL("../base44/shared/paypal.ts", import.meta.url), "utf8");
 const moderation = await fs.readFile(new URL("../base44/functions/fraudControlAction/entry.ts", import.meta.url), "utf8");
 const withdrawalSchema = await fs.readFile(new URL("../base44/entities/Withdrawal.jsonc", import.meta.url), "utf8");
 const campaignSchema = await fs.readFile(new URL("../base44/entities/Campaign.jsonc", import.meta.url), "utf8");
@@ -33,9 +34,22 @@ assert.match(withdrawal, /payout_batch_id:\s*payout\.payout_batch_id/,
 assert.match(withdrawal, /status:\s*["']paid["']/,
   "The authoritative workflow must own the paid-state transition");
 assert.match(withdrawal, /itemId:\s*`IFW_\$\{w\.id\}`/,
-  "Approved payouts must retain the deterministic provider idempotency identity");
+  "Approved payouts must retain the deterministic provider identity");
+assert.match(withdrawal, /action === ["']reconcileApprove["']/,
+  "Approval-owned processing withdrawals must have an explicit provider reconciliation action");
+assert.match(withdrawal, /reconcileApprovedPayout\(/,
+  "Approval workflow must use the deterministic provider reconciliation helper");
+assert.match(withdrawal, /PayPal accepted the payout but local finalization is pending/,
+  "Provider-success/local-write failure must remain recoverable rather than failed");
 assert.match(withdrawal, /w\.review_action\s*===\s*["']deny["']/,
   "Approval must refuse a withdrawal already claimed by the denial workflow");
+
+assert.match(paypal, /sender_batch_id:\s*senderBatchId/,
+  "PayPal payout identity must be deterministic rather than time-based");
+assert.match(paypal, /export async function getPayoutBatch\(/,
+  "PayPal helper must support deterministic payout-batch reconciliation");
+assert.match(paypal, /\/v1\/payments\/payouts\//,
+  "PayPal helper must query the payout batch endpoint for recovery");
 
 assert.match(moderation, /user\.role\s*!==\s*["']admin["']/,
   "Moderation workflow must enforce server-side admin authorization");
@@ -63,15 +77,17 @@ assert.match(moderation, /moderated_by_id:\s*user\.id/,
   "Campaign moderation must record the administrator identity");
 assert.match(moderation, /moderated_at:\s*now/,
   "Campaign moderation must record the decision timestamp");
-assert.match(withdrawalSchema, /"payout_claim_token"/,
-  "Withdrawal schema must persist the payout claim token");
-assert.match(withdrawalSchema, /"review_action"/,
-  "Withdrawal schema must persist the authoritative review decision claim");
-assert.match(withdrawalSchema, /"reviewed_by_id"/,
-  "Withdrawal schema must persist the reviewing administrator");
-assert.match(campaignSchema, /"moderated_by_id"/,
-  "Campaign schema must persist the moderating administrator");
-assert.match(campaignSchema, /"moderation_note"/,
-  "Campaign schema must persist the moderation reason");
 
-console.log("Fraud approval, denial, payout-claim, recoverable donation reconciliation, and campaign-moderation workflow verification passed.");
+for (const field of ["owner_user_id", "campaign_id", "gross_amount", "net_amount", "status", "payout_batch_id", "review_note", "processed_at"]) {
+  assert.match(withdrawalSchema, new RegExp(`"${field}"`), `Withdrawal schema must preserve ${field}`);
+}
+assert.match(withdrawalSchema, /"payout_claim_token"/, "Withdrawal schema must persist the payout claim token");
+assert.match(withdrawalSchema, /"review_action"/, "Withdrawal schema must persist the authoritative review decision claim");
+assert.match(withdrawalSchema, /"reviewed_by_id"/, "Withdrawal schema must persist the reviewing administrator");
+for (const field of ["title", "summary", "story", "goal_amount", "raised_amount", "donor_count", "status", "cover_image_url", "end_date", "location", "location_lat", "location_lng", "cashapp_tag", "ai_profile", "story_versions", "outreach_enabled", "outreach_paused"]) {
+  assert.match(campaignSchema, new RegExp(`"${field}"`), `Campaign schema must preserve ${field}`);
+}
+assert.match(campaignSchema, /"moderated_by_id"/, "Campaign schema must persist the moderating administrator");
+assert.match(campaignSchema, /"moderation_note"/, "Campaign schema must persist the moderation reason");
+
+console.log("Fraud approval, deterministic payout reconciliation, denial recovery, schema preservation, and campaign-moderation workflow verification passed.");
