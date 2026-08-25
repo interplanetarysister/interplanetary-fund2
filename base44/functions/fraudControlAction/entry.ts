@@ -9,12 +9,28 @@ function requireReason(value) {
   return reason;
 }
 
-async function releaseReservedDonations(sr, withdrawalId, donationIds) {
-  if (!donationIds.length) return;
+function uniqueIds(values) {
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
+}
+
+async function reconcileReservedDonations(sr, withdrawalId, donationIds) {
+  const ids = uniqueIds(donationIds);
+  if (!ids.length) return { complete: true, remaining: [] };
+
   await sr.entities.Donation.updateMany(
-    { id: { $in: donationIds }, withdrawal_id: withdrawalId },
+    { id: { $in: ids }, withdrawal_id: withdrawalId },
     { $set: { withdrawal_id: '' } },
   );
+
+  const remaining = await sr.entities.Donation.filter({
+    id: { $in: ids },
+    withdrawal_id: withdrawalId,
+  });
+
+  return {
+    complete: remaining.length === 0,
+    remaining: remaining.map((donation) => donation.id),
+  };
 }
 
 export default async function(req) {
@@ -41,8 +57,8 @@ export default async function(req) {
       // The first transition is the authoritative decision claim. Once the
       // withdrawal is `processing` with review_action=deny, approval cannot
       // concurrently claim it because requestWithdrawal only accepts a clean
-      // under_review state. If release or finalization fails, the same denial
-      // claim can be retried safely without reopening the withdrawal.
+      // under_review state. If reconciliation or finalization fails, the same
+      // denial claim remains owned by this decision and can be retried safely.
       let denialClaimed = false;
       if (withdrawal.status === 'under_review') {
         const claim = await sr.entities.Withdrawal.updateMany(
@@ -73,9 +89,27 @@ export default async function(req) {
         throw new Error('Withdrawal denial claim could not be established.');
       }
 
+      // Reconciliation is deliberately recoverable rather than pretending the
+      // Base44 entity API gives us a cross-entity transaction. The withdrawal
+      // stays decision-owned (`processing` + `review_action=deny`) until every
+      // covered donation is confirmed released. A retry therefore repairs a
+      // partial release instead of reopening the approval race.
       const donationIds = Array.isArray(withdrawal.covered_donation_ids) ? withdrawal.covered_donation_ids : [];
-      await releaseReservedDonations(sr, withdrawal.id, donationIds);
+      const reconciliation = await reconcileReservedDonations(sr, withdrawal.id, donationIds);
+      if (!reconciliation.complete) {
+        console.error('Fraud denial reconciliation incomplete:', {
+          withdrawal_id: withdrawal.id,
+          remaining_donation_ids: reconciliation.remaining,
+        });
+        return Response.json({
+          error: 'Withdrawal denial is still reconciling reserved donations. Retry the denial action; the withdrawal remains safely held by the denial decision.',
+        }, { status: 409 });
+      }
 
+      // Only finalize after the release boundary has been re-read and proven
+      // complete. If this conditional transition fails, the withdrawal remains
+      // in the explicit denial-processing state and the same reconciliation can
+      // be retried without reopening approval or double-releasing donations.
       const result = await sr.entities.Withdrawal.updateMany(
         { id: withdrawal.id, status: 'processing', review_action: 'deny' },
         {
@@ -91,7 +125,9 @@ export default async function(req) {
       );
 
       if (!result.success || result.updated !== 1) {
-        throw new Error('Withdrawal denial could not be committed.');
+        return Response.json({
+          error: 'Withdrawal denial is claimed but finalization did not commit. Retry the denial action to complete reconciliation safely.',
+        }, { status: 409 });
       }
 
       return Response.json({ ok: true, status: 'failed', withdrawal_id: withdrawal.id });
