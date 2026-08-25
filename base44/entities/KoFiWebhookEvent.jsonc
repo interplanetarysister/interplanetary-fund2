@@ -1,7 +1,7 @@
 {
   "name": "KoFiWebhookEvent",
   "type": "object",
-  "description": "Durable Ko-fi provider-event ledger used to recover financial webhook side effects after a committed claim.",
+  "description": "Durable Ko-fi provider-event ledger used to recover financial webhook side effects after a committed connection-level event claim.",
   "properties": {
     "event_id": {
       "type": "string",
@@ -35,9 +35,15 @@
       "type": "string",
       "format": "date-time"
     },
+    "financial_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the external financial total was atomically applied while the connection-level event claim was held."
+    },
     "side_effects_complete": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Whether InboxItem and Notification recovery is complete for this provider event."
     },
     "last_error": {
       "type": "string",
