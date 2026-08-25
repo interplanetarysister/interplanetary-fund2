@@ -40,13 +40,15 @@ async function ensureSideEffects(sr, connection, payload, amount, eventId) {
   }
 }
 
-async function reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt) {
+async function ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt) {
   const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
   if (existing.length > 0) return existing[0];
 
-  // Only the worker holding the connection-level active-event claim reaches
-  // this function. That claim is the atomic single-winner boundary for both
-  // the financial mutation and durable event-ledger creation.
+  // Base44 does not expose a documented unique/upsert entity primitive. The
+  // connection-level active-event claim is therefore the authoritative
+  // single-winner boundary: only its current token holder may create the
+  // durable event ledger, and the claim is retained until ledger + financial
+  // state + downstream side effects are complete.
   return sr.entities.KoFiWebhookEvent.create({
     event_id: eventId,
     provider: 'kofi',
@@ -56,14 +58,52 @@ async function reconcileEventLedger(sr, eventId, connection, payload, amount, cl
     amount,
     event_type: payload.type || 'donation',
     claimed_at: claimedAt,
+    financial_applied: false,
     side_effects_complete: false,
     last_error: '',
   });
 }
 
+async function applyFinancialClaim(sr, connectionId, eventId, claimToken, amount) {
+  const result = await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+      $or: [
+        { kofi_active_event_financial_applied: { $exists: false } },
+        { kofi_active_event_financial_applied: false },
+      ],
+    },
+    {
+      $inc: {
+        external_total: amount,
+        external_donor_count: 1,
+      },
+      $set: {
+        kofi_active_event_financial_applied: true,
+      },
+    },
+  );
+
+  if (result.success && result.updated === 1) return true;
+
+  const current = await sr.entities.PlatformConnection.get(connectionId);
+  if (
+    current?.kofi_active_event_id === eventId &&
+    current?.kofi_active_event_claim_token === claimToken &&
+    current?.kofi_active_event_financial_applied === true
+  ) {
+    return false;
+  }
+
+  throw new Error('Ko-fi financial claim ownership was lost before completion.');
+}
+
 async function completeEventLedger(sr, ledger) {
   if (!ledger?.id) return;
   await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+    financial_applied: true,
     side_effects_complete: true,
     last_error: '',
   });
@@ -81,6 +121,7 @@ async function clearActiveClaim(sr, connectionId, eventId, claimToken) {
         kofi_active_event_id: '',
         kofi_active_event_claimed_at: '',
         kofi_active_event_claim_token: '',
+        kofi_active_event_financial_applied: '',
         kofi_recovery_claim_token: '',
         kofi_recovery_claimed_at: '',
       },
@@ -125,9 +166,10 @@ async function acquireRecoveryClaim(sr, connection, eventId) {
 async function processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken) {
   let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
   if (!ledger) {
-    ledger = await reconcileEventLedger(sr, eventId, connection, payload, amount, claimedAt);
+    ledger = await ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt);
   }
 
+  await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);
   await ensureSideEffects(sr, connection, payload, amount, eventId);
   await completeEventLedger(sr, ledger);
   await clearActiveClaim(sr, connection.id, eventId, claimToken);
@@ -156,10 +198,12 @@ async function recoverClaimedEvent(sr, eventId, connection, payload, amount, cla
   );
 }
 
-// Live Ko-fi donation sync. The financial mutation and durable event ledger
-// are serialized by one connection-level active-event claim. The claim remains
-// held until the ledger and downstream side effects are complete, then is
-// cleared only by the worker that owns the current claim token.
+// Live Ko-fi donation sync. The connection-level active-event claim is the
+// authoritative single-winner boundary for the entire event lifecycle. It is
+// held from claim acquisition through durable ledger creation, financial
+// application, downstream side effects, and completion. This is the supported
+// Base44 equivalent of a per-event uniqueness boundary because Base44 does not
+// expose a documented unique-index/upsert entity primitive.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -212,25 +256,11 @@ export default async function(req) {
       return Response.json({ ok: true, duplicate: true });
     }
 
-    // An incomplete durable event record is recoverable only through the same
-    // single-winner connection claim. This prevents concurrent recovery from
-    // racing InboxItem/Notification creation.
+    // Existing incomplete events are recovered only after a bounded-stale
+    // connection claim takeover, so they cannot race the current owner.
     if (ledger) {
-      const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);
-      if (!recoveryToken) {
-        return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
-      }
-
       try {
-        await processClaimedEvent(
-          sr,
-          connection,
-          payload,
-          amount,
-          eventId,
-          ledger.claimed_at,
-          recoveryToken,
-        );
+        await recoverClaimedEvent(sr, eventId, connection, payload, amount, ledger.claimed_at);
         return Response.json({ ok: true, duplicate: true, repaired: true });
       } catch (error) {
         console.error('kofiWebhook ledger recovery error:', error);
@@ -252,10 +282,6 @@ export default async function(req) {
         kofi_active_event_id: { $exists: false },
       },
       {
-        $inc: {
-          external_total: amount,
-          external_donor_count: 1,
-        },
         $set: {
           status: 'connected',
           last_synced: claimedAt,
@@ -263,11 +289,12 @@ export default async function(req) {
           kofi_active_event_id: eventId,
           kofi_active_event_claimed_at: claimedAt,
           kofi_active_event_claim_token: claimToken,
+          kofi_active_event_financial_applied: false,
         },
         $push: {
           history: {
             at: claimedAt,
-            event: 'synced',
+            event: 'claimed',
             detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}`,
           },
         },
