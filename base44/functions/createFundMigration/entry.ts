@@ -38,21 +38,11 @@ export default async function(req) {
       payout_destination: payoutDestination,
     } = body || {};
 
-    if (!validRequestId(requestId)) {
-      return Response.json({ error: 'A valid migration request id is required.' }, { status: 400 });
-    }
-    if (typeof campaignId !== 'string' || !campaignId) {
-      return Response.json({ error: 'Select a campaign.' }, { status: 400 });
-    }
-    if (!ALLOWED_SOURCE_PLATFORMS.has(sourcePlatform)) {
-      return Response.json({ error: 'Unsupported source platform.' }, { status: 400 });
-    }
-    if (!ALLOWED_PAYOUT_METHODS.has(payoutMethod)) {
-      return Response.json({ error: 'This migration workflow currently supports PayPal payouts only.' }, { status: 400 });
-    }
-    if (!validEmail(payoutDestination)) {
-      return Response.json({ error: 'Enter a valid PayPal payout destination.' }, { status: 400 });
-    }
+    if (!validRequestId(requestId)) return Response.json({ error: 'A valid migration request id is required.' }, { status: 400 });
+    if (typeof campaignId !== 'string' || !campaignId) return Response.json({ error: 'Select a campaign.' }, { status: 400 });
+    if (!ALLOWED_SOURCE_PLATFORMS.has(sourcePlatform)) return Response.json({ error: 'Unsupported source platform.' }, { status: 400 });
+    if (!ALLOWED_PAYOUT_METHODS.has(payoutMethod)) return Response.json({ error: 'This migration workflow currently supports PayPal payouts only.' }, { status: 400 });
+    if (!validEmail(payoutDestination)) return Response.json({ error: 'Enter a valid PayPal payout destination.' }, { status: 400 });
 
     const grossAmount = Number(rawGrossAmount);
     if (!Number.isFinite(grossAmount) || grossAmount <= 0 || grossAmount > MAX_GROSS_AMOUNT) {
@@ -63,9 +53,8 @@ export default async function(req) {
     if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
     if (!campaign.created_by_id) return Response.json({ error: 'Selected campaign has no verified owner.' }, { status: 409 });
 
-    // A conditional campaign-level claim serializes migrations for a campaign.
-    // The same request id may resume after a client/network retry; another
-    // request cannot take the claim while a migration remains unresolved.
+    // Retry reconciliation happens before claim acquisition so a network retry
+    // cannot create a second Withdrawal for the same stable request id.
     const existing = (await sr.entities.Withdrawal.filter({ migration_request_id: requestId }))[0];
     if (existing) {
       return Response.json({
@@ -79,6 +68,9 @@ export default async function(req) {
       });
     }
 
+    // Conditional campaign-level claim serializes migrations for a campaign.
+    // The same request id may resume after a client/network retry; another
+    // request cannot take the claim while this migration remains unresolved.
     const claim = await sr.entities.Campaign.updateMany(
       {
         id: campaignId,
@@ -88,9 +80,7 @@ export default async function(req) {
           { active_migration_request_id: requestId },
         ],
       },
-      {
-        $set: { active_migration_request_id: requestId },
-      },
+      { $set: { active_migration_request_id: requestId } },
     );
 
     if (!claim.success || claim.updated !== 1) {
@@ -111,7 +101,7 @@ export default async function(req) {
     try {
       const withdrawal = await sr.entities.Withdrawal.create({
         owner_user_id: campaign.created_by_id,
-        user_name: campaign.created_by_name || '',
+        user_name: user.full_name || user.name || '',
         campaign_id: campaign.id,
         campaign_title: campaign.title,
         gross_amount: gross,
@@ -126,14 +116,7 @@ export default async function(req) {
         review_note: `Fund migration from ${sourcePlatform} requires payout workflow approval. Requested by administrator ${user.id}.`,
       });
 
-      return Response.json({
-        ok: true,
-        withdrawal_id: withdrawal.id,
-        status: withdrawal.status,
-        gross,
-        fee: platformFee,
-        net,
-      });
+      return Response.json({ ok: true, withdrawal_id: withdrawal.id, status: withdrawal.status, gross, fee: platformFee, net });
     } catch (error) {
       console.error('createFundMigration create withdrawal error:', error?.message || error);
       await sr.entities.Campaign.updateMany(
