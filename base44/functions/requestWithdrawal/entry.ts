@@ -40,7 +40,7 @@ export default async function(req) {
       const w = await sr.entities.Withdrawal.get(body.withdrawal_id);
       if (!w) return Response.json({ error: "Withdrawal not found." }, { status: 404 });
       if (w.status !== "under_review") {
-        if (w.status === "processing") return Response.json({ error: "This payout is already being processed. Retry only after its final provider state is reconciled." }, { status: 409 });
+        if (w.status === "processing") return Response.json({ error: w.review_action === "deny" ? "This withdrawal is being denied. Reconcile the denial before attempting approval." : "This payout is already being processed. Retry only after its final provider state is reconciled." }, { status: 409 });
         return Response.json({ error: "Only held withdrawals can be approved." }, { status: 400 });
       }
 
@@ -52,6 +52,7 @@ export default async function(req) {
             status: "processing",
             payout_claim_token: claimToken,
             payout_claimed_at: new Date().toISOString(),
+            review_action: "approve",
             reviewed_by_id: user.id,
             reviewed_at: new Date().toISOString(),
           },
@@ -69,7 +70,7 @@ export default async function(req) {
           itemId: `IFW_${w.id}`,
         });
         await sr.entities.Withdrawal.updateMany(
-          { id: w.id, status: "processing", payout_claim_token: claimToken },
+          { id: w.id, status: "processing", payout_claim_token: claimToken, review_action: "approve" },
           {
             $set: {
               status: "paid",
@@ -79,6 +80,7 @@ export default async function(req) {
             $unset: {
               payout_claim_token: '',
               payout_claimed_at: '',
+              review_action: '',
             },
           },
         );
@@ -86,10 +88,10 @@ export default async function(req) {
       } catch (err) {
         console.error("requestWithdrawal approve payout error:", err?.message || err);
         await sr.entities.Withdrawal.updateMany(
-          { id: w.id, status: "processing", payout_claim_token: claimToken },
+          { id: w.id, status: "processing", payout_claim_token: claimToken, review_action: "approve" },
           {
             $set: { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE, processed_at: new Date().toISOString() },
-            $unset: { payout_claim_token: '', payout_claimed_at: '' },
+            $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' },
           },
         );
         return Response.json({ error: SAFE_PAYOUT_ERROR }, { status: 500 });
