@@ -4,37 +4,11 @@
   "properties": {
     "platform": {
       "type": "string",
-      "enum": [
-        "gofundme",
-        "kickstarter",
-        "indiegogo",
-        "fundrazr",
-        "givesendgo",
-        "spotfund",
-        "kofi",
-        "buymeacoffee",
-        "patreon",
-        "custom",
-        "facebook",
-        "instagram",
-        "threads",
-        "x",
-        "linkedin",
-        "tiktok",
-        "pinterest",
-        "reddit",
-        "youtube",
-        "discord",
-        "bluesky",
-        "mastodon"
-      ]
+      "enum": ["gofundme", "kickstarter", "indiegogo", "fundrazr", "givesendgo", "spotfund", "kofi", "buymeacoffee", "patreon", "custom", "facebook", "instagram", "threads", "x", "linkedin", "tiktok", "pinterest", "reddit", "youtube", "discord", "bluesky", "mastodon"]
     },
     "kind": {
       "type": "string",
-      "enum": [
-        "crowdfunding",
-        "social"
-      ],
+      "enum": ["crowdfunding", "social"],
       "default": "crowdfunding"
     },
     "display_name": {
@@ -51,21 +25,12 @@
     },
     "status": {
       "type": "string",
-      "enum": [
-        "connected",
-        "error",
-        "disconnected"
-      ],
+      "enum": ["connected", "error", "disconnected"],
       "default": "connected"
     },
     "automation_mode": {
       "type": "string",
-      "enum": [
-        "auto",
-        "ask",
-        "draft",
-        "manual"
-      ],
+      "enum": ["auto", "ask", "draft", "manual"],
       "default": "manual",
       "description": "AI publishing authorization for this destination: publish automatically, ask before every post, generate drafts only, or manual posting only."
     },
@@ -73,25 +38,11 @@
       "type": "object",
       "description": "Per-platform integration credentials, visible only to the connection owner under RLS. Enables live sync/publishing where the platform supports it.",
       "properties": {
-        "kofi_verification_token": {
-          "type": "string",
-          "description": "Ko-fi webhook verification token \u2014 enables live donation sync."
-        },
-        "bluesky_handle": {
-          "type": "string"
-        },
-        "bluesky_app_password": {
-          "type": "string",
-          "description": "Bluesky app password \u2014 enables direct publishing."
-        },
-        "mastodon_instance": {
-          "type": "string",
-          "description": "e.g. mastodon.social"
-        },
-        "mastodon_access_token": {
-          "type": "string",
-          "description": "Mastodon access token \u2014 enables direct publishing."
-        }
+        "kofi_verification_token": {"type": "string", "description": "Ko-fi webhook verification token — enables live donation sync."},
+        "bluesky_handle": {"type": "string"},
+        "bluesky_app_password": {"type": "string", "description": "Bluesky app password — enables direct publishing."},
+        "mastodon_instance": {"type": "string", "description": "e.g. mastodon.social"},
+        "mastodon_access_token": {"type": "string", "description": "Mastodon access token — enables direct publishing."}
       }
     },
     "external_total": {
@@ -99,81 +50,43 @@
       "default": 0,
       "description": "Funds raised on the external platform (synced via API when available, otherwise owner-reported)."
     },
-    "external_donor_count": {
-      "type": "number",
-      "default": 0
-    },
-    "last_synced": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "last_error": {
-      "type": "string",
-      "description": "Most recent sync or publish error, for connection health reporting."
-    },
+    "external_donor_count": {"type": "number", "default": 0},
+    "last_synced": {"type": "string", "format": "date-time"},
+    "last_error": {"type": "string", "description": "Most recent sync or publish error, for connection health reporting."},
     "history": {
       "type": "array",
       "description": "Connection activity log: connects, syncs, permission changes, errors.",
-      "items": {
-        "type": "object",
-        "properties": {
-          "at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "event": {
-            "type": "string"
-          },
-          "detail": {
-            "type": "string"
-          }
-        }
-      }
+      "items": {"type": "object", "properties": {"at": {"type": "string", "format": "date-time"}, "event": {"type": "string"}, "detail": {"type": "string"}}}
+    },
+    "kofi_active_event_id": {
+      "type": "string",
+      "description": "Durable single-winner Ko-fi event claim held until the event ledger, financial application, and downstream side effects are complete."
+    },
+    "kofi_active_event_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the active Ko-fi event claim for observability and recovery diagnostics."
+    },
+    "kofi_active_event_claim_token": {
+      "type": "string",
+      "description": "Opaque ownership token for the current Ko-fi active-event worker; only its holder may clear the claim."
+    },
+    "kofi_active_event_financial_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the external financial total was atomically applied for the currently claimed Ko-fi event."
+    },
+    "kofi_recovery_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit recovery marker written only after a worker catches a post-claim failure; prevents unsafe time-based takeover of a potentially live worker."
     }
   },
-  "required": [
-    "platform",
-    "kind"
-  ],
+  "required": ["platform", "kind"],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "create": {
-      "created_by_id": "{{user.id}}"
-    },
-    "update": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "$or": [
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    }
+    "read": {"$or": [{"created_by_id": "{{user.id}}"}, {"user_condition": {"role": "admin"}}]},
+    "create": {"created_by_id": "{{user.id}}"},
+    "update": {"$or": [{"created_by_id": "{{user.id}}"}, {"user_condition": {"role": "admin"}}]},
+    "delete": {"$or": [{"created_by_id": "{{user.id}}"}, {"user_condition": {"role": "admin"}}]}
   }
 }

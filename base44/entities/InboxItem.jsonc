@@ -4,11 +4,11 @@
   "properties": {
     "user_id": {
       "type": "string",
-      "description": "The recipient \u2014 the only user (besides admins) who can see this item."
+      "description": "The recipient — the only user (besides admins) who can see this item."
     },
     "platform": {
       "type": "string",
-      "description": "Source platform id (interplanetary, kofi, facebook, \u2026)."
+      "description": "Source platform id (interplanetary, kofi, facebook, …)."
     },
     "campaign_id": {
       "type": "string"
@@ -50,6 +50,10 @@
     "ai_draft": {
       "type": "string",
       "description": "AI-generated draft response awaiting the owner's review."
+    },
+    "external_event_id": {
+      "type": "string",
+      "description": "Stable provider event identity used to prevent duplicate InboxItem creation across webhook retries."
     }
   },
   "required": [

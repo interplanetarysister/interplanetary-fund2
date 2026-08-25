@@ -29,6 +29,10 @@
     "read": {
       "type": "boolean",
       "default": false
+    },
+    "external_event_id": {
+      "type": "string",
+      "description": "Stable provider event identity used to recover notification side effects without duplicating a webhook notification."
     }
   },
   "required": [
