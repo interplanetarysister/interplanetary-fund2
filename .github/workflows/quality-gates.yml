@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: recordDonation security verification
+        run: npm run verify:record-donation-errors
+
       - name: Production build
         run: npm run build
 
