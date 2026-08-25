@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { sendPayout } from '../../shared/paypal.ts';
+import { getPayoutBatch, sendPayout } from '../../shared/paypal.ts';
 
 // Withdrawal engine. Enforces the 8% platform fee, the 7-day clearing hold,
 // a once-daily limit, campaign ownership, and fraud review for large payouts.
@@ -13,6 +13,28 @@ const GENERIC_PAYOUT_REVIEW_NOTE = 'Payout failed. Detailed provider diagnostics
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
+
+async function reconcileApprovedPayout(sr, withdrawal) {
+  const deterministicBatchId = `IFW_${withdrawal.id}`;
+  const payout = await getPayoutBatch(deterministicBatchId);
+  if (!payout) {
+    return { found: false, finalized: false };
+  }
+
+  const finalized = await sr.entities.Withdrawal.updateMany(
+    { id: withdrawal.id, status: 'processing', review_action: 'approve' },
+    {
+      $set: {
+        status: 'paid',
+        payout_batch_id: payout.payout_batch_id || deterministicBatchId,
+        processed_at: new Date().toISOString(),
+        review_note: `Payout reconciled from PayPal batch ${payout.payout_batch_id || deterministicBatchId}.`,
+      },
+    },
+  );
+
+  return { found: true, finalized: finalized.success && finalized.updated === 1 };
+}
 
 export default async function(req) {
   try {
@@ -34,13 +56,36 @@ export default async function(req) {
       return Response.json({ ok: true, donation_id: d.id, cleared: true });
     }
 
+    // ---- Admin: reconcile an approved payout after a provider-success/local-write failure ----
+    if (action === "reconcileApprove") {
+      if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
+      const withdrawalId = String(body.withdrawal_id || '').trim();
+      if (!withdrawalId) return Response.json({ error: "Withdrawal id is required." }, { status: 400 });
+      const w = await sr.entities.Withdrawal.get(withdrawalId);
+      if (!w) return Response.json({ error: "Withdrawal not found." }, { status: 404 });
+      if (w.status !== "processing" || w.review_action !== "approve") {
+        if (w.status === "paid") return Response.json({ ok: true, status: "paid", withdrawal_id: w.id, payout_batch_id: w.payout_batch_id });
+        return Response.json({ error: "Only an approval-owned processing withdrawal can be reconciled." }, { status: 409 });
+      }
+
+      const reconciliation = await reconcileApprovedPayout(sr, w);
+      if (reconciliation.finalized) {
+        return Response.json({ ok: true, status: "paid", withdrawal_id: w.id, payout_batch_id: `IFW_${w.id}` });
+      }
+      return Response.json({
+        error: reconciliation.found
+          ? "PayPal confirms the payout, but the local finalization is still pending. Retry reconciliation."
+          : "PayPal has not yet confirmed this deterministic payout identity. Keep the withdrawal held and retry reconciliation after provider state is available.",
+      }, { status: 409 });
+    }
+
     // ---- Admin: approve a withdrawal held for review ----
     if (action === "approve") {
       if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
       const w = await sr.entities.Withdrawal.get(body.withdrawal_id);
       if (!w) return Response.json({ error: "Withdrawal not found." }, { status: 404 });
       if (w.status !== "under_review") {
-        if (w.status === "processing") return Response.json({ error: w.review_action === "deny" ? "This withdrawal is being denied. Reconcile the denial before attempting approval." : "This payout is already being processed. Retry only after its final provider state is reconciled." }, { status: 409 });
+        if (w.status === "processing") return Response.json({ error: w.review_action === "deny" ? "This withdrawal is being denied. Reconcile the denial before attempting approval." : "This payout is already being processed. Reconcile its PayPal state before retrying." }, { status: 409 });
         return Response.json({ error: "Only held withdrawals can be approved." }, { status: 400 });
       }
 
@@ -66,10 +111,10 @@ export default async function(req) {
         const payout = await sendPayout({
           receiver: w.paypal_email,
           amount: w.net_amount,
-          note: `Interplanetary Fund withdrawal for "${w.campaign_title}"`,
+          note: `Interplanetary Fund withdrawal for \"${w.campaign_title}\"`,
           itemId: `IFW_${w.id}`,
         });
-        await sr.entities.Withdrawal.updateMany(
+        const finalized = await sr.entities.Withdrawal.updateMany(
           { id: w.id, status: "processing", payout_claim_token: claimToken, review_action: "approve" },
           {
             $set: {
@@ -84,17 +129,29 @@ export default async function(req) {
             },
           },
         );
+        if (!finalized.success || finalized.updated !== 1) {
+          const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(w.id));
+          if (reconciliation.finalized) {
+            return Response.json({ ok: true, status: "paid", payout_batch_id: reconciliation.payout_batch_id || payout.payout_batch_id });
+          }
+          return Response.json({ error: "PayPal accepted the payout but local finalization is pending. Reconcile this withdrawal before retrying approval." }, { status: 409 });
+        }
         return Response.json({ ok: true, status: "paid", payout_batch_id: payout.payout_batch_id });
       } catch (err) {
         console.error("requestWithdrawal approve payout error:", err?.message || err);
-        await sr.entities.Withdrawal.updateMany(
-          { id: w.id, status: "processing", payout_claim_token: claimToken, review_action: "approve" },
-          {
-            $set: { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE, processed_at: new Date().toISOString() },
-            $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' },
-          },
-        );
-        return Response.json({ error: SAFE_PAYOUT_ERROR }, { status: 500 });
+        try {
+          const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(w.id));
+          if (reconciliation.finalized) {
+            return Response.json({ ok: true, status: "paid", withdrawal_id: w.id, payout_batch_id: `IFW_${w.id}` });
+          }
+        } catch (lookupError) {
+          console.error("requestWithdrawal payout reconciliation error:", lookupError?.message || lookupError);
+        }
+
+        // Do not mark a provider-ambiguous payout failed. The processing+approve
+        // claim remains intact so a later reconcileApprove call can safely query
+        // the deterministic PayPal batch identity without submitting a second payout.
+        return Response.json({ error: "The payout provider outcome could not be confirmed. The withdrawal remains held for safe reconciliation; do not retry approval until the PayPal state is checked." }, { status: 409 });
       }
     }
 
@@ -158,17 +215,33 @@ export default async function(req) {
       const payout = await sendPayout({
         receiver: paypal_email,
         amount: net,
-        note: `Interplanetary Fund withdrawal for "${campaign.title}"`,
+        note: `Interplanetary Fund withdrawal for \"${campaign.title}\"`,
         itemId: `IFW_${withdrawal.id}`,
       });
-      await sr.entities.Withdrawal.update(withdrawal.id, {
-        status: "paid",
-        payout_batch_id: payout.payout_batch_id,
-        processed_at: new Date().toISOString(),
-      });
+      const finalized = await sr.entities.Withdrawal.updateMany(
+        { id: withdrawal.id, status: "processing" },
+        {
+          $set: {
+            status: "paid",
+            payout_batch_id: payout.payout_batch_id,
+            processed_at: new Date().toISOString(),
+          },
+        },
+      );
+      if (!finalized.success || finalized.updated !== 1) {
+        return Response.json({ error: "PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation." }, { status: 409 });
+      }
       return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
       console.error("requestWithdrawal payout error:", err?.message || err);
+      try {
+        const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(withdrawal.id));
+        if (reconciliation.finalized) {
+          return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: `IFW_${withdrawal.id}` });
+        }
+      } catch (lookupError) {
+        console.error("requestWithdrawal initial payout reconciliation error:", lookupError?.message || lookupError);
+      }
       await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: "" })));
       await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
