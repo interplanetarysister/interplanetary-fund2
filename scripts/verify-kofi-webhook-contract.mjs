@@ -168,19 +168,27 @@ if (!source.includes('kofi_active_event_claim_token: claimToken')) {
   throw new Error('Ko-fi claim clearing must be conditional on the current owner token.');
 }
 
-const ledgerCreateIndex = source.indexOf('KoFiWebhookEvent.create({');
-const claimTokenIndex = source.indexOf('kofi_active_event_claim_token: claimToken');
-if (ledgerCreateIndex < 0 || claimTokenIndex < 0 || ledgerCreateIndex < claimTokenIndex) {
-  throw new Error('Durable KoFiWebhookEvent creation must remain behind the connection-level claim lifecycle.');
+const processStart = source.indexOf('async function processClaimedEvent');
+const processEnd = source.indexOf('\n}\n\nasync function recoverClaimedEvent', processStart);
+const processBody = processStart >= 0 && processEnd > processStart
+  ? source.slice(processStart, processEnd)
+  : '';
+if (!processBody.includes('ledger = await ensureEventLedgerUnderClaim')) {
+  throw new Error('Ko-fi processing must create/reconcile the durable ledger while the connection claim is held.');
+}
+if (!processBody.includes('await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);')) {
+  throw new Error('Ko-fi financial application must remain inside the claimed event lifecycle.');
+}
+if (!processBody.includes('await ensureSideEffects(sr, connection, payload, amount, eventId);')) {
+  throw new Error('Ko-fi downstream side effects must remain inside the claimed event lifecycle.');
 }
 
-const financialApplyIndex = source.indexOf('await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);');
-const ledgerCreateInProcessIndex = source.indexOf('ledger = await ensureEventLedgerUnderClaim');
-if (financialApplyIndex < 0 || ledgerCreateInProcessIndex < 0 || financialApplyIndex < ledgerCreateInProcessIndex) {
+const ledgerCreateIndex = processBody.indexOf('KoFiWebhookEvent.create({');
+const financialApplyIndex = processBody.indexOf('await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);');
+const sideEffectIndex = processBody.indexOf('await ensureSideEffects(sr, connection, payload, amount, eventId);');
+if (ledgerCreateIndex < 0 || financialApplyIndex < 0 || ledgerCreateIndex > financialApplyIndex) {
   throw new Error('Ko-fi financial application must occur only after the durable event ledger exists.');
 }
-
-const sideEffectIndex = source.indexOf('await ensureSideEffects(sr, connection, payload, amount, eventId);');
 if (sideEffectIndex < 0 || sideEffectIndex < financialApplyIndex) {
   throw new Error('Ko-fi downstream side effects must occur only after the financial application claim.');
 }
