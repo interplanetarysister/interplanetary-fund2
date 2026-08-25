@@ -68,7 +68,6 @@ for (const field of [
   'last_synced',
   'last_error',
   'history',
-  'processed_webhook_ids',
   'kofi_active_event_id',
   'kofi_active_event_claimed_at',
   'kofi_active_event_claim_token',
