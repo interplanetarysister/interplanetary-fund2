@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader2, AlertTriangle } from "lucide-react";
 import OpsAgentCard from "@/components/ops/OpsAgentCard";
 import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 
-// Ops Center — live mirror of the Convex mission backend. Data is cached in
-// Base44 entities so the dashboard works offline; Sync Now refreshes it.
+// Ops Center displays a Base44 operational mirror of authoritative Convex data.
+// The mirror is not offline-first and must never be presented as authoritative.
 export default function OpsCenter() {
   const [agents, setAgents] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -18,6 +18,8 @@ export default function OpsCenter() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
+  const [mirrorLoadedAt, setMirrorLoadedAt] = useState(null);
+  const [lastSyncSucceeded, setLastSyncSucceeded] = useState(false);
 
   const load = useCallback(async () => {
     const [a, c, t, r] = await Promise.all([
@@ -30,6 +32,7 @@ export default function OpsCenter() {
     setCampaigns(c);
     setTreasury(t[0] || null);
     setReports(r);
+    setMirrorLoadedAt(new Date());
     setLoading(false);
   }, []);
 
@@ -38,17 +41,23 @@ export default function OpsCenter() {
   const syncNow = async () => {
     setSyncing(true);
     setSyncError("");
+    setLastSyncSucceeded(false);
     try {
       const res = await base44.functions.invoke("syncFromConvex", {});
       if (res.data?.error) throw new Error(res.data.error);
       await load();
+      setLastSyncSucceeded(true);
     } catch (e) {
-      setSyncError(e.message || "Sync failed — showing cached data.");
+      console.error("Ops Center sync failed:", e);
+      setSyncError("Unable to refresh the operational mirror. Verify the authoritative Convex state before taking action.");
     }
     setSyncing(false);
   };
 
   const activeAgents = agents.filter((a) => (a.status || "").toLowerCase() === "active").length;
+  const loadedLabel = mirrorLoadedAt
+    ? mirrorLoadedAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+    : "not loaded";
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -56,7 +65,7 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{agents.length} agents active · Convex mission backend</p>
+            <p className="text-xs text-slate-500">{activeAgents}/{agents.length} agents active · Convex is authoritative</p>
           </div>
           <button
             onClick={syncNow}
@@ -67,7 +76,28 @@ export default function OpsCenter() {
             {syncing ? "Syncing…" : "Sync Now"}
           </button>
         </div>
-        {syncError && <p className="mt-2 text-xs text-rose-400">{syncError}</p>}
+
+        <div className={`mt-3 rounded-xl border p-3 text-xs ${
+          syncError
+            ? "border-rose-400/30 bg-rose-400/10 text-rose-300"
+            : lastSyncSucceeded
+              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
+              : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+        }`}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">
+                {syncError ? "Mirror refresh failed" : lastSyncSucceeded ? "Mirror refreshed from Convex" : "Operational mirror — not authoritative"}
+              </p>
+              <p className="mt-0.5 opacity-80">
+                {syncError
+                  ? syncError
+                  : `Displayed operational data is a Base44 mirror snapshot loaded ${loadedLabel}. Convex remains the source of truth.`}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
@@ -77,7 +107,15 @@ export default function OpsCenter() {
               <TabsTrigger value="agents" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Agents</TabsTrigger>
               <TabsTrigger value="campaigns" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Campaigns</TabsTrigger>
               <TabsTrigger value="treasury" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Treasury</TabsTrigger>
-              <TabsTrigger value="migrate" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Migrate</TabsTrigger>
+              <TabsTrigger
+                value="migrate"
+                disabled
+                aria-disabled="true"
+                className="text-xs text-slate-500 rounded-lg"
+                title="Migration controls are temporarily unavailable until the authoritative financial workflow is complete."
+              >
+                Migrate
+              </TabsTrigger>
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
