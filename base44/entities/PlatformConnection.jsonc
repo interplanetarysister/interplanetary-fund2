@@ -60,7 +60,7 @@
     },
     "kofi_active_event_id": {
       "type": "string",
-      "description": "Durable single-winner Ko-fi event claim held until the event ledger and downstream side effects are complete."
+      "description": "Durable single-winner Ko-fi event claim held until the event ledger, financial application, and downstream side effects are complete."
     },
     "kofi_active_event_claimed_at": {
       "type": "string",
@@ -70,6 +70,11 @@
     "kofi_active_event_claim_token": {
       "type": "string",
       "description": "Opaque ownership token for the current Ko-fi active-event worker; only its holder may clear the claim."
+    },
+    "kofi_active_event_financial_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the external financial total was atomically applied for the currently claimed Ko-fi event."
     },
     "kofi_recovery_claim_token": {
       "type": "string",
