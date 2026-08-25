@@ -45,8 +45,8 @@ assert.match(moderation, /status:\s*["']processing["'][\s\S]*review_action:\s*["
   "Withdrawal denial must claim the decision before releasing reserved donations");
 assert.match(moderation, /Donation\.updateMany\(/,
   "Withdrawal denial must reconcile reserved donations through the server workflow");
-assert.match(moderation, /status:\s*["']failed["'][\s\S]*review_action:\s*["']deny["']/,
-  "Withdrawal denial must finalize only its own claimed decision");
+assert.match(moderation, /\{\s*id:\s*withdrawal\.id,\s*status:\s*["']processing["'],\s*review_action:\s*["']deny["']/,
+  "Withdrawal denial finalization must conditionally own the claimed decision");
 assert.match(moderation, /action === ["']pauseCampaign["']|action === ["']restoreCampaign["']/,
   "Moderation workflow must own campaign pause/restore actions");
 assert.match(moderation, /Campaign\.updateMany\(/,
