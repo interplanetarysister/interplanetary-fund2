@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Fund Migration security verification
+        run: npm run verify:fund-migration
+
       - name: Production build
         run: npm run build
 
