@@ -45,10 +45,10 @@ export const CAPABILITY_MODULES = [
     id: "social",
     group: "Social Media & Channels",
     items: [
-      { id: "facebook_pages", label: "Facebook Pages", status: "available" },
-      { id: "instagram", label: "Instagram Business", status: "available" },
-      { id: "tiktok", label: "TikTok", status: "available" },
-      { id: "linkedin", label: "LinkedIn", status: "available" },
+      { id: "facebook_pages", label: "Facebook Pages", status: "setup_required" },
+      { id: "instagram", label: "Instagram Business", status: "setup_required" },
+      { id: "tiktok", label: "TikTok", status: "setup_required" },
+      { id: "linkedin", label: "LinkedIn", status: "setup_required" },
     ],
   },
   {
@@ -56,7 +56,7 @@ export const CAPABILITY_MODULES = [
     group: "Payment Providers",
     items: [
       { id: "stripe", label: "Stripe", status: "connected" },
-      { id: "paypal", label: "PayPal", status: "coming_soon" },
+      { id: "paypal", label: "PayPal", status: "setup_required" },
     ],
   },
 ];
