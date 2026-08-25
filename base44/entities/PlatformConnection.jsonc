@@ -65,7 +65,7 @@
     "kofi_active_event_claimed_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Timestamp of the active Ko-fi event claim; stale recovery is bounded."
+      "description": "Timestamp of the active Ko-fi event claim for observability and recovery diagnostics."
     },
     "kofi_active_event_claim_token": {
       "type": "string",
@@ -76,14 +76,10 @@
       "default": false,
       "description": "Whether the external financial total was atomically applied for the currently claimed Ko-fi event."
     },
-    "kofi_recovery_claim_token": {
-      "type": "string",
-      "description": "Transient token identifying the worker that owns recovery of an interrupted Ko-fi event claim."
-    },
-    "kofi_recovery_claimed_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Timestamp for stale recovery-claim takeover protection."
+    "kofi_recovery_required": {
+      "type": "boolean",
+      "default": false,
+      "description": "Explicit recovery marker written only after a worker catches a post-claim failure; prevents unsafe time-based takeover of a potentially live worker."
     }
   },
   "required": ["platform", "kind"],
