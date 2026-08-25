@@ -1,20 +1,111 @@
 {
   "properties": {
-    "role": {"type": "string", "description": "The role of the user in the app", "enum": ["admin", "user"]},
-    "onboarding_completed": {"type": "boolean", "default": false, "description": "Whether the user has completed the intelligent onboarding flow."},
-    "onboarding": {"type": "object", "description": "Saved onboarding selections (fundraising goal, platforms, automation preferences).", "properties": {"goal": {"type": "string"}, "platforms": {"type": "array", "items": {"type": "string"}}, "automation": {"type": "object"}}},
-    "comm_prefs": {"type": "object", "description": "Notification delivery preferences for messages from organizers.", "properties": {"email_updates": {"type": "boolean"}, "in_app_updates": {"type": "boolean"}}},
-    "subscription_tier": {"type": "string", "description": "Active AI subscription tier id (from the plans catalog). 'free' when none.", "enum": ["free", "basic", "outreach", "professional", "enterprise", "nonprofit"], "default": "free"},
-    "subscription_status": {"type": "string", "enum": ["none", "active", "trialing", "past_due", "canceled"], "default": "none"},
-    "subscription_interval": {"type": "string", "enum": ["monthly", "annual"]},
-    "stripe_customer_id": {"type": "string"},
-    "subscription_renews_at": {"type": "string", "format": "date-time"},
-    "trial_end": {"type": "string", "format": "date-time"},
-    "account_deletion_status": {"type": "string", "enum": ["idle", "active"], "default": "idle", "description": "Durable single-winner claim state for the account deletion workflow."},
-    "account_deletion_request_id": {"type": "string", "description": "Authoritative AccountDeletionRequest identity owned by the active deletion claim."},
-    "account_deletion_claim_token": {"type": "string", "description": "Opaque token used to release or reconcile the active deletion claim."}
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ]
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the user has completed the intelligent onboarding flow."
+    },
+    "onboarding": {
+      "type": "object",
+      "description": "Saved onboarding selections (fundraising goal, platforms, automation preferences).",
+      "properties": {
+        "goal": {
+          "type": "string"
+        },
+        "platforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "automation": {
+          "type": "object"
+        }
+      }
+    },
+    "comm_prefs": {
+      "type": "object",
+      "description": "Notification delivery preferences for messages from organizers.",
+      "properties": {
+        "email_updates": {
+          "type": "boolean"
+        },
+        "in_app_updates": {
+          "type": "boolean"
+        }
+      }
+    },
+    "subscription_tier": {
+      "type": "string",
+      "description": "Active AI subscription tier id (from the plans catalog). 'free' when none.",
+      "enum": [
+        "free",
+        "basic",
+        "outreach",
+        "professional",
+        "enterprise",
+        "nonprofit"
+      ],
+      "default": "free"
+    },
+    "subscription_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "active",
+        "trialing",
+        "past_due",
+        "canceled"
+      ],
+      "default": "none"
+    },
+    "subscription_interval": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "annual"
+      ]
+    },
+    "stripe_customer_id": {
+      "type": "string"
+    },
+    "subscription_renews_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trial_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "account_deletion_status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "active"
+      ],
+      "default": "idle",
+      "description": "Durable single-winner claim state for the account deletion workflow."
+    },
+    "account_deletion_request_id": {
+      "type": "string",
+      "description": "Authoritative AccountDeletionRequest identity owned by the active deletion claim."
+    },
+    "account_deletion_claim_token": {
+      "type": "string",
+      "description": "Opaque token used to release or reconcile the active deletion claim."
+    }
   },
-  "required": ["role"],
+  "required": [
+    "role"
+  ],
   "name": "User",
   "type": "object"
 }
