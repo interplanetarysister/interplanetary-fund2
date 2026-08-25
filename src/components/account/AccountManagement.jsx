@@ -62,9 +62,19 @@ export default function AccountManagement({ user, onUserChanged }) {
         external_donor_count,
         last_synced,
       }));
+      const exportSafeProfile = (({ id, email, full_name, display_name, avatar_url, created_date, updated_date, comm_prefs }) => ({
+        id,
+        email,
+        full_name,
+        display_name,
+        avatar_url,
+        created_date,
+        updated_date,
+        comm_prefs,
+      }))(me);
       const payload = {
         exported_at: new Date().toISOString(),
-        profile: me,
+        profile: exportSafeProfile,
         campaigns,
         followed_campaigns: follows,
         notifications,
