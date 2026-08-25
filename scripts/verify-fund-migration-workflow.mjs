@@ -7,6 +7,8 @@ const campaign = fs.readFileSync('base44/entities/Campaign.jsonc', 'utf8');
 
 const required = [
   [ui, 'base44.functions.invoke("createFundMigration"', 'UI must use the server migration workflow'],
+  [ui, 'request_id: migration.requestId', 'UI must persist and reuse a stable request identity across retries'],
+  [ui, 'const emptyEntry = () => ({ requestId:', 'new migration rows must receive one stable request identity'],
   [ui, 'payout_destination: payoutDest.trim()', 'UI must pass the entered payout destination to the server'],
   [workflow, "user.role !== 'admin'", 'migration workflow must be admin-only'],
   [workflow, 'active_migration_request_id', 'campaign migration claim must be server-side'],
@@ -17,31 +19,20 @@ const required = [
   [campaign, 'active_migration_request_id', 'campaign schema must retain the migration claim'],
 ];
 
-for (const [text, needle, message] of required) {
-  if (!text.includes(needle)) throw new Error(`FAIL: ${message}`);
-}
+for (const [text, needle, message] of required) if (!text.includes(needle)) throw new Error(`FAIL: ${message}`);
 
-const forbiddenUi = [
+for (const needle of [
   'base44.entities.Withdrawal.create',
   'destination: "$unrewound"',
   'destination: "interplanetarysister@gmail.com"',
   'destination: "bc1qfgwz5fasnkml0f2z7ynvw5lk6v77ez66fql3pz"',
-];
-for (const needle of forbiddenUi) {
-  if (ui.includes(needle)) throw new Error(`FAIL: legacy/hardcoded migration path remains: ${needle}`);
-}
+]) if (ui.includes(needle)) throw new Error(`FAIL: legacy/hardcoded migration path remains: ${needle}`);
 
-if (!/const ALLOWED_PAYOUT_METHODS = new Set\(\['paypal'\]\)/.test(workflow)) {
-  throw new Error('FAIL: migration payout allowlist is not PayPal-only.');
-}
-if (!/if \(user\.role !== 'admin'\)/.test(workflow)) {
-  throw new Error('FAIL: admin authorization boundary missing.');
-}
-if (!/active_migration_request_id: \{\$exists: false\}/.test(workflow)) {
-  throw new Error('FAIL: conditional campaign migration claim missing.');
-}
-if (!/Withdrawal\.create\(\{[\s\S]*migration_request_id: requestId/.test(workflow)) {
-  throw new Error('FAIL: withdrawal does not persist the stable migration identity.');
-}
+if (!/const ALLOWED_PAYOUT_METHODS = new Set\(\['paypal'\]\)/.test(workflow)) throw new Error('FAIL: migration payout allowlist is not PayPal-only.');
+if (!/if \(user\.role !== 'admin'\)/.test(workflow)) throw new Error('FAIL: admin authorization boundary missing.');
+if (!/active_migration_request_id: \{ \$in: \['', null\] \}/.test(workflow)) throw new Error('FAIL: campaign migration claim must only be acquired from an unclaimed campaign.');
+if (!/Withdrawal\.filter\(\{ migration_request_id: requestId \}\)/.test(workflow)) throw new Error('FAIL: stable request reconciliation must occur before creating a migration withdrawal.');
+if (!/Withdrawal\.create\(\{[\s\S]*migration_request_id: requestId/.test(workflow)) throw new Error('FAIL: withdrawal does not persist the stable migration identity.');
+if (!/active_migration_request_id: requestId/.test(workflow)) throw new Error('FAIL: withdrawal failure must release only its own migration claim.');
 
-console.log('PASS: Fund Migration uses an admin-only authoritative server workflow, stable campaign claim, server-side financial validation, persisted migration identity, and no hardcoded payout destination/direct client Withdrawal.create.');
+console.log('PASS: Fund Migration uses an admin-only authoritative server workflow, stable single-winner campaign claim, retry identity, server-side financial validation, persisted migration identity, and no hardcoded payout destination/direct client Withdrawal.create.');
