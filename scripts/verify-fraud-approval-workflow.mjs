@@ -44,11 +44,9 @@ assert.match(withdrawal, /PayPal accepted the payout but local finalization is p
 assert.match(withdrawal, /w\.review_action\s*===\s*["']deny["']/,
   "Approval must refuse a withdrawal already claimed by the denial workflow");
 assert.match(withdrawal, /clearMigrationClaim\(sr, withdrawal\)/,
-  "Migration withdrawals must clear their campaign claim after payout terminal success/failure");
+  "Migration withdrawals must clear their campaign claim after terminal payout processing");
 assert.match(withdrawal, /active_migration_request_id:\s*withdrawal\.migration_request_id/,
   "Migration claim release must be conditionally bound to the original request identity");
-assert.match(withdrawal, /active_migration_request_id:\s*request_id|active_migration_request_id:\s*withdrawal\.migration_request_id/,
-  "Migration claim reconciliation must use the stable migration request identity");
 
 assert.match(paypal, /sender_batch_id:\s*senderBatchId/,
   "PayPal payout identity must be deterministic rather than time-based");
