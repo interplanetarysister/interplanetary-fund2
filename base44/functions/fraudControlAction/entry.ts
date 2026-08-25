@@ -9,6 +9,14 @@ function requireReason(value) {
   return reason;
 }
 
+async function releaseReservedDonations(sr, withdrawalId, donationIds) {
+  if (!donationIds.length) return;
+  await sr.entities.Donation.updateMany(
+    { id: { $in: donationIds }, withdrawal_id: withdrawalId },
+    { $set: { withdrawal_id: '' } },
+  );
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -29,27 +37,55 @@ export default async function(req) {
 
       const withdrawal = await sr.entities.Withdrawal.get(withdrawalId);
       if (!withdrawal) return Response.json({ error: 'Withdrawal not found.' }, { status: 404 });
-      if (withdrawal.status !== 'under_review') {
+
+      // The first transition is the authoritative decision claim. Once the
+      // withdrawal is `processing` with review_action=deny, approval cannot
+      // concurrently claim it because requestWithdrawal only accepts a clean
+      // under_review state. If release or finalization fails, the same denial
+      // claim can be retried safely without reopening the withdrawal.
+      let denialClaimed = false;
+      if (withdrawal.status === 'under_review') {
+        const claim = await sr.entities.Withdrawal.updateMany(
+          { id: withdrawal.id, status: 'under_review' },
+          {
+            $set: {
+              status: 'processing',
+              review_action: 'deny',
+              reviewed_by_id: user.id,
+              reviewed_at: now,
+              review_note: `Denial in progress by admin ${user.id}: ${reason}`,
+            },
+          },
+        );
+        if (!claim.success || claim.updated !== 1) {
+          return Response.json({ error: 'This withdrawal is already being processed or has changed state. Reconcile its current status before retrying.' }, { status: 409 });
+        }
+        denialClaimed = true;
+      } else if (withdrawal.status === 'processing' && withdrawal.review_action === 'deny') {
+        denialClaimed = true;
+      } else if (withdrawal.status !== 'processing') {
         return Response.json({ error: 'Only held withdrawals can be denied.' }, { status: 400 });
+      } else {
+        return Response.json({ error: 'This payout is already being processed for approval. Reconcile its current status before retrying.' }, { status: 409 });
+      }
+
+      if (!denialClaimed) {
+        throw new Error('Withdrawal denial claim could not be established.');
       }
 
       const donationIds = Array.isArray(withdrawal.covered_donation_ids) ? withdrawal.covered_donation_ids : [];
-      if (donationIds.length > 0) {
-        await sr.entities.Donation.updateMany(
-          { id: { $in: donationIds }, withdrawal_id: withdrawal.id },
-          { $set: { withdrawal_id: '' } },
-        );
-      }
+      await releaseReservedDonations(sr, withdrawal.id, donationIds);
 
       const result = await sr.entities.Withdrawal.updateMany(
-        { id: withdrawal.id, status: 'under_review' },
+        { id: withdrawal.id, status: 'processing', review_action: 'deny' },
         {
           $set: {
             status: 'failed',
             review_note: `Denied by admin ${user.id}: ${reason}`,
             processed_at: now,
-            reviewed_by_id: user.id,
-            reviewed_at: now,
+          },
+          $unset: {
+            review_action: '',
           },
         },
       );
