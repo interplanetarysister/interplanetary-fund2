@@ -47,7 +47,7 @@ export default function Inbox() {
         })),
         ...donationLists.flat().map((d) => ({
           key: `d-${d.id}`, platform: "interplanetary", type: "donation", author: d.donor_name || "Anonymous",
-          content: `Gave $${(d.amount || 0).toLocaleString()}${d.message ? ` — \"${d.message}\"` : ""}`,
+          content: `Gave $${(d.amount || 0).toLocaleString()}${d.message ? ` — "${d.message}"` : ""}`,
           link: `/campaign/${d.campaign_id}`, campaign_id: d.campaign_id, campaign_title: d.campaign_title,
           status: "done", date: d.created_date,
         })),
@@ -86,7 +86,7 @@ export default function Inbox() {
       </h1>
       <p className="text-stone-500 mb-6">Every donation, comment, and alert from every connected platform — one communication center.</p>
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-5">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             <TabsTrigger value="open">Open</TabsTrigger>
@@ -95,27 +95,31 @@ export default function Inbox() {
           </TabsList>
         </Tabs>
         <Select value={platform} onValueChange={setPlatform}>
-          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Platform" /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All platforms</SelectItem>
-            {platforms.map((p) => <SelectItem key={p} value={p}>{platformName(p)}</SelectItem>)}
+            {platforms.map((p) => <SelectItem key={p} value={p}>{p === "interplanetary" ? "Interplanetary Fund" : platformName(p)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-          <SelectTrigger className="w-[190px]"><SelectValue placeholder="Campaign" /></SelectTrigger>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All campaigns</SelectItem>
-            {campaigns.map(([campaignId, title]) => <SelectItem key={campaignId} value={campaignId}>{title}</SelectItem>)}
+            {campaigns.map(([id, title]) => <SelectItem key={id} value={id}>{title}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search" className="w-full sm:w-[220px]" />
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search conversations…" className="flex-1 min-w-40" />
       </div>
 
-      <div className="space-y-3">
-        {visible.length === 0 ? (
-          <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center text-stone-500">Nothing here yet.</div>
-        ) : visible.map((item) => <InboxItemCard key={item.key} item={item} />)}
-      </div>
+      {visible.length === 0 ? (
+        <p className="text-sm text-stone-400 text-center py-16">Nothing here — donations, comments, and alerts from your connected platforms will appear in this inbox.</p>
+      ) : (
+        <div className="space-y-3">
+          {visible.map((i) => (
+            <InboxItemCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} />
+          ))}
+        </div>
+      )}
     </PullToRefresh>
   );
 }
