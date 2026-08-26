@@ -1,0 +1,21 @@
+name: Service Health Safe Errors
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/platform/ServiceHealthPanel.jsx'
+      - 'scripts/verify-service-health-safe-errors.mjs'
+      - '.github/workflows/service-health-safe-errors.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/verify-service-health-safe-errors.mjs
+      - run: npm run build
