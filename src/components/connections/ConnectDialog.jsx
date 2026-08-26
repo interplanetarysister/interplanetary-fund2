@@ -67,7 +67,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       onSaved(saved || { ...existing, ...data });
       onOpenChange(false);
     } catch (e) {
-      setError(e.message || "Couldn't save this connection. Please try again.");
+      console.error("ConnectDialog connection save failed:", e);
+      setError("Couldn't save this connection. Please try again. If the problem continues, contact support.");
     } finally {
       setSaving(false);
     }
