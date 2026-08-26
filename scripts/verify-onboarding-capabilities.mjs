@@ -20,17 +20,20 @@ for (const id of expectedComingSoon) {
   assert.equal(capabilityEntry(id), "coming_soon", `${id} must remain explicitly unsupported/not-yet-available`);
 }
 
-assert.match(connectStep, /base44\.entities\.PlatformConnection\.filter\(\{ status: "connected" \}\)/);
+assert.match(connectStep, /const me = await base44\.auth\.me\(\);/);
+assert.match(connectStep, /base44\.entities\.PlatformConnection\.filter\(\{\s*created_by_id: me\.id,\s*status: "connected"\s*\}\)/s);
+assert.doesNotMatch(connectStep, /PlatformConnection\.filter\(\{ status: "connected" \}\)/);
 assert.match(connectStep, /CONNECTION_ID_BY_PLATFORM/);
 assert.match(connectStep, /facebook_pages/);
 assert.match(connectStep, /instagram/);
 assert.match(connectStep, /tiktok/);
 assert.match(connectStep, /linkedin/);
+assert.match(connectStep, /stripe/);
+assert.match(connectStep, /paypal/);
 assert.match(connectStep, /const effectiveStatus = connectedIds\.has\(item\.id\) \? "connected" : item\.status/);
 assert.match(connectStep, /disabled=\{disabled\}/);
 assert.match(connectStep, /aria-pressed=\{isSelected\}/);
 assert.match(connectStep, /status: "setup_required"/);
 assert.doesNotMatch(connectStep, /gofundme:\s*"gofundme"/);
-assert.doesNotMatch(connectStep, /stripe:\s*"stripe"/);
 
 console.log("onboarding capability source-of-truth contract passed");
