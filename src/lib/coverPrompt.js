@@ -39,6 +39,13 @@ function cleanContext(value, fallback) {
   return (text || fallback).slice(0, 900);
 }
 
+function escapePromptTagContent(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function normalizeCategory(value) {
   const candidate = typeof value === "string"
     ? value.trim().toLowerCase().replace(/\s+/g, "_")
@@ -57,9 +64,9 @@ export function buildCoverPrompt({ title, category, story = "", regenCount = 0 }
   const variation = Math.abs(Number(regenCount) || 0);
   const style = STYLES[variation % STYLES.length];
   const signature = SIGNATURE_STYLE[variation % SIGNATURE_STYLE.length];
-  const safeTitle = cleanContext(title, "fundraising campaign");
+  const safeTitle = escapePromptTagContent(cleanContext(title, "fundraising campaign"));
   const safeCategory = normalizeCategory(category);
-  const safeStory = cleanContext(story, "the campaign's stated mission and the people it is intended to help");
+  const safeStory = escapePromptTagContent(cleanContext(story, "the campaign's stated mission and the people it is intended to help"));
   const scene = SCENES[safeCategory];
 
   return `Create a campaign cover image for Interplanetary Fund.
