@@ -5,6 +5,7 @@ const view = fs.readFileSync('base44/functions/getCampaignDonationView/entry.ts'
 const analytics = fs.readFileSync('src/pages/Analytics.jsx', 'utf8');
 const campaignDetail = fs.readFileSync('src/pages/CampaignDetail.jsx', 'utf8');
 const inbox = fs.readFileSync('src/pages/Inbox.jsx', 'utf8');
+const deletion = fs.readFileSync('base44/functions/deleteAccount/entry.ts', 'utf8');
 
 const required = [
   ['Donation read is no longer unrestricted', /"read"\s*:\s*\{\s*"\$or"/s],
@@ -13,15 +14,18 @@ const required = [
   ['Donation delete is disabled', /"delete"\s*:\s*false/],
   ['Authorized view uses service role for campaign query', /base44\.asServiceRole\.entities\.Donation\.filter/],
   ['Authorized view verifies campaign ownership', /campaign\.created_by_id\s*===\s*user\.id/],
-  ['Public projection excludes private financial fields', /const publicFields = \['id', 'campaign_id', 'amount', 'donor_name', 'message', 'created_date'\]/],
-  ['Owner projection is explicitly bounded', /const ownerFields = \[\.\.\.publicFields, 'is_recurring', 'recurring_status', 'payment_method', 'is_institutional', 'cleared', 'withdrawal_id'\]/],
+  ['Public projection is explicitly minimized', /const publicFields = \['id', 'campaign_id', 'amount', 'created_date'\]/],
+  ['Public projection excludes donor identity', !/const publicFields\s*=\s*[^;]*(?:donor_name|message)/s],
+  ['Owner projection explicitly contains donor-sensitive fields', /const ownerFields = \[\s*\.\.\.publicFields,\s*'donor_name',\s*'message'/s],
   ['Analytics uses authorized view', /functions\.invoke\("getCampaignDonationView"/],
   ['Campaign detail uses authorized view', /functions\.invoke\("getCampaignDonationView"/],
   ['Inbox uses authorized view', /functions\.invoke\("getCampaignDonationView"/],
+  ['Account deletion no longer directly deletes Donation records', !/entities\.Donation\.delete(?:Many)?\s*\(/s],
 ];
 
 for (const [label, pattern] of required) {
-  if (!pattern.test(schema + '\n' + view + '\n' + analytics + '\n' + campaignDetail + '\n' + inbox)) {
+  const passed = pattern instanceof RegExp ? pattern.test(schema + '\n' + view + '\n' + analytics + '\n' + campaignDetail + '\n' + inbox + '\n' + deletion) : pattern;
+  if (!passed) {
     throw new Error(`Donation access boundary verification failed: ${label}`);
   }
 }
@@ -31,9 +35,10 @@ for (const [label, source] of [
   ['CampaignDetail', campaignDetail],
   ['Inbox', inbox],
 ]) {
-  if (/entities\.Donation\.filter/.test(source)) {
-    throw new Error(`${label} still performs a direct Donation query outside the authorized view`);
+  if (/entities\.Donation\.(filter|list|get|delete|deleteMany)\s*\(/.test(source)) {
+    throw new Error(`${label} still performs direct Donation access outside the authorized view`);
   }
 }
 
-console.log('Donation access boundary verification passed.');
+console.log('Donation access boundary static privacy verification passed.');
+console.log('Development authorization matrix remains required: anonymous, unrelated user, donor-owner, campaign-owner, admin, and direct-delete attempt.');
