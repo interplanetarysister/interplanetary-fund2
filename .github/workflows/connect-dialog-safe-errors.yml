@@ -1,0 +1,21 @@
+name: ConnectDialog Safe Errors
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/connections/ConnectDialog.jsx'
+      - 'scripts/verify-connect-dialog-safe-errors.mjs'
+      - '.github/workflows/connect-dialog-safe-errors.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - run: node scripts/verify-connect-dialog-safe-errors.mjs
+      - run: npm run build
