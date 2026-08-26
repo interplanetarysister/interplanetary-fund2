@@ -19,7 +19,8 @@ export default function EditAIInstructionsDialog({ campaign, onSaved }) {
       onSaved?.();
       setOpen(false);
     } catch (e) {
-      toast({ title: "Couldn't save AI profile", description: e.message, variant: "destructive" });
+      console.error("EditAIInstructionsDialog AI profile save failed:", e);
+      toast({ title: "Couldn't save AI profile", description: "We couldn't save the AI profile. Please try again. If the problem continues, contact support.", variant: "destructive" });
     }
     setSaving(false);
   };
