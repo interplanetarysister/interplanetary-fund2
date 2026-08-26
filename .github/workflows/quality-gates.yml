@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Connection dialog safe-error contract
+        run: npm run verify:connect-dialog-safe-errors
+
       - name: Production build
         run: npm run build
 
