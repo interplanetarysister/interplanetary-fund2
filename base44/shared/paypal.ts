@@ -101,7 +101,7 @@ export async function createOrder({ amount, description, metadata }) {
 
 export async function captureOrder(orderId) {
   const token = await getAccessToken();
-  const res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}/capture`, {
+  const res = await fetch(`${apiBase()}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -112,11 +112,13 @@ export async function captureOrder(orderId) {
   if (!res.ok) {
     throw new Error(data?.message || `PayPal capture failed (${res.status})`);
   }
-  const capture = data.purchase_units?.[0]?.payments?.captures?.[0];
+  const purchaseUnit = data.purchase_units?.[0];
+  const capture = purchaseUnit?.payments?.captures?.[0];
   const given = data.payer?.name?.given_name;
   const sur = data.payer?.name?.surname;
   return {
     status: data.status,
+    campaign_id: purchaseUnit?.custom_id || null,
     amount: capture ? parseFloat(capture.amount?.value || "0") : 0,
     payer_name: given ? `${given} ${sur || ""}`.trim() : "",
   };
