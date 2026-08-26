@@ -14,6 +14,8 @@ const CONNECTION_ID_BY_PLATFORM = {
   instagram: "instagram",
   tiktok: "tiktok",
   linkedin: "linkedin",
+  stripe: "stripe",
+  paypal: "paypal",
 };
 
 export default function ConnectStep({ data, onChange }) {
