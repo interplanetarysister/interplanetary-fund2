@@ -1,10 +1,28 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const publicFields = ['id', 'campaign_id', 'amount', 'donor_name', 'message', 'created_date'];
-const ownerFields = [...publicFields, 'is_recurring', 'recurring_status', 'payment_method', 'is_institutional', 'cleared', 'withdrawal_id'];
+// Privacy contract: anonymous campaign views receive only fields intentionally
+// suitable for public fundraising display. Donor identity, free-form donor
+// messages, payment metadata, recurring state, clearing state, and withdrawal
+// linkage are private to the campaign owner/admin projection below.
+const publicFields = ['id', 'campaign_id', 'amount', 'created_date'];
+const ownerFields = [
+  ...publicFields,
+  'donor_name',
+  'message',
+  'is_recurring',
+  'recurring_status',
+  'payment_method',
+  'is_institutional',
+  'cleared',
+  'withdrawal_id',
+];
 
 function projectDonation(donation, fields) {
-  return Object.fromEntries(fields.filter((field) => donation[field] !== undefined).map((field) => [field, donation[field]]));
+  return Object.fromEntries(
+    fields
+      .filter((field) => donation[field] !== undefined)
+      .map((field) => [field, donation[field]]),
+  );
 }
 
 export default async function(req) {
