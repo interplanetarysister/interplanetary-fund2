@@ -54,6 +54,13 @@ assert.match(paypal, /export async function getPayoutBatch\(/,
   "PayPal helper must support deterministic payout-batch reconciliation");
 assert.match(paypal, /\/v1\/payments\/payouts\//,
   "PayPal helper must query the payout batch endpoint for recovery");
+assert.match(paypal, /const PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\s*=\s*new Set\(\["SUCCESS"\]\)/,
+  "PayPal reconciliation must use an explicit terminal-success allowlist");
+assert.match(paypal, /if\s*\(!PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\.has\(batchStatus\)\)\s*\{[\s\S]*return null;/,
+  "Non-success PayPal batch states must never authorize local paid state");
+for (const status of ["PENDING", "PROCESSING", "DENIED", "CANCELED", "UNKNOWN"]) {
+  assert.match(paypal, new RegExp(status), `PayPal reconciliation coverage must account for ${status}`);
+}
 
 assert.match(moderation, /user\.role\s*!==\s*["']admin["']/,
   "Moderation workflow must enforce server-side admin authorization");
@@ -101,4 +108,4 @@ assert.match(campaignSchema, /"moderated_by_id"/, "Campaign schema must persist 
 assert.match(campaignSchema, /"moderation_note"/, "Campaign schema must persist the moderation reason");
 assert.match(campaignSchema, /"active_migration_request_id"/, "Campaign schema must persist the migration claim boundary");
 
-console.log("Fraud approval, deterministic payout reconciliation, denial decision ownership, recoverable reservation release, migration claim reconciliation, schema preservation, and campaign-moderation workflow verification passed.");
+console.log("Fraud approval, deterministic payout reconciliation, terminal-success provider gating, denial decision ownership, recoverable reservation release, migration claim reconciliation, schema preservation, and campaign-moderation workflow verification passed.");
