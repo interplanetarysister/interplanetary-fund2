@@ -16,6 +16,8 @@ const services = [
   { name: "Platform Intelligence", check: () => base44.entities.ExecutiveReport.list("-created_date", 1) },
 ];
 
+const SAFE_SERVICE_ERROR = "Service health check failed.";
+
 export default function ServiceHealthPanel() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
@@ -29,7 +31,8 @@ export default function ServiceHealthPanel() {
           await s.check();
           return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
         } catch (e) {
-          return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: e.message };
+          console.error(`Service health check failed for ${s.name}:`, e);
+          return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: SAFE_SERVICE_ERROR };
         }
       })
     );
