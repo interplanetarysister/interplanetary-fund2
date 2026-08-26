@@ -4,6 +4,8 @@ import { secrets } from "base44:runtime";
 // single PayPal business account configured via PAYPAL_CLIENT_ID / SECRET.
 // Sandbox by default; set PAYPAL_MODE=live for real payouts.
 
+const PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES = new Set(["SUCCESS"]);
+
 function apiBase() {
   return secrets.get("PAYPAL_MODE") === "live"
     ? "https://api.paypal.com"
@@ -42,9 +44,19 @@ export async function getPayoutBatch(payoutBatchId) {
   if (!res.ok) {
     throw new Error(data?.message || `PayPal payout lookup failed (${res.status})`);
   }
+
+  const batchStatus = data.batch_header?.batch_status || "UNKNOWN";
+  // A payout batch existing is not proof that money was paid. Only the
+  // provider's explicit terminal-success state can authorize local paid state.
+  // Processing/denied/canceled/unknown outcomes remain held for reconciliation
+  // rather than being treated as a successful payout.
+  if (!PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES.has(batchStatus)) {
+    return null;
+  }
+
   return {
     payout_batch_id: data.batch_header?.payout_batch_id || payoutBatchId,
-    batch_status: data.batch_header?.batch_status || "UNKNOWN",
+    batch_status: batchStatus,
     items: Array.isArray(data.items) ? data.items : [],
   };
 }
