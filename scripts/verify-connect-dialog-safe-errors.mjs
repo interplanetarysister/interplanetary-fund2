@@ -11,4 +11,8 @@ assert.match(source, /PlatformConnection\.(update|create)/);
 assert.match(source, /campaign_id/);
 assert.match(source, /credentials/);
 
+const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e)');
+const safeMessageIndex = source.indexOf('setError("Couldn\'t save this connection. Please try again. If the problem continues, contact support.")');
+assert.ok(diagnosticIndex >= 0 && safeMessageIndex > diagnosticIndex, 'controlled diagnostics must be recorded before the safe client message');
+
 console.log("ConnectDialog safe-error contract passed");
