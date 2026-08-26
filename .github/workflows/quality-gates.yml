@@ -36,6 +36,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Edit AI profile safe-error contract
+        run: npm run verify:edit-ai-profile-safe-errors
+
       - name: Production build
         run: npm run build
 
