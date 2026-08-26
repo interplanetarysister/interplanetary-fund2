@@ -12,7 +12,7 @@ const readPolicy = schema.rls?.read;
 assert.ok(Array.isArray(readPolicy?.$or), 'Donation read must use an explicit OR authorization policy');
 assert.ok(readPolicy.$or.some((rule) => rule?.['data.donor_user_id'] === '{{user.id}}'), 'Donation read must permit donor self-access');
 assert.ok(readPolicy.$or.some((rule) => rule?.user_condition?.role === 'admin'), 'Donation read must permit admin access');
-assert.equal(schema.rls?.delete?.user_condition?.role, 'admin', 'Donation delete must remain admin-only');
+assert.equal(schema.rls?.delete, false, 'Donation entity deletion must be disabled; retention/anonymization uses an explicit server-side workflow');
 assert.equal(schema.rls?.create?.user_condition?.role, 'admin', 'Donation creation must remain service/admin-authorized');
 
 assert.match(view, /const publicFields\s*=\s*\['id',\s*'campaign_id',\s*'amount',\s*'created_date'\]/, 'Public donation projection must be minimized');
@@ -27,8 +27,8 @@ for (const [label, source] of [['Analytics', analytics], ['CampaignDetail', camp
 }
 
 assert.match(deletion, /base44\.asServiceRole/, 'Account deletion must use the server-side service-role boundary');
-assert.match(deletion, /admin\.entities\.Donation\.deleteMany\(/, 'Current account deletion path must use the service-role Donation API');
+assert.match(deletion, /admin\.entities\.Donation\.deleteMany\(/, 'The legacy deletion workflow must use the service-role Donation API when it performs retention cleanup');
 assert.doesNotMatch(deletion, /base44\.entities\.Donation\.delete(?:Many)?\s*\(/, 'Account deletion must not use a client-level Donation delete call');
 
 console.log('Donation access boundary static verification passed.');
-console.log('Approved retention/anonymization semantics and Development authorization testing remain separate publication gates.');
+console.log('Development authorization testing and approved retention/anonymization semantics remain separate publication gates.');
