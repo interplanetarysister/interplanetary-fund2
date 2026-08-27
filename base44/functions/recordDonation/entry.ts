@@ -7,6 +7,8 @@ const ALLOWED_PAYMENT_METHODS = new Set(['paypal', 'cashapp']);
 // Records a donation made through PayPal or Cash App. These flows complete on
 // an external site, so this endpoint must not expose provider/backend errors.
 // Provider verification/idempotency remains a separate financial-integrity gate.
+// Recurring gifts must use the authoritative recurring-donation workflow; this
+// endpoint only records one-time external confirmations.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -27,6 +29,9 @@ export default async function(req) {
     if (!ALLOWED_PAYMENT_METHODS.has(normalizedPaymentMethod)) {
       return Response.json({ error: 'Unsupported payment method.' }, { status: 400 });
     }
+    if (is_recurring === true) {
+      return Response.json({ error: 'Recurring donations must use the recurring donation workflow.' }, { status: 400 });
+    }
 
     const campaign = await sr.entities.Campaign.get(campaign_id);
     if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
@@ -37,8 +42,7 @@ export default async function(req) {
       amount: value,
       donor_name: donor_name || donor?.full_name || 'Anonymous',
       message: message || '',
-      is_recurring: !!is_recurring,
-      ...(is_recurring ? { recurring_status: 'active' } : {}),
+      is_recurring: false,
       donor_user_id: donor?.id,
       payment_method: normalizedPaymentMethod,
     });
