@@ -1,0 +1,36 @@
+name: Account Deletion Safety
+
+on:
+  pull_request:
+    paths:
+      - 'base44/functions/deleteAccount/**'
+      - 'base44/entities/AccountDeletionRequest.jsonc'
+      - 'base44/entities/User.jsonc'
+      - 'scripts/verify-account-deletion-safety.mjs'
+      - 'src/components/account/AccountManagement.jsx'
+      - 'package.json'
+      - '.github/workflows/account-deletion-safety.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'base44/functions/deleteAccount/**'
+      - 'base44/entities/AccountDeletionRequest.jsonc'
+      - 'base44/entities/User.jsonc'
+      - 'scripts/verify-account-deletion-safety.mjs'
+      - 'src/components/account/AccountManagement.jsx'
+      - 'package.json'
+      - '.github/workflows/account-deletion-safety.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run verify:account-deletion-safety
+      - run: npm run build
+      - run: npm run lint -- base44/functions/deleteAccount/entry.ts src/components/account/AccountManagement.jsx
