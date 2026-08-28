@@ -1,0 +1,42 @@
+name: Fraud Approval Workflow Verification
+
+on:
+  pull_request:
+    paths:
+      - "src/components/platform/FraudControlPanel.jsx"
+      - "base44/functions/requestWithdrawal/entry.ts"
+      - "base44/functions/fraudControlAction/entry.ts"
+      - "base44/entities/Withdrawal.jsonc"
+      - "base44/entities/Campaign.jsonc"
+      - "scripts/verify-fraud-approval-workflow.mjs"
+      - ".github/workflows/fraud-approval-workflow.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/components/platform/FraudControlPanel.jsx"
+      - "base44/functions/requestWithdrawal/entry.ts"
+      - "base44/functions/fraudControlAction/entry.ts"
+      - "base44/entities/Withdrawal.jsonc"
+      - "base44/entities/Campaign.jsonc"
+      - "scripts/verify-fraud-approval-workflow.mjs"
+      - ".github/workflows/fraud-approval-workflow.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fraud-approval-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - run: node scripts/verify-fraud-approval-workflow.mjs
