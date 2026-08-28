@@ -28,7 +28,7 @@ assert.ok(statusSetMatch);
 const terminalStatuses = [...statusSetMatch[1].matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
 assert.deepEqual(terminalStatuses, ["SUCCESS"]);
 for (const status of ["PENDING", "PROCESSING", "DENIED", "CANCELED", "UNKNOWN"]) assert.ok(!terminalStatuses.includes(status));
-assert.match(paypal, /if\s*\(!PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\.has\(batchStatus\)\)\s*\{[\s\S]*return null;/);
+assert.match(paypal, /if\s*\(!PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\.has\(batchStatus\)\)\s*return null;/);
 assert.match(moderation, /user\.role\s*!==\s*["']admin["']/);
 assert.match(moderation, /action === ["']denyWithdrawal["']/);
 assert.match(moderation, /status:\s*["']processing["']/);
