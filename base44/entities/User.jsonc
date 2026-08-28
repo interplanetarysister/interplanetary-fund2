@@ -54,10 +54,6 @@
     "account_deletion_request_id": {
       "type": "string",
       "description": "Authoritative AccountDeletionRequest identity owned by the active deletion claim."
-    },
-    "account_deletion_claim_token": {
-      "type": "string",
-      "description": "Opaque token used to release or reconcile the active deletion claim."
     }
   },
   "required": ["role"],
