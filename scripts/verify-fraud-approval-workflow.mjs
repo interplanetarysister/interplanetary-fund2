@@ -82,7 +82,7 @@ assert.match(moderation, /Donation\.filter\(/,
   "Withdrawal denial must re-read reservation state after release for recoverable reconciliation");
 assert.match(moderation, /reconciliation\.complete/,
   "Withdrawal denial must verify donation reconciliation before reporting success");
-assert.match(moderation, /failed[\s\S]*review_action=deny|review_action=deny[\s\S]*failed/,
+assert.match(moderation, /failed[\s\S]*review_action\s*[:=]\s*["']deny["']|review_action\s*[:=]\s*["']deny["'][\s\S]*failed/,
   "Withdrawal denial recovery must remain explicitly owned by the denial decision");
 assert.match(moderation, /Retry the denial action/,
   "Withdrawal denial must expose a safe recoverable retry path after partial failure");
