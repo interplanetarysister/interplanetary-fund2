@@ -35,6 +35,10 @@
     "stripe_session_id": {
       "type": "string"
     },
+    "paypal_order_id": {
+      "type": "string",
+      "description": "Authoritative PayPal checkout order identifier for PayPal/Google Pay donations. Used for durable donation idempotency and reconciliation."
+    },
     "payment_method": {
       "type": "string",
       "enum": [

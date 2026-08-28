@@ -74,7 +74,7 @@
     },
     "ai_profile": {
       "type": "object",
-      "description": "The campaign's permanent AI profile \u2014 answers from the AI Instructions step, used by every AI feature to represent and promote the campaign consistently and truthfully.",
+      "description": "The campaign's permanent AI profile — answers from the AI Instructions step, used by every AI feature to represent and promote the campaign consistently and truthfully.",
       "properties": {
         "primary_goal": {
           "type": "string"
@@ -151,6 +151,20 @@
       "type": "boolean",
       "default": false,
       "description": "When true, the AI Outreach Agent holds automated work for this campaign until resumed."
+    },
+    "paypal_capture_claim_order_id": {
+      "type": "string",
+      "description": "Order-scoped single-winner claim for PayPal/Google Pay capture processing. Held until local financial side effects are reconciled."
+    },
+    "paypal_capture_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp for the active PayPal capture claim; stale claims are reconciled before reuse."
+    },
+    "paypal_capture_total_applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the campaign total/counter update for the active PayPal order was atomically applied with its recovery marker."
     }
   },
   "required": [
