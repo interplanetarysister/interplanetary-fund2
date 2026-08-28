@@ -34,12 +34,10 @@ export default async function(req) {
     // than one intent, but only one can acquire the conditional User claim;
     // losing intents are immediately terminalized as duplicate_request.
     const requestId = `DEL_${user.id}_${crypto.randomUUID()}`;
-    const claimToken = crypto.randomUUID();
     const requestedAt = new Date().toISOString();
     const created = await sr.entities.AccountDeletionRequest.create({
       user_id: user.id,
       request_id: requestId,
-      claim_token: claimToken,
       status: 'requested',
       requested_at: requestedAt,
       attempt_count: 0,
@@ -50,7 +48,6 @@ export default async function(req) {
       {
         account_deletion_status: CLAIMED,
         account_deletion_request_id: requestId,
-        account_deletion_claim_token: claimToken,
       }
     );
 
