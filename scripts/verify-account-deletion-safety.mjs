@@ -11,12 +11,16 @@ const requirePattern = (pattern, message, source) => {
 };
 
 requirePattern(/AccountDeletionRequest\.filter\(\{ user_id: user\.id \}\)/, 'existing deletion requests must be scoped to authenticated user', entry);
+requirePattern(/AccountDeletionRequest\.create\(/, 'request must be durable', entry);
+requirePattern(/status: 'requested'/, 'new requests must start in requested state', entry);
+requirePattern(/const created = await sr\.entities\.AccountDeletionRequest\.create\(/, 'durable request must be created before the User claim', entry);
+requirePattern(/const created = await sr\.entities\.AccountDeletionRequest\.create\([\s\S]*?\n\n    const claimResult = await sr\.entities\.User\.updateMany\(/, 'durable request must precede conditional user claim', entry);
 requirePattern(/User\.updateMany\(/, 'deletion flow must use a conditional user claim', entry);
 requirePattern(/account_deletion_status: \{ \$ne: CLAIMED \}/, 'claim must be single-winner at the user boundary', entry);
 requirePattern(/request_id: requestId/, 'request must persist stable request identity', entry);
 requirePattern(/claim_token: claimToken/, 'request must persist claim token', entry);
-requirePattern(/AccountDeletionRequest\.create\(/, 'request must be durable', entry);
-requirePattern(/status: 'requested'/, 'new requests must start in requested state', entry);
+requirePattern(/existingRequestId && existingRequestId !== requestId/, 'losing concurrent request must reconcile against the winning request', entry);
+requirePattern(/status: 'failed', last_error_code: DUPLICATE_REQUEST/, 'losing request must become a terminal duplicate rather than remain active', entry);
 requirePattern(/Unable to start account deletion/, 'unexpected errors must use a stable client-safe message', entry);
 requirePattern(/console\.error\('deleteAccount request failed:', error\)/, 'diagnostics must remain server-side', entry);
 
