@@ -54,13 +54,17 @@ assert.match(paypal, /export async function getPayoutBatch\(/,
   "PayPal helper must support deterministic payout-batch reconciliation");
 assert.match(paypal, /\/v1\/payments\/payouts\//,
   "PayPal helper must query the payout batch endpoint for recovery");
-assert.match(paypal, /const PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\s*=\s*new Set\(\["SUCCESS"\]\)/,
-  "PayPal reconciliation must use an explicit terminal-success allowlist");
+const statusSetMatch = paypal.match(/const PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\s*=\s*new Set\(\[([^\]]*)\]\)/);
+assert.ok(statusSetMatch, "PayPal reconciliation must define a terminal-success status set");
+const terminalStatuses = [...statusSetMatch[1].matchAll(/["']([^"']+)["']/g)].map((match) => match[1]);
+assert.deepEqual(terminalStatuses, ["SUCCESS"],
+  "Only SUCCESS may authorize local paid state");
+const representativeNonSuccessStatuses = ["PENDING", "PROCESSING", "DENIED", "CANCELED", "UNKNOWN"];
+for (const status of representativeNonSuccessStatuses) {
+  assert.ok(!terminalStatuses.includes(status), `Non-success PayPal status ${status} must not authorize local paid state`);
+}
 assert.match(paypal, /if\s*\(!PAYPAL_TERMINAL_SUCCESS_BATCH_STATUSES\.has\(batchStatus\)\)\s*\{[\s\S]*return null;/,
   "Non-success PayPal batch states must never authorize local paid state");
-for (const status of ["PENDING", "PROCESSING", "DENIED", "CANCELED", "UNKNOWN"]) {
-  assert.match(paypal, new RegExp(status), `PayPal reconciliation coverage must account for ${status}`);
-}
 
 assert.match(moderation, /user\.role\s*!==\s*["']admin["']/,
   "Moderation workflow must enforce server-side admin authorization");
