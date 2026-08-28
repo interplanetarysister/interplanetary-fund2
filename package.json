@@ -11,6 +11,7 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
+    "verify:record-donation-errors": "node scripts/verify-record-donation-error-contract.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

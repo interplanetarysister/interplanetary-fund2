@@ -1,8 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-// Records a donation made through PayPal or Cash App. Those flows complete on
-// an external site, so the supporter confirms the gift here and the ledger,
-// campaign totals, and the creator's notification are all updated together.
+const SAFE_ERROR = 'Unable to record the donation. Please try again or contact support.';
+const MAX_DONATION_AMOUNT = 1_000_000;
+const ALLOWED_PAYMENT_METHODS = new Set(['paypal', 'cashapp']);
+
+// Records a donation made through PayPal or Cash App. These flows complete on
+// an external site, so this endpoint must not expose provider/backend errors.
+// Provider verification/idempotency remains a separate financial-integrity gate.
+// Recurring gifts must use the authoritative recurring-donation workflow; this
+// endpoint only records one-time external confirmations.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -12,13 +18,23 @@ export default async function(req) {
     try { donor = await base44.auth.me(); } catch (_) { /* supporters may be signed out */ }
 
     const { campaign_id, amount, donor_name, message, is_recurring, payment_method } = await req.json();
-    const value = parseFloat(amount);
-    if (!campaign_id || !value || value <= 0) {
-      return Response.json({ error: 'A campaign and a positive amount are required' }, { status: 400 });
+    const value = Number(amount);
+    const normalizedPaymentMethod = typeof payment_method === 'string'
+      ? payment_method.trim().toLowerCase()
+      : 'paypal';
+
+    if (!campaign_id || !Number.isFinite(value) || value <= 0 || value > MAX_DONATION_AMOUNT) {
+      return Response.json({ error: 'A campaign and a valid donation amount are required.' }, { status: 400 });
+    }
+    if (!ALLOWED_PAYMENT_METHODS.has(normalizedPaymentMethod)) {
+      return Response.json({ error: 'Unsupported payment method.' }, { status: 400 });
+    }
+    if (is_recurring === true) {
+      return Response.json({ error: 'Recurring donations must use the recurring donation workflow.' }, { status: 400 });
     }
 
     const campaign = await sr.entities.Campaign.get(campaign_id);
-    if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+    if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
 
     const donation = await sr.entities.Donation.create({
       campaign_id,
@@ -26,10 +42,9 @@ export default async function(req) {
       amount: value,
       donor_name: donor_name || donor?.full_name || 'Anonymous',
       message: message || '',
-      is_recurring: !!is_recurring,
-      ...(is_recurring ? { recurring_status: 'active' } : {}),
+      is_recurring: false,
       donor_user_id: donor?.id,
-      payment_method: payment_method || 'paypal',
+      payment_method: normalizedPaymentMethod,
     });
 
     await sr.entities.Campaign.update(campaign_id, {
@@ -49,7 +64,7 @@ export default async function(req) {
 
     return Response.json({ ok: true, donation_id: donation.id });
   } catch (error) {
-    console.error('recordDonation error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('recordDonation error:', error?.message || error);
+    return Response.json({ error: SAFE_ERROR }, { status: 500 });
   }
 }
