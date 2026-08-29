@@ -3,18 +3,18 @@ import TermsAcceptance from "@/components/TermsAcceptance";
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
-// Add page imports here
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import OAuthConsent from './pages/OAuthConsent';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Discover from './pages/Discover';
@@ -43,10 +43,44 @@ import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
 import FacebookGroups from './pages/FacebookGroups';
 
+const PUBLIC_INTEGRATION_PATHS = new Set(["/oauth/consent", "/mcp/consent"]);
+
+const PublicIntegrationRoutes = () => (
+  <Routes>
+    <Route path="/oauth/consent" element={<OAuthConsent />} />
+    <Route path="/mcp/consent" element={<OAuthConsent />} />
+  </Routes>
+);
+
+const RoutedApp = () => {
+  const { pathname } = useLocation();
+
+  if (PUBLIC_INTEGRATION_PATHS.has(pathname)) {
+    return <PublicIntegrationRoutes />;
+  }
+
+  return <AuthenticatedApp />;
+};
+
+const IntegrationAwareApp = () => {
+  const { pathname } = useLocation();
+
+  // Integration callbacks must reach OAuthConsent before the ordinary legal
+  // gate or authenticated-app redirect can block a signed-out handshake.
+  if (PUBLIC_INTEGRATION_PATHS.has(pathname)) {
+    return <RoutedApp />;
+  }
+
+  return (
+    <TermsAcceptance>
+      <RoutedApp />
+    </TermsAcceptance>
+  );
+};
+
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -55,34 +89,27 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
       navigateToLogin();
       return null;
     }
   }
 
-  // Render the main app
   return (
     <Routes>
-      {/* Add your page Route elements here */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
-      {/* Public campaign page — anyone arriving from a shared link can read the
-          story and donate without signing in. */}
       <Route element={<Layout />}>
         <Route path="/campaign/:id" element={<CampaignDetail />} />
       </Route>
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
-        {/* Full-screen onboarding experience, outside the Layout chrome */}
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
@@ -114,10 +141,7 @@ const AuthenticatedApp = () => {
   );
 };
 
-
 function App() {
-  // Sync the app theme with the device system color scheme so the Android
-  // WebView picks up dark mode automatically — on startup and on change.
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = (e) => document.documentElement.classList.toggle("dark", e.matches);
@@ -131,11 +155,9 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <ScrollToTop />
-          <TermsAcceptance>
-            <AuthenticatedApp />
-          </TermsAcceptance>
+          <IntegrationAwareApp />
+          <Toaster />
         </Router>
-        <Toaster />
       </QueryClientProvider>
     </AuthProvider>
   )
