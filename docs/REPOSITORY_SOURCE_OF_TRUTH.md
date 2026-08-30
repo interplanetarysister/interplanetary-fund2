@@ -1,50 +1,85 @@
 # Interplanetary Fund — Repository Source-of-Truth Guide
 
-**Effective:** 2026-08-23
+**Effective:** 2026-08-30
 
-This document tells application agents what belongs in this repository and where internal-agent/backend knowledge lives.
+This document tells application agents what belongs in this repository and where authoritative backend/frontend responsibilities currently live. It is an evidence document, not permission to infer deployment state.
 
-## Repository ownership
+## Current verified repository topology
 
-- **This repository (`interplanetarysister/interplanetary-fund2`)**: user-facing Base44 application, frontend, application entities/configuration, application-layer agents, onboarding, Mission Control, Agent Chat, and application-specific behavior.
-- **`interplanetarysister/InterplanetaryFund`**: authoritative Convex backend and internal-agent runtime, including persistent agent identity, permissions, memory, outcomes, orchestration, scheduled intelligence, treasury/payments backend, and backend protocol.
-- **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly assigned.
+The current `interplanetarysister/interplanetary-fund2` source is a **React + Vite** application using the Base44 SDK/Vite plugin. Its `package.json` contains React, React DOM, Vite, and `@base44/sdk` / `@base44/vite-plugin`; it does not establish a Next.js application.
 
-## Do not duplicate the internal agent knowledge base
+The current `interplanetarysister/interplanetary-fund-backend/README.md` identifies that repository as the **authoritative backend and operations system**, including Convex functions, canonical business state, admin/agent runtime, security, treasury, payments, scheduled jobs, and operational integrations.
 
-The internal agent knowledge base is maintained in `InterplanetaryFund/interplanetary-fund-agent/`.
+The current `interplanetarysister/InterplanetaryFund/README.md` identifies that repository as the **authoritative user-facing React/Vite frontend**. Because that creates an application-repository overlap with this repository, agents must inspect the current migration/deployment contract before deciding which frontend source is publishable. Do not resolve the overlap by assumption.
 
-Application agents should reference the canonical material there when they need internal-agent context rather than copying it into this repository. The durable project decision archive is:
-`InterplanetaryFund/docs/PROJECT_CONTEXT_ARCHIVE.md`
+`interplanetarysister/interplanetary-fund` is identified by both current repository READMEs as migration/reference material and must not become a second production backend without an explicit current decision.
 
-The internal-agent reference index is:
-`InterplanetaryFund/docs/REFERENCE_MATERIAL_INDEX.md`
+## Ownership rules
 
-## Agent runtime boundary
+- **`interplanetarysister/interplanetary-fund2`**: the React/Vite application currently visible here, including its existing Base44-backed application layer, user-facing screens, application entities/configuration, and application-specific workflows.
+- **`interplanetarysister/interplanetary-fund-backend`**: authoritative backend/operations according to its current repository contract. This includes canonical backend state, Convex functions, admin/agents, security, treasury, payments, scheduled jobs, and operations.
+- **`interplanetarysister/InterplanetaryFund`**: authoritative frontend according to its current repository contract. Any work that affects the publishable frontend must reconcile this repository against that source rather than silently maintaining competing frontend products.
+- **`interplanetarysister/interplanetary-fund`**: migration/reference only until every unique capability is reconciled.
 
-Convex is authoritative for persistent agent identity, working/long-term memory, outcomes, permissions, and backend behavior. This application may display/mirror selected state and bridge user interactions to Convex, but it must not establish a competing production agent-memory or backend source of truth.
+A PR must target the repository that actually owns the change. Cross-repository behavior must use an explicit contract and must be verified at both ends.
 
-See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44↔Convex bridge and identity mapping.
+## Mandatory no-guessing rule
 
-## Role-specific workflow rule
+**Never guess.** Before changing behavior, establish:
 
-The Convex Builder Agent workflow is **not a universal application-agent workflow**. Agents working on Convex/backend/agent-runtime implementation, review, verification, or publication must use:
-`InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md`
+1. the exact current repository/branch/head;
+2. the owning repository and current source-of-truth contract;
+3. the actual caller and implementation;
+4. the relevant schema/configuration;
+5. the deployment/runtime state when the change affects production;
+6. existing review/audit findings and their exact-head applicability.
 
-Other agents follow their own role-specific instructions.
+If any required fact is unavailable, record it as **UNKNOWN / REQUIRES VERIFICATION** and stop that part of the change until evidence is obtained. Never infer a deployment, provider configuration, schema, credential, runtime capability, agent behavior, or review result from naming, stale documentation, or chat history.
 
-## Cross-repository changes
+## Evidence precedence
 
-Never merge a change into a repository that does not own it. Cross-repository behavior must be implemented through an explicit interface, API, function, or bridge and verified at that boundary.
+Use evidence in this order:
+
+1. Controlled runtime/deployment state for the environment being changed.
+2. Current source in the repository that owns the capability.
+3. Current schema/configuration and executable tests/workflows.
+4. Current issue/PR acceptance criteria and review findings.
+5. Historical/reconstructed documentation.
+6. Chat recollection.
+
+Historical feature material is evidence/specification until reconciled with current source/runtime.
+
+## Backend boundary
+
+The authoritative backend must retain one canonical live identity for business-critical state assigned to it: users, campaigns, donations, permissions, agent state, treasury, payments, administrative state, and scheduled backend behavior. Application repositories may consume or bridge that state but must not silently create a competing production database or authoritative workflow.
+
+## Base44 boundary
+
+This repository currently contains Base44 SDK/plugin integration. That fact alone does **not** prove that Base44 is the production system of record, deployment target, or backend authority. Agents must inspect the current deployment and cross-repository contract before making that claim.
+
+## Convex boundary
+
+Convex backend behavior belongs to the authoritative backend repository identified above. When an application change depends on Convex:
+
+- inspect the backend source and deployed environment before changing production behavior;
+- do not delete or overwrite deployed functionality merely because it is absent from this repository;
+- verify the actual function/schema/cron topology before modifying callers;
+- for concurrency defects, identify the shared write records and competing execution paths before changing retries;
+- validate concurrency, idempotency, claiming, duplicate prevention, and recovery in controlled Development before Production promotion.
+
+## Role-specific workflow
+
+The Convex Builder Agent workflow is not a universal application workflow. Agents must use the role-specific workflow appropriate to the repository and capability. When a task crosses the backend boundary, the authoritative backend's workflow requirements also apply.
 
 ## Historical material
 
-Historical feature reconciliations, recovered archives, audits, and legacy material are evidence/specification until verified against the current implementation. Do not recreate functionality solely because an old document mentions it.
+Historical audits, recovered features, stale PRs, and old implementation plans must never be copied into production merely because they exist. Reconcile them against the current source and runtime first.
 
 ## Continuity
 
-When a decision materially changes application/backend boundaries, agent roles, workflow, or source-of-truth rules:
-1. Update this document.
-2. Update the canonical backend/agent document when applicable.
-3. Update affected role-specific instructions/reference material.
-4. Record the decision in the durable project archive.
+When a decision materially changes repository ownership, frontend/backend boundaries, deployment architecture, agent roles, or source-of-truth rules:
+
+1. update this document;
+2. update affected role-specific instructions;
+3. update the authoritative repository documentation when applicable;
+4. record the decision in the durable project archive.
