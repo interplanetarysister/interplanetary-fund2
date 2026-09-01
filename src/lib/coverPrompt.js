@@ -26,8 +26,10 @@ const SCENES = {
   other: "a person at a meaningful turning point in their life",
 };
 
+const IF_STYLE = "afro-punk cyber-punk interstellar comic stylization — bold ink linework, neon cosmic accents, high-contrast futuristic paneling, graphic-novel illustration";
+
 export function buildCoverPrompt({ title, category, regenCount = 0 }) {
-  const style = STYLES[regenCount % STYLES.length];
+  const mood = STYLES[regenCount % STYLES.length];
   const scene = SCENES[category] || SCENES.other;
-  return `Photorealistic cover photo for a ${category} fundraising campaign titled "${title}". ${scene}. Shot with ${style}. Composition variation #${regenCount + 1}. No text, no watermark, no logos.`;
+  return `Cover artwork for a ${category} fundraising campaign titled "${title}". ${scene}. Rendered in the signature Interplanetary Fund visual style: ${IF_STYLE}. Mood: ${mood}. Composition variation #${regenCount + 1}. No text, no watermark, no logos.`;
 }

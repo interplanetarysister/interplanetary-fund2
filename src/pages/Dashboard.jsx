@@ -9,6 +9,8 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
+import CoachMarks from "@/components/coach/CoachMarks";
+import CoachTourButton from "@/components/coach/CoachTourButton";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
@@ -44,11 +46,14 @@ export default function Dashboard() {
           <p className="text-sm text-stone-500 mb-1">Every gift you receive, in one place</p>
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your Interplanetary Fund</h1>
         </div>
-        <Link to="/create">
-          <Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
-            <PlusCircle className="w-4 h-4 mr-2" /> New Campaign
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <CoachTourButton tourId="dashboard" />
+          <Link to="/create">
+            <Button data-coach="new-campaign" className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
+              <PlusCircle className="w-4 h-4 mr-2" /> New Campaign
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {needsOnboarding && (
@@ -67,7 +72,7 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <StatCard label="Total Raised" value={`$${totalRaised.toLocaleString()}`} icon={DollarSign} />
+        <div data-coach="stat-raised"><StatCard label="Total Raised" value={`$${totalRaised.toLocaleString()}`} icon={DollarSign} /></div>
         <StatCard label="Supporters" value={totalDonors.toLocaleString()} icon={Users} />
         <StatCard label="Active Campaigns" value={active} icon={Flame} />
       </div>
@@ -89,9 +94,10 @@ export default function Dashboard() {
         </div>
         <div>
           <FollowFeed />
-          <MissionControl campaigns={campaigns} />
+          <div data-coach="mission-control"><MissionControl campaigns={campaigns} /></div>
         </div>
       </div>
+      <CoachMarks tourId="dashboard" />
     </PullToRefresh>
   );
 }

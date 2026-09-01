@@ -9,6 +9,8 @@ import { Image } from "@/components/ui/image";
 import MediaUpload from "@/components/media/MediaUpload";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import AccountManagement from "@/components/account/AccountManagement";
+import CoachMarks from "@/components/coach/CoachMarks";
+import CoachTourButton from "@/components/coach/CoachTourButton";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -62,8 +64,9 @@ export default function Profile() {
         Profile
       </h1>
       <p className="text-stone-500 mb-8">Your account, AI configuration, and connected platforms.</p>
+      <div className="mb-6"><CoachTourButton tourId="profile" /></div>
 
-      <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-5">
+      <div data-coach="profile-photo" className="bg-white rounded-2xl border border-stone-200 p-5 mb-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Account</p>
         <div className="flex items-center gap-4">
           <Image src={photoUrl} alt="Profile" className="w-16 h-16 rounded-full object-cover shrink-0" />
@@ -83,7 +86,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-stone-200 p-5 mb-5">
+      <div data-coach="ai-config" className="bg-white rounded-2xl border border-stone-200 p-5 mb-5">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">
           <Sparkles className="w-3.5 h-3.5" /> AI Configuration
         </p>
@@ -101,7 +104,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-stone-200 p-5">
+      <div data-coach="connections" className="bg-white rounded-2xl border border-stone-200 p-5">
         <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">
           <Link2 className="w-3.5 h-3.5" /> Connected Platforms
         </p>
@@ -133,6 +136,7 @@ export default function Profile() {
           Sign out
         </Button>
       </div>
+      <CoachMarks tourId="profile" />
     </div>
   );
 }
