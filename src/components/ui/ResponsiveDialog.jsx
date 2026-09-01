@@ -1,4 +1,5 @@
 import React from "react";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +33,16 @@ export default function ResponsiveDialog({
   const isMobile = useIsMobile();
 
   const header = isMobile ? (
-    <DrawerHeader className="text-left">
-      <DrawerTitle className="font-display text-xl">{title}</DrawerTitle>
+    <DrawerHeader className="text-left relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange?.(false)}
+        aria-label="Close"
+        className="absolute right-3 top-3 w-9 h-9 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+      >
+        <X className="w-5 h-5" />
+      </button>
+      <DrawerTitle className="font-display text-xl pr-10">{title}</DrawerTitle>
       {description ? <DrawerDescription>{description}</DrawerDescription> : null}
     </DrawerHeader>
   ) : (
