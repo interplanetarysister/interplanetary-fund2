@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 // Opening pushes a history entry, so the Android system back button closes the
 // overlay instead of unloading the route. Closing replaces that entry, so back
 // never re-opens a dismissed overlay.
+/** @returns {[boolean, (next: boolean) => void]} */
 export default function useUrlDialog(param, value = "true") {
   const [searchParams, setSearchParams] = useSearchParams();
   const current = searchParams.get(param);

@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/** @type {React.ComponentType<any>} */
 const Card = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -10,6 +11,7 @@ const Card = React.forwardRef(({ className, ...props }, ref) => (
 ))
 Card.displayName = "Card"
 
+/** @type {React.ComponentType<any>} */
 const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -18,6 +20,7 @@ const CardHeader = React.forwardRef(({ className, ...props }, ref) => (
 ))
 CardHeader.displayName = "CardHeader"
 
+/** @type {React.ComponentType<any>} */
 const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -26,6 +29,7 @@ const CardTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 CardTitle.displayName = "CardTitle"
 
+/** @type {React.ComponentType<any>} */
 const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
@@ -34,11 +38,13 @@ const CardDescription = React.forwardRef(({ className, ...props }, ref) => (
 ))
 CardDescription.displayName = "CardDescription"
 
+/** @type {React.ComponentType<any>} */
 const CardContent = React.forwardRef(({ className, ...props }, ref) => (
   <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
+/** @type {React.ComponentType<any>} */
 const CardFooter = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}

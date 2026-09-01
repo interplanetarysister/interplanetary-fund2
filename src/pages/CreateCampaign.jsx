@@ -223,7 +223,7 @@ export default function CreateCampaign() {
               <h2 className="font-display text-2xl text-stone-900">{form.title}</h2>
               {form.summary && <p className="text-stone-600 mt-1">{form.summary}</p>}
             </div>
-            <p className="text-sm text-stone-500">Goal: <span className="font-semibold text-stone-900">${parseFloat(form.goal_amount || 0).toLocaleString()}</span>{form.end_date && ` · Ends ${form.end_date}`}</p>
+            <p className="text-sm text-stone-500">Goal: <span className="font-semibold text-stone-900">${parseFloat(String(form.goal_amount || 0)).toLocaleString()}</span>{form.end_date && ` · Ends ${form.end_date}`}</p>
             {form.story && <p className="text-sm text-stone-600 line-clamp-4 whitespace-pre-wrap">{form.story}</p>}
           </div>
         )}

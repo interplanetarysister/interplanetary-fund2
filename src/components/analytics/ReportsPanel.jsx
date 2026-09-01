@@ -73,7 +73,7 @@ Never invent data that isn't in the snapshot.`,
       report_type: type,
       period: "All-time to date",
       snapshot,
-      ...result,
+      ...(/** @type {object} */ (result)),
     });
     setReports((prev) => [report, ...(prev || [])]);
     setGenerating(false);

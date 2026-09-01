@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Lightweight haptic feedback via the Vibration API. No-ops on devices/browsers
 // without support, so callers can use it freely.
 export function haptic(pattern = 10) {

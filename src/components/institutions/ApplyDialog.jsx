@@ -40,7 +40,7 @@ Campaign story: ${(campaign?.story || "").slice(0, 1500)}
 Raised so far: $${campaign?.raised_amount || 0} of $${campaign?.goal_amount || 0} goal.
 Write in first person plural, specific and evidence-based. Return only the narrative text.`,
     });
-    setNarrative(text);
+    setNarrative(/** @type {string} */ (text));
     setDrafting(false);
   };
 

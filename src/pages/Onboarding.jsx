@@ -23,7 +23,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [current, setCurrent] = useState(0);
-  const [data, setData] = useState({ platforms: [], automation: {} });
+  const [data, setData] = useState({ platforms: [], automation: {}, full_name: '' });
   const [saving, setSaving] = useState(false);
 
   const isLast = current === STEPS.length - 1;

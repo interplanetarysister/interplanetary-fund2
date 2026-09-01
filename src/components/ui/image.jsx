@@ -72,6 +72,7 @@ function buildSrcSet(parsed, options) {
   ).join(", ")
 }
 
+/** @type {React.ComponentType<any>} */
 const ImageWrapper = React.forwardRef(({ aspectRatio, className, style, children }, ref) => (
   <span
     ref={ref}
@@ -83,6 +84,7 @@ const ImageWrapper = React.forwardRef(({ aspectRatio, className, style, children
 ))
 ImageWrapper.displayName = "ImageWrapper"
 
+/** @type {React.ComponentType<any>} */
 const ResponsiveImage = React.forwardRef(
   ({ parsed, fittingType, focalPoint, quality, className, style, aspectRatio, onLoad, ...props }, parentRef) => {
     const wrapperRef = React.useRef(null)
@@ -172,6 +174,7 @@ ResponsiveImage.displayName = "ResponsiveImage"
  * server-side, optionally anchored at a focal point. Other URLs render as a
  * plain <img>. Failed loads swap to a fallback image.
  */
+/** @type {React.ComponentType<any>} */
 const Image = React.forwardRef(
   (
     {

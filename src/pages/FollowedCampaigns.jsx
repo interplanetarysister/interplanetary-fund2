@@ -59,19 +59,19 @@ export default function FollowedCampaigns() {
       if (a.follow.pinned && !b.follow.pinned) return -1;
       if (!a.follow.pinned && b.follow.pinned) return 1;
       switch (sort) {
-        case "recently_updated": return new Date(b.campaign?.updated_date || 0) - new Date(a.campaign?.updated_date || 0);
+        case "recently_updated": return new Date(b.campaign?.updated_date || 0).getTime() - new Date(a.campaign?.updated_date || 0).getTime();
         case "ending_soon": {
           const ae = a.campaign?.end_date, be = b.campaign?.end_date;
           if (!ae && !be) return 0; if (!ae) return 1; if (!be) return -1;
-          return new Date(ae) - new Date(be);
+          return new Date(ae).getTime() - new Date(be).getTime();
         }
         case "closest_to_goal": {
           const ap = (a.campaign?.raised_amount || 0) / (a.campaign?.goal_amount || 1);
           const bp = (b.campaign?.raised_amount || 0) / (b.campaign?.goal_amount || 1);
           return bp - ap;
         }
-        case "recently_viewed": return new Date(b.follow.last_viewed || 0) - new Date(a.follow.last_viewed || 0);
-        default: return new Date(b.follow.created_date) - new Date(a.follow.created_date);
+        case "recently_viewed": return new Date(b.follow.last_viewed || 0).getTime() - new Date(a.follow.last_viewed || 0).getTime();
+        default: return new Date(b.follow.created_date).getTime() - new Date(a.follow.created_date).getTime();
       }
     });
     return rows;

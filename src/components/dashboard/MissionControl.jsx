@@ -47,7 +47,7 @@ export default function MissionControl({ campaigns }) {
         },
       },
     });
-    setInsights(res.recommendations || []);
+    setInsights((/** @type {any} */ (res)).recommendations || []);
     setLoading(false);
   };
 

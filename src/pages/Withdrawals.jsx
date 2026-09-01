@@ -55,7 +55,7 @@ export default function Withdrawals() {
     setCampaigns(enriched);
 
     const w = await base44.entities.Withdrawal.filter({ owner_user_id: me.id });
-    setHistory((w || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+    setHistory((w || []).sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()));
 
     if (me.role === "admin") {
       const rq = await base44.entities.Withdrawal.filter({ status: "under_review" });

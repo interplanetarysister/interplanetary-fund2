@@ -19,7 +19,7 @@ export default function AICoach({ campaign, updatesCount }) {
           properties: { tips: { type: "array", items: { type: "string" } } },
         },
       });
-      setTips(res.tips || []);
+      setTips((/** @type {any} */ (res)).tips || []);
     } catch (e) {
       setError("Couldn't generate tips right now. Please try again.");
     }

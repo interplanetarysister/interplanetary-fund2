@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from "react";
 import {
   Dialog,
@@ -23,9 +24,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 export default function ResponsiveDialog({
   open,
   onOpenChange,
-  trigger,
+  trigger = undefined,
   title,
-  description,
+  description = undefined,
   children,
   desktopClassName = "sm:max-w-md rounded-2xl",
 }) {

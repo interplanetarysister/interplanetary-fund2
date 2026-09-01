@@ -17,6 +17,7 @@ function useCarousel() {
   return context
 }
 
+/** @type {React.ComponentType<any>} */
 const Carousel = React.forwardRef((
   {
     orientation = "horizontal",
@@ -112,6 +113,7 @@ const Carousel = React.forwardRef((
 })
 Carousel.displayName = "Carousel"
 
+/** @type {React.ComponentType<any>} */
 const CarouselContent = React.forwardRef(({ className, ...props }, ref) => {
   const { carouselRef, orientation } = useCarousel()
 
@@ -130,6 +132,7 @@ const CarouselContent = React.forwardRef(({ className, ...props }, ref) => {
 })
 CarouselContent.displayName = "CarouselContent"
 
+/** @type {React.ComponentType<any>} */
 const CarouselItem = React.forwardRef(({ className, ...props }, ref) => {
   const { orientation } = useCarousel()
 
@@ -148,6 +151,7 @@ const CarouselItem = React.forwardRef(({ className, ...props }, ref) => {
 })
 CarouselItem.displayName = "CarouselItem"
 
+/** @type {React.ComponentType<any>} */
 const CarouselPrevious = React.forwardRef(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollPrev, canScrollPrev } = useCarousel()
 
@@ -169,6 +173,7 @@ const CarouselPrevious = React.forwardRef(({ className, variant = "outline", siz
 })
 CarouselPrevious.displayName = "CarouselPrevious"
 
+/** @type {React.ComponentType<any>} */
 const CarouselNext = React.forwardRef(({ className, variant = "outline", size = "icon", ...props }, ref) => {
   const { orientation, scrollNext, canScrollNext } = useCarousel()
 

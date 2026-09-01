@@ -61,7 +61,7 @@ Writing requirements:
           properties: { story: { type: "string" } },
         },
       });
-      const text = res.story || "";
+      const text = (/** @type {any} */ (res)).story || "";
       setDraft(text);
     } catch (e) {
       setError("Couldn't generate a story right now. Please try again.");

@@ -72,8 +72,8 @@ export default function ComposeMessage({ onSent }) {
         properties: { subject: { type: "string" }, content: { type: "string" } },
       },
     });
-    setSubject(res.subject || "");
-    setContent(res.content || "");
+    setSubject((/** @type {any} */ (res)).subject || "");
+    setContent((/** @type {any} */ (res)).content || "");
     setAiGenerated(true);
     setDrafting(false);
   };

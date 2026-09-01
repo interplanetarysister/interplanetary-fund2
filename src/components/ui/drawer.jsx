@@ -5,6 +5,7 @@ import { Drawer as DrawerPrimitive } from "vaul"
 
 import { cn } from "@/lib/utils"
 
+/** @type {React.ComponentType<any>} */
 const Drawer = ({
   shouldScaleBackground = true,
   ...props
@@ -19,6 +20,7 @@ const DrawerPortal = DrawerPrimitive.Portal
 
 const DrawerClose = DrawerPrimitive.Close
 
+/** @type {React.ComponentType<any>} */
 const DrawerOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
@@ -27,6 +29,7 @@ const DrawerOverlay = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
+/** @type {React.ComponentType<any>} */
 const DrawerContent = React.forwardRef(({ className, children, ...props }, ref) => (
   <DrawerPortal>
     <DrawerOverlay />
@@ -44,6 +47,7 @@ const DrawerContent = React.forwardRef(({ className, children, ...props }, ref) 
 ))
 DrawerContent.displayName = "DrawerContent"
 
+/** @type {React.ComponentType<any>} */
 const DrawerHeader = ({
   className,
   ...props
@@ -54,6 +58,7 @@ const DrawerHeader = ({
 )
 DrawerHeader.displayName = "DrawerHeader"
 
+/** @type {React.ComponentType<any>} */
 const DrawerFooter = ({
   className,
   ...props
@@ -62,6 +67,7 @@ const DrawerFooter = ({
 )
 DrawerFooter.displayName = "DrawerFooter"
 
+/** @type {React.ComponentType<any>} */
 const DrawerTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DrawerPrimitive.Title
     ref={ref}
@@ -70,6 +76,7 @@ const DrawerTitle = React.forwardRef(({ className, ...props }, ref) => (
 ))
 DrawerTitle.displayName = DrawerPrimitive.Title.displayName
 
+/** @type {React.ComponentType<any>} */
 const DrawerDescription = React.forwardRef(({ className, ...props }, ref) => (
   <DrawerPrimitive.Description
     ref={ref}
