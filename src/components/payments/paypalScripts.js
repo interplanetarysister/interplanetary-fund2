@@ -17,6 +17,31 @@ export function loadGooglePayScript() {
   return gpayPromise;
 }
 
+// Loads the PayPal JS SDK with the hosted-buttons component, for the
+// platform's PayPal Hosted Button (configured in the PayPal dashboard).
+// Separate from loadPayPalSdk because the hosted button is tied to its own
+// PayPal client-id; cached so repeated renders don't re-add the script.
+let ppHostedPromise = null;
+const PAYPAL_HOSTED_CLIENT_ID =
+  "BAACS0eGibmx5Rq9xWFqsgzyfLxl6xyCz41SfeO46Giq0E-Y7xqJyf3h2KnTChXWjRMbVnsrowVRDWqJMs";
+export function loadPayPalHostedButtons() {
+  if (ppHostedPromise) return ppHostedPromise;
+  ppHostedPromise = new Promise((resolve, reject) => {
+    if (window.paypal?.HostedButtons) return resolve();
+    const s = document.createElement("script");
+    s.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_HOSTED_CLIENT_ID}&components=hosted-buttons&enable-funding=venmo&currency=USD`;
+    s.crossOrigin = "anonymous";
+    s.async = true;
+    s.onload = () => {
+      if (window.paypal?.HostedButtons) resolve();
+      else { ppHostedPromise = null; reject(new Error("PayPal Hosted Buttons unavailable")); }
+    };
+    s.onerror = () => { ppHostedPromise = null; reject(new Error("Failed to load PayPal Hosted Buttons")); };
+    document.head.appendChild(s);
+  });
+  return ppHostedPromise;
+}
+
 let ppPromise = null;
 export function loadPayPalSdk(clientId) {
   if (ppPromise) return ppPromise;
