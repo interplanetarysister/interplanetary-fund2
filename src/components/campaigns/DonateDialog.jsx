@@ -154,7 +154,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {!recurring && (
             <div className="rounded-xl border border-stone-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p>
-              <PayPalDonateButton />
+              <PayPalDonateButton campaignTitle={campaign?.title} amount={amount} />
               <Button onClick={() => confirmDonation("paypal")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I completed my PayPal donation"}
               </Button>

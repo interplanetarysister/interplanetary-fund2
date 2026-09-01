@@ -69,7 +69,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
           <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
         ) : (
           <>
-            <div className="bg-muted text-muted-foreground border border-border rounded-2xl p-3 text-sm">{greeting}</div>
+            <div className="bg-muted text-foreground border border-border rounded-2xl p-3 text-sm">{greeting}</div>
             {messages.filter((m) => m.content).map((m, i) => (
               <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
                 <div className={

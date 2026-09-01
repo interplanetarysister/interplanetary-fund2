@@ -19,8 +19,8 @@ export default function Agents() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <h1 className="font-display text-3xl text-stone-900 mb-1">Your AI team</h1>
-      <p className="text-stone-500 mb-6">Always-on agents that work alongside you. Pick one to start a conversation.</p>
+      <h1 className="font-display text-3xl text-foreground mb-1">Your AI team</h1>
+      <p className="text-muted-foreground mb-6">Always-on agents that work alongside you. Pick one to start a conversation.</p>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-hide">
         {AGENTS.map((a) => {
@@ -33,7 +33,7 @@ export default function Agents() {
               className={`shrink-0 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 on
                   ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-md shadow-blue-500/20"
-                  : "bg-white border border-stone-200 text-stone-600 hover:border-primary/40 hover:text-primary"
+                  : "bg-card border border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
               }`}
             >
               <Icon className="w-4 h-4" /> {a.label}
@@ -42,7 +42,7 @@ export default function Agents() {
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
+      <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
         <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />
       </div>
     </div>
