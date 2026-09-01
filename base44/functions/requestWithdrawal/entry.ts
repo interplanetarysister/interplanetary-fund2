@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPayout } from '../../shared/paypal.ts';
+import { logAudit } from '../../shared/auditLog.ts';
 
-// Withdrawal engine. Enforces the 8% platform fee, the 7-day clearing hold,
-// a once-daily limit, campaign ownership, and fraud review for large payouts.
-// All payouts go out of the platform's PayPal business account.
-const PLATFORM_FEE_RATE = 0.08;
+// Withdrawal engine. Enforces the approved 3% platform fee, the 7-day clearing
+// hold, a once-daily limit, campaign ownership, and fraud review for large
+// payouts. All payouts go out of the platform's PayPal business account.
+const PLATFORM_FEE_RATE = 0.03;
 const CLEARING_DAYS = 7;
 const REVIEW_THRESHOLD = 1000; // net amounts above this require admin approval
 const SAFE_PAYOUT_ERROR = 'Unable to complete the payout. Please try again or contact support.';
@@ -52,10 +53,12 @@ export default async function(req) {
           payout_batch_id: payout.payout_batch_id,
           processed_at: new Date().toISOString(),
         });
+        await logAudit(base44, { action: 'withdrawal_approved', target_type: 'withdrawal', target_id: w.id, detail: `Approved net $${w.net_amount} paid`, status: 'success', metadata: { actor: user.id } });
         return Response.json({ ok: true, status: "paid", payout_batch_id: payout.payout_batch_id });
       } catch (err) {
         console.error("requestWithdrawal approve payout error:", err?.message || err);
         await sr.entities.Withdrawal.update(w.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
+        await logAudit(base44, { action: 'withdrawal_approve_failed', target_type: 'withdrawal', target_id: w.id, detail: 'Reviewed payout failed', status: 'failure', metadata: { actor: user.id } });
         return Response.json({ error: SAFE_PAYOUT_ERROR }, { status: 500 });
       }
     }
@@ -109,6 +112,7 @@ export default async function(req) {
       covered_donation_ids: available.map((d) => d.id),
       status: "processing",
     });
+    await logAudit(base44, { action: 'withdrawal_requested', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Requested $${gross} (fee $${fee}, net $${net})`, status: 'success' });
 
     // Conditionally reserve only still-unclaimed donations — prevents two
     // concurrent withdrawals from consuming the same funds (double-spend).
@@ -150,6 +154,7 @@ export default async function(req) {
         status: "under_review",
         review_note: `Net amount $${net.toFixed(2)} exceeds the $${REVIEW_THRESHOLD} auto-approval threshold.`,
       });
+      await logAudit(base44, { action: 'withdrawal_held', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Held for review (net $${net})`, status: 'success' });
       return Response.json({ ok: true, status: "under_review", withdrawal_id: withdrawal.id, gross, fee, net });
     }
 
@@ -165,6 +170,7 @@ export default async function(req) {
         payout_batch_id: payout.payout_batch_id,
         processed_at: new Date().toISOString(),
       });
+      await logAudit(base44, { action: 'withdrawal_paid', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Net $${net} paid`, status: 'success' });
       return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
       // Payout failed — release only the donations we actually reserved.
@@ -174,6 +180,7 @@ export default async function(req) {
         { $set: { withdrawal_id: "" } }
       );
       await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
+      await logAudit(base44, { action: 'withdrawal_failed', target_type: 'withdrawal', target_id: withdrawal.id, detail: 'Payout failed; funds released', status: 'failure' });
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
     }
   } catch (error) {

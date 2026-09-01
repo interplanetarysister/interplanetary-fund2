@@ -2,19 +2,44 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 
 // Permanently deletes the requesting user's account and all of their owned
-// data. Order: owned/related data is deleted FIRST (each step idempotent), and
-// the account itself is deleted LAST. If any data step fails, the function
-// returns an error WITHOUT deleting the account, so the user can retry — every
-// data step is a no-op on a second pass (deleteMany/updateMany on already-empty
-// or already-anonymized sets), making the whole sequence safely resumable.
+// data, retry-safe.
+//
+// Step 1 — PERMISSION GATE (before any destructive action): if the user record
+//   still exists, attempt User.delete. If the platform refuses (e.g. the app
+//   owner cannot be deleted), STOP immediately and report the blocker — NO
+//   user data is wiped, so the account is left intact. If the delete succeeds
+//   (or the account was already gone from a prior partial run), proceed.
+// Step 2 — DATA WIPE: every step is idempotent (deleteMany/updateMany on
+//   already-empty or already-anonymized sets), so a retry after a mid-wipe
+//   failure resumes cleanly. The account is already gone, so nothing
+//   orphaned can remain accessible.
 // Each failure is recorded in the AuditLog for observability.
 export default async function(req) {
-  let user = null;
   try {
     const base44 = createClientFromRequest(req);
-    user = await base44.auth.me();
+    const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const admin = base44.asServiceRole;
+
+    // Step 1: permission gate. Verify User.delete is permitted BEFORE wiping.
+    const stillExists = await admin.entities.User.get(user.id).catch(() => null);
+    if (stillExists) {
+      try {
+        await admin.entities.User.delete(user.id);
+      } catch (delErr) {
+        const reason = delErr && delErr.message ? delErr.message : String(delErr);
+        console.error('deleteAccount: User.delete not permitted:', reason);
+        await logAudit(base44, {
+          action: 'account_deletion_blocked',
+          actor_user_id: user.id,
+          target_type: 'user',
+          target_id: user.id,
+          detail: 'Account deletion is not permitted for this user.',
+          status: 'failure',
+        });
+        return Response.json({ error: 'Your account cannot be deleted at this time. Please contact support.' }, { status: 403 });
+      }
+    }
 
     const runStep = async (name, fn) => {
       try {
@@ -34,7 +59,7 @@ export default async function(req) {
       }
     };
 
-    // 1. Personal data
+    // Step 2: wipe data (idempotent).
     await runStep('personal_data', async () => {
       await admin.entities.FollowedCampaign.deleteMany({ user_id: user.id });
       await admin.entities.Notification.deleteMany({ user_id: user.id });
@@ -52,9 +77,6 @@ export default async function(req) {
       await admin.entities.Withdrawal.deleteMany({ owner_user_id: user.id });
     });
 
-    // 2. Anonymize donations this user made to OTHER people's campaigns — the
-    //    campaign owner still needs the ledger entry, but the donor's identity
-    //    is removed. Cancel active recurring gifts first, then strip the PII.
     await runStep('anonymize_donations', async () => {
       await admin.entities.Donation.updateMany(
         { donor_user_id: user.id, recurring_status: 'active' },
@@ -66,7 +88,6 @@ export default async function(req) {
       );
     });
 
-    // 3. Owned campaigns and everything attached to them
     await runStep('owned_campaigns', async () => {
       const campaigns = await admin.entities.Campaign.filter({ created_by_id: user.id });
       for (const c of campaigns) {
@@ -78,19 +99,16 @@ export default async function(req) {
       await admin.entities.Campaign.deleteMany({ created_by_id: user.id });
     });
 
-    // 4. Connections
     await runStep('connections', async () => {
       await admin.entities.PlatformConnection.deleteMany({ created_by_id: user.id });
     });
 
-    // 5. Account LAST — only after all owned data is gone.
-    await admin.entities.User.delete(user.id);
     await logAudit(base44, {
       action: 'account_deleted',
       actor_user_id: user.id,
       target_type: 'user',
       target_id: user.id,
-      detail: 'Account and all owned data deleted.',
+      detail: 'Account deleted and all owned data wiped.',
       status: 'success',
     });
 

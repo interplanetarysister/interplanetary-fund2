@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { logAudit } from '../../shared/auditLog.ts';
 
 // Records a donation made through PayPal or Cash App. Those flows complete on
 // an external site, so the supporter confirms the gift here and the ledger,
@@ -26,7 +27,7 @@ export default async function(req) {
       }
     }
 
-    const campaign = await sr.entities.Campaign.get(campaign_id);
+    const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
     const donation = await sr.entities.Donation.create({
@@ -59,9 +60,10 @@ export default async function(req) {
       });
     }
 
+    await logAudit(base44, { action: 'donation_recorded', target_type: 'campaign', target_id: campaign_id, detail: `$${value} via ${payment_method || 'paypal'} recorded`, status: 'success' });
     return Response.json({ ok: true, donation_id: donation.id });
   } catch (error) {
     console.error('recordDonation error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to record your donation. Please try again or contact support.' }, { status: 500 });
   }
 }

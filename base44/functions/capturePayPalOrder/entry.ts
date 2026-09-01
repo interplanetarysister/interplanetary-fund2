@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { captureOrder } from '../../shared/paypal.ts';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
+import { logAudit } from '../../shared/auditLog.ts';
 
 // Captures a PayPal order that was confirmed via Google Pay, then records the
 // donation in the ledger, updates campaign totals, and notifies the creator —
@@ -21,12 +23,24 @@ export default async function (req) {
       return Response.json({ ok: true, donation_id: existing[0].id, amount: existing[0].amount, duplicate: true });
     }
 
-    const cap = await captureOrder(order_id);
+    let cap;
+    try {
+      cap = await captureOrder(order_id);
+    } catch (capErr) {
+      console.error('capturePayPalOrder capture error:', capErr.message);
+      const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
+      if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
+      await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: 'Capture failed', status: 'failure' });
+      return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 500 });
+    }
     if (cap.status !== 'COMPLETED') {
+      const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
+      if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
+      await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: `Capture not completed (${cap.status})`, status: 'failure' });
       return Response.json({ error: 'Payment was not completed', status: cap.status }, { status: 402 });
     }
 
-    const campaign = await sr.entities.Campaign.get(campaign_id);
+    const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
     let donor = null;
@@ -62,6 +76,7 @@ export default async function (req) {
       });
     }
 
+    await logAudit(base44, { action: 'donation_captured', target_type: 'campaign', target_id: campaign_id, detail: `$${value} via paypal captured`, status: 'success' });
     return Response.json({ ok: true, donation_id: donation.id, amount: value });
   } catch (error) {
     console.error('capturePayPalOrder error:', error.message);

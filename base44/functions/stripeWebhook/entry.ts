@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
+import { logAudit } from '../../shared/auditLog.ts';
 
 export default async function(req) {
   try {
@@ -70,6 +71,7 @@ export default async function(req) {
               });
             }
           }
+          await logAudit(base44, { action: 'donation_confirmed', target_type: 'campaign', target_id: m.campaign_id, detail: `$${value} confirmed via stripe`, status: 'success' });
         }
       }
     }

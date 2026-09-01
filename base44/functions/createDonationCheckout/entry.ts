@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
 export default async function(req) {
   try {
@@ -24,6 +25,13 @@ export default async function(req) {
     }
     if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
+    }
+
+    // Narrow abuse guard on session creation only — generous enough that a
+    // legitimate donor never hits it, but stops a script spamming sessions.
+    const rl = await checkRateLimit(base44, `createDonationCheckout:${user.id}`, 10, 60);
+    if (!rl.allowed) {
+      return Response.json({ error: 'Too many checkout attempts. Please slow down and try again.' }, { status: 429 });
     }
 
     const campaign = await base44.entities.Campaign.get(campaign_id);

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { logAudit } from '../../shared/auditLog.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -28,6 +29,7 @@ export default async function(req) {
 
     if (!canAutoPublish(connection)) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
+      await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
     }
 
@@ -43,6 +45,7 @@ export default async function(req) {
         last_synced: new Date().toISOString(),
         history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
       });
+      await logAudit(base44, { action: 'post_published', target_type: 'distributed_post', target_id: post_id, detail: `Published to ${connection.platform}`, status: 'success' });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {
       console.error('publishPost publish error:', pubError && pubError.message ? pubError.message : pubError);
@@ -51,6 +54,7 @@ export default async function(req) {
         error: 'Publishing failed.',
         retry_count: (post.retry_count || 0) + 1,
       });
+      await logAudit(base44, { action: 'post_publish_failed', target_type: 'distributed_post', target_id: post_id, detail: `Publish to ${connection.platform} failed`, status: 'failure' });
       return Response.json({ error: 'Publishing failed. Try again or post manually on the platform.' }, { status: 502 });
     }
   } catch (error) {
