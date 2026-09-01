@@ -7,6 +7,7 @@ import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
+import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
@@ -55,7 +56,9 @@ export default function OpsCenter() {
     setSyncing(false);
   };
 
-  const activeAgents = agents.filter((a) => (a.status || "").toLowerCase() === "active").length;
+  const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
+  const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
+  const offline = agents.length === 0;
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -63,7 +66,7 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{agents.length} agents active · Convex mission backend</p>
+            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{offline ? " · showing in-app agents (Convex offline)" : " · Convex mission backend"}</p>
           </div>
           <button
             onClick={syncNow}
@@ -90,8 +93,8 @@ export default function OpsCenter() {
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
-              {agents.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No agents synced yet — tap Sync Now.</p>}
-              {agents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
+              {offline && <p className="text-xs text-amber-400/80 text-center py-3">Convex mission backend offline — showing the platform's in-app agents. Tap Sync Now to retry.</p>}
+              {displayAgents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
             </TabsContent>
             <TabsContent value="campaigns" className="mt-4 space-y-3">
               {campaigns.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No campaigns synced yet — tap Sync Now.</p>}
