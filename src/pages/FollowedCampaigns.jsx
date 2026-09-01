@@ -11,6 +11,7 @@ import { Loader2, Heart, Pin, Archive, Trash2, Search } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import FollowPrefsDialog from "@/components/campaigns/FollowPrefsDialog";
+import PageError from "@/components/PageError";
 
 const SORTS = [
   { value: "newest", label: "Newest followed" },
@@ -29,9 +30,11 @@ export default function FollowedCampaigns() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
+     try {
       const me = await base44.auth.me();
       const list = await base44.entities.FollowedCampaign.filter({ user_id: me.id }, "-created_date");
       setFollows(list);
@@ -39,6 +42,9 @@ export default function FollowedCampaigns() {
       const map = {};
       fresh.forEach((c) => { if (c) map[c.id] = c; });
       setCampaigns(map);
+     } catch (e) {
+       setError(e.message || "We couldn't load your followed campaigns.");
+     }
     })();
   }, []);
 
@@ -77,6 +83,7 @@ export default function FollowedCampaigns() {
     return rows;
   }, [follows, campaigns, sort, search, category, showArchived]);
 
+  if (error) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setFollows(null); }} /></div>;
   if (!follows) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const togglePin = async (f) => {

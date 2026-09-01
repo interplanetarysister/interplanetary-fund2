@@ -4,18 +4,27 @@ import StatCard from "@/components/dashboard/StatCard";
 import RecurringPlanCard from "@/components/giving/RecurringPlanCard";
 import DonationRow from "@/components/giving/DonationRow";
 import { DollarSign, Repeat, Flame, Loader2 } from "lucide-react";
+import PageError from "@/components/PageError";
 
 export default function MyGiving() {
   const [donations, setDonations] = useState(null);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    const me = await base44.auth.me();
-    const mine = await base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date");
-    setDonations(mine);
+    try {
+      const me = await base44.auth.me();
+      const mine = await base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date");
+      setDonations(mine);
+    } catch (e) {
+      setError(e.message || "We couldn't load your giving history.");
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  if (error) {
+    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setDonations(null); load(); }} /></div>;
+  }
   if (!donations) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }

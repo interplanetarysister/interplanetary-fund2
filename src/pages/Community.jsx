@@ -5,15 +5,18 @@ import CommunityCard from "@/components/community/CommunityCard";
 import CreateCommunityDialog from "@/components/community/CreateCommunityDialog";
 import { Search, Loader2 } from "lucide-react";
 import { communityTypes } from "@/components/community/communityTypes";
+import PageError from "@/components/PageError";
 
 export default function Community() {
   const [communities, setCommunities] = useState(null);
   const [myMemberships, setMyMemberships] = useState([]);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
+     try {
       const me = await base44.auth.me();
       const [all, memberships] = await Promise.all([
         base44.entities.Community.list("-created_date", 100),
@@ -21,9 +24,15 @@ export default function Community() {
       ]);
       setCommunities(all);
       setMyMemberships(memberships.map((m) => m.community_id));
+     } catch (e) {
+       setError(e.message || "We couldn't load communities.");
+     }
     })();
   }, []);
 
+  if (error) {
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCommunities(null); }} /></div>;
+  }
   if (!communities) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }

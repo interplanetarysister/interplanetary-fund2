@@ -6,6 +6,7 @@ import { CROWDFUNDING_PLATFORMS, SOCIAL_PLATFORMS, ALL_PLATFORMS } from "@/compo
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
+import PageError from "@/components/PageError";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -14,18 +15,26 @@ export default function Connections() {
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
   const [dialog, setDialog] = useState(null); // { platform, existing }
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
+     try {
       const [me, list] = await Promise.all([
         base44.auth.me(),
         base44.entities.PlatformConnection.list("-updated_date", 100),
       ]);
       setUser(me);
       setConnections(list);
+     } catch (e) {
+       setError(e.message || "We couldn't load your connections.");
+     }
     })();
   }, []);
 
+  if (error) {
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); }} /></div>;
+  }
   if (!connections) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }

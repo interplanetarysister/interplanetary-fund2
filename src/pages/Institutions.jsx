@@ -6,6 +6,7 @@ import CreateInstitutionDialog from "@/components/institutions/CreateInstitution
 import MyApplications from "@/components/institutions/MyApplications";
 import { Search, Loader2 } from "lucide-react";
 import { institutionTypes } from "@/components/institutions/institutionTypes";
+import PageError from "@/components/PageError";
 
 const programFilters = [
   { value: "all", label: "All" },
@@ -19,11 +20,17 @@ export default function Institutions() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    base44.entities.Institution.list("-created_date", 100).then(setInstitutions);
+    base44.entities.Institution.list("-created_date", 100)
+      .then(setInstitutions)
+      .catch((e) => setError(e.message || "We couldn't load institutions."));
   }, []);
 
+  if (error) {
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); }} /></div>;
+  }
   if (!institutions) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
