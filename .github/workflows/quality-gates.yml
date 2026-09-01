@@ -39,6 +39,9 @@ jobs:
       - name: Edit AI profile safe-error contract
         run: npm run verify:edit-ai-profile-safe-errors
 
+      - name: Onboarding capability readiness contract
+        run: npm run verify:onboarding-capabilities
+
       - name: Production build
         run: npm run build
 
