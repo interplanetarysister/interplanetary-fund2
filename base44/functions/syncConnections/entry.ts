@@ -89,6 +89,6 @@ export default async function(req) {
     return Response.json(report);
   } catch (error) {
     console.error('syncConnections error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Synchronization encountered a problem and could not finish.' }, { status: 500 });
   }
 }

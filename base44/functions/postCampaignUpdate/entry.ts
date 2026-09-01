@@ -126,7 +126,7 @@ Return JSON only.`;
               await base44.entities.DistributedPost.create({
                 campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-                status: 'failed', error: e.message, retry_count: 1,
+                status: 'failed', error: 'Publishing failed.', retry_count: 1,
               });
               crosspost.failed++;
             }
@@ -163,6 +163,6 @@ Return JSON only.`;
     return Response.json({ update, crosspost, followers_notified: notified });
   } catch (error) {
     console.error('postCampaignUpdate error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to publish your update. Please try again.' }, { status: 500 });
   }
 }

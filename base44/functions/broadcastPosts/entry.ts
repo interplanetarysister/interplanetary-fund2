@@ -69,7 +69,7 @@ export default async function(req) {
       } catch (pubError) {
         const updated = await base44.entities.DistributedPost.update(post.id, {
           status: 'failed',
-          error: pubError.message,
+          error: 'Publishing failed.',
           retry_count: (post.retry_count || 0) + 1,
         });
         results.failed++;
@@ -80,6 +80,6 @@ export default async function(req) {
     return Response.json(results);
   } catch (error) {
     console.error('broadcastPosts error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to broadcast your posts. Please try again.' }, { status: 500 });
   }
 }

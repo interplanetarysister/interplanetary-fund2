@@ -83,6 +83,6 @@ export default async function (req) {
     return Response.json({ ok: true, updated: Object.keys(updates), issues });
   } catch (error) {
     console.error('enforceCampaignProtocol error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to enforce the campaign protocol.' }, { status: 500 });
   }
 }

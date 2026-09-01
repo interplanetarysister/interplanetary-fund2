@@ -114,6 +114,6 @@ Return JSON only.`;
     return Response.json({ posts: created });
   } catch (error) {
     console.error('generateDistributionContent error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to generate distribution content. Please try again.' }, { status: 500 });
   }
 }

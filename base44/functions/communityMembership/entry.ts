@@ -49,6 +49,6 @@ export default async function(req) {
     return Response.json({ ok: true });
   } catch (error) {
     console.error('communityMembership error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to update your community membership. Please try again.' }, { status: 500 });
   }
 }

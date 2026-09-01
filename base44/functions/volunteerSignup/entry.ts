@@ -45,6 +45,6 @@ export default async function(req) {
     return Response.json({ signup });
   } catch (error) {
     console.error('volunteerSignup error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to sign you up. Please try again.' }, { status: 500 });
   }
 }

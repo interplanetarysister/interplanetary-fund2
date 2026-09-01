@@ -64,6 +64,6 @@ export default async function(req) {
     return Response.json({ status, decision_note: decision_note || '' });
   } catch (error) {
     console.error('decideGrantApplication error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to record your decision. Please try again.' }, { status: 500 });
   }
 }

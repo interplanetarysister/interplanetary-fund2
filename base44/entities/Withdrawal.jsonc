@@ -21,7 +21,7 @@
     },
     "platform_fee": {
       "type": "number",
-      "description": "8% platform fee deducted from the gross amount."
+      "description": "3% platform fee deducted from the gross amount."
     },
     "net_amount": {
       "type": "number",

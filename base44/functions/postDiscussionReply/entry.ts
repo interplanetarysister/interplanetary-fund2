@@ -33,6 +33,6 @@ export default async function(req) {
     return Response.json({ reply });
   } catch (error) {
     console.error('postDiscussionReply error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to post your reply. Please try again.' }, { status: 500 });
   }
 }

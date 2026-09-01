@@ -48,6 +48,6 @@ export default async function(req) {
     return Response.json({ ok: true, followed_up: true });
   } catch (error) {
     console.error('volunteerFollowUp error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to send the follow-up. Please try again.' }, { status: 500 });
   }
 }

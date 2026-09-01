@@ -68,6 +68,6 @@ export default async function(req) {
     return Response.json({ ok: true, scanned: FEATURE_CHECKS.length, unused: unused.length, created });
   } catch (error) {
     console.error('discoverFeatures error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to scan for features. Please try again.' }, { status: 500 });
   }
 }

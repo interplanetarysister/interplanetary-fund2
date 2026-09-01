@@ -41,6 +41,6 @@ export default async function(req) {
     return Response.json({ opportunity });
   } catch (error) {
     console.error('publishInstitutionOpportunity error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to publish the opportunity. Please try again.' }, { status: 500 });
   }
 }

@@ -79,6 +79,6 @@ Return a JSON recommendation.`;
     return Response.json({ ok: true, recommendation: analysis.recommendation, confidence: analysis.confidence });
   } catch (error) {
     console.error('analyzeGrantApplication error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to analyze the application. Please try again.' }, { status: 500 });
   }
 }
