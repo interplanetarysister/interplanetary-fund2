@@ -3,11 +3,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 // Convex cloud backend — source of truth for agents, campaigns, treasury, protocol.
 const CONVEX_QUERY_URL = "https://rosy-butterfly-2.convex.cloud/api/query";
 
-async function convexQuery(path) {
+async function convexQuery(path, args = {}) {
   const res = await fetch(CONVEX_QUERY_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path, args: {}, format: "json" }),
+    body: JSON.stringify({ path, args, format: "json" }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || json.status === "error") {
@@ -30,9 +30,11 @@ export default async function(req) {
 
     const [agents, campaigns, treasury, reports] = await Promise.all([
       convexQuery("agents:getAgents").catch((e) => { console.warn(e.message); return []; }),
-      convexQuery("campaigns:getCampaigns").catch((e) => { console.warn(e.message); return []; }),
+      // getCampaigns is paginated — it requires paginationOpts and returns
+      // { page, continueCursor, isDone }, not a bare array.
+      convexQuery("campaigns:getCampaigns", { paginationOpts: { numItems: 100, cursor: null } }).catch((e) => { console.warn(e.message); return []; }),
       convexQuery("treasury:aggregateBalances").catch((e) => { console.warn(e.message); return null; }),
-      convexQuery("protocol:getReports").catch((e) => { console.warn(e.message); return []; }),
+      convexQuery("protocol:getReports", { limit: 20 }).catch((e) => { console.warn(e.message); return []; }),
     ]);
 
     const counts = { agents: 0, campaigns: 0, reports: 0, treasury: false };
@@ -59,9 +61,11 @@ export default async function(req) {
     }
 
     // --- Campaigns: match by if_campaign_id ---
-    if (Array.isArray(campaigns) && campaigns.length) {
+    // getCampaigns returns a paginated { page, ... } result; normalize to array.
+    const campaignList = Array.isArray(campaigns) ? campaigns : (campaigns && Array.isArray(campaigns.page) ? campaigns.page : []);
+    if (campaignList.length) {
       const existing = await db.MonitoredCampaign.list(undefined, 200);
-      for (const c of campaigns) {
+      for (const c of campaignList) {
         const ifId = str(c.if_campaign_id ?? c.ifCampaignId ?? c._id ?? c.id);
         if (!ifId) continue;
         const ai = c.ai_profile || {};
