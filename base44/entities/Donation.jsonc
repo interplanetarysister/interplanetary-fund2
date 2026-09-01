@@ -9,7 +9,13 @@
       "type": "string"
     },
     "amount": {
-      "type": "number"
+      "type": "number",
+      "description": "Total charged to the donor (the amount they entered). The recipient's gift is amount minus platform_contribution."
+    },
+    "platform_contribution": {
+      "type": "number",
+      "default": 0,
+      "description": "Portion of the charged amount the donor directed to the platform as an optional 10% contribution. Excluded from the recipient's gift and from withdrawals; retained by the platform."
     },
     "donor_name": {
       "type": "string"

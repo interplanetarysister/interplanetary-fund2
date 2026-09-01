@@ -11,6 +11,11 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
+    "test:fees": "node scripts/test-fee-calc.mjs",
+    "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
+    "test:delete-account": "node scripts/test-delete-account.mjs",
+    "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
+    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

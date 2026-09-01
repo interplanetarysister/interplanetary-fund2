@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { computeContribution, round2 } from '../../shared/fees.js';
 
 // Records a donation made through PayPal or Cash App. Those flows complete on
 // an external site, so the supporter confirms the gift here and the ledger,
@@ -12,7 +13,7 @@ export default async function(req) {
     let donor = null;
     try { donor = await base44.auth.me(); } catch (_) { /* supporters may be signed out */ }
 
-    const { campaign_id, amount, donor_name, message, is_recurring, payment_method, idempotency_key } = await req.json();
+    const { campaign_id, amount, donor_name, message, is_recurring, payment_method, idempotency_key, platform_contribution } = await req.json();
     const value = parseFloat(amount);
     if (!campaign_id || !value || value <= 0) {
       return Response.json({ error: 'A campaign and a positive amount are required' }, { status: 400 });
@@ -30,10 +31,13 @@ export default async function(req) {
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
+    const contribution = computeContribution(value, !!platform_contribution);
+    const gift = round2(value - contribution);
     const donation = await sr.entities.Donation.create({
       campaign_id,
       campaign_title: campaign.title,
       amount: value,
+      platform_contribution: contribution,
       donor_name: donor_name || donor?.full_name || 'Anonymous',
       message: message || '',
       is_recurring: !!is_recurring,
@@ -45,9 +49,11 @@ export default async function(req) {
 
     // Atomic increment — avoids the read-modify-write race where two
     // concurrent donations each overwrite the other's campaign total.
+    // raised_amount reflects the recipient's gift (the contribution is
+    // retained by the platform).
     await sr.entities.Campaign.updateMany(
       { id: campaign_id },
-      { $inc: { raised_amount: value, donor_count: 1 } }
+      { $inc: { raised_amount: gift, donor_count: 1 } }
     );
 
     if (campaign.created_by_id) {

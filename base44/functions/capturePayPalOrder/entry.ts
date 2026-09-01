@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { captureOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
+import { computeContribution, round2 } from '../../shared/fees.js';
 
 // Captures a PayPal order that was confirmed via Google Pay, then records the
 // donation in the ledger, updates campaign totals, and notifies the creator —
@@ -11,7 +12,7 @@ export default async function (req) {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
 
-    const { order_id, campaign_id, donor_name, message, is_recurring } = await req.json();
+    const { order_id, campaign_id, donor_name, message, is_recurring, platform_contribution } = await req.json();
     if (!order_id || !campaign_id) {
       return Response.json({ error: 'Order id and campaign are required' }, { status: 400 });
     }
@@ -46,11 +47,19 @@ export default async function (req) {
     let donor = null;
     try { donor = await base44.auth.me(); } catch (_) { /* supporters may be signed out */ }
 
-    const value = cap.amount;
+    // The captured total is authoritative; the optional contribution is an
+    // allocation FROM it (never added on top), directed to the platform. The
+    // processing fee is covered by the platform, so it is not deducted again
+    // at payout — no double-charge.
+    const total = round2(cap.amount);
+    const contribution = computeContribution(total, !!platform_contribution);
+    const gift = round2(total - contribution);
+
     const donation = await sr.entities.Donation.create({
       campaign_id,
       campaign_title: campaign.title,
-      amount: value,
+      amount: total,
+      platform_contribution: contribution,
       donor_name: donor_name || cap.payer_name || donor?.full_name || 'Anonymous',
       message: message || '',
       is_recurring: !!is_recurring,
@@ -61,23 +70,25 @@ export default async function (req) {
     });
 
     // Atomic increment — avoids the read-modify-write race on concurrent gifts.
+    // raised_amount reflects the recipient's gift (the contribution is retained
+    // by the platform). Successful captures are never rate-limited.
     await sr.entities.Campaign.updateMany(
       { id: campaign_id },
-      { $inc: { raised_amount: value, donor_count: 1 } }
+      { $inc: { raised_amount: gift, donor_count: 1 } }
     );
 
     if (campaign.created_by_id) {
       await sr.entities.Notification.create({
         user_id: campaign.created_by_id,
         title: 'New donation received',
-        body: `${donation.donor_name} gave $${value.toLocaleString()} to "${campaign.title}" via Google Pay`,
+        body: `${donation.donor_name} gave $${total.toLocaleString()} to "${campaign.title}" via Google Pay`,
         type: 'donation',
         link: `/campaign/${campaign_id}`,
       });
     }
 
-    await logAudit(base44, { action: 'donation_captured', target_type: 'campaign', target_id: campaign_id, detail: `$${value} via paypal captured`, status: 'success' });
-    return Response.json({ ok: true, donation_id: donation.id, amount: value });
+    await logAudit(base44, { action: 'donation_captured', target_type: 'campaign', target_id: campaign_id, detail: `$${total} via paypal captured (gift $${gift})`, status: 'success' });
+    return Response.json({ ok: true, donation_id: donation.id, amount: total });
   } catch (error) {
     console.error('capturePayPalOrder error:', error.message);
     return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 500 });

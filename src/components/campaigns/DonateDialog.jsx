@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
-import { Heart, Loader2, Lock, CheckCircle2 } from "lucide-react";
+import { Heart, Loader2, Lock, CheckCircle2, Sparkles } from "lucide-react";
+import { computeBreakdown } from "../../../base44/shared/fees.js";
 
 const presets = [25, 50, 100, 250];
 
@@ -25,6 +26,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
   const [recurring, setRecurring] = useState(false);
+  const [platformContribution, setPlatformContribution] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -33,6 +35,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   // instead of creating a duplicate ledger entry.
   const idempotencyRef = useRef(crypto.randomUUID());
   const newIntent = () => { idempotencyRef.current = crypto.randomUUID(); };
+  const bd = computeBreakdown(parseFloat(amount) || 0, platformContribution);
 
   // PayPal and Cash App complete on their own secure sites, so the supporter
   // confirms the gift here and it is added to the campaign ledger.
@@ -49,6 +52,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         message,
         is_recurring: recurring,
         payment_method,
+        platform_contribution: platformContribution,
         idempotency_key: idempotencyRef.current,
       });
       setConfirmed(true);
@@ -99,6 +103,27 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
               <Switch id="recurring" checked={recurring} onCheckedChange={setRecurring} />
             </div>
 
+            <div className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-4 py-3">
+              <div>
+                <Label htmlFor="contrib" className="text-sm text-stone-700 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-amber-500" /> Support the platform</Label>
+                <p className="text-xs text-stone-500 mt-0.5">Direct 10% of your gift to Interplanetary Fund. Optional, off by default.</p>
+              </div>
+              <Switch id="contrib" checked={platformContribution} onCheckedChange={setPlatformContribution} />
+            </div>
+
+            {amount && parseFloat(amount) > 0 && (
+              <div className="rounded-xl border border-stone-200 p-4 bg-stone-50/50">
+                <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Where your gift goes</p>
+                <dl className="text-sm space-y-1.5">
+                  <div className="flex justify-between"><dt className="text-stone-600">You give</dt><dd className="text-stone-900 font-medium">${bd.amount.toFixed(2)}</dd></div>
+                  {bd.contribution > 0 && <div className="flex justify-between"><dt className="text-stone-600">Platform contribution (10%)</dt><dd className="text-amber-600">-${bd.contribution.toFixed(2)}</dd></div>}
+                  <div className="flex justify-between"><dt className="text-stone-500">Processing fee (covered by us)</dt><dd className="text-stone-400">${bd.processing.toFixed(2)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-stone-500">Platform fee (3%, at payout)</dt><dd className="text-stone-400">-${bd.platformFee.toFixed(2)}</dd></div>
+                  <div className="flex justify-between border-t border-stone-200 pt-1.5"><dt className="text-stone-700 font-medium">Campaign receives</dt><dd className="text-emerald-600 font-semibold">${bd.recipientNet.toFixed(2)}</dd></div>
+                </dl>
+              </div>
+            )}
+
             <div className="rounded-xl border border-stone-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal or a card</p>
               <PayPalDonateButton label={amount ? `Donate $${amount}` : "Donate now!"} />
@@ -115,6 +140,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
                 donorName={name}
                 message={message}
                 recurring={recurring}
+                platformContribution={platformContribution}
                 onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }}
               />
               <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by your PayPal business account — fast &amp; secure.</p>

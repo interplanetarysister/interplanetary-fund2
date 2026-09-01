@@ -84,6 +84,11 @@
     "trial_end": {
       "type": "string",
       "format": "date-time"
+    },
+    "account_deletion_pending": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once account deletion has been authorized and is in progress. The app revokes access for a pending account; data cleanup and final deletion/anonymization run idempotently so a retry after a mid-process failure resumes cleanly."
     }
   },
   "required": [

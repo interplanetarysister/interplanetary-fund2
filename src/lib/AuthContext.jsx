@@ -90,6 +90,14 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
+      // Revoke access for an account whose deletion is in progress — the
+      // backend state machine set account_deletion_pending before wiping data.
+      if (currentUser?.account_deletion_pending) {
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        base44.auth.logout();
+        return;
+      }
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);

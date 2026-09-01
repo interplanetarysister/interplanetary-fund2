@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { createOrder } from '../../shared/paypal.ts';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
 // Creates a PayPal v2 order (intent: CAPTURE) for a Google Pay donation. The
 // order id is handed to the PayPal SDK's Google Pay session to confirm with
@@ -16,6 +17,16 @@ export default async function (req) {
     }
     if (value > 1000000) {
       return Response.json({ error: 'Donation amount is too large.' }, { status: 400 });
+    }
+
+    // Narrow abuse guard on order creation only — generous enough that a
+    // legitimate donor never hits it, but stops a script spamming orders. By
+    // IP: Google Pay donors may not be signed in, so there is no user id to key
+    // on. Successful captures are never rate-limited.
+    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
+    const rl = await checkRateLimit(base44, `createPayPalOrder:${ip}`, 10, 60);
+    if (!rl.allowed) {
+      return Response.json({ error: 'Too many attempts. Please slow down and try again.' }, { status: 429 });
     }
 
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);

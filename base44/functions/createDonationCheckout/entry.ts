@@ -9,7 +9,7 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
+    const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution } = await req.json();
     const value = Number(amount);
     if (!campaign_id || !value || value <= 0 || !origin) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
@@ -58,6 +58,7 @@ export default async function(req) {
         donor_name: donor_name || 'Anonymous',
         message: (message || '').slice(0, 450),
         is_recurring: is_recurring ? 'true' : 'false',
+        platform_contribution_opt: platform_contribution ? 'true' : 'false',
       },
     });
 

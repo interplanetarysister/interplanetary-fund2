@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPayout } from '../../shared/paypal.ts';
+import { giftOf } from '../../shared/fees.js';
 import { logAudit } from '../../shared/auditLog.ts';
 
 // Withdrawal engine. Enforces the approved 3% platform fee, the 7-day clearing
@@ -92,7 +93,7 @@ export default async function(req) {
     // Cleared, unconsumed donations. Regular gifts clear after the 7-day holding
     // period; institutional (grant) gifts require explicit admin clearing first.
     const available = (allDonations || []).filter((d) => !d.withdrawal_id && (d.is_institutional ? d.cleared : new Date(d.created_date) <= cutoff));
-    let gross = round2(available.reduce((s, d) => s + (d.amount || 0), 0));
+    let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));
     if (gross <= 0) {
       return Response.json({ error: "No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period." }, { status: 400 });
     }
@@ -127,7 +128,7 @@ export default async function(req) {
     const reservedIds = (reChecked || []).map((d) => d.id);
     const reservedGross = round2(reservedIds.reduce((s, id) => {
       const d = available.find((a) => a.id === id);
-      return s + (d ? (d.amount || 0) : 0);
+      return s + (d ? giftOf(d) : 0);
     }, 0));
 
     if (reservedGross <= 0) {

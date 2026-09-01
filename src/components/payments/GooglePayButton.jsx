@@ -8,15 +8,15 @@ import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
 // record the gift. The button only renders when Google Pay is available on
 // the buyer's device; otherwise it degrades silently to the PayPal/card
 // options already shown above it.
-export default function GooglePayButton({ campaign, amount, donorName, message, recurring, onPaid }) {
+export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid }) {
   const containerRef = useRef(null);
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
 
   // Volatile props (name/message/recurring/callback) are read via a ref so the
   // Google Pay client is only rebuilt when the amount or campaign changes.
-  const propsRef = useRef({ donorName, message, recurring, onPaid });
-  useEffect(() => { propsRef.current = { donorName, message, recurring, onPaid }; });
+  const propsRef = useRef({ donorName, message, recurring, platformContribution, onPaid });
+  useEffect(() => { propsRef.current = { donorName, message, recurring, platformContribution, onPaid }; });
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +95,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   donor_name: p.donorName || "Anonymous",
                   message: p.message,
                   is_recurring: !!p.recurring,
+                  platform_contribution: !!p.platformContribution,
                 });
                 if (cap?.error) return { transactionState: "ERROR", error: { message: cap.error } };
                 if (!cancelled) p.onPaid?.(cap);
