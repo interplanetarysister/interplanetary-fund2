@@ -140,7 +140,7 @@ ${context}`;
 
     return Response.json({ processed });
   } catch (error) {
-    console.error('runOutreachAgent error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('runOutreachAgent error:', error?.message || error);
+    return Response.json({ error: 'Unable to complete outreach analysis right now.' }, { status: 500 });
   }
 }
