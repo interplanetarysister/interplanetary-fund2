@@ -32,10 +32,12 @@ export default async function(req) {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.status === 'error') {
-      return Response.json({ error: json.errorMessage || `Convex ${res.status}` }, { status: 502 });
+      console.error('recordAgentInteraction Convex error:', json.errorMessage || `Convex ${res.status}`);
+      return Response.json({ error: 'Unable to record the agent interaction.' }, { status: 502 });
     }
     return Response.json({ ok: true, result: json.status === 'success' ? json.value : json });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('recordAgentInteraction error:', error.message);
+    return Response.json({ error: 'Unable to record the agent interaction.' }, { status: 500 });
   }
 }

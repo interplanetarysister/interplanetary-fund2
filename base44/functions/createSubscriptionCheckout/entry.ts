@@ -13,13 +13,36 @@ export default async function(req) {
     if (!tier || !price_id || !origin) {
       return Response.json({ error: 'Missing subscription details' }, { status: 400 });
     }
+    // Allowlist the Stripe price ids that match our published plans — prevents
+    // a caller from checking out an arbitrary price from another account/tier.
+    const ALLOWED_PRICE_IDS = new Set([
+      'price_1Tz8iSEkntycHB4NlQlYd0Gs', // basic monthly
+      'price_1Tz8iSEkntycHB4N8J7EXq42', // basic annual
+      'price_1Tz8iSEkntycHB4NESNtjyOx', // outreach monthly
+      'price_1Tz8iSEkntycHB4N5iujmlJZ', // outreach annual
+    ]);
+    if (!ALLOWED_PRICE_IDS.has(price_id)) {
+      return Response.json({ error: 'Invalid subscription plan.' }, { status: 400 });
+    }
+    let originUrl;
+    try {
+      originUrl = new URL(origin);
+    } catch (_) {
+      return Response.json({ error: 'Missing subscription details' }, { status: 400 });
+    }
+    if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
+      return Response.json({ error: 'Missing subscription details' }, { status: 400 });
+    }
+    if (trial_days != null && (Number(trial_days) <= 0 || Number(trial_days) > 365)) {
+      return Response.json({ error: 'Invalid subscription details' }, { status: 400 });
+    }
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: price_id, quantity: 1 }],
-      success_url: `${origin}/subscriptions?subscribed=success`,
-      cancel_url: `${origin}/subscriptions`,
+      success_url: `${originUrl.origin}/subscriptions?subscribed=success`,
+      cancel_url: `${originUrl.origin}/subscriptions`,
       metadata: {
         base44_app_id: secrets.get('BASE44_APP_ID'),
         user_id: user.id,
@@ -34,6 +57,6 @@ export default async function(req) {
     return Response.json({ url: session.url });
   } catch (error) {
     console.error('createSubscriptionCheckout error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Could not start your subscription. Please try again.' }, { status: 500 });
   }
 }

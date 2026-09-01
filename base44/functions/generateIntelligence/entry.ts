@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
 export default async function(req) {
   try {
@@ -13,6 +14,13 @@ export default async function(req) {
     if (campaigns.length === 0) {
       return Response.json({ error: 'Create a campaign first so Mission Control has something to analyze.' }, { status: 400 });
     }
+
+    // Rate limit (persistent): Mission Control runs an expensive LLM pass.
+    const rl = await checkRateLimit(base44, `generateIntelligence:${user.id}`, 3, 300);
+    if (!rl.allowed) {
+      return Response.json({ error: 'Mission Control is still working on your last request. Please wait a few minutes and try again.' }, { status: 429 });
+    }
+
     const campaignIds = campaigns.map((c) => c.id);
     const donations = await base44.asServiceRole.entities.Donation.filter({ campaign_id: { $in: campaignIds } });
     const messages = await base44.entities.Message.filter({ created_by_id: user.id }, '-created_date', 20);
@@ -151,6 +159,6 @@ export default async function(req) {
     return Response.json({ ok: true, brief, recommendations: createdRecs });
   } catch (error) {
     console.error('generateIntelligence error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Mission Control could not complete your analysis. Please try again.' }, { status: 500 });
   }
 }

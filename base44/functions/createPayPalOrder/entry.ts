@@ -14,8 +14,11 @@ export default async function (req) {
     if (!campaign_id || !value || value <= 0) {
       return Response.json({ error: 'A campaign and a positive amount are required' }, { status: 400 });
     }
+    if (value > 1000000) {
+      return Response.json({ error: 'Donation amount is too large.' }, { status: 400 });
+    }
 
-    const campaign = await sr.entities.Campaign.get(campaign_id);
+    const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
     const order = await createOrder({
@@ -31,6 +34,6 @@ export default async function (req) {
     return Response.json({ id: order.id });
   } catch (error) {
     console.error('createPayPalOrder error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to start your donation. Please try again.' }, { status: 500 });
   }
 }

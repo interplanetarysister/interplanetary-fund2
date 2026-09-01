@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
 export default async function(req) {
   try {
@@ -28,11 +29,9 @@ export default async function(req) {
       return Response.json({ error: 'You have no campaigns yet' }, { status: 400 });
     }
 
-    // Rate limit: prevent a single organizer from flooding supporters.
-    const recent = await base44.entities.Message.filter({ created_by_id: user.id }, "-created_date", 10);
-    const minuteAgo = Date.now() - 60000;
-    const recentCount = (recent || []).filter((m) => new Date(m.created_date).getTime() >= minuteAgo).length;
-    if (recentCount >= 5) {
+    // Rate limit (persistent): prevent a single organizer from flooding supporters.
+    const rl = await checkRateLimit(base44, `sendCommunication:${user.id}`, 5, 60);
+    if (!rl.allowed) {
       return Response.json({ error: 'You are sending messages too quickly. Please wait a moment and try again.' }, { status: 429 });
     }
 

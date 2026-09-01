@@ -32,14 +32,20 @@ export default async function(req) {
 
     const amount = parseFloat(payload.amount) || 0;
     const now = new Date().toISOString();
-    await sr.entities.PlatformConnection.update(connection.id, {
-      external_total: (connection.external_total || 0) + amount,
-      external_donor_count: (connection.external_donor_count || 0) + 1,
-      status: 'connected',
-      last_synced: now,
-      last_error: '',
-      history: [...(connection.history || []), { at: now, event: 'synced', detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}` }].slice(-30),
-    });
+    // Atomic $inc for the financial counters prevents a read-modify-write
+    // race when two Ko-fi webhooks land at the same time.
+    await sr.entities.PlatformConnection.updateMany(
+      { id: connection.id },
+      {
+        $inc: { external_total: amount, external_donor_count: 1 },
+        $set: {
+          status: 'connected',
+          last_synced: now,
+          last_error: '',
+          history: [...(connection.history || []), { at: now, event: 'synced', detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}` }].slice(-30),
+        },
+      }
+    );
 
     await sr.entities.InboxItem.create({
       user_id: connection.created_by_id,

@@ -141,6 +141,6 @@ ${context}`;
     return Response.json({ processed });
   } catch (error) {
     console.error('runOutreachAgent error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'The Outreach Agent hit a problem and could not finish this run.' }, { status: 500 });
   }
 }
