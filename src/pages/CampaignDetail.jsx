@@ -33,15 +33,15 @@ export default function CampaignDetail() {
   const [related, setRelated] = useState([]);
 
   const load = useCallback(async () => {
-    const [c, u, d] = await Promise.all([
+    const [c, u, dRes] = await Promise.all([
       base44.entities.Campaign.filter({ id }),
       base44.entities.CampaignUpdate.filter({ campaign_id: id }, "-created_date"),
-      base44.entities.Donation.filter({ campaign_id: id }, "-created_date", 10),
+      base44.functions.invoke("getCampaignDonations", { campaign_id: id }),
     ]);
     if (!c.length) { setNotFound(true); return; }
     setCampaign(c[0]);
     setUpdates(u);
-    setDonations(d);
+    setDonations((dRes.data && dRes.data.donations) ? dRes.data.donations.slice(0, 10) : []);
     const rel = await base44.entities.Campaign.filter({ category: c[0].category, status: "active" }, "-raised_amount", 6);
     setRelated(rel.filter((r) => r.id !== id).slice(0, 3));
   }, [id]);
@@ -109,8 +109,8 @@ export default function CampaignDetail() {
             <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
               <h3 className="font-display text-lg text-stone-900 mb-3">Recent supporters</h3>
               <ul className="space-y-3">
-                {donations.map((d) => (
-                  <li key={d.id} className="text-sm">
+                {donations.map((d, i) => (
+                  <li key={i} className="text-sm">
                     <p className="text-stone-800"><span className="font-medium">{d.donor_name || "Anonymous"}</span> · <span className="text-primary font-semibold">${d.amount.toLocaleString()}</span>{d.is_recurring && <span className="text-stone-400 text-xs"> /mo</span>}</p>
                     {d.message && <p className="text-stone-500 text-xs mt-0.5">"{d.message}"</p>}
                   </li>

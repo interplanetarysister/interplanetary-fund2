@@ -30,9 +30,10 @@ export default function Inbox() {
         base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
         base44.entities.Campaign.filter({ created_by_id: me.id }),
       ]);
-      const donationLists = await Promise.all(
-        myCampaigns.map((c) => base44.entities.Donation.filter({ campaign_id: c.id }, "-created_date", 25))
+      const dResults = await Promise.all(
+        myCampaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
       );
+      const donationLists = dResults.map((r) => (r.data && r.data.donations) || []);
 
       const merged = [
         ...inboxItems.map((i) => ({

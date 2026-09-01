@@ -17,6 +17,10 @@ export default async function(req) {
     // User-scoped read — RLS guarantees the post belongs to the caller.
     const post = await base44.entities.DistributedPost.get(post_id).catch(() => null);
     if (!post) return Response.json({ error: 'Post not found' }, { status: 404 });
+    // Idempotency: never re-publish a post that already went live.
+    if (post.status === 'published') {
+      return Response.json({ manual: false, post });
+    }
     const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
     if (!connection) return Response.json({ error: 'Connection no longer exists' }, { status: 404 });
 
@@ -41,15 +45,16 @@ export default async function(req) {
       });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {
+      console.error('publishPost publish error:', pubError && pubError.message ? pubError.message : pubError);
       await base44.entities.DistributedPost.update(post_id, {
         status: 'failed',
-        error: pubError.message,
+        error: 'Publishing failed.',
         retry_count: (post.retry_count || 0) + 1,
       });
-      return Response.json({ error: pubError.message }, { status: 502 });
+      return Response.json({ error: 'Publishing failed. Try again or post manually on the platform.' }, { status: 502 });
     }
   } catch (error) {
     console.error('publishPost error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to publish this post. Please try again.' }, { status: 500 });
   }
 }

@@ -27,9 +27,10 @@ export default function Analytics() {
         base44.entities.GrantApplication.filter({ applicant_user_id: me.id }),
         base44.entities.InstitutionOpportunity.list("-created_date", 200),
       ]);
-      const donationLists = await Promise.all(
-        campaigns.map((c) => base44.entities.Donation.filter({ campaign_id: c.id }))
+      const dResults = await Promise.all(
+        campaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
       );
+      const donationLists = dResults.map((r) => (r.data && r.data.donations) || []);
       const signupLists = await Promise.all(
         volunteerOpps.map((o) => base44.entities.VolunteerSignup.filter({ opportunity_id: o.id }))
       );

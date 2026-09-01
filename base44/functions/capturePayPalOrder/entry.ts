@@ -65,6 +65,6 @@ export default async function (req) {
     return Response.json({ ok: true, donation_id: donation.id, amount: value });
   } catch (error) {
     console.error('capturePayPalOrder error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 500 });
   }
 }

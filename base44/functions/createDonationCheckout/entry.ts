@@ -13,6 +13,18 @@ export default async function(req) {
     if (!campaign_id || !value || value <= 0 || !origin) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
+    if (value > 1000000) {
+      return Response.json({ error: 'Donation amount is too large.' }, { status: 400 });
+    }
+    let originUrl;
+    try {
+      originUrl = new URL(origin);
+    } catch (_) {
+      return Response.json({ error: 'Invalid donation request' }, { status: 400 });
+    }
+    if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
+      return Response.json({ error: 'Invalid donation request' }, { status: 400 });
+    }
 
     const campaign = await base44.entities.Campaign.get(campaign_id);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
@@ -29,8 +41,8 @@ export default async function(req) {
           ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
         },
       }],
-      success_url: `${origin}/campaign/${campaign_id}?donation=success`,
-      cancel_url: `${origin}/campaign/${campaign_id}`,
+      success_url: `${originUrl.origin}/campaign/${campaign_id}?donation=success`,
+      cancel_url: `${originUrl.origin}/campaign/${campaign_id}`,
       metadata: {
         base44_app_id: secrets.get('BASE44_APP_ID'),
         campaign_id,
@@ -44,6 +56,6 @@ export default async function(req) {
     return Response.json({ url: session.url });
   } catch (error) {
     console.error('createDonationCheckout error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Could not start checkout. Please try again.' }, { status: 500 });
   }
 }

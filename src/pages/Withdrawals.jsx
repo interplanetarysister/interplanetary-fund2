@@ -49,7 +49,8 @@ export default function Withdrawals() {
       const cutoff = Date.now() - CLEARING_DAYS * 86400000;
       const enriched = [];
       for (const c of owned) {
-        const donations = await base44.entities.Donation.filter({ campaign_id: c.id });
+        const dRes = await base44.functions.invoke("getCampaignDonations", { campaign_id: c.id });
+      const donations = (dRes.data && dRes.data.donations) || [];
         const avail = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() <= cutoff).reduce((s, d) => s + (d.amount || 0), 0);
         const clearing = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() > cutoff).reduce((s, d) => s + (d.amount || 0), 0);
         const withdrawn = donations.filter((d) => d.withdrawal_id).reduce((s, d) => s + (d.amount || 0), 0);

@@ -60,6 +60,6 @@ export default async function(req) {
     return Response.json({ deleted: true });
   } catch (error) {
     console.error('deleteAccount error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to delete your account. Please try again or contact support.' }, { status: 500 });
   }
 }

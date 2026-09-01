@@ -10,6 +10,12 @@ export default async function(req) {
     if (!subject || !content || !channels || channels.length === 0) {
       return Response.json({ error: 'Subject, content and at least one channel are required' }, { status: 400 });
     }
+    if (typeof subject !== 'string' || subject.length > 200) {
+      return Response.json({ error: 'Subject must be 200 characters or fewer.' }, { status: 400 });
+    }
+    if (typeof content !== 'string' || content.length > 5000) {
+      return Response.json({ error: 'Message must be 5000 characters or fewer.' }, { status: 400 });
+    }
 
     // Only allow messaging donors of campaigns the sender owns
     const myCampaigns = await base44.entities.Campaign.filter({ created_by_id: user.id });
@@ -20,6 +26,14 @@ export default async function(req) {
     const campaignIds = campaign_id ? [campaign_id] : myIds;
     if (campaignIds.length === 0) {
       return Response.json({ error: 'You have no campaigns yet' }, { status: 400 });
+    }
+
+    // Rate limit: prevent a single organizer from flooding supporters.
+    const recent = await base44.entities.Message.filter({ created_by_id: user.id }, "-created_date", 10);
+    const minuteAgo = Date.now() - 60000;
+    const recentCount = (recent || []).filter((m) => new Date(m.created_date).getTime() >= minuteAgo).length;
+    if (recentCount >= 5) {
+      return Response.json({ error: 'You are sending messages too quickly. Please wait a moment and try again.' }, { status: 429 });
     }
 
     // Resolve audience
@@ -92,6 +106,6 @@ export default async function(req) {
     });
   } catch (error) {
     console.error('sendCommunication error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'Unable to send your message. Please try again.' }, { status: 500 });
   }
 }
