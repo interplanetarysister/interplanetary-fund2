@@ -1,10 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { secrets } from 'base44:runtime';
 
 // Convex cloud backend — source of truth for agents, campaigns, treasury, protocol.
-const CONVEX_QUERY_URL = "https://rosy-butterfly-2.convex.cloud/api/query";
-
-async function convexQuery(path) {
-  const res = await fetch(CONVEX_QUERY_URL, {
+async function convexQuery(path, queryUrl) {
+  const res = await fetch(queryUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path, args: {}, format: "json" }),
@@ -13,7 +12,6 @@ async function convexQuery(path) {
   if (!res.ok || json.status === "error") {
     throw new Error(`Convex ${path} failed: ${json.errorMessage || res.status}`);
   }
-  // Convex REST returns { status: "success", value } — but tolerate a bare value.
   return json.status === "success" ? json.value : json;
 }
 
@@ -25,14 +23,23 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+
+    const convexQueryUrl = secrets.get("CONVEX_QUERY_URL");
+    if (!convexQueryUrl) {
+      throw new Error('CONVEX_QUERY_URL is not configured');
+    }
+
     const db = base44.asServiceRole.entities;
     const now = new Date().toISOString();
 
+    // Required upstream reads fail the synchronization as a whole. Never turn
+    // an authoritative Convex outage into empty/null mirror data.
     const [agents, campaigns, treasury, reports] = await Promise.all([
-      convexQuery("agents:getAgents").catch((e) => { console.warn(e.message); return []; }),
-      convexQuery("campaigns:getCampaigns").catch((e) => { console.warn(e.message); return []; }),
-      convexQuery("treasury:aggregateBalances").catch((e) => { console.warn(e.message); return null; }),
-      convexQuery("protocol:getReports").catch((e) => { console.warn(e.message); return []; }),
+      convexQuery("agents:getAgents", convexQueryUrl),
+      convexQuery("campaigns:getCampaigns", convexQueryUrl),
+      convexQuery("treasury:aggregateBalances", convexQueryUrl),
+      convexQuery("protocol:getReports", convexQueryUrl),
     ]);
 
     const counts = { agents: 0, campaigns: 0, reports: 0, treasury: false };
@@ -137,6 +144,7 @@ export default async function(req) {
 
     return Response.json({ ok: true, synced_at: now, counts });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('syncFromConvex failed', error);
+    return Response.json({ error: 'Unable to synchronize platform data' }, { status: 500 });
   }
 }
