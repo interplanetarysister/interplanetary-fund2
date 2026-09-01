@@ -89,13 +89,13 @@ export default async function(req) {
     // Cleared, unconsumed donations. Regular gifts clear after the 7-day holding
     // period; institutional (grant) gifts require explicit admin clearing first.
     const available = (allDonations || []).filter((d) => !d.withdrawal_id && (d.is_institutional ? d.cleared : new Date(d.created_date) <= cutoff));
-    const gross = round2(available.reduce((s, d) => s + (d.amount || 0), 0));
+    let gross = round2(available.reduce((s, d) => s + (d.amount || 0), 0));
     if (gross <= 0) {
       return Response.json({ error: "No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period." }, { status: 400 });
     }
 
-    const fee = round2(gross * PLATFORM_FEE_RATE);
-    const net = round2(gross - fee);
+    let fee = round2(gross * PLATFORM_FEE_RATE);
+    let net = round2(gross - fee);
 
     const withdrawal = await sr.entities.Withdrawal.create({
       owner_user_id: user.id,
@@ -110,8 +110,39 @@ export default async function(req) {
       status: "processing",
     });
 
-    // Reserve the donations so they can never be withdrawn twice.
-    await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: withdrawal.id })));
+    // Conditionally reserve only still-unclaimed donations — prevents two
+    // concurrent withdrawals from consuming the same funds (double-spend).
+    await sr.entities.Donation.updateMany(
+      { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ""] } },
+      { $set: { withdrawal_id: withdrawal.id } }
+    );
+
+    // Re-read to confirm which donations we actually reserved — a concurrent
+    // request may have claimed some of them before our conditional update.
+    const reChecked = await sr.entities.Donation.filter({ withdrawal_id: withdrawal.id });
+    const reservedIds = (reChecked || []).map((d) => d.id);
+    const reservedGross = round2(reservedIds.reduce((s, id) => {
+      const d = available.find((a) => a.id === id);
+      return s + (d ? (d.amount || 0) : 0);
+    }, 0));
+
+    if (reservedGross <= 0) {
+      // Every donation was claimed by a concurrent withdrawal — abort cleanly.
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: "Funds were claimed by another withdrawal. Please try again." });
+      return Response.json({ error: "Those funds were just claimed by another withdrawal. Please try again." }, { status: 409 });
+    }
+    if (reservedGross !== gross) {
+      // Partial race — adjust the withdrawal to only the funds we actually reserved.
+      gross = reservedGross;
+      fee = round2(gross * PLATFORM_FEE_RATE);
+      net = round2(gross - fee);
+      await sr.entities.Withdrawal.update(withdrawal.id, {
+        gross_amount: gross,
+        platform_fee: fee,
+        net_amount: net,
+        covered_donation_ids: reservedIds,
+      });
+    }
 
     // Large payouts are held for manual admin review (fraud protection).
     if (net > REVIEW_THRESHOLD) {
@@ -136,9 +167,12 @@ export default async function(req) {
       });
       return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
-      // Payout failed — release the reserved donations so the user can retry.
+      // Payout failed — release only the donations we actually reserved.
       console.error("requestWithdrawal payout error:", err?.message || err);
-      await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: "" })));
+      await sr.entities.Donation.updateMany(
+        { withdrawal_id: withdrawal.id },
+        { $set: { withdrawal_id: "" } }
+      );
       await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
     }

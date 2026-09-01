@@ -14,6 +14,13 @@ export default async function (req) {
       return Response.json({ error: 'Order id and campaign are required' }, { status: 400 });
     }
 
+    // Idempotency: if this PayPal order was already captured and recorded,
+    // return the existing donation instead of creating a duplicate.
+    const existing = await sr.entities.Donation.filter({ stripe_session_id: order_id }).catch(() => []);
+    if (existing && existing.length) {
+      return Response.json({ ok: true, donation_id: existing[0].id, amount: existing[0].amount, duplicate: true });
+    }
+
     const cap = await captureOrder(order_id);
     if (cap.status !== 'COMPLETED') {
       return Response.json({ error: 'Payment was not completed', status: cap.status }, { status: 402 });
@@ -39,10 +46,11 @@ export default async function (req) {
       stripe_session_id: order_id, // external reference id (PayPal order id)
     });
 
-    await sr.entities.Campaign.update(campaign_id, {
-      raised_amount: (campaign.raised_amount || 0) + value,
-      donor_count: (campaign.donor_count || 0) + 1,
-    });
+    // Atomic increment — avoids the read-modify-write race on concurrent gifts.
+    await sr.entities.Campaign.updateMany(
+      { id: campaign_id },
+      { $inc: { raised_amount: value, donor_count: 1 } }
+    );
 
     if (campaign.created_by_id) {
       await sr.entities.Notification.create({

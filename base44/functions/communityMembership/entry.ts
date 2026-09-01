@@ -22,9 +22,12 @@ export default async function(req) {
       const m = members && members[0];
       if (!m) return Response.json({ error: 'You are not a member of this community.' }, { status: 400 });
       await base44.entities.CommunityMember.delete(m.id);
-      const count = Math.max(0, (community.member_count || 1) - 1);
-      await sr.entities.Community.update(community_id, { member_count: count });
-      return Response.json({ ok: true, member_count: count });
+      // Atomic decrement with a floor of 0 — avoids the read-modify-write race.
+      await sr.entities.Community.updateMany(
+        { id: community_id },
+        { $inc: { member_count: -1 }, $max: { member_count: 0 } }
+      );
+      return Response.json({ ok: true });
     }
 
     // join (default)
@@ -36,9 +39,12 @@ export default async function(req) {
       user_name: user.full_name || user.email,
       role: 'member',
     });
-    const count = (community.member_count || 0) + 1;
-    await sr.entities.Community.update(community_id, { member_count: count });
-    return Response.json({ ok: true, member_count: count });
+    // Atomic increment — avoids the read-modify-write race on concurrent joins.
+    await sr.entities.Community.updateMany(
+      { id: community_id },
+      { $inc: { member_count: 1 } }
+    );
+    return Response.json({ ok: true });
   } catch (error) {
     console.error('communityMembership error:', error.message);
     return Response.json({ error: error.message }, { status: 500 });

@@ -42,10 +42,11 @@ export default async function(req) {
           cleared: false,
         });
         if (campaign) {
-          await sr.entities.Campaign.update(campaign.id, {
-            raised_amount: (campaign.raised_amount || 0) + amount,
-            donor_count: (campaign.donor_count || 0) + 1,
-          });
+          // Atomic increment — avoids the read-modify-write race on concurrent awards.
+          await sr.entities.Campaign.updateMany(
+            { id: campaign.id },
+            { $inc: { raised_amount: amount, donor_count: 1 } }
+          );
         }
       }
     }

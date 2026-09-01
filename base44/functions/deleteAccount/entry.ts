@@ -22,6 +22,8 @@ export default async function(req) {
     await admin.entities.MissionBrief.deleteMany({ created_by_id: user.id });
     await admin.entities.Recommendation.deleteMany({ created_by_id: user.id });
     await admin.entities.Recommendation.deleteMany({ owner_user_id: user.id });
+    await admin.entities.AgentActivity.deleteMany({ owner_user_id: user.id });
+    await admin.entities.Message.deleteMany({ created_by_id: user.id });
     await admin.entities.CommunityMember.deleteMany({ user_id: user.id });
     await admin.entities.VolunteerSignup.deleteMany({ user_id: user.id });
     await admin.entities.DiscussionPost.deleteMany({ created_by_id: user.id });
@@ -29,16 +31,30 @@ export default async function(req) {
     await admin.entities.GrantApplication.deleteMany({ applicant_user_id: user.id });
     await admin.entities.Withdrawal.deleteMany({ owner_user_id: user.id });
 
-    // 2. Owned campaigns and everything attached to them
+    // 2. Anonymize donations this user made to OTHER people's campaigns — the
+    //    campaign owner still needs the ledger entry, but the donor's identity
+    //    is removed for retention/privacy compliance. Cancel any active
+    //    recurring gifts first, then strip the PII.
+    await admin.entities.Donation.updateMany(
+      { donor_user_id: user.id, recurring_status: 'active' },
+      { $set: { recurring_status: 'cancelled' } }
+    );
+    await admin.entities.Donation.updateMany(
+      { donor_user_id: user.id },
+      { $set: { donor_user_id: '', donor_name: 'Deleted user', message: '' } }
+    );
+
+    // 3. Owned campaigns and everything attached to them
     const campaigns = await admin.entities.Campaign.filter({ created_by_id: user.id });
     for (const c of campaigns) {
       await admin.entities.CampaignUpdate.deleteMany({ campaign_id: c.id });
       await admin.entities.Donation.deleteMany({ campaign_id: c.id });
       await admin.entities.DistributedPost.deleteMany({ campaign_id: c.id });
+      await admin.entities.AgentActivity.deleteMany({ campaign_id: c.id });
     }
     await admin.entities.Campaign.deleteMany({ created_by_id: user.id });
 
-    // 3. Connections
+    // 4. Connections
     await admin.entities.PlatformConnection.deleteMany({ created_by_id: user.id });
 
     return Response.json({ deleted: true });

@@ -33,7 +33,12 @@
       "type": "string"
     },
     "stripe_session_id": {
-      "type": "string"
+      "type": "string",
+      "description": "External payment reference (Stripe checkout session id or PayPal order id). Also serves as the idempotency key for provider-confirmed gifts."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Client-supplied dedup key for manual-confirmation donations (PayPal/Cash App), preventing duplicate ledger entries on retry or double-click."
     },
     "payment_method": {
       "type": "string",

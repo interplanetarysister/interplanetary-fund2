@@ -27,7 +27,11 @@ export default async function(req) {
       user_id: user.id,
       user_name: user.full_name || user.email,
     });
-    await sr.entities.VolunteerOpportunity.update(opportunity_id, { volunteer_count: (opp.volunteer_count || 0) + 1 });
+    // Atomic increment — avoids the read-modify-write race on concurrent signups.
+    await sr.entities.VolunteerOpportunity.updateMany(
+      { id: opportunity_id },
+      { $inc: { volunteer_count: 1 } }
+    );
 
     if (opp.created_by_id && opp.created_by_id !== user.id) {
       await sr.entities.Notification.create({

@@ -39,7 +39,11 @@ export default async function(req) {
       requested_amount: requested_amount ? Number(requested_amount) : undefined,
       status: 'submitted',
     });
-    await sr.entities.InstitutionOpportunity.update(opportunity_id, { application_count: (opp.application_count || 0) + 1 });
+    // Atomic increment — avoids the read-modify-write race on concurrent applications.
+    await sr.entities.InstitutionOpportunity.updateMany(
+      { id: opportunity_id },
+      { $inc: { application_count: 1 } }
+    );
 
     if (opp.created_by_id && opp.created_by_id !== user.id) {
       await sr.entities.Notification.create({

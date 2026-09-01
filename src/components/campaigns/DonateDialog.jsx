@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import useUrlDialog from "@/hooks/useUrlDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -28,6 +28,11 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  // One idempotency key per donation intent — if the supporter double-clicks
+  // or the request is retried, the backend returns the original record
+  // instead of creating a duplicate ledger entry.
+  const idempotencyRef = useRef(crypto.randomUUID());
+  const newIntent = () => { idempotencyRef.current = crypto.randomUUID(); };
 
   // PayPal and Cash App complete on their own secure sites, so the supporter
   // confirms the gift here and it is added to the campaign ledger.
@@ -44,6 +49,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         message,
         is_recurring: recurring,
         payment_method,
+        idempotency_key: idempotencyRef.current,
       });
       setConfirmed(true);
       if (onDonated) onDonated();
@@ -54,7 +60,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setConfirmed(false); }}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setConfirmed(false); newIntent(); } }}>
       {!hideTrigger && (
         <DialogTrigger asChild>
           <Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">

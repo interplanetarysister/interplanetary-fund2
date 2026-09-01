@@ -55,10 +55,11 @@ export default async function(req) {
           });
 
           if (campaign) {
-            await base44.asServiceRole.entities.Campaign.update(campaign.id, {
-              raised_amount: (campaign.raised_amount || 0) + value,
-              donor_count: (campaign.donor_count || 0) + 1,
-            });
+            // Atomic increment — avoids the read-modify-write race on concurrent gifts.
+            await base44.asServiceRole.entities.Campaign.updateMany(
+              { id: campaign.id },
+              { $inc: { raised_amount: value, donor_count: 1 } }
+            );
             if (campaign.created_by_id) {
               await base44.asServiceRole.entities.Notification.create({
                 user_id: campaign.created_by_id,
