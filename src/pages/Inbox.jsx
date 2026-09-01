@@ -7,6 +7,7 @@ import { Loader2, MailOpen } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
 import { platformName } from "@/components/connections/platformCatalog";
+import PageError from "@/components/PageError";
 
 // The Universal Inbox — one communication center aggregating connected-platform
 // interactions (InboxItems, e.g. live Ko-fi gifts), Interplanetary Fund
@@ -14,6 +15,7 @@ import { platformName } from "@/components/connections/platformCatalog";
 export default function Inbox() {
   const [items, setItems] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [error, setError] = useState(null);
   const [tab, setTab] = useState("open");
   const [platform, setPlatform] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
@@ -21,6 +23,7 @@ export default function Inbox() {
 
   useEffect(() => {
     (async () => {
+     try {
       const me = await base44.auth.me();
       const [inboxItems, notifications, myCampaigns] = await Promise.all([
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
@@ -52,9 +55,15 @@ export default function Inbox() {
       ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
       setItems(merged);
+     } catch (e) {
+       setError(e.message || "We couldn't load your inbox.");
+     }
     })();
   }, [refreshKey]);
 
+  if (error) {
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setItems(null); setRefreshKey((k) => k + 1); }} /></div>;
+  }
   if (!items) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }

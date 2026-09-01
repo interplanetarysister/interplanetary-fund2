@@ -12,21 +12,30 @@ import BrandHero from "@/components/brand/BrandHero";
 import CoachMarks from "@/components/coach/CoachMarks";
 import CoachTourButton from "@/components/coach/CoachTourButton";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
+import PageError from "@/components/PageError";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
-      const me = await base44.auth.me();
-      setUser(me);
-      const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
-      setCampaigns(mine);
+      try {
+        const me = await base44.auth.me();
+        setUser(me);
+        const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
+        setCampaigns(mine);
+      } catch (e) {
+        setError(e.message || "We couldn't load your dashboard.");
+      }
     })();
   }, [refreshKey]);
 
+  if (error) {
+    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
+  }
   if (!campaigns) {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={4} /></div>;
   }

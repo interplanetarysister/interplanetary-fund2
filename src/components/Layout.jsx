@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
 import { hapticTap } from "@/lib/haptics";
 import LegalFooter from "@/components/LegalFooter";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -209,7 +210,9 @@ export default function Layout() {
             exit={{ opacity: 0, x: "100%" }}
             transition={{ duration: 0.25, ease: "easeOut" }}
           >
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
         <div className="md:block hidden"><LegalFooter /></div>

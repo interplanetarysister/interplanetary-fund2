@@ -7,6 +7,7 @@ import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
+import PageError from "@/components/PageError";
 
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
 // Base44 entities so the dashboard works offline; Sync Now refreshes it.
@@ -18,19 +19,25 @@ export default function OpsCenter() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    const [a, c, t, r] = await Promise.all([
-      base44.entities.Agent.list("-trust_score", 50),
-      base44.entities.MonitoredCampaign.list("-raised_amount", 50),
-      base44.entities.TreasurySnapshot.list("-created_date", 1),
-      base44.entities.ProtocolReport.list("-generated_at", 20),
-    ]);
-    setAgents(a);
-    setCampaigns(c);
-    setTreasury(t[0] || null);
-    setReports(r);
-    setLoading(false);
+    try {
+      const [a, c, t, r] = await Promise.all([
+        base44.entities.Agent.list("-trust_score", 50),
+        base44.entities.MonitoredCampaign.list("-raised_amount", 50),
+        base44.entities.TreasurySnapshot.list("-created_date", 1),
+        base44.entities.ProtocolReport.list("-generated_at", 20),
+      ]);
+      setAgents(a);
+      setCampaigns(c);
+      setTreasury(t[0] || null);
+      setReports(r);
+    } catch (e) {
+      setError(e.message || "We couldn't load Ops Center data.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -69,7 +76,9 @@ export default function OpsCenter() {
         </div>
         {syncError && <p className="mt-2 text-xs text-rose-400">{syncError}</p>}
 
-        {loading ? (
+        {error ? (
+          <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
+        ) : loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">

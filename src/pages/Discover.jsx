@@ -6,17 +6,24 @@ import { Input } from "@/components/ui/input";
 import RecommendedCampaigns from "@/components/discover/RecommendedCampaigns";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
+import PageError from "@/components/PageError";
 
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100).then(setCampaigns);
+    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
+      .then(setCampaigns)
+      .catch((e) => setError(e.message || "We couldn't load campaigns."));
   }, [refreshKey]);
 
+  if (error) {
+    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
+  }
   if (!campaigns) {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={6} /></div>;
   }

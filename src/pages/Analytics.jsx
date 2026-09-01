@@ -8,13 +8,16 @@ import AlertCenter from "@/components/analytics/AlertCenter";
 import ReportsPanel from "@/components/analytics/ReportsPanel";
 import { Loader2 } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
+import PageError from "@/components/PageError";
 
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
+     try {
       const me = await base44.auth.me();
       const [campaigns, communities, institutions, volunteerOpps, applications, opportunities] = await Promise.all([
         base44.entities.Campaign.filter({ created_by_id: me.id }),
@@ -40,9 +43,15 @@ export default function Analytics() {
         donations: donationLists.flat(),
         signups: signupLists.flat(),
       });
+     } catch (e) {
+       setError(e.message || "We couldn't load your analytics.");
+     }
     })();
   }, [refreshKey]);
 
+  if (error) {
+    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setData(null); setRefreshKey((k) => k + 1); }} /></div>;
+  }
   if (!data) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }

@@ -7,6 +7,7 @@ import { Image } from "@/components/ui/image";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Loader2, Globe2, MapPin, X } from "lucide-react";
+import PageError from "@/components/PageError";
 
 // Public global activity surface: an interactive 3D globe of every active
 // campaign that has a city location. Tap a pin to open a quick card, then jump
@@ -14,9 +15,12 @@ import { Loader2, Globe2, MapPin, X } from "lucide-react";
 export default function GlobalGlobe() {
   const [campaigns, setCampaigns] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", 200).then(setCampaigns);
+    base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", 200)
+      .then(setCampaigns)
+      .catch((e) => setError(e.message || "We couldn't load the globe."));
   }, []);
 
   const withCoords = (campaigns || []).filter(
@@ -42,7 +46,9 @@ export default function GlobalGlobe() {
           <p className="text-stone-500 mt-1">Drag the globe to explore. Tap a glowing pin to discover a campaign happening there.</p>
         </div>
 
-        {!campaigns ? (
+        {error ? (
+          <PageError message={error} onRetry={() => { setError(null); setCampaigns(null); }} />
+        ) : !campaigns ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : withCoords.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
