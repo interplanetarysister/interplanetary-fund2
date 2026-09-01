@@ -69,13 +69,13 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
           <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
         ) : (
           <>
-            <div className="bg-slate-50 border border-stone-200 rounded-2xl p-3 text-sm text-stone-600">{greeting}</div>
+            <div className="bg-muted text-muted-foreground border border-border rounded-2xl p-3 text-sm">{greeting}</div>
             {messages.filter((m) => m.content).map((m, i) => (
               <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
                 <div className={
                   m.role === "user"
                     ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 max-w-[85%] text-sm whitespace-pre-wrap"
-                    : "bg-white border border-stone-200 rounded-2xl rounded-bl-sm px-4 py-2 max-w-[85%] text-sm"
+                    : "bg-card text-card-foreground border border-border rounded-2xl rounded-bl-sm px-4 py-2 max-w-[85%] text-sm"
                 }>
                   {m.role === "user"
                     ? m.content
@@ -85,7 +85,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
             ))}
             {sending && (
               <div className="flex justify-start">
-                <div className="bg-white border border-stone-200 rounded-2xl px-4 py-2 text-sm text-stone-400 flex items-center gap-2">
+                <div className="bg-card text-muted-foreground border border-border rounded-2xl px-4 py-2 text-sm flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" /> thinking…
                 </div>
               </div>
