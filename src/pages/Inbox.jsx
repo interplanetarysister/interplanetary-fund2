@@ -28,7 +28,14 @@ export default function Inbox() {
         base44.entities.Campaign.filter({ created_by_id: me.id }),
       ]);
       const donationLists = await Promise.all(
-        myCampaigns.map((c) => base44.entities.Donation.filter({ campaign_id: c.id }, "-created_date", 25))
+        myCampaigns.map(async (campaign) => {
+          const response = await base44.functions.invoke("getCampaignDonationView", {
+            campaign_id: campaign.id,
+            limit: 25,
+          });
+          if (response.data?.error) throw new Error(response.data.error);
+          return response.data?.donations || [];
+        })
       );
 
       const merged = [

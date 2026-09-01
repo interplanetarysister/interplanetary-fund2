@@ -33,15 +33,21 @@ export default function CampaignDetail() {
   const [related, setRelated] = useState([]);
 
   const load = useCallback(async () => {
-    const [c, u, d] = await Promise.all([
+    const [c, u] = await Promise.all([
       base44.entities.Campaign.filter({ id }),
       base44.entities.CampaignUpdate.filter({ campaign_id: id }, "-created_date"),
-      base44.entities.Donation.filter({ campaign_id: id }, "-created_date", 10),
     ]);
     if (!c.length) { setNotFound(true); return; }
+
+    const donationResponse = await base44.functions.invoke("getCampaignDonationView", {
+      campaign_id: id,
+      limit: 10,
+    });
+    if (donationResponse.data?.error) throw new Error(donationResponse.data.error);
+
     setCampaign(c[0]);
     setUpdates(u);
-    setDonations(d);
+    setDonations(donationResponse.data?.donations || []);
     const rel = await base44.entities.Campaign.filter({ category: c[0].category, status: "active" }, "-raised_amount", 6);
     setRelated(rel.filter((r) => r.id !== id).slice(0, 3));
   }, [id]);

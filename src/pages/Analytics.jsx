@@ -25,7 +25,14 @@ export default function Analytics() {
         base44.entities.InstitutionOpportunity.list("-created_date", 200),
       ]);
       const donationLists = await Promise.all(
-        campaigns.map((c) => base44.entities.Donation.filter({ campaign_id: c.id }))
+        campaigns.map(async (campaign) => {
+          const response = await base44.functions.invoke("getCampaignDonationView", {
+            campaign_id: campaign.id,
+            limit: 100,
+          });
+          if (response.data?.error) throw new Error(response.data.error);
+          return response.data?.donations || [];
+        })
       );
       const signupLists = await Promise.all(
         volunteerOpps.map((o) => base44.entities.VolunteerSignup.filter({ opportunity_id: o.id }))
