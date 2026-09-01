@@ -62,6 +62,21 @@ export default async function(req) {
         is_recurring: is_recurring ? 'true' : 'false',
         platform_contribution_opt: platform_contribution ? 'true' : 'false',
       },
+      // For recurring donations, mirror the donation metadata onto the Stripe
+      // Subscription so each renewal (invoice.paid) can be attributed back to
+      // this campaign and recorded as a new Donation.
+      ...(is_recurring ? {
+        subscription_data: {
+          metadata: {
+            campaign_id,
+            donor_user_id: user.id,
+            donor_name: donor_name || 'Anonymous',
+            message: (message || '').slice(0, 450),
+            platform_contribution_opt: platform_contribution ? 'true' : 'false',
+            is_recurring: 'true',
+          },
+        },
+      } : {}),
     });
 
     return Response.json({ url: session.url });

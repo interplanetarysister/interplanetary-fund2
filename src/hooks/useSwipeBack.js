@@ -16,7 +16,7 @@ export default function useSwipeBack(enabled = true) {
       if (startX === null) return;
       const dx = e.changedTouches[0].clientX - startX;
       const dy = e.changedTouches[0].clientY - startY;
-      if (dx > 70 && Math.abs(dy) < 50) navigate(-1);
+      if (dx > 70 && Math.abs(dy) < 50) { if (window.history.length > 1) navigate(-1); else navigate("/"); }
       startX = null; startY = null;
     };
     window.addEventListener("touchstart", onStart, { passive: true });

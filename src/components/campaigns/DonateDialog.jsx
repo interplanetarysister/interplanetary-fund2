@@ -51,7 +51,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         amount: value,
         donor_name: name,
         message,
-        is_recurring: recurring,
+        is_recurring: false, // PayPal / Cash App are one-time only; monthly giving uses the card (Stripe) path.
         payment_method,
         platform_contribution: platformContribution,
         idempotency_key: idempotencyRef.current,
@@ -151,14 +151,17 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
               </div>
             )}
 
+            {!recurring && (
             <div className="rounded-xl border border-stone-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal or a card</p>
-              <PayPalDonateButton label={amount ? `Donate $${amount}` : "Donate now!"} />
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p>
+              <PayPalDonateButton />
               <Button onClick={() => confirmDonation("paypal")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I completed my PayPal donation"}
               </Button>
             </div>
+            )}
 
+            {!recurring && (
             <div className="rounded-xl border border-stone-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p>
               <GooglePayButton
@@ -166,22 +169,23 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
                 amount={amount}
                 donorName={name}
                 message={message}
-                recurring={recurring}
+                recurring={false}
                 platformContribution={platformContribution}
                 onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }}
               />
               <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by your PayPal business account — fast &amp; secure.</p>
             </div>
+            )}
 
             <div className="rounded-xl border border-stone-200 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with a card</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{recurring ? "Monthly giving via card" : "Give with a card"}</p>
               <Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">
                 {stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${amount} with card` : "Donate with card"}
               </Button>
               <p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p>
             </div>
 
-            {campaign.cashapp_tag && (
+            {!recurring && campaign.cashapp_tag && (
               <div className="rounded-xl border border-stone-200 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Cash App</p>
                 <CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} />

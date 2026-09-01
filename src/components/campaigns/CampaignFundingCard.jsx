@@ -30,7 +30,7 @@ export default function CampaignFundingCard({ campaign, onDonate, className = ""
         <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" /> Secure payments via PayPal
       </p>
       <div className="mt-4 pt-4 border-t border-stone-100">
-        <PayPalDonateButton label="Donate now!" />
+        <PayPalDonateButton />
       </div>
     </div>
   );

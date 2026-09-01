@@ -55,8 +55,10 @@ export default async function(req) {
         const session = event.data.object;
         const m = session.metadata || {};
 
-        // Subscription activation — AI tier checkout.
-        if (session.mode === 'subscription' || m.subscription_tier) {
+        // AI subscription activation — tier checkout. (Recurring DONATIONS also
+        // use mode='subscription' but carry no subscription_tier, so they fall
+        // through to the campaign branch below instead of being misrouted here.)
+        if (m.subscription_tier) {
           if (m.user_id) {
             await sr.entities.User.update(m.user_id, {
               subscription_tier: m.subscription_tier,
@@ -121,6 +123,52 @@ export default async function(req) {
       // ---- AI subscription lifecycle: renewal paid, status change, cancellation ----
       else if (event.type === 'invoice.paid') {
         const invoice = event.data.object;
+        // Recurring DONATION renewal — the subscription's metadata carries the
+        // campaign id (mirrored at checkout). Record one Donation per renewal
+        // and increment the campaign, idempotent on the Stripe invoice id.
+        if (invoice.subscription) {
+          let sub;
+          try { sub = await stripe.subscriptions.retrieve(invoice.subscription); } catch (_) { sub = null; }
+          const sm = sub?.metadata || {};
+          if (sm.campaign_id) {
+            const existing = await sr.entities.Donation.filter({ stripe_session_id: invoice.id });
+            if (!existing.length) {
+              const total = round2((invoice.total ?? invoice.amount_due ?? 0) / 100);
+              const optedIn = sm.platform_contribution_opt === 'true';
+              const contribution = computeContribution(total, optedIn);
+              const gift = round2(total - contribution);
+              const campaign = await sr.entities.Campaign.get(sm.campaign_id).catch(() => null);
+              await sr.entities.Donation.create({
+                campaign_id: sm.campaign_id,
+                campaign_title: campaign ? campaign.title : undefined,
+                amount: total,
+                platform_contribution: contribution,
+                donor_name: sm.donor_name || 'Anonymous',
+                message: sm.message || '',
+                is_recurring: true,
+                recurring_status: 'active',
+                donor_user_id: sm.donor_user_id,
+                payment_method: 'stripe',
+                stripe_session_id: invoice.id,
+              });
+              if (campaign) {
+                await sr.entities.Campaign.updateMany({ id: campaign.id }, { $inc: { raised_amount: gift, donor_count: 1 } });
+                if (campaign.created_by_id) {
+                  await sr.entities.Notification.create({
+                    user_id: campaign.created_by_id,
+                    title: 'Recurring donation received',
+                    body: `${sm.donor_name || 'Anonymous'} renewed $${total.toLocaleString()} to "${campaign.title}"`,
+                    type: 'donation',
+                    link: `/campaign/${campaign.id}`,
+                  });
+                }
+              }
+              await logAudit(base44, { action: 'donation_renewal_confirmed', target_type: 'campaign', target_id: sm.campaign_id, detail: `$${total} recurring renewal via stripe (gift $${gift})`, status: 'success' });
+            }
+            return Response.json({ received: true });
+          }
+        }
+        // AI subscription renewal — keep the user's tier status current.
         if (invoice.customer) {
           const users = await sr.entities.User.filter({ stripe_customer_id: invoice.customer });
           const u = users && users[0];

@@ -111,6 +111,19 @@ export default function Layout() {
       ? pathname === "/" || activeTab.current === "/"
       : pathname === root || pathname.startsWith(root + "/") || activeTab.current === root;
 
+  // Back button: if there's real history, go back; otherwise fall back home so
+  // the button always does something (e.g. when a deep page was opened
+  // directly from a shared link with no prior app navigation).
+  const goBack = () => { if (window.history.length > 1) navigate(-1); else navigate("/"); };
+
+  // Close the mobile menu on Escape for keyboard users.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const nav = (
     <nav className="flex flex-col gap-1 px-3">
       {navItems.map(({ to, label, icon: Icon }) => (
@@ -157,7 +170,7 @@ export default function Layout() {
           </Link>
         ) : (
           <div className="flex items-center gap-1 min-w-0">
-            <button onClick={() => navigate(-1)} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
+            <button onClick={goBack} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
               <ChevronLeft className="w-6 h-6" />
             </button>
             <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>
@@ -165,7 +178,7 @@ export default function Layout() {
         )}
         <div className="flex items-center gap-1 shrink-0">
           <NotificationBell />
-          <button onClick={() => setOpen(!open)} className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
+          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -174,7 +187,7 @@ export default function Layout() {
       {open && (
         <>
           <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
+          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
         </>
       )}
 

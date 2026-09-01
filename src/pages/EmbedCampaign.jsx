@@ -38,7 +38,7 @@ export default function EmbedCampaign() {
 
   return (
     <div className="w-full max-w-sm mx-auto p-2 font-body bg-transparent">
-      <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="block rounded-2xl overflow-hidden border border-stone-200 shadow-lg bg-white">
+      <a href={fullUrl} target="_blank" rel="noopener noreferrer" aria-label={`Donate to ${campaign.title} — opens in a new tab`} className="block rounded-2xl overflow-hidden border border-stone-200 shadow-lg bg-white">
         <div className="relative h-40">
           <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={campaign.title} fittingType="fill" className="w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
