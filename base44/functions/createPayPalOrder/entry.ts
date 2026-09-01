@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { createOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
+import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
+import { validateDonationAmount } from '../../shared/fees.js';
 
 // Creates a PayPal v2 order (intent: CAPTURE) for a Google Pay donation. The
 // order id is handed to the PayPal SDK's Google Pay session to confirm with
@@ -10,14 +12,18 @@ export default async function (req) {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
 
+    // A signed-in revoked account must not initiate a donation. Unsigned donors
+    // (Google Pay) remain allowed.
+    const donorGuard = await assertActiveAccountIfSignedIn(base44);
+    if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
+
     const { campaign_id, amount, donor_name, message } = await req.json();
-    const value = parseFloat(amount);
-    if (!campaign_id || !value || value <= 0) {
-      return Response.json({ error: 'A campaign and a positive amount are required' }, { status: 400 });
+    const amountCheck = validateDonationAmount(amount);
+    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
+    if (!campaign_id) {
+      return Response.json({ error: 'A campaign is required' }, { status: 400 });
     }
-    if (value > 1000000) {
-      return Response.json({ error: 'Donation amount is too large.' }, { status: 400 });
-    }
+    const value = Number(amount);
 
     // Narrow abuse guard on order creation only — generous enough that a
     // legitimate donor never hits it, but stops a script spamming orders. By

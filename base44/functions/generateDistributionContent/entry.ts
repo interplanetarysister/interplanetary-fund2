@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // AI Campaign Distribution Engine — generates platform-tailored post content
 // for each connected social AND crowdfunding destination (never identical
@@ -35,8 +36,9 @@ const PLATFORM_RULES = {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { campaign_id, connection_ids } = await req.json();
     if (!campaign_id || !Array.isArray(connection_ids) || !connection_ids.length) {

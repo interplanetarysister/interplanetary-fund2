@@ -1,13 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Starts a Stripe subscription checkout for an AI tier.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { tier, interval, price_id, origin, trial_days } = await req.json();
     if (!tier || !price_id || !origin) {

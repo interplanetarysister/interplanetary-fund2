@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { computeContribution, round2 } from '../../shared/fees.js';
+import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
+import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 
 // Records a donation made through PayPal or Cash App. Those flows complete on
 // an external site, so the supporter confirms the gift here and the ledger,
@@ -10,14 +11,17 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
 
-    let donor = null;
-    try { donor = await base44.auth.me(); } catch (_) { /* supporters may be signed out */ }
+    const donorGuard = await assertActiveAccountIfSignedIn(base44);
+    if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
+    const donor = donorGuard.donor;
 
     const { campaign_id, amount, donor_name, message, is_recurring, payment_method, idempotency_key, platform_contribution } = await req.json();
-    const value = parseFloat(amount);
-    if (!campaign_id || !value || value <= 0) {
-      return Response.json({ error: 'A campaign and a positive amount are required' }, { status: 400 });
+    const amountCheck = validateDonationAmount(amount);
+    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
+    if (!campaign_id) {
+      return Response.json({ error: 'A campaign is required' }, { status: 400 });
     }
+    const value = Number(amount);
 
     // Idempotency: if the client passed a key (generated once per donation
     // intent), return the existing record instead of creating a duplicate.

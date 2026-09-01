@@ -36,6 +36,20 @@ export default async function(req) {
       processed_at: new Date().toISOString(),
     });
 
+    // Confirm we hold the claim. Base44 entities have no unique constraint, so
+    // two truly-simultaneous deliveries of the same event can both pass the prior
+    // check and both create a claim. Re-read the claims in created-date order and
+    // keep only the earliest; any later claim backs off as a duplicate so exactly
+    // one delivery processes the event. (Residual race: a sub-millisecond
+    // created_date collision could leave both believing they are earliest —
+    // documented, not claimed as fully concurrency-safe.)
+    const claims = await sr.entities.WebhookEvent.filter({ source: 'stripe', event_key: eventKey }, 'created_date', 50).catch(() => [claim]);
+    const earliest = claims && claims[0];
+    if (earliest && earliest.id !== claim.id) {
+      await sr.entities.WebhookEvent.delete(claim.id).catch(() => {});
+      return Response.json({ received: true, duplicate: true });
+    }
+
     try {
       if (event.type === 'checkout.session.completed') {
         const session = event.data.object;

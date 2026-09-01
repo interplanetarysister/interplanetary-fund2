@@ -129,8 +129,9 @@ export default async function(req) {
         trial_end: null,
         stripe_customer_id: '',
         account_deletion_pending: true,
+        account_status: 'disabled',
       });
-      await audit('account_anonymized', 'success', 'Account could not be deleted; custom data anonymized. Built-in identity retained by the platform.');
+      await audit('account_anonymized', 'success', 'Account could not be deleted; custom data anonymized. Built-in identity (id, email, full_name) is retained by the Base44 platform and cannot be cleared by the application.');
       return Response.json({ anonymized: true, reason: 'Account anonymized.' });
     }
   } catch (error) {

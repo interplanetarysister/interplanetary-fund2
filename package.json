@@ -15,7 +15,8 @@
     "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
     "test:delete-account": "node scripts/test-delete-account.mjs",
     "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
-    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs",
+    "test:account-guard": "node scripts/test-account-guard.mjs",
+    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

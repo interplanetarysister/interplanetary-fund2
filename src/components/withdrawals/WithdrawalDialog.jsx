@@ -71,6 +71,7 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
             )}
             <dl className="text-sm space-y-1.5 bg-white/5 rounded-xl p-4 border border-white/10">
               <div className="flex justify-between"><dt className="text-slate-400">Gross withdrawn</dt><dd className="text-slate-100">{money(result.gross)}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Processing fee</dt><dd className="text-slate-500">Covered by platform</dd></div>
               <div className="flex justify-between"><dt className="text-slate-400">Platform fee (3%)</dt><dd className="text-rose-300">-{money(result.fee)}</dd></div>
               <div className="flex justify-between border-t border-white/10 pt-1.5"><dt className="text-slate-200 font-medium">Net payout</dt><dd className="text-emerald-300 font-semibold">{money(result.net)}</dd></div>
             </dl>
@@ -80,6 +81,7 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
           <div className="space-y-4 py-2">
             <dl className="text-sm space-y-1.5 bg-white/5 rounded-xl p-4 border border-white/10">
               <div className="flex justify-between"><dt className="text-slate-400">Available to withdraw</dt><dd className="text-slate-100">{money(campaign.available)}</dd></div>
+              <div className="flex justify-between"><dt className="text-slate-500">Processing fee</dt><dd className="text-slate-500">Covered by platform</dd></div>
               <div className="flex justify-between"><dt className="text-slate-400">Platform fee (3%)</dt><dd className="text-rose-300">-{money(fee)}</dd></div>
               <div className="flex justify-between border-t border-white/10 pt-1.5"><dt className="text-slate-200 font-medium">You receive</dt><dd className="text-emerald-300 font-semibold">{money(net)}</dd></div>
             </dl>

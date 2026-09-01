@@ -89,6 +89,15 @@
       "type": "boolean",
       "default": false,
       "description": "True once account deletion has been authorized and is in progress. The app revokes access for a pending account; data cleanup and final deletion/anonymization run idempotently so a retry after a mid-process failure resumes cleanly."
+    },
+    "account_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disabled"
+      ],
+      "default": "active",
+      "description": "Lifecycle status of the account. 'disabled' blocks all sensitive actions server-side (assertActiveAccount). Pending deletion is tracked separately by account_deletion_pending; a deleted account is simply absent from the store."
     }
   },
   "required": [

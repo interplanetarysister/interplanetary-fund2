@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -9,8 +10,9 @@ import { logAudit } from '../../shared/auditLog.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { post_id } = await req.json();
     if (!post_id) return Response.json({ error: 'Missing post_id' }, { status: 400 });

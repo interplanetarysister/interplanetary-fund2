@@ -2,21 +2,23 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { validateDonationAmount } from '../../shared/fees.js';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution } = await req.json();
-    const value = Number(amount);
-    if (!campaign_id || !value || value <= 0 || !origin) {
+    const amountCheck = validateDonationAmount(amount);
+    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
+    if (!campaign_id || !origin) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
-    if (value > 1000000) {
-      return Response.json({ error: 'Donation amount is too large.' }, { status: 400 });
-    }
+    const value = Number(amount);
     let originUrl;
     try {
       originUrl = new URL(origin);

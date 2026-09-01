@@ -1,27 +1,27 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPayout } from '../../shared/paypal.ts';
-import { giftOf } from '../../shared/fees.js';
+import { giftOf, round2, computeWithdrawal } from '../../shared/fees.js';
 import { logAudit } from '../../shared/auditLog.ts';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Withdrawal engine. Enforces the approved 3% platform fee, the 7-day clearing
 // hold, a once-daily limit, campaign ownership, and fraud review for large
 // payouts. All payouts go out of the platform's PayPal business account.
-const PLATFORM_FEE_RATE = 0.03;
 const CLEARING_DAYS = 7;
 const REVIEW_THRESHOLD = 1000; // net amounts above this require admin approval
 const SAFE_PAYOUT_ERROR = 'Unable to complete the payout. Please try again or contact support.';
 const SAFE_WITHDRAWAL_ERROR = 'Unable to complete the withdrawal request. Please try again or contact support.';
 const GENERIC_PAYOUT_REVIEW_NOTE = 'Payout failed. Detailed provider diagnostics are retained in controlled server logs.';
 
-const round2 = (n) => Math.round(n * 100) / 100;
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: "Sign in to withdraw funds." }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const body = await req.json();
     const action = body.action || "request";
@@ -98,8 +98,7 @@ export default async function(req) {
       return Response.json({ error: "No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period." }, { status: 400 });
     }
 
-    let fee = round2(gross * PLATFORM_FEE_RATE);
-    let net = round2(gross - fee);
+    let { fee, net } = computeWithdrawal(gross);
 
     const withdrawal = await sr.entities.Withdrawal.create({
       owner_user_id: user.id,
@@ -139,8 +138,7 @@ export default async function(req) {
     if (reservedGross !== gross) {
       // Partial race — adjust the withdrawal to only the funds we actually reserved.
       gross = reservedGross;
-      fee = round2(gross * PLATFORM_FEE_RATE);
-      net = round2(gross - fee);
+      ({ fee, net } = computeWithdrawal(gross));
       await sr.entities.Withdrawal.update(withdrawal.id, {
         gross_amount: gross,
         platform_fee: fee,

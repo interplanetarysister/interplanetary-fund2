@@ -10,8 +10,8 @@ import { Label } from "@/components/ui/label";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
-import { Heart, Loader2, Lock, CheckCircle2, Sparkles } from "lucide-react";
-import { computeBreakdown } from "../../../base44/shared/fees.js";
+import { Heart, Loader2, Lock, CheckCircle2, Sparkles, CreditCard } from "lucide-react";
+import { computeBreakdown, MIN_DONATION } from "../../../base44/shared/fees.js";
 
 const presets = [25, 50, 100, 250];
 
@@ -28,6 +28,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [recurring, setRecurring] = useState(false);
   const [platformContribution, setPlatformContribution] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [stripeLoading, setStripeLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   // One idempotency key per donation intent — if the supporter double-clicks
@@ -41,7 +42,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   // confirms the gift here and it is added to the campaign ledger.
   const confirmDonation = async (payment_method) => {
     const value = parseFloat(amount);
-    if (!value || value <= 0) { setError("Enter the amount you gave so we can add it to the campaign."); return; }
+    if (!value || value < MIN_DONATION) { setError(`Enter an amount of at least $${MIN_DONATION}.`); return; }
     setSaving(true);
     setError("");
     try {
@@ -61,6 +62,32 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
       setError("We couldn't record your gift. Please try again.");
     }
     setSaving(false);
+  };
+
+  // Stripe Checkout — the donor is redirected to Stripe's hosted page, then
+  // returns to the campaign. The Stripe webhook records the gift from Stripe's
+  // authoritative amount_total, so no client-side fee math reaches the ledger.
+  const startStripeCheckout = async () => {
+    const value = parseFloat(amount);
+    if (!value || value < MIN_DONATION) { setError(`Enter an amount of at least $${MIN_DONATION}.`); return; }
+    setStripeLoading(true);
+    setError("");
+    try {
+      const { data } = await base44.functions.invoke("createDonationCheckout", {
+        campaign_id: campaign.id,
+        amount: value,
+        donor_name: name,
+        message,
+        is_recurring: recurring,
+        origin: window.location.origin,
+        platform_contribution: platformContribution,
+      });
+      if (data?.url) { window.location.href = data.url; return; }
+      setError(data?.error || "Couldn't start card checkout.");
+    } catch (e) {
+      setError("Couldn't start card checkout. Please try again.");
+    }
+    setStripeLoading(false);
   };
 
   return (
@@ -95,7 +122,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
                 </button>
               ))}
             </div>
-            <Input type="number" min="1" placeholder="Custom amount ($)" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <Input type="number" min={MIN_DONATION} step="1" placeholder="Custom amount ($)" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <Input placeholder="Your name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
             <Textarea placeholder="Leave a message of support (optional)" value={message} onChange={(e) => setMessage(e.target.value)} rows={2} />
             <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
@@ -146,6 +173,14 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
               <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by your PayPal business account — fast &amp; secure.</p>
             </div>
 
+            <div className="rounded-xl border border-stone-200 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with a card</p>
+              <Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">
+                {stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${amount} with card` : "Donate with card"}
+              </Button>
+              <p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p>
+            </div>
+
             {campaign.cashapp_tag && (
               <div className="rounded-xl border border-stone-200 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Cash App</p>
@@ -158,7 +193,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400">
-              <Lock className="w-3 h-3" /> Payments are handled securely by PayPal and Cash App
+              <Lock className="w-3 h-3" /> Payments are handled securely by Stripe, PayPal, and Cash App
             </p>
           </div>
         )}

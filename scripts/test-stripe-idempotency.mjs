@@ -15,6 +15,8 @@ const checks = [
   ['safe outer error (no raw exception leak)', source.includes("return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });")],
   ['contribution derived from the authoritative total', /computeContribution\(total,\s*optedIn\)/.test(source)],
   ['raised_amount increments by the gift, not the total', /\$inc:\s*\{\s*raised_amount:\s*gift/.test(source)],
+  ['confirms the claim via re-read (simultaneous-duplicate winner)', /WebhookEvent\.filter\(\{\s*source:\s*'stripe',\s*event_key:\s*eventKey\s*\},\s*'created_date'/.test(source)],
+  ['loser backs off as a duplicate', /earliest\.id !== claim\.id/.test(source)],
 ];
 
 let failed = 0;

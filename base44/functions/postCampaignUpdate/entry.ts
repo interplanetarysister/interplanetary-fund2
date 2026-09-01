@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Campaign update cross-posting + follower notifications.
 // When an owner publishes an update, this function:
@@ -42,8 +43,9 @@ const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts,
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { campaign_id, title, content, media_url, media_type, cross_post } = await req.json();
     if (!content || !content.trim()) return Response.json({ error: 'Update content is required.' }, { status: 400 });

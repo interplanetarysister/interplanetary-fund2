@@ -2,7 +2,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { captureOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
-import { computeContribution, round2 } from '../../shared/fees.js';
+import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
+import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 
 // Captures a PayPal order that was confirmed via Google Pay, then records the
 // donation in the ledger, updates campaign totals, and notifies the creator —
@@ -44,13 +45,16 @@ export default async function (req) {
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
-    let donor = null;
-    try { donor = await base44.auth.me(); } catch (_) { /* supporters may be signed out */ }
+    const donorGuard = await assertActiveAccountIfSignedIn(base44);
+    if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
+    const donor = donorGuard.donor;
 
     // The captured total is authoritative; the optional contribution is an
     // allocation FROM it (never added on top), directed to the platform. The
     // processing fee is covered by the platform, so it is not deducted again
-    // at payout — no double-charge.
+    // at payout — no double-charge. Reject captures that cannot yield a valid gift.
+    const totalCheck = validateDonationAmount(cap.amount);
+    if (!totalCheck.ok) return Response.json({ error: totalCheck.error }, { status: 400 });
     const total = round2(cap.amount);
     const contribution = computeContribution(total, !!platform_contribution);
     const gift = round2(total - contribution);

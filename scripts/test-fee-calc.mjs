@@ -3,6 +3,7 @@
 import {
   computeContribution, recipientGift, computePlatformFee, computeRecipientNet,
   computeProcessingFee, computeBreakdown, computeWithdrawal, giftOf,
+  validateDonationAmount,
 } from '../base44/shared/fees.js';
 
 let failed = 0;
@@ -55,6 +56,30 @@ for (const opt of [false, true]) {
 // giftOf reads the recipient gift from a stored Donation record.
 eq('giftOf record with contribution', giftOf({ amount: 100, platform_contribution: 10 }), 90);
 eq('giftOf legacy record (no contribution)', giftOf({ amount: 100 }), 100);
+
+// --- Minimum donation validation (rejects values that can't yield a valid payout) ---
+const v = (a) => validateDonationAmount(a);
+eq('validate ok (1)', v(1).ok, 1);
+eq('validate ok (100)', v(100).ok, 1);
+eq('validate ok (1000000)', v(1000000).ok, 1);
+eq('validate fail (0)', v(0).ok, 0);
+eq('validate fail (-5)', v(-5).ok, 0);
+eq('validate fail (0.5)', v(0.5).ok, 0);
+eq('validate fail (1000001)', v(1000001).ok, 0);
+eq('validate fail (null)', v(null).ok, 0);
+
+// --- Negative gift/payout prevention (clamp + cents math) ---
+eq('giftOf clamps negative gift', giftOf({ amount: 10, platform_contribution: 20 }), 0);
+eq('recipientNet never negative (tiny)', computeRecipientNet(0.01, false), 0.01);
+eq('withdrawal net never negative (0)', computeWithdrawal(0).net, 0);
+eq('withdrawal net never negative (0.01)', computeWithdrawal(0.01).net, 0.01);
+eq('withdrawal fee zero on tiny', computeWithdrawal(0.01).fee, 0);
+
+// --- Minor-unit (cents) precision on awkward amounts ---
+eq('contribution cents (33.33)', computeContribution(33.33, true), 3.33);
+eq('gift cents (33.33)', recipientGift(33.33, true), 30.00);
+eq('platformFee cents (33.33)', computePlatformFee(33.33, false), 1.00);
+eq('processing cents (33.33)', computeProcessingFee(33.33), 1.27);
 
 if (failed) { console.error(`\n${failed} fee-calc test(s) failed.`); process.exit(1); }
 console.log('\nAll fee-calc tests passed.');
