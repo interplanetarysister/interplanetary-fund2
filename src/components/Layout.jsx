@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2 } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2, Plug } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -16,7 +16,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/facebook": "Facebook Outreach",
+  "/facebook": "Facebook Outreach", "/connect": "Connect AI Assistant",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -45,6 +45,7 @@ const navItems = [
   { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
   { to: "/platform", label: "Platform", icon: Server },
   { to: "/facebook", label: "Facebook Outreach", icon: Share2 },
+  { to: "/connect", label: "Connect AI Assistant", icon: Plug },
   { to: "/create", label: "New Campaign", icon: PlusCircle },
 ];
 
@@ -77,7 +78,7 @@ export default function Layout() {
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
     "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
     "/notifications": ["/notifications", "/inbox", "/communications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/connect"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";

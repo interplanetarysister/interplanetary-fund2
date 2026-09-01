@@ -22,10 +22,12 @@ export default async function(req) {
       const m = members && members[0];
       if (!m) return Response.json({ error: 'You are not a member of this community.' }, { status: 400 });
       await base44.entities.CommunityMember.delete(m.id);
-      // Atomic decrement with a floor of 0 — avoids the read-modify-write race.
+      // Atomic decrement — avoids the read-modify-write race on concurrent
+      // leaves. The member-existence check above prevents going below zero
+      // in normal operation; one member leaving = one decrement.
       await sr.entities.Community.updateMany(
         { id: community_id },
-        { $inc: { member_count: -1 }, $max: { member_count: 0 } }
+        { $inc: { member_count: -1 } }
       );
       return Response.json({ ok: true });
     }

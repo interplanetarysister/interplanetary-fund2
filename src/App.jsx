@@ -42,6 +42,8 @@ import EmbedCampaign from './pages/EmbedCampaign';
 import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
 import FacebookGroups from './pages/FacebookGroups';
+import OAuthConsent from './pages/OAuthConsent';
+import Connect from './pages/Connect';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -76,6 +78,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
+      <Route path="/oauth/consent" element={<OAuthConsent />} />
       {/* Public campaign page — anyone arriving from a shared link can read the
           story and donate without signing in. */}
       <Route element={<Layout />}>
@@ -107,6 +110,7 @@ const AuthenticatedApp = () => {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
           <Route path="/facebook" element={<FacebookGroups />} />
+          <Route path="/connect" element={<Connect />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
