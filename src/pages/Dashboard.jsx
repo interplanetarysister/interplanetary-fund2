@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import MissionControl from "@/components/dashboard/MissionControl";
+import TreasurySnapshotCard from "@/components/dashboard/TreasurySnapshotCard";
 import FollowFeed from "@/components/dashboard/FollowFeed";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
@@ -84,6 +85,10 @@ export default function Dashboard() {
         <div data-coach="stat-raised"><StatCard label="Total Raised" value={`$${totalRaised.toLocaleString()}`} icon={DollarSign} /></div>
         <StatCard label="Supporters" value={totalDonors.toLocaleString()} icon={Users} />
         <StatCard label="Active Campaigns" value={active} icon={Flame} />
+      </div>
+
+      <div className="mb-6">
+        <TreasurySnapshotCard />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
