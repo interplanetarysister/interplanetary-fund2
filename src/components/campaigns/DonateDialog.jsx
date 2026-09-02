@@ -182,7 +182,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             <div className="rounded-xl border border-stone-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{recurring ? "Monthly giving via card" : "Give with a card"}</p>
               <Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">
-                {stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${amount} with card` : "Donate with card"}
+                {stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${bd.totalCharged.toFixed(2)} with card` : "Donate with card"}
               </Button>
               <p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p>
             </div>
