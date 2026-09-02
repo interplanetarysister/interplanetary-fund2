@@ -46,6 +46,7 @@ import FacebookGroups from './pages/FacebookGroups';
 import OAuthConsent from './pages/OAuthConsent';
 import Connect from './pages/Connect';
 import ExternalAccounts from './pages/ExternalAccounts';
+import IntegrationsAdmin from './pages/IntegrationsAdmin';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
           <Route path="/facebook" element={<FacebookGroups />} />
           <Route path="/connect" element={<Connect />} />
           <Route path="/admin/external-accounts" element={<ExternalAccounts />} />
+          <Route path="/admin/integrations" element={<IntegrationsAdmin />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
