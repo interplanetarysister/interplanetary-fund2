@@ -125,12 +125,17 @@ export default async function(req) {
 
     // --- Treasury: keep a single latest snapshot ---
     if (treasury && typeof treasury === "object") {
+      // Convex treasury aggregate shape: { grandTotal: {raised,held,donors},
+      // holdingAccounts: {totalHeld,totalFees,totalPaidOut,netPosition}, localCampaigns,
+      // externalPlatforms }. Map the real fields, falling back to legacy snake/camel names.
+      const g = treasury.grandTotal || {};
+      const h = treasury.holdingAccounts || {};
       const totals = {
-        total_raised: num(treasury.total_raised ?? treasury.totalRaised ?? treasury.raised),
-        total_held: num(treasury.total_held ?? treasury.totalHeld ?? treasury.held),
-        total_fees: num(treasury.total_fees ?? treasury.totalFees ?? treasury.fees),
-        net_position: num(treasury.net_position ?? treasury.netPosition ?? treasury.net),
-        campaign_totals: (treasury.campaign_totals ?? treasury.campaigns ?? treasury.byCampaign ?? []).map((t) => ({
+        total_raised: num(g.raised ?? treasury.total_raised ?? treasury.totalRaised ?? treasury.raised),
+        total_held: num(h.totalHeld ?? g.held ?? treasury.total_held ?? treasury.totalHeld ?? treasury.held),
+        total_fees: num(h.totalFees ?? treasury.total_fees ?? treasury.totalFees ?? treasury.fees),
+        net_position: num(h.netPosition ?? treasury.net_position ?? treasury.netPosition ?? treasury.net),
+        campaign_totals: (treasury.campaign_totals ?? treasury.byCampaign ?? treasury.campaigns ?? []).map((t) => ({
           campaign: str(t.campaign ?? t.title ?? t.name),
           raised: num(t.raised ?? t.raised_amount),
           held: num(t.held ?? t.held_amount),
@@ -150,19 +155,21 @@ export default async function(req) {
       for (const r of reports) {
         const rid = str(r._id ?? r.report_id ?? r.id);
         if (!rid) continue;
+        // Convex protocol report shape: reportType, auditDate, compliantCampaigns,
+        // nonCompliantCampaigns, results:[{title, complianceScore, violations}].
         const data = {
           report_id: rid,
-          title: str(r.title || "Protocol Audit"),
+          title: str(r.reportType ?? r.title ?? "Protocol Audit"),
           summary: str(r.summary || r.notes || ""),
-          passed_count: num(r.passed_count ?? r.passed ?? r.passedCount),
-          failed_count: num(r.failed_count ?? r.failed ?? r.failedCount),
+          passed_count: num(r.compliantCampaigns ?? r.passed_count ?? r.passed ?? r.passedCount),
+          failed_count: num(r.nonCompliantCampaigns ?? r.failed_count ?? r.failed ?? r.failedCount),
           results: (r.results ?? r.checks ?? []).map((x) => ({
-            campaign: str(x.campaign ?? x.campaign_title ?? x.title),
-            standard: str(x.standard ?? x.code ?? x.rule),
-            passed: Boolean(x.passed ?? x.ok),
-            detail: str(x.detail ?? x.message ?? ""),
+            campaign: str(x.title ?? x.campaign ?? x.campaign_title),
+            standard: str(x.standard ?? x.code ?? x.rule ?? "compliance"),
+            passed: Boolean(x.passed ?? x.ok ?? (x.violations === 0)),
+            detail: str(x.detail ?? x.message ?? (x.complianceScore != null ? `complianceScore ${x.complianceScore}, ${x.violations ?? 0} violation(s)` : "")),
           })),
-          generated_at: r.generated_at || r.generatedAt || (r._creationTime ? new Date(r._creationTime).toISOString() : now),
+          generated_at: r.auditDate || r.generated_at || r.generatedAt || (r._creationTime ? new Date(r._creationTime).toISOString() : now),
           last_synced: now,
         };
         const match = existing.find((e) => e.report_id === rid);
