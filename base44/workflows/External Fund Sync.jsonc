@@ -1,0 +1,48 @@
+{
+  "description": "Daily background worker: synchronizes external campaign donations and balances from every connected, supported fundraising platform using the centralized syncExternalFunds engine. This is the SAME engine used by Count My Money, Sync Linked Platforms, and Migrate Funds \u2014 no separate implementation.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 2 * * *",
+      "one_time_date": null,
+      "timezone": "America/Los_Angeles",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "external_fund_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync_external_funds": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncExternalFunds",
+            "args": {
+              "scope": "all",
+              "initiator_type": "scheduled"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Sync external funds",
+            "description": "Reconcile donations and balances from all connected fundraising platforms"
+          }
+        }
+      }
+    ]
+  },
+  "name": "External Fund Sync"
+}

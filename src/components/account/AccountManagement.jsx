@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Download, Trash2, Bell, Loader2, ShieldAlert } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import CountMyMoney from "@/components/account/CountMyMoney";
 
 // Account management surface: global notification preferences (respected by
 // the sendCommunication function), data export, and permanent account deletion.
@@ -113,6 +114,11 @@ export default function AccountManagement({ user, onUserChanged }) {
           {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
           Download my data
         </Button>
+      </div>
+
+      {/* Count My Money — reconcile funds across connected platforms */}
+      <div className="mb-5">
+        <CountMyMoney />
       </div>
 
       {/* Danger zone */}

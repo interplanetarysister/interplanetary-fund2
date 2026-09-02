@@ -142,11 +142,12 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
               <div className="rounded-xl border border-stone-200 p-4 bg-stone-50/50">
                 <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Where your gift goes</p>
                 <dl className="text-sm space-y-1.5">
-                  <div className="flex justify-between"><dt className="text-stone-600">You give</dt><dd className="text-stone-900 font-medium">${bd.amount.toFixed(2)}</dd></div>
-                  {bd.contribution > 0 && <div className="flex justify-between"><dt className="text-stone-600">Platform contribution (10%)</dt><dd className="text-amber-600">-${bd.contribution.toFixed(2)}</dd></div>}
-                  <div className="flex justify-between"><dt className="text-stone-500">Processing fee (covered by us)</dt><dd className="text-stone-400">${bd.processing.toFixed(2)}</dd></div>
-                  <div className="flex justify-between"><dt className="text-stone-500">Platform fee (3%, at payout)</dt><dd className="text-stone-400">-${bd.platformFee.toFixed(2)}</dd></div>
-                  <div className="flex justify-between border-t border-stone-200 pt-1.5"><dt className="text-stone-700 font-medium">Campaign receives</dt><dd className="text-emerald-600 font-semibold">${bd.recipientNet.toFixed(2)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-stone-600">Donation</dt><dd className="text-stone-900 font-medium">${bd.amount.toFixed(2)}</dd></div>
+                  {bd.contribution > 0 && <div className="flex justify-between"><dt className="text-stone-600">Optional Interplanetary Fund contribution (10%)</dt><dd className="text-amber-600">-${bd.contribution.toFixed(2)}</dd></div>}
+                  <div className="flex justify-between"><dt className="text-stone-500">Processing fee (Stripe/PayPal, covered by Interplanetary Fund)</dt><dd className="text-stone-400">${bd.processing.toFixed(2)}</dd></div>
+                  <div className="flex justify-between border-t border-stone-200 pt-1.5"><dt className="text-stone-700 font-medium">Total charged</dt><dd className="text-stone-900 font-semibold">${bd.amount.toFixed(2)}</dd></div>
+                  <div className="flex justify-between"><dt className="text-stone-500">Interplanetary Fund fee (3%, at payout)</dt><dd className="text-stone-400">-${bd.platformFee.toFixed(2)}</dd></div>
+                  <div className="flex justify-between border-t border-stone-200 pt-1.5"><dt className="text-stone-700 font-medium">Expected amount to campaign</dt><dd className="text-emerald-600 font-semibold">${bd.recipientNet.toFixed(2)}</dd></div>
                 </dl>
               </div>
             )}

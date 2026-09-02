@@ -1,0 +1,140 @@
+{
+  "name": "SyncRun",
+  "type": "object",
+  "properties": {
+    "initiator_type": {
+      "type": "string",
+      "enum": [
+        "user",
+        "agent",
+        "workflow",
+        "scheduled"
+      ],
+      "description": "What triggered the synchronization run."
+    },
+    "initiator_id": {
+      "type": "string",
+      "description": "Id of the user, agent, or workflow that initiated the run."
+    },
+    "initiator_user_id": {
+      "type": "string",
+      "description": "The authenticated user who started the run, if any (null for scheduled/workflow runs)."
+    },
+    "obo_user_id": {
+      "type": "string",
+      "description": "On-Behalf-Of user the run was scoped to, when an agent/admin acted for a specific user."
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "user",
+        "campaign",
+        "all"
+      ]
+    },
+    "campaign_id": {
+      "type": "string"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ]
+    },
+    "provider_results": {
+      "type": "array",
+      "description": "Per-provider, per-campaign outcome. A failure here does not compromise other providers.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "campaign_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "imported | realtime_webhook | no_read_api | credentials_required | error"
+          },
+          "amount_discovered": {
+            "type": "number",
+            "default": 0
+          },
+          "transactions_imported": {
+            "type": "number",
+            "default": 0
+          },
+          "transaction_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "error": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "total_discovered": {
+      "type": "number",
+      "default": 0
+    },
+    "total_imported": {
+      "type": "number",
+      "default": 0
+    },
+    "campaigns_covered": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "initiator_type",
+    "scope",
+    "overall_status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.initiator_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

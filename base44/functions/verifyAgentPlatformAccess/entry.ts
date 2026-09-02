@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { assertOboGrant } from '../../shared/integrationRegistry.ts';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
 // agent's behalf) uses an external platform, it calls this to: locate the
@@ -44,6 +45,18 @@ export default async function(req) {
       } else {
         authorized = true;
         reason = 'authorized';
+      }
+    }
+
+    // OBO: a saved platform credential is NOT authorization to act for a user.
+    // When the caller specifies an on-behalf-of user, require an explicit, active
+    // AuthorizationGrant for (agent, user, platform) — integrated with the
+    // existing registry/gatekeeper, not a parallel auth system.
+    if (authorized && body.obo_user_id) {
+      const grant = await assertOboGrant(sr, agentName, body.obo_user_id, platform);
+      if (!grant.ok) {
+        authorized = false;
+        reason = grant.reason;
       }
     }
 

@@ -55,6 +55,10 @@ export default function CampaignDetail() {
   if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const isOwner = user && campaign.created_by_id === user.id;
+  // Embed/share controls are a management capability — visible only to the
+  // authenticated campaign owner or an admin (authorized manager). Never shown
+  // on the public donation experience.
+  const canManage = !!user && (campaign.created_by_id === user.id || user.role === "admin");
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
@@ -101,7 +105,7 @@ export default function CampaignDetail() {
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
           <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
 
-          <ShareCampaignKit campaign={campaign} />
+          {canManage && <ShareCampaignKit campaign={campaign} />}
 
           {isOwner && <CrossPlatformTotals campaign={campaign} />}
 

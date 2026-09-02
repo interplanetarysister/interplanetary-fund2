@@ -137,3 +137,26 @@ export function resolveConvex(raw) {
   if (!/\/api\/query$/.test(u)) u = `${u.replace(/\/$/, "")}/api/query`;
   return { url: u, token };
 }
+
+// OBO (On-Behalf-Of) authorization. A saved platform credential is NOT
+// authorization to act — an explicit, active AuthorizationGrant must exist for
+// (agent, user, platform). Integrates with the existing gatekeeper
+// (verifyAgentPlatformAccess) rather than defining a parallel auth system.
+// Returns { ok, reason, grant? }.
+export async function assertOboGrant(sr, agentName, userId, platform) {
+  let grants;
+  try {
+    grants = await sr.entities.AuthorizationGrant.filter({ agent_name: agentName, user_id: userId, platform });
+  } catch (e) {
+    console.warn("assertOboGrant read failed:", e && e.message ? e.message : e);
+    return { ok: false, reason: "grant registry unavailable" };
+  }
+  const now = Date.now();
+  const active = (grants || []).find((g) => {
+    if ((g.status || "active") === "revoked") return false;
+    if (g.expires_at && new Date(g.expires_at).getTime() < now) return false;
+    return (g.status || "active") === "active";
+  });
+  if (!active) return { ok: false, reason: `no active OBO grant for agent=${agentName} user=${userId} platform=${platform}` };
+  return { ok: true, grant: active };
+}

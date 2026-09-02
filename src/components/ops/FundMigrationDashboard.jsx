@@ -28,6 +28,24 @@ export default function FundMigrationDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState(null);
+
+  // Migrate Funds reconciles via the SAME centralized syncExternalFunds engine
+  // used by Count My Money, Sync Linked Platforms, and the daily sync.
+  const reconcile = async () => {
+    setReconciling(true);
+    setReconcileResult(null);
+    try {
+      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "all", initiator_type: "user" });
+      setReconcileResult(data);
+      const c = await base44.entities.Campaign.list("-raised_amount", 100);
+      setCampaigns(c || []);
+    } catch (e) {
+      setReconcileResult({ error: e?.message || "Reconciliation failed." });
+    }
+    setReconciling(false);
+  };
 
   useEffect(() => {
     (async () => {
@@ -69,9 +87,12 @@ export default function FundMigrationDashboard() {
 
   const billable = migrations.filter((m) => parseFloat(m.grossAmount) > 0);
   const totalGross = billable.reduce((s, m) => s + (parseFloat(m.grossAmount) || 0), 0);
-  const totalPlatformFee = totalGross * 0.05;
+  // Approved Interplanetary Fund fee is 3% (not 5%). Processing fees are covered
+  // by Interplanetary Fund and shown for transparency only — never deducted from
+  // the recipient's net, matching the approved fee policy.
+  const totalPlatformFee = totalGross * 0.03;
   const totalProcessingFee = totalGross * 0.029 + billable.length * 0.3;
-  const totalNet = totalGross - totalPlatformFee - totalProcessingFee;
+  const totalNet = totalGross - totalPlatformFee;
 
   const handleSubmit = async () => {
     setError(null);
@@ -86,11 +107,12 @@ export default function FundMigrationDashboard() {
       const created = [];
       for (const m of valid) {
         const gross = parseFloat(m.grossAmount);
-        const platformFee = gross * 0.05;
-        const processingFee = gross * 0.029 + 0.3;
-        const net = gross - platformFee - processingFee;
-
-        if (net <= 0) throw new Error("Gross amount must be large enough to cover fees.");
+        // Approved 3% platform fee. Processing is covered by Interplanetary Fund
+        // (not deducted). This is an admin-attested external amount — not a
+        // client-authoritative total — recorded as an already-completed migration.
+        const platformFee = gross * 0.03;
+        const net = gross - platformFee;
+        if (net <= 0) throw new Error("Gross amount must be large enough to cover the 3% fee.");
 
         const camp = campaigns.find((c) => c.id === m.campaignId);
         const ownerUserId = camp?.created_by_id;
@@ -101,15 +123,12 @@ export default function FundMigrationDashboard() {
           campaign_title: m.campaignTitle || camp?.title,
           owner_user_id: ownerUserId,
           gross_amount: Math.round(gross * 100) / 100,
-          net_amount: Math.round(net * 100) / 100,
           platform_fee: Math.round(platformFee * 100) / 100,
-          processing_fee: Math.round(processingFee * 100) / 100,
-          source_platform: m.sourcePlatform,
-          payout_method: payoutMethod,
-          payout_destination: payoutDest,
+          net_amount: Math.round(net * 100) / 100,
           paypal_email: payoutMethod === "paypal" ? payoutDest : "",
-          status: "processing",
-          notes: `Fund migration from ${m.sourcePlatform}`,
+          status: "paid",
+          review_note: `Fund migration from ${m.sourcePlatform} (admin-attested) via ${payoutMethod}.`,
+          processed_at: new Date().toISOString(),
         });
         created.push(w);
       }
@@ -153,8 +172,8 @@ export default function FundMigrationDashboard() {
             </div>
           ))}
           <div className="pt-2 border-t border-white/10 space-y-1">
-            <div className="flex justify-between text-xs text-slate-400"><span>Platform fee (5%)</span><span>− {fmt(totalPlatformFee)}</span></div>
-            <div className="flex justify-between text-xs text-slate-400"><span>Processing (2.9% + $0.30/item)</span><span>− {fmt(totalProcessingFee)}</span></div>
+            <div className="flex justify-between text-xs text-slate-400"><span>Interplanetary Fund fee (3%)</span><span>− {fmt(totalPlatformFee)}</span></div>
+            <div className="flex justify-between text-xs text-slate-400"><span>Processing (2.9% + $0.30/item, covered by Interplanetary Fund)</span><span>{fmt(totalProcessingFee)}</span></div>
             <div className="flex justify-between font-bold text-slate-100"><span>Net to owner</span><span>{fmt(totalNet)}</span></div>
           </div>
           <div className="pt-2 border-t border-white/10 text-xs text-slate-400">
@@ -205,8 +224,8 @@ export default function FundMigrationDashboard() {
   // Step: entries
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold text-slate-100 flex items-center gap-1.5">
             <ArrowRightLeft className="w-4 h-4 text-cyan-400" /> Fund Migration
           </h3>
@@ -214,7 +233,17 @@ export default function FundMigrationDashboard() {
             Withdraw from external platforms → IF processes fees → net to campaign owner
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={reconcile} disabled={reconciling} className="rounded-lg border-white/10 text-slate-200 shrink-0">
+          {reconciling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRightLeft className="w-3.5 h-3.5" />} Sync Linked Platforms
+        </Button>
       </div>
+      {reconcileResult && (
+        <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs">
+          {reconcileResult.error ? <p className="text-rose-400">{reconcileResult.error}</p> : (
+            <p className="text-slate-300">Reconciled {reconcileResult.campaigns_covered} campaigns · discovered ${((reconcileResult.total_discovered) || 0).toLocaleString()} · status {reconcileResult.overall_status}</p>
+          )}
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
@@ -271,7 +300,7 @@ export default function FundMigrationDashboard() {
               </div>
               {parseFloat(m.grossAmount) > 0 && (
                 <p className="text-[11px] text-slate-500">
-                  Net ≈ {fmt(parseFloat(m.grossAmount) * 0.921 - 0.3)} after 5% + 2.9% + $0.30
+                  Net ≈ {fmt(parseFloat(m.grossAmount) * 0.97)} after 3% (processing covered by Interplanetary Fund)
                 </p>
               )}
             </div>
@@ -287,7 +316,7 @@ export default function FundMigrationDashboard() {
           {totalGross > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs space-y-1">
               <div className="flex justify-between text-slate-300"><span>Total gross</span><span className="font-semibold">{fmt(totalGross)}</span></div>
-              <div className="flex justify-between text-slate-500"><span>Fees (est.)</span><span>− {fmt(totalPlatformFee + totalProcessingFee)}</span></div>
+              <div className="flex justify-between text-slate-500"><span>Interplanetary Fund fee (3%)</span><span>− {fmt(totalPlatformFee)}</span></div>
               <div className="flex justify-between text-emerald-400 font-bold"><span>Net to owner</span><span>{fmt(totalNet)}</span></div>
             </div>
           )}

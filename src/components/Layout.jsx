@@ -93,7 +93,13 @@ export default function Layout() {
     return hit ? hit[0] : null;
   };
   const activeTab = useRef(owningRoot(pathname) || "/dashboard");
+  // Track in-app navigation depth so the Back button reliably returns to a
+  // sensible app screen instead of leaving the app on a direct deep link
+  // (window.history.length is unreliable for this — the cause of the
+  // intermittent Back-button failure).
+  const navDepth = useRef(0);
   useEffect(() => {
+    navDepth.current += 1;
     const root = owningRoot(pathname);
     if (root) activeTab.current = root;
     tabStacks.current[activeTab.current] = pathname;
@@ -118,7 +124,10 @@ export default function Layout() {
   // Back button: if there's real history, go back; otherwise fall back home so
   // the button always does something (e.g. when a deep page was opened
   // directly from a shared link with no prior app navigation).
-  const goBack = () => { if (window.history.length > 1) navigate(-1); else navigate("/dashboard"); };
+  const goBack = () => {
+    if (navDepth.current > 1) navigate(-1);
+    else navigate(owningRoot(pathname) || "/dashboard");
+  };
 
   // Close the mobile menu on Escape for keyboard users.
   useEffect(() => {

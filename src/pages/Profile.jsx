@@ -9,6 +9,7 @@ import { Image } from "@/components/ui/image";
 import MediaUpload from "@/components/media/MediaUpload";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import AccountManagement from "@/components/account/AccountManagement";
+import FriendsPanel from "@/components/profile/FriendsPanel";
 import CoachMarks from "@/components/coach/CoachMarks";
 import CoachTourButton from "@/components/coach/CoachTourButton";
 
@@ -123,6 +124,10 @@ export default function Profile() {
             })}
           </div>
         )}
+      </div>
+
+      <div className="mt-6">
+        <FriendsPanel />
       </div>
 
       <div className="mt-6">

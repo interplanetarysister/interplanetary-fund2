@@ -2,13 +2,13 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, RefreshCw, Unplug, History } from "lucide-react";
+import { ExternalLink, RefreshCw, Unplug, History, Globe2, Rocket, KeyRound } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AUTOMATION_MODES } from "./platformCatalog";
 
 // One connected destination: status, health, last sync, granted automation,
 // totals, and the manage / refresh / disconnect / history controls.
-export default function ConnectionCard({ connection, platform, onManage, onRemoved, onUpdated }) {
+export default function ConnectionCard({ connection, platform, onManage, onRemoved, onUpdated, subscriptionActive, onFetchCredentials }) {
   const [busy, setBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -37,10 +37,12 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-semibold text-stone-900 flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${healthy ? "bg-emerald-500" : "bg-red-500"}`} />
-            {platform?.name || connection.platform}
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
+            <span className="shrink-0" title={healthy ? "Connected and healthy" : "Not connected or offline"}>
+              {healthy ? <Globe2 className="w-4 h-4 text-emerald-500" /> : <Rocket className="w-4 h-4 text-red-500" />}
+            </span>
+            <span className="truncate">{platform?.name || connection.platform}</span>
             {connection.display_name && <span className="text-stone-400 font-normal text-sm truncate">· {connection.display_name}</span>}
           </p>
           <p className="text-xs text-stone-400 mt-1">
@@ -60,6 +62,9 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
       <div className="flex flex-wrap gap-2 mt-3">
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">Manage / Sync</Button>
+        {subscriptionActive && (
+          <Button size="sm" variant="outline" onClick={() => onFetchCredentials?.(platform)} disabled={busy} className="rounded-lg"><KeyRound className="w-3.5 h-3.5" />Fetch Credentials</Button>
+        )}
         <Button size="sm" variant="outline" onClick={refresh} disabled={busy} className="rounded-lg"><RefreshCw className="w-3.5 h-3.5" />Refresh</Button>
         {connection.external_url && (
           <a href={connection.external_url} target="_blank" rel="noopener noreferrer">
