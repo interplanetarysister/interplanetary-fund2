@@ -53,9 +53,27 @@ export default async function (req) {
     // allocation FROM it (never added on top), directed to the platform. The
     // processing fee is covered by the platform, so it is not deducted again
     // at payout — no double-charge. Reject captures that cannot yield a valid gift.
-    const totalCheck = validateDonationAmount(cap.amount);
+    // The donation amount and processing fee are authoritative from the
+    // custom_id set at order creation (server-side), NOT from the client. The
+    // captured total (cap.amount) is D + P; custom_id carries D and P separately.
+    // Legacy orders without the encoded custom_id fall back to the captured total
+    // as the donation with no separate processing fee.
+    let donationAmount = round2(cap.amount);
+    let processingFee = 0;
+    if (cap.custom_id) {
+      const parts = String(cap.custom_id).split('|');
+      if (parts.length === 3 && parts[0] === campaign_id) {
+        const donCents = parseInt(parts[1], 10);
+        const procCents = parseInt(parts[2], 10);
+        if (!Number.isNaN(donCents)) {
+          donationAmount = round2(donCents / 100);
+          processingFee = Number.isNaN(procCents) ? 0 : round2(procCents / 100);
+        }
+      }
+    }
+    const totalCheck = validateDonationAmount(donationAmount);
     if (!totalCheck.ok) return Response.json({ error: totalCheck.error }, { status: 400 });
-    const total = round2(cap.amount);
+    const total = donationAmount;
     const contribution = computeContribution(total, !!platform_contribution);
     const gift = round2(total - contribution);
 
@@ -64,6 +82,7 @@ export default async function (req) {
       campaign_title: campaign.title,
       amount: total,
       platform_contribution: contribution,
+      processing_fee: processingFee,
       donor_name: donor_name || cap.payer_name || donor?.full_name || 'Anonymous',
       message: message || '',
       is_recurring: !!is_recurring,

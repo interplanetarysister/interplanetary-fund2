@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { createOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { validateDonationAmount } from '../../shared/fees.js';
+import { validateDonationAmount, computeProcessingFee, round2 } from '../../shared/fees.js';
 
 // Creates a PayPal v2 order (intent: CAPTURE) for a Google Pay donation. The
 // order id is handed to the PayPal SDK's Google Pay session to confirm with
@@ -38,14 +38,15 @@ export default async function (req) {
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
+    // Processor fee passed through to the donor (Google Pay / PayPal order).
+    // The donation (value) and the fee are encoded in custom_id, set server-side,
+    // so capture records the authoritative donation amount — never a client total.
+    const processing = computeProcessingFee(value);
+    const totalCharge = round2(value + processing);
     const order = await createOrder({
-      amount: value,
+      amount: totalCharge,
       description: `Donation to ${campaign.title}`,
-      metadata: {
-        campaign_id,
-        donor_name: donor_name || 'Anonymous',
-        message: (message || '').slice(0, 250),
-      },
+      customId: `${campaign_id}|${Math.round(value * 100)}|${Math.round(processing * 100)}`,
     });
 
     return Response.json({ id: order.id });

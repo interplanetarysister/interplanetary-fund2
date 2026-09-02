@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
+import { computeChargeTotal } from "../../../base44/shared/fees.js";
 
 // Google Pay donations processed through the platform's PayPal business
 // account (PayPal JS SDK v6 + Google Pay). Flow: create a PayPal order,
@@ -123,7 +124,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
               countryCode: gpayConfig.countryCode,
               currencyCode: "USD",
               totalPriceStatus: "FINAL",
-              totalPrice: value.toFixed(2),
+              totalPrice: computeChargeTotal(value).toFixed(2),
             },
             callbackIntents: ["PAYMENT_AUTHORIZATION"],
           });

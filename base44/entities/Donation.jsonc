@@ -10,12 +10,17 @@
     },
     "amount": {
       "type": "number",
-      "description": "Total charged to the donor (the amount they entered). The recipient's gift is amount minus platform_contribution."
+      "description": "The donation amount the supporter entered. Where the processor permits, the processing fee is charged ON TOP (see processing_fee); the total charged to the donor is amount + processing_fee. The recipient's gift is amount minus platform_contribution."
     },
     "platform_contribution": {
       "type": "number",
       "default": 0,
-      "description": "Portion of the charged amount the donor directed to the platform as an optional 10% contribution. Excluded from the recipient's gift and from withdrawals; retained by the platform."
+      "description": "Portion of the donation the donor directed to the platform as an optional 10% contribution. Excluded from the recipient's gift and from withdrawals; retained by the platform."
+    },
+    "processing_fee": {
+      "type": "number",
+      "default": 0,
+      "description": "The payment processor's fee (Stripe/PayPal) charged on top of the donation where the processor permits, identified by payment_method. Retained by the processor, never by Interplanetary Fund. Zero for manual-confirmation methods (PayPal donate link, Cash App) where the processor charges the donor directly on its own site."
     },
     "donor_name": {
       "type": "string"
@@ -55,7 +60,7 @@
         "other"
       ],
       "default": "paypal",
-      "description": "How the supporter sent their gift."
+      "description": "How the supporter sent their gift. Identifies the processor that charged any processing_fee."
     },
     "payment_verified": {
       "type": "boolean",

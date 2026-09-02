@@ -2,13 +2,19 @@
 // I/O — identical on client and server and safe to unit-test.
 //
 // APPROVED FEE POLICY (each fee applied in exactly one place — never double-charged):
-//  - The donor's entered amount is the TOTAL CHARGED. The optional 10% platform
-//    contribution is an ALLOCATION FROM that total (never added on top), directed
-//    to the platform. The recipient's gift = amount − contribution.
-//  - Exactly ONE processing fee (the payment processor's fee) — shown for
-//    transparency, covered by the platform, NOT deducted from the recipient.
-//  - 3% platform fee — deducted ONCE, at payout (withdrawal), from the
-//    recipient's gift. Never at checkout.
+//  - The donor's entered amount is the DONATION. The processor's fee is ADDED
+//    ON TOP of the donation where the processor permits (Stripe line item /
+//    PayPal order total), so Interplanetary Fund no longer silently absorbs it.
+//    totalCharged = donation + processingFee.
+//  - The optional 10% platform contribution is an ALLOCATION FROM the donation
+//    (never added on top), directed to the platform. Recipient's gift =
+//    donation − contribution.
+//  - Exactly ONE processing fee — the payment processor's, identified by its
+//    actual source (Stripe / PayPal). It is NOT an Interplanetary Fund fee.
+//    Manual-confirmation methods (PayPal donate link, Cash App) charge their own
+//    fee directly on their site, so IF adds nothing there (processing = 0).
+//  - 3% Interplanetary Fund fee — deducted ONCE, at payout (withdrawal), from
+//    the recipient's gift. Never at checkout.
 //  - Recipient net = recipient gift − 3% platform fee. This matches the
 //    withdrawal payout exactly, so the checkout projection never overstates
 //    what the campaign actually receives.
@@ -67,11 +73,18 @@ export function giftOf(donation) {
   return fromCents(Math.max(0, a - c));
 }
 
-// One processing fee (the processor's). Informational — covered by the platform,
-// never deducted from the recipient's payout.
+// The processor's fee (Stripe/PayPal). Charged ON TOP of the donation where the
+// processor permits, identified by its actual source — never an IF fee.
 export function computeProcessingFee(amount) {
   const a = toCents(amount);
   return fromCents(Math.round(a * PROCESSING_RATE) + PROCESSING_FIXED * 100);
+}
+
+// Total charged to the donor where the processor permits passing the processing
+// cost through: the donation plus the processor's fee.
+export function computeChargeTotal(amount) {
+  const a = round2(Number(amount) || 0);
+  return round2(a + computeProcessingFee(a));
 }
 
 // 3% platform fee on the recipient's gift (deducted at payout). Never negative.
@@ -95,7 +108,8 @@ export function computeBreakdown(amount, optedIn) {
   const processing = computeProcessingFee(a);
   const platformFee = computePlatformFee(a, optedIn);
   const recipientNet = round2(Math.max(0, gift - platformFee));
-  return { amount: a, contribution, recipientGift: gift, processing, platformFee, recipientNet };
+  const totalCharged = round2(a + processing);
+  return { amount: a, contribution, recipientGift: gift, processing, platformFee, recipientNet, totalCharged };
 }
 
 // Withdrawal math for a set of recipient gifts: the single 3% platform fee and

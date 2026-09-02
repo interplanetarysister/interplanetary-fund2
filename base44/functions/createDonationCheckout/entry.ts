@@ -3,7 +3,7 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { validateDonationAmount } from '../../shared/fees.js';
+import { validateDonationAmount, computeProcessingFee, round2 } from '../../shared/fees.js';
 
 export default async function(req) {
   try {
@@ -19,6 +19,12 @@ export default async function(req) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
     const value = Number(amount);
+    // Processor fee passed through to the donor where Stripe permits: a line
+    // item for one-time gifts, folded into the recurring price for monthly. The
+    // donation (value) is recorded as Donation.amount; the processing fee is
+    // recorded separately and retained by the processor — never by IF.
+    const processing = computeProcessingFee(value);
+    const totalCharge = round2(value + processing);
     let originUrl;
     try {
       originUrl = new URL(origin);
@@ -42,15 +48,18 @@ export default async function(req) {
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
     const session = await stripe.checkout.sessions.create({
       mode: is_recurring ? 'subscription' : 'payment',
-      line_items: [{
+      line_items: is_recurring ? [{
         quantity: 1,
         price_data: {
           currency: 'usd',
-          unit_amount: Math.round(value * 100),
+          unit_amount: Math.round(totalCharge * 100),
           product_data: { name: `Donation to ${campaign.title}` },
-          ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
+          recurring: { interval: 'month' },
         },
-      }],
+      }] : [
+        { quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(value * 100), product_data: { name: `Donation to ${campaign.title}` } } },
+        { quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(processing * 100), product_data: { name: 'Processing fee (Stripe)' } } },
+      ],
       success_url: `${originUrl.origin}/campaign/${campaign_id}?donation=success`,
       cancel_url: `${originUrl.origin}/campaign/${campaign_id}`,
       metadata: {
@@ -61,6 +70,10 @@ export default async function(req) {
         message: (message || '').slice(0, 450),
         is_recurring: is_recurring ? 'true' : 'false',
         platform_contribution_opt: platform_contribution ? 'true' : 'false',
+        // Authoritative donation amount + processing fee for the webhook — the
+        // session total is value + processing, so amount must come from here.
+        donation_amount: String(value),
+        processing_fee: String(processing),
       },
       // For recurring donations, mirror the donation metadata onto the Stripe
       // Subscription so each renewal (invoice.paid) can be attributed back to
@@ -74,6 +87,8 @@ export default async function(req) {
             message: (message || '').slice(0, 450),
             platform_contribution_opt: platform_contribution ? 'true' : 'false',
             is_recurring: 'true',
+            donation_amount: String(value),
+            processing_fee: String(processing),
           },
         },
       } : {}),

@@ -76,7 +76,11 @@ export default async function(req) {
           // session-id check as defense-in-depth alongside the event.id claim.
           const existing = await sr.entities.Donation.filter({ stripe_session_id: session.id });
           if (existing.length === 0) {
-            const total = round2((session.amount_total || 0) / 100);
+            // The donation amount (excluding the processing fee charged on top)
+            // is authoritative from metadata set at checkout; fall back to the
+            // session total for legacy sessions that did not carry it.
+            const total = m.donation_amount != null ? round2(parseFloat(m.donation_amount)) : round2((session.amount_total || 0) / 100);
+            const processingFee = m.processing_fee != null ? round2(parseFloat(m.processing_fee)) : 0;
             const optedIn = m.platform_contribution_opt === 'true';
             const contribution = computeContribution(total, optedIn);
             const gift = round2(total - contribution);
@@ -88,6 +92,7 @@ export default async function(req) {
               campaign_title: campaign ? campaign.title : undefined,
               amount: total,
               platform_contribution: contribution,
+              processing_fee: processingFee,
               donor_name: m.donor_name || 'Anonymous',
               message: m.message || '',
               is_recurring: isRecurring,
@@ -133,7 +138,8 @@ export default async function(req) {
           if (sm.campaign_id) {
             const existing = await sr.entities.Donation.filter({ stripe_session_id: invoice.id });
             if (!existing.length) {
-              const total = round2((invoice.total ?? invoice.amount_due ?? 0) / 100);
+              const total = sm.donation_amount != null ? round2(parseFloat(sm.donation_amount)) : round2((invoice.total ?? invoice.amount_due ?? 0) / 100);
+              const processingFee = sm.processing_fee != null ? round2(parseFloat(sm.processing_fee)) : 0;
               const optedIn = sm.platform_contribution_opt === 'true';
               const contribution = computeContribution(total, optedIn);
               const gift = round2(total - contribution);
@@ -143,6 +149,7 @@ export default async function(req) {
                 campaign_title: campaign ? campaign.title : undefined,
                 amount: total,
                 platform_contribution: contribution,
+                processing_fee: processingFee,
                 donor_name: sm.donor_name || 'Anonymous',
                 message: sm.message || '',
                 is_recurring: true,

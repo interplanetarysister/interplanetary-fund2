@@ -72,7 +72,7 @@ export async function sendPayout({ receiver, amount, note, itemId }) {
 // Google Pay donations flow through the same PayPal business account as a
 // standard PayPal v2 order: create an order on approval, capture it once the
 // Google Pay payment data is confirmed.
-export async function createOrder({ amount, description, metadata }) {
+export async function createOrder({ amount, description, customId }) {
   const token = await getAccessToken();
   const res = await fetch(`${apiBase()}/v2/checkout/orders`, {
     method: "POST",
@@ -86,7 +86,7 @@ export async function createOrder({ amount, description, metadata }) {
         {
           amount: { currency_code: "USD", value: Number(amount).toFixed(2) },
           description: (description || "Donation").slice(0, 120),
-          ...(metadata?.campaign_id ? { custom_id: metadata.campaign_id } : {}),
+          ...(customId ? { custom_id: customId } : {}),
         },
       ],
       application_context: { shipping_preference: "NO_SHIPPING" },
@@ -115,9 +115,11 @@ export async function captureOrder(orderId) {
   const capture = data.purchase_units?.[0]?.payments?.captures?.[0];
   const given = data.payer?.name?.given_name;
   const sur = data.payer?.name?.surname;
+  const unit = data.purchase_units?.[0];
   return {
     status: data.status,
     amount: capture ? parseFloat(capture.amount?.value || "0") : 0,
     payer_name: given ? `${given} ${sur || ""}`.trim() : "",
+    custom_id: unit?.custom_id || "",
   };
 }
