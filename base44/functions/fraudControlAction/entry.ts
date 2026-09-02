@@ -163,6 +163,7 @@ export default async function(req) {
     return Response.json({ error: 'Unsupported fraud-control action.' }, { status: 400 });
   } catch (error) {
     console.error('fraudControlAction error:', error?.message || error);
-    return Response.json({ error: error?.message === 'A moderation reason is required.' || error?.message === 'Moderation reason is too long.' ? error.message : SAFE_ERROR }, { status: 500 });
+    const clientError = error?.message === 'A moderation reason is required.' || error?.message === 'Moderation reason is too long.';
+    return Response.json({ error: clientError ? error.message : SAFE_ERROR }, { status: clientError ? 400 : 500 });
   }
 }
