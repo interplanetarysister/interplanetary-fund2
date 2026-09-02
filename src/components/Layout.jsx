@@ -17,7 +17,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/facebook": "Facebook Outreach", "/connect": "Connect AI Assistant",
+  "/facebook": "Facebook Outreach", "/connect": "Connect AI Assistant", "/admin/external-accounts": "External Accounts",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -39,6 +39,7 @@ const navItems = [
   { to: "/agents", label: "AI Agents", icon: Bot },
   { to: "/ops", label: "Ops Center", icon: Satellite },
   { to: "/connections", label: "Connections", icon: Link2 },
+  { to: "/admin/external-accounts", label: "External Accounts", icon: Link2 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/institutions", label: "Institutions", icon: Building2 },
   { to: "/analytics", label: "Command Center", icon: BarChart3 },
@@ -80,7 +81,7 @@ export default function Layout() {
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
     "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
     "/notifications": ["/notifications", "/inbox", "/communications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/connect"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/connect", "/admin/external-accounts"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";
