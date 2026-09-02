@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
+import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Records a donation made through PayPal or Cash App. Those flows complete on
 // an external site, so the supporter confirms the gift here and the ledger,
@@ -69,6 +70,20 @@ export default async function(req) {
         link: `/campaign/${campaign_id}`,
       });
     }
+
+    const named = donation.donor_name && donation.donor_name !== 'Anonymous';
+    await emitActivityEvent(base44, {
+      type: 'donation_received',
+      actor_user_id: donor?.id || undefined,
+      actor_display_name: named ? donation.donor_name : 'A supporter',
+      campaign_id,
+      campaign_title: campaign.title,
+      campaign_image_url: campaign.cover_image_url || undefined,
+      body: `${named ? donation.donor_name : 'A supporter'} gave $${value.toLocaleString()} to "${campaign.title}"`,
+      link: `/campaign/${campaign_id}`,
+      visibility: 'public',
+      metadata: { amount: value, payment_method: payment_method || 'paypal' },
+    });
 
     await logAudit(base44, { action: 'donation_recorded', target_type: 'campaign', target_id: campaign_id, detail: `$${value} via ${payment_method || 'paypal'} recorded`, status: 'success' });
     return Response.json({ ok: true, donation_id: donation.id });

@@ -1,19 +1,51 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { base44 } from "@/api/base44Client";
 import { X, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { coachTours } from "./coachTours";
 
 // Renders an inline coach-mark tour over elements tagged with data-coach on
-// the current page. Shows a spotlight + tooltip card with Back/Next/Finish.
-// Each tour auto-shows once; dismissal is remembered in localStorage, and the
-// CoachTourButton can restart it on demand.
+// the current page. Auto-shows ONCE per user: the dismissal is persisted to
+// the user profile (tips_completed) via base44.auth.updateMe, so it never
+// auto-appears again on future logins or other devices — it no longer relies
+// on per-session localStorage. The CoachTourButton / PageTips "Take a tour"
+// control can restart it on demand.
 export default function CoachMarks({ tourId }) {
   const tour = coachTours[tourId];
-  const STORAGE_KEY = `coach:${tourId}`;
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState(null);
 
   const current = tour?.steps[step];
+
+  // Auto-show only once per user, gated by a persisted profile flag.
+  useEffect(() => {
+    if (!tour) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await base44.auth.me();
+        if (cancelled) return;
+        if (!me?.tips_completed) {
+          setActive(true);
+          setStep(0);
+        }
+      } catch {
+        /* not authenticated — don't auto-show */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tourId]);
+
+  // Restart on demand (from CoachTourButton / PageTips).
+  useEffect(() => {
+    const onRestart = (e) => {
+      if (e.detail !== tourId) return;
+      setActive(true);
+      setStep(0);
+    };
+    window.addEventListener("coach-restart", onRestart);
+    return () => window.removeEventListener("coach-restart", onRestart);
+  }, [tourId]);
 
   // Read-only measurement of the current target's box.
   const measure = useCallback(() => {
@@ -21,27 +53,6 @@ export default function CoachMarks({ tourId }) {
     const el = document.querySelector(`[data-coach="${current.selector}"]`);
     setRect(el ? el.getBoundingClientRect() : null);
   }, [current]);
-
-  // Start the tour once, if not previously dismissed.
-  useEffect(() => {
-    if (!tour) return;
-    if (!localStorage.getItem(STORAGE_KEY)) {
-      setActive(true);
-      setStep(0);
-    }
-  }, [tourId]);
-
-  // Restart on demand (from the CoachTourButton).
-  useEffect(() => {
-    const onRestart = (e) => {
-      if (e.detail !== tourId) return;
-      localStorage.removeItem(STORAGE_KEY);
-      setActive(true);
-      setStep(0);
-    };
-    window.addEventListener("coach-restart", onRestart);
-    return () => window.removeEventListener("coach-restart", onRestart);
-  }, [tourId]);
 
   // Scroll the current target into view when the step changes.
   useEffect(() => {
@@ -65,8 +76,9 @@ export default function CoachMarks({ tourId }) {
   if (!active || !tour || !current) return null;
 
   const finish = () => {
-    localStorage.setItem(STORAGE_KEY, "done");
     setActive(false);
+    // Persist dismissal so the tour never auto-shows again, across devices.
+    base44.auth.updateMe({ tips_completed: true }).catch(() => {});
   };
   const next = () => (step < tour.steps.length - 1 ? setStep(step + 1) : finish());
   const back = () => step > 0 && setStep(step - 1);

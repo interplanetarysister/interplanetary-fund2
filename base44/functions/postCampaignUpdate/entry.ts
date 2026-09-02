@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
 // When an owner publishes an update, this function:
@@ -161,6 +162,19 @@ Return JSON only.`;
       });
       notified++;
     }
+
+    await emitActivityEvent(base44, {
+      type: 'campaign_update',
+      actor_user_id: user.id,
+      actor_display_name: user.full_name || 'Campaign owner',
+      campaign_id,
+      campaign_title: campaign.title,
+      campaign_image_url: campaign.cover_image_url || undefined,
+      body: title || content.slice(0, 140),
+      link: `/campaign/${campaign_id}`,
+      visibility: 'public',
+      metadata: { update_id: update.id },
+    });
 
     return Response.json({ update, crosspost, followers_notified: notified });
   } catch (error) {

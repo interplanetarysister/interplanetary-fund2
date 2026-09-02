@@ -7,6 +7,7 @@ import RecommendedCampaigns from "@/components/discover/RecommendedCampaigns";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import PageError from "@/components/PageError";
+import PageTips from "@/components/coach/PageTips";
 
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
@@ -34,10 +35,15 @@ export default function Discover() {
 
   return (
     <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <h1 className="font-display text-3xl sm:text-4xl text-stone-900 mb-2">Discover campaigns</h1>
-      <p className="text-stone-500 mb-6">
-        What if your support changed everything for someone today? These causes need help right now.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="font-display text-3xl sm:text-4xl text-stone-900 mb-2">Discover campaigns</h1>
+          <p className="text-stone-500">
+            What if your support changed everything for someone today? These causes need help right now.
+          </p>
+        </div>
+        <PageTips pageId="discover" />
+      </div>
 
       <RecommendedCampaigns allCampaigns={campaigns} />
 

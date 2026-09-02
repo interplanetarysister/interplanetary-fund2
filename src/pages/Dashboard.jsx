@@ -11,7 +11,7 @@ import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
 import CoachMarks from "@/components/coach/CoachMarks";
-import CoachTourButton from "@/components/coach/CoachTourButton";
+import PageTips from "@/components/coach/PageTips";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 import PageError from "@/components/PageError";
 
@@ -57,7 +57,7 @@ export default function Dashboard() {
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your Interplanetary Fund</h1>
         </div>
         <div className="flex items-center gap-2">
-          <CoachTourButton tourId="dashboard" />
+          <PageTips pageId="dashboard" tourId="dashboard" />
           <Link to="/create">
             <Button data-coach="new-campaign" className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
               <PlusCircle className="w-4 h-4 mr-2" /> New Campaign

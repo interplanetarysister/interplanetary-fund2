@@ -11,6 +11,7 @@ import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Navigate } from 'react-router-dom';
+import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -79,23 +80,25 @@ const AuthenticatedApp = () => {
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
       <Route path="/oauth/consent" element={<OAuthConsent />} />
-      {/* Public campaign page — anyone arriving from a shared link can read the
-          story and donate without signing in. */}
+      {/* Public homepage — marketing/About, open to everyone including guests. */}
+      <Route path="/" element={<Home />} />
+      {/* Public browsing — guests can discover campaigns, open a campaign, and
+          view the community feed without signing in. */}
       <Route element={<Layout />}>
+        <Route path="/discover" element={<Discover />} />
         <Route path="/campaign/:id" element={<CampaignDetail />} />
+        <Route path="/community" element={<Community />} />
+        <Route path="/community/:id" element={<CommunityDetail />} />
       </Route>
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         {/* Full-screen onboarding experience, outside the Layout chrome */}
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/discover" element={<Discover />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/create" element={<CreateCampaign />} />
           <Route path="/giving" element={<MyGiving />} />
           <Route path="/communications" element={<Communications />} />
           <Route path="/mission" element={<MissionControlPage />} />
-          <Route path="/community" element={<Community />} />
-          <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/institutions" element={<Institutions />} />
           <Route path="/institutions/:id" element={<InstitutionDetail />} />
           <Route path="/profile" element={<Profile />} />

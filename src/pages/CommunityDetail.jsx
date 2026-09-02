@@ -20,7 +20,7 @@ export default function CommunityDetail() {
 
   const load = useCallback(async () => {
     const [user, c, m] = await Promise.all([
-      base44.auth.me(),
+      base44.auth.me().catch(() => null),
       base44.entities.Community.get(id),
       base44.entities.CommunityMember.filter({ community_id: id }),
     ]);
@@ -39,11 +39,12 @@ export default function CommunityDetail() {
     return <p className="text-center text-stone-400 py-20">Community not found.</p>;
   }
 
-  const myMembership = members.find((m) => m.user_id === me.id);
+  const myMembership = me ? members.find((m) => m.user_id === me.id) : null;
   const isMember = !!myMembership;
   const canManage = myMembership && ["owner", "moderator"].includes(myMembership.role);
 
   const join = async () => {
+    if (!me) { base44.auth.redirectToLogin(window.location.pathname); return; }
     setBusy(true);
     const { data } = await base44.functions.invoke("communityMembership", { action: "join", community_id: id });
     if (!data?.error) await load();

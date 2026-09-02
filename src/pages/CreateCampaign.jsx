@@ -90,6 +90,7 @@ export default function CreateCampaign() {
         location_lng: form.location_lng || undefined,
         status,
       });
+      base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch (e) {
       toast({ title: "Couldn't launch campaign", description: e.message, variant: "destructive" });

@@ -28,7 +28,7 @@ function pageTitle(pathname) {
 }
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/globe", label: "Global Globe", icon: Globe2 },
   { to: "/giving", label: "My Giving", icon: HeartHandshake },
@@ -53,7 +53,7 @@ const navItems = [
 // One-handed mobile navigation. AI Assistant surfaces Mission Control — the
 // platform's central intelligence hub — under its most user-friendly label.
 const bottomNavItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
   { to: "/mission", label: "AI Assistant", icon: Sparkles },
   { to: "/notifications", label: "Alerts", icon: Bell },
@@ -66,7 +66,7 @@ export default function Layout() {
   const navigate = useNavigate();
   // Bottom-tab root views show the brand mark (no Back button); deep child
   // pages (e.g. a campaign detail) get the ChevronLeft back affordance.
-  const TAB_ROOTS = ["/", "/discover", "/mission", "/notifications", "/profile"];
+  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/mission", "/notifications", "/profile"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
@@ -76,6 +76,7 @@ export default function Layout() {
   // Which bottom tab each section of the app belongs to, so a campaign,
   // community, or institution page highlights its own tab instead of Dashboard.
   const TAB_SECTIONS = {
+    "/dashboard": ["/dashboard"],
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
     "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
     "/notifications": ["/notifications", "/inbox", "/communications"],
@@ -83,12 +84,13 @@ export default function Layout() {
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";
+    if (p === "/dashboard") return "/dashboard";
     const hit = Object.entries(TAB_SECTIONS).find(([, prefixes]) =>
       prefixes.some((pre) => p === pre || p.startsWith(pre + "/"))
     );
     return hit ? hit[0] : null;
   };
-  const activeTab = useRef(owningRoot(pathname) || "/");
+  const activeTab = useRef(owningRoot(pathname) || "/dashboard");
   useEffect(() => {
     const root = owningRoot(pathname);
     if (root) activeTab.current = root;
@@ -107,14 +109,14 @@ export default function Layout() {
     navigate(tabStacks.current[root] || root);
   };
   const isTabActive = (root) =>
-    root === "/"
-      ? pathname === "/" || activeTab.current === "/"
+    root === "/dashboard"
+      ? pathname === "/dashboard" || activeTab.current === "/dashboard"
       : pathname === root || pathname.startsWith(root + "/") || activeTab.current === root;
 
   // Back button: if there's real history, go back; otherwise fall back home so
   // the button always does something (e.g. when a deep page was opened
   // directly from a shared link with no prior app navigation).
-  const goBack = () => { if (window.history.length > 1) navigate(-1); else navigate("/"); };
+  const goBack = () => { if (window.history.length > 1) navigate(-1); else navigate("/dashboard"); };
 
   // Close the mobile menu on Escape for keyboard users.
   useEffect(() => {
