@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { logAudit } from '../../shared/auditLog.ts';
-import { emitIntegrationAlert, isUnhealthy, STATUS_LABEL } from '../../shared/integrationRegistry.ts';
+import { emitIntegrationAlert, isUnhealthy, STATUS_LABEL, resolveConvex } from '../../shared/integrationRegistry.ts';
 
 // Admin-triggered health validator. Reads every PlatformAccessRegistry entry,
 // validates what can safely be checked WITHOUT exposing secrets, updates each
@@ -43,19 +43,26 @@ async function validateEntry(sr, e, now) {
   }
 
   if (e.auth_type === 'oauth') {
-    try {
-      const conn = await sr.connectors?.getConnection?.(p);
-      if (conn && conn.accessToken) {
-        checks.push({ check: 'oauth_authorized', ok: true, detail: 'access token present' });
-      } else {
-        checks.push({ check: 'oauth_authorized', ok: false, detail: 'no access token' });
+    // Platform-managed OAuth (e.g. the Google login provider) is maintained by
+    // Base44, not an app connector — skip the live connector check so it isn't
+    // false-flagged as REAUTH_REQUIRED.
+    if (String(e.account_identifier || '').toLowerCase().includes('platform-managed')) {
+      checks.push({ check: 'platform_managed', ok: true, detail: 'platform-managed login provider' });
+    } else {
+      try {
+        const conn = await sr.connectors?.getConnection?.(p);
+        if (conn && conn.accessToken) {
+          checks.push({ check: 'oauth_authorized', ok: true, detail: 'access token present' });
+        } else {
+          checks.push({ check: 'oauth_authorized', ok: false, detail: 'no access token' });
+          status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
+          if (!lastFailure) lastFailure = 'OAuth connector is not authorized.';
+        }
+      } catch (err) {
+        checks.push({ check: 'oauth_authorized', ok: false, detail: err.message || 'connector check failed' });
         status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
-        if (!lastFailure) lastFailure = 'OAuth connector is not authorized.';
+        if (!lastFailure) lastFailure = `OAuth check failed: ${err.message || 'unknown'}`;
       }
-    } catch (err) {
-      checks.push({ check: 'oauth_authorized', ok: false, detail: err.message || 'connector check failed' });
-      status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
-      if (!lastFailure) lastFailure = `OAuth check failed: ${err.message || 'unknown'}`;
     }
   }
 
@@ -65,15 +72,45 @@ async function validateEntry(sr, e, now) {
   }
 
   if (p === 'convex') {
-    const cUrl = secrets.get('CONVEX_QUERY_URL');
+    const resolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
     const cToken = secrets.get('CONVEX_AUTH_TOKEN');
-    checks.push({ check: 'centralized_endpoint', ok: !!cUrl, detail: cUrl ? 'endpoint configured via CONVEX_QUERY_URL' : 'CONVEX_QUERY_URL not set' });
-    if (!cUrl) {
+    checks.push({ check: 'centralized_endpoint', ok: !!resolved.url, detail: resolved.url ? `endpoint: ${resolved.url}` : 'CONVEX_QUERY_URL not a valid Convex endpoint' });
+    if (!resolved.url) {
       flags.push('bypasses_central_access');
       status = 'MISCONFIGURED';
-      if (!lastFailure) lastFailure = 'Centralized Convex endpoint (CONVEX_QUERY_URL) is not configured.';
+      if (!lastFailure) lastFailure = 'Centralized Convex endpoint (CONVEX_QUERY_URL) is not configured or is malformed.';
     } else {
-      checks.push({ check: 'convex_auth', ok: !!cToken, detail: cToken ? 'auth token configured (CONVEX_AUTH_TOKEN)' : 'no auth token — queries may be public' });
+      checks.push({ check: 'convex_auth', ok: !!cToken, detail: cToken ? 'auth token configured' : 'no auth token — queries may be public' });
+      // Live, non-destructive auth + reachability probe (read query only; never
+      // mutates). Surfaces a 401 or a missing-function deployment instead of a
+      // false ACTIVE so the gate blocks the sync until it's fixed.
+      try {
+        const probeHeaders = { 'Content-Type': 'application/json' };
+        if (cToken) probeHeaders['Authorization'] = `Bearer ${cToken}`;
+        const probeRes = await fetch(resolved.url, {
+          method: 'POST', headers: probeHeaders,
+          body: JSON.stringify({ path: 'agents:getAgents', args: {}, format: 'json' }),
+        });
+        if (probeRes.status === 401) {
+          checks.push({ check: 'convex_auth_probe', ok: false, detail: 'authentication rejected (401)' });
+          status = 'REAUTH_REQUIRED';
+          if (!lastFailure) lastFailure = 'Convex rejected the configured auth token (401). Set a valid Convex auth token in CONVEX_AUTH_TOKEN, or unset it for public queries.';
+        } else {
+          const pj = await probeRes.json().catch(() => ({}));
+          const fnNotFound = pj.status === 'error' && String(pj.errorMessage || '').includes('Could not find public function');
+          if (fnNotFound) {
+            checks.push({ check: 'convex_auth_probe', ok: false, detail: 'reachable but function not found — deployment lacks the schema' });
+            status = 'MISCONFIGURED';
+            if (!lastFailure) lastFailure = 'Convex is reachable but does not expose the expected public query (agents:getAgents). Deploy the matching schema to this deployment.';
+          } else {
+            checks.push({ check: 'convex_auth_probe', ok: true, detail: 'authenticated, function reachable' });
+          }
+        }
+      } catch (e) {
+        checks.push({ check: 'convex_auth_probe', ok: false, detail: e.message || 'probe failed' });
+        status = status === 'ACTIVE' ? 'DISCONNECTED' : status;
+        if (!lastFailure) lastFailure = `Convex unreachable: ${e.message}`;
+      }
     }
   }
 
@@ -113,7 +150,7 @@ export default async function(req) {
       await sr.entities.PlatformAccessRegistry.update(e.id, update);
 
       if (before !== result.status) {
-        await logAudit(sr, {
+        await logAudit(base44, {
           action: 'integration_status_change',
           actor_user_id: user.id,
           target_type: 'PlatformAccessRegistry',

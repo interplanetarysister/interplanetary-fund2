@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertPlatformAccess, resolveConvex } from '../../shared/integrationRegistry.ts';
 
 // Convex cloud backend — source of truth for agents, campaigns, treasury,
 // protocol. The endpoint URL and (optional) auth token are read from the
@@ -8,12 +8,15 @@ import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 // NOT hardcoded. Access is gated through the Platform Access Registry.
 
 async function convexQuery(path, args = {}) {
-  const url = secrets.get('CONVEX_QUERY_URL');
-  if (!url) throw new Error('Convex endpoint not configured (CONVEX_QUERY_URL).');
+  const resolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
+  if (!resolved.url) throw new Error('Convex endpoint not configured (CONVEX_QUERY_URL).');
   const headers = { 'Content-Type': 'application/json' };
+  // Only the dedicated CONVEX_AUTH_TOKEN is used for query auth. The token that
+  // may ride along in a "dev:<dep>|<token>" deployment reference is a CLI/admin
+  // token, not a query-auth credential — sending it as a bearer causes 401.
   const token = secrets.get('CONVEX_AUTH_TOKEN');
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(url, {
+  const res = await fetch(resolved.url, {
     method: "POST",
     headers,
     body: JSON.stringify({ path, args, format: "json" }),
@@ -44,20 +47,28 @@ export default async function(req) {
     if (!access.ok) {
       return Response.json({ ok: false, skipped: true, reason: access.reason, status: access.status }, { status: 403 });
     }
-    if (!secrets.get('CONVEX_QUERY_URL')) {
-      return Response.json({ ok: false, skipped: true, reason: 'CONVEX_QUERY_URL not configured' }, { status: 503 });
+    const convexResolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
+    if (!convexResolved.url) {
+      return Response.json({ ok: false, skipped: true, reason: 'CONVEX_QUERY_URL not configured or malformed' }, { status: 503 });
     }
 
     const now = new Date().toISOString();
 
+    const queryErrors = [];
+    const tryQuery = (p, a, fallback) => convexQuery(p, a).catch((e) => { queryErrors.push(`${p}: ${e.message}`); return fallback; });
     const [agents, campaigns, treasury, reports] = await Promise.all([
-      convexQuery("agents:getAgents").catch((e) => { console.warn(e.message); return []; }),
+      tryQuery("agents:getAgents", undefined, []),
       // getCampaigns is paginated — it requires paginationOpts and returns
       // { page, continueCursor, isDone }, not a bare array.
-      convexQuery("campaigns:getCampaigns", { paginationOpts: { numItems: 100, cursor: null } }).catch((e) => { console.warn(e.message); return []; }),
-      convexQuery("treasury:aggregateBalances").catch((e) => { console.warn(e.message); return null; }),
-      convexQuery("protocol:getReports", { limit: 20 }).catch((e) => { console.warn(e.message); return []; }),
+      tryQuery("campaigns:getCampaigns", { paginationOpts: { numItems: 100, cursor: null } }, []),
+      tryQuery("treasury:aggregateBalances", undefined, null),
+      tryQuery("protocol:getReports", { limit: 20 }, []),
     ]);
+    // If every query failed, the sync did not actually run — surface the real
+    // reason instead of silently reporting success with zero counts.
+    if (queryErrors.length === 4) {
+      return Response.json({ ok: false, skipped: true, reason: 'All Convex queries failed', errors: queryErrors }, { status: 502 });
+    }
 
     const counts = { agents: 0, campaigns: 0, reports: 0, treasury: false };
 
@@ -161,7 +172,7 @@ export default async function(req) {
       }
     }
 
-    return Response.json({ ok: true, synced_at: now, counts });
+    return Response.json({ ok: true, synced_at: now, counts, errors: queryErrors });
   } catch (error) {
     console.error('syncFromConvex error:', error.message);
     return Response.json({ error: 'Unable to sync from the cloud backend.' }, { status: 500 });

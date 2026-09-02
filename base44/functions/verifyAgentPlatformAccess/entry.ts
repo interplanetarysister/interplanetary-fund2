@@ -47,7 +47,7 @@ export default async function(req) {
       }
     }
 
-    await logAudit(sr, {
+    await logAudit(base44, {
       action: 'agent_integration_access',
       actor_user_id: (user && user.id) || agentName,
       target_type: 'PlatformAccessRegistry',

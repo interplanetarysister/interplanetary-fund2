@@ -115,3 +115,25 @@ export async function assertPlatformAccess(sr, platform) {
   const ok = entry.status === "ACTIVE" || entry.status === "EXPIRES_SOON";
   return { ok, status: entry.status, reason: ok ? "ok" : `status ${entry.status}` };
 }
+
+// Resolves a Convex query endpoint from whatever form the admin stored in
+// CONVEX_QUERY_URL: a full "https://<dep>.convex.cloud/api/query", a base
+// "https://<dep>.convex.cloud", a bare deployment name "<dep>", or a Convex
+// deployment reference "dev:<dep>|<token>". Returns { url, token } where url is
+// a valid https://...convex.cloud/api/query (or null if it can't be derived)
+// and token is the optional credential carried after a "|" — never logged.
+// This keeps the centralized config robust to how the value was entered.
+export function resolveConvex(raw) {
+  const r = String(raw || "").trim();
+  if (!r) return { url: null, token: null };
+  let token = null;
+  let u = r;
+  if (u.includes("|")) { const parts = u.split("|"); u = parts[0]; token = parts[1] || null; }
+  if (/^(dev|prod):/i.test(u)) u = u.replace(/^(dev|prod):/i, "");
+  if (!/^https?:\/\//i.test(u)) u = `https://${u}`;
+  const host = u.replace(/^https?:\/\//i, "").split("/")[0];
+  if (host && !host.includes(".")) u = `https://${host}.convex.cloud`;
+  if (!/\.convex\.cloud/i.test(u)) return { url: null, token: null };
+  if (!/\/api\/query$/.test(u)) u = `${u.replace(/\/$/, "")}/api/query`;
+  return { url: u, token };
+}

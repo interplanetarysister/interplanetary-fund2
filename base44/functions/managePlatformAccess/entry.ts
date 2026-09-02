@@ -26,7 +26,7 @@ export default async function(req) {
       return Response.json({ error: `No registry entry for "${platform}"` }, { status: 404 });
     }
 
-    const audit = (a) => logAudit(sr, { ...a, actor_user_id: user.id, target_type: 'PlatformAccessRegistry', target_id: entry ? entry.id : '' });
+    const audit = (a) => logAudit(base44, { ...a, actor_user_id: user.id, target_type: 'PlatformAccessRegistry', target_id: entry ? entry.id : '' });
 
     if (action === 'upsert') {
       const data = {
