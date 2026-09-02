@@ -5,7 +5,7 @@
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "*/15 * * * *",
+      "cron_expression": "*/30 * * * *",
       "one_time_date": null,
       "timezone": "America/Los_Angeles",
       "interval_value": null,
@@ -17,7 +17,7 @@
     }
   },
   "name": "Convex Sync",
-  "description": "Auto-syncs agents, campaigns, treasury, and protocol reports from the Convex mission backend into Base44 entities every 15 minutes so the Ops Center stays fresh without a manual Sync Now.",
+  "description": "Auto-syncs agents, campaigns, treasury, and protocol reports from the Convex mission backend into Base44 entities every 30 minutes so the Ops Center stays fresh without a manual Sync Now. Cadence is a balanced baseline; the function no-ops on empty Convex results, so idle runs stay cheap.",
   "definition": {
     "document": {
       "dsl": "1.0.0",
