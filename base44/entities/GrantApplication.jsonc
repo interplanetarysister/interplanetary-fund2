@@ -52,6 +52,18 @@
     "campaign_id"
   ],
   "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.applicant_user_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
     "read": {
       "$or": [
         {
@@ -64,7 +76,6 @@
         }
       ]
     },
-    "create": {},
     "update": {
       "user_condition": {
         "role": "admin"

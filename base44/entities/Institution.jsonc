@@ -79,8 +79,10 @@
     "name"
   ],
   "rls": {
-    "read": {},
-    "create": {},
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "read": null,
     "update": {
       "$or": [
         {
