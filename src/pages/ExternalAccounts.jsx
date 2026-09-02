@@ -72,7 +72,7 @@ export default function ExternalAccounts() {
           <TabsTrigger value="queue">Action Queue</TabsTrigger>
         </TabsList>
         <TabsContent value="accounts">
-          <ExternalAccountsTable connections={connections} campaigns={campaigns} agents={agents} onRowClick={setSelected} />
+          <ExternalAccountsTable connections={connections} campaigns={campaigns} agents={agents} onRowClick={setSelected} onUpdated={reload} />
         </TabsContent>
         <TabsContent value="posts">
           <PostLookupPanel posts={posts} campaigns={campaigns} agents={agents} connections={connections} />

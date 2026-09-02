@@ -1,19 +1,23 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { platformName } from "@/components/connections/platformCatalog";
 import {
   healthStatus, HEALTH_BADGE, completenessPct, completenessLevel,
   daysSinceSync, roleForPlatform, accentForRole, agentForRole,
 } from "@/lib/externalAccounts";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, RefreshCw, X, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 const COMPLETENESS_COLOR = { incomplete: "bg-red-500", partial: "bg-amber-500", complete: "bg-emerald-500" };
 
-export default function ExternalAccountsTable({ connections, campaigns, agents, onRowClick }) {
+export default function ExternalAccountsTable({ connections, campaigns, agents, onRowClick, onUpdated }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("all");
   const [health, setHealth] = useState("all");
   const [role, setRole] = useState("all");
+  const [selected, setSelected] = useState(new Set());
+  const [busy, setBusy] = useState(false);
 
   const filtered = connections.filter((c) => {
     if (kind !== "all" && c.kind !== kind) return false;
@@ -25,6 +29,32 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
     }
     return true;
   });
+
+  const filteredIds = filtered.map((c) => c.id);
+  const allSelected = filtered.length > 0 && filtered.every((c) => selected.has(c.id));
+  const toggleAll = () => {
+    const next = new Set(selected);
+    if (allSelected) filteredIds.forEach((id) => next.delete(id));
+    else filteredIds.forEach((id) => next.add(id));
+    setSelected(next);
+  };
+  const toggleOne = (id) => {
+    const next = new Set(selected);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelected(next);
+  };
+
+  const bulkSync = async () => {
+    setBusy(true);
+    const now = new Date().toISOString();
+    try {
+      await base44.entities.PlatformConnection.bulkUpdate(
+        [...selected].map((id) => ({ id, status: "connected", last_synced: now, last_error: "" }))
+      );
+      setSelected(new Set());
+      onUpdated?.();
+    } finally { setBusy(false); }
+  };
 
   return (
     <div>
@@ -52,10 +82,29 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
         </select>
       </div>
 
+      {/* Persistent bulk-action bar — stays visible while any rows are selected. */}
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-3 mb-4 rounded-xl bg-stone-900 text-white px-4 py-2.5 shadow-lg">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={bulkSync} disabled={busy} className="rounded-lg bg-white text-stone-900 hover:bg-stone-100 min-h-[44px]">
+              {busy ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+              Sync selected
+            </Button>
+            <button onClick={() => setSelected(new Set())} className="inline-flex items-center gap-1 rounded-lg px-3 text-sm text-stone-200 hover:text-white min-h-[44px]">
+              <X className="w-3.5 h-3.5" /> Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-2xl border border-stone-200 bg-white">
         <table className="w-full text-sm">
           <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
             <tr>
+              <th className="px-3 py-2.5 w-10">
+                <input type="checkbox" aria-label="Select all" checked={allSelected} onChange={toggleAll} className="w-4 h-4 align-middle" />
+              </th>
               <th className="px-3 py-2.5">Platform</th>
               <th className="px-3 py-2.5">Display Name</th>
               <th className="px-3 py-2.5">Kind</th>
@@ -77,8 +126,12 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
               const agent = agentForRole(agents, r);
               const accent = accentForRole(r);
               const d = daysSinceSync(c);
+              const checked = selected.has(c.id);
               return (
-                <tr key={c.id} onClick={() => onRowClick(c)} className="border-b border-stone-100 hover:bg-stone-50 cursor-pointer">
+                <tr key={c.id} onClick={() => onRowClick(c)} className={`border-b border-stone-100 hover:bg-stone-50 cursor-pointer ${checked ? "bg-primary/5" : ""}`}>
+                  <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleOne(c.id)} className="w-4 h-4 align-middle" />
+                  </td>
                   <td className="px-3 py-3 font-medium text-stone-900 whitespace-nowrap">{platformName(c.platform)}</td>
                   <td className="px-3 py-3 text-stone-600 max-w-[160px] truncate">{c.display_name || "—"}</td>
                   <td className="px-3 py-3"><span className="capitalize text-stone-500 text-sm">{c.kind}</span></td>
@@ -111,7 +164,7 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
               );
             })}
             {!filtered.length && (
-              <tr><td colSpan={9} className="px-3 py-10 text-center text-stone-400">No accounts match your filters.</td></tr>
+              <tr><td colSpan={10} className="px-3 py-10 text-center text-stone-400">No accounts match your filters.</td></tr>
             )}
           </tbody>
         </table>
