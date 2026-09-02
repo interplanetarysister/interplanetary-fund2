@@ -3,6 +3,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
 // Records a donation made through PayPal or Cash App. Those flows complete on
 // an external site, so the supporter confirms the gift here and the ledger,
@@ -23,6 +24,13 @@ export default async function(req) {
       return Response.json({ error: 'A campaign is required' }, { status: 400 });
     }
     const value = Number(amount);
+
+    // Abuse guard: manual-confirmation gifts are unverified (no server-side
+    // payment proof), so cap the rate to stop scripted inflation of campaign
+    // totals. Generous enough that a legitimate donor never hits it.
+    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
+    const rl = await checkRateLimit(base44, `recordDonation:${donor?.id || ip}`, 10, 60);
+    if (!rl.allowed) return Response.json({ error: 'Too many attempts. Please slow down and try again.' }, { status: 429 });
 
     // Idempotency: if the client passed a key (generated once per donation
     // intent), return the existing record instead of creating a duplicate.
@@ -48,6 +56,14 @@ export default async function(req) {
       is_recurring: !!is_recurring,
       ...(is_recurring ? { recurring_status: 'active' } : {}),
       donor_user_id: donor?.id,
+      // Manual-confirmation gifts (PayPal donate link / Cash App) have no
+      // server-side payment proof, so they are NOT auto-withdrawable — an admin
+      // must clear them (confirming the off-platform payment actually arrived)
+      // before these funds can be requested. Verified paths (Stripe webhook,
+      // PayPal order capture) leave payment_verified at its default (true) and
+      // clear after the 7-day hold. This closes the trust-the-client theft
+      // vector: a client-supplied amount can never be paid out without verification.
+      payment_verified: false,
       payment_method: payment_method || 'paypal',
       ...(idempotency_key ? { idempotency_key } : {}),
     });

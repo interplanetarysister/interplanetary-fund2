@@ -57,6 +57,11 @@
       "default": "paypal",
       "description": "How the supporter sent their gift."
     },
+    "payment_verified": {
+      "type": "boolean",
+      "default": true,
+      "description": "True when the payment was confirmed server-side (Stripe webhook, PayPal order capture). False for manual-confirmation gifts (PayPal donate link, Cash App) that have no server-side proof \u2014 these require admin clearing before they can be withdrawn, so a client-supplied amount can never be paid out without verification."
+    },
     "is_institutional": {
       "type": "boolean",
       "default": false,
@@ -65,7 +70,7 @@
     "cleared": {
       "type": "boolean",
       "default": false,
-      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn."
+      "description": "Admin confirmation that the funds were received and may now be withdrawn. Required for institutional gifts and for unverified (payment_verified=false) manual-confirmation gifts."
     },
     "withdrawal_id": {
       "type": "string",

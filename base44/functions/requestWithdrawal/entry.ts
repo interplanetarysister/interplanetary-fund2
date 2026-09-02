@@ -31,7 +31,10 @@ export default async function(req) {
       if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
       const d = await sr.entities.Donation.get(body.donation_id);
       if (!d) return Response.json({ error: "Donation not found." }, { status: 404 });
-      if (!d.is_institutional) return Response.json({ error: "Only institutional donations need clearing." }, { status: 400 });
+      // Admin clearing confirms an off-platform/institutional payment actually
+      // arrived before its funds become withdrawable. Applies to institutional
+      // gifts and to unverified manual-confirmation gifts (payment_verified=false).
+      if (!d.is_institutional && d.payment_verified !== false) return Response.json({ error: "Only unverified or institutional donations need clearing." }, { status: 400 });
       await sr.entities.Donation.update(d.id, { cleared: true });
       return Response.json({ ok: true, donation_id: d.id, cleared: true });
     }
@@ -92,7 +95,12 @@ export default async function(req) {
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
     // Cleared, unconsumed donations. Regular gifts clear after the 7-day holding
     // period; institutional (grant) gifts require explicit admin clearing first.
-    const available = (allDonations || []).filter((d) => !d.withdrawal_id && (d.is_institutional ? d.cleared : new Date(d.created_date) <= cutoff));
+    // Unverified, manually-confirmed gifts (PayPal donate link / Cash App,
+    // recorded via recordDonation) cannot be auto-withdrawn — they require admin
+    // clearing to confirm the off-platform payment arrived, closing the
+    // trust-the-client theft vector. Verified gifts (Stripe webhook, PayPal
+    // capture) clear after the 7-day hold; institutional gifts also need clearing.
+    const available = (allDonations || []).filter((d) => !d.withdrawal_id && ((d.payment_verified === false || d.is_institutional) ? d.cleared : new Date(d.created_date) <= cutoff));
     let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));
     if (gross <= 0) {
       return Response.json({ error: "No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period." }, { status: 400 });
