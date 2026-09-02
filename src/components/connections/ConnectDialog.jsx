@@ -41,30 +41,23 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   const save = async () => {
     setSaving(true);
-    const now = new Date().toISOString();
-    const data = {
-      platform: platform.id,
-      kind: platform.kind,
-      display_name: form.display_name,
-      external_url: form.external_url,
-      campaign_id: form.campaign_id || undefined,
-      automation_mode: form.automation_mode,
-      credentials,
-      external_total: isCrowd ? Number(form.external_total) || 0 : 0,
-      external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
-      status: "connected",
-      last_synced: now,
-      last_error: "",
-      history: [
-        ...(existing?.history || []),
-        { at: now, event: existing ? "synced" : "connected", detail: existing ? "Details and totals updated" : `Connected ${platform.name}` },
-      ].slice(-30),
-    };
     try {
-      const saved = existing
-        ? await base44.entities.PlatformConnection.update(existing.id, data)
-        : await base44.entities.PlatformConnection.create(data);
-      onSaved(saved || { ...existing, ...data });
+      // Route through the credential-merge function so secret values never
+      // round-trip through the frontend and merges preserve unchanged secrets.
+      const res = await base44.functions.invoke("saveConnectionCredentials", {
+        connection_id: existing?.id,
+        platform: platform.id,
+        kind: platform.kind,
+        display_name: form.display_name,
+        external_url: form.external_url,
+        campaign_id: form.campaign_id || undefined,
+        automation_mode: form.automation_mode,
+        external_total: isCrowd ? Number(form.external_total) || 0 : 0,
+        external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
+        credentials,
+      });
+      const saved = res.data.connection;
+      onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
       onOpenChange(false);
     } catch (e) {
       console.error("ConnectDialog connection save failed:", e);
@@ -90,7 +83,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
           </div>
-          <CredentialFields platformId={platform.id} credentials={credentials} onChange={setCredentials} />
+          <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />
           <div className="space-y-1.5">
             <Label>Linked Interplanetary Fund campaign</Label>
             <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>

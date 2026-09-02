@@ -20,12 +20,12 @@ export default function Connections() {
   useEffect(() => {
     (async () => {
      try {
-      const [me, list] = await Promise.all([
+      const [me, connRes] = await Promise.all([
         base44.auth.me(),
-        base44.entities.PlatformConnection.list("-updated_date", 100),
+        base44.functions.invoke("listConnections", {}),
       ]);
       setUser(me);
-      setConnections(list);
+      setConnections(connRes.data.connections);
      } catch (e) {
        setError(e.message || "We couldn't load your connections.");
      }

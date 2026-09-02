@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -23,6 +24,8 @@ export default async function(req) {
       return Response.json({ error: 'Only the campaign owner can broadcast.' }, { status: 403 });
     }
 
+    const access = await assertPlatformAccess(base44.asServiceRole, 'social_publish');
+    if (!access.ok) return Response.json({ error: `Social publishing is currently disabled: ${access.reason}` }, { status: 403 });
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const pending = posts.filter((p) =>
       ['pending_approval', 'draft', 'approved', 'failed'].includes(p.status)

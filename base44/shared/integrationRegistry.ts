@@ -61,3 +61,57 @@ export async function emitIntegrationAlert(sr, entry, title, body) {
     console.error("emitIntegrationAlert failed:", e && e.message ? e.message : e);
   }
 }
+
+// Credential fields that are actual secrets (never returned to the frontend,
+// never logged). Non-secret identifiers (handles, instances) stay visible.
+export const SECRET_FIELDS = [
+  "kofi_verification_token",
+  "bluesky_app_password",
+  "mastodon_access_token",
+];
+
+// Strip secret values from a credentials object and report which secrets are
+// set, so the UI can show "set — enter new to replace" without ever holding
+// the raw value in frontend state.
+export function redactCredentials(creds) {
+  const c = creds || {};
+  const meta = {};
+  for (const f of SECRET_FIELDS) meta[f + "_set"] = !!c[f];
+  const redacted = { ...c };
+  for (const f of SECRET_FIELDS) if (redacted[f]) redacted[f] = "";
+  return { credentials: redacted, credentials_meta: meta };
+}
+
+// Merge incoming credential edits onto existing ones. Secret fields are only
+// overwritten when a new non-empty value is provided; otherwise the stored
+// value is preserved (so a redacted edit form never has to round-trip secrets).
+export function mergeSecrets(existingCreds, incomingCreds) {
+  const merged = { ...(existingCreds || {}) };
+  const incoming = incomingCreds || {};
+  for (const f of SECRET_FIELDS) {
+    if (incoming[f]) merged[f] = incoming[f];
+  }
+  for (const k of Object.keys(incoming)) {
+    if (!SECRET_FIELDS.includes(k)) merged[k] = incoming[k];
+  }
+  return merged;
+}
+
+// Centralized access gate. Before a backend function touches an external
+// platform it calls this to confirm the registry entry is healthy. Fails open
+// only on a transient registry read error (so a brief DB hiccup can't take
+// down critical user-facing flows), but blocks hard on a revoked/disconnected/
+// misconfigured/missing entry. Returns { ok, status, reason }.
+export async function assertPlatformAccess(sr, platform) {
+  let entries;
+  try {
+    entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
+  } catch (e) {
+    console.warn("assertPlatformAccess registry read failed:", e && e.message ? e.message : e);
+    return { ok: true, status: null, reason: "registry unavailable (fail-open)" };
+  }
+  const entry = entries && entries[0];
+  if (!entry) return { ok: false, status: null, reason: `no registry entry for ${platform}` };
+  const ok = entry.status === "ACTIVE" || entry.status === "EXPIRES_SOON";
+  return { ok, status: entry.status, reason: ok ? "ok" : `status ${entry.status}` };
+}

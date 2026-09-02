@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -15,6 +16,10 @@ export default async function(req) {
     const sr = base44.asServiceRole;
     const now = new Date();
     const report = { published: 0, awaiting_approval: 0, retried: 0, failed: 0, stale_flagged: 0 };
+    // Centralized access gate: auto-publish only when social publishing is
+    // healthy at the registry level. When disabled, due posts fall back to
+    // pending_approval (the existing non-auto path) instead of auto-posting.
+    const access = await assertPlatformAccess(sr, 'social_publish');
 
     // --- Due scheduled posts + failed retries ---
     const scheduled = await sr.entities.DistributedPost.filter({ status: 'scheduled' }, 'scheduled_for', 100);
@@ -33,7 +38,7 @@ export default async function(req) {
       }
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection)) {
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {

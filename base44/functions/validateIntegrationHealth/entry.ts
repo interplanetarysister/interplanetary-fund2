@@ -65,10 +65,16 @@ async function validateEntry(sr, e, now) {
   }
 
   if (p === 'convex') {
-    flags.push('hardcoded_endpoint', 'bypasses_central_access');
-    checks.push({ check: 'centralized_config', ok: false, detail: 'endpoint URL hardcoded in syncFromConvex, no auth' });
-    status = 'MISCONFIGURED';
-    if (!lastFailure) lastFailure = 'Hardcoded endpoint with no authentication; bypasses the centralized access process.';
+    const cUrl = secrets.get('CONVEX_QUERY_URL');
+    const cToken = secrets.get('CONVEX_AUTH_TOKEN');
+    checks.push({ check: 'centralized_endpoint', ok: !!cUrl, detail: cUrl ? 'endpoint configured via CONVEX_QUERY_URL' : 'CONVEX_QUERY_URL not set' });
+    if (!cUrl) {
+      flags.push('bypasses_central_access');
+      status = 'MISCONFIGURED';
+      if (!lastFailure) lastFailure = 'Centralized Convex endpoint (CONVEX_QUERY_URL) is not configured.';
+    } else {
+      checks.push({ check: 'convex_auth', ok: !!cToken, detail: cToken ? 'auth token configured (CONVEX_AUTH_TOKEN)' : 'no auth token — queries may be public' });
+    }
   }
 
   if (e.dependencies && e.dependencies.length) {

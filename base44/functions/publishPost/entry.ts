@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -36,6 +37,14 @@ export default async function(req) {
     }
 
     try {
+      // Centralized access gate: if social publishing is revoked/disabled at the
+      // registry level, fall back to a manual handoff instead of auto-posting.
+      const access = await assertPlatformAccess(base44.asServiceRole, 'social_publish');
+      if (!access.ok) {
+        const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
+        await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked by registry: ${access.reason}`, status: 'failure' });
+        return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason: access.reason });
+      }
       const { url } = await publishThroughConnection(connection, text);
       const updated = await base44.entities.DistributedPost.update(post_id, {
         status: 'published',

@@ -1,12 +1,21 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { secrets } from 'base44:runtime';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
-// Convex cloud backend — source of truth for agents, campaigns, treasury, protocol.
-const CONVEX_QUERY_URL = "https://rosy-butterfly-2.convex.cloud/api/query";
+// Convex cloud backend — source of truth for agents, campaigns, treasury,
+// protocol. The endpoint URL and (optional) auth token are read from the
+// centralized secret-reference system (CONVEX_QUERY_URL / CONVEX_AUTH_TOKEN),
+// NOT hardcoded. Access is gated through the Platform Access Registry.
 
 async function convexQuery(path, args = {}) {
-  const res = await fetch(CONVEX_QUERY_URL, {
+  const url = secrets.get('CONVEX_QUERY_URL');
+  if (!url) throw new Error('Convex endpoint not configured (CONVEX_QUERY_URL).');
+  const headers = { 'Content-Type': 'application/json' };
+  const token = secrets.get('CONVEX_AUTH_TOKEN');
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({ path, args, format: "json" }),
   });
   const json = await res.json().catch(() => ({}));
@@ -25,7 +34,20 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const db = base44.asServiceRole.entities;
+    const sr = base44.asServiceRole;
+    const db = sr.entities;
+
+    // Centralized access gate: refuse to sync if the Convex registry entry is
+    // revoked/disconnected/misconfigured. The endpoint itself is read from
+    // CONVEX_QUERY_URL below, so the sync can no longer bypass central config.
+    const access = await assertPlatformAccess(sr, 'convex');
+    if (!access.ok) {
+      return Response.json({ ok: false, skipped: true, reason: access.reason, status: access.status }, { status: 403 });
+    }
+    if (!secrets.get('CONVEX_QUERY_URL')) {
+      return Response.json({ ok: false, skipped: true, reason: 'CONVEX_QUERY_URL not configured' }, { status: 503 });
+    }
+
     const now = new Date().toISOString();
 
     const [agents, campaigns, treasury, reports] = await Promise.all([
