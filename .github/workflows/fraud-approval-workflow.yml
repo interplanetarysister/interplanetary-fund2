@@ -28,15 +28,27 @@ concurrency:
   group: fraud-approval-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  REVIEWED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out the reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REVIEWED_SHA }}
+          fetch-depth: 1
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
+      - name: Confirm exact-head checkout
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$REVIEWED_SHA"
+          printf 'Verified exact reviewed SHA: %s\n' "$actual_sha"
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: node scripts/verify-fraud-approval-workflow.mjs
