@@ -1,5 +1,5 @@
 import React from "react";
-import { STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
+import { STATUS_BADGE, ENV_LABEL } from "@/lib/integrationRegistryUi";
 import { ShieldAlert, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 const FLAG_LABEL = {
