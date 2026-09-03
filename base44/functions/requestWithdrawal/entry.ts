@@ -1,9 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { getPayoutBatch, sendPayout } from '../../shared/paypal.ts';
 
-// Withdrawal engine. Enforces the 8% platform fee, the 7-day clearing hold,
+// Withdrawal engine. Enforces the 7% platform fee, the 7-day clearing hold,
 // a once-daily limit, campaign ownership, and fraud review for large payouts.
-const PLATFORM_FEE_RATE = 0.08;
+const PLATFORM_FEE_RATE = 0.07;
 const CLEARING_DAYS = 7;
 const REVIEW_THRESHOLD = 1000;
 const SAFE_PAYOUT_ERROR = 'Unable to complete the payout. Please try again or contact support.';
@@ -83,7 +83,7 @@ export default async function(req) {
       );
       if (!claim.success || claim.updated !== 1) return Response.json({ error: 'This payout is already being processed or has changed state. Reconcile its current status before retrying.' }, { status: 409 });
       try {
-        const payout = await sendPayout({ receiver: w.paypal_email, amount: w.net_amount, note: `Interplanetary Fund withdrawal for "${w.campaign_title}"`, itemId: `IFW_${w.id}` });
+        const payout = await sendPayout({ receiver: w.paypal_email, amount: w.net_amount, note: `Interplanetary Fund withdrawal for \"${w.campaign_title}\"`, itemId: `IFW_${w.id}` });
         const finalized = await sr.entities.Withdrawal.updateMany(
           { id: w.id, status: 'processing', payout_claim_token: claimToken, review_action: 'approve' },
           { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() }, $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' } },
@@ -126,7 +126,7 @@ export default async function(req) {
       return Response.json({ ok: true, status: 'under_review', withdrawal_id: withdrawal.id, gross, fee, net });
     }
     try {
-      const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for "${campaign.title}"`, itemId: `IFW_${withdrawal.id}` });
+      const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for \"${campaign.title}\"`, itemId: `IFW_${withdrawal.id}` });
       const finalized = await sr.entities.Withdrawal.updateMany({ id: withdrawal.id, status: 'processing' }, { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() } });
       if (!finalized.success || finalized.updated !== 1) return Response.json({ error: 'PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation.' }, { status: 409 });
       await clearMigrationClaim(sr, withdrawal);
