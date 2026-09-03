@@ -2,78 +2,93 @@
 
 ## Project Context
 
-This is the **user-facing Interplanetary Fund application repository**. It is the Base44 application layer paired with the authoritative Convex backend and internal-agent runtime in `interplanetarysister/InterplanetaryFund`.
+This repository contains a **React + Vite user-facing application** that currently uses the Base44 SDK/Vite plugin. It is part of the single Interplanetary Fund product; it is not a separate product.
 
-### Canonical repository ownership
+### Current repository boundary
 
-- **Application:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Authoritative backend / internal agent runtime:** `interplanetarysister/InterplanetaryFund` — Convex backend, persistent agent state/memory, permissions, orchestration, scheduled intelligence, backend protocol, treasury/payments backend, and internal-agent knowledge.
-- **Legacy backend snapshot:** `interplanetarysister/interplanetary-fund-backend` — reference only; do not add new production backend features there unless explicitly assigned.
+- **`interplanetarysister/interplanetary-fund2`** — application-layer React/Vite source currently visible in this repository, including user-facing screens, application integrations, Base44-backed entities/configuration, and application-specific workflows.
+- **`interplanetarysister/interplanetary-fund-backend`** — authoritative backend/operations repository according to its current `README.md`: Convex functions, canonical business state, admin/agent runtime, security, treasury, payments, scheduled jobs, and operational integrations.
+- **`interplanetarysister/InterplanetaryFund`** — current authoritative frontend repository according to its current `README.md`; reconcile any cross-repository migration/ownership claim against the current repository contracts before changing it.
+- **`interplanetarysister/interplanetary-fund`** — migration/reference repository; do not treat historical code as production truth without current-source verification.
 
-A PR must target the same repository that owns the change. Never merge a PR from one repository into another. Cross-repository behavior must use an explicit API/function/bridge boundary.
+These repository roles must be established from the current repository documents and source before implementation. If two repositories disagree, stop and reconcile the discrepancy; do not guess.
 
-## Required first reads
+## Mandatory no-guessing rule
 
-Before substantial work, read:
+**Never guess.** Every build agent, reviewer, auditor, Copilot/Codex task, and human implementation must establish the current source of truth before modifying behavior.
 
-1. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — this repository's ownership and boundary.
-2. `docs/AGENT_RUNTIME_UNIFICATION.md` — current Base44↔Convex identity and memory bridge.
-3. `docs/IF_FEATURE_RECONCILIATION_2026-08-21.md` — current evidence-based feature baseline when feature work is involved.
-4. The authoritative `InterplanetaryFund/docs/PROJECT_CONTEXT_ARCHIVE.md` and applicable role-specific material when internal-agent/backend context is needed.
-5. The current issue/PR, branch/head, existing handoffs, and recent findings.
+Before substantial work:
 
-Do not rely on the original chat transcript when the decision has been archived in GitHub.
+1. Read this file and `docs/REPOSITORY_SOURCE_OF_TRUTH.md`.
+2. Read the current issue/PR, exact base/head SHA, existing review/audit comments, and relevant package/build configuration.
+3. Identify which repository owns the capability and whether the change is frontend-only, backend-only, or cross-repository.
+4. Inspect the actual current caller, schema, workflow, and integration before designing a replacement.
+5. If required information is absent, mark it **UNKNOWN / REQUIRES VERIFICATION** and gather evidence from the owning repository or controlled environment. Do not infer it from names, stale documentation, old PRs, generated artifacts, or chat history.
+6. Never claim a feature, deployment, runtime result, provider configuration, review, approval, or production state that was not directly verified.
 
-## Agent-role boundary
+### Evidence precedence
 
-The project uses **role-specific agents**. Do not assume every agent follows the Convex Builder workflow.
+Use evidence in this order unless a newer authoritative decision explicitly supersedes it:
 
-Only agents assigned to build, review, verify, or publish Convex/backend/agent-runtime work use the authoritative workflow in:
-`InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md`
+1. Actual controlled runtime/deployment state and authoritative backend behavior.
+2. Current source on the repository/branch that owns the capability.
+3. Current schema/configuration and executable tests/workflows.
+4. Current issue/PR acceptance criteria and review findings.
+5. Historical documentation or reconstructed feature material.
+6. Chat recollection.
 
-That workflow is intentionally **not universal**. Application-specific agents must follow their own role instructions.
+Historical material is evidence/specification, not automatic production truth.
 
-## Application/backend source of truth
+## Required workflow for every build
 
-The Convex backend is the source of truth for persistent agent identity, working memory, long-term memory, outcomes, campaigns, protocol, treasury, payments, and scheduled intelligence. Base44 entities may mirror selected backend state for application display, but must not become a competing production source of truth.
+For every non-trivial change:
 
-## Base44 References
+1. **Assess** — inspect the exact current implementation and dependencies.
+2. **Plan** — define the smallest coherent change and explicitly list unknowns.
+3. **Review** — obtain the required Agent 2+3 review/audit against the exact head before implementation when the task requires plan review.
+4. **Implement** — edit the existing implementation where safe; do not recreate functionality unnecessarily.
+5. **Verify** — run relevant tests, lint/typecheck/build, and controlled Development/runtime checks where required.
+6. **Handoff** — record exact base/head SHAs, files changed, tests/results, unresolved findings, and whether work is ACCOMPLISHED, INCOMPLETE, or AWAITING START.
+7. **Publish** — only after the complete 1→2+3→1→3 workflow and all applicable production gates pass.
 
-- CLI overview: https://docs.base44.com/developers/references/cli/get-started/overview.md
-- Agent skills: https://docs.base44.com/developers/backend/overview/skills.md
+Never merge a draft, never treat static CI as runtime proof, and never reuse evidence from a superseded SHA.
 
-If your agent supports Agent Skills, install or update Base44 skills before Base44-specific work:
+## Application/backend source-of-truth boundary
 
-```bash
-npx skills add base44/skills
-```
+The backend must remain authoritative for persistent business state and security-sensitive behavior where the current product contract assigns it authority. This application may display or bridge backend state, but must not create a competing production source of truth for users, campaigns, donations, permissions, agent state, treasury, payments, or other authoritative business records.
 
-## Key Files
+For cross-repository changes, identify the authoritative backend contract first and verify both sides of the boundary. Never silently duplicate business logic to compensate for an unverified backend contract.
 
-- `src/`: frontend application source.
-- `src/api/base44Client.js`: frontend Base44 SDK client.
-- `vite.config.js`: Vite config and Base44 Vite plugin setup.
-- `base44/`: Base44 entities and application-layer agent definitions/configuration.
-- `.env.local`: local-only environment values; never commit secrets.
+## Build-agent preservation rule
 
-## Working Notes
+When correcting or extending an existing artifact, edit the actual current implementation and preserve valid behavior, interfaces, architecture, and history where practical. A rewrite/replacement is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. Document why, what valid behavior is preserved, and how equivalence/regression is verified.
 
-- Use `base44 dev` as the default local development command when you need the local Base44 backend. It can run the backend and frontend together.
-- When docs or code mention the frontend being started automatically, that usually means the Base44 project config includes `site.serveCommand`, for example `"serveCommand": "npm run dev"` in `base44/config.jsonc`.
-- Use `npm run dev` only for frontend-only work against the hosted Base44 backend.
-- Prefer the existing Base44 CLI workflow over adding new npm scripts for Base44-specific tasks.
-- Reuse the existing SDK client and Vite plugin patterns before adding new Base44 integration paths.
-- When an interaction needs authoritative agent memory or backend state, use the established bridge rather than creating a second local memory system.
-- Do not copy the internal-agent knowledge base into this repository merely to make it discoverable; reference the canonical backend documents instead.
-- Historical/reconstructed feature material is evidence, not automatic production truth.
-- Run the relevant checks from `package.json` before finishing code changes.
+This rule applies to code, configuration, schemas, documentation, agent definitions, workflows, prompts, and generated artifacts.
 
-## Builder preservation rule
+## Dependency and integration safety
 
-When a builder agent is correcting, extending, or improving work that has already been produced, it must **edit the existing implementation/artifact rather than recreate it from scratch**. Start from the actual current implementation/commit/PR head and preserve valid existing functionality, architecture, interfaces, and history where practical. Make the smallest coherent modification that satisfies the task.
+- Do not add a new integration when an existing authoritative path already provides the capability until the existing path has been inspected.
+- Do not add a second source of truth for data already owned elsewhere.
+- Do not invent provider credentials, endpoints, OAuth behavior, payment states, deployment configuration, or runtime capabilities.
+- Treat `setup_required`, `coming_soon`, unsupported, connected, and operational states as distinct; only mark a capability connected when the authoritative connection state proves it.
+- For payment or financial behavior, require server/provider verification and idempotency/recovery evidence; client-side success is not proof of settlement.
+- For AI behavior, treat user-controlled content as untrusted input and preserve recommendation/approval boundaries.
+- For scheduled automation, inspect every shared write target and execution path before changing retries or concurrency behavior.
 
-A full rewrite/replacement is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. The builder must document the reason, what valid behavior is being preserved, and how equivalence/regression will be verified. This applies to code, configuration, schemas, documentation, agent definitions, workflows, prompts, generated assets, and other produced artifacts.
+## Exact-head rule
 
-## Continuity rule
+Validation belongs to the code eligible for publication. Record and verify the exact PR head SHA for every meaningful CI, runtime, audit, and publication result. If the head changes, previous evidence is superseded unless independently rerun against the new head.
 
-When a new decision changes repository ownership, agent roles, workflow, or the application/backend boundary, update `docs/REPOSITORY_SOURCE_OF_TRUTH.md`, the affected role-specific documentation, and the durable project archive in `InterplanetaryFund` when the decision materially affects future work.
+## Convex/backend work
+
+When this repository changes behavior that depends on Convex or the authoritative backend:
+
+- Reconcile the deployed backend/runtime with the visible source before changing production behavior.
+- Do not delete or overwrite deployed functionality merely because it is absent from this repository.
+- For concurrency defects, identify the actual conflicting records/functions first; use serialization/claiming, idempotency, duplicate-run prevention, and recovery semantics rather than merely increasing retries.
+- Development is the controlled validation target when production behavior is involved.
+- Production promotion requires exact-head Development evidence plus the complete Agent 1→Agent 2+3→Agent 1→Agent 3 workflow.
+
+## Repository documentation
+
+When a build-agent instruction or repository boundary changes, update the affected source-of-truth documentation in the same reviewable change. Never leave contradictory instructions in `README.md`, `AGENTS.md`, or `docs/`.
