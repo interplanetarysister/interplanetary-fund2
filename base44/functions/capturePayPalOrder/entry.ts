@@ -2,38 +2,34 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { captureOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
-import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
+import { round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
+import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 
-// Captures a PayPal order that was confirmed via Google Pay, then records the
-// donation in the ledger, updates campaign totals, and notifies the creator —
-// mirroring recordDonation so Google Pay gifts land in the same ledger.
+// Captures a PayPal/Google Pay order and applies the resulting donation through
+// Convex's transactional financial boundary. Provider capture idempotency + the
+// canonical operation key guarantees concurrent/retried handlers cannot create
+// multiple financial donations or increment campaign totals more than once.
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
 
-    const { order_id, campaign_id, donor_name, message, is_recurring, platform_contribution } = await req.json();
+    const { order_id, campaign_id, donor_name, message, is_recurring } = await req.json();
     if (!order_id || !campaign_id) {
       return Response.json({ error: 'Order id and campaign are required' }, { status: 400 });
-    }
-
-    // Idempotency: if this PayPal order was already captured and recorded,
-    // return the existing donation instead of creating a duplicate.
-    const existing = await sr.entities.Donation.filter({ stripe_session_id: order_id }).catch(() => []);
-    if (existing && existing.length) {
-      return Response.json({ ok: true, donation_id: existing[0].id, amount: existing[0].amount, duplicate: true });
     }
 
     let cap;
     try {
       cap = await captureOrder(order_id);
     } catch (capErr) {
-      console.error('capturePayPalOrder capture error:', capErr.message);
+      console.error('capturePayPalOrder capture error:', capErr?.message || capErr);
       const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
       if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
       await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: 'Capture failed', status: 'failure' });
-      return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 500 });
+      return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 502 });
     }
     if (cap.status !== 'COMPLETED') {
       const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
@@ -41,79 +37,115 @@ export default async function (req) {
       await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: `Capture not completed (${cap.status})`, status: 'failure' });
       return Response.json({ error: 'Payment was not completed', status: cap.status }, { status: 402 });
     }
+    if (cap.currency !== 'USD') {
+      return Response.json({ error: 'Captured payment currency does not match this campaign.' }, { status: 409 });
+    }
 
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+    if (campaign.status !== 'active') return Response.json({ error: 'This campaign is not accepting donations.' }, { status: 400 });
 
     const donorGuard = await assertActiveAccountIfSignedIn(base44);
     if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
     const donor = donorGuard.donor;
 
-    // The captured total is authoritative; the optional contribution is an
-    // allocation FROM it (never added on top), directed to the platform. The
-    // processing fee is covered by the platform, so it is not deducted again
-    // at payout — no double-charge. Reject captures that cannot yield a valid gift.
-    // The donation amount and processing fee are authoritative from the
-    // custom_id set at order creation (server-side), NOT from the client. The
-    // captured total (cap.amount) is D + P; custom_id carries D and P separately.
-    // Legacy orders without the encoded custom_id fall back to the captured total
-    // as the donation with no separate processing fee.
-    let donationAmount = round2(cap.amount);
-    let processingFee = 0;
-    if (cap.custom_id) {
-      const parts = String(cap.custom_id).split('|');
-      if (parts.length === 3 && parts[0] === campaign_id) {
-        const donCents = parseInt(parts[1], 10);
-        const procCents = parseInt(parts[2], 10);
-        if (!Number.isNaN(donCents)) {
-          donationAmount = round2(donCents / 100);
-          processingFee = Number.isNaN(procCents) ? 0 : round2(procCents / 100);
-        }
-      }
+    // custom_id is generated by createPayPalOrder on the server and binds all
+    // financial allocations to the captured provider order:
+    // campaignId|donationCents|processingFeeCents|platformContributionCents
+    const parts = String(cap.custom_id || '').split('|');
+    if (parts.length !== 4 || parts[0] !== campaign_id) {
+      return Response.json({ error: 'PayPal order does not match this campaign.' }, { status: 409 });
     }
-    const totalCheck = validateDonationAmount(donationAmount);
-    if (!totalCheck.ok) return Response.json({ error: totalCheck.error }, { status: 400 });
-    const total = donationAmount;
-    const contribution = computeContribution(total, !!platform_contribution);
-    const gift = round2(total - contribution);
+    const donCents = Number.parseInt(parts[1], 10);
+    const procCents = Number.parseInt(parts[2], 10);
+    const contributionCents = Number.parseInt(parts[3], 10);
+    if (![donCents, procCents, contributionCents].every(Number.isInteger) || donCents <= 0 || procCents < 0 || contributionCents < 0 || contributionCents > donCents) {
+      return Response.json({ error: 'PayPal order financial metadata is invalid.' }, { status: 409 });
+    }
 
-    const donation = await sr.entities.Donation.create({
+    const total = round2(donCents / 100);
+    const processingFee = round2(procCents / 100);
+    const contribution = round2(contributionCents / 100);
+    const amountCheck = validateDonationAmount(total);
+    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
+
+    const expectedCharge = round2(total + processingFee);
+    if (Math.abs(round2(cap.amount) - expectedCharge) > 0.01) {
+      return Response.json({ error: 'Captured PayPal amount does not match the server-created order.' }, { status: 409 });
+    }
+
+    await ensureCanonicalCampaign(sr, campaign);
+    const displayName = donor_name || cap.payer_name || donor?.full_name || 'Anonymous';
+    const canonical = await recordCanonicalDonation(sr, {
+      operationKey: `paypal:${order_id}`,
+      provider: 'paypal',
+      providerTransactionId: cap.capture_id || order_id,
+      campaignId: campaign_id,
+      campaignTitle: campaign.title,
+      campaignOwnerUserId: campaign.created_by_id || '',
+      grossAmount: total,
+      platformContribution: contribution,
+      processingFee,
+      donorName: displayName,
+      ...(donor?.email ? { donorEmail: donor.email } : {}),
+      ...(donor?.id ? { donorUserId: donor.id } : {}),
+      message: message || '',
+      paymentMethod: 'paypal',
+      paymentVerified: true,
+      source: 'paypal_capture',
+      isRecurring: !!is_recurring,
+    });
+
+    await mirrorCanonicalCampaignTotal(sr, campaign_id, canonical);
+
+    const donation = await reconcileDonationMirror(sr, canonical.operationId, {
       campaign_id,
       campaign_title: campaign.title,
       amount: total,
       platform_contribution: contribution,
       processing_fee: processingFee,
-      donor_name: donor_name || cap.payer_name || donor?.full_name || 'Anonymous',
+      donor_name: displayName,
       message: message || '',
       is_recurring: !!is_recurring,
       ...(is_recurring ? { recurring_status: 'active' } : {}),
-      donor_user_id: donor?.id,
+      ...(donor?.id ? { donor_user_id: donor.id } : {}),
       payment_method: 'paypal',
-      stripe_session_id: order_id, // external reference id (PayPal order id)
+      payment_verified: true,
+      cleared: false,
+      stripe_session_id: order_id,
     });
 
-    // Atomic increment — avoids the read-modify-write race on concurrent gifts.
-    // raised_amount reflects the recipient's gift (the contribution is retained
-    // by the platform). Successful captures are never rate-limited.
-    await sr.entities.Campaign.updateMany(
-      { id: campaign_id },
-      { $inc: { raised_amount: gift, donor_count: 1 } }
-    );
-
     if (campaign.created_by_id) {
-      await sr.entities.Notification.create({
+      await reconcileNotificationMirror(sr, canonical.operationId, {
         user_id: campaign.created_by_id,
         title: 'New donation received',
-        body: `${donation.donor_name} gave $${total.toLocaleString()} to "${campaign.title}" via Google Pay`,
+        body: `${displayName} gave $${total.toLocaleString()} to "${campaign.title}" via Google Pay`,
         type: 'donation',
         link: `/campaign/${campaign_id}`,
+        read: false,
       });
     }
 
-    await logAudit(base44, { action: 'donation_captured', target_type: 'campaign', target_id: campaign_id, detail: `$${total} via paypal captured (gift $${gift})`, status: 'success' });
-    return Response.json({ ok: true, donation_id: donation.id, amount: total });
+    if (canonical.applied) {
+      await logAudit(base44, {
+        action: 'donation_captured',
+        target_type: 'campaign',
+        target_id: campaign_id,
+        detail: `$${total} via PayPal captured and applied canonically`,
+        status: 'success',
+        metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: cap.capture_id || order_id },
+      });
+    }
+
+    return Response.json({
+      ok: true,
+      donation_id: donation?.id,
+      amount: total,
+      duplicate: !canonical.applied,
+      canonical_operation_id: String(canonical.operationId),
+    });
   } catch (error) {
-    console.error('capturePayPalOrder error:', error.message);
-    return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 500 });
+    console.error('capturePayPalOrder error:', error?.message || error);
+    return Response.json({ error: 'Unable to complete your donation safely. Please try again or contact support.' }, { status: 503 });
   }
 }
