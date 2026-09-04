@@ -1,10 +1,8 @@
 # Adopt a Life — Future Feature
 
-> Status: FUTURE ONLY. This document records a possible future Interplanetary Fund feature. It must not activate, modify, or become a dependency of current production behavior.
+> **Status: FUTURE ONLY.** This branch records the Adopt a Life design for later implementation. Nothing here should activate, modify, or become a dependency of current production behavior until explicitly approved.
 
 ## Branch relationship
-
-Intended conceptual hierarchy:
 
 ```text
 main
@@ -13,216 +11,162 @@ main
     └── adopt-a-life
 ```
 
-Adopt a Life and Fully Managed Campaigns are independent sibling future features. Neither feature may require, inherit, activate, or depend on the other. Each must remain separately implementable.
+Adopt a Life and Fully Managed Campaigns are independent sibling future features. Neither may require, inherit, activate, or depend on the other.
 
-## Core concept
+## Core product model
 
-Adopt a Life is a profile-based giving system. Instead of requiring a campaign tied to a specific fundraising reason, goal, emergency, purchase, or project, supporters can discover a particular person or animal and choose to financially support that life directly.
+Interplanetary Fund will distinguish two giving relationships:
 
-The central interaction is:
+- **Campaigns:** donate for a purpose.
+- **Adopt a Life:** give in support of a particular life without requiring a spending purpose.
 
-**I learned about this life → I care about this life → I want to give to this life.**
+Adopt a Life is not a campaign category. A person does not need to manufacture a campaign reason, prove hardship, state a spending plan, set a deadline, or promise how the money will be used in order to be supported.
 
-A recipient is not required to justify the donation with a specific spending purpose. Their voluntarily shared profile and story may inspire another person to support them.
+Givers may not attach spending restrictions or stipulations to either Campaign donations or Adopt a Life gifts within Interplanetary Fund.
 
-This is deliberately different from asking someone to prove a crisis or manufacture a fundraising pitch before others are allowed to help them.
+## Current decided rules
 
-## Individual profiles
+The detailed documents in this directory are authoritative for implementation. The current decision set includes:
 
-Individuals may have Adopt a Life profiles containing information they choose to share, such as:
+- anyone eligible may opt their own account into one Adopt a Life profile;
+- enabling it adds an **Adopt Me!** frame around the profile photo and a small **Adopt Now** donation action near the top of the standardized profile;
+- volunteers can be adopted and must be discoverable/searchable as volunteers;
+- screen names are the default public identity;
+- Interplanetary Fund does not independently verify actual identity/profile facts unless required by law, payment/payout providers, tax/compliance rules, or another mandatory obligation;
+- user/account owners are responsible for submitted profile/campaign content under future protective terms/waivers, subject to legal review;
+- an account owner may create/control a human profile for another person only through the required signed consent workflow;
+- for proxy human profiles, signed subject consent is required before details/photos may be added;
+- profiles may receive donations before withdrawal setup is complete where lawful/provider-supported;
+- the account owner/controller determines when a withdrawal is requested once withdrawal is enabled;
+- proxy-human withdrawal requires a usable payout method plus signed approval of that payout destination by the profile subject;
+- Interplanetary Fund does **not** provide reloadable cards; recipients without bank accounts may obtain their own compatible reloadable/prepaid card and use it where supported;
+- ordinary users get one Adopt a Life profile;
+- only admin-approved businesses/nonprofits may manage multiple Adopt a Life profiles;
+- those entities apply for approval and provide a rough estimate of how many profiles they expect to support at one time;
+- organization-created human and animal profile types must be unmistakably distinct;
+- approved animal shelters/rescues may manage animal Adopt a Life profiles;
+- ordinary individuals who need support for their own animal/pet use a Campaign instead;
+- homeless shelters/housing organizations may manage consenting human profiles under the additional privacy/service protections already recorded;
+- an organization that wants donations for itself must create a Campaign;
+- following a campaign/profile subscribes the user to voluntary updates delivered within Interplanetary Fund's inbox/notification experience;
+- community interaction occurs through the Community forum and hearts/reactions on updates;
+- there is no general user-to-user private messaging;
+- a short customizable donation thank-you is the narrow messaging exception;
+- an existing donor account can receive that thank-you in its inbox;
+- a non-user donor may be prompted after donating to create a giver account, after which a personalized thank-you can be delivered;
+- donors may support anonymously; public identity is normally the screen name unless the donor voluntarily exposes more information or disclosure is legally required;
+- friend relationships/lists are hidden from other users by default;
+- without a subscription, a user may have 1 live campaign and 2 drafts (3 campaign records total), and may pause/unpause campaigns; subscription rules may grant more capacity;
+- Adopt a Life itself does not consume a Campaign slot under the current decision;
+- reports temporarily suspend the reported account under the recorded early-platform moderation model;
+- suspended accounts may continue receiving donations but cannot withdraw;
+- malicious/unfair/excessive reporters may themselves be suspended;
+- the suspension ladder, admin proof/reasoning requirements, final just-cause review, 10-day response period, and subsequent 60-day ownership-proof period are recorded in the moderation specification;
+- proposed ban fees and eventual handling/retention of abandoned/unclaimed funds are recorded as desired policy but **must not be implemented until legal/compliance review confirms a lawful mechanism**.
 
-- name or approved public identity
-- profile image and other approved media
-- biography/life story
-- interests and personal details they voluntarily disclose
-- circumstances or background they voluntarily disclose
-- aspirations or other information they want supporters to know
-- updates
-- community/approximate location where appropriate
-- support/follow options
-- donation options
+## Documentation map
 
-The system should support people creating their own profiles and, subject to consent and verification safeguards, profiles initiated on behalf of another person.
+### Product behavior
 
-The profile is not required to state a fundraising reason, spending plan, target amount, deadline, emergency, or campaign goal. Circumstances and needs may be shared voluntarily, but they are not prerequisites for receiving support.
+- [`PRODUCT-RULES.md`](./PRODUCT-RULES.md) — profile behavior, one-profile rule, screen names, volunteers, standardized layout, human/animal distinction, search, following, campaign limits.
+- [`GIVING-AND-CAMPAIGN-BOUNDARIES.md`](./GIVING-AND-CAMPAIGN-BOUNDARIES.md) — purpose-based vs purposeless giving, no giver restrictions, organization campaign requirement, animal boundary, campaign capacity, and the separate future "Buy a Neighbor a Basket" concept.
 
-A person's ordinary Interplanetary Fund user profile and their Adopt a Life giving profile may be connected where appropriate, so a viewer encountering an eligible person's profile can discover the option to support that individual without converting the person's account into a conventional campaign.
+### Consent, account control, payouts
 
-## Giving model
+- [`CONSENT-CONTROL-AND-PAYOUTS.md`](./CONSENT-CONTROL-AND-PAYOUTS.md) — proxy-human consent, pre-profile signature gate, withdrawal control, payout authorization, receiving before withdrawal setup, reloadable cards, identity-verification scope, liability-allocation intent.
 
-Adopt a Life should use the applicable Interplanetary Fund donation options and infrastructure while remaining a distinct product experience from campaigns.
+### Organizations
 
-Support should include:
+- [`ORGANIZATION-PROFILES.md`](./ORGANIZATION-PROFILES.md) — approved business/nonprofit multi-profile applications, EIN/entity responsibility intent, animal shelters, homeless shelters, volunteers, admin authority.
 
-- one-time donations
-- recurring support
-- direct support of the selected profile
-- the applicable donation/payment options available through Interplanetary Fund
-- transparent identification of who receives or legally controls the funds
-- the platform's applicable payment, fee, accounting, audit, fraud-prevention, and withdrawal safeguards
+### Communication and privacy
 
-The product language should emphasize supporting the individual or animal rather than funding a required purpose.
+- [`COMMUNICATIONS-PRIVACY-AND-FOLLOWING.md`](./COMMUNICATIONS-PRIVACY-AND-FOLLOWING.md) — no general DMs, inbox updates, limited thank-you messaging, anonymous giving, screen names, hidden friend relationships, community-first interaction.
 
-Recurring support can allow a supporter to continue helping a particular life over time without requiring the recipient to continually launch new campaigns.
+### Moderation
 
-## Discovery and local community
+- [`MODERATION-AND-SUSPENSIONS.md`](./MODERATION-AND-SUSPENSIONS.md) — automatic early-platform suspension on report, suspension ladder, malicious reporting, admin evidence/reasoning, final evaluation, withdrawal holds, and legally blocked fund-disposition proposals.
 
-Users should be able to browse and search Adopt a Life profiles, including discovering people who need or welcome support in their own community or neighborhood as well as profiles outside their local area.
+### Future engineering organization
 
-Local discovery must protect privacy. Precise residential addresses or unnecessary exact location data should not be publicly exposed. City, community, neighborhood, region, or another deliberately approximate location may be used where appropriate and consented to.
+- [`IMPLEMENTATION-MAP.md`](./IMPLEMENTATION-MAP.md) — suggested records, state machines, permissions/capabilities, flows, module boundaries, feature flags, and implementation invariants.
 
-Discovery may eventually include relevant filters and categories while avoiding systems that unfairly rank human worthiness.
+### Documents/forms still needing creation
 
-The experience should make it possible for a supporter to encounter someone's story naturally, learn who they are, and decide that the person themselves is a reason to give.
+- [`DOCUMENTATION-REQUIRED.md`](./DOCUMENTATION-REQUIRED.md) — consolidated list of required consent forms, organization applications, waivers/terms, giver disclosures, payout documents, moderation forms, abandonment/refund documents, privacy/safety policies, and technical specs.
 
-## Animal profiles
+## Human profiles created on behalf of another person
 
-Animals may have individual Adopt a Life profiles.
-
-Animal shelters, rescues, and other authorized caretakers may create and manage profiles for animals in their care. A supporter could financially support a particular animal even when they cannot physically adopt it.
-
-An animal profile may include name, photos/media, species and relevant descriptive information, story/background, shelter/rescue/caretaker relationship, updates, support options, and adoption information when appropriate.
-
-The authorized organization or caretaker remains responsible for the animal and receives/manages funds according to the applicable platform and legal rules.
-
-The financial-support relationship is separate from legal or physical adoption. Supporting an animal through Adopt a Life does not by itself transfer ownership, custody, adoption rights, or decision-making authority over the animal.
-
-## Animal shelter model
-
-An animal shelter or other eligible nonprofit may have its own Interplanetary Fund account and normal campaign/fundraising presence while also maintaining separate Adopt a Life profiles beneath or associated with the organization.
-
-```text
-Evergreen Animal Shelter
-├── Donate to the Shelter / organization campaign
-└── Adopt a Life
-    ├── Buddy — Dog
-    ├── Luna — Cat
-    ├── Max — Dog
-    └── Sarah — Volunteer
-```
-
-This allows a donor to choose between supporting the nonprofit generally and supporting a particular person or animal associated with it. General shelter donations and support directed toward a particular life must remain distinguishishable in records and user experience.
-
-## Homeless shelter and housing-support organization model
-
-Homeless shelters, transitional-housing programs, outreach organizations, and other eligible organizations serving people without stable housing should be able to use a parallel structure designed specifically for people.
-
-A participating organization may maintain its own Interplanetary Fund account and ordinary nonprofit campaigns while, with each person's informed consent, associating separate Adopt a Life profiles with individual residents, clients, participants, outreach recipients, volunteers, or staff who are eligible and choose to participate.
+This is a distinct controlled flow, not ordinary self-opt-in.
 
 ```text
-Community Hope Shelter
-├── Donate to the Shelter / organization campaign
-└── Adopt a Life
-    ├── Jordan — participating individual
-    ├── Maria — participating individual
-    ├── David — participating individual
-    └── Renee — volunteer
+Creator/controller starts profile
+→ attests individual agreed to profile creation under creator's control
+→ required consent document is signed
+→ only then profile details/photos unlock
+→ profile can be activated and receive support
+→ withdrawals remain disabled until usable payout method + subject-signed payout authorization
+→ controller determines when to initiate an enabled withdrawal
 ```
 
-A supporter may therefore choose to donate to the shelter generally or directly support a particular participating individual whose profile inspires them.
+The e-signature provider is not yet selected. DocuSign is a possible provider, but the future design should remain provider-neutral where practical.
 
-The shelter relationship must never make participation mandatory. Receiving a bed, meals, case management, outreach assistance, housing assistance, or any other shelter/service benefit must not depend on creating an Adopt a Life profile, remaining publicly visible, attracting donations, or sharing personal history.
+## Animal vs human Adopt a Life
 
-A shelter must not publish a person's profile merely because that person receives its services. The individual must have meaningful consent and appropriate control over what is publicly shared. A person should also be able to leave the program, withdraw consent, or separate their Adopt a Life profile from the organization without unnecessarily losing their identity or legitimate support relationship.
+The distinction must be obvious in data and UI.
 
-Because homelessness can create heightened safety risks, these profiles require additional privacy protections. Public profiles should not expose a person's sleeping location, shelter room/bed, exact current location, daily schedule, case-management information, immigration information, medical information, domestic-violence location, or other sensitive details unless a future safety/legal design explicitly determines disclosure is appropriate and the person knowingly chooses it.
+Approved animal organizations may create animal Adopt a Life profiles. Supporting an animal does not transfer custody, ownership, or legal adoption rights.
 
-Where direct payment to the individual is legally and operationally available, the system should support the individual as the verified recipient. Where an authorized custodian or organization must temporarily manage funds, the public experience and financial records must clearly distinguish support intended for that person from unrestricted donations to the shelter. The organization must not silently convert individual-directed support into general operating funds.
+An ordinary person seeking help with expenses for their own animal creates a Campaign instead.
 
-The same one-time and recurring support concepts apply. A supporter may follow the participating person's voluntary updates and continue supporting them even as their circumstances change. Becoming housed should not automatically make the person's profile invalid; Adopt a Life is support for the person, not a requirement that they remain homeless to qualify.
+## Organization relationship
 
-## Organization-linked profiles generally
+Approved organizations may have both:
 
-The parent/associated-profile architecture can eventually support eligible community nonprofits, food banks, senior-support programs, schools, rescue organizations, homelessness organizations, housing programs, and other charitable/community programs.
+```text
+Organization
+├── Campaign → donations to organization/purpose
+└── Adopt a Life
+    ├── consenting individual
+    ├── volunteer
+    └── animal, when the approved organization type permits it
+```
 
-Organizations should be able to maintain multiple associated life profiles without forcing those profiles to become separate conventional campaigns. Organization-level donations and individual-directed donations must remain distinguishable.
+Organization-level fundraising remains Campaign-based.
 
-## Volunteers and people who donate their time
+## Homeless shelters / housing programs
 
-Participating organizations may, with the person's consent, create or associate Adopt a Life profiles for volunteers, caregivers, or other people whose time and contribution inspire supporters to give directly to them.
+Approved shelters/housing/outreach organizations may help consenting people create/manage Adopt a Life profiles. Participation cannot be required to receive services. Sensitive location/case information must remain protected. Becoming housed does not automatically make the person ineligible for continued support.
 
-This allows the feature to recognize not only people experiencing hardship but also people contributing significant time or service to others. Someone who continually gives their time may inspire another person to give something back directly to them even when the volunteer would never create a traditional fundraiser for themselves.
+## Liability and factual verification direction
 
-An organization must not publicly create a support profile for an identifiable adult volunteer without the required consent/approval.
+The intended future contractual model places responsibility for submitted content and authorization on the account owner/controller and, for approved multi-profile organizations, on the organization/entity associated with the account and its submitted EIN/entity records where applicable.
 
-## Following and relationships
+Interplanetary Fund is intended to host/facilitate submitted information rather than certify every factual claim.
 
-Adopt a Life should support an ongoing connection rather than only a single transaction.
+However, **no waiver, EIN record, disclaimer, or contract should be assumed to eliminate non-waivable legal obligations or prevent every claim against Interplanetary Fund, its owners, or developers.** Protective documents must be professionally reviewed before implementation.
 
-Future functionality may allow supporters to follow a profile without donating, receive voluntary profile updates, donate occasionally, establish recurring support, and see appropriate updates from the supported person, animal, or managing organization.
+## Moderation/legal implementation lock
 
-This creates the possibility of a lasting support relationship instead of a single campaign transaction.
+The user has defined a detailed desired suspension/account-funds policy. It is fully recorded, including the eventual desired handling of unresolved funds after account termination.
 
-This should remain support-oriented and must not require recipients to continually prove hardship, publish increasingly personal information, or justify ordinary spending to retain supporters.
+The following may not be implemented merely because they are documented:
 
-## Consent, identity, verification, and fund custody
+- moderation/resource fees charged after a permanent ban;
+- declaring funds legally abandoned based only on an internal deadline;
+- transferring unresolved donor/recipient funds into an Interplanetary Fund-owned account;
+- forfeiting donor refund rights.
 
-These are foundational requirements, not optional later enhancements.
+Those require jurisdiction-specific legal/compliance/payment review and an approved written procedure first. The branch intentionally records the desired product outcome without falsely treating it as already lawful.
 
-The system must distinguish roles such as profile subject, profile creator, verified recipient, authorized organization/caretaker, fund custodian/controller, and guardian when applicable.
+## Future sibling concept recorded but not part of Adopt a Life
 
-A profile initiated for another adult should require the subject's appropriate approval before public discoverability or receipt of support in their name, except for any narrowly defined future legal/authorized cases that undergo dedicated review.
+A possible third future branch has been recorded for **Buy a Neighbor a Basket**: recipient selects a pickup store, giver pays through Interplanetary Fund, Interplanetary Fund facilitates the store pickup order, and the recipient receives a message when paid/ready.
 
-Verification should reduce impersonation, fraudulent fundraising, unauthorized exposure, and misdirection of funds without unnecessarily preventing legitimate recipients from participating.
-
-The platform should always know where money associated with a life profile is legally being delivered, even when the public-facing experience simply says that the supporter is helping that person or animal.
-
-## Minors and vulnerable people
-
-Profiles involving minors require a substantially stricter guardian, privacy, verification, visibility, communication, and safeguarding model before this feature could be implemented.
-
-The system must prevent public exposure of sensitive information that could create physical, financial, stalking, trafficking, exploitation, or other safety risks.
-
-Future implementation must define eligibility, guardian authority, fund custody, moderation, reporting, removal, and emergency safety procedures before minor profiles are enabled.
-
-## Privacy and dignity principles
-
-Adopt a Life should not require recipients to publicly disclose trauma, diagnoses, financial hardship, exact addresses, housing status, or other sensitive information simply to qualify for support.
-
-Recipients should control appropriate portions of their public story and visibility. Information required privately for identity, payment, fraud, legal, or safety verification should not automatically become public profile information.
-
-The feature should avoid turning poverty, vulnerability, homelessness, or personal hardship into a competition for attention.
-
-A compelling profile may simply show who someone is. A supporter should be free to give because that person's life, personality, contribution, circumstances, or story inspires them—not because the recipient satisfied a required hardship checklist.
-
-## Profile management and lifecycle
-
-Future design should account for subject-controlled editing where appropriate, organization-managed animal profiles, delegated/profile-assisted management with authorization, consent withdrawal, profile pausing or removal, change of organization/caretaker, separation from a shelter/service organization, recipient/fund-destination changes requiring re-verification, deceased-person and deceased-animal handling, duplicate/impersonation reporting, moderation and appeals, and retention of necessary financial/audit records after public removal.
-
-## Separation from campaigns
-
-Adopt a Life is not merely another campaign category.
-
-Campaign model:
-
-**Support this goal, event, project, need, or purpose.**
-
-Adopt a Life model:
-
-**Support this person or animal.**
-
-A person or organization may eventually use both systems, but neither should require the other. Adopt a Life must not silently impose campaign requirements such as mandatory goals, deadlines, target amounts, stated spending purposes, or a specific reason for the money.
-
-Likewise, an organization may simultaneously have ordinary nonprofit campaigns and Adopt a Life profiles. Those are separate donation destinations/experiences even when they belong to the same organization account.
-
-## Future implementation boundaries
-
-This specification records the concept only.
-
-Until explicitly approved for implementation:
-
-- do not expose Adopt a Life in production navigation
-- do not create production database dependencies for it
-- do not change existing campaign behavior for it
-- do not alter current donation or withdrawal behavior solely for it
-- do not require current features to know about it
-- do not merge Fully Managed Campaign requirements into it
-- do not make Fully Managed Campaigns depend on it
-
-When implementation is eventually authorized, shared platform services may be reused through clean interfaces, but Adopt a Life should remain modular and independently deployable/enableable wherever practical.
+It must remain separate from Adopt a Life and must not be implemented by allowing giver restrictions on gifts.
 
 ## Product objective
 
-Adopt a Life creates a second major giving relationship within Interplanetary Fund: people can support a life because that person or animal matters to them, without requiring the recipient to manufacture a conventional fundraising campaign first.
+Adopt a Life creates a giving relationship where someone can discover a person or eligible organization-managed animal, learn about that life, and decide simply:
 
-The long-term experience should make helping someone feel as natural as discovering their profile, learning who they are, and deciding: **I want to support this life.**
+**I want to support this life.**
