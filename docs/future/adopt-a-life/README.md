@@ -81,26 +81,15 @@ Animals may have individual Adopt a Life profiles.
 
 Animal shelters, rescues, and other authorized caretakers may create and manage profiles for animals in their care. A supporter could financially support a particular animal even when they cannot physically adopt it.
 
-An animal profile may include:
-
-- name
-- photos/media
-- species and relevant descriptive information
-- story/background
-- shelter/rescue/caretaker relationship
-- updates
-- support options
-- adoption information when appropriate
+An animal profile may include name, photos/media, species and relevant descriptive information, story/background, shelter/rescue/caretaker relationship, updates, support options, and adoption information when appropriate.
 
 The authorized organization or caretaker remains responsible for the animal and receives/manages funds according to the applicable platform and legal rules.
 
 The financial-support relationship is separate from legal or physical adoption. Supporting an animal through Adopt a Life does not by itself transfer ownership, custody, adoption rights, or decision-making authority over the animal.
 
-## Shelter and nonprofit structure
+## Animal shelter model
 
 An animal shelter or other eligible nonprofit may have its own Interplanetary Fund account and normal campaign/fundraising presence while also maintaining separate Adopt a Life profiles beneath or associated with the organization.
-
-Example:
 
 ```text
 Evergreen Animal Shelter
@@ -112,13 +101,41 @@ Evergreen Animal Shelter
     └── Sarah — Volunteer
 ```
 
-This allows a donor to choose between supporting the nonprofit generally and supporting a particular person or animal associated with it.
+This allows a donor to choose between supporting the nonprofit generally and supporting a particular person or animal associated with it. General shelter donations and support directed toward a particular life must remain distinguishishable in records and user experience.
 
-A shelter's general donations and support directed toward a particular life must remain distinguishable in records and user experience.
+## Homeless shelter and housing-support organization model
 
-The same parent/associated-profile architecture could eventually support other eligible organizations such as community nonprofits, food banks, senior-support programs, schools, rescue organizations, homelessness organizations, and other charitable/community programs.
+Homeless shelters, transitional-housing programs, outreach organizations, and other eligible organizations serving people without stable housing should be able to use a parallel structure designed specifically for people.
 
-Organizations should be able to maintain multiple associated life profiles without forcing those profiles to become separate conventional campaigns.
+A participating organization may maintain its own Interplanetary Fund account and ordinary nonprofit campaigns while, with each person's informed consent, associating separate Adopt a Life profiles with individual residents, clients, participants, outreach recipients, volunteers, or staff who are eligible and choose to participate.
+
+```text
+Community Hope Shelter
+├── Donate to the Shelter / organization campaign
+└── Adopt a Life
+    ├── Jordan — participating individual
+    ├── Maria — participating individual
+    ├── David — participating individual
+    └── Renee — volunteer
+```
+
+A supporter may therefore choose to donate to the shelter generally or directly support a particular participating individual whose profile inspires them.
+
+The shelter relationship must never make participation mandatory. Receiving a bed, meals, case management, outreach assistance, housing assistance, or any other shelter/service benefit must not depend on creating an Adopt a Life profile, remaining publicly visible, attracting donations, or sharing personal history.
+
+A shelter must not publish a person's profile merely because that person receives its services. The individual must have meaningful consent and appropriate control over what is publicly shared. A person should also be able to leave the program, withdraw consent, or separate their Adopt a Life profile from the organization without unnecessarily losing their identity or legitimate support relationship.
+
+Because homelessness can create heightened safety risks, these profiles require additional privacy protections. Public profiles should not expose a person's sleeping location, shelter room/bed, exact current location, daily schedule, case-management information, immigration information, medical information, domestic-violence location, or other sensitive details unless a future safety/legal design explicitly determines disclosure is appropriate and the person knowingly chooses it.
+
+Where direct payment to the individual is legally and operationally available, the system should support the individual as the verified recipient. Where an authorized custodian or organization must temporarily manage funds, the public experience and financial records must clearly distinguish support intended for that person from unrestricted donations to the shelter. The organization must not silently convert individual-directed support into general operating funds.
+
+The same one-time and recurring support concepts apply. A supporter may follow the participating person's voluntary updates and continue supporting them even as their circumstances change. Becoming housed should not automatically make the person's profile invalid; Adopt a Life is support for the person, not a requirement that they remain homeless to qualify.
+
+## Organization-linked profiles generally
+
+The parent/associated-profile architecture can eventually support eligible community nonprofits, food banks, senior-support programs, schools, rescue organizations, homelessness organizations, housing programs, and other charitable/community programs.
+
+Organizations should be able to maintain multiple associated life profiles without forcing those profiles to become separate conventional campaigns. Organization-level donations and individual-directed donations must remain distinguishable.
 
 ## Volunteers and people who donate their time
 
@@ -132,13 +149,7 @@ An organization must not publicly create a support profile for an identifiable a
 
 Adopt a Life should support an ongoing connection rather than only a single transaction.
 
-Future functionality may allow supporters to:
-
-- follow a profile without donating
-- receive voluntary profile updates
-- donate occasionally
-- establish recurring support
-- see appropriate updates from the supported person, animal, or managing organization
+Future functionality may allow supporters to follow a profile without donating, receive voluntary profile updates, donate occasionally, establish recurring support, and see appropriate updates from the supported person, animal, or managing organization.
 
 This creates the possibility of a lasting support relationship instead of a single campaign transaction.
 
@@ -148,14 +159,7 @@ This should remain support-oriented and must not require recipients to continual
 
 These are foundational requirements, not optional later enhancements.
 
-The system must distinguish roles such as:
-
-- profile subject
-- profile creator
-- verified recipient
-- authorized organization/caretaker
-- fund custodian/controller
-- guardian when applicable
+The system must distinguish roles such as profile subject, profile creator, verified recipient, authorized organization/caretaker, fund custodian/controller, and guardian when applicable.
 
 A profile initiated for another adult should require the subject's appropriate approval before public discoverability or receipt of support in their name, except for any narrowly defined future legal/authorized cases that undergo dedicated review.
 
@@ -173,29 +177,17 @@ Future implementation must define eligibility, guardian authority, fund custody,
 
 ## Privacy and dignity principles
 
-Adopt a Life should not require recipients to publicly disclose trauma, diagnoses, financial hardship, exact addresses, or other sensitive information simply to qualify for support.
+Adopt a Life should not require recipients to publicly disclose trauma, diagnoses, financial hardship, exact addresses, housing status, or other sensitive information simply to qualify for support.
 
 Recipients should control appropriate portions of their public story and visibility. Information required privately for identity, payment, fraud, legal, or safety verification should not automatically become public profile information.
 
-The feature should avoid turning poverty, vulnerability, or personal hardship into a competition for attention.
+The feature should avoid turning poverty, vulnerability, homelessness, or personal hardship into a competition for attention.
 
 A compelling profile may simply show who someone is. A supporter should be free to give because that person's life, personality, contribution, circumstances, or story inspires them—not because the recipient satisfied a required hardship checklist.
 
 ## Profile management and lifecycle
 
-Future design should account for:
-
-- subject-controlled editing where appropriate
-- organization-managed animal profiles
-- delegated/profile-assisted management with authorization
-- consent withdrawal
-- profile pausing or removal
-- change of organization/caretaker
-- recipient/fund-destination changes requiring re-verification
-- deceased-person and deceased-animal handling
-- duplicate/impersonation reporting
-- moderation and appeals
-- retention of necessary financial/audit records after public removal
+Future design should account for subject-controlled editing where appropriate, organization-managed animal profiles, delegated/profile-assisted management with authorization, consent withdrawal, profile pausing or removal, change of organization/caretaker, separation from a shelter/service organization, recipient/fund-destination changes requiring re-verification, deceased-person and deceased-animal handling, duplicate/impersonation reporting, moderation and appeals, and retention of necessary financial/audit records after public removal.
 
 ## Separation from campaigns
 
