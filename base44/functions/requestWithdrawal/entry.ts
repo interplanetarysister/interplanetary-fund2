@@ -35,6 +35,26 @@ async function reconcileApprovedPayout(sr, withdrawal) {
   return { found: true, finalized: finalized.success && finalized.updated === 1, payout_batch_id: payout.payout_batch_id || deterministicBatchId };
 }
 
+async function reserveDonations(sr, donationIds, withdrawalId) {
+  const claimed = [];
+  for (const donationId of donationIds) {
+    const result = await sr.entities.Donation.updateMany(
+      { id: donationId, withdrawal_id: '' },
+      { $set: { withdrawal_id: withdrawalId } },
+    );
+    if (result?.success && result.updated === 1) claimed.push(donationId);
+  }
+  return { complete: claimed.length === donationIds.length, claimed };
+}
+
+async function releaseReservedDonations(sr, donationIds, withdrawalId) {
+  if (!donationIds.length) return;
+  await sr.entities.Donation.updateMany(
+    { id: { $in: donationIds }, withdrawal_id: withdrawalId },
+    { $set: { withdrawal_id: '' } },
+  );
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -120,7 +140,12 @@ export default async function(req) {
     const fee = round2(gross * PLATFORM_FEE_RATE);
     const net = round2(gross - fee);
     const withdrawal = await sr.entities.Withdrawal.create({ owner_user_id: user.id, user_name: user.full_name, campaign_id, campaign_title: campaign.title, gross_amount: gross, platform_fee: fee, net_amount: net, paypal_email, covered_donation_ids: available.map((d) => d.id), status: 'processing' });
-    await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: withdrawal.id })));
+    const reservation = await reserveDonations(sr, available.map((d) => d.id), withdrawal.id);
+    if (!reservation.complete) {
+      await releaseReservedDonations(sr, reservation.claimed, withdrawal.id);
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Withdrawal reservation lost a concurrent donation race; no payout was submitted.' });
+      return Response.json({ error: 'Funds changed while preparing the withdrawal. No payout was submitted; please retry.' }, { status: 409 });
+    }
     if (net > REVIEW_THRESHOLD) {
       await sr.entities.Withdrawal.update(withdrawal.id, { status: 'under_review', review_note: `Net amount $${net.toFixed(2)} exceeds the $${REVIEW_THRESHOLD} auto-approval threshold.` });
       return Response.json({ ok: true, status: 'under_review', withdrawal_id: withdrawal.id, gross, fee, net });
@@ -134,7 +159,7 @@ export default async function(req) {
     } catch (err) {
       console.error('requestWithdrawal payout error:', err?.message || err);
       try { const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(withdrawal.id)); if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: reconciliation.payout_batch_id }); } catch (lookupError) { console.error('requestWithdrawal initial payout reconciliation error:', lookupError?.message || lookupError); }
-      await sr.entities.Donation.bulkUpdate(available.map((d) => ({ id: d.id, withdrawal_id: '' })));
+      await releaseReservedDonations(sr, available.map((d) => d.id), withdrawal.id);
       await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: GENERIC_PAYOUT_REVIEW_NOTE });
       await clearMigrationClaim(sr, withdrawal);
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
