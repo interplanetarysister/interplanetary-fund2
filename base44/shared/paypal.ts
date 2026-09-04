@@ -101,11 +101,15 @@ export async function createOrder({ amount, description, customId }) {
 
 export async function captureOrder(orderId) {
   const token = await getAccessToken();
+  const stableRequestId = `IF_CAPTURE_${String(orderId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 70)}`;
   const res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      // PayPal replays the same request idempotently instead of treating a
+      // network retry/concurrent handler as a second capture attempt.
+      "PayPal-Request-Id": stableRequestId,
     },
   });
   const data = await res.json();
@@ -121,5 +125,7 @@ export async function captureOrder(orderId) {
     amount: capture ? parseFloat(capture.amount?.value || "0") : 0,
     payer_name: given ? `${given} ${sur || ""}`.trim() : "",
     custom_id: unit?.custom_id || "",
+    capture_id: capture?.id || "",
+    currency: capture?.amount?.currency_code || unit?.amount?.currency_code || "",
   };
 }
