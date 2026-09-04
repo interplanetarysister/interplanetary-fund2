@@ -93,6 +93,10 @@ export default async function(req) {
       if (user.role !== 'admin') return Response.json({ error: 'Admin only.' }, { status: 403 });
       const w = await sr.entities.Withdrawal.get(body.withdrawal_id);
       if (!w) return Response.json({ error: 'Withdrawal not found.' }, { status: 404 });
+      if (w.status === 'paid' && (w.review_action === 'approve' || !w.review_action)) {
+        await clearMigrationClaim(sr, w);
+        return Response.json({ ok: true, idempotent: true, status: 'paid', withdrawal_id: w.id, payout_batch_id: w.payout_batch_id });
+      }
       if (w.status !== 'under_review') {
         if (w.status === 'processing') return Response.json({ error: w.review_action === 'deny' ? 'This withdrawal is being denied. Reconcile the denial before attempting approval.' : 'This payout is already being processed. Reconcile its PayPal state before retrying.' }, { status: 409 });
         return Response.json({ error: 'Only held withdrawals can be approved.' }, { status: 400 });
@@ -104,7 +108,7 @@ export default async function(req) {
       );
       if (!claim.success || claim.updated !== 1) return Response.json({ error: 'This payout is already being processed or has changed state. Reconcile its current status before retrying.' }, { status: 409 });
       try {
-        const payout = await sendPayout({ receiver: w.paypal_email, amount: w.net_amount, note: `Interplanetary Fund withdrawal for \\"${w.campaign_title}\\"`, itemId: `IFW_${w.id}` });
+        const payout = await sendPayout({ receiver: w.paypal_email, amount: w.net_amount, note: `Interplanetary Fund withdrawal for \\\"${w.campaign_title}\\\"`, itemId: `IFW_${w.id}` });
         const finalized = await sr.entities.Withdrawal.updateMany(
           { id: w.id, status: 'processing', payout_claim_token: claimToken, review_action: 'approve' },
           { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() }, $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' } },
@@ -124,7 +128,7 @@ export default async function(req) {
     }
 
     const { campaign_id, paypal_email, paypal_email_confirm } = body;
-    if (!campaign_id) return Response.json({ error: 'Select a campaign to withdraw from.' }, { status: 400 });
+    if (!campaign_id) return Response.json({ error: 'Select a campaign to withdraw funds.' }, { status: 400 });
     if (!emailOk(paypal_email)) return Response.json({ error: 'Enter a valid PayPal email address.' }, { status: 400 });
     if (paypal_email !== paypal_email_confirm) return Response.json({ error: 'PayPal email addresses do not match.' }, { status: 400 });
     const campaign = await sr.entities.Campaign.get(campaign_id);
@@ -152,7 +156,7 @@ export default async function(req) {
       return Response.json({ ok: true, status: 'under_review', withdrawal_id: withdrawal.id, gross, fee, net });
     }
     try {
-      const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for \\"${campaign.title}\\"`, itemId: `IFW_${withdrawal.id}` });
+      const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for \\\"${campaign.title}\\\"`, itemId: `IFW_${withdrawal.id}` });
       const finalized = await sr.entities.Withdrawal.updateMany({ id: withdrawal.id, status: 'processing' }, { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() } });
       if (!finalized.success || finalized.updated !== 1) return Response.json({ error: 'PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation.' }, { status: 409 });
       await clearMigrationClaim(sr, withdrawal);
