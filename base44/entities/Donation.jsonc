@@ -43,13 +43,17 @@
     "donor_user_id": {
       "type": "string"
     },
+    "canonical_operation_id": {
+      "type": "string",
+      "description": "Convex providerTransactions operation id for this Base44 display mirror. Canonical financial idempotency and accounting live in Convex; this value is used only to repair/deduplicate the application mirror."
+    },
     "stripe_session_id": {
       "type": "string",
-      "description": "External payment reference (Stripe checkout session id or PayPal order id). Also serves as the idempotency key for provider-confirmed gifts."
+      "description": "External payment reference (Stripe checkout session id or PayPal order id). Kept for provider lookup/backward compatibility; canonical idempotency is enforced by Convex."
     },
     "idempotency_key": {
       "type": "string",
-      "description": "Client-supplied dedup key for manual-confirmation donations (PayPal/Cash App), preventing duplicate ledger entries on retry or double-click."
+      "description": "Client-supplied stable intent key for manual-confirmation donations. The canonical Convex operation, not this Base44 field, is authoritative for deduplication."
     },
     "payment_method": {
       "type": "string",
@@ -65,7 +69,7 @@
     "payment_verified": {
       "type": "boolean",
       "default": true,
-      "description": "True when the payment was confirmed server-side (Stripe webhook, PayPal order capture). False for manual-confirmation gifts (PayPal donate link, Cash App) that have no server-side proof \u2014 these require admin clearing before they can be withdrawn, so a client-supplied amount can never be paid out without verification."
+      "description": "True when the payment was confirmed server-side. False manual-confirmation gifts are pending mirrors only and must not increase canonical campaign totals or withdrawable ledger value until verified."
     },
     "is_institutional": {
       "type": "boolean",
