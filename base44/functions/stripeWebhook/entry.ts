@@ -2,12 +2,184 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { logAudit } from '../../shared/auditLog.ts';
-import { computeContribution, round2 } from '../../shared/fees.js';
+import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
+import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
+import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
+
+function webhookOrder(rows) {
+  return [...(rows || [])].sort((a, b) => {
+    const at = new Date(a.created_date || 0).getTime();
+    const bt = new Date(b.created_date || 0).getTime();
+    if (at !== bt) return at - bt;
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+}
+
+async function getWebhookRecord(sr, eventKey, eventType) {
+  let rows = await sr.entities.WebhookEvent.filter({ source: 'stripe', event_key: eventKey }).catch(() => []);
+  let record = webhookOrder(rows)[0] || null;
+  if (!record) {
+    record = await sr.entities.WebhookEvent.create({
+      source: 'stripe',
+      event_key: eventKey,
+      event_type: eventType,
+      state: 'claimed',
+      attempt_count: 1,
+    });
+  } else if (record.state !== 'side_effects_complete' && record.state !== 'nonfinancial_complete') {
+    await sr.entities.WebhookEvent.update(record.id, {
+      event_type: eventType,
+      attempt_count: Number(record.attempt_count || 0) + 1,
+      last_error: '',
+    });
+  }
+
+  // The Base44 row is diagnostic/recovery state, not the financial lock. If
+  // simultaneous deliveries created more than one row, converge to one row.
+  rows = await sr.entities.WebhookEvent.filter({ source: 'stripe', event_key: eventKey }).catch(() => []);
+  const ordered = webhookOrder(rows);
+  record = ordered[0] || record;
+  for (const duplicate of ordered.slice(1)) {
+    await sr.entities.WebhookEvent.delete(duplicate.id).catch(() => {});
+  }
+  return record;
+}
+
+async function markWebhook(sr, record, patch) {
+  if (!record?.id) return;
+  await sr.entities.WebhookEvent.update(record.id, patch).catch(() => {});
+}
+
+function readFinancialMetadata(metadata, campaignId) {
+  const m = metadata || {};
+  if (!campaignId || m.campaign_id !== campaignId) throw new Error('Stripe metadata campaign mismatch.');
+  const total = round2(Number.parseFloat(m.donation_amount));
+  const processingFee = round2(Number.parseFloat(m.processing_fee || '0'));
+  const contribution = m.platform_contribution_amount != null
+    ? round2(Number.parseFloat(m.platform_contribution_amount))
+    : computeContribution(total, m.platform_contribution_opt === 'true');
+
+  const amountCheck = validateDonationAmount(total);
+  if (!amountCheck.ok) throw new Error(amountCheck.error);
+  if (!Number.isFinite(processingFee) || processingFee < 0) throw new Error('Invalid Stripe processing fee metadata.');
+  if (!Number.isFinite(contribution) || contribution < 0 || contribution > total) throw new Error('Invalid Stripe contribution metadata.');
+  return { total, processingFee, contribution };
+}
+
+async function applyStripeDonation({
+  base44,
+  sr,
+  webhookRecord,
+  campaignId,
+  metadata,
+  providerObjectId,
+  providerTransactionId,
+  amountCharged,
+  currency,
+  recurring,
+  donorEmail,
+}) {
+  if (String(currency || '').toLowerCase() !== 'usd') throw new Error('Stripe currency mismatch.');
+  const campaign = await sr.entities.Campaign.get(campaignId).catch(() => null);
+  if (!campaign) throw new Error('Campaign not found for Stripe donation.');
+  if (campaign.status !== 'active') throw new Error('Campaign is not accepting donations.');
+
+  const { total, processingFee, contribution } = readFinancialMetadata(metadata, campaignId);
+  const expectedCharge = round2(total + processingFee);
+  if (Math.abs(round2(Number(amountCharged || 0)) - expectedCharge) > 0.01) {
+    throw new Error('Stripe charged amount does not match server-created donation metadata.');
+  }
+
+  await ensureCanonicalCampaign(sr, campaign);
+
+  const operationKey = recurring
+    ? `stripe:invoice:${providerObjectId}`
+    : `stripe:session:${providerObjectId}`;
+  const donorName = metadata?.donor_name || 'Anonymous';
+  const canonical = await recordCanonicalDonation(sr, {
+    operationKey,
+    provider: 'stripe',
+    providerTransactionId: String(providerTransactionId || providerObjectId),
+    campaignId,
+    campaignTitle: campaign.title,
+    campaignOwnerUserId: campaign.created_by_id || '',
+    grossAmount: total,
+    platformContribution: contribution,
+    processingFee,
+    donorName,
+    ...(donorEmail ? { donorEmail } : {}),
+    ...(metadata?.donor_user_id ? { donorUserId: metadata.donor_user_id } : {}),
+    message: metadata?.message || '',
+    paymentMethod: 'stripe',
+    paymentVerified: true,
+    source: recurring ? 'stripe_invoice_webhook' : 'stripe_checkout_webhook',
+    isRecurring: recurring,
+  });
+
+  await markWebhook(sr, webhookRecord, {
+    state: 'financial_applied',
+    canonical_operation_id: String(canonical.operationId),
+    financial_applied_at: new Date().toISOString(),
+  });
+
+  await mirrorCanonicalCampaignTotal(sr, campaignId, canonical);
+  await reconcileDonationMirror(sr, canonical.operationId, {
+    campaign_id: campaignId,
+    campaign_title: campaign.title,
+    amount: total,
+    platform_contribution: contribution,
+    processing_fee: processingFee,
+    donor_name: donorName,
+    message: metadata?.message || '',
+    is_recurring: recurring,
+    ...(recurring ? { recurring_status: 'active' } : {}),
+    ...(metadata?.donor_user_id ? { donor_user_id: metadata.donor_user_id } : {}),
+    payment_method: 'stripe',
+    payment_verified: true,
+    cleared: false,
+    stripe_session_id: providerObjectId,
+  });
+
+  if (campaign.created_by_id) {
+    await reconcileNotificationMirror(sr, canonical.operationId, {
+      user_id: campaign.created_by_id,
+      title: recurring ? 'Recurring donation received' : 'New donation received',
+      body: recurring
+        ? `${donorName} renewed $${total.toLocaleString()} to "${campaign.title}"`
+        : `${donorName} donated $${total.toLocaleString()} to "${campaign.title}"`,
+      type: 'donation',
+      link: `/campaign/${campaign.id}`,
+      read: false,
+    });
+  }
+
+  if (canonical.applied) {
+    await logAudit(base44, {
+      action: recurring ? 'donation_renewal_confirmed' : 'donation_confirmed',
+      target_type: 'campaign',
+      target_id: campaignId,
+      detail: `$${total} confirmed via Stripe through canonical ledger`,
+      status: 'success',
+      metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: String(providerTransactionId || providerObjectId) },
+    });
+  }
+
+  await markWebhook(sr, webhookRecord, {
+    state: 'side_effects_complete',
+    canonical_operation_id: String(canonical.operationId),
+    side_effects_completed_at: new Date().toISOString(),
+    processed_at: new Date().toISOString(),
+    last_error: '',
+  });
+  return canonical;
+}
 
 export default async function(req) {
   let base44;
+  let webhookRecord = null;
   try {
     base44 = createClientFromRequest(req);
+    const sr = base44.asServiceRole;
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
 
     const signature = req.headers.get('stripe-signature');
@@ -20,219 +192,139 @@ export default async function(req) {
       return Response.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
-    // Durable idempotency on Stripe's signed event id. A retry of the same
-    // event finds the claim and is skipped; a processing failure releases the
-    // claim so Stripe's retry can reprocess. The signed event id is unique per
-    // event, so each event type is processed exactly once.
-    const sr = base44.asServiceRole;
     const eventKey = `stripe:${event.id}`;
-    const prior = await sr.entities.WebhookEvent.filter({ source: 'stripe', event_key: eventKey }, '-created_date', 1).catch(() => []);
-    if (prior && prior.length) {
-      return Response.json({ received: true, duplicate: true });
-    }
-    const claim = await sr.entities.WebhookEvent.create({
-      source: 'stripe',
-      event_key: eventKey,
-      processed_at: new Date().toISOString(),
-    });
-
-    // Confirm we hold the claim. Base44 entities have no unique constraint, so
-    // two truly-simultaneous deliveries of the same event can both pass the prior
-    // check and both create a claim. Re-read the claims in created-date order and
-    // keep only the earliest; any later claim backs off as a duplicate so exactly
-    // one delivery processes the event. (Residual race: a sub-millisecond
-    // created_date collision could leave both believing they are earliest —
-    // documented, not claimed as fully concurrency-safe.)
-    const claims = await sr.entities.WebhookEvent.filter({ source: 'stripe', event_key: eventKey }, 'created_date', 50).catch(() => [claim]);
-    const earliest = claims && claims[0];
-    if (earliest && earliest.id !== claim.id) {
-      await sr.entities.WebhookEvent.delete(claim.id).catch(() => {});
+    webhookRecord = await getWebhookRecord(sr, eventKey, event.type);
+    if (webhookRecord?.state === 'side_effects_complete' || webhookRecord?.state === 'nonfinancial_complete') {
       return Response.json({ received: true, duplicate: true });
     }
 
-    try {
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const m = session.metadata || {};
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+      const session = event.data.object;
+      const m = session.metadata || {};
 
-        // AI subscription activation — tier checkout. (Recurring DONATIONS also
-        // use mode='subscription' but carry no subscription_tier, so they fall
-        // through to the campaign branch below instead of being misrouted here.)
-        if (m.subscription_tier) {
-          if (m.user_id) {
-            await sr.entities.User.update(m.user_id, {
-              subscription_tier: m.subscription_tier,
-              subscription_status: 'active',
-              subscription_interval: m.subscription_interval || 'monthly',
-              stripe_customer_id: session.customer || undefined,
-            });
-          }
+      // AI plan checkout. This is not a campaign donation, so it remains a
+      // non-financial application side effect for this particular integrity boundary.
+      if (m.subscription_tier) {
+        if (m.user_id) {
+          await sr.entities.User.update(m.user_id, {
+            subscription_tier: m.subscription_tier,
+            subscription_status: 'active',
+            subscription_interval: m.subscription_interval || 'monthly',
+            stripe_customer_id: session.customer || undefined,
+          });
+        }
+        await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString(), last_error: '' });
+        return Response.json({ received: true });
+      }
+
+      if (m.campaign_id) {
+        // checkout.session.completed can arrive before an asynchronous payment
+        // actually succeeds. Never create financial value until Stripe says paid.
+        if (session.payment_status !== 'paid') {
+          await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString(), last_error: '' });
+          return Response.json({ received: true, payment_pending: true });
+        }
+        await applyStripeDonation({
+          base44,
+          sr,
+          webhookRecord,
+          campaignId: m.campaign_id,
+          metadata: m,
+          providerObjectId: session.id,
+          providerTransactionId: session.payment_intent || session.id,
+          amountCharged: round2((session.amount_total || 0) / 100),
+          currency: session.currency,
+          recurring: false,
+          donorEmail: session.customer_details?.email || undefined,
+        });
+        return Response.json({ received: true });
+      }
+    } else if (event.type === 'invoice.paid') {
+      const invoice = event.data.object;
+      if (invoice.subscription) {
+        let sub;
+        try { sub = await stripe.subscriptions.retrieve(invoice.subscription); } catch (_) { sub = null; }
+        const sm = sub?.metadata || {};
+        if (sm.campaign_id) {
+          await applyStripeDonation({
+            base44,
+            sr,
+            webhookRecord,
+            campaignId: sm.campaign_id,
+            metadata: sm,
+            providerObjectId: invoice.id,
+            providerTransactionId: invoice.payment_intent || invoice.id,
+            amountCharged: round2((invoice.amount_paid ?? invoice.total ?? invoice.amount_due ?? 0) / 100),
+            currency: invoice.currency,
+            recurring: true,
+            donorEmail: invoice.customer_email || undefined,
+          });
           return Response.json({ received: true });
         }
-
-        // Donation checkout.
-        if (m.campaign_id) {
-          // Secondary guard: a session is confirmed once, but keep the
-          // session-id check as defense-in-depth alongside the event.id claim.
-          const existing = await sr.entities.Donation.filter({ stripe_session_id: session.id });
-          if (existing.length === 0) {
-            // The donation amount (excluding the processing fee charged on top)
-            // is authoritative from metadata set at checkout; fall back to the
-            // session total for legacy sessions that did not carry it.
-            const total = m.donation_amount != null ? round2(parseFloat(m.donation_amount)) : round2((session.amount_total || 0) / 100);
-            const processingFee = m.processing_fee != null ? round2(parseFloat(m.processing_fee)) : 0;
-            const optedIn = m.platform_contribution_opt === 'true';
-            const contribution = computeContribution(total, optedIn);
-            const gift = round2(total - contribution);
-            const isRecurring = m.is_recurring === 'true';
-            const campaign = await sr.entities.Campaign.get(m.campaign_id);
-
-            await sr.entities.Donation.create({
-              campaign_id: m.campaign_id,
-              campaign_title: campaign ? campaign.title : undefined,
-              amount: total,
-              platform_contribution: contribution,
-              processing_fee: processingFee,
-              donor_name: m.donor_name || 'Anonymous',
-              message: m.message || '',
-              is_recurring: isRecurring,
-              ...(isRecurring ? { recurring_status: 'active' } : {}),
-              donor_user_id: m.donor_user_id,
-              payment_method: 'stripe',
-              stripe_session_id: session.id,
-            });
-
-            if (campaign) {
-              // Atomic increment — avoids the read-modify-write race on
-              // concurrent gifts. raised_amount reflects the recipient's gift;
-              // the contribution is retained by the platform.
-              await sr.entities.Campaign.updateMany(
-                { id: campaign.id },
-                { $inc: { raised_amount: gift, donor_count: 1 } }
-              );
-              if (campaign.created_by_id) {
-                await sr.entities.Notification.create({
-                  user_id: campaign.created_by_id,
-                  title: 'New donation received',
-                  body: `${m.donor_name || 'Anonymous'} donated $${total.toLocaleString()} to "${campaign.title}"`,
-                  type: 'donation',
-                  link: `/campaign/${campaign.id}`,
-                });
-              }
-            }
-            await logAudit(base44, { action: 'donation_confirmed', target_type: 'campaign', target_id: m.campaign_id, detail: `$${total} confirmed via stripe (gift $${gift})`, status: 'success' });
-          }
-        }
       }
 
-      // ---- AI subscription lifecycle: renewal paid, status change, cancellation ----
-      else if (event.type === 'invoice.paid') {
-        const invoice = event.data.object;
-        // Recurring DONATION renewal — the subscription's metadata carries the
-        // campaign id (mirrored at checkout). Record one Donation per renewal
-        // and increment the campaign, idempotent on the Stripe invoice id.
-        if (invoice.subscription) {
-          let sub;
-          try { sub = await stripe.subscriptions.retrieve(invoice.subscription); } catch (_) { sub = null; }
-          const sm = sub?.metadata || {};
-          if (sm.campaign_id) {
-            const existing = await sr.entities.Donation.filter({ stripe_session_id: invoice.id });
-            if (!existing.length) {
-              const total = sm.donation_amount != null ? round2(parseFloat(sm.donation_amount)) : round2((invoice.total ?? invoice.amount_due ?? 0) / 100);
-              const processingFee = sm.processing_fee != null ? round2(parseFloat(sm.processing_fee)) : 0;
-              const optedIn = sm.platform_contribution_opt === 'true';
-              const contribution = computeContribution(total, optedIn);
-              const gift = round2(total - contribution);
-              const campaign = await sr.entities.Campaign.get(sm.campaign_id).catch(() => null);
-              await sr.entities.Donation.create({
-                campaign_id: sm.campaign_id,
-                campaign_title: campaign ? campaign.title : undefined,
-                amount: total,
-                platform_contribution: contribution,
-                processing_fee: processingFee,
-                donor_name: sm.donor_name || 'Anonymous',
-                message: sm.message || '',
-                is_recurring: true,
-                recurring_status: 'active',
-                donor_user_id: sm.donor_user_id,
-                payment_method: 'stripe',
-                stripe_session_id: invoice.id,
-              });
-              if (campaign) {
-                await sr.entities.Campaign.updateMany({ id: campaign.id }, { $inc: { raised_amount: gift, donor_count: 1 } });
-                if (campaign.created_by_id) {
-                  await sr.entities.Notification.create({
-                    user_id: campaign.created_by_id,
-                    title: 'Recurring donation received',
-                    body: `${sm.donor_name || 'Anonymous'} renewed $${total.toLocaleString()} to "${campaign.title}"`,
-                    type: 'donation',
-                    link: `/campaign/${campaign.id}`,
-                  });
-                }
-              }
-              await logAudit(base44, { action: 'donation_renewal_confirmed', target_type: 'campaign', target_id: sm.campaign_id, detail: `$${total} recurring renewal via stripe (gift $${gift})`, status: 'success' });
-            }
-            return Response.json({ received: true });
-          }
-        }
-        // AI subscription renewal — keep the user's tier status current.
-        if (invoice.customer) {
-          const users = await sr.entities.User.filter({ stripe_customer_id: invoice.customer });
-          const u = users && users[0];
-          if (u) {
-            const periodEnd = invoice.lines && invoice.lines.data && invoice.lines.data[0] && invoice.lines.data[0].period && invoice.lines.data[0].period.end;
-            await sr.entities.User.update(u.id, {
-              subscription_status: 'active',
-              ...(periodEnd ? { subscription_renews_at: new Date(periodEnd * 1000).toISOString() } : {}),
-            });
-          }
-        }
-      } else if (event.type === 'customer.subscription.updated') {
-        const sub = event.data.object;
-        if (sub.customer) {
-          const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
-          const u = users && users[0];
-          if (u) {
-            const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
-            const interval = sub.items && sub.items.data && sub.items.data[0] && sub.items.data[0].price && sub.items.data[0].price.recurring && sub.items.data[0].price.recurring.interval;
-            await sr.entities.User.update(u.id, {
-              subscription_status: statusMap[sub.status] || 'none',
-              ...(sub.current_period_end ? { subscription_renews_at: new Date(sub.current_period_end * 1000).toISOString() } : {}),
-              ...(interval === 'month' ? { subscription_interval: 'monthly' } : interval === 'year' ? { subscription_interval: 'annual' } : {}),
-            });
-          }
-        }
-      } else if (event.type === 'customer.subscription.deleted') {
-        const sub = event.data.object;
-        if (sub.customer) {
-          const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
-          const u = users && users[0];
-          if (u) {
-            await sr.entities.User.update(u.id, {
-              subscription_status: 'canceled',
-              subscription_tier: 'free',
-              subscription_renews_at: null,
-            });
-            await sr.entities.Notification.create({
-              user_id: u.id,
-              title: 'Subscription canceled',
-              body: 'Your AI subscription has been canceled. You are now on the Free tier.',
-              type: 'system',
-              link: '/subscriptions',
-            });
-          }
+      // AI subscription renewal.
+      if (invoice.customer) {
+        const users = await sr.entities.User.filter({ stripe_customer_id: invoice.customer });
+        const u = users && users[0];
+        if (u) {
+          const periodEnd = invoice.lines?.data?.[0]?.period?.end;
+          await sr.entities.User.update(u.id, {
+            subscription_status: 'active',
+            ...(periodEnd ? { subscription_renews_at: new Date(periodEnd * 1000).toISOString() } : {}),
+          });
         }
       }
-
-      return Response.json({ received: true });
-    } catch (procErr) {
-      // Processing failed — release the claim so Stripe's retry can reprocess.
-      console.error('stripeWebhook processing error:', procErr instanceof Error ? procErr.message : 'unknown');
-      await sr.entities.WebhookEvent.delete(claim.id).catch(() => {});
-      throw procErr;
+    } else if (event.type === 'customer.subscription.updated') {
+      const sub = event.data.object;
+      if (sub.customer) {
+        const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
+        const u = users && users[0];
+        if (u) {
+          const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
+          const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+          await sr.entities.User.update(u.id, {
+            subscription_status: statusMap[sub.status] || 'none',
+            ...(sub.current_period_end ? { subscription_renews_at: new Date(sub.current_period_end * 1000).toISOString() } : {}),
+            ...(interval === 'month' ? { subscription_interval: 'monthly' } : interval === 'year' ? { subscription_interval: 'annual' } : {}),
+          });
+        }
+      }
+    } else if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object;
+      if (sub.customer) {
+        const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
+        const u = users && users[0];
+        if (u) {
+          await sr.entities.User.update(u.id, {
+            subscription_status: 'canceled',
+            subscription_tier: 'free',
+            subscription_renews_at: null,
+          });
+          await sr.entities.Notification.create({
+            user_id: u.id,
+            title: 'Subscription canceled',
+            body: 'Your AI subscription has been canceled. You are now on the Free tier.',
+            type: 'system',
+            link: '/subscriptions',
+          });
+        }
+      }
     }
+
+    await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString(), last_error: '' });
+    return Response.json({ received: true });
   } catch (error) {
-    console.error('stripeWebhook error:', error instanceof Error ? error.message : 'unknown');
+    const message = error instanceof Error ? error.message : 'unknown';
+    console.error('stripeWebhook error:', message);
+    if (base44 && webhookRecord) {
+      await markWebhook(base44.asServiceRole, webhookRecord, {
+        state: 'failed',
+        last_error: String(message).slice(0, 500),
+      });
+    }
+    // Keep durable recovery state and return 500 so Stripe retries. Financial
+    // replay is safe because the canonical Convex mutation owns idempotency.
     return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });
   }
 }
