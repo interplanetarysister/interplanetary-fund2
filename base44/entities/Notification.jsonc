@@ -29,6 +29,10 @@
     "read": {
       "type": "boolean",
       "default": false
+    },
+    "canonical_operation_id": {
+      "type": "string",
+      "description": "Optional Convex canonical operation id used to reconcile/deduplicate notification mirrors for financial events."
     }
   },
   "required": [
