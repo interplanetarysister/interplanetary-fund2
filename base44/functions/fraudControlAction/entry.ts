@@ -137,6 +137,13 @@ export default async function(req) {
       const nextStatus = action === 'pauseCampaign' ? 'paused' : 'active';
       const campaign = await sr.entities.Campaign.get(campaignId);
       if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
+
+      // Idempotent retry: if this exact administrator already committed the requested state,
+      // return success instead of treating the retried command as a conflicting transition.
+      if (campaign.status === nextStatus && campaign.moderated_by_id === user.id) {
+        return Response.json({ ok: true, status: nextStatus, campaign_id: campaignId, idempotent: true });
+      }
+
       if (campaign.status !== expectedStatus) {
         return Response.json({ error: `Campaign is not ${expectedStatus}.` }, { status: 400 });
       }
