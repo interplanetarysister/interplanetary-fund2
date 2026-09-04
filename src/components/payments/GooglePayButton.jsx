@@ -76,11 +76,13 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
           onPaymentAuthorized: async (paymentData) => {
             try {
               const p = propsRef.current;
+              // The optional platform-contribution choice is bound into the
+              // PayPal order's server-generated custom_id here. Capture does
+              // not trust a post-payment client value for financial allocation.
               const { data: order } = await base44.functions.invoke("createPayPalOrder", {
                 campaign_id: campaign.id,
                 amount: value,
-                donor_name: p.donorName || "Anonymous",
-                message: p.message,
+                platform_contribution: !!p.platformContribution,
               });
               if (order?.error) return { transactionState: "ERROR", error: { message: order.error } };
 
@@ -96,7 +98,6 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   donor_name: p.donorName || "Anonymous",
                   message: p.message,
                   is_recurring: !!p.recurring,
-                  platform_contribution: !!p.platformContribution,
                 });
                 if (cap?.error) return { transactionState: "ERROR", error: { message: cap.error } };
                 if (!cancelled) p.onPaid?.(cap);
