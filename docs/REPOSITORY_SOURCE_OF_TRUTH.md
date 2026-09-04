@@ -1,14 +1,28 @@
 # Interplanetary Fund — Repository Source-of-Truth Guide
 
-**Effective:** 2026-08-23
+**Effective:** 2026-09-04
 
 This document tells application agents what belongs in this repository and where internal-agent/backend knowledge lives.
 
 ## Repository ownership
 
-- **This repository (`interplanetarysister/interplanetary-fund2`)**: user-facing Base44 application, frontend, application entities/configuration, application-layer agents, onboarding, Mission Control, Agent Chat, and application-specific behavior.
+- **This repository (`interplanetarysister/interplanetary-fund2`)**: canonical user-facing Base44 / React+Vite application, frontend, application entities/configuration, application-layer functions/agents, onboarding, Mission Control, Agent Chat, campaign/user UX, and application-specific behavior.
 - **`interplanetarysister/InterplanetaryFund`**: authoritative Convex backend and internal-agent runtime, including persistent agent identity, permissions, memory, outcomes, orchestration, scheduled intelligence, treasury/payments backend, and backend protocol.
-- **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly assigned.
+- **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly reassigned by the owner; do not add new production backend architecture there by default.
+
+This September 2026 owner-authorized boundary supersedes historical documents that describe a different consolidation direction.
+
+## Issue #1 reconciliation
+
+The original Issue #1 request to “bring all backend features repository improvements to this repo” predates this ownership model. Its safe current interpretation is:
+
+- expose relevant backend capabilities in this application through explicit functions/APIs/bridges;
+- implement application-facing behavior here;
+- keep authoritative backend/runtime implementation in `InterplanetaryFund`;
+- compare legacy backend capabilities before migrating them;
+- never copy a backend merely to satisfy the historical wording or create a second source of truth.
+
+See `docs/ISSUE_1_BACKEND_FEATURE_RECONCILIATION.md` for the durable completion record.
 
 ## Do not duplicate the internal agent knowledge base
 
@@ -28,10 +42,9 @@ See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44↔Convex bridge a
 
 ## Role-specific workflow rule
 
-The Convex Builder Agent workflow is **not a universal application-agent workflow**. Agents working on Convex/backend/agent-runtime implementation, review, verification, or publication must use:
-`InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md`
+The Convex Builder Agent workflow is not a universal application-agent workflow. Agents working on Convex/backend/agent-runtime implementation, review, verification, or publication must use the canonical backend workflow in `InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md` when applicable.
 
-Other agents follow their own role-specific instructions.
+Other agents follow their role-specific instructions.
 
 ## Cross-repository changes
 
@@ -39,7 +52,7 @@ Never merge a change into a repository that does not own it. Cross-repository be
 
 ## Historical material
 
-Historical feature reconciliations, recovered archives, audits, and legacy material are evidence/specification until verified against the current implementation. Do not recreate functionality solely because an old document mentions it.
+Historical feature reconciliations, recovered archives, audits, migration manifests, and legacy material are evidence/specification until verified against the current implementation. Do not recreate functionality solely because an old document mentions it, and do not execute historical shutdown/decommission instructions as if they were current approval.
 
 ## Continuity
 
