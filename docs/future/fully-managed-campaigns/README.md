@@ -2,174 +2,185 @@
 
 > STATUS: FUTURE DESIGN ONLY — DORMANT / NOT IMPLEMENTED
 >
-> This document records an approved product concept. It must not change production behavior, create routes, alter schemas, modify payment logic, enable agents, or create deployment requirements until a separate implementation decision is explicitly made.
+> This records the agreed product concept only. It must not change production behavior, routes, schemas, payments, agents, outreach, deployment, or current campaign requirements until the project owner explicitly authorizes implementation.
 
 ## 1. Purpose and isolation
+Fully Managed Campaigns let Interplanetary Fund create and completely operate a campaign on behalf of someone who cannot or does not want to manage campaign technology after initial enrollment. Intended accessibility includes incarcerated people, elderly people, rural/technologically disconnected people, people traveling or living abroad, people in severe poverty or limited-infrastructure regions, and others unable to practically operate an online campaign.
 
-Fully Managed Campaigns allow Interplanetary Fund to operate a fundraising campaign on behalf of a beneficiary who cannot or does not wish to manage the technology after initial enrollment. Intended accessibility includes, without limitation, incarcerated people, elderly people, rural or technologically disconnected individuals, people traveling or living abroad, people in areas of severe poverty or limited financial infrastructure, and others who cannot practically operate a conventional online campaign.
+The beneficiary does not need an Interplanetary Fund user account, bank account, or continuing technology access.
 
-This feature is optional and isolated. Standard campaigns and every unrelated Interplanetary Fund feature must bypass it without additional dependencies, validation, data requirements, UI steps, or runtime cost. Future systems may access this module only when a campaign is explicitly classified as fully managed.
+This is an optional module. Standard campaigns and unrelated features must bypass it with no extra workflow, validation, fields, dependencies, runtime cost, or coupling. Other systems may deliberately enter/access it only for an explicitly fully-managed campaign.
 
-## 2. Core operating model
+## 2. Roles — never conflate or infer
+- Beneficiary: person/people the campaign helps.
+- Campaign Operator: Interplanetary Fund, operating through a designated managed/admin context.
+- AI Manager: authorized automation operating within verified facts, agreement and policy.
+- Admin: human approval/escalation authority.
+- Authorized Representative: optional person with specifically granted authority.
+- Payout Destination: approved method/location for a distribution; not necessarily a bank account or another person.
+- Emergency/Backup Contact: contact-only role by default; zero financial rights.
+- Alternate/Successor Payout Designation: optional explicit and separately verified designation where legally permissible.
 
-The beneficiary completes one standardized intake/questionnaire and management agreement. After approval, Interplanetary Fund creates and operates the campaign through a designated managed/admin context. The beneficiary does not need an Interplanetary Fund user account or continuing technology access.
+A managed campaign may support different beneficiaries without fabricating user identities. Do not impersonate beneficiaries or create fake accounts.
 
-Keep these roles separate in all future data and authorization designs:
-- Beneficiary — person or people the campaign exists to help.
-- Campaign Operator — Interplanetary Fund.
-- AI Manager — authorized automation operating within approved facts and policy.
-- Authorized Representative — optional person with specifically granted authority.
-- Payout Destination — approved method/location for a distribution.
-- Emergency Contact — contact-only role by default; no financial rights.
-- Alternate/Successor Payout Designation — optional, explicit, separately verified designation when legally permissible.
+## 3. Initial intake + controlling management agreement
+The standardized first-contact questionnaire/agreement is intended to supply enough information that routine beneficiary interaction afterward is unnecessary. Capture at minimum:
+- applicant and beneficiary identity/details and relationship if applicant differs from beneficiary;
+- consent/authority to create and completely manage the campaign on the beneficiary's behalf;
+- verified legal residence/jurisdiction used for applicable abandonment/unclaimed-funds handling;
+- purpose, reasoning, facts, situation, story and relevant individual details;
+- requested funding goal and intended use of funds;
+- supporting facts/documents where appropriate;
+- privacy/publication choices and facts that may or may not be made public;
+- campaign start/approval context and fundraising deadline;
+- renewal/extension options and authorization boundaries;
+- requested withdrawal intervals/milestones;
+- payout agreement, payout preferences and practical access limitations;
+- whether a bank account exists (bank account is NOT required);
+- usable non-bank/institutional/cash-access methods;
+- receipt and correspondence preferences, including physical mail;
+- managed-service fee terms;
+- list of supporters/organizations the applicant believes may voluntarily share or endorse the campaign, with available contact information;
+- emergency/backup contact used when the beneficiary cannot be reached or a deposit cannot be completed;
+- optional explicit alternate/successor payout designation, separately from emergency-contact status;
+- baseline outreach authorization and optional enhanced-outreach preferences/authorization;
+- communication restrictions, accessibility needs and offline/institutional constraints;
+- signatures/acceptance and required acknowledgements.
 
-Never infer one role from another.
+Preserve the accepted intake/agreement as an immutable, versioned controlling record. AI may improve presentation but must never silently change beneficiary-supplied facts, authority, payout terms, fee terms, deadlines or contractual terms. Material changes require an auditable authorized amendment.
 
-## 3. Intake and controlling agreement
+## 4. Administrative review and decision
+No campaign activates solely because an intake was received. Admin reviews identity/authority, factual/supporting information as appropriate, payout feasibility, agreement, applicable restrictions and required compliance checks.
 
-The initial packet should capture at minimum:
-- identity and beneficiary information;
-- legal residence/jurisdiction;
-- campaign purpose, reasoning, facts, circumstances and relevant individual details;
-- requested funding goal;
-- supporting information/documentation where appropriate;
-- campaign deadline;
-- renewal/extension choices and authorization boundaries;
-- requested withdrawal intervals;
-- payout agreement and payout preferences;
-- whether the beneficiary has a bank account;
-- available non-bank access methods;
-- privacy, consent and communication preferences;
-- authorization for Interplanetary Fund to manage the campaign;
-- managed-service fee agreement;
-- supporter/endorser leads the applicant believes may voluntarily share or endorse the campaign;
-- emergency contact information;
-- optional explicit alternate/successor payout designation, kept separate from emergency contact status;
-- preferences/authorization concerning optional enhanced outreach.
+If approved, create the campaign in the designated Interplanetary Fund managed/admin context and identify the beneficiary relationship accurately. If declined, retain appropriate decision/audit records without activating a campaign.
 
-Preserve the accepted intake and agreement as an immutable/versioned controlling record. AI may improve campaign presentation but must not silently alter underlying beneficiary-supplied facts, authority, payout terms or contractual terms.
-
-## 4. Approval and campaign creation
-
-Applications require administrative review before activation. Review should cover identity, factual/supporting information as appropriate, payout arrangement, management agreement, applicable restrictions and required compliance checks.
-
-If approved, AI may create the campaign using only approved/verified information. The public campaign may state that it is managed by Interplanetary Fund while accurately identifying the beneficiary relationship.
-
-If declined, retain appropriate administrative/audit records without creating an active managed campaign.
-
-## 5. Approval information package for offline beneficiaries
-
-After approval, provide the beneficiary with information they can use without accessing the platform. Where physical correspondence is the selected/necessary method, mail an approval package containing as applicable:
+## 5. Approval package and campaign-location information
+Once approved, send the beneficiary/authorized recipient an approval response appropriate to their communication method. For offline beneficiaries, mail a physical package containing as applicable:
+- approval confirmation;
 - campaign name;
 - public campaign identifier;
-- short/public campaign link;
-- printable QR code;
-- Interplanetary Fund website and app information;
-- simple instructions for telling other people how to locate the campaign;
+- short/public link;
+- printable/shareable QR code;
+- Interplanetary Fund app and website information;
+- simple instructions for telling other people how to find and support the campaign;
 - campaign deadline;
-- agreed withdrawal schedule;
-- management terms/fee disclosure;
-- instructions for requesting changes or contacting administration.
+- withdrawal schedule;
+- management/fee terms;
+- instructions for requesting adjustments or asking admin questions;
+- appropriate contact/correspondence instructions.
 
-## 6. AI management and human escalation
+The goal is for a person with no technology access to be able to hand, mail, read or relay enough information for others to locate the campaign.
 
-After approval, AI is intended to manage routine campaign operations with minimal beneficiary interaction, including future-authorized campaign presentation, updates, routine administration, performance monitoring and baseline outreach.
+## 6. Complete AI management after initial input
+After approval, AI is intended to manage the routine campaign lifecycle without beneficiary technology interaction: draft/publish presentation from approved facts, maintain campaign content, prepare appropriate updates, monitor progress, perform authorized baseline promotion/outreach, handle routine campaign administration, maintain records, prepare scheduled withdrawals and identify issues requiring escalation.
 
-Escalation path:
-AI -> Admin -> Beneficiary/Authorized Representative
+AI must use existing verified information before requesting anything new. Beneficiary questions should be extremely rare.
 
-AI should exhaust existing verified information before asking the beneficiary a question. Beneficiary questions should be extremely rare. When new information is genuinely required, AI prepares the proposed question for administrative review. Only after admin approval may it be mailed or otherwise communicated to an offline beneficiary. Returned information is recorded and, where appropriate, added to the verified campaign record.
+Required escalation path:
+AI -> Admin review/approval -> Beneficiary or Authorized Representative
 
-No autonomous AI action may expand contractual authority or invent facts.
+If AI believes a new question is necessary, it drafts the question and reason for asking. Admin reviews it first. Only an approved question may be mailed/communicated to someone who cannot access the technology. The response is recorded, verified as appropriate, and becomes usable campaign information. AI cannot invent missing facts, expand authority, independently amend the agreement, or impersonate the beneficiary.
+
+Requests from the beneficiary for adjustments/questions go directly to admin rather than requiring them to operate campaign technology.
 
 ## 7. Managed-service economics
+This is a distinct fully-managed service, not merely the standard campaign fee under another name.
 
-Fully Managed Campaigns use a distinct managed-service agreement rather than silently inheriting the economics of ordinary campaigns.
+Agreed future-design intent: roughly 30% of an amount being withdrawn for complete management, covering operating expenses and effort by Interplanetary Fund and various approved participants/services involved in operating the campaign. The management allocation comes from the withdrawal amount, not automatically from each incoming donation.
 
-Current future-design intent: approximately 30% for complete campaign management, covering the expenses and effort associated with operating the campaign and participating services/people. The agreed managed-service amount is assessed from funds being withdrawn rather than automatically taking the percentage from each incoming donation.
+Example: $4,000 withdrawn under a 30% agreement -> $1,200 managed-service allocation + $2,800 beneficiary distribution, before any separately applicable and correctly disclosed processor treatment.
 
-Example only: a $4,000 withdrawal under a 30% agreement produces a $1,200 managed-service allocation and $2,800 beneficiary distribution before any separately applicable and properly disclosed payment-processing treatment.
+The actual agreement/rate, calculation basis, participant/service allocations and interaction with processor costs must be explicit, server-authoritative, auditable and disclosed. Never double-charge or ambiguously combine standard platform fees, managed-service fees and processor fees. Preserve fee snapshots and a ledger showing gross withdrawal, each applicable allocation/cost and beneficiary net.
 
-The exact agreement, percentage/rate, calculation basis, processor-fee interaction and allocation must be explicit, auditable and disclosed before implementation. Avoid duplicated or ambiguous fees. Maintain a ledger sufficient to account for managed-service allocations and beneficiary distributions.
+## 8. Withdrawal intervals, distributions and mailed receipts
+The initial agreement establishes requested/approved withdrawal intervals or milestones. Future implementation should automatically prepare distributions according to those terms, subject to verification/administrative controls and any legally required holding/clearing period.
 
-## 8. Withdrawals, intervals and receipts
+Each distribution must produce a durable transaction/accounting record and receipt/statement showing the applicable calculation without exposing unnecessary sensitive identifiers. Where physical correspondence is selected/necessary, mail receipts/statements at the agreed withdrawal intervals.
 
-The initial agreement establishes requested/approved withdrawal intervals or milestones. Future implementation should support scheduled distributions and appropriate exceptional/admin-approved changes.
+A beneficiary may request an authorized change to the schedule through admin; AI must not independently rewrite the agreement.
 
-Each withdrawal should generate an auditable calculation and receipt/account statement. When physical correspondence is the beneficiary's selected/necessary communication method, receipts/statements should be mailed at the agreed interval.
+## 9. Bank account NOT required — cash/non-bank access is foundational
+A bank account must never be a qualification requirement for this feature. Intake must determine how the beneficiary can actually receive/use funds.
 
-## 9. No-bank-account requirement
-
-A bank account must NOT be required to qualify for a Fully Managed Campaign. Non-bank access is a foundational requirement, not a later enhancement.
-
-Subject to jurisdiction, identity verification, provider availability and applicable rules, future payout architecture should be capable of supporting appropriate options such as:
-- mailed checks where usable;
-- approved prepaid/debit disbursement methods;
-- compliant cash-pickup/remittance services;
-- mobile-wallet methods where available;
-- direct payment of an approved expense/provider when authorized by the beneficiary;
-- facility-approved inmate/trust-account deposits;
+Subject to jurisdiction, verification, provider availability and applicable rules, future architecture should be capable of approved methods such as:
+- mailed check where practically usable;
+- approved prepaid/debit disbursement method;
+- compliant cash-pickup/remittance method;
+- mobile wallet where available;
+- direct payment to an approved expense/provider at beneficiary direction;
+- facility-approved inmate/trust-account deposit;
 - other compliant non-bank disbursement mechanisms.
 
-The intake should determine practical access constraints, including ability to cash checks, receive secure mail, access a disbursement card, reach a pickup location, use a phone/mobile wallet, or receive funds through an institution.
+Ask practical questions such as whether the beneficiary can cash a check, securely receive mail, use a card, travel to a pickup point, access a phone/mobile wallet, or receive funds through an institution. Do not merely store a `no bank account` checkbox.
 
-Support future split disbursements when permitted and authorized, with each component independently recorded and receipted.
+Support authorized split disbursements when permissible (for example different approved destinations/purposes). Each component is independently recorded and receipted. Payout methods must use authorized provider/institution mechanisms; no unauthorized withdrawals or bypasses.
 
-## 10. Emergency contact and payout rights
+## 10. Emergency/backup contact — strict boundary
+The emergency/backup contact exists so Interplanetary Fund has someone to contact when it cannot reach the beneficiary or cannot get a scheduled deposit/distribution to them. The contact can help re-establish communication or obtain updated instructions from the beneficiary.
 
-Emergency/backup contact is a communication role only by default. The emergency contact is used when Interplanetary Fund cannot reach the beneficiary or cannot complete a scheduled deposit, to help re-establish contact or obtain updated instructions from the beneficiary.
+Emergency-contact status gives ZERO entitlement to campaign funds. The emergency contact never receives funds merely because the beneficiary is unreachable.
 
-An emergency contact NEVER receives campaign funds merely because they are the emergency contact.
+Only an explicit alternate/successor payout designation made during signup (or a later properly authorized amendment), combined with the required verification and legal permissibility, can create a possible right for another person to receive funds under the specified circumstances. Never infer that designation from emergency-contact status.
 
-Funds may potentially be directed to an alternate/successor only when the beneficiary explicitly designated that arrangement during enrollment (or through another properly authorized later process), the triggering circumstances match the agreement, and the transfer is legally permissible and properly verified.
+## 11. Fundraising deadline, renewal and jurisdiction-based abandonment
+The campaign fundraising deadline and the legal abandonment/unclaimed-property period are different clocks and must never be conflated.
 
-AI must never infer payout rights from emergency-contact status.
+The initial contract states the campaign deadline and renewal/extension options. AI cannot extend contractual authority on its own. Renewal follows the agreement and any required beneficiary/admin process.
 
-## 11. Campaign deadlines, renewal and abandonment/unclaimed funds
+For funds that cannot be delivered, there is no universal hard-coded abandonment period. Determine the required period/process from the verified legal residence/jurisdiction of the person who signed up/beneficiary as applicable to the legal relationship and funds. Maintain jurisdiction/rule provenance and escalate to admin well before the applicable deadline. Do not dispose of or redirect funds merely because a campaign ended.
 
-Campaign fundraising deadline and legal abandonment/unclaimed-property deadline are separate concepts and must be tracked independently.
+## 12. Supporter/endorser list
+The questionnaire requests people or organizations the applicant believes would share and/or endorse the campaign. Store these as prospective supporter leads, not as assumed endorsements or automatic marketing consent.
 
-The agreement includes the campaign deadline and renewal/extension options. AI must not independently extend contractual authority beyond the agreement. Renewal/extension should follow the authorization/process established by the agreement and applicable rules.
+AI/admin may use them only through future-authorized, compliant outreach. Never publicly claim an endorsement until actually established. Maintain outreach/contact history and opt-out/suppression state where applicable.
 
-For undeliverable/unclaimed funds, do not hard-code a universal abandonment period. Determine the applicable period and required handling from the beneficiary's verified legal residence/jurisdiction and the rules applicable to the particular funds/relationship. Escalate to administration well before a statutory deadline. Jurisdictional requirements must be verified before automating disposition of funds.
+## 13. Baseline outreach and optional improved outreach
+Complete management includes authorized baseline campaign outreach/promotion. AI monitors progress relative to the campaign's goal and desired pace.
 
-## 12. Supporters and endorsements
+If donations are not arriving as much or as quickly as hoped, the system may identify an optional improved/enhanced outreach pathway. The intake/agreement should explain the option and any associated terms. Additional cost, scope or authority cannot be silently activated. Activation follows the original authorization or an approved amendment.
 
-The intake asks for supporters/organizations the beneficiary believes may voluntarily share or endorse the campaign. Treat these as potential outreach leads, not automatic consent to marketing or endorsement. Outreach must comply with applicable communication/consent requirements and must not represent someone as an endorser unless that status is actually established.
+Future outreach should integrate through the platform's authorized outreach infrastructure and official/authorized publishing mechanisms; unavailable integrations should fail safely into approved manual/admin workflows rather than impersonation or unauthorized access.
 
-## 13. Outreach and optional enhancement
+## 14. Offline correspondence system
+Offline access must be first-class, not a fallback after web/app design.
 
-Baseline AI-managed outreach is part of the managed campaign concept. AI may monitor campaign performance against the campaign's goals/timeline.
+Maintain an auditable correspondence ledger for mailed approvals, questions, responses, receipts, renewal documents, notices and other authorized communications. Give correspondence a campaign-linked identifier (for example a correspondence ID and optionally QR/barcode) so returned paperwork can be reliably associated without exposing sensitive campaign/payment identifiers.
 
-If results are materially below the desired pace, the system may identify optional enhanced outreach. Any additional service, cost or authorization must follow the original agreement or obtain the required subsequent authorization. AI must not silently add charges or materially expand outreach authority.
+Operational lifecycle:
+Application -> Agreement -> Verification -> Approval/Decline -> Campaign -> Approval Package -> Correspondence -> Supporters -> Outreach -> Donations -> Withdrawal Schedule -> Distributions -> Receipts -> Renewal/Closure/Unclaimed-Funds Handling
 
-## 14. Offline correspondence ledger
+## 15. Campaign end/renewal behavior
+Before the fundraising deadline, the system should identify the upcoming end state according to the agreement: renewal/extension process, final scheduled distribution, continued authorized handling of remaining funds, or campaign closure. Closing public fundraising does not erase accounting, correspondence, payout, receipt, audit or unclaimed-funds obligations.
 
-Future implementation should support a correspondence ledger for beneficiaries without reliable technology access. Each outbound/inbound item should be associated with the campaign and auditable. A correspondence identifier, QR code or barcode may be used operationally to associate returned paperwork with the correct campaign record.
+## 16. Auditability and safeguards
+Future implementation must maintain auditable records for agreement versions, approvals, AI/admin actions, correspondence, supporter outreach, campaign changes, donations, fee snapshots, withdrawal calculations, payout attempts, payout-method changes, receipts, renewal and abandonment/unclaimed-funds actions.
 
-The intended record lifecycle is:
-Application -> Agreement -> Verification -> Campaign -> Correspondence -> Supporters -> Outreach -> Donations -> Withdrawal Schedule -> Distributions -> Receipts -> Renewal/Closure
+Use least-privilege/OBO-style authorization and explicit agent permissions. AI/admin actions must not create fake beneficiary identities, expose credentials, bypass payment verification or silently change payout destinations. Sensitive credentials remain server-side/secrets-managed. Payment/distribution confirmation must be provider/server authoritative rather than trusting a client-side success signal.
 
-## 15. Compliance and safeguards before implementation
+Minimize and access-control sensitive beneficiary information, including inmate identifiers, addresses, medical information, case information, victim/witness information and financial details. Public campaign content must contain only information authorized/appropriate for publication.
 
-This document is product design, not a determination that every described payout or management activity is permitted everywhere. Before enabling jurisdictions/use cases, future implementation must evaluate applicable requirements involving identity verification, fundraising representations, vulnerable beneficiaries, incarceration/facility rules, guardianship/authority, sanctions/international transfers, tax/reporting, money transmission/payment services, unclaimed property, privacy and payout methods.
+## 17. Compliance gate before future implementation
+This document is product design, not a determination that every described activity/payout is legal everywhere. Before enabling a jurisdiction/use case, evaluate applicable identity/KYC requirements, fundraising representations, vulnerable-person protections, incarceration/facility rules, guardianship/authority, sanctions/international transfers, tax/reporting, money transmission/payment-service rules, unclaimed property, privacy, communication/marketing rules and payout-method restrictions.
 
-Sensitive information such as inmate identifiers, precise addresses, medical information, case information, victim/witness information and financial details should be minimized, access-controlled and never exposed merely because it was collected during intake.
+Compliance should determine available options rather than making the entire feature depend on a bank account or internet access.
 
-## 16. Future architecture boundary
-
-When implementation is eventually authorized, build this as an optional module rather than a core dependency.
+## 18. Future architecture boundary and bypassability
+When implementation is explicitly authorized, build this as an optional bounded module.
 
 Recommended boundary:
-- explicit campaign mode/type: fully_managed;
-- feature flag/configuration gate, OFF by default until separately authorized;
-- isolated domain/service interfaces for intake, management agreements, correspondence and managed disbursement policy;
-- existing campaign/payment/outreach/agent systems interact through narrow interfaces only when fully_managed is selected;
-- standard campaigns never require managed-campaign fields or workflow;
-- no managed-campaign route, schema migration, payment behavior, agent permission or deployment requirement should be introduced merely by keeping this design document.
+- explicit campaign mode/type: `fully_managed`;
+- feature/configuration gate OFF by default until separately authorized;
+- isolated interfaces for intake/agreement, verification, managed campaign operations, correspondence, outreach policy, managed fee calculation and disbursement policy;
+- existing campaign/payment/outreach/agent systems enter those interfaces only when `fully_managed` applies;
+- standard campaigns never require managed-campaign fields or steps;
+- other features can deliberately query/access managed-campaign capabilities through narrow interfaces without importing its internal workflow;
+- no managed-campaign route/schema/payment/agent/deployment requirement exists merely because this specification exists;
+- preserve existing functionality rather than rebuilding unrelated systems.
 
-Future features should branch independently from the common `future` parent/staging concept rather than from this feature branch. Do not use this branch as the base for unrelated future features.
+Future branch organization should be conceptualized as:
+`main` -> `future` -> isolated `future/<feature>` branches.
 
-## 17. Explicit non-implementation rule
+This feature is `future/fully-managed-campaigns`. Unrelated future features must branch independently from the common future baseline, not from this feature's details, so concepts do not intermingle.
 
-Recording this specification does NOT authorize implementation. Do not merge it into production behavior, activate it, create production data structures, modify existing fee logic, change withdrawal behavior, enable outreach, contact beneficiaries/supporters, or deploy anything from this concept until the project owner explicitly authorizes an implementation phase.
+## 19. Explicit non-implementation rule
+Recording or improving this specification does NOT authorize implementation. Do not merge it into current production behavior, activate it, create production schemas, alter current fee/withdrawal logic, enable agents/outreach, contact beneficiaries/supporters, create provider accounts, or deploy anything from this concept until the project owner explicitly authorizes an implementation phase.
