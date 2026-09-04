@@ -1,11 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
+import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
 
-// Emits a 'campaign_created' ActivityEvent into the Community feed. Called
-// by the Create Campaign flow after a campaign is published (status 'active').
-// Drafts are skipped — they aren't public and shouldn't appear in the feed.
-// Only the campaign owner (or an admin) may publish this event; the function
-// verifies ownership server-side rather than trusting the client.
+// Publishes a campaign into the Community feed and registers its stable
+// application identity with the canonical Convex backend. Financial writes
+// fail closed unless this mapping exists, so registration happens before the
+// public campaign-created event.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -27,11 +27,16 @@ export default async function(req) {
       return Response.json({ ok: true, skipped: true });
     }
 
+    // Do not silently publish an active campaign that cannot participate in
+    // canonical financial accounting. This upsert never trusts the application
+    // for raised/donor totals; Convex preserves its own financial values.
+    await ensureCanonicalCampaign(sr, campaign);
+
     const creator = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
     await emitActivityEvent(base44, {
       type: 'campaign_created',
       actor_user_id: campaign.created_by_id,
-      actor_display_name: (creator && creator.full_name) || 'A organizer',
+      actor_display_name: (creator && creator.full_name) || 'An organizer',
       actor_handle: (creator && creator.handle) || undefined,
       actor_image_url: (creator && creator.profile_image_url) || undefined,
       campaign_id: campaign.id,
@@ -43,9 +48,9 @@ export default async function(req) {
       metadata: { category: campaign.category, goal_amount: campaign.goal_amount },
     });
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, canonical_registered: true });
   } catch (error) {
     console.error('recordCampaignCreated error:', error && error.message ? error.message : error);
-    return Response.json({ error: 'Unable to publish campaign event.' }, { status: 500 });
+    return Response.json({ error: 'Unable to publish campaign because the canonical backend could not be updated.' }, { status: 503 });
   }
 }
