@@ -7,7 +7,7 @@
     "campaign_id": { "type": "string" },
     "campaign_title": { "type": "string" },
     "gross_amount": { "type": "number", "description": "Total cleared funds withdrawn, before the platform fee." },
-    "platform_fee": { "type": "number", "description": "8% platform fee deducted from the gross amount." },
+    "platform_fee": { "type": "number", "description": "7% platform fee deducted from the gross amount." },
     "net_amount": { "type": "number", "description": "Amount actually sent to the user's PayPal account." },
     "paypal_email": { "type": "string", "description": "The PayPal account the payout was sent to." },
     "covered_donation_ids": { "type": "array", "items": { "type": "string" }, "description": "Donation records consumed by this withdrawal, to prevent double-withdrawal." },
@@ -19,6 +19,7 @@
     "review_note": { "type": "string", "description": "Why a withdrawal was held for admin review, or why it failed." },
     "reviewed_by_id": { "type": "string", "description": "Administrator who made the final review decision." },
     "reviewed_at": { "type": "string", "format": "date-time", "description": "When the administrator made the final review decision." },
+    "denial_release_operation_id": { "type": "string", "description": "Deterministic idempotency key for reserved-donation release retries." },
     "processed_at": { "type": "string", "format": "date-time" }
   },
   "required": ["owner_user_id", "campaign_id", "gross_amount", "net_amount"],
