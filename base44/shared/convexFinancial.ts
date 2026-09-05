@@ -1,5 +1,6 @@
 import { secrets } from 'base44:runtime';
 import { assertPlatformAccess, resolveConvex } from './integrationRegistry.ts';
+import { giftOf, round2 } from './fees.js';
 
 function mutationUrl() {
   const resolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
@@ -34,9 +35,8 @@ export async function recordCanonicalDonation(sr, args) {
   return invokeCanonicalMutation(sr, 'financialIntegrity:recordDonation', args, 'financial write');
 }
 
-export async function ensureCanonicalCampaign(sr, campaign) {
-  if (!campaign?.id) throw new Error('Campaign is required for canonical registration.');
-  return invokeCanonicalMutation(sr, 'applicationCampaignBridge:upsertApplicationCampaign', {
+function registrationArgs(campaign) {
+  return {
     ifCampaignId: campaign.id,
     title: campaign.title || 'Untitled campaign',
     goalAmount: Number(campaign.goal_amount || 0),
@@ -49,7 +49,67 @@ export async function ensureCanonicalCampaign(sr, campaign) {
     ...(campaign.end_date ? { endDate: campaign.end_date } : {}),
     coverImagePresent: Boolean(campaign.cover_image_url),
     ...(campaign.cover_image_url ? { coverImageUrl: campaign.cover_image_url } : {}),
-  }, 'campaign registration');
+  };
+}
+
+function legacyConfirmed(donation) {
+  if (!donation || donation.canonical_operation_id) return false;
+  if (donation.is_institutional) return donation.cleared === true && donation.payment_verified !== false;
+  return donation.payment_verified !== false;
+}
+
+export async function ensureCanonicalCampaign(sr, campaign) {
+  if (!campaign?.id) throw new Error('Campaign is required for canonical registration.');
+
+  const baseArgs = registrationArgs(campaign);
+  const registered = await invokeCanonicalMutation(
+    sr,
+    'applicationCampaignBridge:upsertApplicationCampaign',
+    baseArgs,
+    'campaign registration'
+  );
+
+  if (!registered?.needsLegacyBaseline) return registered;
+
+  // Only pre-canonical, server-confirmed Base44 Donation rows contribute to the
+  // migration baseline. Rows already carrying canonical_operation_id are
+  // intentionally excluded so retries can never seed them twice.
+  const rows = await sr.entities.Donation.filter({ campaign_id: campaign.id }, '-created_date', 5000).catch(() => []);
+  if (rows.length >= 5000) {
+    throw new Error('Legacy campaign baseline exceeds the safe migration batch size. Run the dedicated financial migration before accepting new payments.');
+  }
+
+  const legacy = rows.filter(legacyConfirmed);
+  const legacyRaisedAmount = round2(legacy.reduce((sum, d) => sum + giftOf(d), 0));
+  const legacyDonorCount = legacy.length;
+  const legacyAvailableBalance = round2(
+    legacy.filter((d) => !d.withdrawal_id).reduce((sum, d) => sum + giftOf(d), 0)
+  );
+
+  return invokeCanonicalMutation(
+    sr,
+    'applicationCampaignBridge:upsertApplicationCampaign',
+    {
+      ...baseArgs,
+      campaignOwnerUserId: campaign.created_by_id || '',
+      legacyRaisedAmount,
+      legacyDonorCount,
+      legacyAvailableBalance,
+    },
+    'campaign financial baseline registration'
+  );
+}
+
+export async function reserveCanonicalWithdrawal(sr, args) {
+  return invokeCanonicalMutation(sr, 'financialIntegrity:reserveWithdrawal', args, 'withdrawal reservation');
+}
+
+export async function completeCanonicalWithdrawal(sr, args) {
+  return invokeCanonicalMutation(sr, 'financialIntegrity:completeWithdrawal', args, 'withdrawal completion');
+}
+
+export async function cancelCanonicalWithdrawal(sr, args) {
+  return invokeCanonicalMutation(sr, 'financialIntegrity:cancelWithdrawal', args, 'withdrawal cancellation');
 }
 
 // Base44 financial records are display/application mirrors only. Campaign
