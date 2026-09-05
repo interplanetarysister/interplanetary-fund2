@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { draftInboxReply } from "@/lib/creditFreeGenerators";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,13 +31,7 @@ export default function InboxItemCard({ item, onChanged }) {
   const generateDraft = async () => {
     setDrafting(true);
     setShowDraft(true);
-    const text = await base44.integrations.Core.InvokeLLM({
-      prompt: `Write a short, warm, genuine reply (under 80 words, no placeholders, no fabricated facts) from a fundraising campaign owner to this ${item.type} received on ${platformName(item.platform)}:
-From: ${item.author || "a supporter"}
-Message: ${item.content || ""}
-${item.campaign_title ? `Campaign: ${item.campaign_title}` : ""}
-Return only the reply text.`,
-    });
+    const text = draftInboxReply(item, platformName(item.platform));
     setDraft(text);
     if (item.record_id) await base44.entities.InboxItem.update(item.record_id, { ai_draft: text });
     setDrafting(false);
@@ -76,7 +71,7 @@ Return only the reply text.`,
           <Button size="sm" variant="outline" onClick={markDone} className="rounded-lg"><Check className="w-3.5 h-3.5" /> Done</Button>
         )}
         <Button size="sm" variant="outline" onClick={generateDraft} disabled={drafting} className="rounded-lg text-primary">
-          {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI draft reply
+          {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Draft reply
         </Button>
         {item.link && (
           item.link.startsWith("http") ? (
@@ -91,7 +86,7 @@ Return only the reply text.`,
 
       {showDraft && (
         <div className="mt-3 border-t border-stone-100 pt-3">
-          <p className="text-xs font-semibold text-stone-500 mb-1.5">AI draft — review and edit before sending</p>
+          <p className="text-xs font-semibold text-stone-500 mb-1.5">Credit-free draft — review and edit before sending</p>
           <Textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} className="text-sm" />
           <Button size="sm" variant="outline" onClick={copyDraft} disabled={!draft} className="rounded-lg mt-2">
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy reply
