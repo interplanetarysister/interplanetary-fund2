@@ -3,6 +3,8 @@ import { sendPayout } from '../../shared/paypal.ts';
 import { giftOf, round2, computeWithdrawal } from '../../shared/fees.js';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
+import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 
 // Withdrawal engine. Enforces the approved 3% platform fee, the 7-day clearing
 // hold, a once-daily limit, campaign ownership, and fraud review for large
@@ -15,6 +17,109 @@ const GENERIC_PAYOUT_REVIEW_NOTE = 'Payout failed. Detailed provider diagnostics
 
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
 
+async function verifyPendingDonation(base44, sr, donation, adminUser) {
+  const campaign = await sr.entities.Campaign.get(donation.campaign_id).catch(() => null);
+  if (!campaign) throw new Error('Campaign not found for pending donation.');
+  await ensureCanonicalCampaign(sr, campaign);
+
+  const institutional = !!donation.is_institutional;
+  const method = donation.payment_method === 'cashapp' ? 'cashapp' : donation.payment_method === 'paypal' ? 'paypal' : 'other';
+  const provider = institutional ? 'institutional_grant' : `manual_${method === 'cashapp' ? 'cashapp' : 'paypal'}`;
+  // New pending rows store the original operation reference in idempotency_key.
+  // Legacy rows may not have one; the Base44 donation id is then a stable,
+  // one-time fallback so admin verification remains replay-safe.
+  const providerReference = String(donation.idempotency_key || donation.id);
+  const operationKey = institutional
+    ? `institutional_grant:${providerReference}`
+    : `${provider}:${providerReference}`;
+
+  let donorEmail;
+  if (donation.donor_user_id) {
+    const donor = await sr.entities.User.get(donation.donor_user_id).catch(() => null);
+    donorEmail = donor?.email || undefined;
+  }
+
+  const canonical = await recordCanonicalDonation(sr, {
+    operationKey,
+    provider,
+    providerTransactionId: providerReference,
+    campaignId: donation.campaign_id,
+    campaignTitle: donation.campaign_title || campaign.title,
+    campaignOwnerUserId: campaign.created_by_id || '',
+    grossAmount: Number(donation.amount || 0),
+    platformContribution: Number(donation.platform_contribution || 0),
+    processingFee: Number(donation.processing_fee || 0),
+    donorName: donation.donor_name || (institutional ? 'Institutional Grant' : 'Anonymous'),
+    ...(donorEmail ? { donorEmail } : {}),
+    ...(donation.donor_user_id ? { donorUserId: donation.donor_user_id } : {}),
+    message: donation.message || '',
+    paymentMethod: method,
+    paymentVerified: true,
+    source: institutional ? 'admin_verified_institutional_receipt' : 'admin_verified_manual_receipt',
+    isRecurring: !!donation.is_recurring,
+  });
+
+  if (donation.canonical_operation_id && String(donation.canonical_operation_id) !== String(canonical.operationId)) {
+    throw new Error('Canonical operation mismatch while clearing donation.');
+  }
+
+  // Legacy pending rows did not have a canonical mirror id. Attach the existing
+  // row to the canonical operation before reconciliation so recovery updates it
+  // rather than creating a second application Donation.
+  if (!donation.canonical_operation_id) {
+    await sr.entities.Donation.update(donation.id, { canonical_operation_id: String(canonical.operationId) });
+  }
+
+  await mirrorCanonicalCampaignTotal(sr, campaign.id, canonical);
+  const mirror = await reconcileDonationMirror(sr, canonical.operationId, {
+    campaign_id: donation.campaign_id,
+    campaign_title: donation.campaign_title || campaign.title,
+    amount: Number(donation.amount || 0),
+    platform_contribution: Number(donation.platform_contribution || 0),
+    processing_fee: Number(donation.processing_fee || 0),
+    donor_name: donation.donor_name || (institutional ? 'Institutional Grant' : 'Anonymous'),
+    message: donation.message || '',
+    is_recurring: !!donation.is_recurring,
+    ...(donation.is_recurring ? { recurring_status: donation.recurring_status || 'active' } : {}),
+    ...(donation.donor_user_id ? { donor_user_id: donation.donor_user_id } : {}),
+    payment_method: method,
+    payment_verified: true,
+    is_institutional: institutional,
+    cleared: true,
+    idempotency_key: providerReference,
+  });
+
+  if (campaign.created_by_id) {
+    await reconcileNotificationMirror(sr, canonical.operationId, {
+      user_id: campaign.created_by_id,
+      title: institutional ? 'Institutional funds verified' : 'Donation verified',
+      body: institutional
+        ? `$${Number(donation.amount || 0).toLocaleString()} in institutional funding for \"${campaign.title}\" was verified as received.`
+        : `$${Number(donation.amount || 0).toLocaleString()} for \"${campaign.title}\" was verified as received.`,
+      type: 'donation',
+      link: `/campaign/${campaign.id}`,
+      read: false,
+    });
+  }
+
+  if (canonical.applied) {
+    await logAudit(base44, {
+      action: institutional ? 'institutional_funds_verified' : 'manual_donation_verified',
+      target_type: 'donation',
+      target_id: mirror?.id || donation.id,
+      detail: `$${Number(donation.amount || 0)} receipt verified and applied to canonical ledger`,
+      status: 'success',
+      metadata: {
+        actor: adminUser.id,
+        canonical_operation_id: String(canonical.operationId),
+        campaign_id: campaign.id,
+      },
+    });
+  }
+
+  return { canonical, mirror: mirror || donation };
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -24,44 +129,55 @@ export default async function(req) {
     const user = guard.user;
 
     const body = await req.json();
-    const action = body.action || "request";
+    const action = body.action || 'request';
 
-    // ---- Admin: clear an institutional donation for withdrawal ----
-    if (action === "clear") {
-      if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
+    // ---- Admin: verify/clear an off-platform or institutional donation ----
+    if (action === 'clear') {
+      if (user.role !== 'admin') return Response.json({ error: 'Admin only.' }, { status: 403 });
       const d = await sr.entities.Donation.get(body.donation_id);
-      if (!d) return Response.json({ error: "Donation not found." }, { status: 404 });
-      // Admin clearing confirms an off-platform/institutional payment actually
-      // arrived before its funds become withdrawable. Applies to institutional
-      // gifts and to unverified manual-confirmation gifts (payment_verified=false).
-      if (!d.is_institutional && d.payment_verified !== false) return Response.json({ error: "Only unverified or institutional donations need clearing." }, { status: 400 });
-      await sr.entities.Donation.update(d.id, { cleared: true });
-      return Response.json({ ok: true, donation_id: d.id, cleared: true });
+      if (!d) return Response.json({ error: 'Donation not found.' }, { status: 404 });
+      if (!d.is_institutional && d.payment_verified !== false) {
+        // A repeated clear of an already verified mirror is safe and should not
+        // manufacture a second canonical event.
+        if (d.cleared && d.canonical_operation_id) {
+          return Response.json({ ok: true, donation_id: d.id, cleared: true, duplicate: true });
+        }
+        return Response.json({ error: 'Only unverified or institutional donations need clearing.' }, { status: 400 });
+      }
+
+      const { canonical, mirror } = await verifyPendingDonation(base44, sr, d, user);
+      return Response.json({
+        ok: true,
+        donation_id: mirror?.id || d.id,
+        cleared: true,
+        canonical_operation_id: String(canonical.operationId),
+        duplicate: !canonical.applied,
+      });
     }
 
     // ---- Admin: approve a withdrawal held for review ----
-    if (action === "approve") {
-      if (user.role !== "admin") return Response.json({ error: "Admin only." }, { status: 403 });
+    if (action === 'approve') {
+      if (user.role !== 'admin') return Response.json({ error: 'Admin only.' }, { status: 403 });
       const w = await sr.entities.Withdrawal.get(body.withdrawal_id);
-      if (!w) return Response.json({ error: "Withdrawal not found." }, { status: 404 });
-      if (w.status !== "under_review") return Response.json({ error: "Only held withdrawals can be approved." }, { status: 400 });
+      if (!w) return Response.json({ error: 'Withdrawal not found.' }, { status: 404 });
+      if (w.status !== 'under_review') return Response.json({ error: 'Only held withdrawals can be approved.' }, { status: 400 });
       try {
         const payout = await sendPayout({
           receiver: w.paypal_email,
           amount: w.net_amount,
-          note: `Interplanetary Fund withdrawal for "${w.campaign_title}"`,
+          note: `Interplanetary Fund withdrawal for \"${w.campaign_title}\"`,
           itemId: `IFW_${w.id}`,
         });
         await sr.entities.Withdrawal.update(w.id, {
-          status: "paid",
+          status: 'paid',
           payout_batch_id: payout.payout_batch_id,
           processed_at: new Date().toISOString(),
         });
         await logAudit(base44, { action: 'withdrawal_approved', target_type: 'withdrawal', target_id: w.id, detail: `Approved net $${w.net_amount} paid`, status: 'success', metadata: { actor: user.id } });
-        return Response.json({ ok: true, status: "paid", payout_batch_id: payout.payout_batch_id });
+        return Response.json({ ok: true, status: 'paid', payout_batch_id: payout.payout_batch_id });
       } catch (err) {
-        console.error("requestWithdrawal approve payout error:", err?.message || err);
-        await sr.entities.Withdrawal.update(w.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
+        console.error('requestWithdrawal approve payout error:', err?.message || err);
+        await sr.entities.Withdrawal.update(w.id, { status: 'failed', review_note: GENERIC_PAYOUT_REVIEW_NOTE });
         await logAudit(base44, { action: 'withdrawal_approve_failed', target_type: 'withdrawal', target_id: w.id, detail: 'Reviewed payout failed', status: 'failure', metadata: { actor: user.id } });
         return Response.json({ error: SAFE_PAYOUT_ERROR }, { status: 500 });
       }
@@ -69,41 +185,41 @@ export default async function(req) {
 
     // ---- User: request a new withdrawal ----
     const { campaign_id, paypal_email, paypal_email_confirm } = body;
-    if (!campaign_id) return Response.json({ error: "Select a campaign to withdraw from." }, { status: 400 });
-    if (!emailOk(paypal_email)) return Response.json({ error: "Enter a valid PayPal email address." }, { status: 400 });
-    if (paypal_email !== paypal_email_confirm) return Response.json({ error: "PayPal email addresses do not match." }, { status: 400 });
+    if (!campaign_id) return Response.json({ error: 'Select a campaign to withdraw from.' }, { status: 400 });
+    if (!emailOk(paypal_email)) return Response.json({ error: 'Enter a valid PayPal email address.' }, { status: 400 });
+    if (paypal_email !== paypal_email_confirm) return Response.json({ error: 'PayPal email addresses do not match.' }, { status: 400 });
 
     const campaign = await sr.entities.Campaign.get(campaign_id);
-    if (!campaign) return Response.json({ error: "Campaign not found." }, { status: 404 });
+    if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
     if (campaign.created_by_id !== user.id) {
-      return Response.json({ error: "You can only withdraw funds from your own campaigns." }, { status: 403 });
+      return Response.json({ error: 'You can only withdraw funds from your own campaigns.' }, { status: 403 });
     }
 
     // Once-daily limit: any non-failed withdrawal created today blocks a new one.
     const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
     const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
     const alreadyToday = (recent || []).some((w) => {
-      if (w.status === "failed") return false;
+      if (w.status === 'failed') return false;
       return new Date(w.created_date) >= startToday;
     });
     if (alreadyToday) {
-      return Response.json({ error: "You can only withdraw once per day. Please try again tomorrow." }, { status: 400 });
+      return Response.json({ error: 'You can only withdraw once per day. Please try again tomorrow.' }, { status: 400 });
     }
 
-    // Cleared, unconsumed donations (7-day holding period for fraud protection).
     const cutoff = new Date(Date.now() - CLEARING_DAYS * 86400000);
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
-    // Cleared, unconsumed donations. Regular gifts clear after the 7-day holding
-    // period; institutional (grant) gifts require explicit admin clearing first.
-    // Unverified, manually-confirmed gifts (PayPal donate link / Cash App,
-    // recorded via recordDonation) cannot be auto-withdrawn — they require admin
-    // clearing to confirm the off-platform payment arrived, closing the
-    // trust-the-client theft vector. Verified gifts (Stripe webhook, PayPal
-    // capture) clear after the 7-day hold; institutional gifts also need clearing.
-    const available = (allDonations || []).filter((d) => !d.withdrawal_id && ((d.payment_verified === false || d.is_institutional) ? d.cleared : new Date(d.created_date) <= cutoff));
+    // Explicit admin clearing proves receipt and satisfies the hold. Otherwise,
+    // only provider-verified, non-institutional gifts age into availability after
+    // seven days. Pending/unverified money can never enter a withdrawal.
+    const available = (allDonations || []).filter((d) => {
+      if (d.withdrawal_id) return false;
+      if (d.cleared) return d.payment_verified !== false;
+      if (d.payment_verified === false || d.is_institutional) return false;
+      return new Date(d.created_date) <= cutoff;
+    });
     let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));
     if (gross <= 0) {
-      return Response.json({ error: "No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period." }, { status: 400 });
+      return Response.json({ error: 'No cleared funds are available yet. Donations become withdrawable after verification and the applicable clearing period.' }, { status: 400 });
     }
 
     let { fee, net } = computeWithdrawal(gross);
@@ -118,14 +234,14 @@ export default async function(req) {
       net_amount: net,
       paypal_email,
       covered_donation_ids: available.map((d) => d.id),
-      status: "processing",
+      status: 'processing',
     });
     await logAudit(base44, { action: 'withdrawal_requested', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Requested $${gross} (fee $${fee}, net $${net})`, status: 'success' });
 
     // Conditionally reserve only still-unclaimed donations — prevents two
     // concurrent withdrawals from consuming the same funds (double-spend).
     await sr.entities.Donation.updateMany(
-      { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ""] } },
+      { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ''] } },
       { $set: { withdrawal_id: withdrawal.id } }
     );
 
@@ -139,12 +255,10 @@ export default async function(req) {
     }, 0));
 
     if (reservedGross <= 0) {
-      // Every donation was claimed by a concurrent withdrawal — abort cleanly.
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: "Funds were claimed by another withdrawal. Please try again." });
-      return Response.json({ error: "Those funds were just claimed by another withdrawal. Please try again." }, { status: 409 });
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Funds were claimed by another withdrawal. Please try again.' });
+      return Response.json({ error: 'Those funds were just claimed by another withdrawal. Please try again.' }, { status: 409 });
     }
     if (reservedGross !== gross) {
-      // Partial race — adjust the withdrawal to only the funds we actually reserved.
       gross = reservedGross;
       ({ fee, net } = computeWithdrawal(gross));
       await sr.entities.Withdrawal.update(withdrawal.id, {
@@ -158,40 +272,40 @@ export default async function(req) {
     // Large payouts are held for manual admin review (fraud protection).
     if (net > REVIEW_THRESHOLD) {
       await sr.entities.Withdrawal.update(withdrawal.id, {
-        status: "under_review",
+        status: 'under_review',
         review_note: `Net amount $${net.toFixed(2)} exceeds the $${REVIEW_THRESHOLD} auto-approval threshold.`,
       });
       await logAudit(base44, { action: 'withdrawal_held', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Held for review (net $${net})`, status: 'success' });
-      return Response.json({ ok: true, status: "under_review", withdrawal_id: withdrawal.id, gross, fee, net });
+      return Response.json({ ok: true, status: 'under_review', withdrawal_id: withdrawal.id, gross, fee, net });
     }
 
     try {
       const payout = await sendPayout({
         receiver: paypal_email,
         amount: net,
-        note: `Interplanetary Fund withdrawal for "${campaign.title}"`,
+        note: `Interplanetary Fund withdrawal for \"${campaign.title}\"`,
         itemId: `IFW_${withdrawal.id}`,
       });
       await sr.entities.Withdrawal.update(withdrawal.id, {
-        status: "paid",
+        status: 'paid',
         payout_batch_id: payout.payout_batch_id,
         processed_at: new Date().toISOString(),
       });
       await logAudit(base44, { action: 'withdrawal_paid', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Net $${net} paid`, status: 'success' });
-      return Response.json({ ok: true, status: "paid", withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
+      return Response.json({ ok: true, status: 'paid', withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
       // Payout failed — release only the donations we actually reserved.
-      console.error("requestWithdrawal payout error:", err?.message || err);
+      console.error('requestWithdrawal payout error:', err?.message || err);
       await sr.entities.Donation.updateMany(
         { withdrawal_id: withdrawal.id },
-        { $set: { withdrawal_id: "" } }
+        { $set: { withdrawal_id: '' } }
       );
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: "failed", review_note: GENERIC_PAYOUT_REVIEW_NOTE });
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: GENERIC_PAYOUT_REVIEW_NOTE });
       await logAudit(base44, { action: 'withdrawal_failed', target_type: 'withdrawal', target_id: withdrawal.id, detail: 'Payout failed; funds released', status: 'failure' });
       return Response.json({ error: `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` }, { status: 500 });
     }
   } catch (error) {
-    console.error("requestWithdrawal error:", error?.message || error);
+    console.error('requestWithdrawal error:', error?.message || error);
     return Response.json({ error: SAFE_WITHDRAWAL_ERROR }, { status: 500 });
   }
 }
