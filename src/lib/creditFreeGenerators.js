@@ -131,7 +131,7 @@ export function generateMissionRecommendations(campaigns = []) {
 }
 
 export function draftInboxReply(item = {}, platformLabel = "Interplanetary Fund") {
-  const sender = clean(item.sender_name || item.senderName || item.from_name || item.fromName, "there");
+  const sender = clean(item.author || item.sender_name || item.senderName || item.from_name || item.fromName, "there");
   const subject = clean(item.subject || item.title);
   const body = clean(item.body || item.message || item.content);
   const gratitude = /donat|gift|support|contribut|pledge/i.test(`${subject} ${body}`)
@@ -190,8 +190,27 @@ export function buildExecutiveReport({ reportTypeLabel = "Campaign report", camp
   const totalExpenses = expenseList.reduce((sum, e) => sum + number(e.amount), 0);
   const completion = totalGoal > 0 ? clamp((totalRaised / totalGoal) * 100, 0, 999) : 0;
   const ranked = [...campaignList].sort((a, b) => number(b.raised_amount ?? b.raisedAmount) - number(a.raised_amount ?? a.raisedAmount));
+  const executiveSummary = `${reportTypeLabel}: ${campaignList.length} campaign${campaignList.length === 1 ? "" : "s"} tracked, $${totalRaised.toLocaleString()} raised${totalGoal > 0 ? ` toward $${totalGoal.toLocaleString()} in stated goals` : ""}, with $${totalExpenses.toLocaleString()} in recorded expenses.`;
+  const recommendations = generateMissionRecommendations(campaignList).map((item) => item.description);
+  const highlights = [
+    `$${totalRaised.toLocaleString()} raised across ${donationList.length} recorded donation${donationList.length === 1 ? "" : "s"}.`,
+    `${campaignList.filter((c) => clean(c.status).toLowerCase() === "active").length} campaign${campaignList.length === 1 ? "" : "s"} currently active.`,
+    totalGoal > 0 ? `${completion.toFixed(1)}% aggregate progress against stated campaign goals.` : "Campaign activity is being tracked even where no aggregate goal is available.",
+  ];
+  const concerns = [];
+  if (totalGoal > 0 && completion < 25) concerns.push("Aggregate funding is below 25% of stated goals; prioritize campaigns with the largest remaining gap.");
+  if (donationList.length === 0) concerns.push("No donation records are present in this reporting snapshot; verify campaign visibility and donation-path readiness.");
+  if (!concerns.length) concerns.push("No critical numerical warning is visible in this snapshot; continue monitoring campaign-level progress and supporter activity.");
+  const forecast = totalGoal > 0
+    ? `Current progress is ${completion.toFixed(1)}% of stated goals. Future fundraising cannot be guaranteed; use current campaign momentum and recent activity as directional evidence only.`
+    : "There is not enough goal data for a numeric projection. Future fundraising cannot be guaranteed.";
   return {
-    executive_summary: `${reportTypeLabel}: ${campaignList.length} campaign${campaignList.length === 1 ? "" : "s"} tracked, $${totalRaised.toLocaleString()} raised${totalGoal > 0 ? ` toward $${totalGoal.toLocaleString()} in stated goals` : ""}, with $${totalExpenses.toLocaleString()} in recorded expenses.`,
+    summary: executiveSummary,
+    highlights,
+    concerns,
+    forecast,
+    recommended_actions: recommendations,
+    executive_summary: executiveSummary,
     key_metrics: [
       { label: "Campaigns", value: campaignList.length },
       { label: "Raised", value: totalRaised },
@@ -206,7 +225,7 @@ export function buildExecutiveReport({ reportTypeLabel = "Campaign report", camp
       goal: number(campaign.goal_amount ?? campaign.goalAmount),
       status: clean(campaign.status, "unknown"),
     })),
-    top_recommendations: generateMissionRecommendations(campaignList).map((item) => item.description),
+    top_recommendations: recommendations,
   };
 }
 
@@ -224,7 +243,7 @@ export function generateCampaignStory({ form = {}, style = "clear", audience = "
   const accessLine = accessibility ? "The plan is described plainly so supporters can understand where help is going and what progress looks like." : "Supporters will receive clear progress updates as the campaign moves forward.";
   const seoLine = seo ? `This ${category} fundraising campaign is built to connect people who want to help with a specific, transparent need.` : "This campaign is built to connect people who want to help with a specific, transparent need.";
   const refineLine = refine && clean(existing) ? "This revised version keeps the original purpose while making the need, use of funds, and next action clearer." : "";
-  return `## ${title}\n\n${need}\n\n${urgency} ${goalText}\n\n${use} ${accessLine}\n\n${impact} ${seoLine}\n\nWe are asking ${audience} to help by donating, sharing the campaign, or connecting us with people and organizations that may care about this mission. The intended tone is ${tone}: direct about the need, transparent about the goal, and focused on the real-world outcome.\n\n${refineLine ? `${refineLine}\n\n` : ""}## IMPACT STATEMENT\n${impact}`;
+  return `${title}\n\n${need}\n\n${urgency} ${goalText}\n\n${use} ${accessLine}\n\n${impact} ${seoLine}\n\nWe are asking ${audience} to help by donating, sharing the campaign, or connecting us with people and organizations that may care about this mission. The intended tone is ${tone}: direct about the need, transparent about the goal, and focused on the real-world outcome.${refineLine ? `\n\n${refineLine}` : ""}`;
 }
 
 export function generateCampaignTips(campaign = {}, updatesCount = 0) {
@@ -240,5 +259,5 @@ export function generateCampaignTips(campaign = {}, updatesCount = 0) {
   if (ratio >= 0.75 && ratio < 1) tips.push("You are in the final stretch. Ask supporters to share the remaining gap rather than repeating the full original goal.");
   if (ratio < 0.25) tips.push("Test one new outreach audience and one new message angle, then compare which produces more visits, shares, or donations.");
   if (!tips.length) tips.push("Keep momentum by thanking recent supporters, reporting one concrete change, and ending with one specific action people can take next.");
-  return tips.slice(0, 4).map((tip, index) => `${index + 1}. ${tip}`).join("\n\n");
+  return tips.slice(0, 4);
 }
