@@ -81,8 +81,6 @@
   }
 }
 
-
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -90,6 +88,31 @@
 
   body {
     @apply bg-background text-foreground font-body;
+  }
+
+  /* Keep entered text, placeholders, carets, and browser autofill readable on
+     every surface, including forms that do not use the shared Input/Textarea. */
+  input,
+  textarea,
+  select {
+    color: hsl(var(--foreground));
+    caret-color: #22d3ee;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 1;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  select:-webkit-autofill {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    caret-color: #22d3ee;
+    transition: background-color 9999s ease-out 0s;
   }
 
   /* Android WebView readiness: kill default rubber-band / scroll-chaining on
