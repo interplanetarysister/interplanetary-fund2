@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { generateMissionRecommendations } from "@/lib/creditFreeGenerators";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -15,39 +15,14 @@ export default function MissionControl({ campaigns }) {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const generate = async () => {
+  const generate = () => {
     setLoading(true);
-    const data = campaigns.map((c) => ({
-      title: c.title,
-      category: c.category,
-      goal: c.goal_amount,
-      raised: c.raised_amount || 0,
-      donors: c.donor_count || 0,
-      status: c.status,
-      has_story: !!c.story && c.story.length > 200,
-      has_cover_image: !!c.cover_image_url,
-      end_date: c.end_date,
+    const recommendations = generateMissionRecommendations(campaigns).map((item) => ({
+      title: item.title,
+      reason: item.description,
+      priority: item.priority,
     }));
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are Mission Control, the AI strategist of a fundraising platform. Analyze these campaigns and produce 3-5 specific, actionable recommendations to improve fundraising results. Each must include a short reason explaining WHY (explainable AI). These are estimates, never guarantees. Campaigns: ${JSON.stringify(data)}. Today: ${new Date().toISOString().slice(0, 10)}.`,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          recommendations: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                reason: { type: "string" },
-                priority: { type: "string", enum: ["high", "medium", "low"] },
-              },
-            },
-          },
-        },
-      },
-    });
-    setInsights(res.recommendations || []);
+    setInsights(recommendations);
     setLoading(false);
   };
 
@@ -65,7 +40,7 @@ export default function MissionControl({ campaigns }) {
         </Button>
       </div>
       <p className="text-xs text-slate-500 mb-4">
-        AI recommendations — you always make the final call.{" "}
+        Credit-free recommendations — you always make the final call.{" "}
         <Link to="/mission" className="text-cyan-400 hover:text-cyan-300 font-medium">Open full Mission Control →</Link>
       </p>
       {campaigns.length === 0 && <p className="text-sm text-slate-500">Create your first campaign and Mission Control will start advising you.</p>}
