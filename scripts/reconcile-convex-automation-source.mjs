@@ -35,8 +35,13 @@ for (const file of files) {
   } catch {
     continue;
   }
+  const lines = text.split(/\r?\n/);
   for (const target of targets) {
-    if (text.includes(target)) evidence[target].push(relative(repoRoot, file));
+    const matches = [];
+    lines.forEach((line, index) => {
+      if (line.includes(target)) matches.push(index + 1);
+    });
+    if (matches.length) evidence[target].push({ path: relative(repoRoot, file), lines: matches });
   }
 }
 
@@ -45,7 +50,8 @@ const report = {
   repository: process.env.GITHUB_REPOSITORY ?? 'unknown',
   commit: process.env.GITHUB_SHA ?? 'unknown',
   sourceOnlyEvidence: evidence,
-  interpretation: 'Source inspection only. Missing entries are UNKNOWN and must not be treated as proof that deployed Convex functionality is absent.',
+  unresolvedTargets: targets.filter((target) => evidence[target].length === 0),
+  interpretation: 'Source inspection only. Missing entries are UNKNOWN and must not be treated as proof that deployed Convex functionality is absent. Line numbers are review anchors, not runtime evidence.',
 };
 
 console.log(JSON.stringify(report, null, 2));
