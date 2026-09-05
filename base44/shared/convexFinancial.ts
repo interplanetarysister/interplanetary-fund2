@@ -35,6 +35,10 @@ export async function recordCanonicalDonation(sr, args) {
   return invokeCanonicalMutation(sr, 'financialIntegrity:recordDonation', args, 'financial write');
 }
 
+export async function recordCanonicalExternalObservation(sr, args) {
+  return invokeCanonicalMutation(sr, 'externalFinancialObservations:recordObservation', args, 'external financial observation');
+}
+
 function registrationArgs(campaign) {
   return {
     ifCampaignId: campaign.id,
@@ -71,9 +75,6 @@ export async function ensureCanonicalCampaign(sr, campaign) {
 
   if (!registered?.needsLegacyBaseline) return registered;
 
-  // Only pre-canonical, server-confirmed Base44 Donation rows contribute to the
-  // migration baseline. Rows already carrying canonical_operation_id are
-  // intentionally excluded so retries can never seed them twice.
   const rows = await sr.entities.Donation.filter({ campaign_id: campaign.id }, '-created_date', 5000).catch(() => []);
   if (rows.length >= 5000) {
     throw new Error('Legacy campaign baseline exceeds the safe migration batch size. Run the dedicated financial migration before accepting new payments.');
@@ -112,10 +113,6 @@ export async function cancelCanonicalWithdrawal(sr, args) {
   return invokeCanonicalMutation(sr, 'financialIntegrity:cancelWithdrawal', args, 'withdrawal cancellation');
 }
 
-// Base44 financial records are display/application mirrors only. Campaign
-// totals are set to the canonical absolute values returned by Convex, never
-// incremented locally. That makes retries safe even when the same mirror step
-// executes more than once.
 export async function mirrorCanonicalCampaignTotal(sr, campaignId, canonical) {
   if (!canonical || !Number.isFinite(Number(canonical.raisedAmount)) || !Number.isFinite(Number(canonical.donorCount))) return;
   await sr.entities.Campaign.update(campaignId, {
