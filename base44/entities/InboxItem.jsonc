@@ -4,47 +4,32 @@
   "properties": {
     "user_id": {
       "type": "string",
-      "description": "The recipient \u2014 the only user (besides admins) who can see this item."
+      "description": "The recipient — the only user (besides admins) who can see this item."
     },
     "platform": {
       "type": "string",
-      "description": "Source platform id (interplanetary, kofi, facebook, \u2026)."
+      "description": "Source platform id (interplanetary, kofi, facebook, …)."
     },
-    "campaign_id": {
-      "type": "string"
-    },
-    "campaign_title": {
-      "type": "string"
+    "campaign_id": { "type": "string" },
+    "campaign_title": { "type": "string" },
+    "canonical_operation_id": {
+      "type": "string",
+      "description": "Canonical Convex financial/external-observation id used to repair webhook side effects without duplicating this inbox row."
     },
     "type": {
       "type": "string",
-      "enum": [
-        "comment",
-        "message",
-        "donation",
-        "mention",
-        "reply",
-        "question",
-        "system"
-      ],
+      "enum": ["comment", "message", "donation", "mention", "reply", "question", "system"],
       "default": "system"
     },
-    "author": {
-      "type": "string"
-    },
-    "content": {
-      "type": "string"
-    },
+    "author": { "type": "string" },
+    "content": { "type": "string" },
     "link": {
       "type": "string",
       "description": "Deep link to the original conversation when centralized replies aren't supported."
     },
     "status": {
       "type": "string",
-      "enum": [
-        "open",
-        "done"
-      ],
+      "enum": ["open", "done"],
       "default": "open"
     },
     "ai_draft": {
@@ -52,57 +37,30 @@
       "description": "AI-generated draft response awaiting the owner's review."
     }
   },
-  "required": [
-    "user_id",
-    "platform"
-  ],
+  "required": ["user_id", "platform"],
   "rls": {
     "read": {
       "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
+        { "data.user_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
       ]
     },
     "create": {
       "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
+        { "data.user_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
       ]
     },
     "update": {
       "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
+        { "data.user_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
       ]
     },
     "delete": {
       "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
+        { "data.user_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
       ]
     }
   }
