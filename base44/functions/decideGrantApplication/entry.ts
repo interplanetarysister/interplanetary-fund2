@@ -1,9 +1,14 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/convexFinancial.ts';
+import { reconcileDonationMirror } from '../../shared/financialMirrors.ts';
+import { logAudit } from '../../shared/auditLog.ts';
 
 // Decides a grant application (award / decline / under review). Verifies the
 // caller owns the institution the application belongs to before updating, then
-// notifies the applicant. Service-scoped so it bypasses RLS safely.
+// notifies the applicant. Institutional awards are financial promises until the
+// platform verifies receipt; they are therefore recorded as canonical PENDING
+// operations and do not increase campaign totals or withdrawable funds yet.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -23,41 +28,73 @@ export default async function(req) {
       return Response.json({ error: 'Not authorized to decide this application' }, { status: 403 });
     }
 
-    await sr.entities.GrantApplication.update(application_id, { status, decision_note: decision_note || '' });
-
-    // When an application is awarded, record it as an institutional donation that
-    // requires admin clearing before it can be withdrawn (only on the transition
-    // into 'awarded' so re-decisions don't double-count).
+    // On the transition into awarded, establish the durable canonical pending
+    // operation BEFORE changing the application status. If any later write
+    // fails, a retry reuses the same operation key and safely finishes instead
+    // of leaving an awarded application with no financial record.
     if (status === 'awarded' && app.status !== 'awarded') {
-      const amount = parseFloat(app.requested_amount) || 0;
+      const amount = Number.parseFloat(app.requested_amount) || 0;
       if (amount > 0 && app.campaign_id) {
         const campaign = await sr.entities.Campaign.get(app.campaign_id).catch(() => null);
-        await sr.entities.Donation.create({
-          campaign_id: app.campaign_id,
-          campaign_title: app.campaign_title || (campaign ? campaign.title : undefined),
-          amount,
-          donor_name: app.institution_name || 'Institutional Grant',
+        if (!campaign) return Response.json({ error: 'Campaign not found for this grant award' }, { status: 404 });
+
+        await ensureCanonicalCampaign(sr, campaign);
+        const operationKey = `institutional_grant:${application_id}`;
+        const canonical = await recordCanonicalDonation(sr, {
+          operationKey,
+          provider: 'institutional_grant',
+          providerTransactionId: String(application_id),
+          campaignId: app.campaign_id,
+          campaignTitle: app.campaign_title || campaign.title,
+          campaignOwnerUserId: campaign.created_by_id || '',
+          grossAmount: amount,
+          platformContribution: 0,
+          processingFee: 0,
+          donorName: app.institution_name || institution.name || 'Institutional Grant',
+          ...(app.applicant_user_id ? { donorUserId: app.applicant_user_id } : {}),
           message: app.opportunity_title ? `Grant award: ${app.opportunity_title}` : 'Grant award',
-          donor_user_id: app.applicant_user_id,
+          paymentMethod: 'other',
+          paymentVerified: false,
+          source: 'institutional_grant_award',
+          isRecurring: false,
+        });
+
+        await reconcileDonationMirror(sr, canonical.operationId, {
+          campaign_id: app.campaign_id,
+          campaign_title: app.campaign_title || campaign.title,
+          amount,
+          platform_contribution: 0,
+          processing_fee: 0,
+          donor_name: app.institution_name || institution.name || 'Institutional Grant',
+          message: app.opportunity_title ? `Grant award: ${app.opportunity_title}` : 'Grant award',
+          ...(app.applicant_user_id ? { donor_user_id: app.applicant_user_id } : {}),
           payment_method: 'other',
+          payment_verified: false,
           is_institutional: true,
           cleared: false,
+          idempotency_key: String(application_id),
         });
-        if (campaign) {
-          // Atomic increment — avoids the read-modify-write race on concurrent awards.
-          await sr.entities.Campaign.updateMany(
-            { id: campaign.id },
-            { $inc: { raised_amount: amount, donor_count: 1 } }
-          );
+
+        if (canonical.created) {
+          await logAudit(base44, {
+            action: 'institutional_award_pending_verification',
+            target_type: 'grant_application',
+            target_id: application_id,
+            detail: `$${amount} institutional award recorded as pending receipt verification`,
+            status: 'success',
+            metadata: { canonical_operation_id: String(canonical.operationId), campaign_id: app.campaign_id },
+          });
         }
       }
     }
+
+    await sr.entities.GrantApplication.update(application_id, { status, decision_note: decision_note || '' });
 
     if (app.applicant_user_id) {
       await sr.entities.Notification.create({
         user_id: app.applicant_user_id,
         title: status === 'awarded' ? 'Your application was awarded' : `Application ${status.replace('_', ' ')}`,
-        body: `${institution.name} updated your application for "${app.opportunity_title}"${decision_note ? `: ${decision_note}` : ''}`,
+        body: `${institution.name} updated your application for \"${app.opportunity_title}\"${decision_note ? `: ${decision_note}` : ''}`,
         type: 'system',
         link: '/institutions',
       });
@@ -65,7 +102,7 @@ export default async function(req) {
 
     return Response.json({ status, decision_note: decision_note || '' });
   } catch (error) {
-    console.error('decideGrantApplication error:', error.message);
-    return Response.json({ error: 'Unable to record your decision. Please try again.' }, { status: 500 });
+    console.error('decideGrantApplication error:', error?.message || error);
+    return Response.json({ error: 'Unable to record your decision safely. Please try again.' }, { status: 500 });
   }
 }
