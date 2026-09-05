@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIInstructionsStep";
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import MediaUpload from "@/components/media/MediaUpload";
-import { buildCoverPrompt } from "@/lib/coverPrompt";
+import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 
@@ -51,12 +51,10 @@ export default function CreateCampaign() {
     setLocating(false);
   };
 
-  const generateCover = async () => {
+  const generateCover = () => {
     setGeneratingImage(true);
     try {
-      const { url } = await base44.integrations.Core.GenerateImage({
-        prompt: buildCoverPrompt({ title: form.title, category: form.category, regenCount }),
-      });
+      const url = generateCampaignCoverDataUrl({ title: form.title, category: form.category, regenCount });
       set("cover_image_url", url);
       setRegenCount((c) => c + 1);
     } catch (e) {
@@ -197,7 +195,7 @@ export default function CreateCampaign() {
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="rounded-xl">
                 {generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}
-                {form.cover_image_url ? "Regenerate with AI" : "Generate with AI"}
+                {form.cover_image_url ? "Regenerate cover" : "Generate cover"}
               </Button>
               <div className="flex-1 min-w-[12rem]">
                 <MediaUpload
@@ -208,7 +206,7 @@ export default function CreateCampaign() {
                 />
               </div>
             </div>
-            <p className="text-xs text-stone-400">Upload your own photo or video, or generate a cover with AI. Each regeneration gives you a fresh style.</p>
+            <p className="text-xs text-stone-400">Upload your own photo or video, or generate a credit-free Interplanetary Fund cover. Each regeneration gives you a fresh style.</p>
           </div>
         </>)}
 
