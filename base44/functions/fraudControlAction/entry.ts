@@ -69,6 +69,7 @@ export default async function(req) {
       const withdrawal = await sr.entities.Withdrawal.get(withdrawalId);
       if (!withdrawal) return Response.json({ error: 'Withdrawal not found.' }, { status: 404 });
 
+      const denialReleaseOperationId = withdrawal.denial_release_operation_id || `denial-release:${withdrawal.id}`;
       let newlyClaimed = false;
       if (withdrawal.status === 'under_review') {
         const claim = await sr.entities.Withdrawal.updateMany(
@@ -79,6 +80,7 @@ export default async function(req) {
               review_action: 'deny',
               reviewed_by_id: user.id,
               reviewed_at: now,
+              denial_release_operation_id: denialReleaseOperationId,
               review_note: `Denial in progress by admin ${user.id}: ${reason}`,
             },
           },
@@ -105,6 +107,7 @@ export default async function(req) {
               status: 'failed',
               review_note: `Denied by admin ${user.id}: ${reason}`,
               processed_at: now,
+              denial_release_operation_id: denialReleaseOperationId,
             },
           },
         );
@@ -119,13 +122,14 @@ export default async function(req) {
       if (!reconciliation.complete) {
         console.error('Fraud denial reconciliation incomplete:', {
           withdrawal_id: withdrawal.id,
+          denial_release_operation_id: denialReleaseOperationId,
           remaining_donation_ids: reconciliation.remaining,
         });
         return Response.json({ error: 'Withdrawal is denied and still reconciling reserved donations. Retry the denial action; the decision will not be reopened.' }, { status: 409 });
       }
 
       await clearMigrationClaim(sr, withdrawal);
-      return Response.json({ ok: true, status: 'failed', withdrawal_id: withdrawal.id });
+      return Response.json({ ok: true, status: 'failed', withdrawal_id: withdrawal.id, denial_release_operation_id: denialReleaseOperationId });
     }
 
     if (action === 'pauseCampaign' || action === 'restoreCampaign') {
@@ -138,8 +142,6 @@ export default async function(req) {
       const campaign = await sr.entities.Campaign.get(campaignId);
       if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
 
-      // Idempotent retry: if this exact administrator already committed the requested state,
-      // return success instead of treating the retried command as a conflicting transition.
       if (campaign.status === nextStatus && campaign.moderated_by_id === user.id) {
         return Response.json({ ok: true, status: nextStatus, campaign_id: campaignId, idempotent: true });
       }
