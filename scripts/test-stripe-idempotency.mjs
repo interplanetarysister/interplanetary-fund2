@@ -1,36 +1,39 @@
-// Static contract tests for Stripe webhook idempotency (event.id + WebhookEvent).
-// No live Stripe call (a valid signature requires the secret, which is held
-// out-of-band) — asserts the durable claim/release behavior from source.
+// Static release contract for the Stripe webhook financial boundary.
+// Live provider/Convex integration is verified separately; this test prevents
+// regressions back to Base44 read-check-create/$inc accounting.
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync('base44/functions/stripeWebhook/entry.ts', 'utf8');
-
 const checks = [
-  ['uses the signed event.id for the dedupe key', /eventKey\s*=\s*`stripe:\$\{event\.id\}`/.test(source)],
-  ['checks WebhookEvent before processing', /WebhookEvent\.filter\(\{\s*source:\s*'stripe'[^}]*event_key:\s*eventKey/.test(source)],
-  ['creates a claim before side effects', /WebhookEvent\.create\(\s*\{\s*source:\s*'stripe'/.test(source)],
-  ['rejects duplicates safely', /return Response\.json\(\{\s*received:\s*true,\s*duplicate:\s*true\s*\}\)/.test(source)],
-  ['releases the claim on processing failure', /WebhookEvent\.delete\(claim\.id\)/.test(source)],
-  ['still validates the signature', source.includes("return Response.json({ error: 'Invalid signature' }, { status: 400 });")],
-  ['safe outer error (no raw exception leak)', source.includes("return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });")],
-  ['contribution derived from the authoritative total', /computeContribution\(total,\s*optedIn\)/.test(source)],
-  ['raised_amount increments by the gift, not the total', /\$inc:\s*\{\s*raised_amount:\s*gift/.test(source)],
-  ['confirms the claim via re-read (simultaneous-duplicate winner)', /WebhookEvent\.filter\(\{\s*source:\s*'stripe',\s*event_key:\s*eventKey\s*\},\s*'created_date'/.test(source)],
-  ['loser backs off as a duplicate', /earliest\.id !== claim\.id/.test(source)],
+  ['validates Stripe signature', source.includes("return Response.json({ error: 'Invalid signature' }, { status: 400 });")],
+  ['uses signed event id for recovery identity', /eventKey\s*=\s*`stripe:\$\{event\.id\}`/.test(source)],
+  ['retains explicit financial_applied recovery state', source.includes("state: 'financial_applied'")],
+  ['marks side effects complete only after reconciliation', source.includes("state: 'side_effects_complete'")],
+  ['retains failed state for Stripe retry', source.includes("state: 'failed'")],
+  ['does not delete webhook recovery record on failure', !/WebhookEvent\.delete\(claim\.id\)/.test(source)],
+  ['routes financial value through canonical Convex mutation helper', source.includes('recordCanonicalDonation')],
+  ['sets Base44 campaign totals from canonical result', source.includes('mirrorCanonicalCampaignTotal')],
+  ['repairs Donation mirror by canonical operation id', source.includes('reconcileDonationMirror')],
+  ['repairs Notification mirror by canonical operation id', source.includes('reconcileNotificationMirror')],
+  ['does not directly create Base44 Donation', !/entities\.Donation\.create/.test(source)],
+  ['does not increment Base44 campaign financial counters', !/\$inc\s*:\s*\{[^}]*raised_amount/.test(source)],
+  ['operation key uses provider object type', /stripe:\$\{providerObjectKind\}:\$\{providerObjectId\}/.test(source)],
+  ['initial checkout uses session identity', /providerObjectKind:\s*'session'/.test(source)],
+  ['initial recurring state comes from Stripe metadata', /isRecurring:\s*m\.is_recurring\s*===\s*'true'/.test(source)],
+  ['renewal uses invoice identity', /providerObjectKind:\s*'invoice'/.test(source)],
+  ['renewal is explicitly recurring', /providerObjectKind:\s*'invoice'[\s\S]*?isRecurring:\s*true/.test(source)],
+  ['checks charged amount against server-created metadata', source.includes('Stripe charged amount does not match server-created donation metadata.')],
+  ['safe outer error does not expose raw exception', source.includes("return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });")],
 ];
 
 let failed = 0;
 for (const [name, ok] of checks) {
-  if (!ok) { console.error(`FAIL ${name}`); failed++; } else { console.log(`ok  ${name}`); }
+  if (!ok) { console.error(`FAIL ${name}`); failed++; }
+  else console.log(`ok  ${name}`);
 }
 
-// The claim must be created BEFORE the donation is created (idempotency gate),
-// so a duplicate/concurrent event is rejected before any ledger write.
-const claimIdx = source.indexOf('WebhookEvent.create');
-const donationIdx = source.indexOf('Donation.create');
-if (claimIdx === -1 || donationIdx === -1 || claimIdx > donationIdx) {
-  console.error('FAIL claim is not created before donation creation'); failed++;
-} else { console.log('ok  claim is created before donation creation'); }
-
-if (failed) { console.error(`\n${failed} stripe idempotency test(s) failed.`); process.exit(1); }
-console.log('\nAll stripe idempotency tests passed.');
+if (failed) {
+  console.error(`\n${failed} Stripe financial-integrity contract test(s) failed.`);
+  process.exit(1);
+}
+console.log('\nAll Stripe financial-integrity contract tests passed.');
