@@ -73,13 +73,16 @@ async function applyStripeDonation({
   campaignId,
   metadata,
   providerObjectId,
+  providerObjectKind,
   providerTransactionId,
   amountCharged,
   currency,
-  recurring,
+  isRecurring,
   donorEmail,
 }) {
   if (String(currency || '').toLowerCase() !== 'usd') throw new Error('Stripe currency mismatch.');
+  if (providerObjectKind !== 'session' && providerObjectKind !== 'invoice') throw new Error('Unsupported Stripe financial object.');
+
   const campaign = await sr.entities.Campaign.get(campaignId).catch(() => null);
   if (!campaign) throw new Error('Campaign not found for Stripe donation.');
   if (campaign.status !== 'active') throw new Error('Campaign is not accepting donations.');
@@ -92,9 +95,13 @@ async function applyStripeDonation({
 
   await ensureCanonicalCampaign(sr, campaign);
 
-  const operationKey = recurring
-    ? `stripe:invoice:${providerObjectId}`
-    : `stripe:session:${providerObjectId}`;
+  // Financial identity follows the provider object that represents this
+  // particular charge. The first payment of a recurring donation is still a
+  // Checkout Session; later renewals are invoices. Recurring status is tracked
+  // separately so we never mislabel the first recurring payment just to obtain
+  // the correct idempotency key.
+  const operationKey = `stripe:${providerObjectKind}:${providerObjectId}`;
+  const isRenewal = providerObjectKind === 'invoice';
   const donorName = metadata?.donor_name || 'Anonymous';
   const canonical = await recordCanonicalDonation(sr, {
     operationKey,
@@ -112,8 +119,8 @@ async function applyStripeDonation({
     message: metadata?.message || '',
     paymentMethod: 'stripe',
     paymentVerified: true,
-    source: recurring ? 'stripe_invoice_webhook' : 'stripe_checkout_webhook',
-    isRecurring: recurring,
+    source: isRenewal ? 'stripe_invoice_webhook' : 'stripe_checkout_webhook',
+    isRecurring: !!isRecurring,
   });
 
   await markWebhook(sr, webhookRecord, {
@@ -131,8 +138,8 @@ async function applyStripeDonation({
     processing_fee: processingFee,
     donor_name: donorName,
     message: metadata?.message || '',
-    is_recurring: recurring,
-    ...(recurring ? { recurring_status: 'active' } : {}),
+    is_recurring: !!isRecurring,
+    ...(isRecurring ? { recurring_status: 'active' } : {}),
     ...(metadata?.donor_user_id ? { donor_user_id: metadata.donor_user_id } : {}),
     payment_method: 'stripe',
     payment_verified: true,
@@ -143,10 +150,10 @@ async function applyStripeDonation({
   if (campaign.created_by_id) {
     await reconcileNotificationMirror(sr, canonical.operationId, {
       user_id: campaign.created_by_id,
-      title: recurring ? 'Recurring donation received' : 'New donation received',
-      body: recurring
-        ? `${donorName} renewed $${total.toLocaleString()} to "${campaign.title}"`
-        : `${donorName} donated $${total.toLocaleString()} to "${campaign.title}"`,
+      title: isRenewal ? 'Recurring donation received' : (isRecurring ? 'New recurring donation received' : 'New donation received'),
+      body: isRenewal
+        ? `${donorName} renewed $${total.toLocaleString()} to \"${campaign.title}\"`
+        : `${donorName} donated $${total.toLocaleString()} to \"${campaign.title}\"`,
       type: 'donation',
       link: `/campaign/${campaign.id}`,
       read: false,
@@ -155,12 +162,17 @@ async function applyStripeDonation({
 
   if (canonical.applied) {
     await logAudit(base44, {
-      action: recurring ? 'donation_renewal_confirmed' : 'donation_confirmed',
+      action: isRenewal ? 'donation_renewal_confirmed' : 'donation_confirmed',
       target_type: 'campaign',
       target_id: campaignId,
       detail: `$${total} confirmed via Stripe through canonical ledger`,
       status: 'success',
-      metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: String(providerTransactionId || providerObjectId) },
+      metadata: {
+        canonical_operation_id: String(canonical.operationId),
+        provider_reference: String(providerTransactionId || providerObjectId),
+        provider_object_kind: providerObjectKind,
+        recurring: !!isRecurring,
+      },
     });
   }
 
@@ -231,10 +243,11 @@ export default async function(req) {
           campaignId: m.campaign_id,
           metadata: m,
           providerObjectId: session.id,
+          providerObjectKind: 'session',
           providerTransactionId: session.payment_intent || session.id,
           amountCharged: round2((session.amount_total || 0) / 100),
           currency: session.currency,
-          recurring: false,
+          isRecurring: m.is_recurring === 'true',
           donorEmail: session.customer_details?.email || undefined,
         });
         return Response.json({ received: true });
@@ -253,10 +266,11 @@ export default async function(req) {
             campaignId: sm.campaign_id,
             metadata: sm,
             providerObjectId: invoice.id,
+            providerObjectKind: 'invoice',
             providerTransactionId: invoice.payment_intent || invoice.id,
             amountCharged: round2((invoice.amount_paid ?? invoice.total ?? invoice.amount_due ?? 0) / 100),
             currency: invoice.currency,
-            recurring: true,
+            isRecurring: true,
             donorEmail: invoice.customer_email || undefined,
           });
           return Response.json({ received: true });
