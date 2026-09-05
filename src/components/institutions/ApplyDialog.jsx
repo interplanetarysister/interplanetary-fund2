@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { draftGrantApplication } from "@/lib/creditFreeGenerators";
 import ResponsiveDialog from "@/components/ui/ResponsiveDialog";
 import useUrlDialog from "@/hooks/useUrlDialog";
 import { Button } from "@/components/ui/button";
@@ -28,19 +29,10 @@ export default function ApplyDialog({ opportunity, institution, onApplied }) {
 
   const campaign = campaigns.find((c) => c.id === campaignId);
 
-  const draft = async () => {
+  const draft = () => {
     setDrafting(true);
-    const text = await base44.integrations.Core.InvokeLLM({
-      prompt: `Write a concise, compelling grant application narrative (about 200 words) for this opportunity.
-Opportunity: ${opportunity.title} from ${institution.name}
-Description: ${opportunity.description || "n/a"}
-Eligibility: ${opportunity.eligibility || "n/a"}
-Applying campaign: "${campaign?.title}" — ${campaign?.summary || ""}
-Campaign story: ${(campaign?.story || "").slice(0, 1500)}
-Raised so far: $${campaign?.raised_amount || 0} of $${campaign?.goal_amount || 0} goal.
-Write in first person plural, specific and evidence-based. Return only the narrative text.`,
-    });
-    setNarrative(text);
+    const generated = draftGrantApplication({ opportunity, institution, campaign });
+    setNarrative(generated.draftBody);
     setDrafting(false);
   };
 
@@ -90,11 +82,11 @@ Write in first person plural, specific and evidence-based. Return only the narra
             <div className="flex items-center justify-between">
               <Label>Narrative</Label>
               <Button size="sm" variant="ghost" onClick={draft} disabled={drafting || !campaignId} className="text-primary hover:text-primary/80 h-7">
-                {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} AI draft
+                {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Draft narrative
               </Button>
             </div>
             <Textarea rows={8} value={narrative} onChange={(e) => setNarrative(e.target.value)} placeholder="Why this campaign is a strong fit…" />
-            <p className="text-xs text-stone-400">AI drafts are suggestions — review and edit before submitting.</p>
+            <p className="text-xs text-stone-400">Credit-free drafts are suggestions — review and edit before submitting.</p>
           </div>
           <Button onClick={submit} disabled={saving || !campaignId || !narrative.trim()} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit application"}
