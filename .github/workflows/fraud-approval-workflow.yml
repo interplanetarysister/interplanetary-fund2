@@ -9,6 +9,7 @@ on:
       - "base44/entities/Withdrawal.jsonc"
       - "base44/entities/Campaign.jsonc"
       - "scripts/verify-fraud-approval-workflow.mjs"
+      - "scripts/verify-withdrawal-claim-fencing.mjs"
       - ".github/workflows/fraud-approval-workflow.yml"
   push:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - "base44/entities/Withdrawal.jsonc"
       - "base44/entities/Campaign.jsonc"
       - "scripts/verify-fraud-approval-workflow.mjs"
+      - "scripts/verify-withdrawal-claim-fencing.mjs"
       - ".github/workflows/fraud-approval-workflow.yml"
 
 permissions:
@@ -52,3 +54,4 @@ jobs:
           printf 'Verified exact reviewed SHA: %s\n' "$actual_sha"
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: node scripts/verify-fraud-approval-workflow.mjs
+      - run: node scripts/verify-withdrawal-claim-fencing.mjs
