@@ -1,8 +1,7 @@
 // Application-layer financial mirrors. Convex is the financial authority;
-// Base44 Donation/Notification rows exist so current UI surfaces keep working.
-// Every mirror is keyed by canonical_operation_id and reconciled to exactly one
-// row. This allows replay to repair a crash between the canonical transaction
-// and application side effects without re-applying money.
+// Base44 rows exist so current UI surfaces keep working. Every financial or
+// external-observation mirror is keyed by canonical_operation_id and converges
+// to exactly one row, allowing replay to repair side effects after a crash.
 
 function stableOrder(rows) {
   return [...(rows || [])].sort((a, b) => {
@@ -19,15 +18,9 @@ async function reconcileOne(entity, canonicalOperationId, data) {
 
   let rows = await entity.filter({ canonical_operation_id: key }).catch(() => []);
   let primary = stableOrder(rows)[0] || null;
-  if (!primary) {
-    primary = await entity.create({ ...data, canonical_operation_id: key });
-  } else {
-    await entity.update(primary.id, { ...data, canonical_operation_id: key });
-  }
+  if (!primary) primary = await entity.create({ ...data, canonical_operation_id: key });
+  else await entity.update(primary.id, { ...data, canonical_operation_id: key });
 
-  // A concurrent recovery may have created a second mirror between our first
-  // read and create. Re-read and deterministically retain the oldest row. Both
-  // competing handlers make the same choice, so this converges to one record.
   rows = await entity.filter({ canonical_operation_id: key }).catch(() => []);
   const ordered = stableOrder(rows);
   const keep = ordered[0] || primary;
@@ -43,4 +36,8 @@ export async function reconcileDonationMirror(sr, canonicalOperationId, data) {
 
 export async function reconcileNotificationMirror(sr, canonicalOperationId, data) {
   return reconcileOne(sr.entities.Notification, canonicalOperationId, data);
+}
+
+export async function reconcileInboxMirror(sr, canonicalOperationId, data) {
+  return reconcileOne(sr.entities.InboxItem, canonicalOperationId, data);
 }
