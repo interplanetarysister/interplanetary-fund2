@@ -12,6 +12,7 @@ const targets = [
   'cron_commit_mut',
   'distributedPosts',
 ];
+const mutationPattern = /\b(?:insert|patch|replace|update|delete|upsert|mutate|transaction)\s*\(/i;
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -27,6 +28,7 @@ async function walk(dir) {
 
 const files = await walk(repoRoot);
 const evidence = Object.fromEntries(targets.map((target) => [target, []]));
+const mutationSites = [];
 
 for (const file of files) {
   let text;
@@ -43,6 +45,16 @@ for (const file of files) {
     });
     if (matches.length) evidence[target].push({ path: relative(repoRoot, file), lines: matches });
   }
+  lines.forEach((line, index) => {
+    if (mutationPattern.test(line)) {
+      mutationSites.push({
+        path: relative(repoRoot, file),
+        line: index + 1,
+        text: line.trim().slice(0, 240),
+        mentionsSharedTarget: targets.some((target) => line.includes(target)),
+      });
+    }
+  });
 }
 
 const report = {
@@ -50,8 +62,10 @@ const report = {
   repository: process.env.GITHUB_REPOSITORY ?? 'unknown',
   commit: process.env.GITHUB_SHA ?? 'unknown',
   sourceOnlyEvidence: evidence,
+  mutationSites,
+  sharedTargetMutationSites: mutationSites.filter((site) => site.mentionsSharedTarget),
   unresolvedTargets: targets.filter((target) => evidence[target].length === 0),
-  interpretation: 'Source inspection only. Missing entries are UNKNOWN and must not be treated as proof that deployed Convex functionality is absent. Line numbers are review anchors, not runtime evidence.',
+  interpretation: 'Source inspection only. Missing entries are UNKNOWN and must not be treated as proof that deployed Convex functionality is absent. Mutation-site inventory identifies review anchors; it is not runtime proof, serialization proof, idempotency proof, or Production proof.',
 };
 
 console.log(JSON.stringify(report, null, 2));
