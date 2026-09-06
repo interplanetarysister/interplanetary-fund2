@@ -2,16 +2,16 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
-import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const guard = await assertActiveAccount(base44);
-    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
-    const user = guard.user;
+    const donorGuard = await assertActiveAccountIfSignedIn(base44);
+    if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
+    const donor = donorGuard.donor;
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution } = await req.json();
     const amountCheck = validateDonationAmount(amount);
@@ -31,7 +31,9 @@ export default async function(req) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
 
-    const rl = await checkRateLimit(base44, `createDonationCheckout:${user.id}`, 10, 60);
+    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
+    const rateKey = donor?.id ? `createDonationCheckout:user:${donor.id}` : `createDonationCheckout:ip:${ip}`;
+    const rl = await checkRateLimit(base44, rateKey, 10, 60);
     if (!rl.allowed) {
       return Response.json({ error: 'Too many checkout attempts. Please slow down and try again.' }, { status: 429 });
     }
@@ -47,8 +49,8 @@ export default async function(req) {
     const metadata = {
       base44_app_id: secrets.get('BASE44_APP_ID'),
       campaign_id,
-      donor_user_id: user.id,
-      donor_name: donor_name || 'Anonymous',
+      ...(donor?.id ? { donor_user_id: donor.id } : {}),
+      donor_name: donor_name || donor?.full_name || 'Anonymous',
       message: (message || '').slice(0, 450),
       is_recurring: is_recurring ? 'true' : 'false',
       donation_amount: String(value),
