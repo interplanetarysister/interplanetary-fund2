@@ -12,6 +12,9 @@ assert.match(panel, /base44\.functions\.invoke\(\s*["']requestWithdrawal["']\s*,
 assert.doesNotMatch(panel, /base44\.entities\.Withdrawal\.update\(/);
 assert.match(panel, /base44\.functions\.invoke\(\s*["']fraudControlAction["']/);
 assert.doesNotMatch(panel, /base44\.entities\.Campaign\.update\(/);
+assert.match(withdrawal, /const PLATFORM_FEE_RATE\s*=\s*0\.07/);
+assert.match(withdrawal, /platform_fee:\s*fee/);
+assert.match(withdrawal, /net_amount:\s*net/);
 assert.match(withdrawal, /if\s*\(action\s*===\s*["']approve["']\)[\s\S]*sendPayout\(/);
 assert.match(withdrawal, /id:\s*w.id,\s*status:\s*["']under_review["']/);
 assert.match(withdrawal, /review_action:\s*["']approve["']/);
@@ -43,8 +46,8 @@ assert.match(moderation, /action === ["']pauseCampaign["']|action === ["']restor
 assert.match(moderation, /Campaign\.updateMany\(/);
 assert.match(moderation, /moderated_by_id:\s*user\.id/);
 assert.match(moderation, /moderated_at:\s*now/);
-for (const field of ["owner_user_id", "campaign_id", "gross_amount", "net_amount", "status", "payout_batch_id", "review_note", "processed_at"]) assert.match(withdrawalSchema, new RegExp(`"${field}"`));
-for (const field of ["payout_claim_token", "payout_claimed_at", "review_action", "reviewed_by_id", "reviewed_at"]) assert.match(withdrawalSchema, new RegExp(`"${field}"`));
+for (const field of ["owner_user_id", "campaign_id", "gross_amount", "platform_fee", "net_amount", "status", "payout_batch_id", "review_note", "processed_at"]) assert.match(withdrawalSchema, new RegExp(`"${field}"`));
+for (const field of ["payout_claim_token", "payout_claimed_at", "review_action", "reviewed_by_id", "reviewed_at", "denial_release_operation_id"]) assert.match(withdrawalSchema, new RegExp(`"${field}"`));
 for (const field of ["title", "summary", "story", "goal_amount", "raised_amount", "donor_count", "status", "cover_image_url", "end_date", "location", "location_lat", "location_lng", "cashapp_tag", "ai_profile", "story_versions", "outreach_enabled", "outreach_paused"]) assert.match(campaignSchema, new RegExp(`"${field}"`));
 for (const field of ["active_migration_request_id", "moderated_by_id", "moderation_note", "moderated_at"]) assert.match(campaignSchema, new RegExp(`"${field}"`));
-console.log("Fraud approval, deterministic payout reconciliation, terminal-success provider gating, denial decision ownership, recoverable reservation release, migration claim reconciliation, schema preservation, and campaign moderation verification passed.");
+console.log("Fraud approval, canonical 7% fee, deterministic payout reconciliation, terminal-success provider gating, denial decision ownership, recoverable reservation release, migration claim reconciliation, schema preservation, and campaign moderation verification passed.");
