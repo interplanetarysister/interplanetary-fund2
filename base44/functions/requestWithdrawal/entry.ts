@@ -28,8 +28,10 @@ async function reconcileApprovedPayout(sr, withdrawal) {
   const deterministicBatchId = `IFW_${withdrawal.id}`;
   const payout = await getPayoutBatch(deterministicBatchId);
   if (!payout) return { found: false, finalized: false };
+  const claimToken = withdrawal?.payout_claim_token || '';
+  const predicate = { id: withdrawal.id, status: 'processing', review_action: 'approve', ...(claimToken ? { payout_claim_token: claimToken } : {}) };
   const finalized = await sr.entities.Withdrawal.updateMany(
-    { id: withdrawal.id, status: 'processing', review_action: 'approve' },
+    predicate,
     { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id || deterministicBatchId, processed_at: new Date().toISOString(), review_note: `Payout reconciled from PayPal batch ${payout.payout_batch_id || deterministicBatchId}.` } },
   );
   if (finalized.success && finalized.updated === 1) await clearMigrationClaim(sr, withdrawal);
