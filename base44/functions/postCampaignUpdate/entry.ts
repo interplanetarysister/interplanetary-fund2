@@ -1,7 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
 // When an owner publishes an update, this function:
@@ -44,9 +42,8 @@ const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts,
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const guard = await assertActiveAccount(base44);
-    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
-    const user = guard.user;
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { campaign_id, title, content, media_url, media_type, cross_post } = await req.json();
     if (!content || !content.trim()) return Response.json({ error: 'Update content is required.' }, { status: 400 });
@@ -129,7 +126,7 @@ Return JSON only.`;
               await base44.entities.DistributedPost.create({
                 campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-                status: 'failed', error: 'Publishing failed.', retry_count: 1,
+                status: 'failed', error: e.message, retry_count: 1,
               });
               crosspost.failed++;
             }
@@ -163,22 +160,9 @@ Return JSON only.`;
       notified++;
     }
 
-    await emitActivityEvent(base44, {
-      type: 'campaign_update',
-      actor_user_id: user.id,
-      actor_display_name: user.full_name || 'Campaign owner',
-      campaign_id,
-      campaign_title: campaign.title,
-      campaign_image_url: campaign.cover_image_url || undefined,
-      body: title || content.slice(0, 140),
-      link: `/campaign/${campaign_id}`,
-      visibility: 'public',
-      metadata: { update_id: update.id },
-    });
-
     return Response.json({ update, crosspost, followers_notified: notified });
   } catch (error) {
     console.error('postCampaignUpdate error:', error.message);
-    return Response.json({ error: 'Unable to publish your update. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

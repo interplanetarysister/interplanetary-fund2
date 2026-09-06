@@ -1,6 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -16,10 +15,6 @@ export default async function(req) {
     const sr = base44.asServiceRole;
     const now = new Date();
     const report = { published: 0, awaiting_approval: 0, retried: 0, failed: 0, stale_flagged: 0 };
-    // Centralized access gate: auto-publish only when social publishing is
-    // healthy at the registry level. When disabled, due posts fall back to
-    // pending_approval (the existing non-auto path) instead of auto-posting.
-    const access = await assertPlatformAccess(sr, 'social_publish');
 
     // --- Due scheduled posts + failed retries ---
     const scheduled = await sr.entities.DistributedPost.filter({ status: 'scheduled' }, 'scheduled_for', 100);
@@ -38,14 +33,7 @@ export default async function(req) {
       }
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
-      const campaign = post.campaign_id
-        ? await sr.entities.Campaign.get(post.campaign_id).catch(() => null)
-        : null;
-      const ownerUserId = campaign?.created_by_id || post.created_by_id;
-      const obo = ownerUserId
-        ? await assertOboGrant(sr, 'platform_outreach_agent', ownerUserId, 'social_publish')
-        : { ok: false, reason: 'post has no campaign-owner identity for OBO authorization' };
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok && obo.ok) {
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection)) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -71,14 +59,8 @@ export default async function(req) {
           } else report.retried++;
         }
       } else if (post.status === 'scheduled') {
-        // Ask/draft mode, no direct API, disabled registry access, or no OBO grant —
-        // hand back to the owner instead of allowing an automated external side effect.
-        await sr.entities.DistributedPost.update(post.id, {
-          status: 'pending_approval',
-          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok && !obo.ok
-            ? { error: `Automatic publishing blocked: ${obo.reason}` }
-            : {}),
-        });
+        // Ask/draft mode or no direct API — hand back to the owner instead of auto-posting.
+        await sr.entities.DistributedPost.update(post.id, { status: 'pending_approval' });
         await sr.entities.Notification.create({
           user_id: post.created_by_id,
           title: 'Scheduled post is ready',
@@ -107,6 +89,6 @@ export default async function(req) {
     return Response.json(report);
   } catch (error) {
     console.error('syncConnections error:', error.message);
-    return Response.json({ error: 'Synchronization encountered a problem and could not finish.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

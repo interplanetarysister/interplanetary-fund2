@@ -22,14 +22,9 @@ export default async function(req) {
       const m = members && members[0];
       if (!m) return Response.json({ error: 'You are not a member of this community.' }, { status: 400 });
       await base44.entities.CommunityMember.delete(m.id);
-      // Atomic decrement — avoids the read-modify-write race on concurrent
-      // leaves. The member-existence check above prevents going below zero
-      // in normal operation; one member leaving = one decrement.
-      await sr.entities.Community.updateMany(
-        { id: community_id },
-        { $inc: { member_count: -1 } }
-      );
-      return Response.json({ ok: true });
+      const count = Math.max(0, (community.member_count || 1) - 1);
+      await sr.entities.Community.update(community_id, { member_count: count });
+      return Response.json({ ok: true, member_count: count });
     }
 
     // join (default)
@@ -41,14 +36,11 @@ export default async function(req) {
       user_name: user.full_name || user.email,
       role: 'member',
     });
-    // Atomic increment — avoids the read-modify-write race on concurrent joins.
-    await sr.entities.Community.updateMany(
-      { id: community_id },
-      { $inc: { member_count: 1 } }
-    );
-    return Response.json({ ok: true });
+    const count = (community.member_count || 0) + 1;
+    await sr.entities.Community.update(community_id, { member_count: count });
+    return Response.json({ ok: true, member_count: count });
   } catch (error) {
     console.error('communityMembership error:', error.message);
-    return Response.json({ error: 'Unable to update your community membership. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

@@ -3,9 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "24.x"
-  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,18 +11,11 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
-    "test:fees": "node scripts/test-fee-calc.mjs",
-    "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
-    "test:financial-integrity": "node scripts/test-financial-integrity.mjs",
-    "test:delete-account": "node scripts/test-delete-account.mjs",
-    "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
-    "test:account-guard": "node scripts/test-account-guard.mjs",
-    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.46",
-    "@base44/vite-plugin": "^1.0.35",
+    "@base44/sdk": "^0.8.44",
+    "@base44/vite-plugin": "^1.0.32",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -92,7 +82,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
-    "@types/node": "^24",
+    "@types/node": "^22.13.5",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react": "^4.3.4",

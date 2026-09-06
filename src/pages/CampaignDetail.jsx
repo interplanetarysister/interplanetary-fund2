@@ -33,15 +33,15 @@ export default function CampaignDetail() {
   const [related, setRelated] = useState([]);
 
   const load = useCallback(async () => {
-    const [c, u, dRes] = await Promise.all([
+    const [c, u, d] = await Promise.all([
       base44.entities.Campaign.filter({ id }),
       base44.entities.CampaignUpdate.filter({ campaign_id: id }, "-created_date"),
-      base44.functions.invoke("getCampaignDonations", { campaign_id: id }),
+      base44.entities.Donation.filter({ campaign_id: id }, "-created_date", 10),
     ]);
     if (!c.length) { setNotFound(true); return; }
     setCampaign(c[0]);
     setUpdates(u);
-    setDonations((dRes.data && dRes.data.donations) ? dRes.data.donations.slice(0, 10) : []);
+    setDonations(d);
     const rel = await base44.entities.Campaign.filter({ category: c[0].category, status: "active" }, "-raised_amount", 6);
     setRelated(rel.filter((r) => r.id !== id).slice(0, 3));
   }, [id]);
@@ -55,10 +55,6 @@ export default function CampaignDetail() {
   if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const isOwner = user && campaign.created_by_id === user.id;
-  // Embed/share controls are a management capability — visible only to the
-  // authenticated campaign owner or an admin (authorized manager). Never shown
-  // on the public donation experience.
-  const canManage = !!user && (campaign.created_by_id === user.id || user.role === "admin");
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
@@ -105,7 +101,7 @@ export default function CampaignDetail() {
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
           <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
 
-          {canManage && <ShareCampaignKit campaign={campaign} />}
+          <ShareCampaignKit campaign={campaign} />
 
           {isOwner && <CrossPlatformTotals campaign={campaign} />}
 
@@ -113,8 +109,8 @@ export default function CampaignDetail() {
             <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
               <h3 className="font-display text-lg text-stone-900 mb-3">Recent supporters</h3>
               <ul className="space-y-3">
-                {donations.map((d, i) => (
-                  <li key={i} className="text-sm">
+                {donations.map((d) => (
+                  <li key={d.id} className="text-sm">
                     <p className="text-stone-800"><span className="font-medium">{d.donor_name || "Anonymous"}</span> · <span className="text-primary font-semibold">${d.amount.toLocaleString()}</span>{d.is_recurring && <span className="text-stone-400 text-xs"> /mo</span>}</p>
                     {d.message && <p className="text-stone-500 text-xs mt-0.5">"{d.message}"</p>}
                   </li>

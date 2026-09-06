@@ -1,87 +1,49 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
-import { checkRateLimit } from '../../shared/rateLimit.ts';
-import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
-import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const donorGuard = await assertActiveAccountIfSignedIn(base44);
-    if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
-    const donor = donorGuard.donor;
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution } = await req.json();
-    const amountCheck = validateDonationAmount(amount);
-    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
-    if (!campaign_id || !origin) return Response.json({ error: 'Invalid donation request' }, { status: 400 });
-
+    const { campaign_id, amount, donor_name, message, is_recurring, origin } = await req.json();
     const value = Number(amount);
-    const processing = computeProcessingFee(value);
-    const contribution = computeContribution(value, !!platform_contribution);
-    const totalCharge = round2(value + processing);
-
-    let originUrl;
-    try { originUrl = new URL(origin); } catch (_) {
-      return Response.json({ error: 'Invalid donation request' }, { status: 400 });
-    }
-    if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
+    if (!campaign_id || !value || value <= 0 || !origin) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
 
-    const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
-    const rateKey = donor?.id ? `createDonationCheckout:user:${donor.id}` : `createDonationCheckout:ip:${ip}`;
-    const rl = await checkRateLimit(base44, rateKey, 10, 60);
-    if (!rl.allowed) {
-      return Response.json({ error: 'Too many checkout attempts. Please slow down and try again.' }, { status: 429 });
-    }
-
-    const campaign = await base44.asServiceRole.entities.Campaign.get(campaign_id).catch(() => null);
+    const campaign = await base44.entities.Campaign.get(campaign_id);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
-    if (campaign.status !== 'active') return Response.json({ error: 'This campaign is not accepting donations.' }, { status: 400 });
-
-    // Fail closed before creating a provider payment that cannot be reconciled
-    // to the canonical financial backend.
-    await ensureCanonicalCampaign(base44.asServiceRole, campaign);
-
-    const metadata = {
-      base44_app_id: secrets.get('BASE44_APP_ID'),
-      campaign_id,
-      ...(donor?.id ? { donor_user_id: donor.id } : {}),
-      donor_name: donor_name || donor?.full_name || 'Anonymous',
-      message: (message || '').slice(0, 450),
-      is_recurring: is_recurring ? 'true' : 'false',
-      donation_amount: String(value),
-      processing_fee: String(processing),
-      platform_contribution_amount: String(contribution),
-    };
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
     const session = await stripe.checkout.sessions.create({
       mode: is_recurring ? 'subscription' : 'payment',
-      line_items: is_recurring ? [{
+      line_items: [{
         quantity: 1,
         price_data: {
           currency: 'usd',
-          unit_amount: Math.round(totalCharge * 100),
+          unit_amount: Math.round(value * 100),
           product_data: { name: `Donation to ${campaign.title}` },
-          recurring: { interval: 'month' },
+          ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
         },
-      }] : [
-        { quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(value * 100), product_data: { name: `Donation to ${campaign.title}` } } },
-        { quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(processing * 100), product_data: { name: 'Processing fee (Stripe)' } } },
-      ],
-      success_url: `${originUrl.origin}/campaign/${campaign_id}?donation=success`,
-      cancel_url: `${originUrl.origin}/campaign/${campaign_id}`,
-      metadata,
-      ...(is_recurring ? { subscription_data: { metadata } } : {}),
+      }],
+      success_url: `${origin}/campaign/${campaign_id}?donation=success`,
+      cancel_url: `${origin}/campaign/${campaign_id}`,
+      metadata: {
+        base44_app_id: secrets.get('BASE44_APP_ID'),
+        campaign_id,
+        donor_user_id: user.id,
+        donor_name: donor_name || 'Anonymous',
+        message: (message || '').slice(0, 450),
+        is_recurring: is_recurring ? 'true' : 'false',
+      },
     });
 
     return Response.json({ url: session.url });
   } catch (error) {
-    console.error('createDonationCheckout error:', error?.message || error);
-    return Response.json({ error: 'Could not start checkout safely. Please try again.' }, { status: 503 });
+    console.error('createDonationCheckout error:', error.message);
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2, Plug, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -9,7 +9,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
 import { hapticTap } from "@/lib/haptics";
 import LegalFooter from "@/components/LegalFooter";
-import ErrorBoundary from "@/components/ErrorBoundary";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -17,7 +16,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/facebook": "Facebook Outreach", "/connect": "Connect AI Assistant", "/admin/external-accounts": "External Accounts", "/admin/integrations": "Integrations",
+  "/facebook": "Facebook Outreach",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -28,7 +27,7 @@ function pageTitle(pathname) {
 }
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/globe", label: "Global Globe", icon: Globe2 },
   { to: "/giving", label: "My Giving", icon: HeartHandshake },
@@ -39,8 +38,6 @@ const navItems = [
   { to: "/agents", label: "AI Agents", icon: Bot },
   { to: "/ops", label: "Ops Center", icon: Satellite },
   { to: "/connections", label: "Connections", icon: Link2 },
-  { to: "/admin/external-accounts", label: "External Accounts", icon: Link2 },
-  { to: "/admin/integrations", label: "Integrations", icon: ShieldCheck },
   { to: "/community", label: "Community", icon: Users },
   { to: "/institutions", label: "Institutions", icon: Building2 },
   { to: "/analytics", label: "Command Center", icon: BarChart3 },
@@ -48,14 +45,13 @@ const navItems = [
   { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
   { to: "/platform", label: "Platform", icon: Server },
   { to: "/facebook", label: "Facebook Outreach", icon: Share2 },
-  { to: "/connect", label: "Connect AI Assistant", icon: Plug },
   { to: "/create", label: "New Campaign", icon: PlusCircle },
 ];
 
 // One-handed mobile navigation. AI Assistant surfaces Mission Control — the
 // platform's central intelligence hub — under its most user-friendly label.
 const bottomNavItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
   { to: "/mission", label: "AI Assistant", icon: Sparkles },
   { to: "/notifications", label: "Alerts", icon: Bell },
@@ -68,7 +64,7 @@ export default function Layout() {
   const navigate = useNavigate();
   // Bottom-tab root views show the brand mark (no Back button); deep child
   // pages (e.g. a campaign detail) get the ChevronLeft back affordance.
-  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/mission", "/notifications", "/profile"];
+  const TAB_ROOTS = ["/", "/discover", "/mission", "/notifications", "/profile"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
@@ -78,28 +74,20 @@ export default function Layout() {
   // Which bottom tab each section of the app belongs to, so a campaign,
   // community, or institution page highlights its own tab instead of Dashboard.
   const TAB_SECTIONS = {
-    "/dashboard": ["/dashboard"],
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
     "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
     "/notifications": ["/notifications", "/inbox", "/communications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/connect", "/admin/external-accounts", "/admin/integrations"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";
-    if (p === "/dashboard") return "/dashboard";
     const hit = Object.entries(TAB_SECTIONS).find(([, prefixes]) =>
       prefixes.some((pre) => p === pre || p.startsWith(pre + "/"))
     );
     return hit ? hit[0] : null;
   };
-  const activeTab = useRef(owningRoot(pathname) || "/dashboard");
-  // Track in-app navigation depth so the Back button reliably returns to a
-  // sensible app screen instead of leaving the app on a direct deep link
-  // (window.history.length is unreliable for this — the cause of the
-  // intermittent Back-button failure).
-  const navDepth = useRef(0);
+  const activeTab = useRef(owningRoot(pathname) || "/");
   useEffect(() => {
-    navDepth.current += 1;
     const root = owningRoot(pathname);
     if (root) activeTab.current = root;
     tabStacks.current[activeTab.current] = pathname;
@@ -117,25 +105,9 @@ export default function Layout() {
     navigate(tabStacks.current[root] || root);
   };
   const isTabActive = (root) =>
-    root === "/dashboard"
-      ? pathname === "/dashboard" || activeTab.current === "/dashboard"
+    root === "/"
+      ? pathname === "/" || activeTab.current === "/"
       : pathname === root || pathname.startsWith(root + "/") || activeTab.current === root;
-
-  // Back button: if there's real history, go back; otherwise fall back home so
-  // the button always does something (e.g. when a deep page was opened
-  // directly from a shared link with no prior app navigation).
-  const goBack = () => {
-    if (navDepth.current > 1) navigate(-1);
-    else navigate(owningRoot(pathname) || "/dashboard");
-  };
-
-  // Close the mobile menu on Escape for keyboard users.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
 
   const nav = (
     <nav className="flex flex-col gap-1 px-3">
@@ -183,7 +155,7 @@ export default function Layout() {
           </Link>
         ) : (
           <div className="flex items-center gap-1 min-w-0">
-            <button onClick={goBack} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
+            <button onClick={() => navigate(-1)} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
               <ChevronLeft className="w-6 h-6" />
             </button>
             <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>
@@ -191,7 +163,7 @@ export default function Layout() {
         )}
         <div className="flex items-center gap-1 shrink-0">
           <NotificationBell />
-          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
+          <button onClick={() => setOpen(!open)} className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -200,7 +172,7 @@ export default function Layout() {
       {open && (
         <>
           <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
+          <div className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
         </>
       )}
 
@@ -236,9 +208,7 @@ export default function Layout() {
             exit={{ opacity: 0, x: "100%" }}
             transition={{ duration: 0.25, ease: "easeOut" }}
           >
-            <ErrorBoundary>
-              <Outlet />
-            </ErrorBoundary>
+            <Outlet />
           </motion.div>
         </AnimatePresence>
         <div className="md:block hidden"><LegalFooter /></div>

@@ -11,7 +11,6 @@ import ScrollToTop from './components/ScrollToTop';
 // Add page imports here
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { Navigate } from 'react-router-dom';
-import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -43,11 +42,6 @@ import EmbedCampaign from './pages/EmbedCampaign';
 import Agents from './pages/Agents';
 import OpsCenter from './pages/OpsCenter';
 import FacebookGroups from './pages/FacebookGroups';
-import OAuthConsent from './pages/OAuthConsent';
-import Connect from './pages/Connect';
-import ExternalAccounts from './pages/ExternalAccounts';
-import IntegrationsAdmin from './pages/IntegrationsAdmin';
-import BrandLogo from "@/components/brand/BrandLogo";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -55,8 +49,8 @@ const AuthenticatedApp = () => {
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <BrandLogo size="lg" showName={false} className="animate-pulse" />
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -82,26 +76,23 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/globe" element={<GlobalGlobe />} />
       <Route path="/embed/campaign/:id" element={<EmbedCampaign />} />
-      <Route path="/oauth/consent" element={<OAuthConsent />} />
-      {/* Public homepage — marketing/About, open to everyone including guests. */}
-      <Route path="/" element={<Home />} />
-      {/* Public browsing — guests can discover campaigns, open a campaign, and
-          view the community feed without signing in. */}
+      {/* Public campaign page — anyone arriving from a shared link can read the
+          story and donate without signing in. */}
       <Route element={<Layout />}>
-        <Route path="/discover" element={<Discover />} />
         <Route path="/campaign/:id" element={<CampaignDetail />} />
-        <Route path="/community" element={<Community />} />
-        <Route path="/community/:id" element={<CommunityDetail />} />
       </Route>
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         {/* Full-screen onboarding experience, outside the Layout chrome */}
         <Route path="/onboarding" element={<Onboarding />} />
         <Route element={<Layout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/discover" element={<Discover />} />
           <Route path="/create" element={<CreateCampaign />} />
           <Route path="/giving" element={<MyGiving />} />
           <Route path="/communications" element={<Communications />} />
           <Route path="/mission" element={<MissionControlPage />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/community/:id" element={<CommunityDetail />} />
           <Route path="/institutions" element={<Institutions />} />
           <Route path="/institutions/:id" element={<InstitutionDetail />} />
           <Route path="/profile" element={<Profile />} />
@@ -116,9 +107,6 @@ const AuthenticatedApp = () => {
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/platform" element={<Platform />} />
           <Route path="/facebook" element={<FacebookGroups />} />
-          <Route path="/connect" element={<Connect />} />
-          <Route path="/admin/external-accounts" element={<ExternalAccounts />} />
-          <Route path="/admin/integrations" element={<IntegrationsAdmin />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

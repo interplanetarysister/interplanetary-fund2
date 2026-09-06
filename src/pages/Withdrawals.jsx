@@ -8,7 +8,6 @@ import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { useToast } from "@/components/ui/use-toast";
 import WithdrawalDialog from "@/components/withdrawals/WithdrawalDialog";
 import { useSearchParams } from "react-router-dom";
-import PageError from "@/components/PageError";
 
 const CLEARING_DAYS = 7;
 const money = (n) => (n || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
@@ -29,7 +28,6 @@ export default function Withdrawals() {
   const [history, setHistory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
   // Android back button dismisses it rather than leaving the page.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -41,35 +39,29 @@ export default function Withdrawals() {
   };
 
   const load = async () => {
-    try {
-      const me = await base44.auth.me();
-      setUser(me);
-      const all = await base44.entities.Campaign.filter({});
-      const owned = (all || []).filter((c) => c.created_by_id === me.id);
-      const cutoff = Date.now() - CLEARING_DAYS * 86400000;
-      const enriched = [];
-      for (const c of owned) {
-        const dRes = await base44.functions.invoke("getCampaignDonations", { campaign_id: c.id });
-      const donations = (dRes.data && dRes.data.donations) || [];
-        const avail = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() <= cutoff).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        const clearing = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() > cutoff).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        const withdrawn = donations.filter((d) => d.withdrawal_id).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        enriched.push({ ...c, available: Math.round(avail * 100) / 100, inClearing: Math.round(clearing * 100) / 100, withdrawn: Math.round(withdrawn * 100) / 100 });
-      }
-      setCampaigns(enriched);
-
-      const w = await base44.entities.Withdrawal.filter({ owner_user_id: me.id });
-      setHistory((w || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
-
-      if (me.role === "admin") {
-        const rq = await base44.entities.Withdrawal.filter({ status: "under_review" });
-        setReviewQueue(rq || []);
-      }
-    } catch (e) {
-      setError(e.message || "We couldn't load your withdrawals.");
-    } finally {
-      setLoading(false);
+    const me = await base44.auth.me();
+    setUser(me);
+    const all = await base44.entities.Campaign.filter({});
+    const owned = (all || []).filter((c) => c.created_by_id === me.id);
+    const cutoff = Date.now() - CLEARING_DAYS * 86400000;
+    const enriched = [];
+    for (const c of owned) {
+      const donations = await base44.entities.Donation.filter({ campaign_id: c.id });
+      const avail = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() <= cutoff).reduce((s, d) => s + (d.amount || 0), 0);
+      const clearing = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() > cutoff).reduce((s, d) => s + (d.amount || 0), 0);
+      const withdrawn = donations.filter((d) => d.withdrawal_id).reduce((s, d) => s + (d.amount || 0), 0);
+      enriched.push({ ...c, available: Math.round(avail * 100) / 100, inClearing: Math.round(clearing * 100) / 100, withdrawn: Math.round(withdrawn * 100) / 100 });
     }
+    setCampaigns(enriched);
+
+    const w = await base44.entities.Withdrawal.filter({ owner_user_id: me.id });
+    setHistory((w || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+
+    if (me.role === "admin") {
+      const rq = await base44.entities.Withdrawal.filter({ status: "under_review" });
+      setReviewQueue(rq || []);
+    }
+    setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -85,9 +77,6 @@ export default function Withdrawals() {
     }
   };
 
-  if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} /></div>;
-  }
   if (loading) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
@@ -122,7 +111,7 @@ export default function Withdrawals() {
 
         <div className="flex items-start gap-2 text-xs text-stone-600 bg-white rounded-xl border border-stone-200/70 p-3">
           <ShieldCheck className="w-4 h-4 mt-0.5 text-cyan-600 shrink-0" />
-          <p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p>
+          <p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and an 8% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p>
         </div>
       </header>
 

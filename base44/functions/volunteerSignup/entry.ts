@@ -27,11 +27,7 @@ export default async function(req) {
       user_id: user.id,
       user_name: user.full_name || user.email,
     });
-    // Atomic increment — avoids the read-modify-write race on concurrent signups.
-    await sr.entities.VolunteerOpportunity.updateMany(
-      { id: opportunity_id },
-      { $inc: { volunteer_count: 1 } }
-    );
+    await sr.entities.VolunteerOpportunity.update(opportunity_id, { volunteer_count: (opp.volunteer_count || 0) + 1 });
 
     if (opp.created_by_id && opp.created_by_id !== user.id) {
       await sr.entities.Notification.create({
@@ -45,6 +41,6 @@ export default async function(req) {
     return Response.json({ signup });
   } catch (error) {
     console.error('volunteerSignup error:', error.message);
-    return Response.json({ error: 'Unable to sign you up. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

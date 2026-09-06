@@ -49,13 +49,7 @@ export default async function(req) {
       if (campaign.outreach_paused) { processed.push({ id: campaign.id, skipped: 'paused' }); continue; }
 
       const owner = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
-      // Skip campaigns whose owner account is revoked (pending deletion, disabled,
-      // or already gone) so the agent never works on behalf of a deactivated user.
-      if (!owner || owner.account_deletion_pending || (owner.account_status && owner.account_status !== 'active')) {
-        processed.push({ id: campaign.id, skipped: 'owner account unavailable' });
-        continue;
-      }
-      if (owner.subscription_status !== 'active' && owner.subscription_status !== 'trialing') {
+      if (!owner || (owner.subscription_status !== 'active' && owner.subscription_status !== 'trialing')) {
         processed.push({ id: campaign.id, skipped: 'no active subscription' });
         continue;
       }
@@ -147,6 +141,6 @@ ${context}`;
     return Response.json({ processed });
   } catch (error) {
     console.error('runOutreachAgent error:', error.message);
-    return Response.json({ error: 'The Outreach Agent hit a problem and could not finish this run.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

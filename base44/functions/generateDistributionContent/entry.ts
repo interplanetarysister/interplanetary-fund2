@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // AI Campaign Distribution Engine — generates platform-tailored post content
 // for each connected social AND crowdfunding destination (never identical
@@ -33,21 +32,11 @@ const PLATFORM_RULES = {
   custom: 'Custom site update: general campaign update, gratitude and progress, 2-3 paragraphs.',
 };
 
-// Canonical PayPal donate link — matches src/lib/paypalLink.js and every
-// Interplanetary Fund repo. Appended to social posts so a give link travels
-// with the content. Business: interplanetarysister@gmail.com.
-const BUSINESS_EMAIL = 'interplanetarysister@gmail.com';
-function generateDonationBlock(campaignTitle) {
-  const link = `https://www.paypal.com/donate/?cmd=_donations&business=${encodeURIComponent(BUSINESS_EMAIL)}&item_name=${encodeURIComponent(`${campaignTitle} - Interplanetary Fund`)}&currency_code=USD`;
-  return `\n\n💛 Support this campaign: ${link}\nEvery donation makes a difference. Thank you! 🙏`;
-}
-
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const guard = await assertActiveAccount(base44);
-    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
-    const user = guard.user;
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { campaign_id, connection_ids } = await req.json();
     if (!campaign_id || !Array.isArray(connection_ids) || !connection_ids.length) {
@@ -111,18 +100,12 @@ Return JSON only.`;
     for (const post of (res.posts || [])) {
       const conn = targets.find((c) => c.platform === post.platform);
       if (!conn || !post.content) continue;
-      // Append the canonical PayPal donation block to social posts so a
-      // clickable give link travels with the content even when copy-pasted.
-      // (Skipped for crowdfunding update posts, which link to the campaign page.)
-      const content = conn.kind === 'social'
-        ? post.content + generateDonationBlock(campaign.title)
-        : post.content;
       const record = await base44.entities.DistributedPost.create({
         campaign_id,
         campaign_title: campaign.title,
         connection_id: conn.id,
         platform: conn.platform,
-        content,
+        content: post.content,
         hashtags: post.hashtags || [],
         status: conn.automation_mode === 'draft' ? 'draft' : 'pending_approval',
       });
@@ -131,6 +114,6 @@ Return JSON only.`;
     return Response.json({ posts: created });
   } catch (error) {
     console.error('generateDistributionContent error:', error.message);
-    return Response.json({ error: 'Unable to generate distribution content. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

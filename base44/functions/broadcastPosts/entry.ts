@@ -1,7 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -11,9 +9,8 @@ import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const guard = await assertActiveAccount(base44);
-    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
-    const user = guard.user;
+    const user = await base44.auth.me();
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { campaign_id } = await req.json();
     if (!campaign_id) return Response.json({ error: 'Missing campaign_id' }, { status: 400 });
@@ -24,8 +21,6 @@ export default async function(req) {
       return Response.json({ error: 'Only the campaign owner can broadcast.' }, { status: 403 });
     }
 
-    const access = await assertPlatformAccess(base44.asServiceRole, 'social_publish');
-    if (!access.ok) return Response.json({ error: `Social publishing is currently disabled: ${access.reason}` }, { status: 403 });
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const pending = posts.filter((p) =>
       ['pending_approval', 'draft', 'approved', 'failed'].includes(p.status)
@@ -74,7 +69,7 @@ export default async function(req) {
       } catch (pubError) {
         const updated = await base44.entities.DistributedPost.update(post.id, {
           status: 'failed',
-          error: 'Publishing failed.',
+          error: pubError.message,
           retry_count: (post.retry_count || 0) + 1,
         });
         results.failed++;
@@ -85,6 +80,6 @@ export default async function(req) {
     return Response.json(results);
   } catch (error) {
     console.error('broadcastPosts error:', error.message);
-    return Response.json({ error: 'Unable to broadcast your posts. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

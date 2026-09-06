@@ -1,0 +1,51 @@
+name: Convex Source Reconciliation
+
+on:
+  pull_request:
+    paths:
+      - "scripts/reconcile-convex-automation-source.mjs"
+      - "convex/**"
+      - "base44/functions/**"
+      - "base44/entities/**"
+      - ".github/workflows/convex-source-reconciliation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/reconcile-convex-automation-source.mjs"
+      - "convex/**"
+      - "base44/functions/**"
+      - "base44/entities/**"
+      - ".github/workflows/convex-source-reconciliation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: convex-source-reconciliation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REVIEWED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the reviewed commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.REVIEWED_SHA }}
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Confirm exact-head checkout
+        run: |
+          actual_sha="$(git rev-parse HEAD)"
+          test "$actual_sha" = "$REVIEWED_SHA"
+          printf 'Verified exact reviewed SHA: %s\n' "$actual_sha"
+      - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - name: Emit source-only reconciliation report
+        run: node scripts/reconcile-convex-automation-source.mjs

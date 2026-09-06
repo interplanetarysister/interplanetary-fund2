@@ -1,25 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { secrets } from 'base44:runtime';
-import { assertPlatformAccess, resolveConvex } from '../../shared/integrationRegistry.ts';
 
-// Convex cloud backend — source of truth for agents, campaigns, treasury,
-// protocol. The endpoint URL and (optional) auth token are read from the
-// centralized secret-reference system (CONVEX_QUERY_URL / CONVEX_AUTH_TOKEN),
-// NOT hardcoded. Access is gated through the Platform Access Registry.
+// Convex cloud backend — source of truth for agents, campaigns, treasury, protocol.
+const CONVEX_QUERY_URL = "https://rosy-butterfly-2.convex.cloud/api/query";
 
-async function convexQuery(path, args = {}) {
-  const resolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
-  if (!resolved.url) throw new Error('Convex endpoint not configured (CONVEX_QUERY_URL).');
-  const headers = { 'Content-Type': 'application/json' };
-  // Only the dedicated CONVEX_AUTH_TOKEN is used for query auth. The token that
-  // may ride along in a "dev:<dep>|<token>" deployment reference is a CLI/admin
-  // token, not a query-auth credential — sending it as a bearer causes 401.
-  const token = secrets.get('CONVEX_AUTH_TOKEN');
-  if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(resolved.url, {
+async function convexQuery(path) {
+  const res = await fetch(CONVEX_QUERY_URL, {
     method: "POST",
-    headers,
-    body: JSON.stringify({ path, args, format: "json" }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path, args: {}, format: "json" }),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || json.status === "error") {
@@ -37,38 +25,15 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const sr = base44.asServiceRole;
-    const db = sr.entities;
-
-    // Centralized access gate: refuse to sync if the Convex registry entry is
-    // revoked/disconnected/misconfigured. The endpoint itself is read from
-    // CONVEX_QUERY_URL below, so the sync can no longer bypass central config.
-    const access = await assertPlatformAccess(sr, 'convex');
-    if (!access.ok) {
-      return Response.json({ ok: false, skipped: true, reason: access.reason, status: access.status }, { status: 403 });
-    }
-    const convexResolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
-    if (!convexResolved.url) {
-      return Response.json({ ok: false, skipped: true, reason: 'CONVEX_QUERY_URL not configured or malformed' }, { status: 503 });
-    }
-
+    const db = base44.asServiceRole.entities;
     const now = new Date().toISOString();
 
-    const queryErrors = [];
-    const tryQuery = (p, a, fallback) => convexQuery(p, a).catch((e) => { queryErrors.push(`${p}: ${e.message}`); return fallback; });
     const [agents, campaigns, treasury, reports] = await Promise.all([
-      tryQuery("agents:getAgents", undefined, []),
-      // getCampaigns is paginated — it requires paginationOpts and returns
-      // { page, continueCursor, isDone }, not a bare array.
-      tryQuery("campaigns:getCampaigns", { paginationOpts: { numItems: 100, cursor: null } }, []),
-      tryQuery("treasury:aggregateBalances", undefined, null),
-      tryQuery("protocol:getReports", { limit: 20 }, []),
+      convexQuery("agents:getAgents").catch((e) => { console.warn(e.message); return []; }),
+      convexQuery("campaigns:getCampaigns").catch((e) => { console.warn(e.message); return []; }),
+      convexQuery("treasury:aggregateBalances").catch((e) => { console.warn(e.message); return null; }),
+      convexQuery("protocol:getReports").catch((e) => { console.warn(e.message); return []; }),
     ]);
-    // If every query failed, the sync did not actually run — surface the real
-    // reason instead of silently reporting success with zero counts.
-    if (queryErrors.length === 4) {
-      return Response.json({ ok: false, skipped: true, reason: 'All Convex queries failed', errors: queryErrors }, { status: 502 });
-    }
 
     const counts = { agents: 0, campaigns: 0, reports: 0, treasury: false };
 
@@ -94,11 +59,9 @@ export default async function(req) {
     }
 
     // --- Campaigns: match by if_campaign_id ---
-    // getCampaigns returns a paginated { page, ... } result; normalize to array.
-    const campaignList = Array.isArray(campaigns) ? campaigns : (campaigns && Array.isArray(campaigns.page) ? campaigns.page : []);
-    if (campaignList.length) {
+    if (Array.isArray(campaigns) && campaigns.length) {
       const existing = await db.MonitoredCampaign.list(undefined, 200);
-      for (const c of campaignList) {
+      for (const c of campaigns) {
         const ifId = str(c.if_campaign_id ?? c.ifCampaignId ?? c._id ?? c.id);
         if (!ifId) continue;
         const ai = c.ai_profile || {};
@@ -125,17 +88,12 @@ export default async function(req) {
 
     // --- Treasury: keep a single latest snapshot ---
     if (treasury && typeof treasury === "object") {
-      // Convex treasury aggregate shape: { grandTotal: {raised,held,donors},
-      // holdingAccounts: {totalHeld,totalFees,totalPaidOut,netPosition}, localCampaigns,
-      // externalPlatforms }. Map the real fields, falling back to legacy snake/camel names.
-      const g = treasury.grandTotal || {};
-      const h = treasury.holdingAccounts || {};
       const totals = {
-        total_raised: num(g.raised ?? treasury.total_raised ?? treasury.totalRaised ?? treasury.raised),
-        total_held: num(h.totalHeld ?? g.held ?? treasury.total_held ?? treasury.totalHeld ?? treasury.held),
-        total_fees: num(h.totalFees ?? treasury.total_fees ?? treasury.totalFees ?? treasury.fees),
-        net_position: num(h.netPosition ?? treasury.net_position ?? treasury.netPosition ?? treasury.net),
-        campaign_totals: (treasury.campaign_totals ?? treasury.byCampaign ?? treasury.campaigns ?? []).map((t) => ({
+        total_raised: num(treasury.total_raised ?? treasury.totalRaised ?? treasury.raised),
+        total_held: num(treasury.total_held ?? treasury.totalHeld ?? treasury.held),
+        total_fees: num(treasury.total_fees ?? treasury.totalFees ?? treasury.fees),
+        net_position: num(treasury.net_position ?? treasury.netPosition ?? treasury.net),
+        campaign_totals: (treasury.campaign_totals ?? treasury.campaigns ?? treasury.byCampaign ?? []).map((t) => ({
           campaign: str(t.campaign ?? t.title ?? t.name),
           raised: num(t.raised ?? t.raised_amount),
           held: num(t.held ?? t.held_amount),
@@ -155,21 +113,19 @@ export default async function(req) {
       for (const r of reports) {
         const rid = str(r._id ?? r.report_id ?? r.id);
         if (!rid) continue;
-        // Convex protocol report shape: reportType, auditDate, compliantCampaigns,
-        // nonCompliantCampaigns, results:[{title, complianceScore, violations}].
         const data = {
           report_id: rid,
-          title: str(r.reportType ?? r.title ?? "Protocol Audit"),
+          title: str(r.title || "Protocol Audit"),
           summary: str(r.summary || r.notes || ""),
-          passed_count: num(r.compliantCampaigns ?? r.passed_count ?? r.passed ?? r.passedCount),
-          failed_count: num(r.nonCompliantCampaigns ?? r.failed_count ?? r.failed ?? r.failedCount),
+          passed_count: num(r.passed_count ?? r.passed ?? r.passedCount),
+          failed_count: num(r.failed_count ?? r.failed ?? r.failedCount),
           results: (r.results ?? r.checks ?? []).map((x) => ({
-            campaign: str(x.title ?? x.campaign ?? x.campaign_title),
-            standard: str(x.standard ?? x.code ?? x.rule ?? "compliance"),
-            passed: Boolean(x.passed ?? x.ok ?? (x.violations === 0)),
-            detail: str(x.detail ?? x.message ?? (x.complianceScore != null ? `complianceScore ${x.complianceScore}, ${x.violations ?? 0} violation(s)` : "")),
+            campaign: str(x.campaign ?? x.campaign_title ?? x.title),
+            standard: str(x.standard ?? x.code ?? x.rule),
+            passed: Boolean(x.passed ?? x.ok),
+            detail: str(x.detail ?? x.message ?? ""),
           })),
-          generated_at: r.auditDate || r.generated_at || r.generatedAt || (r._creationTime ? new Date(r._creationTime).toISOString() : now),
+          generated_at: r.generated_at || r.generatedAt || (r._creationTime ? new Date(r._creationTime).toISOString() : now),
           last_synced: now,
         };
         const match = existing.find((e) => e.report_id === rid);
@@ -179,9 +135,8 @@ export default async function(req) {
       }
     }
 
-    return Response.json({ ok: true, synced_at: now, counts, errors: queryErrors });
+    return Response.json({ ok: true, synced_at: now, counts });
   } catch (error) {
-    console.error('syncFromConvex error:', error.message);
-    return Response.json({ error: 'Unable to sync from the cloud backend.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

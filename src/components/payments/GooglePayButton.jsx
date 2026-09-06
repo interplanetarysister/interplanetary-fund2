@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
-import { computeChargeTotal } from "../../../base44/shared/fees.js";
 
 // Google Pay donations processed through the platform's PayPal business
 // account (PayPal JS SDK v6 + Google Pay). Flow: create a PayPal order,
@@ -9,15 +8,15 @@ import { computeChargeTotal } from "../../../base44/shared/fees.js";
 // record the gift. The button only renders when Google Pay is available on
 // the buyer's device; otherwise it degrades silently to the PayPal/card
 // options already shown above it.
-export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid }) {
+export default function GooglePayButton({ campaign, amount, donorName, message, recurring, onPaid }) {
   const containerRef = useRef(null);
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
 
   // Volatile props (name/message/recurring/callback) are read via a ref so the
   // Google Pay client is only rebuilt when the amount or campaign changes.
-  const propsRef = useRef({ donorName, message, recurring, platformContribution, onPaid });
-  useEffect(() => { propsRef.current = { donorName, message, recurring, platformContribution, onPaid }; });
+  const propsRef = useRef({ donorName, message, recurring, onPaid });
+  useEffect(() => { propsRef.current = { donorName, message, recurring, onPaid }; });
 
   useEffect(() => {
     let cancelled = false;
@@ -76,13 +75,11 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
           onPaymentAuthorized: async (paymentData) => {
             try {
               const p = propsRef.current;
-              // The optional platform-contribution choice is bound into the
-              // PayPal order's server-generated custom_id here. Capture does
-              // not trust a post-payment client value for financial allocation.
               const { data: order } = await base44.functions.invoke("createPayPalOrder", {
                 campaign_id: campaign.id,
                 amount: value,
-                platform_contribution: !!p.platformContribution,
+                donor_name: p.donorName || "Anonymous",
+                message: p.message,
               });
               if (order?.error) return { transactionState: "ERROR", error: { message: order.error } };
 
@@ -125,7 +122,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
               countryCode: gpayConfig.countryCode,
               currencyCode: "USD",
               totalPriceStatus: "FINAL",
-              totalPrice: computeChargeTotal(value).toFixed(2),
+              totalPrice: value.toFixed(2),
             },
             callbackIntents: ["PAYMENT_AUTHORIZATION"],
           });

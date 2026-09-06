@@ -1,6 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { checkRateLimit } from '../../shared/rateLimit.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 export default async function(req) {
   try {
@@ -8,21 +6,9 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // Centralized access gate: email delivery runs through the platform-managed
-    // Core integration, but it is still gated by the email registry entry so an
-    // admin can revoke it centrally. Fails open only on a transient read error.
-    const emailAccess = await assertPlatformAccess(base44.asServiceRole, 'email');
-    if (!emailAccess.ok) return Response.json({ error: `Email integration is not available: ${emailAccess.reason}` }, { status: 403 });
-
     const { campaign_id, subject, content, comm_type, audience, channels, ai_generated } = await req.json();
     if (!subject || !content || !channels || channels.length === 0) {
       return Response.json({ error: 'Subject, content and at least one channel are required' }, { status: 400 });
-    }
-    if (typeof subject !== 'string' || subject.length > 200) {
-      return Response.json({ error: 'Subject must be 200 characters or fewer.' }, { status: 400 });
-    }
-    if (typeof content !== 'string' || content.length > 5000) {
-      return Response.json({ error: 'Message must be 5000 characters or fewer.' }, { status: 400 });
     }
 
     // Only allow messaging donors of campaigns the sender owns
@@ -34,12 +20,6 @@ export default async function(req) {
     const campaignIds = campaign_id ? [campaign_id] : myIds;
     if (campaignIds.length === 0) {
       return Response.json({ error: 'You have no campaigns yet' }, { status: 400 });
-    }
-
-    // Rate limit (persistent): prevent a single organizer from flooding supporters.
-    const rl = await checkRateLimit(base44, `sendCommunication:${user.id}`, 5, 60);
-    if (!rl.allowed) {
-      return Response.json({ error: 'You are sending messages too quickly. Please wait a moment and try again.' }, { status: 429 });
     }
 
     // Resolve audience
@@ -112,6 +92,6 @@ export default async function(req) {
     });
   } catch (error) {
     console.error('sendCommunication error:', error.message);
-    return Response.json({ error: 'Unable to send your message. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

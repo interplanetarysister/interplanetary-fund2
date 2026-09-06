@@ -39,11 +39,7 @@ export default async function(req) {
       requested_amount: requested_amount ? Number(requested_amount) : undefined,
       status: 'submitted',
     });
-    // Atomic increment — avoids the read-modify-write race on concurrent applications.
-    await sr.entities.InstitutionOpportunity.updateMany(
-      { id: opportunity_id },
-      { $inc: { application_count: 1 } }
-    );
+    await sr.entities.InstitutionOpportunity.update(opportunity_id, { application_count: (opp.application_count || 0) + 1 });
 
     if (opp.created_by_id && opp.created_by_id !== user.id) {
       await sr.entities.Notification.create({
@@ -57,6 +53,6 @@ export default async function(req) {
     return Response.json({ application });
   } catch (error) {
     console.error('applyInstitutionOpportunity error:', error.message);
-    return Response.json({ error: 'Unable to submit your application. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

@@ -6,25 +6,17 @@ import { Input } from "@/components/ui/input";
 import RecommendedCampaigns from "@/components/discover/RecommendedCampaigns";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
-import PageError from "@/components/PageError";
-import PageTips from "@/components/coach/PageTips";
 
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
-      .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load campaigns."));
+    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100).then(setCampaigns);
   }, [refreshKey]);
 
-  if (error) {
-    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
-  }
   if (!campaigns) {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={6} /></div>;
   }
@@ -35,15 +27,10 @@ export default function Discover() {
 
   return (
     <PullToRefresh onRefresh={() => setRefreshKey((k) => k + 1)} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="font-display text-3xl sm:text-4xl text-stone-900 mb-2">Discover campaigns</h1>
-          <p className="text-stone-500">
-            What if your support changed everything for someone today? These causes need help right now.
-          </p>
-        </div>
-        <PageTips pageId="discover" />
-      </div>
+      <h1 className="font-display text-3xl sm:text-4xl text-stone-900 mb-2">Discover campaigns</h1>
+      <p className="text-stone-500 mb-6">
+        What if your support changed everything for someone today? These causes need help right now.
+      </p>
 
       <RecommendedCampaigns allCampaigns={campaigns} />
 

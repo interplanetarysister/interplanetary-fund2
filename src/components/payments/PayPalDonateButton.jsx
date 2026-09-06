@@ -1,32 +1,31 @@
 import React from "react";
-import { generatePayPalLink } from "@/lib/paypalLink";
 
-// The Interplanetary Fund one-time PayPal donate button. Builds the canonical
-// PayPal donate link for the campaign (business: interplanetarysister@gmail.com)
-// — the same link used across every Interplanetary Fund repo — and opens it in
-// a secure new tab. This is a ONE-TIME payment link; recurring (monthly)
-// donations are handled separately via the Stripe subscription checkout.
-export default function PayPalDonateButton({ campaignTitle = "Interplanetary Fund", amount, label = "Support this campaign!" }) {
-  const href = generatePayPalLink(campaignTitle, amount);
+// The Interplanetary Fund PayPal donate button. Opens PayPal's hosted donate
+// page, where supporters can choose one-time, monthly, or yearly giving and
+// pick a purpose (e.g. AI subscription). Accepts PayPal balance and cards.
+export default function PayPalDonateButton({ label = "Donate now!" }) {
   return (
-    <div className="w-full flex flex-col items-center gap-2">
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`${label} — PayPal (opens in a new tab)`}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#FFD140] text-[#003087] font-semibold text-sm min-h-[44px] px-5 py-3 shadow-sm hover:brightness-105 active:scale-[0.99] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#003087]"
-      >
-        {label}
-      </a>
-      <section className="flex items-center gap-1 text-[11px] text-stone-400">
-        Powered by
-        <img
-          src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg"
-          alt="PayPal"
-          className="h-3"
-        />
-      </section>
+    <div>
+      <style>{`.pp-donate{text-align:center;border:none;border-radius:0.5rem;min-width:11.625rem;width:100%;padding:0 2rem;height:2.75rem;font-weight:bold;background-color:#FFD140;color:#000000;font-family:"Helvetica Neue",Arial,sans-serif;font-size:1rem;line-height:1.25rem;cursor:pointer;display:flex;align-items:center;justify-content:center;text-decoration:none;}`}</style>
+      <div style={{ display: "grid", justifyItems: "center", alignContent: "start", gap: "0.5rem" }}>
+        <a
+          className="pp-donate"
+          href="https://www.paypal.com/donate/?hosted_button_id=7C7AD6XGKSM86"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {label}
+        </a>
+        <img src="https://www.paypalobjects.com/images/Debit_Credit_APM.svg" alt="cards" />
+        <section style={{ fontSize: "0.75rem" }}>
+          Powered by{" "}
+          <img
+            src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg"
+            alt="paypal"
+            style={{ height: "0.875rem", verticalAlign: "middle" }}
+          />
+        </section>
+      </div>
     </div>
   );
 }

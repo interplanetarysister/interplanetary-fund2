@@ -7,8 +7,6 @@ import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
-import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
-import PageError from "@/components/PageError";
 
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
 // Base44 entities so the dashboard works offline; Sync Now refreshes it.
@@ -20,25 +18,19 @@ export default function OpsCenter() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
-  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    try {
-      const [a, c, t, r] = await Promise.all([
-        base44.entities.Agent.list("-trust_score", 50),
-        base44.entities.MonitoredCampaign.list("-raised_amount", 50),
-        base44.entities.TreasurySnapshot.list("-created_date", 1),
-        base44.entities.ProtocolReport.list("-generated_at", 20),
-      ]);
-      setAgents(a);
-      setCampaigns(c);
-      setTreasury(t[0] || null);
-      setReports(r);
-    } catch (e) {
-      setError(e.message || "We couldn't load Ops Center data.");
-    } finally {
-      setLoading(false);
-    }
+    const [a, c, t, r] = await Promise.all([
+      base44.entities.Agent.list("-trust_score", 50),
+      base44.entities.MonitoredCampaign.list("-raised_amount", 50),
+      base44.entities.TreasurySnapshot.list("-created_date", 1),
+      base44.entities.ProtocolReport.list("-generated_at", 20),
+    ]);
+    setAgents(a);
+    setCampaigns(c);
+    setTreasury(t[0] || null);
+    setReports(r);
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -56,9 +48,7 @@ export default function OpsCenter() {
     setSyncing(false);
   };
 
-  const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
-  const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
-  const offline = agents.length === 0;
+  const activeAgents = agents.filter((a) => (a.status || "").toLowerCase() === "active").length;
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -66,7 +56,7 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{offline ? " · showing in-app agents (Convex offline)" : " · Convex mission backend"}</p>
+            <p className="text-xs text-slate-500">{activeAgents}/{agents.length} agents active · Convex mission backend</p>
           </div>
           <button
             onClick={syncNow}
@@ -79,9 +69,7 @@ export default function OpsCenter() {
         </div>
         {syncError && <p className="mt-2 text-xs text-rose-400">{syncError}</p>}
 
-        {error ? (
-          <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
-        ) : loading ? (
+        {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
@@ -93,8 +81,8 @@ export default function OpsCenter() {
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
-              {offline && <p className="text-xs text-amber-400/80 text-center py-3">Convex mission backend offline — showing the platform's in-app agents. Tap Sync Now to retry.</p>}
-              {displayAgents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
+              {agents.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No agents synced yet — tap Sync Now.</p>}
+              {agents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
             </TabsContent>
             <TabsContent value="campaigns" className="mt-4 space-y-3">
               {campaigns.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No campaigns synced yet — tap Sync Now.</p>}

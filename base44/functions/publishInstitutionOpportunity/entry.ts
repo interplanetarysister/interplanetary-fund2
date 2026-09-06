@@ -33,14 +33,10 @@ export default async function(req) {
       deadline: deadline || undefined,
       status: 'open',
     });
-    // Atomic increment — avoids the read-modify-write race on concurrent publishes.
-    await sr.entities.Institution.updateMany(
-      { id: institution_id },
-      { $inc: { opportunity_count: 1 } }
-    );
+    await sr.entities.Institution.update(institution_id, { opportunity_count: (institution.opportunity_count || 0) + 1 });
     return Response.json({ opportunity });
   } catch (error) {
     console.error('publishInstitutionOpportunity error:', error.message);
-    return Response.json({ error: 'Unable to publish the opportunity. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

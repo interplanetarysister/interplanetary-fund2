@@ -7,22 +7,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsMobile } from "@/hooks/use-mobile"
 
-const SelectCloseCtx = React.createContext(() => {})
-
-// Wrap Radix Root so the mobile bottom-sheet content can close itself via a
-// "Done" button (Radix's DismissableLayer also closes on outside tap and on
-// item select; this just guarantees a visible close affordance on phones).
-const Select = ({ children, open: openProp, onOpenChange, ...props }) => {
-  const [open, setOpen] = React.useState(false)
-  const handleOpenChange = (o) => { setOpen(o); onOpenChange?.(o) }
-  return (
-    <SelectCloseCtx.Provider value={() => handleOpenChange(false)}>
-      <SelectPrimitive.Root open={openProp ?? open} onOpenChange={handleOpenChange} {...props}>
-        {children}
-      </SelectPrimitive.Root>
-    </SelectCloseCtx.Provider>
-  )
-}
+const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
 
@@ -32,7 +17,7 @@ const SelectTrigger = React.forwardRef(({ className, children, ...props }, ref) 
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 min-h-[44px] md:min-h-0 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-cyan-400/60 focus:ring-offset-1 focus:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-9 min-h-[44px] md:min-h-0 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}>
@@ -69,7 +54,6 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
   // On phones the options render as a full-width bottom sheet with large tap
   // rows instead of a small floating popover. Desktop keeps the popover.
   const isMobile = useIsMobile()
-  const closeSelect = React.useContext(SelectCloseCtx)
   const mobileStyle = isMobile
     ? { position: "fixed", left: 0, right: 0, bottom: 0, top: "auto", width: "100%", maxWidth: "100%", transform: "none", maxHeight: "55vh" }
     : undefined
@@ -88,12 +72,6 @@ const SelectContent = React.forwardRef(({ className, children, position = "poppe
         position={position}
         style={{ ...style, ...mobileStyle }}
         {...props}>
-        {isMobile && (
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">Select</span>
-            <button type="button" onClick={closeSelect} className="text-primary text-sm font-semibold min-h-[44px] px-2 -my-1">Done</button>
-          </div>
-        )}
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport
           className={cn("p-1", isMobile ? "w-full" : position === "popper" &&

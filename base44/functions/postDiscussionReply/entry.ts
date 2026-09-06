@@ -25,14 +25,10 @@ export default async function(req) {
       content,
       author_name: user.full_name || user.email,
     });
-    // Atomic increment — avoids the read-modify-write race on concurrent replies.
-    await sr.entities.DiscussionPost.updateMany(
-      { id: post_id },
-      { $inc: { reply_count: 1 } }
-    );
+    await sr.entities.DiscussionPost.update(post_id, { reply_count: (post.reply_count || 0) + 1 });
     return Response.json({ reply });
   } catch (error) {
     console.error('postDiscussionReply error:', error.message);
-    return Response.json({ error: 'Unable to post your reply. Please try again.' }, { status: 500 });
+    return Response.json({ error: error.message }, { status: 500 });
   }
 }

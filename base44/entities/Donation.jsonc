@@ -9,18 +9,7 @@
       "type": "string"
     },
     "amount": {
-      "type": "number",
-      "description": "The donation amount the supporter entered. Where the processor permits, the processing fee is charged ON TOP (see processing_fee); the total charged to the donor is amount + processing_fee. The recipient's gift is amount minus platform_contribution."
-    },
-    "platform_contribution": {
-      "type": "number",
-      "default": 0,
-      "description": "Portion of the donation the donor directed to the platform as an optional 10% contribution. Excluded from the recipient's gift and from withdrawals; retained by the platform."
-    },
-    "processing_fee": {
-      "type": "number",
-      "default": 0,
-      "description": "The payment processor's fee (Stripe/PayPal) charged on top of the donation where the processor permits, identified by payment_method. Retained by the processor, never by Interplanetary Fund. Zero for manual-confirmation methods (PayPal donate link, Cash App) where the processor charges the donor directly on its own site."
+      "type": "number"
     },
     "donor_name": {
       "type": "string"
@@ -43,17 +32,8 @@
     "donor_user_id": {
       "type": "string"
     },
-    "canonical_operation_id": {
-      "type": "string",
-      "description": "Convex providerTransactions operation id for this Base44 display mirror. Canonical financial idempotency and accounting live in Convex; this value is used only to repair/deduplicate the application mirror."
-    },
     "stripe_session_id": {
-      "type": "string",
-      "description": "External payment reference (Stripe checkout session id or PayPal order id). Kept for provider lookup/backward compatibility; canonical idempotency is enforced by Convex."
-    },
-    "idempotency_key": {
-      "type": "string",
-      "description": "Client-supplied stable intent key for manual-confirmation donations. The canonical Convex operation, not this Base44 field, is authoritative for deduplication."
+      "type": "string"
     },
     "payment_method": {
       "type": "string",
@@ -64,12 +44,7 @@
         "other"
       ],
       "default": "paypal",
-      "description": "How the supporter sent their gift. Identifies the processor that charged any processing_fee."
-    },
-    "payment_verified": {
-      "type": "boolean",
-      "default": true,
-      "description": "True when the payment was confirmed server-side. False manual-confirmation gifts are pending mirrors only and must not increase canonical campaign totals or withdrawable ledger value until verified."
+      "description": "How the supporter sent their gift."
     },
     "is_institutional": {
       "type": "boolean",
@@ -79,7 +54,7 @@
     "cleared": {
       "type": "boolean",
       "default": false,
-      "description": "Admin confirmation that the funds were received and may now be withdrawn. Required for institutional gifts and for unverified (payment_verified=false) manual-confirmation gifts."
+      "description": "For institutional donations: admin confirmation that the award funds were received and may now be withdrawn."
     },
     "withdrawal_id": {
       "type": "string",
@@ -91,18 +66,7 @@
     "amount"
   ],
   "rls": {
-    "read": {
-      "$or": [
-        {
-          "data.donor_user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
+    "read": {},
     "create": {
       "user_condition": {
         "role": "admin"

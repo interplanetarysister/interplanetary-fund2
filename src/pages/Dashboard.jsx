@@ -4,39 +4,27 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import MissionControl from "@/components/dashboard/MissionControl";
-import TreasurySnapshotCard from "@/components/dashboard/TreasurySnapshotCard";
 import FollowFeed from "@/components/dashboard/FollowFeed";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import BrandHero from "@/components/brand/BrandHero";
-import CoachMarks from "@/components/coach/CoachMarks";
-import PageTips from "@/components/coach/PageTips";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
-import PageError from "@/components/PageError";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     (async () => {
-      try {
-        const me = await base44.auth.me();
-        setUser(me);
-        const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
-        setCampaigns(mine);
-      } catch (e) {
-        setError(e.message || "We couldn't load your dashboard.");
-      }
+      const me = await base44.auth.me();
+      setUser(me);
+      const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
+      setCampaigns(mine);
     })();
   }, [refreshKey]);
 
-  if (error) {
-    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
-  }
   if (!campaigns) {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={4} /></div>;
   }
@@ -56,14 +44,11 @@ export default function Dashboard() {
           <p className="text-sm text-stone-500 mb-1">Every gift you receive, in one place</p>
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Your Interplanetary Fund</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <PageTips pageId="dashboard" tourId="dashboard" />
-          <Link to="/create">
-            <Button data-coach="new-campaign" className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
-              <PlusCircle className="w-4 h-4 mr-2" /> New Campaign
-            </Button>
-          </Link>
-        </div>
+        <Link to="/create">
+          <Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90">
+            <PlusCircle className="w-4 h-4 mr-2" /> New Campaign
+          </Button>
+        </Link>
       </div>
 
       {needsOnboarding && (
@@ -82,13 +67,9 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div data-coach="stat-raised"><StatCard label="Total Raised" value={`$${totalRaised.toLocaleString()}`} icon={DollarSign} /></div>
+        <StatCard label="Total Raised" value={`$${totalRaised.toLocaleString()}`} icon={DollarSign} />
         <StatCard label="Supporters" value={totalDonors.toLocaleString()} icon={Users} />
         <StatCard label="Active Campaigns" value={active} icon={Flame} />
-      </div>
-
-      <div className="mb-6">
-        <TreasurySnapshotCard />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -108,10 +89,9 @@ export default function Dashboard() {
         </div>
         <div>
           <FollowFeed />
-          <div data-coach="mission-control"><MissionControl campaigns={campaigns} /></div>
+          <MissionControl campaigns={campaigns} />
         </div>
       </div>
-      <CoachMarks tourId="dashboard" />
     </PullToRefresh>
   );
 }
