@@ -22,6 +22,20 @@ export default async function (req: Request) {
   try {
     const header = decodeSegment(parts[0]);
     const payload = decodeSegment(parts[1]);
+    const verifyResponse = await fetch('https://base44.app/api/apps/6a67a778342a8fe05ee79cba/entities/PlatformAccessRegistry?limit=1', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'X-App-Id': '6a67a778342a8fe05ee79cba',
+      },
+    }).catch(() => null);
+
+    const bogusResponse = await fetch('https://base44.app/api/apps/6a67a778342a8fe05ee79cba/entities/PlatformAccessRegistry?limit=1', {
+      headers: {
+        Authorization: 'Bearer not-a-valid-token',
+        'X-App-Id': '6a67a778342a8fe05ee79cba',
+      },
+    }).catch(() => null);
+
     return Response.json({
       present: true,
       jwt: true,
@@ -39,6 +53,10 @@ export default async function (req: Request) {
         app_id: payload?.app_id ?? payload?.appId ?? null,
         role: payload?.role ?? null,
         token_type: payload?.token_type ?? payload?.type ?? null,
+      },
+      introspection: {
+        service_token_status: verifyResponse?.status ?? null,
+        bogus_token_status: bogusResponse?.status ?? null,
       },
     });
   } catch {
