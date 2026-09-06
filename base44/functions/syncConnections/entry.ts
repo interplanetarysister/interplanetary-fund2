@@ -38,9 +38,13 @@ export default async function(req) {
       }
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
-      const obo = post.created_by_id
-        ? await assertOboGrant(sr, 'platform_outreach_agent', post.created_by_id, 'social_publish')
-        : { ok: false, reason: 'post has no owner identity for OBO authorization' };
+      const campaign = post.campaign_id
+        ? await sr.entities.Campaign.get(post.campaign_id).catch(() => null)
+        : null;
+      const ownerUserId = campaign?.created_by_id || post.created_by_id;
+      const obo = ownerUserId
+        ? await assertOboGrant(sr, 'platform_outreach_agent', ownerUserId, 'social_publish')
+        : { ok: false, reason: 'post has no campaign-owner identity for OBO authorization' };
       if (connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok && obo.ok) {
         try {
           const { url } = await publishThroughConnection(connection, text);
