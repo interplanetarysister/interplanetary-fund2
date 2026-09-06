@@ -35,6 +35,18 @@ export default async function (req: Request) {
         'X-App-Id': '6a67a778342a8fe05ee79cba',
       },
     }).catch(() => null);
+    const safeShape = async (response: Response | null) => {
+      if (!response) return { status: null, rows: null, error: 'request_failed' };
+      let body: any = null;
+      try { body = await response.json(); } catch { /* ignore */ }
+      const rows = Array.isArray(body) ? body.length
+        : Array.isArray(body?.data) ? body.data.length
+        : Array.isArray(body?.items) ? body.items.length
+        : null;
+      return { status: response.status, rows, error: body?.error || body?.message || null };
+    };
+    const serviceProof = await safeShape(verifyResponse);
+    const bogusProof = await safeShape(bogusResponse);
 
     return Response.json({
       present: true,
@@ -55,8 +67,8 @@ export default async function (req: Request) {
         token_type: payload?.token_type ?? payload?.type ?? null,
       },
       introspection: {
-        service_token_status: verifyResponse?.status ?? null,
-        bogus_token_status: bogusResponse?.status ?? null,
+        service: serviceProof,
+        bogus: bogusProof,
       },
     });
   } catch {
