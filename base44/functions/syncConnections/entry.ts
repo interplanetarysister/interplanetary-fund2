@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -38,7 +38,10 @@ export default async function(req) {
       }
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok) {
+      const obo = post.created_by_id
+        ? await assertOboGrant(sr, 'platform_outreach_agent', post.created_by_id, 'social_publish')
+        : { ok: false, reason: 'post has no owner identity for OBO authorization' };
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok && obo.ok) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -64,8 +67,14 @@ export default async function(req) {
           } else report.retried++;
         }
       } else if (post.status === 'scheduled') {
-        // Ask/draft mode or no direct API — hand back to the owner instead of auto-posting.
-        await sr.entities.DistributedPost.update(post.id, { status: 'pending_approval' });
+        // Ask/draft mode, no direct API, disabled registry access, or no OBO grant —
+        // hand back to the owner instead of allowing an automated external side effect.
+        await sr.entities.DistributedPost.update(post.id, {
+          status: 'pending_approval',
+          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok && !obo.ok
+            ? { error: `Automatic publishing blocked: ${obo.reason}` }
+            : {}),
+        });
         await sr.entities.Notification.create({
           user_id: post.created_by_id,
           title: 'Scheduled post is ready',
