@@ -3,12 +3,13 @@
 - Repository: `interplanetarysister/interplanetary-fund2`
 - Pull request: `#143`
 - Branch: `agent1/fraud-approval-current-main`
-- Reviewed exact head before this checkpoint: `9b7667c6fd1010a160f362670d3d24beed1cd7c8`
+- Reviewed exact head before this checkpoint: `2a4c8685a4fa76d2c945071955c48ceab8e1e812`
 - PR state: Draft, open, unmerged, non-mergeable.
+- Current-main base recorded by PR metadata: `cca6abea09d31920515434c069099c4f3b46ea3f`
 
-## Evidence boundary
+## Audit recency boundary
 
-Only evidence produced against the exact current head may be used for approval or publication. Prior commit, CI, review, and runtime evidence is superseded whenever the head changes.
+The newest visible combined Agent 2+3 blocking audit in the accessible PR ledger targets superseded heads (`a79eda731a0c6e9835872d4b294bb8cb25f70084` and `4990af303a97c622ff3d84bdbf9db901ee8c61b6`). Those findings remain relevant risk indicators, but they do not clear or block the current exact head by themselves. A fresh independent audit against `2a4c8685a4fa76d2c945071955c48ceab8e1e812` is required.
 
 ## Still blocked
 
@@ -19,7 +20,8 @@ The following remain unproven and must not be reported as accomplished:
 3. Durable idempotency and claim fencing across all financial side effects.
 4. Authoritative reconciliation of deployed Convex automation/backend against visible source before any production behavior change.
 5. Safe serialization/claiming, stale-worker fencing, duplicate-run prevention, and bounded retry semantics for the five named automation paths and shared `cron_commit_mut...` writes.
-6. Agent 2+3 exact-head audit and Agent 3 final publication review.
+6. Current-main payment/ledger/schema compatibility, including the canonical 7% fee contract.
+7. Fresh Agent 2+3 exact-head audit and Agent 3 final publication review.
 
 ## Reporting contract
 
@@ -27,4 +29,4 @@ The following remain unproven and must not be reported as accomplished:
 - **TRUNCATED / INCOMPLETE**: work started or partially verified but not complete.
 - **AWAITING START**: no implementation or validation evidence yet.
 
-Do not label static CI, documentation, or source inspection as Development runtime or Production proof.
+Do not label static CI, documentation, or source inspection as Development runtime or Production proof. Do not merge or promote Production while any item above remains unresolved.
