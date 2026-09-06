@@ -24,11 +24,10 @@ async function clearMigrationClaim(sr, withdrawal) {
   }
 }
 
-async function reconcileApprovedPayout(sr, withdrawal) {
+async function reconcileApprovedPayout(sr, withdrawal, claimToken = withdrawal?.payout_claim_token || '') {
   const deterministicBatchId = `IFW_${withdrawal.id}`;
   const payout = await getPayoutBatch(deterministicBatchId);
   if (!payout) return { found: false, finalized: false };
-  const claimToken = withdrawal?.payout_claim_token || '';
   const predicate = { id: withdrawal.id, status: 'processing', review_action: 'approve', ...(claimToken ? { payout_claim_token: claimToken } : {}) };
   const finalized = await sr.entities.Withdrawal.updateMany(
     predicate,
@@ -86,7 +85,8 @@ export default async function(req) {
         if (w.status === 'paid') { await clearMigrationClaim(sr, w); return Response.json({ ok: true, status: 'paid', withdrawal_id: w.id, payout_batch_id: w.payout_batch_id }); }
         return Response.json({ error: 'Only an approval-owned processing withdrawal can be reconciled.' }, { status: 409 });
       }
-      const reconciliation = await reconcileApprovedPayout(sr, w);
+      const claimToken = String(w.payout_claim_token || '');
+      const reconciliation = await reconcileApprovedPayout(sr, w, claimToken);
       if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', withdrawal_id: w.id, payout_batch_id: reconciliation.payout_batch_id });
       return Response.json({ error: reconciliation.found ? 'PayPal confirms the payout, but the local finalization is still pending. Retry reconciliation.' : 'PayPal has not yet confirmed this deterministic payout identity. Keep the withdrawal held and retry reconciliation after provider state is available.' }, { status: 409 });
     }
@@ -110,13 +110,13 @@ export default async function(req) {
       );
       if (!claim.success || claim.updated !== 1) return Response.json({ error: 'This payout is already being processed or has changed state. Reconcile its current status before retrying.' }, { status: 409 });
       try {
-        const payout = await sendPayout({ receiver: w.paypal_email, amount: w.net_amount, note: `Interplanetary Fund withdrawal for \\\"${w.campaign_title}\\\"`, itemId: `IFW_${w.id}` });
+        const payout = await sendPayout({ receiver: w.paypal_email, amount: w.net_amount, note: `Interplanetary Fund withdrawal for \"${w.campaign_title}\"`, itemId: `IFW_${w.id}` });
         const finalized = await sr.entities.Withdrawal.updateMany(
           { id: w.id, status: 'processing', payout_claim_token: claimToken, review_action: 'approve' },
           { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() }, $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' } },
         );
         if (!finalized.success || finalized.updated !== 1) {
-          const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(w.id));
+          const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(w.id), claimToken);
           if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', payout_batch_id: reconciliation.payout_batch_id || payout.payout_batch_id });
           return Response.json({ error: 'PayPal accepted the payout but local finalization is pending. Reconcile this withdrawal before retrying approval.' }, { status: 409 });
         }
@@ -124,7 +124,7 @@ export default async function(req) {
         return Response.json({ ok: true, status: 'paid', payout_batch_id: payout.payout_batch_id });
       } catch (err) {
         console.error('requestWithdrawal approve payout error:', err?.message || err);
-        try { const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(w.id)); if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', withdrawal_id: w.id, payout_batch_id: reconciliation.payout_batch_id }); } catch (lookupError) { console.error('requestWithdrawal payout reconciliation error:', lookupError?.message || lookupError); }
+        try { const current = await sr.entities.Withdrawal.get(w.id); const reconciliation = await reconcileApprovedPayout(sr, current, claimToken); if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', withdrawal_id: w.id, payout_batch_id: reconciliation.payout_batch_id }); } catch (lookupError) { console.error('requestWithdrawal payout reconciliation error:', lookupError?.message || lookupError); }
         return Response.json({ error: 'The payout provider outcome could not be confirmed. The withdrawal remains held for safe reconciliation; do not retry approval until the PayPal state is checked.' }, { status: 409 });
       }
     }
@@ -158,7 +158,7 @@ export default async function(req) {
       return Response.json({ ok: true, status: 'under_review', withdrawal_id: withdrawal.id, gross, fee, net });
     }
     try {
-      const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for \\\"${campaign.title}\\\"`, itemId: `IFW_${withdrawal.id}` });
+      const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for \"${campaign.title}\"`, itemId: `IFW_${withdrawal.id}` });
       const finalized = await sr.entities.Withdrawal.updateMany({ id: withdrawal.id, status: 'processing' }, { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() } });
       if (!finalized.success || finalized.updated !== 1) return Response.json({ error: 'PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation.' }, { status: 409 });
       await clearMigrationClaim(sr, withdrawal);
