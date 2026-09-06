@@ -8,8 +8,10 @@ on:
       - "base44/functions/fraudControlAction/entry.ts"
       - "base44/entities/Withdrawal.jsonc"
       - "base44/entities/Campaign.jsonc"
+      - "base44/shared/fees.js"
       - "scripts/verify-fraud-approval-workflow.mjs"
       - "scripts/verify-withdrawal-claim-fencing.mjs"
+      - "scripts/verify-financial-contract-consistency.mjs"
       - ".github/workflows/fraud-approval-workflow.yml"
   push:
     branches: [main]
@@ -19,8 +21,10 @@ on:
       - "base44/functions/fraudControlAction/entry.ts"
       - "base44/entities/Withdrawal.jsonc"
       - "base44/entities/Campaign.jsonc"
+      - "base44/shared/fees.js"
       - "scripts/verify-fraud-approval-workflow.mjs"
       - "scripts/verify-withdrawal-claim-fencing.mjs"
+      - "scripts/verify-financial-contract-consistency.mjs"
       - ".github/workflows/fraud-approval-workflow.yml"
 
 permissions:
@@ -55,3 +59,4 @@ jobs:
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: node scripts/verify-fraud-approval-workflow.mjs
       - run: node scripts/verify-withdrawal-claim-fencing.mjs
+      - run: node scripts/verify-financial-contract-consistency.mjs
