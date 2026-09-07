@@ -31,7 +31,7 @@ async function reconcileApprovedPayout(sr, withdrawal, claimToken = withdrawal?.
   const predicate = { id: withdrawal.id, status: 'processing', review_action: 'approve', ...(claimToken ? { payout_claim_token: claimToken } : {}) };
   const finalized = await sr.entities.Withdrawal.updateMany(
     predicate,
-    { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id || deterministicBatchId, processed_at: new Date().toISOString(), review_note: `Payout reconciled from PayPal batch ${payout.payout_batch_id || deterministicBatchId}.` } },
+    { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id || deterministicBatchId, processed_at: new Date().toISOString(), review_note: `Payout reconciled from PayPal batch ${payout.payout_batch_id || deterministicBatchId}.` }, $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' } },
   );
   if (finalized.success && finalized.updated === 1) await clearMigrationClaim(sr, withdrawal);
   return { found: true, finalized: finalized.success && finalized.updated === 1, payout_batch_id: payout.payout_batch_id || deterministicBatchId };
@@ -146,7 +146,8 @@ export default async function(req) {
     if (gross <= 0) return Response.json({ error: 'No cleared funds are available yet. Donations become withdrawable after a 7-day clearing period.' }, { status: 400 });
     const fee = round2(gross * PLATFORM_FEE_RATE);
     const net = round2(gross - fee);
-    const withdrawal = await sr.entities.Withdrawal.create({ owner_user_id: user.id, user_name: user.full_name, campaign_id, campaign_title: campaign.title, gross_amount: gross, platform_fee: fee, net_amount: net, paypal_email, covered_donation_ids: available.map((d) => d.id), status: 'processing' });
+    const payoutClaimToken = `IFPAYOUT_${crypto.randomUUID()}`;
+    const withdrawal = await sr.entities.Withdrawal.create({ owner_user_id: user.id, user_name: user.full_name, campaign_id, campaign_title: campaign.title, gross_amount: gross, platform_fee: fee, net_amount: net, paypal_email, covered_donation_ids: available.map((d) => d.id), status: 'processing', payout_claim_token: payoutClaimToken, payout_claimed_at: new Date().toISOString(), review_action: 'approve' });
     const reservation = await reserveDonations(sr, available.map((d) => d.id), withdrawal.id);
     if (!reservation.complete) {
       await releaseReservedDonations(sr, reservation.claimed, withdrawal.id);
@@ -154,24 +155,28 @@ export default async function(req) {
       return Response.json({ error: 'Funds changed while preparing the withdrawal. No payout was submitted; please retry.' }, { status: 409 });
     }
     if (net > REVIEW_THRESHOLD) {
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'under_review', review_note: `Net amount $${net.toFixed(2)} exceeds the $${REVIEW_THRESHOLD} auto-approval threshold.` });
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'under_review', review_note: `Net amount $${net.toFixed(2)} exceeds the $${REVIEW_THRESHOLD} auto-approval threshold.`, payout_claim_token: payoutClaimToken, payout_claimed_at: new Date().toISOString(), review_action: '' });
       return Response.json({ ok: true, status: 'under_review', withdrawal_id: withdrawal.id, gross, fee, net });
     }
     try {
       const payout = await sendPayout({ receiver: paypal_email, amount: net, note: `Interplanetary Fund withdrawal for \"${campaign.title}\"`, itemId: `IFW_${withdrawal.id}` });
-      const finalized = await sr.entities.Withdrawal.updateMany({ id: withdrawal.id, status: 'processing' }, { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() } });
-      if (!finalized.success || finalized.updated !== 1) return Response.json({ error: 'PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation.' }, { status: 409 });
+      const finalized = await sr.entities.Withdrawal.updateMany({ id: withdrawal.id, status: 'processing', payout_claim_token: payoutClaimToken, review_action: 'approve' }, { $set: { status: 'paid', payout_batch_id: payout.payout_batch_id, processed_at: new Date().toISOString() }, $unset: { payout_claim_token: '', payout_claimed_at: '', review_action: '' } });
+      if (!finalized.success || finalized.updated !== 1) {
+        const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(withdrawal.id), payoutClaimToken);
+        if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: reconciliation.payout_batch_id || payout.payout_batch_id });
+        return Response.json({ error: 'PayPal accepted the payout but local finalization is pending. The withdrawal remains held for reconciliation.' }, { status: 409 });
+      }
       await clearMigrationClaim(sr, withdrawal);
       return Response.json({ ok: true, status: 'paid', withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
       console.error('requestWithdrawal payout error:', err?.message || err);
       try {
-        const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(withdrawal.id));
+        const reconciliation = await reconcileApprovedPayout(sr, await sr.entities.Withdrawal.get(withdrawal.id), payoutClaimToken);
         if (reconciliation.finalized) return Response.json({ ok: true, status: 'paid', withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: reconciliation.payout_batch_id });
       } catch (lookupError) {
         console.error('requestWithdrawal initial payout reconciliation error:', lookupError?.message || lookupError);
       }
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'processing', review_note: UNKNOWN_PAYOUT_REVIEW_NOTE });
+      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'processing', review_note: UNKNOWN_PAYOUT_REVIEW_NOTE, payout_claim_token: payoutClaimToken, payout_claimed_at: new Date().toISOString(), review_action: 'approve' });
       return Response.json({ error: 'The payout provider outcome could not be confirmed. Your funds remain held for safe reconciliation; do not retry until the provider state is checked.' }, { status: 409 });
     }
   } catch (error) {
