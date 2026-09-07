@@ -13,41 +13,46 @@ const statusStyles = {
 
 export default function RecurringPlanCard({ donation, onChanged }) {
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const status = donation.recurring_status || "active";
 
   const setStatus = async (recurring_status) => {
     setSaving(true);
-    await base44.entities.Donation.update(donation.id, { recurring_status });
-    setSaving(false);
-    onChanged?.();
+    setError("");
+    try {
+      await base44.functions.invoke("manageRecurringDonation", {
+        donation_id: donation.id,
+        recurring_status,
+      });
+      onChanged?.();
+    } catch (_) {
+      setError("Unable to update this recurring gift. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200/70 bg-white p-4">
-      <div className="min-w-0">
-        <Link to={`/campaign/${donation.campaign_id}`} className="font-medium text-stone-900 hover:text-primary transition-colors block truncate">
-          {donation.campaign_title || "Campaign"}
-        </Link>
-        <p className="text-sm text-stone-500">
-          <span className="font-semibold text-stone-800">${donation.amount.toLocaleString()}</span> / month
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className={`capitalize ${statusStyles[status]}`}>{status}</Badge>
-        {saving ? (
-          <Loader2 className="w-4 h-4 animate-spin text-stone-400" />
-        ) : status === "active" ? (
-          <>
+    <div className="rounded-xl border border-stone-200/70 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <Link to={`/campaign/${donation.campaign_id}`} className="font-medium text-stone-900 hover:text-primary transition-colors block truncate">
+            {donation.campaign_title || "Campaign"}
+          </Link>
+          <p className="text-sm text-stone-500"><span className="font-semibold text-stone-800">${donation.amount.toLocaleString()}</span> / month</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className={`capitalize ${statusStyles[status] || statusStyles.cancelled}`}>{status}</Badge>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin text-stone-400" /> : status === "active" ? <>
             <Button size="sm" variant="ghost" onClick={() => setStatus("paused")} className="text-stone-600"><Pause className="w-4 h-4 mr-1" />Pause</Button>
             <Button size="sm" variant="ghost" onClick={() => setStatus("cancelled")} className="text-red-500 hover:text-red-600"><XCircle className="w-4 h-4 mr-1" />Cancel</Button>
-          </>
-        ) : status === "paused" ? (
-          <>
+          </> : status === "paused" ? <>
             <Button size="sm" variant="ghost" onClick={() => setStatus("active")} className="text-emerald-600 hover:text-emerald-700"><Play className="w-4 h-4 mr-1" />Resume</Button>
             <Button size="sm" variant="ghost" onClick={() => setStatus("cancelled")} className="text-red-500 hover:text-red-600"><XCircle className="w-4 h-4 mr-1" />Cancel</Button>
-          </>
-        ) : null}
+          </> : null}
+        </div>
       </div>
+      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
     </div>
   );
 }
