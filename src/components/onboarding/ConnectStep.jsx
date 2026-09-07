@@ -1,11 +1,12 @@
 import React from "react";
 import { CAPABILITY_MODULES } from "./onboardingSteps";
-import { CheckCircle2, Clock, Link2 } from "lucide-react";
+import { CheckCircle2, Clock, Link2, ShieldQuestion } from "lucide-react";
 
 const STATUS_META = {
   connected: { label: "Connected", icon: CheckCircle2, tone: "text-emerald-600" },
   available: { label: "Connect", icon: Link2, tone: "text-primary" },
   coming_soon: { label: "Coming soon", icon: Clock, tone: "text-stone-400" },
+  verify_runtime: { label: "Verify status", icon: ShieldQuestion, tone: "text-amber-600" },
 };
 
 export default function ConnectStep({ data, onChange }) {
@@ -34,7 +35,7 @@ export default function ConnectStep({ data, onChange }) {
             </p>
             <div className="grid grid-cols-2 gap-2">
               {group.items.map((item) => {
-                const meta = STATUS_META[item.status];
+                const meta = STATUS_META[item.status] || STATUS_META.verify_runtime;
                 const Icon = meta.icon;
                 const isSelected = selected.includes(item.id);
                 const disabled = item.status === "coming_soon";
