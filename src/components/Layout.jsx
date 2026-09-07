@@ -10,6 +10,7 @@ import OfflineBanner from "@/components/mobile/OfflineBanner";
 import { hapticTap } from "@/lib/haptics";
 import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import BackToTop from "@/components/BackToTop";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -52,8 +53,6 @@ const navItems = [
   { to: "/create", label: "New Campaign", icon: PlusCircle },
 ];
 
-// One-handed mobile navigation. AI Assistant surfaces Mission Control — the
-// platform's central intelligence hub — under its most user-friendly label.
 const bottomNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
@@ -66,17 +65,11 @@ export default function Layout() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  // Bottom-tab root views show the brand mark (no Back button); deep child
-  // pages (e.g. a campaign detail) get the ChevronLeft back affordance.
   const TAB_ROOTS = ["/", "/dashboard", "/discover", "/mission", "/notifications", "/profile"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
-  // Preserve each bottom tab's last sub-route so tapping a tab returns to the
-  // last screen visited within that tab instead of resetting to its root.
   const tabStacks = useRef(Object.fromEntries(TAB_ROOTS.map((r) => [r, r])));
-  // Which bottom tab each section of the app belongs to, so a campaign,
-  // community, or institution page highlights its own tab instead of Dashboard.
   const TAB_SECTIONS = {
     "/dashboard": ["/dashboard"],
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
@@ -93,10 +86,6 @@ export default function Layout() {
     return hit ? hit[0] : null;
   };
   const activeTab = useRef(owningRoot(pathname) || "/dashboard");
-  // Track in-app navigation depth so the Back button reliably returns to a
-  // sensible app screen instead of leaving the app on a direct deep link
-  // (window.history.length is unreliable for this — the cause of the
-  // intermittent Back-button failure).
   const navDepth = useRef(0);
   useEffect(() => {
     navDepth.current += 1;
@@ -106,7 +95,6 @@ export default function Layout() {
   }, [pathname]);
   const goTab = (root) => {
     hapticTap();
-    // Re-tapping the active tab resets that tab's stack back to its root.
     if (activeTab.current === root) {
       tabStacks.current[root] = root;
       activeTab.current = root;
@@ -121,15 +109,11 @@ export default function Layout() {
       ? pathname === "/dashboard" || activeTab.current === "/dashboard"
       : pathname === root || pathname.startsWith(root + "/") || activeTab.current === root;
 
-  // Back button: if there's real history, go back; otherwise fall back home so
-  // the button always does something (e.g. when a deep page was opened
-  // directly from a shared link with no prior app navigation).
   const goBack = () => {
     if (navDepth.current > 1) navigate(-1);
     else navigate(owningRoot(pathname) || "/dashboard");
   };
 
-  // Close the mobile menu on Escape for keyboard users.
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
@@ -160,7 +144,6 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
@@ -175,7 +158,6 @@ export default function Layout() {
         <p className="mt-auto px-6 text-[11px] leading-relaxed text-slate-500">{SLOGAN_LONG}</p>
       </aside>
 
-      {/* Mobile top bar */}
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
         {isRoot ? (
           <Link to="/profile" className="min-w-0" aria-label="Account settings">
@@ -204,7 +186,6 @@ export default function Layout() {
         </>
       )}
 
-      {/* Mobile bottom navigation — one-handed access to core surfaces */}
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
         {bottomNavItems.map(({ to, label, icon: Icon }) => {
           const active = isTabActive(to);
@@ -223,10 +204,6 @@ export default function Layout() {
         })}
       </nav>
 
-      {/* overflow-x-clip (not overflow-hidden) keeps the page-transition slide
-          from causing sideways scroll without turning main into a nested,
-          non-scrollable container — the cause of stuck vertical scrolling in
-          the Android WebView. */}
       <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
@@ -241,6 +218,7 @@ export default function Layout() {
             </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
+        <BackToTop />
         <div className="md:block hidden"><LegalFooter /></div>
       </main>
     </div>
