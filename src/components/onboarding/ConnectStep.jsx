@@ -1,16 +1,40 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { CAPABILITY_MODULES } from "./onboardingSteps";
 import { CheckCircle2, Clock, Link2, ShieldQuestion } from "lucide-react";
 
 const STATUS_META = {
   connected: { label: "Connected", icon: CheckCircle2, tone: "text-emerald-600" },
-  available: { label: "Connect", icon: Link2, tone: "text-primary" },
+  available: { label: "Available", icon: Link2, tone: "text-primary" },
   coming_soon: { label: "Coming soon", icon: Clock, tone: "text-stone-400" },
   verify_runtime: { label: "Verify status", icon: ShieldQuestion, tone: "text-amber-600" },
 };
 
 export default function ConnectStep({ data, onChange }) {
   const selected = data.platforms || [];
+  const [paymentCapabilities, setPaymentCapabilities] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    base44.functions.invoke("getPaymentCapabilities", {})
+      .then(({ data: capabilities }) => { if (!cancelled) setPaymentCapabilities(capabilities || null); })
+      .catch(() => { if (!cancelled) setPaymentCapabilities(null); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const runtimeStatus = (item) => {
+    if (item.id === "paypal") {
+      if (!paymentCapabilities) return "verify_runtime";
+      return paymentCapabilities.paypal?.donation_link_available || paymentCapabilities.paypal?.api_configured
+        ? "available"
+        : "verify_runtime";
+    }
+    if (item.id === "stripe") {
+      if (!paymentCapabilities) return "verify_runtime";
+      return paymentCapabilities.stripe?.configured ? "available" : "verify_runtime";
+    }
+    return item.status;
+  };
 
   const toggle = (id) => {
     const next = selected.includes(id)
@@ -30,31 +54,21 @@ export default function ConnectStep({ data, onChange }) {
       <div className="space-y-5">
         {CAPABILITY_MODULES.map((group) => (
           <div key={group.id}>
-            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
-              {group.group}
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">{group.group}</p>
             <div className="grid grid-cols-2 gap-2">
               {group.items.map((item) => {
-                const meta = STATUS_META[item.status] || STATUS_META.verify_runtime;
+                const status = runtimeStatus(item);
+                const meta = STATUS_META[status] || STATUS_META.verify_runtime;
                 const Icon = meta.icon;
                 const isSelected = selected.includes(item.id);
-                const disabled = item.status === "coming_soon";
+                const disabled = status === "coming_soon";
                 return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => toggle(item.id)}
-                    className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${
-                      isSelected
-                        ? "border-primary bg-primary/10"
-                        : "border-slate-200 bg-white hover:border-slate-300"
-                    } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
-                  >
+                  <button key={item.id} type="button" disabled={disabled} onClick={() => toggle(item.id)}
+                    className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm text-left transition-colors ${isSelected ? "border-primary bg-primary/10" : "border-slate-200 bg-white hover:border-slate-300"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}>
                     <span className="text-stone-800">{item.label}</span>
                     <span className={`flex items-center gap-1 text-xs ${meta.tone}`}>
                       <Icon className="w-3.5 h-3.5" />
-                      {item.status === "connected" ? meta.label : isSelected ? "Selected" : meta.label}
+                      {status === "connected" ? meta.label : isSelected ? "Selected" : meta.label}
                     </span>
                   </button>
                 );
