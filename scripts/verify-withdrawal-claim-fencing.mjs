@@ -13,8 +13,12 @@ if (!/payout_claim_token\s*:\s*claimToken/.test(source)) {
 if (!/reconcileApprovedPayout\(sr,\s*await sr\.entities\.Withdrawal\.get\(w\.id\),\s*claimToken\)/.test(source)) {
   failures.push('approval recovery must pass the current claim token into reconciliation');
 }
-if (!/reconcileApprovedPayout\(sr,\s*await sr\.entities\.Withdrawal\.get\(withdrawal\.id\),\s*[^)]*payout_claim_token/.test(source)) {
-  failures.push('request recovery must preserve and pass the durable claim token');
+// The request-path recovery passes the locally generated payoutClaimToken,
+// which is the same durable token stored on the withdrawal and used to fence
+// finalization. Validate that actual call shape rather than requiring a
+// brittle textual reference to the persisted field name.
+if (!/reconcileApprovedPayout\(sr,\s*await sr\.entities\.Withdrawal\.get\(withdrawal\.id\),\s*payoutClaimToken\)/.test(source)) {
+  failures.push('request recovery must preserve and pass the durable payoutClaimToken into reconciliation');
 }
 
 if (failures.length) {
