@@ -11,6 +11,7 @@ import { hapticTap } from "@/lib/haptics";
 import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
+import QuickActions from "@/components/QuickActions";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -218,6 +219,7 @@ export default function Layout() {
             </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
+        <QuickActions />
         <BackToTop />
         <div className="md:block hidden"><LegalFooter /></div>
       </main>
