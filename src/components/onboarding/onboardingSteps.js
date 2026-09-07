@@ -28,9 +28,11 @@ export const ENGINE_CAPABILITIES = [
   },
 ];
 
-// Capability modules are intentionally pluggable: each entry renders a card in the
-// Connect step. New fundraising platforms, payment providers, or social channels
-// can be appended here without touching the component code.
+// Capability modules describe what the application supports, not live provider
+// health. Never hard-code a payment provider as "connected" here: connection/
+// live status must come from verified runtime/provider capability data. The
+// PayPal donation path is implemented in this app, but that fact alone is not
+// permission to manufacture a connection state for the current environment.
 export const CAPABILITY_MODULES = [
   {
     id: "external_fundraising",
@@ -55,8 +57,8 @@ export const CAPABILITY_MODULES = [
     id: "payments",
     group: "Payment Providers",
     items: [
-      { id: "stripe", label: "Stripe", status: "connected" },
-      { id: "paypal", label: "PayPal", status: "connected" },
+      { id: "stripe", label: "Stripe", status: "verify_runtime" },
+      { id: "paypal", label: "PayPal", status: "verify_runtime" },
     ],
   },
 ];
