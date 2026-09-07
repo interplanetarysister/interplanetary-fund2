@@ -1,4 +1,4 @@
-// Modular, pluggable configuration for the Crowdfund onboarding experience.
+// Modular, pluggable configuration for the Interplanetary Fund onboarding experience.
 // Add new capability modules, AI agents, or integrations here without redesigning the UI.
 
 export const ENGINE_CAPABILITIES = [
@@ -55,8 +55,8 @@ export const CAPABILITY_MODULES = [
     id: "payments",
     group: "Payment Providers",
     items: [
-      { id: "stripe", label: "Stripe", status: "connected" },
-      { id: "paypal", label: "PayPal", status: "coming_soon" },
+      { id: "paypal", label: "PayPal", status: "connected" },
+      { id: "stripe", label: "Stripe", status: "available" },
     ],
   },
 ];
