@@ -1,16 +1,32 @@
 # Interplanetary Fund — Repository Source-of-Truth Guide
 
-**Effective:** 2026-09-04
+**Effective:** 2026-09-06
 
 This document tells application agents what belongs in this repository and where internal-agent/backend knowledge lives.
 
 ## Repository ownership
 
-- **This repository (`interplanetarysister/interplanetary-fund2`)**: canonical user-facing Base44 / React+Vite application, frontend, application entities/configuration, application-layer functions/agents, onboarding, Mission Control, Agent Chat, campaign/user UX, and application-specific behavior.
+- **This repository (`interplanetarysister/interplanetary-fund2`, aka ifund2)**: authoritative consolidation destination for the user-facing Interplanetary Fund Base44 / React+Vite application, frontend, application entities/configuration, application-layer functions/agents, onboarding, Mission Control, Agent Chat, campaign/user UX, integrations presented to users, and application-specific behavior.
 - **`interplanetarysister/InterplanetaryFund`**: authoritative Convex backend and internal-agent runtime, including persistent agent identity, permissions, memory, outcomes, orchestration, scheduled intelligence, treasury/payments backend, and backend protocol.
 - **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly reassigned by the owner; do not add new production backend architecture there by default.
+- Other historical, Vercel-only, duplicate, preview, or migration repositories are not alternate application targets. Treat them as evidence/migration sources unless explicitly reassigned.
 
-This September 2026 owner-authorized boundary supersedes historical documents that describe a different consolidation direction.
+This September 6, 2026 owner-authorized boundary supersedes historical documents that describe a different application consolidation direction.
+
+## Consolidation policy
+
+All pending or newly discovered **application-owned** updates that have not reached ifund2 must be reconciled into this repository rather than continuing parallel implementation elsewhere.
+
+For every candidate update:
+1. Verify the source behavior/data; never infer from labels, filenames, stale docs, or repository names.
+2. Verify the current ifund2 implementation first.
+3. Classify the difference as already consolidated, application migration candidate, backend-owned dependency, historical-only, or UNKNOWN.
+4. Merge only verified application-owned behavior into the existing ifund2 implementation, preserving stable IDs/interfaces and valid current behavior.
+5. Keep backend/runtime logic in `InterplanetaryFund` and expose it to ifund2 through explicit interfaces/bridges.
+6. Verify authentication, authorization, payment/provider configuration, data ownership, and end-to-end runtime behavior before declaring consolidation complete.
+7. Do not delete/archive a source implementation until equivalence and dependency removal are verified.
+
+A Git commit is not runtime proof. Provider/feature status shown in the UI must come from verified capability/configuration/runtime evidence. This specifically applies to payment methods such as PayPal and Stripe: a stale frontend status must never override a verified working payment path.
 
 ## Issue #1 reconciliation
 
@@ -44,7 +60,7 @@ See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44↔Convex bridge a
 
 The Convex Builder Agent workflow is not a universal application-agent workflow. Agents working on Convex/backend/agent-runtime implementation, review, verification, or publication must use the canonical backend workflow in `InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md` when applicable.
 
-Other agents follow their role-specific instructions.
+Other agents follow their role-specific instructions. All builders/reviewers/verifiers must follow the no-assumptions evidence rule for every action.
 
 ## Cross-repository changes
 
