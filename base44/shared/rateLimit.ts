@@ -3,8 +3,9 @@
 // backend function. Returns { allowed, remaining, retryAfterSeconds }.
 // Use a stable key that identifies the actor + action, e.g.
 // `sendCommunication:<userId>`. Fails OPEN: a limiter outage never blocks a
-// legitimate request.
-export async function checkRateLimit(base44, key, max, windowSeconds) {
+// legitimate request. Callers handling abuse-sensitive creation may opt into
+// { failClosed: true }; storage failures then return unavailable/denied.
+export async function checkRateLimit(base44, key, max, windowSeconds, options = { failClosed: false }) {
   try {
     const sr = base44.asServiceRole;
     const now = Date.now();
@@ -31,6 +32,9 @@ export async function checkRateLimit(base44, key, max, windowSeconds) {
     const retryAfterSeconds = Math.max(1, Math.ceil((windowStartMs + windowSeconds * 1000 - now) / 1000));
     return { allowed: false, remaining: 0, retryAfterSeconds };
   } catch (e) {
+    if (options.failClosed) {
+      return { allowed: false, remaining: 0, retryAfterSeconds: 60, unavailable: true };
+    }
     console.error('checkRateLimit failed (failing open):', e && e.message ? e.message : e);
     return { allowed: true, remaining: 0, retryAfterSeconds: 0 };
   }

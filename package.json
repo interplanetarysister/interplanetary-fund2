@@ -14,6 +14,7 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
+    "test:support-ticket": "node scripts/test-support-ticket.mjs",
     "test:fees": "node scripts/test-fee-calc.mjs",
     "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
     "test:financial-integrity": "node scripts/test-financial-integrity.mjs",
