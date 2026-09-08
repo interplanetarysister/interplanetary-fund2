@@ -1,0 +1,23 @@
+name: User Management Security
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/platform/UserManagementPanel.jsx'
+      - 'base44/functions/adminUserManagement/**'
+      - 'base44/entities/User.jsonc'
+      - 'scripts/verify-user-management-security.mjs'
+      - '.github/workflows/user-management-security.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node scripts/verify-user-management-security.mjs
+      - run: npm run build
