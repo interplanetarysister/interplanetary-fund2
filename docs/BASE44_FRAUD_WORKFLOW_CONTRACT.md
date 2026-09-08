@@ -9,7 +9,7 @@ This branch is intentionally limited to the authoritative Base44 application. It
 ## Required invariants
 
 1. **Server authority**: approve/deny decisions are performed by authenticated server-side actions; clients cannot supply actor, role, campaign scope, or final outcome.
-2. **Explicit authorization**: the actor must be an admin or an explicitly authorized campaign operator for the target campaign. Unrelated users and cross-campaign attempts fail with the same bounded error shape as nonexistent targets.
+2. **Fraud-review authorization**: fraud-held withdrawal approval/denial is restricted to an authenticated admin/fraud-review role derived server-side. Campaign owners/operators may request withdrawal or submit evidence, but may not approve or deny the hold, including for their own campaign. Unrelated users, cross-campaign attempts, and callers with forged role/actor fields fail with the same bounded error shape as nonexistent targets.
 3. **Single winner**: the decision transition is conditional on the current pending state and uses a durable claim token/version so concurrent approve/deny requests have exactly one winner.
 4. **Idempotency**: provider dispatch, local finalization, denial, reservation release, ledger writes, and audit writes use stable idempotency keys and are safe to retry.
 5. **Provider truth**: non-success and unknown provider states remain pending/failed/unknown; provider success followed by local finalization failure is recoverable without resubmitting a second payout.
@@ -21,6 +21,8 @@ This branch is intentionally limited to the authoritative Base44 application. It
 
 - anonymous caller
 - unrelated authenticated caller
+- campaign owner/operator attempting approval
+- campaign owner/operator attempting denial
 - cross-campaign caller
 - forged role / forged actor fields
 - replayed approve
