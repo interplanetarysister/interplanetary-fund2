@@ -2,78 +2,72 @@
 
 ## Project Context
 
-This is the **user-facing Interplanetary Fund application repository**. It is the Base44 application layer paired with the authoritative Convex backend and internal-agent runtime in `interplanetarysister/InterplanetaryFund`.
+This is the **authoritative user-facing Interplanetary Fund application implementation repository**, prepared for Base44 hosting.
 
-### Canonical repository ownership
+### Current repository ownership
 
-- **Application:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Authoritative backend / internal agent runtime:** `interplanetarysister/InterplanetaryFund` — Convex backend, persistent agent state/memory, permissions, orchestration, scheduled intelligence, backend protocol, treasury/payments backend, and internal-agent knowledge.
-- **Legacy backend snapshot:** `interplanetarysister/interplanetary-fund-backend` — reference only; do not add new production backend features there unless explicitly assigned.
+- **Application implementation target:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
+- **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior. Do not resume Vercel-specific or Convex-specific feature development and do not migrate obsolete hosting/runtime dependencies into this repository.
+- **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
 
-A PR must target the same repository that owns the change. Never merge a PR from one repository into another. Cross-repository behavior must use an explicit API/function/bridge boundary.
+A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
 
 ## Required first reads
 
 Before substantial work, read:
 
-1. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — this repository's ownership and boundary.
-2. `docs/AGENT_RUNTIME_UNIFICATION.md` — current Base44↔Convex identity and memory bridge.
-3. `docs/IF_FEATURE_RECONCILIATION_2026-08-21.md` — current evidence-based feature baseline when feature work is involved.
-4. The authoritative `InterplanetaryFund/docs/PROJECT_CONTEXT_ARCHIVE.md` and applicable role-specific material when internal-agent/backend context is needed.
-5. The current issue/PR, branch/head, existing handoffs, and recent findings.
+1. `docs/ZERO_CREDIT_CONTINUOUS_WORK.md` — mandatory zero-credit/resumable work policy.
+2. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — use current applicable ownership information; if it conflicts with the newer zero-credit/Base44-only directive, update it rather than following stale Vercel/Convex scope.
+3. `docs/IF_FEATURE_RECONCILIATION_2026-08-21.md` — evidence-based feature baseline when feature work is involved; historical infrastructure statements are evidence, not current authority.
+4. The current issue/PR, branch/head, existing handoffs, and recent findings.
 
-Do not rely on the original chat transcript when the decision has been archived in GitHub.
+Do not rely on old chat transcripts or stale archived infrastructure decisions when a newer repository directive supersedes them.
 
-## Agent-role boundary
+## Mandatory zero-credit development rule
 
-The project uses **role-specific agents**. Do not assume every agent follows the Convex Builder workflow.
+All development/build/review agents, Codex/Copilot-style agents, Agent 1/2/3, and development workflows must follow `docs/ZERO_CREDIT_CONTINUOUS_WORK.md`.
 
-Only agents assigned to build, review, verify, or publish Convex/backend/agent-runtime work use the authoritative workflow in:
-`InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md`
+While the zero-credit constraint is active:
+- do not initiate metered Base44 builder, agent, workflow, API, deployment, or other paid operations;
+- do not bypass quotas, billing controls, or rate limits;
+- do not create recursive self-triggering loops to evade provider limits;
+- use confirmed legitimate zero-credit repository/local/deterministic paths wherever possible;
+- checkpoint genuinely blocked paid steps and continue independent useful work;
+- after three materially different failed attempts at one operation, stop retrying it, repair the path or record the blocker, and continue elsewhere;
+- persist enough state that later work resumes instead of restarting.
 
-That workflow is intentionally **not universal**. Application-specific agents must follow their own role instructions.
+The goal is a self-checking, resumable, deterministic, low-resource development system, not endless agent execution.
 
-## Application/backend source of truth
+## Data source rule
 
-The Convex backend is the source of truth for persistent agent identity, working memory, long-term memory, outcomes, campaigns, protocol, treasury, payments, and scheduled intelligence. Base44 entities may mirror selected backend state for application display, but must not become a competing production source of truth.
+Never assume runtime configuration, payment availability, deployment state, environment state, account state, or integration state. Trace information to its authoritative source. If authoritative data is unavailable, record it as unresolved rather than inventing a value.
 
-## Base44 References
+## Base44 application boundary
 
-- CLI overview: https://docs.base44.com/developers/references/cli/get-started/overview.md
-- Agent skills: https://docs.base44.com/developers/backend/overview/skills.md
-
-If your agent supports Agent Skills, install or update Base44 skills before Base44-specific work:
-
-```bash
-npx skills add base44/skills
-```
+Use the existing Base44 application architecture in this repository. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not duplicate Convex runtime/backend implementation. Older implementations may be inspected as read-only evidence for application behavior that is still needed.
 
 ## Key Files
 
 - `src/`: frontend application source.
 - `src/api/base44Client.js`: frontend Base44 SDK client.
 - `vite.config.js`: Vite config and Base44 Vite plugin setup.
-- `base44/`: Base44 entities and application-layer agent definitions/configuration.
+- `base44/`: Base44 entities and application-layer agent/workflow definitions/configuration.
 - `.env.local`: local-only environment values; never commit secrets.
 
 ## Working Notes
 
-- Use `base44 dev` as the default local development command when you need the local Base44 backend. It can run the backend and frontend together.
-- When docs or code mention the frontend being started automatically, that usually means the Base44 project config includes `site.serveCommand`, for example `"serveCommand": "npm run dev"` in `base44/config.jsonc`.
-- Use `npm run dev` only for frontend-only work against the hosted Base44 backend.
-- Prefer the existing Base44 CLI workflow over adding new npm scripts for Base44-specific tasks.
-- Reuse the existing SDK client and Vite plugin patterns before adding new Base44 integration paths.
-- When an interaction needs authoritative agent memory or backend state, use the established bridge rather than creating a second local memory system.
-- Do not copy the internal-agent knowledge base into this repository merely to make it discoverable; reference the canonical backend documents instead.
+- Do not trigger Base44 commands merely to test whether credits remain.
+- Prefer deterministic/local verification that is confirmed not to consume metered project credits.
+- Reuse existing SDK/client/plugin patterns before adding integration paths.
 - Historical/reconstructed feature material is evidence, not automatic production truth.
-- Run the relevant checks from `package.json` before finishing code changes.
+- Run relevant confirmed zero-credit checks before finishing code changes.
 
 ## Builder preservation rule
 
-When a builder agent is correcting, extending, or improving work that has already been produced, it must **edit the existing implementation/artifact rather than recreate it from scratch**. Start from the actual current implementation/commit/PR head and preserve valid existing functionality, architecture, interfaces, and history where practical. Make the smallest coherent modification that satisfies the task.
+When correcting, extending, or improving existing work, edit the current implementation/artifact rather than recreating it from scratch. Preserve valid functionality, architecture, interfaces, and history where practical. Make the smallest coherent modification that satisfies the task.
 
-A full rewrite/replacement is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. The builder must document the reason, what valid behavior is being preserved, and how equivalence/regression will be verified. This applies to code, configuration, schemas, documentation, agent definitions, workflows, prompts, generated assets, and other produced artifacts.
+A full rewrite is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. Document the reason, preserved behavior, and verification plan. This applies to code, configuration, schemas, documentation, agent definitions, workflows, prompts, generated assets, and other produced artifacts.
 
 ## Continuity rule
 
-When a new decision changes repository ownership, agent roles, workflow, or the application/backend boundary, update `docs/REPOSITORY_SOURCE_OF_TRUTH.md`, the affected role-specific documentation, and the durable project archive in `InterplanetaryFund` when the decision materially affects future work.
+When a new decision changes repository ownership, agent roles, workflow, hosting scope, or application boundaries, update the affected durable repository instructions so stale guidance cannot silently override the newer decision.
