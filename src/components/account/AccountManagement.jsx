@@ -29,7 +29,7 @@ export default function AccountManagement({ user, onUserChanged }) {
       onUserChanged?.({ ...user, comm_prefs: next });
       toast({ title: "Notification preference saved" });
     } catch (e) {
-      toast({ title: "Couldn't save preference", description: e.message, variant: "destructive" });
+      toast({ title: "Couldn't save preference", description: "Unable to save this preference. Please try again.", variant: "destructive" });
       setPrefs(prefs);
     }
     setSavingPrefs(false);
@@ -43,11 +43,46 @@ export default function AccountManagement({ user, onUserChanged }) {
         base44.entities.Campaign.filter({ created_by_id: me.id }),
         base44.entities.FollowedCampaign.filter({ user_id: me.id }),
         base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 200),
-        base44.entities.PlatformConnection.list("-updated_date", 100),
+        base44.entities.PlatformConnection.filter({ created_by_id: me.id }, "-updated_date", 100),
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 200),
         base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date", 200),
       ]);
-      const payload = { exported_at: new Date().toISOString(), profile: me, campaigns, followed_campaigns: follows, notifications, connections, inbox, donations };
+      const exportSafeConnections = connections.map(({ id, created_by_id, created_date, updated_date, platform, kind, display_name, external_url, campaign_id, status, automation_mode, external_total, external_donor_count, last_synced }) => ({
+        id,
+        created_by_id,
+        created_date,
+        updated_date,
+        platform,
+        kind,
+        display_name,
+        external_url,
+        campaign_id,
+        status,
+        automation_mode,
+        external_total,
+        external_donor_count,
+        last_synced,
+      }));
+      const exportSafeProfile = (({ id, email, full_name, display_name, avatar_url, created_date, updated_date, comm_prefs }) => ({
+        id,
+        email,
+        full_name,
+        display_name,
+        avatar_url,
+        created_date,
+        updated_date,
+        comm_prefs,
+      }))(me);
+      const payload = {
+        exported_at: new Date().toISOString(),
+        profile: exportSafeProfile,
+        campaigns,
+        followed_campaigns: follows,
+        notifications,
+        connections: exportSafeConnections,
+        inbox,
+        donations,
+      };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -59,7 +94,7 @@ export default function AccountManagement({ user, onUserChanged }) {
       URL.revokeObjectURL(url);
       toast({ title: "Your data has been downloaded" });
     } catch (e) {
-      toast({ title: "Couldn't export data", description: e.message, variant: "destructive" });
+      toast({ title: "Couldn't export data", description: "Unable to export your data. Please try again.", variant: "destructive" });
     }
     setExporting(false);
   };
@@ -72,7 +107,7 @@ export default function AccountManagement({ user, onUserChanged }) {
       toast({ title: "Account deleted" });
       await base44.auth.logout("/login");
     } catch (e) {
-      toast({ title: "Couldn't delete account", description: e.message, variant: "destructive" });
+      toast({ title: "Couldn't delete account", description: "Unable to delete your account. Please try again.", variant: "destructive" });
       setDeleting(false);
       setDeleteOpen(false);
       setConfirmText("");
