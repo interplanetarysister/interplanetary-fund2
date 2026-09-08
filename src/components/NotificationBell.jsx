@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { updateInboxState } from "@/lib/inboxState";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Bell } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -8,6 +9,8 @@ import { formatDistanceToNow } from "date-fns";
 export default function NotificationBell() {
   const [userId, setUserId] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   const load = useCallback(async (uid) => {
@@ -19,7 +22,7 @@ export default function NotificationBell() {
     // Signed-out visitors on public campaign pages simply get no bell content.
     base44.auth.me().then((me) => {
       setUserId(me.id);
-      load(me.id);
+      return load(me.id);
     }).catch(() => {});
   }, [load]);
 
@@ -36,16 +39,25 @@ export default function NotificationBell() {
   const unread = notifications.filter((n) => !n.read).length;
 
   const markAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    await base44.entities.Notification.updateMany({ user_id: userId, read: false }, { $set: { read: true } });
+    setSaving(true);
+    setError("");
+    try {
+      const result = await updateInboxState({ action: "read_all_notifications" });
+      await load(userId);
+      if (result.has_more) setError("More unread notifications remain. Select Mark all read again to continue.");
+    } catch { setError("Notifications could not be marked read. Please try again."); }
+    finally { setSaving(false); }
   };
 
   const openItem = async (n) => {
-    if (!n.read) {
-      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-      await base44.entities.Notification.update(n.id, { read: true });
-    }
-    if (n.link) navigate(n.link);
+    setError("");
+    try {
+      if (!n.read) {
+        await updateInboxState({ action: "read_notification", id: n.id });
+        setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      }
+      if (n.link) navigate(n.link);
+    } catch { setError("Notification could not be marked read. Please try again."); }
   };
 
   return (
@@ -64,11 +76,12 @@ export default function NotificationBell() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-stone-100">
           <p className="font-semibold text-sm text-stone-900">Notifications</p>
           {unread > 0 && (
-            <button onClick={markAllRead} className="text-xs text-primary hover:text-primary/80 font-medium">
+            <button onClick={markAllRead} disabled={saving} className="text-xs text-primary hover:text-primary/80 font-medium">
               Mark all read
             </button>
           )}
         </div>
+        {error && <p role="alert" className="text-sm text-red-600 px-4 py-2">{error}</p>}
         <div className="max-h-80 overflow-y-auto">
           {notifications.length === 0 ? (
             <p className="text-sm text-stone-400 text-center py-8">No notifications yet</p>
