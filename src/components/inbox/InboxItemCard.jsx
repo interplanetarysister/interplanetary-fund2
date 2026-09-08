@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
+import { updateInboxState } from "@/lib/inboxState";
 import { draftInboxReply } from "@/lib/creditFreeGenerators";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,26 +27,53 @@ export default function InboxItemCard({ item, onChanged }) {
   const [drafting, setDrafting] = useState(false);
   const [showDraft, setShowDraft] = useState(!!item.ai_draft);
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const generateDraft = async () => {
     setDrafting(true);
+    setError("");
     setShowDraft(true);
-    const text = draftInboxReply(item, platformName(item.platform));
-    setDraft(text);
-    if (item.record_id) await base44.entities.InboxItem.update(item.record_id, { ai_draft: text });
-    setDrafting(false);
+    try {
+      const text = draftInboxReply(item, platformName(item.platform)).slice(0, 5000);
+      setDraft(text);
+      if (item.record_id) {
+        const result = await updateInboxState({ action: "save_draft", id: item.record_id, draft: text });
+        setDraft(result.draft);
+      }
+    } catch { setError("Your draft could not be saved. Please try again."); }
+    finally { setDrafting(false); }
+  };
+
+  const saveDraft = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const result = await updateInboxState({ action: "save_draft", id: item.record_id, draft });
+      setDraft(result.draft);
+      onChanged({ ...item, ai_draft: result.draft });
+    } catch { setError("Your draft could not be saved. Please try again."); }
+    finally { setSaving(false); }
   };
 
   const markDone = async () => {
-    if (item.record_id) await base44.entities.InboxItem.update(item.record_id, { status: "done" });
-    else if (item.notification_id) await base44.entities.Notification.update(item.notification_id, { read: true });
-    onChanged({ ...item, status: "done" });
+    setSaving(true);
+    setError("");
+    try {
+      if (item.record_id) await updateInboxState({ action: "complete", id: item.record_id });
+      else if (item.notification_id) await updateInboxState({ action: "read_notification", id: item.notification_id });
+      else return;
+      onChanged({ ...item, status: "done" });
+    } catch { setError("This item could not be marked done. Please try again."); }
+    finally { setSaving(false); }
   };
 
   const copyDraft = async () => {
-    await navigator.clipboard.writeText(draft);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { setError("Copy failed. Select and copy the draft text instead."); }
   };
 
   return (
@@ -68,9 +95,9 @@ export default function InboxItemCard({ item, onChanged }) {
 
       <div className="flex flex-wrap gap-2 mt-3">
         {item.status !== "done" && (
-          <Button size="sm" variant="outline" onClick={markDone} className="rounded-lg"><Check className="w-3.5 h-3.5" /> Done</Button>
+          <Button size="sm" variant="outline" onClick={markDone} disabled={saving || drafting} className="rounded-lg"><Check className="w-3.5 h-3.5" /> Done</Button>
         )}
-        <Button size="sm" variant="outline" onClick={generateDraft} disabled={drafting} className="rounded-lg text-primary">
+        <Button size="sm" variant="outline" onClick={generateDraft} disabled={drafting || saving} className="rounded-lg text-primary">
           {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Draft reply
         </Button>
         {item.link && (
@@ -84,10 +111,12 @@ export default function InboxItemCard({ item, onChanged }) {
         )}
       </div>
 
+      {error && <p role="alert" className="text-sm text-red-600 mt-3">{error}</p>}
       {showDraft && (
         <div className="mt-3 border-t border-stone-100 pt-3">
           <p className="text-xs font-semibold text-stone-500 mb-1.5">Credit-free draft — review and edit before sending</p>
-          <Textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} className="text-sm" />
+          <Textarea aria-label="Reply draft" maxLength={5000} rows={3} value={draft} onChange={(e) => { setDraft(e.target.value); setCopied(false); }} className="text-sm" />
+          {item.record_id && <Button size="sm" variant="outline" onClick={saveDraft} disabled={saving || drafting} className="rounded-lg mt-2">Save draft</Button>}
           <Button size="sm" variant="outline" onClick={copyDraft} disabled={!draft} className="rounded-lg mt-2">
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy reply
           </Button>

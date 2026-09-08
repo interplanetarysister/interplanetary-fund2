@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { updateInboxState } from "@/lib/inboxState";
 import { Bell, Loader2, CheckCheck, ChevronRight } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ export default function Notifications() {
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     try {
@@ -25,16 +28,25 @@ export default function Notifications() {
 
   const markAllRead = async () => {
     if (!user) return;
-    await base44.entities.Notification.updateMany({ user_id: user.id, read: false }, { $set: { read: true } });
-    load();
+    setSaving(true);
+    setError("");
+    try {
+      const result = await updateInboxState({ action: "read_all_notifications" });
+      await load();
+      if (result.has_more) setError("More unread notifications remain. Select Mark all read again to continue.");
+    } catch { setError("Notifications could not be marked read. Please try again."); }
+    finally { setSaving(false); }
   };
 
   const openItem = async (n) => {
-    if (!n.read) {
-      setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-      await base44.entities.Notification.update(n.id, { read: true });
-    }
-    if (n.link) navigate(n.link);
+    setError("");
+    try {
+      if (!n.read) {
+        await updateInboxState({ action: "read_notification", id: n.id });
+        setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      }
+      if (n.link) navigate(n.link);
+    } catch { setError("Notification could not be marked read. Please try again."); }
   };
 
   if (!items) {
@@ -53,12 +65,13 @@ export default function Notifications() {
           Notifications
         </h1>
         {unread > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead} className="rounded-xl">
+          <Button variant="outline" size="sm" onClick={markAllRead} disabled={saving} className="rounded-xl">
             <CheckCheck className="w-4 h-4" /> Mark all read
           </Button>
         )}
       </div>
 
+      {error && <p role="alert" className="text-sm text-red-600 mb-3">{error}</p>}
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
           <p className="font-display text-lg text-stone-700 mb-1">You're all caught up</p>
