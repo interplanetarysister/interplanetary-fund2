@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import StatCard from "@/components/dashboard/StatCard";
 import RecurringPlanCard from "@/components/giving/RecurringPlanCard";
@@ -6,27 +6,47 @@ import DonationRow from "@/components/giving/DonationRow";
 import { DollarSign, Repeat, Flame, Loader2 } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_GIVING_ERROR = "We couldn't load your giving history right now. Please try again.";
+
 export default function MyGiving() {
   const [donations, setDonations] = useState(null);
   const [error, setError] = useState(null);
+  const requestGeneration = useRef(0);
+  const mounted = useRef(true);
 
   const load = useCallback(async () => {
+    const generation = ++requestGeneration.current;
+    setError(null);
     try {
-      setError(null);
       const { data } = await base44.functions.invoke("getMyGiving", {});
-      setDonations(data?.donations || []);
+      if (mounted.current && generation === requestGeneration.current) {
+        setDonations(data?.donations || []);
+        return true;
+      }
+      return false;
     } catch (e) {
-      setError(e.message || "We couldn't load your giving history.");
+      console.error("My Giving load failed", e);
+      if (mounted.current && generation === requestGeneration.current) {
+        setError(SAFE_GIVING_ERROR);
+      }
+      return false;
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mounted.current = true;
+    load();
+    return () => {
+      mounted.current = false;
+      requestGeneration.current += 1;
+    };
+  }, [load]);
 
   if (error) {
-    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setDonations(null); load(); }} /></div>;
+    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setDonations(null); load(); }} /></div>;
   }
   if (!donations) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading your giving history</span></div>;
   }
 
   const lifetime = donations.reduce((s, d) => s + d.amount, 0);
