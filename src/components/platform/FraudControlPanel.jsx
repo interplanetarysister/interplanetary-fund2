@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Loader2, ShieldAlert, CheckCircle2, XCircle, Lock, Unlock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useEffect, useState } from "react";
+import { Loader2, ShieldAlert } from "lucide-react";
 
 const SAFE_ADMIN_ERROR = "This action is temporarily unavailable until the server-side admin workflow is enabled.";
 
@@ -10,29 +9,11 @@ const SAFE_ADMIN_ERROR = "This action is temporarily unavailable until the serve
 export default function FraudControlPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [denyTarget, setDenyTarget] = useState(null);
-  const [denyReason, setDenyReason] = useState("");
-  const [freezeTarget, setFreezeTarget] = useState(null);
-  const [freezeReason, setFreezeReason] = useState("");
 
   useEffect(() => {
     setError(SAFE_ADMIN_ERROR);
     setLoading(false);
   }, []);
-
-  const deny = () => {
-    setDenyTarget(null);
-    setDenyReason("");
-    setError(SAFE_ADMIN_ERROR);
-  };
-
-  const unfreeze = () => setError(SAFE_ADMIN_ERROR);
-
-  const freeze = () => {
-    setFreezeTarget(null);
-    setFreezeReason("");
-    setError(SAFE_ADMIN_ERROR);
-  };
 
   if (loading) {
     return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
@@ -56,15 +37,6 @@ export default function FraudControlPanel() {
           This prevents direct client-side enumeration or mutation of Withdrawal/Campaign records and avoids bypassing claim, idempotency, ledger, and audit controls.
         </p>
       </section>
-
-      {/* Keep the action affordances out of the active UI until their server workflows exist. */}
-      {denyTarget !== null && <Button className="hidden" onClick={deny}>Deny</Button>}
-      {freezeTarget !== null && <Button className="hidden" onClick={freeze}>Pause</Button>}
-      <div className="hidden" aria-hidden="true">
-        <CheckCircle2 /><XCircle /><Lock /><Unlock />
-        <span>{denyReason}{freezeReason}</span>
-        <button type="button" onClick={unfreeze}>Restore</button>
-      </div>
     </div>
   );
 }
