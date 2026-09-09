@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import CampaignGlobe from "@/components/globe/CampaignGlobe";
@@ -19,28 +19,31 @@ export default function GlobalGlobe() {
   const requestIdRef = useRef(0);
   const mountedRef = useRef(true);
 
-  const loadCampaigns = async () => {
+  const loadCampaigns = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     try {
       const nextCampaigns = await base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", 200);
       if (!Array.isArray(nextCampaigns)) throw new Error("Malformed globe response");
-      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      if (!mountedRef.current || requestId !== requestIdRef.current) return true;
       setCampaigns(nextCampaigns);
       setError(null);
-    } catch (e) {
-      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      return true;
+    } catch (error) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return false;
+      console.warn("Global campaign map load failed", { name: error?.name || "UnknownError" });
       setError("We couldn't load the global campaign map. Please try again.");
+      return false;
     }
-  };
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
-    loadCampaigns();
+    void loadCampaigns();
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
     };
-  }, []);
+  }, [loadCampaigns]);
 
   const withCoords = (campaigns || []).filter(
     (c) => typeof c.location_lat === "number" && typeof c.location_lng === "number"
@@ -66,7 +69,7 @@ export default function GlobalGlobe() {
         </div>
 
         {error ? (
-          <PageError message={error} onRetry={() => { setError(null); setCampaigns(null); loadCampaigns(); }} />
+          <PageError message={error} onRetry={() => { setError(null); setCampaigns(null); void loadCampaigns(); }} />
         ) : !campaigns ? (
           <div className="flex justify-center py-20" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" aria-label="Loading global campaign map" /></div>
         ) : withCoords.length === 0 ? (
