@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import CampaignGlobe from "@/components/globe/CampaignGlobe";
@@ -16,12 +16,34 @@ export default function GlobalGlobe() {
   const [campaigns, setCampaigns] = useState(null);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState(null);
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  const loadCampaigns = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    try {
+      const nextCampaigns = await base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", 200);
+      if (!Array.isArray(nextCampaigns)) throw new Error("Malformed globe response");
+      if (!mountedRef.current || requestId !== requestIdRef.current) return true;
+      setCampaigns(nextCampaigns);
+      setError(null);
+      return true;
+    } catch (error) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return false;
+      console.warn("Global campaign map load failed", { name: error?.name || "UnknownError" });
+      setError("We couldn't load the global campaign map. Please try again.");
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", 200)
-      .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load the globe."));
-  }, []);
+    mountedRef.current = true;
+    void loadCampaigns();
+    return () => {
+      mountedRef.current = false;
+      requestIdRef.current += 1;
+    };
+  }, [loadCampaigns]);
 
   const withCoords = (campaigns || []).filter(
     (c) => typeof c.location_lat === "number" && typeof c.location_lng === "number"
@@ -47,9 +69,9 @@ export default function GlobalGlobe() {
         </div>
 
         {error ? (
-          <PageError message={error} onRetry={() => { setError(null); setCampaigns(null); }} />
+          <PageError message={error} onRetry={() => { setError(null); setCampaigns(null); void loadCampaigns(); }} />
         ) : !campaigns ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+          <div className="flex justify-center py-20" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" aria-label="Loading global campaign map" /></div>
         ) : withCoords.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-500">
             No campaigns have locations yet. Add a city when you create a campaign to see it on the globe.
