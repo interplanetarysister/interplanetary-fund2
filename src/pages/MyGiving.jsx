@@ -18,14 +18,17 @@ export default function MyGiving() {
     const generation = ++requestGeneration.current;
     setError(null);
     try {
-      const { data } = await base44.functions.invoke("getMyGiving", {});
+      const response = await base44.functions.invoke("getMyGiving", {});
+      const nextDonations = response?.data?.donations;
+      if (!Array.isArray(nextDonations)) {
+        throw new Error("MALFORMED_GIVING_RESPONSE");
+      }
       if (mounted.current && generation === requestGeneration.current) {
-        setDonations(data?.donations || []);
+        setDonations(nextDonations);
         return true;
       }
       return false;
-    } catch (e) {
-      console.error("My Giving load failed", e);
+    } catch {
       if (mounted.current && generation === requestGeneration.current) {
         setError(SAFE_GIVING_ERROR);
       }
