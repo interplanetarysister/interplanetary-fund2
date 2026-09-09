@@ -51,8 +51,11 @@ The source inspection above does **not** prove:
 6. Hosted RLS/authorization behavior in the target Base44 environment.
 7. Exact 3% withdrawal-fee consistency across `fees.js`, persisted schema, UI copy, and tests.
 8. Development runtime concurrency/recovery results.
-9. Production topology parity with the visible repository or the deployed Convex backend.
 
 ## Implementation rule
 
-Before adding or replacing behavior, inspect the complete current-main implementations of `requestWithdrawal`, `fees.js`, the relevant entity schemas, and the canonical Convex mutations. Do not infer unsupported Base44 atomic primitives from this inventory. Any promotion requires exact-head tests and separate Development evidence.
+Before adding or replacing behavior, inspect the complete current-main implementations of `requestWithdrawal`, `fees.js`, the relevant entity schemas, and the canonical financial mutations. Do not infer unsupported Base44 atomic primitives from this inventory. Any promotion requires exact-head tests and separate Development evidence.
+
+## Scope boundary
+
+This focused PR is for the authoritative Base44 application only. Convex automation repair and deployed-topology reconciliation remain separate work and are not release gates for this Base44 slice. Existing Convex-linked helpers are recorded here as collaborators to be verified, not as permission to change or promote Convex behavior from this branch.
