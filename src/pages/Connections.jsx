@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link2, Rocket, Share2, RefreshCw } from "lucide-react";
@@ -20,7 +20,30 @@ export default function Connections() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [fetchPlatform, setFetchPlatform] = useState(null);
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
   const subscriptionActive = user?.subscription_status === "active";
+
+  const loadConnections = async () => {
+    const requestId = ++requestIdRef.current;
+    try {
+      const [me, connRes] = await Promise.all([
+        base44.auth.me(),
+        base44.functions.invoke("listConnections", {}),
+      ]);
+      const nextConnections = connRes?.data?.connections;
+      if (!Array.isArray(nextConnections)) throw new Error("Malformed connections response");
+      if (!mountedRef.current || requestId !== requestIdRef.current) return true;
+      setUser(me);
+      setConnections(nextConnections);
+      setError(null);
+      return true;
+    } catch (e) {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return false;
+      setError("We couldn't load your connections. Please try again.");
+      return false;
+    }
+  };
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -29,35 +52,40 @@ export default function Connections() {
     setSyncResult(null);
     try {
       const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
-      setSyncResult(data);
+      if (!data || typeof data !== "object") throw new Error("Malformed sync response");
+      const safeResult = {
+        campaigns_covered: Number.isFinite(data.campaigns_covered) ? data.campaigns_covered : 0,
+        total_discovered: Number.isFinite(data.total_discovered) ? data.total_discovered : 0,
+        total_imported: Number.isFinite(data.total_imported) ? data.total_imported : 0,
+        overall_status: typeof data.overall_status === "string" ? data.overall_status : "completed",
+      };
+      if (!mountedRef.current) return;
+      setSyncResult(safeResult);
       const r = await base44.functions.invoke("listConnections", {});
-      setConnections(r.data.connections);
+      const nextConnections = r?.data?.connections;
+      if (!Array.isArray(nextConnections)) throw new Error("Malformed connections response");
+      if (mountedRef.current) setConnections(nextConnections);
     } catch (e) {
-      setSyncResult({ error: e.message || "Sync failed." });
+      if (mountedRef.current) setSyncResult({ error: "We couldn't sync your platforms. Please try again." });
+    } finally {
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
 
   useEffect(() => {
-    (async () => {
-     try {
-      const [me, connRes] = await Promise.all([
-        base44.auth.me(),
-        base44.functions.invoke("listConnections", {}),
-      ]);
-      setUser(me);
-      setConnections(connRes.data.connections);
-     } catch (e) {
-       setError(e.message || "We couldn't load your connections.");
-     }
-    })();
+    mountedRef.current = true;
+    loadConnections();
+    return () => {
+      mountedRef.current = false;
+      requestIdRef.current += 1;
+    };
   }, []);
 
   if (error) {
-    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); }} /></div>;
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); loadConnections(); }} /></div>;
   }
   if (!connections) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" aria-label="Loading connections" /></div>;
   }
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
@@ -100,13 +128,13 @@ export default function Connections() {
         {!subscriptionActive && <span className="text-xs text-stone-400">Fetch Credentials / API Info is a subscription feature.</span>}
       </div>
       {syncResult && (
-        <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">
+        <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm" role="status" aria-live="polite">
           {syncResult.error ? (
             <p className="text-red-600">{syncResult.error}</p>
           ) : (
             <p className="text-stone-700">
               Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · discovered{" "}
-              <span className="font-medium">${(syncResult.total_discovered || 0).toLocaleString()}</span> · imported{" "}
+              <span className="font-medium">${syncResult.total_discovered.toLocaleString()}</span> · imported{" "}
               <span className="font-medium">{syncResult.total_imported}</span> · status{" "}
               <span className="font-medium">{syncResult.overall_status}</span>
             </p>
