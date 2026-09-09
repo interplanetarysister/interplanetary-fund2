@@ -21,6 +21,7 @@ export default function Connections() {
   const [syncResult, setSyncResult] = useState(null);
   const [fetchPlatform, setFetchPlatform] = useState(null);
   const requestIdRef = useRef(0);
+  const syncRequestIdRef = useRef(0);
   const mountedRef = useRef(true);
   const subscriptionActive = user?.subscription_status === "active";
 
@@ -48,27 +49,41 @@ export default function Connections() {
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
   const syncAll = async () => {
+    if (syncing) return;
+    const syncRequestId = ++syncRequestIdRef.current;
     setSyncing(true);
     setSyncResult(null);
     try {
       const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
-      if (!data || typeof data !== "object") throw new Error("Malformed sync response");
-      const safeResult = {
-        campaigns_covered: Number.isFinite(data.campaigns_covered) ? data.campaigns_covered : 0,
-        total_discovered: Number.isFinite(data.total_discovered) ? data.total_discovered : 0,
-        total_imported: Number.isFinite(data.total_imported) ? data.total_imported : 0,
-        overall_status: typeof data.overall_status === "string" ? data.overall_status : "completed",
-      };
-      if (!mountedRef.current) return;
-      setSyncResult(safeResult);
+      if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Malformed sync response");
+      const campaignsCovered = data.campaigns_covered;
+      const totalDiscovered = data.total_discovered;
+      const totalImported = data.total_imported;
+      const overallStatus = data.overall_status;
+      const allowedStatuses = new Set(["success", "partial", "failed"]);
+      if (!Number.isFinite(campaignsCovered) || campaignsCovered < 0 ||
+          !Number.isFinite(totalDiscovered) || totalDiscovered < 0 ||
+          !Number.isFinite(totalImported) || totalImported < 0 ||
+          !allowedStatuses.has(overallStatus)) {
+        throw new Error("Malformed sync response");
+      }
+      if (!mountedRef.current || syncRequestId !== syncRequestIdRef.current) return;
+      setSyncResult({
+        campaigns_covered: campaignsCovered,
+        total_discovered: totalDiscovered,
+        total_imported: totalImported,
+        overall_status: overallStatus,
+      });
       const r = await base44.functions.invoke("listConnections", {});
       const nextConnections = r?.data?.connections;
       if (!Array.isArray(nextConnections)) throw new Error("Malformed connections response");
-      if (mountedRef.current) setConnections(nextConnections);
+      if (mountedRef.current && syncRequestId === syncRequestIdRef.current) setConnections(nextConnections);
     } catch (e) {
-      if (mountedRef.current) setSyncResult({ error: "We couldn't sync your platforms. Please try again." });
+      if (mountedRef.current && syncRequestId === syncRequestIdRef.current) {
+        setSyncResult({ error: "We couldn't sync your platforms. Please try again." });
+      }
     } finally {
-      if (mountedRef.current) setSyncing(false);
+      if (mountedRef.current && syncRequestId === syncRequestIdRef.current) setSyncing(false);
     }
   };
 
@@ -78,6 +93,7 @@ export default function Connections() {
     return () => {
       mountedRef.current = false;
       requestIdRef.current += 1;
+      syncRequestIdRef.current += 1;
     };
   }, []);
 
