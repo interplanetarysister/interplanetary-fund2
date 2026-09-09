@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,9 @@ import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
 
+const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry. Please try again.";
+const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Please try again.";
+
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
   const [entries, setEntries] = useState(null);
@@ -14,35 +17,56 @@ export default function IntegrationsAdmin() {
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const requestGeneration = useRef(0);
+  const mounted = useRef(true);
+
+  const loadRegistry = useCallback(async () => {
+    const generation = ++requestGeneration.current;
+    try {
+      const me = await base44.auth.me();
+      if (!mounted.current || generation !== requestGeneration.current) return;
+      setUser(me);
+      if (me.role !== "admin") return;
+      const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
+      if (!Array.isArray(list)) throw new Error("Malformed registry response");
+      if (!mounted.current || generation !== requestGeneration.current) return;
+      setEntries(list);
+      setError(null);
+    } catch (e) {
+      console.error("IntegrationsAdmin registry load failed:", e?.name || "UnknownError");
+      if (!mounted.current || generation !== requestGeneration.current) return;
+      setError(SAFE_REGISTRY_ERROR);
+      setEntries(null);
+    }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const me = await base44.auth.me();
-        setUser(me);
-        if (me.role !== "admin") return;
-        const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-        setEntries(list);
-      } catch (e) {
-        setError(e.message || "Couldn't load the integration registry.");
-      }
-    })();
-  }, [refreshKey]);
+    mounted.current = true;
+    loadRegistry();
+    return () => {
+      mounted.current = false;
+      requestGeneration.current += 1;
+    };
+  }, [loadRegistry, refreshKey]);
 
   const reload = () => setRefreshKey((k) => k + 1);
 
   const runHealthCheck = async () => {
+    if (checking) return;
     setChecking(true);
     try {
-      await base44.functions.invoke("validateIntegrationHealth", {});
+      const response = await base44.functions.invoke("validateIntegrationHealth", {});
+      if (response && response.data && typeof response.data !== "object") throw new Error("Malformed health response");
       reload();
     } catch (e) {
-      setError(e.message || "Health check failed.");
+      console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
+      if (mounted.current) setError(SAFE_HEALTH_ERROR);
+    } finally {
+      if (mounted.current) setChecking(false);
     }
-    setChecking(false);
   };
 
-  if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (!user) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   if (user.role !== "admin") {
     return (
@@ -55,7 +79,7 @@ export default function IntegrationsAdmin() {
   }
 
   if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); setEntries(null); reload(); }} /></div>;
-  if (!entries) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
   const counts = entries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
@@ -67,9 +91,9 @@ export default function IntegrationsAdmin() {
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Integration Registry</h1>
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
-        <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl">
+        <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl" aria-busy={checking}>
           {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
-          Run health check
+          {checking ? "Checking…" : "Run health check"}
         </Button>
       </div>
 
