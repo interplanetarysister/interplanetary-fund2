@@ -6,9 +6,16 @@ Effective: 2026-09-09
 
 ## Current architecture rule
 
-Complete the whole platform in Base44 first. Vercel and Convex are **deferred infrastructure**, not abandoned product capability. Do not spend current effort implementing, deploying, repairing, or migrating Vercel/Convex runtime infrastructure. When historical Vercel/Convex code supplied a useful page, workflow, automation, integration behavior, data contract, or user/admin capability, recover the intended capability and implement a safe Base44-compatible equivalent where possible. Preserve documented contracts and provenance needed for a later Vercel/Convex phase.
+Complete the whole platform in Base44 first. Vercel and Convex are **deferred infrastructure**, not abandoned product capability. This Base44-first product phase does **not** waive the urgent reliability obligation for the already-reported Production Convex write-conflict incident. Before any future Production promotion or infrastructure change:
 
-Current runtime target: **Node 22**.
+1. reconcile the actual deployed Convex automation/backend with the canonical source;
+2. reproduce and validate the fix in Development first;
+3. repair shared-write contention with serialization/claiming, idempotency, duplicate-run prevention, and bounded retry semantics; and
+4. complete the full Agent 1 → Agent 2+3 → Agent 1 → Agent 3 workflow with explicit evidence.
+
+Do not spend current effort implementing, deploying, repairing, or migrating Vercel/Convex runtime infrastructure as part of ordinary Base44 feature work. When historical Vercel/Convex code supplied a useful page, workflow, automation, integration behavior, data contract, or user/admin capability, recover the intended capability and implement a safe Base44-compatible equivalent where possible. Preserve documented contracts and provenance needed for a later Vercel/Convex phase.
+
+Current runtime decision: **Node 22 is canonical for the Base44 application and all release gates.** This decision applies consistently to `package.json` engines, `package-lock.json`, `.node-version`, `.nvmrc`, CI workflows, local verification, and active PRs unless a PR explicitly documents a temporary compatibility matrix. A PR that still requests Node 24 verification must be reconciled to the Node 22 decision before approval; Node 24 evidence is not a substitute for Node 22 evidence.
 
 ## Evidence rules
 
@@ -68,12 +75,20 @@ No capability may disappear merely because its original implementation lived in 
 | Responsive/mobile layout | current published app observation | some pages cannot expose/scroll sideways content correctly | `MISSING_SAFE_TO_IMPLEMENT` | audit viewport overflow, tables/cards/nav, touch scrolling, and responsive breakpoints across all pages |
 | Logo/branding propagation | approved one-ring blue/purple planet branding + current published observation | intended logo has not propagated everywhere | `MISSING_SAFE_TO_IMPLEMENT` | inventory favicon/app/header/auth/share assets and unify approved branding |
 | Integration analysis truth | current platform analysis + actual Base44/GitHub connection | stale GitHub/Google OAuth findings and Convex-required analysis observed | `MISSING_SAFE_TO_IMPLEMENT` | make analysis reflect verified current connection state; mark deferred infrastructure inactive rather than falsely broken |
-| Convex-derived capabilities | historical Convex implementation | infrastructure intentionally deferred | `DEFERRED_INFRASTRUCTURE` for runtime only | inventory each product capability separately and provide Base44 equivalent where safe; retain future Convex contracts |
-| Vercel-derived capabilities | historical Vercel implementation | infrastructure intentionally deferred | `DEFERRED_INFRASTRUCTURE` for runtime only | inventory each product capability separately and provide Base44 equivalent where safe; retain future Vercel contracts |
+| Convex-derived capabilities | historical Convex implementation | runtime is deferred, but Production write-conflict incident remains a required reliability work item before promotion | `DEFERRED_INFRASTRUCTURE` for runtime; `BLOCKED` for promotion | reconcile deployed topology, reproduce in Development, repair serialization/idempotency, then complete full review workflow |
+| Vercel-derived capabilities | historical Vercel implementation | runtime is deferred | `DEFERRED_INFRASTRUCTURE` for runtime only | inventory each product capability separately and provide Base44 equivalent where safe; retain future Vercel contracts |
+
+## Financial source-of-truth and fee contract
+
+- Canonical settlement/ledger truth is authoritative for payment status, available balance, withdrawal eligibility, and historical migration baselines.
+- The approved withdrawal fee is **3%** unless a newer signed product decision explicitly supersedes it; historical 7% references are treated as stale/unresolved until reconciled.
+- Legacy baseline/read paths must exclude rows with a canonical operation identifier and must use the same explicit payment/settlement confirmation predicate as the production financial code.
+- No ledger, withdrawal, or analytics surface may infer payment success, available balance, or provider readiness from client-visible shape alone.
+- IF #0.5 fee/source-of-truth decisions remain `BLOCKED` until the authoritative settlement/ledger contract and any conflicting historical references are explicitly reconciled in a reviewed change.
 
 ## Specialized agent stages
 
-The active Agent Team uses this ledger in this order:
+The active Agent Team uses this order:
 
 1. **Completeness** — inventory all historical pages/features/workflows/automations/integrations and compare with exact fund2 main.
 2. **Legacy recovery** — identify intended capability and provenance; separate product behavior from old infrastructure.
@@ -88,7 +103,20 @@ Paused specialist workflows should be activated only when independent recurring 
 
 ## Capability record requirements
 
-For every new inventory item, record the capability/page/workflow name; source repository/path/issue/PR/commit when available; user/admin role and expected behavior; current fund2 evidence; classification; security/privacy/payment implications; whether historical Vercel/Convex infrastructure was involved; Base44-compatible replacement strategy; verification evidence and remaining gap; and future Vercel/Convex contract/interface notes when relevant.
+For every inventory item, record all of the following before classifying it as complete:
+
+- capability/page/workflow name;
+- source repository, path, issue, PR, and commit when available;
+- user/admin role and expected behavior;
+- current fund2 evidence;
+- classification;
+- security, privacy, and payment implications;
+- whether historical Vercel/Convex infrastructure was involved;
+- Base44-compatible replacement strategy;
+- exact verification evidence and remaining gap; and
+- future Vercel/Convex contract/interface notes when relevant.
+
+A row that lacks these fields is a **partial baseline**, not completion evidence.
 
 ## Base44 completeness gate
 
@@ -104,3 +132,8 @@ The Base44 phase is complete only when:
 8. Responsive/mobile behavior, navigation, scrolling, accessibility, error states, and approved branding are verified across the complete page inventory.
 9. No source repository is archived/deleted solely because migration appears complete; equivalence and dependency removal must be proven first.
 10. Future Convex/Vercel reimplementation has preserved capability provenance and interface/contract notes sufficient to begin a later infrastructure phase without rediscovering platform requirements.
+
+## Publication metadata rule
+
+GitHub `merge_commit_sha` is not publication evidence. A PR is considered unpublished until its actual state, base, head SHA, review approvals, CI status, and merge result are independently verified. Any non-null merge metadata on an open or Draft PR must be recorded as a metadata anomaly and must not be treated as completion, approval, or deployment.
+
