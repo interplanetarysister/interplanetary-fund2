@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -26,28 +26,34 @@ export default function Community() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    (async () => {
+  const loadCommunities = useCallback(async () => {
+    setError(null);
+    setCommunities(null);
+    try {
+      const me = await base44.auth.me();
+      setAuthed(true);
+      const [all, memberships] = await Promise.all([
+        base44.entities.Community.list("-created_date", 100),
+        base44.entities.CommunityMember.filter({ user_id: me.id }),
+      ]);
+      setCommunities(all);
+      setMyMemberships(memberships.map((m) => m.community_id));
+    } catch {
+      // Guest — public communities only.
+      setAuthed(false);
       try {
-        const me = await base44.auth.me();
-        setAuthed(true);
-        const [all, memberships] = await Promise.all([
-          base44.entities.Community.list("-created_date", 100),
-          base44.entities.CommunityMember.filter({ user_id: me.id }),
-        ]);
+        const all = await base44.entities.Community.list("-created_date", 100);
         setCommunities(all);
-        setMyMemberships(memberships.map((m) => m.community_id));
+        setMyMemberships([]);
       } catch {
-        // Guest — public communities only.
-        try {
-          const all = await base44.entities.Community.list("-created_date", 100);
-          setCommunities(all);
-        } catch (e) {
-          setError(e.message || "We couldn't load communities.");
-        }
+        setError("We couldn't load communities. Please try again.");
       }
-    })();
+    }
   }, []);
+
+  useEffect(() => {
+    loadCommunities();
+  }, [loadCommunities]);
 
   const q = query.toLowerCase();
   const filtered = (communities || []).filter(
@@ -80,7 +86,7 @@ export default function Community() {
       ) : (
         <div className="mt-6">
           {error ? (
-            <PageError message={error} onRetry={() => { setError(null); setCommunities(null); }} />
+            <PageError message={error} onRetry={loadCommunities} />
           ) : !communities ? (
             <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
           ) : (
@@ -99,7 +105,7 @@ export default function Community() {
                 )}
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-                {[["all", "All"], ...Object.entries(communityTypes)].map(([v, l]) => (
+                {[['all', 'All'], ...Object.entries(communityTypes)].map(([v, l]) => (
                   <button key={v} onClick={() => setTypeFilter(v)}
                     className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                       typeFilter === v ? "bg-primary text-primary-foreground" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
