@@ -3,9 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "24.x"
-  },
+  "engines": {"node": "24.x"},
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,10 +15,11 @@
     "test:fees": "node scripts/test-fee-calc.mjs",
     "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
     "test:financial-integrity": "node scripts/test-financial-integrity.mjs",
+    "test:legacy-financial-baseline": "node scripts/test-legacy-financial-baseline.mjs",
     "test:delete-account": "node scripts/test-delete-account.mjs",
     "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
     "test:account-guard": "node scripts/test-account-guard.mjs",
-    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs",
+    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-legacy-financial-baseline.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -30,8 +29,8 @@
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
-    "@radix-ui/react-aspect-ratio": "^1.1.2",
-    "@radix-ui/react-avatar": "^1.1.3",
+    "@radix-ui/react-aspect-ratio": "^1.1.3",
+    "@radix-ui/react-avatar": "^1.1.4",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-collapsible": "^1.1.3",
     "@radix-ui/react-context-menu": "^2.2.6",

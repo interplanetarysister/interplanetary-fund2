@@ -58,8 +58,10 @@ function registrationArgs(campaign) {
 
 function legacyConfirmed(donation) {
   if (!donation || donation.canonical_operation_id) return false;
-  if (donation.is_institutional) return donation.cleared === true && donation.payment_verified !== false;
-  return donation.payment_verified !== false;
+  if (donation.is_institutional) {
+    return donation.cleared === true && donation.payment_verified === true;
+  }
+  return donation.payment_verified === true;
 }
 
 export async function ensureCanonicalCampaign(sr, campaign) {
