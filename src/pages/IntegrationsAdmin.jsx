@@ -24,8 +24,10 @@ function isHealthResponse(value) {
 
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [entries, setEntries] = useState(null);
-  const [error, setError] = useState(null);
+  const [registryError, setRegistryError] = useState(null);
+  const [healthError, setHealthError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -39,16 +41,18 @@ export default function IntegrationsAdmin() {
       if (!mounted.current || generation !== requestGeneration.current) return;
       if (!me || typeof me !== "object" || typeof me.role !== "string") throw new Error("Malformed auth response");
       setUser(me);
+      setAuthReady(true);
       if (!isAdminUser(me)) return;
       const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
       if (!isRegistryResponse(list)) throw new Error("Malformed registry response");
       if (!mounted.current || generation !== requestGeneration.current) return;
       setEntries(list);
-      setError(null);
+      setRegistryError(null);
     } catch (e) {
       console.error("IntegrationsAdmin registry load failed:", e?.name || "UnknownError");
       if (!mounted.current || generation !== requestGeneration.current) return;
-      setError(SAFE_REGISTRY_ERROR);
+      setAuthReady(true);
+      setRegistryError(SAFE_REGISTRY_ERROR);
     }
   }, []);
 
@@ -66,17 +70,22 @@ export default function IntegrationsAdmin() {
   const runHealthCheck = async () => {
     if (checking) return;
     setChecking(true);
+    setHealthError(null);
     try {
       const response = await base44.functions.invoke("validateIntegrationHealth", {});
       if (!isHealthResponse(response)) throw new Error("Malformed health response");
       reload();
     } catch (e) {
       console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
-      if (mounted.current) setError(SAFE_HEALTH_ERROR);
+      if (mounted.current) setHealthError(SAFE_HEALTH_ERROR);
     } finally {
       if (mounted.current) setChecking(false);
     }
   };
+
+  if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
+
+  if (registryError) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={registryError} onRetry={() => { setRegistryError(null); reload(); }} /></div>;
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
@@ -90,7 +99,6 @@ export default function IntegrationsAdmin() {
     );
   }
 
-  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); reload(); }} /></div>;
   if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
@@ -108,6 +116,8 @@ export default function IntegrationsAdmin() {
           {checking ? "Checking…" : "Run health check"}
         </Button>
       </div>
+
+      {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
         <Stat label="Registered" value={entries.length} />
