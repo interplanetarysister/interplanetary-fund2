@@ -43,12 +43,14 @@ export default function OpsCenter() {
         setProviderState("available");
         setError(null);
       }
+      return true;
     } catch (e) {
       console.error("Ops Center load failed", e);
       if (mounted.current && generation === requestGeneration.current) {
         setProviderState("unavailable");
         setError(SAFE_OPS_ERROR);
       }
+      return false;
     } finally {
       if (mounted.current && generation === requestGeneration.current) setLoading(false);
     }
@@ -67,7 +69,8 @@ export default function OpsCenter() {
     setSyncing(true);
     setSyncError("");
     try {
-      await load();
+      const ok = await load();
+      if (!ok && mounted.current) setSyncError(SAFE_SYNC_ERROR);
     } catch (e) {
       console.error("Ops Center refresh failed", e);
       if (mounted.current) setSyncError(SAFE_SYNC_ERROR);
