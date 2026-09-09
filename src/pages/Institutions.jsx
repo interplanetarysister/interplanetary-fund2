@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import InstitutionCard from "@/components/institutions/InstitutionCard";
@@ -15,6 +15,8 @@ const programFilters = [
   { value: "offers_volunteer_program", label: "Volunteer Programs" },
 ];
 
+const SAFE_INSTITUTIONS_ERROR = "We couldn't load institutions right now. Please try again.";
+
 export default function Institutions() {
   const [institutions, setInstitutions] = useState(null);
   const [query, setQuery] = useState("");
@@ -22,14 +24,20 @@ export default function Institutions() {
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadInstitutions = useCallback(() => {
+    setError(null);
+    setInstitutions(null);
     base44.entities.Institution.list("-created_date", 100)
       .then(setInstitutions)
-      .catch((e) => setError(e.message || "We couldn't load institutions."));
+      .catch(() => setError(SAFE_INSTITUTIONS_ERROR));
   }, []);
 
+  useEffect(() => {
+    loadInstitutions();
+  }, [loadInstitutions]);
+
   if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); }} /></div>;
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={loadInstitutions} /></div>;
   }
   if (!institutions) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -77,7 +85,7 @@ export default function Institutions() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-        {[["all", "All types"], ...Object.entries(institutionTypes)].map(([v, l]) => (
+        {[['all', 'All types'], ...Object.entries(institutionTypes)].map(([v, l]) => (
           <button key={v} onClick={() => setTypeFilter(v)}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               typeFilter === v ? "bg-primary text-primary-foreground" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
