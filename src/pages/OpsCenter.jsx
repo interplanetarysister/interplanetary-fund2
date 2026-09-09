@@ -7,13 +7,12 @@ import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
-import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
 const SAFE_OPS_ERROR = "We couldn't load Ops Center data right now. Please try again.";
-const SAFE_SYNC_ERROR = "Sync failed. Cached operational data remains available; please try again.";
+const SAFE_SYNC_ERROR = "Refresh failed. Please try again.";
 
-// Ops Center — Base44 mirror of the Convex mission backend. Sync Now refreshes it.
+// Ops Center — Base44 operational data with explicit provider state.
 export default function OpsCenter() {
   const [agents, setAgents] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -23,6 +22,7 @@ export default function OpsCenter() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [error, setError] = useState(null);
+  const [providerState, setProviderState] = useState("unknown");
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
 
@@ -40,10 +40,15 @@ export default function OpsCenter() {
         setCampaigns(c);
         setTreasury(t[0] || null);
         setReports(r);
+        setProviderState("available");
         setError(null);
       }
-    } catch {
-      if (mounted.current && generation === requestGeneration.current) setError(SAFE_OPS_ERROR);
+    } catch (e) {
+      console.error("Ops Center load failed", e);
+      if (mounted.current && generation === requestGeneration.current) {
+        setProviderState("unavailable");
+        setError(SAFE_OPS_ERROR);
+      }
     } finally {
       if (mounted.current && generation === requestGeneration.current) setLoading(false);
     }
@@ -62,19 +67,17 @@ export default function OpsCenter() {
     setSyncing(true);
     setSyncError("");
     try {
-      const res = await base44.functions.invoke("syncFromConvex", {});
-      if (res.data?.error) throw new Error(res.data.error);
       await load();
-    } catch {
+    } catch (e) {
+      console.error("Ops Center refresh failed", e);
       if (mounted.current) setSyncError(SAFE_SYNC_ERROR);
     } finally {
       if (mounted.current) setSyncing(false);
     }
   };
 
-  const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
-  const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
-  const offline = agents.length === 0;
+  const hasAgentData = providerState === "available";
+  const activeAgents = agents.filter((a) => (a.status || "").toLowerCase() === "active").length;
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -82,7 +85,9 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{offline ? " · showing in-app agents (Convex unavailable)" : " · Convex mission backend"}</p>
+            <p className="text-xs text-slate-500">
+              {hasAgentData ? `${activeAgents}/${agents.length} agents active · Base44 operational data` : "Agent status unavailable · Base44 operational data not confirmed"}
+            </p>
           </div>
           <button
             onClick={syncNow}
@@ -90,7 +95,7 @@ export default function OpsCenter() {
             className="flex items-center gap-2 rounded-xl bg-cyan-400/10 border border-cyan-400/30 text-cyan-300 px-4 min-h-[44px] text-sm font-semibold disabled:opacity-60"
           >
             {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {syncing ? "Syncing…" : "Sync Now"}
+            {syncing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
         {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>}
@@ -109,11 +114,12 @@ export default function OpsCenter() {
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
-              {offline && <p className="text-xs text-amber-400/80 text-center py-3">Convex mission backend unavailable — showing the platform's in-app agents. Tap Sync Now to retry.</p>}
-              {displayAgents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
+              {!hasAgentData && <p className="text-xs text-amber-400/80 text-center py-3">Agent status is currently unavailable. No synthetic agent data is shown.</p>}
+              {hasAgentData && agents.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No operational agents were returned.</p>}
+              {agents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
             </TabsContent>
             <TabsContent value="campaigns" className="mt-4 space-y-3">
-              {campaigns.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No campaigns synced yet — tap Sync Now.</p>}
+              {campaigns.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No campaigns synced yet.</p>}
               {campaigns.map((c) => <OpsCampaignCard key={c.id} campaign={c} />)}
             </TabsContent>
             <TabsContent value="treasury" className="mt-4">
