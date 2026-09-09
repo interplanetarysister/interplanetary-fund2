@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import InstitutionCard from "@/components/institutions/InstitutionCard";
@@ -23,17 +23,33 @@ export default function Institutions() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
+  const requestGeneration = useRef(0);
+  const mounted = useRef(true);
 
   const loadInstitutions = useCallback(() => {
+    const generation = ++requestGeneration.current;
     setError(null);
     setInstitutions(null);
     base44.entities.Institution.list("-created_date", 100)
-      .then(setInstitutions)
-      .catch(() => setError(SAFE_INSTITUTIONS_ERROR));
+      .then((nextInstitutions) => {
+        if (mounted.current && generation === requestGeneration.current) {
+          setInstitutions(nextInstitutions);
+        }
+      })
+      .catch(() => {
+        if (mounted.current && generation === requestGeneration.current) {
+          setError(SAFE_INSTITUTIONS_ERROR);
+        }
+      });
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     loadInstitutions();
+    return () => {
+      mounted.current = false;
+      requestGeneration.current += 1;
+    };
   }, [loadInstitutions]);
 
   if (error) {
