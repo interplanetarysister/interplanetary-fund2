@@ -10,6 +10,18 @@ import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
 const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry. Please try again.";
 const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Please try again.";
 
+function isAdminUser(value) {
+  return Boolean(value && typeof value === "object" && value.role === "admin");
+}
+
+function isRegistryResponse(value) {
+  return Array.isArray(value) && value.every((entry) => entry && typeof entry === "object");
+}
+
+function isHealthResponse(value) {
+  return Boolean(value && typeof value === "object" && value.data && typeof value.data === "object" && !Array.isArray(value.data));
+}
+
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
   const [entries, setEntries] = useState(null);
@@ -25,10 +37,11 @@ export default function IntegrationsAdmin() {
     try {
       const me = await base44.auth.me();
       if (!mounted.current || generation !== requestGeneration.current) return;
+      if (!me || typeof me !== "object" || typeof me.role !== "string") throw new Error("Malformed auth response");
       setUser(me);
-      if (me.role !== "admin") return;
+      if (!isAdminUser(me)) return;
       const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-      if (!Array.isArray(list)) throw new Error("Malformed registry response");
+      if (!isRegistryResponse(list)) throw new Error("Malformed registry response");
       if (!mounted.current || generation !== requestGeneration.current) return;
       setEntries(list);
       setError(null);
@@ -36,7 +49,6 @@ export default function IntegrationsAdmin() {
       console.error("IntegrationsAdmin registry load failed:", e?.name || "UnknownError");
       if (!mounted.current || generation !== requestGeneration.current) return;
       setError(SAFE_REGISTRY_ERROR);
-      setEntries(null);
     }
   }, []);
 
@@ -56,7 +68,7 @@ export default function IntegrationsAdmin() {
     setChecking(true);
     try {
       const response = await base44.functions.invoke("validateIntegrationHealth", {});
-      if (response && response.data && typeof response.data !== "object") throw new Error("Malformed health response");
+      if (!isHealthResponse(response)) throw new Error("Malformed health response");
       reload();
     } catch (e) {
       console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
@@ -68,7 +80,7 @@ export default function IntegrationsAdmin() {
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
-  if (user.role !== "admin") {
+  if (!isAdminUser(user)) {
     return (
       <div className="max-w-md mx-auto text-center py-24 px-6">
         <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" />
@@ -78,7 +90,7 @@ export default function IntegrationsAdmin() {
     );
   }
 
-  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); setEntries(null); reload(); }} /></div>;
+  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); reload(); }} /></div>;
   if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
