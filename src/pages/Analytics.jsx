@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MetricsGrid from "@/components/analytics/MetricsGrid";
@@ -10,14 +10,27 @@ import { Loader2 } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PageError from "@/components/PageError";
 
+const SAFE_ANALYTICS_ERROR = "We couldn't load your analytics right now. Please try again.";
+
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(true);
+  const requestGenerationRef = useRef(0);
 
-  useEffect(() => {
-    (async () => {
-     try {
+  useEffect(() => () => {
+    mountedRef.current = false;
+  }, []);
+
+  const loadAnalytics = useCallback(async () => {
+    const requestGeneration = ++requestGenerationRef.current;
+    if (mountedRef.current) {
+      setError(null);
+      setData(null);
+    }
+
+    try {
       const me = await base44.auth.me();
       const [campaigns, communities, institutions, volunteerOpps, applications, opportunities] = await Promise.all([
         base44.entities.Campaign.filter({ created_by_id: me.id }),
@@ -30,10 +43,14 @@ export default function Analytics() {
       const dResults = await Promise.all(
         campaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
       );
-      const donationLists = dResults.map((r) => (r.data && r.data.donations) || []);
+      const donationLists = dResults.map((r) => {
+        if (!Array.isArray(r?.data?.donations)) throw new Error("Malformed analytics response");
+        return r.data.donations;
+      });
       const signupLists = await Promise.all(
         volunteerOpps.map((o) => base44.entities.VolunteerSignup.filter({ opportunity_id: o.id }))
       );
+      if (!mountedRef.current || requestGeneration !== requestGenerationRef.current) return false;
       setData({
         campaigns,
         communities,
@@ -44,17 +61,24 @@ export default function Analytics() {
         donations: donationLists.flat(),
         signups: signupLists.flat(),
       });
-     } catch (e) {
-       setError(e.message || "We couldn't load your analytics.");
-     }
-    })();
-  }, [refreshKey]);
+      return true;
+    } catch (e) {
+      if (!mountedRef.current || requestGeneration !== requestGenerationRef.current) return false;
+      console.error("Analytics load failed", e);
+      setError(SAFE_ANALYTICS_ERROR);
+      return false;
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, [loadAnalytics, refreshKey]);
 
   if (error) {
-    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setData(null); setRefreshKey((k) => k + 1); }} /></div>;
+    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => setRefreshKey((k) => k + 1)} /></div>;
   }
   if (!data) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite" aria-label="Loading analytics"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
   return (
