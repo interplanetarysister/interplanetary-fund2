@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import InstitutionCard from "@/components/institutions/InstitutionCard";
@@ -8,6 +8,8 @@ import { Search, Loader2 } from "lucide-react";
 import { institutionTypes } from "@/components/institutions/institutionTypes";
 import PageError from "@/components/PageError";
 
+const SAFE_INSTITUTIONS_ERROR = "We couldn't load institutions. Please try again.";
+
 const programFilters = [
   { value: "all", label: "All" },
   { value: "offers_grants", label: "Grants" },
@@ -15,24 +17,43 @@ const programFilters = [
   { value: "offers_volunteer_program", label: "Volunteer Programs" },
 ];
 
+function normalizeInstitutions(value) {
+  if (!Array.isArray(value)) return null;
+  return value.filter((institution) => institution && typeof institution === "object" && typeof institution.id === "string");
+}
+
 export default function Institutions() {
   const [institutions, setInstitutions] = useState(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
+  const requestId = useRef(0);
+  const mounted = useRef(true);
 
-  useEffect(() => {
-    base44.entities.Institution.list("-created_date", 100)
-      .then(setInstitutions)
-      .catch((e) => setError(e.message || "We couldn't load institutions."));
+  const loadInstitutions = useCallback(async () => {
+    const currentRequest = ++requestId.current;
+    setError(null);
+    try {
+      const result = normalizeInstitutions(await base44.entities.Institution.list("-created_date", 100));
+      if (!result) throw new Error("Malformed institutions response");
+      if (mounted.current && currentRequest === requestId.current) setInstitutions(result);
+    } catch {
+      if (mounted.current && currentRequest === requestId.current) setError(SAFE_INSTITUTIONS_ERROR);
+    }
   }, []);
 
+  useEffect(() => {
+    mounted.current = true;
+    loadInstitutions();
+    return () => { mounted.current = false; };
+  }, [loadInstitutions]);
+
   if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); }} /></div>;
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={loadInstitutions} /></div>;
   }
   if (!institutions) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading institutions</span></div>;
   }
 
   const q = query.toLowerCase();
@@ -77,7 +98,7 @@ export default function Institutions() {
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6">
-        {[["all", "All types"], ...Object.entries(institutionTypes)].map(([v, l]) => (
+        {[['all', 'All types'], ...Object.entries(institutionTypes)].map(([v, l]) => (
           <button key={v} onClick={() => setTypeFilter(v)}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               typeFilter === v ? "bg-primary text-primary-foreground" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-300"
