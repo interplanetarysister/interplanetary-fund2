@@ -11,7 +11,11 @@ const STABLE_DIAGNOSTIC_TYPES = new Set([
 ]);
 
 function diagnosticType(error) {
-  if (error && typeof error.name === 'string' && STABLE_DIAGNOSTIC_TYPES.has(error.name)) return error.name;
+  if (error instanceof TypeError) return 'TypeError';
+  if (error instanceof SyntaxError) return 'SyntaxError';
+  if (error instanceof RangeError) return 'RangeError';
+  if (error instanceof ReferenceError) return 'ReferenceError';
+  if (error instanceof Error) return 'Error';
   return typeof error;
 }
 
