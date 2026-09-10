@@ -19,6 +19,7 @@ export default function ActivityFeed() {
   const [paginationError, setPaginationError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const loadGeneration = useRef(0);
+  const loadMoreRequest = useRef(0);
   const mounted = useRef(true);
 
   useEffect(() => () => { mounted.current = false; }, []);
@@ -48,20 +49,25 @@ export default function ActivityFeed() {
   const loadMore = async () => {
     if (!cursor || loadingMore) return;
     const generation = loadGeneration.current;
+    const requestId = ++loadMoreRequest.current;
     setLoadingMore(true);
     setPaginationError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20, before: cursor });
       const data = res?.data;
       if (!data || !Array.isArray(data.items)) throw new Error("Malformed feed response");
-      if (!mounted.current || generation !== loadGeneration.current) return;
+      if (!mounted.current || generation !== loadGeneration.current || requestId !== loadMoreRequest.current) return;
       setItems((prev) => [...(Array.isArray(prev) ? prev : []), ...data.items]);
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
     } catch {
-      if (mounted.current && generation === loadGeneration.current) setPaginationError(SAFE_FEED_ERROR);
+      if (mounted.current && generation === loadGeneration.current && requestId === loadMoreRequest.current) {
+        setPaginationError(SAFE_FEED_ERROR);
+      }
     } finally {
-      if (mounted.current && generation === loadGeneration.current) setLoadingMore(false);
+      // A refresh may supersede this request; only the matching request may
+      // clear the control state for the currently active pagination attempt.
+      if (mounted.current && requestId === loadMoreRequest.current) setLoadingMore(false);
     }
   };
 
