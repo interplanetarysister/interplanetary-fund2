@@ -12,11 +12,12 @@ export default function MyGiving() {
 
   const load = useCallback(async () => {
     try {
-      const me = await base44.auth.me();
-      const mine = await base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date");
+      setError(null);
       // Financial truth boundary: only provider-verified gifts count as giving.
-      // Manual PayPal/Cash App reports remain pending until separately verified.
-      setDonations((mine || []).filter((d) => d.payment_verified === true));
+      // getMyGiving returns verified donations server-side; manual PayPal/Cash
+      // App reports remain pending until separately verified.
+      const { data } = await base44.functions.invoke("getMyGiving", {});
+      setDonations(data?.donations || []);
     } catch (e) {
       setError(e.message || "We couldn't load your giving history.");
     }
