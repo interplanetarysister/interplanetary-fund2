@@ -16,6 +16,7 @@ export default function ActivityFeed() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [paginationError, setPaginationError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const loadGeneration = useRef(0);
   const mounted = useRef(true);
@@ -25,6 +26,7 @@ export default function ActivityFeed() {
   const load = useCallback(async () => {
     const generation = ++loadGeneration.current;
     setError(null);
+    setPaginationError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20 });
       const data = res?.data;
@@ -36,7 +38,8 @@ export default function ActivityFeed() {
     } catch {
       if (!mounted.current || generation !== loadGeneration.current) return;
       setError(SAFE_FEED_ERROR);
-      setItems([]);
+      // Preserve previously rendered items during refresh/retry so a transient
+      // provider failure is never presented as an empty feed.
     }
   }, []);
 
@@ -46,6 +49,7 @@ export default function ActivityFeed() {
     if (!cursor || loadingMore) return;
     const generation = loadGeneration.current;
     setLoadingMore(true);
+    setPaginationError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20, before: cursor });
       const data = res?.data;
@@ -55,7 +59,7 @@ export default function ActivityFeed() {
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
     } catch {
-      if (mounted.current && generation === loadGeneration.current) setError(SAFE_FEED_ERROR);
+      if (mounted.current && generation === loadGeneration.current) setPaginationError(SAFE_FEED_ERROR);
     } finally {
       if (mounted.current && generation === loadGeneration.current) setLoadingMore(false);
     }
@@ -72,11 +76,23 @@ export default function ActivityFeed() {
   }
   return (
     <div>
+      {error && (
+        <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>{error}</span>
+          <button onClick={() => { setError(null); setRefreshKey((k) => k + 1); }} className="min-h-[44px] rounded-lg px-3 font-medium underline underline-offset-2">Retry</button>
+        </div>
+      )}
       <div className="space-y-3">
         {items.map((e) => <ActivityFeedCard key={e.id} event={e} />)}
       </div>
       {hasMore && (
-        <div className="flex justify-center mt-6">
+        <div className="mt-6 flex flex-col items-center gap-3">
+          {paginationError && (
+            <div role="alert" className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span>{paginationError}</span>
+              <button onClick={loadMore} disabled={loadingMore} className="min-h-[44px] rounded-lg px-3 font-medium underline underline-offset-2 disabled:opacity-50">Retry</button>
+            </div>
+          )}
           <button onClick={loadMore} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50 min-h-[44px]">
             {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : "Load more"}
           </button>
