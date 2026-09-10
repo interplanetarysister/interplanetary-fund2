@@ -45,22 +45,41 @@ function diagnosticType(error) {
   return typeof error;
 }
 
+const MAX_ALERT_TITLE_LENGTH = 160;
+const MAX_ALERT_BODY_LENGTH = 500;
+
+function boundedAlertText(value, fallback) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return fallback;
+  return text.slice(0, value.length > MAX_ALERT_BODY_LENGTH ? MAX_ALERT_BODY_LENGTH : MAX_ALERT_TITLE_LENGTH);
+}
+
+function safeIntegrationAlert(entry, title, body) {
+  const platform = typeof entry?.platform === "string" ? entry.platform.trim().slice(0, 80) : "unknown";
+  return {
+    platform,
+    title: boundedAlertText(title, `[${platform}] Integration alert`),
+    body: boundedAlertText(body, "Integration health requires administrator attention."),
+  };
+}
+
 // Emit a deduplicated admin alert for an unhealthy integration. Skips creating
 // a new Notification when an unread integration alert for the same platform
 // already exists for an admin, so a persistent condition isn't re-alerted.
 export async function emitIntegrationAlert(sr, entry, title, body) {
+  const alert = safeIntegrationAlert(entry, title, body);
   try {
     const admins = await sr.entities.User.filter({ role: "admin" }).catch(() => []);
     for (const admin of admins) {
       const open = await sr.entities.Notification.filter({ user_id: admin.id, read: false }).catch(() => []);
       const dupe = open.some(
-        (n) => n.type === "system" && (n.link || "") === "/admin/integrations" && (n.title || "").includes(`[${entry.platform}]`)
+        (n) => n.type === "system" && (n.link || "") === "/admin/integrations" && (n.title || "").includes(`[${alert.platform}]`)
       );
       if (dupe) continue;
       await sr.entities.Notification.create({
         user_id: admin.id,
-        title,
-        body,
+        title: alert.title,
+        body: alert.body,
         type: "system",
         link: "/admin/integrations",
       });
