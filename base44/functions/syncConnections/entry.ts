@@ -11,10 +11,11 @@ import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRe
 const MAX_RETRIES = 3;
 
 const classifySyncError = (error: unknown) => {
-  if (error instanceof Error && error.name) {
-    const known = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError', 'TimeoutError']);
-    return known.has(error.name) ? error.name : 'Error';
-  }
+  if (error instanceof TypeError) return 'TypeError';
+  if (error instanceof RangeError) return 'RangeError';
+  if (error instanceof SyntaxError) return 'SyntaxError';
+  if (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError') return 'AbortError';
+  if (error instanceof Error) return 'Error';
   return typeof error;
 };
 
@@ -91,7 +92,7 @@ export default async function(req) {
         await sr.entities.Notification.create({
           user_id: post.created_by_id,
           title: 'Scheduled post is ready',
-          body: `Your ${post.platform} post for "${post.campaign_title}" is ready — approve it to publish.`,
+          body: `Your ${post.platform} post for \"${post.campaign_title}\" is ready — approve it to publish.`,
           type: 'system',
           link: `/campaign/${post.campaign_id}`,
         });
