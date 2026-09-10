@@ -10,6 +10,14 @@ import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRe
 // 3. Flags stale connections (>7 days without a sync) for health monitoring.
 const MAX_RETRIES = 3;
 
+const classifySyncError = (error: unknown) => {
+  if (error instanceof Error && error.name) {
+    const known = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError', 'TimeoutError']);
+    return known.has(error.name) ? error.name : 'Error';
+  }
+  return typeof error;
+};
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -54,16 +62,17 @@ export default async function(req) {
           report.published++;
         } catch (e) {
           const retries = (post.retry_count || 0) + 1;
+          const diagnostic = classifySyncError(e);
           await sr.entities.DistributedPost.update(post.id, {
             status: retries >= MAX_RETRIES ? 'failed' : post.status === 'failed' ? 'failed' : 'scheduled',
-            error: e.message,
+            error: `publish_failed:${diagnostic}`,
             retry_count: retries,
           });
           if (retries >= MAX_RETRIES) {
             await sr.entities.Notification.create({
               user_id: post.created_by_id,
               title: 'Post could not be published',
-              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts: ${e.message}`,
+              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts. Please review the connection and try again.`,
               type: 'system',
               link: `/campaign/${post.campaign_id}`,
             });
@@ -76,7 +85,7 @@ export default async function(req) {
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
           ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && access.ok && !obo.ok
-            ? { error: `Automatic publishing blocked: ${obo.reason}` }
+            ? { error: 'Automatic publishing blocked: authorization is unavailable.' }
             : {}),
         });
         await sr.entities.Notification.create({
@@ -106,7 +115,7 @@ export default async function(req) {
 
     return Response.json(report);
   } catch (error) {
-    console.error('syncConnections error:', error.message);
+    console.error('syncConnections failed', { diagnostic: classifySyncError(error) });
     return Response.json({ error: 'Synchronization encountered a problem and could not finish.' }, { status: 500 });
   }
 }
