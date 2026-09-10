@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,23 @@ const SORTS = [
   { value: "recently_viewed", label: "Recently viewed" },
 ];
 
+const SAFE_LOAD_ERROR = "We couldn't load your followed campaigns. Please try again.";
+const SAFE_MUTATION_ERROR = "We couldn't save that change. Please try again.";
+
+function isRecord(value) {
+  return value && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeFollows(value) {
+  if (!Array.isArray(value) || value.some((row) => !isRecord(row) || typeof row.id !== "string" || typeof row.campaign_id !== "string")) return null;
+  return value;
+}
+
+function normalizeCampaigns(value) {
+  if (!Array.isArray(value)) return null;
+  return value.filter((row) => isRecord(row) && typeof row.id === "string");
+}
+
 // The user's Followed Campaigns collection: sort, search, filter, pin,
 // archive, per-campaign notification preferences, and one-tap unfollow.
 export default function FollowedCampaigns() {
@@ -31,22 +48,37 @@ export default function FollowedCampaigns() {
   const [category, setCategory] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState(null);
+  const [mutationError, setMutationError] = useState(null);
+  const [pendingIds, setPendingIds] = useState(() => new Set());
+  const generationRef = useRef(0);
+  const mountedRef = useRef(false);
+
+  const load = useCallback(async () => {
+    const generation = ++generationRef.current;
+    try {
+      const me = await base44.auth.me();
+      if (!isRecord(me) || typeof me.id !== "string") throw new Error("invalid-auth");
+      const list = normalizeFollows(await base44.entities.FollowedCampaign.filter({ user_id: me.id }, "-created_date"));
+      if (!list) throw new Error("invalid-follows");
+      const fresh = normalizeCampaigns(await Promise.all(list.map((f) => base44.entities.Campaign.get(f.campaign_id).catch(() => null))));
+      if (!fresh) throw new Error("invalid-campaigns");
+      if (!mountedRef.current || generation !== generationRef.current) return;
+      const map = {};
+      fresh.forEach((c) => { map[c.id] = c; });
+      setFollows(list);
+      setCampaigns(map);
+      setError(null);
+    } catch {
+      if (!mountedRef.current || generation !== generationRef.current) return;
+      setError(SAFE_LOAD_ERROR);
+    }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-     try {
-      const me = await base44.auth.me();
-      const list = await base44.entities.FollowedCampaign.filter({ user_id: me.id }, "-created_date");
-      setFollows(list);
-      const fresh = await Promise.all(list.map((f) => base44.entities.Campaign.get(f.campaign_id).catch(() => null)));
-      const map = {};
-      fresh.forEach((c) => { if (c) map[c.id] = c; });
-      setCampaigns(map);
-     } catch (e) {
-       setError(e.message || "We couldn't load your followed campaigns.");
-     }
-    })();
-  }, []);
+    mountedRef.current = true;
+    void load();
+    return () => { mountedRef.current = false; generationRef.current += 1; };
+  }, [load]);
 
   const categories = useMemo(
     () => [...new Set(follows?.map((f) => f.category).filter(Boolean))],
@@ -83,22 +115,35 @@ export default function FollowedCampaigns() {
     return rows;
   }, [follows, campaigns, sort, search, category, showArchived]);
 
-  if (error) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setFollows(null); }} /></div>;
-  if (!follows) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  const runMutation = useCallback(async (follow, action) => {
+    if (!follow?.id || pendingIds.has(follow.id)) return;
+    const before = follows;
+    const next = action === "unfollow"
+      ? follows.filter((x) => x.id !== follow.id)
+      : follows.map((x) => x.id === follow.id ? { ...x, [action]: !x[action] } : x);
+    setPendingIds((prev) => new Set(prev).add(follow.id));
+    setMutationError(null);
+    setFollows(next);
+    try {
+      if (action === "unfollow") await base44.entities.FollowedCampaign.delete(follow.id);
+      else await base44.entities.FollowedCampaign.update(follow.id, { [action]: !follow[action] });
+    } catch {
+      if (mountedRef.current) {
+        setFollows(before);
+        setMutationError(SAFE_MUTATION_ERROR);
+      }
+    } finally {
+      if (mountedRef.current) setPendingIds((prev) => { const nextPending = new Set(prev); nextPending.delete(follow.id); return nextPending; });
+    }
+  }, [follows, pendingIds]);
 
-  const togglePin = async (f) => {
-    setFollows((prev) => prev.map((x) => x.id === f.id ? { ...x, pinned: !x.pinned } : x));
-    await base44.entities.FollowedCampaign.update(f.id, { pinned: !f.pinned });
-  };
-  const archive = async (f) => {
-    setFollows((prev) => prev.map((x) => x.id === f.id ? { ...x, archived: !f.archived } : x));
-    await base44.entities.FollowedCampaign.update(f.id, { archived: !f.archived });
-  };
-  const unfollow = async (f) => {
-    await base44.entities.FollowedCampaign.delete(f.id);
-    setFollows((prev) => prev.filter((x) => x.id !== f.id));
-  };
-  const markViewed = (f) => { base44.entities.FollowedCampaign.update(f.id, { last_viewed: new Date().toISOString() }); };
+  const markViewed = useCallback((f) => {
+    if (!f?.id || pendingIds.has(f.id)) return;
+    void base44.entities.FollowedCampaign.update(f.id, { last_viewed: new Date().toISOString() }).catch(() => {});
+  }, [pendingIds]);
+
+  if (error) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); void load(); }} /></div>;
+  if (!follows) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading followed campaigns</span></div>;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -109,6 +154,7 @@ export default function FollowedCampaigns() {
         Followed Campaigns
       </h1>
       <p className="text-stone-500 mb-6">The campaigns you care about — updates, milestones, and moments, in one place.</p>
+      {mutationError && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{mutationError}</div>}
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Select value={sort} onValueChange={setSort}>
@@ -141,6 +187,7 @@ export default function FollowedCampaigns() {
         <div className="space-y-3">
           {visible.map(({ follow, campaign: c }) => {
             const pct = c ? Math.min(100, ((c.raised_amount || 0) / c.goal_amount) * 100) : 0;
+            const busy = pendingIds.has(follow.id);
             return (
               <div key={follow.id} className={`bg-white rounded-2xl border border-stone-200/70 shadow-sm overflow-hidden ${follow.pinned ? "ring-1 ring-primary/30" : ""}`}>
                 <div className="flex gap-4 p-4">
@@ -170,9 +217,9 @@ export default function FollowedCampaigns() {
                 </div>
                 <div className="flex flex-wrap gap-2 px-4 pb-4">
                   <FollowPrefsDialog follow={follow} onChanged={(u) => setFollows((prev) => prev.map((x) => x.id === u.id ? u : x))} />
-                  <Button size="sm" variant="outline" onClick={() => togglePin(follow)} className="rounded-lg"><Pin className="w-3.5 h-3.5" /> {follow.pinned ? "Unpin" : "Pin"}</Button>
-                  <Button size="sm" variant="outline" onClick={() => archive(follow)} className="rounded-lg"><Archive className="w-3.5 h-3.5" /> {follow.archived ? "Restore" : "Archive"}</Button>
-                  <Button size="sm" variant="outline" onClick={() => unfollow(follow)} className="rounded-lg text-red-600"><Trash2 className="w-3.5 h-3.5" /> Unfollow</Button>
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => runMutation(follow, "pinned")} className="rounded-lg"><Pin className="w-3.5 h-3.5" /> {follow.pinned ? "Unpin" : "Pin"}</Button>
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => runMutation(follow, "archived")} className="rounded-lg"><Archive className="w-3.5 h-3.5" /> {follow.archived ? "Restore" : "Archive"}</Button>
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => runMutation(follow, "unfollow")} className="rounded-lg text-red-600"><Trash2 className="w-3.5 h-3.5" /> Unfollow</Button>
                 </div>
               </div>
             );
