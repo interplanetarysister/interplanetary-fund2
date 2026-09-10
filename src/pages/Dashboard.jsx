@@ -17,6 +17,8 @@ import PageTips from "@/components/coach/PageTips";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_DASHBOARD_ERROR = "We couldn't load your dashboard. Please try again.";
+
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
@@ -24,14 +26,23 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
         const me = await base44.auth.me();
-        setUser(me);
+        if (!me || typeof me.id !== "string" || !me.id.trim()) throw new Error("INVALID_AUTH");
         const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
+        if (!Array.isArray(mine)) throw new Error("INVALID_CAMPAIGNS");
+        if (!active) return;
+        setUser(me);
         setCampaigns(mine);
-      } catch (e) { setError(e.message || "We couldn't load your dashboard."); }
+        setError(null);
+      } catch {
+        if (!active) return;
+        setError(SAFE_DASHBOARD_ERROR);
+      }
     })();
+    return () => { active = false; };
   }, [refreshKey]);
 
   if (error) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
