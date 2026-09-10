@@ -3,8 +3,11 @@ import fs from "node:fs";
 const source = fs.readFileSync("src/pages/Dashboard.jsx", "utf8");
 const required = [
   'const SAFE_DASHBOARD_ERROR = "We couldn\'t load your dashboard. Please try again.";',
+  'function normalizeCampaigns(rows, userId)',
   'typeof me.id !== "string"',
-  'Array.isArray(mine)',
+  'campaign.created_by_id === userId',
+  'typeof c.raised_amount === "number"',
+  'typeof c.donor_count === "number"',
   'let active = true',
   'return () => { active = false; }',
   'catch {',
