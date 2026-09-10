@@ -1,5 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
+const STABLE_DIAGNOSTIC_TYPES = new Set([
+  'Error',
+  'TypeError',
+  'SyntaxError',
+  'RangeError',
+  'ReferenceError',
+  'AbortError',
+  'TimeoutError',
+]);
+
+function diagnosticType(error) {
+  if (error && typeof error.name === 'string' && STABLE_DIAGNOSTIC_TYPES.has(error.name)) return error.name;
+  return typeof error;
+}
+
 // Three days after a volunteer signs up, sends a follow-up invite to complete
 // their profile — but only if they haven't completed onboarding (our proxy for
 // "hasn't updated their profile"). Runs from the workflow, service-scoped.
@@ -33,7 +48,7 @@ export default async function(req) {
           from_name: 'Interplanetary Fund',
         });
       } catch (e) {
-        console.error('follow-up email failed:', e.message);
+        console.error('follow-up email failed:', diagnosticType(e));
       }
     }
 
@@ -47,7 +62,7 @@ export default async function(req) {
 
     return Response.json({ ok: true, followed_up: true });
   } catch (error) {
-    console.error('volunteerFollowUp error:', error.message);
+    console.error('volunteerFollowUp error:', diagnosticType(error));
     return Response.json({ error: 'Unable to send the follow-up. Please try again.' }, { status: 500 });
   }
 }
