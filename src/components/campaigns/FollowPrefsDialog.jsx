@@ -7,7 +7,16 @@ import { Bell } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const PREFS = [
-  { key: "updates", label: "New campaign updates" }, { key: "media", label: "New media uploads" }, { key: "milestones", label: "Milestone achievements" }, { key: "goal_reached", label: "Goal reached" }, { key: "nearing_completion", label: "Nearing completion" }, { key: "comments", label: "New comments" }, { key: "volunteer", label: "Volunteer opportunities" }, { key: "events", label: "Event announcements" }, { key: "emergencies", label: "Fundraising emergencies" }, { key: "completed", label: "Campaign completed" },
+  { key: "updates", label: "New campaign updates" },
+  { key: "media", label: "New media uploads" },
+  { key: "milestones", label: "Milestone achievements" },
+  { key: "goal_reached", label: "Goal reached" },
+  { key: "nearing_completion", label: "Nearing completion" },
+  { key: "comments", label: "New comments" },
+  { key: "volunteer", label: "Volunteer opportunities" },
+  { key: "events", label: "Event announcements" },
+  { key: "emergencies", label: "Fundraising emergencies" },
+  { key: "completed", label: "Campaign completed" },
 ];
 
 export default function FollowPrefsDialog({ follow, onChanged, disabled = false }) {
