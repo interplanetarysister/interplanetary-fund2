@@ -1,79 +1,43 @@
 # Interplanetary Fund — Repository Source-of-Truth Guide
 
-**Effective:** 2026-09-06
+**Effective:** 2026-09-09
 
-This document tells application agents what belongs in this repository and where internal-agent/backend knowledge lives.
+## Current ownership
 
-## Repository ownership
+`interplanetarysister/interplanetary-fund2` (ifund2) is the authoritative implementation target for the complete currently active Interplanetary Fund application on Base44: React/Vite frontend, Base44 entities, Base44 backend functions, application agents, workflows, financial integrity, campaign/user behavior, integrations, Mission Control and operational state required by the application.
 
-- **This repository (`interplanetarysister/interplanetary-fund2`, aka ifund2)**: authoritative consolidation destination for the user-facing Interplanetary Fund Base44 / React+Vite application, frontend, application entities/configuration, application-layer functions/agents, onboarding, Mission Control, Agent Chat, campaign/user UX, integrations presented to users, and application-specific behavior.
-- **`interplanetarysister/InterplanetaryFund`**: authoritative Convex backend and internal-agent runtime, including persistent agent identity, permissions, memory, outcomes, orchestration, scheduled intelligence, treasury/payments backend, and backend protocol.
-- **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly reassigned by the owner; do not add new production backend architecture there by default.
-- Other historical, Vercel-only, duplicate, preview, or migration repositories are not alternate application targets. Treat them as evidence/migration sources unless explicitly reassigned.
+Older Convex, Vercel, legacy backend, preview and duplicate repositories are read-only evidence/migration sources. They are not required runtime dependencies for the current Base44 build. Convex/Vercel may be reconsidered as a later infrastructure phase only when the owner explicitly reactivates that work.
 
-This September 6, 2026 owner-authorized boundary supersedes historical documents that describe a different application consolidation direction.
+## Runtime independence rule
 
-## Consolidation policy
+Current Base44 functionality must not require a Convex or Vercel runtime merely because an older implementation did. Recover the useful behavior and contracts, then implement them with Base44-native entities/functions where safe. Do not copy obsolete hosting dependencies, secrets, deployment assumptions, `/_vercel/*` paths, or a second backend wholesale.
 
-All pending or newly discovered **application-owned** updates that have not reached ifund2 must be reconciled into this repository rather than continuing parallel implementation elsewhere.
+Existing compatibility names may remain temporarily when renaming them would create unnecessary breakage, but their implementation must not silently call retired infrastructure. Document compatibility shims so future builders do not recreate duplicate features.
 
-For every candidate update:
-1. Verify the source behavior/data; never infer from labels, filenames, stale docs, or repository names.
-2. Verify the current ifund2 implementation first.
-3. Classify the difference as already consolidated, application migration candidate, backend-owned dependency, historical-only, or UNKNOWN.
-4. Merge only verified application-owned behavior into the existing ifund2 implementation, preserving stable IDs/interfaces and valid current behavior.
-5. Keep backend/runtime logic in `InterplanetaryFund` and expose it to ifund2 through explicit interfaces/bridges.
-6. Verify authentication, authorization, payment/provider configuration, data ownership, and end-to-end runtime behavior before declaring consolidation complete.
-7. Do not delete/archive a source implementation until equivalence and dependency removal are verified.
+## Evidence and consolidation policy
 
-A Git commit is not runtime proof. Provider/feature status shown in the UI must come from verified capability/configuration/runtime evidence. This specifically applies to payment methods such as PayPal and Stripe: a stale frontend status must never override a verified working payment path.
+Before changing a feature:
+1. Verify current ifund2 implementation and Base44 schema/function behavior.
+2. Inspect older repositories only for missing behavior or contracts.
+3. Classify the difference as already consolidated, migration candidate, historical-only, deferred, or UNKNOWN.
+4. Adapt only verified useful behavior into the existing Base44 implementation.
+5. Preserve stable IDs, financial idempotency, authorization, auditability and provider truth.
+6. Never infer payment/provider availability from UI labels or source presence.
+7. Verify with deterministic zero-credit checks wherever possible; paid publish/runtime verification remains a separate gate when credits are unavailable.
+8. Record completed migrations here or in the migration ledger before another builder starts equivalent work.
 
-## Issue #1 reconciliation
+## Financial source of truth
 
-The original Issue #1 request to “bring all backend features repository improvements to this repo” predates this ownership model. Its safe current interpretation is:
+For the current Base44-only phase, Base44 server-side financial entities/functions are the application financial authority. Client/UI values are never authoritative. Provider-confirmed payment evidence is required before funds become confirmed/withdrawable. `FinancialOperation` provides the Base44-native idempotent operation ledger for donations, external observations and withdrawal reservations/completions. Donation mirrors and campaign totals derive from verified server operations; external observations do not become withdrawable merely because they were observed.
 
-- expose relevant backend capabilities in this application through explicit functions/APIs/bridges;
-- implement application-facing behavior here;
-- keep authoritative backend/runtime implementation in `InterplanetaryFund`;
-- compare legacy backend capabilities before migrating them;
-- never copy a backend merely to satisfy the historical wording or create a second source of truth.
+## Agent runtime
 
-See `docs/ISSUE_1_BACKEND_FEATURE_RECONCILIATION.md` for the durable completion record.
+Base44 agents and Base44 entities/functions are the active agent runtime for this phase. Agent interactions are persisted in Base44 `AgentActivity`; the compatibility `recordAgentInteraction` endpoint no longer requires Convex. The compatibility `syncFromConvex` endpoint now refreshes Base44-native Ops Center state and does not contact Convex. The former scheduled Convex Sync workflow is removed to avoid obsolete runtime dependency and unnecessary metered executions.
 
-## Do not duplicate the internal agent knowledge base
+## Cross-repository rule
 
-The internal agent knowledge base is maintained in `InterplanetaryFund/interplanetary-fund-agent/`.
+Do not implement the same active feature in multiple repositories. Once a legacy Convex/Vercel behavior has been reconciled into this Base44 branch, update the migration record so other agents treat the old implementation as evidence rather than a parallel target. Do not archive/delete source repositories until dependency removal and feature equivalence are independently verified.
 
-Application agents should reference the canonical material there when they need internal-agent context rather than copying it into this repository. The durable project decision archive is:
-`InterplanetaryFund/docs/PROJECT_CONTEXT_ARCHIVE.md`
+## Completion rule
 
-The internal-agent reference index is:
-`InterplanetaryFund/docs/REFERENCE_MATERIAL_INDEX.md`
-
-## Agent runtime boundary
-
-Convex is authoritative for persistent agent identity, working/long-term memory, outcomes, permissions, and backend behavior. This application may display/mirror selected state and bridge user interactions to Convex, but it must not establish a competing production agent-memory or backend source of truth.
-
-See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44↔Convex bridge and identity mapping.
-
-## Role-specific workflow rule
-
-The Convex Builder Agent workflow is not a universal application-agent workflow. Agents working on Convex/backend/agent-runtime implementation, review, verification, or publication must use the canonical backend workflow in `InterplanetaryFund/interplanetary-fund-agent/handoffs/CONVEX_BUILDER_AGENT_WORKFLOW.md` when applicable.
-
-Other agents follow their role-specific instructions. All builders/reviewers/verifiers must follow the no-assumptions evidence rule for every action.
-
-## Cross-repository changes
-
-Never merge a change into a repository that does not own it. Cross-repository behavior must be implemented through an explicit interface, API, function, or bridge and verified at that boundary.
-
-## Historical material
-
-Historical feature reconciliations, recovered archives, audits, migration manifests, and legacy material are evidence/specification until verified against the current implementation. Do not recreate functionality solely because an old document mentions it, and do not execute historical shutdown/decommission instructions as if they were current approval.
-
-## Continuity
-
-When a decision materially changes application/backend boundaries, agent roles, workflow, or source-of-truth rules:
-1. Update this document.
-2. Update the canonical backend/agent document when applicable.
-3. Update affected role-specific instructions/reference material.
-4. Record the decision in the durable project archive.
+A Git commit is not proof of Base44 runtime success. A change is complete only after the strongest available deterministic checks pass and, when required, Base44 runtime/publish verification succeeds. If runtime verification would consume unavailable credits, record that exact remaining gate rather than claiming it ran.
