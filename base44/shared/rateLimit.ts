@@ -4,6 +4,15 @@
 // Use a stable key that identifies the actor + action, e.g.
 // `sendCommunication:<userId>`. Fails OPEN: a limiter outage never blocks a
 // legitimate request.
+const STABLE_ERROR_TYPES = new Set(['typeerror', 'rangeerror', 'syntaxerror', 'referenceerror']);
+
+function diagnosticType(error) {
+  const name = error && typeof error === 'object' && typeof error.name === 'string'
+    ? error.name.trim().toLowerCase()
+    : '';
+  return STABLE_ERROR_TYPES.has(name) ? name : typeof error;
+}
+
 export async function checkRateLimit(base44, key, max, windowSeconds) {
   try {
     const sr = base44.asServiceRole;
@@ -30,8 +39,8 @@ export async function checkRateLimit(base44, key, max, windowSeconds) {
 
     const retryAfterSeconds = Math.max(1, Math.ceil((windowStartMs + windowSeconds * 1000 - now) / 1000));
     return { allowed: false, remaining: 0, retryAfterSeconds };
-  } catch (e) {
-    console.error('checkRateLimit failed (failing open):', e && e.message ? e.message : e);
+  } catch (error) {
+    console.error('checkRateLimit failed (failing open):', diagnosticType(error));
     return { allowed: true, remaining: 0, retryAfterSeconds: 0 };
   }
 }
