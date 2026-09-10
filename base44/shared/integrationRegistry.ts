@@ -37,6 +37,14 @@ export function isUnhealthy(status) {
   return UNHEALTHY.has(status);
 }
 
+function diagnosticType(error) {
+  if (error instanceof TypeError) return "typeerror";
+  if (error instanceof RangeError) return "rangeerror";
+  if (error instanceof SyntaxError) return "syntaxerror";
+  if (error instanceof ReferenceError) return "referenceerror";
+  return typeof error;
+}
+
 // Emit a deduplicated admin alert for an unhealthy integration. Skips creating
 // a new Notification when an unread integration alert for the same platform
 // already exists for an admin, so a persistent condition isn't re-alerted.
@@ -58,7 +66,7 @@ export async function emitIntegrationAlert(sr, entry, title, body) {
       });
     }
   } catch (e) {
-    console.error("emitIntegrationAlert failed:", e && e.message ? e.message : e);
+    console.error("emitIntegrationAlert failed", diagnosticType(e));
   }
 }
 
@@ -107,7 +115,7 @@ export async function assertPlatformAccess(sr, platform) {
   try {
     entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
   } catch (e) {
-    console.warn("assertPlatformAccess registry read failed:", e && e.message ? e.message : e);
+    console.warn("assertPlatformAccess registry read failed", diagnosticType(e));
     return { ok: true, status: null, reason: "registry unavailable (fail-open)" };
   }
   const entry = entries && entries[0];
@@ -148,7 +156,7 @@ export async function assertOboGrant(sr, agentName, userId, platform) {
   try {
     grants = await sr.entities.AuthorizationGrant.filter({ agent_name: agentName, user_id: userId, platform });
   } catch (e) {
-    console.warn("assertOboGrant read failed:", e && e.message ? e.message : e);
+    console.warn("assertOboGrant read failed", diagnosticType(e));
     return { ok: false, reason: "grant registry unavailable" };
   }
   const now = Date.now();
