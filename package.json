@@ -3,9 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "24.x"
-  },
+  "engines": {"node": "24.x"},
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -38,7 +36,7 @@
     "@radix-ui/react-context-menu": "^2.2.6",
     "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-dropdown-menu": "^2.1.6",
-    "@radix-ui/react-hover-card": "^1.1.6",
+    "@radix-ui/react-hover-card": "^2.2.3",
     "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-menubar": "^1.1.6",
     "@radix-ui/react-navigation-menu": "^1.2.5",
@@ -84,8 +82,7 @@
     "react-resizable-panels": "^2.1.7",
     "react-router-dom": "^6.30.5",
     "recharts": "^2.15.4",
-    "react-leaflet": "^4.2.1",
-    "recharts": "^2.15.4",
+    "react-resizable-panels": "^2.1.7",
     "sonner": "^2.0.1",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7",
@@ -105,6 +102,7 @@
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.18",
+    "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",
