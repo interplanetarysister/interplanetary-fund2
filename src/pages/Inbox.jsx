@@ -14,7 +14,10 @@ const MAX_TEXT = 500;
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const boundedText = (value) => typeof value === "string" ? value.slice(0, MAX_TEXT) : "";
 const isFiniteAmount = (value) => typeof value === "number" && Number.isFinite(value);
-const normalizeRows = (value) => Array.isArray(value) ? value.filter(isRecord) : null;
+const normalizeRows = (value, invalidMessage) => {
+  if (!Array.isArray(value) || value.some((row) => !isRecord(row))) throw new Error(invalidMessage);
+  return value;
+};
 
 export default function Inbox() {
   const [items, setItems] = useState(null);
@@ -42,17 +45,14 @@ export default function Inbox() {
           base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
           base44.entities.Campaign.filter({ created_by_id: me.id }),
         ]);
-        const [inboxItems, notifications, myCampaigns] = results.map(normalizeRows);
-        if (!inboxItems || !notifications || !myCampaigns) throw new Error("invalid-collection");
+        const [inboxItems, notifications, myCampaigns] = results.map((value) => normalizeRows(value, "invalid-collection"));
 
         const donationResults = await Promise.all(
           myCampaigns.filter((c) => typeof c.id === "string").map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
         );
         const donationLists = donationResults.map((result) => {
           const data = isRecord(result?.data) ? result.data : null;
-          const donations = normalizeRows(data?.donations);
-          if (!donations) throw new Error("invalid-donations");
-          return donations;
+          return normalizeRows(data?.donations, "invalid-donations");
         });
 
         const merged = [
