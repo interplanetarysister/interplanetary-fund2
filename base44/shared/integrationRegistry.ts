@@ -45,21 +45,21 @@ function diagnosticType(error) {
   return typeof error;
 }
 
+const MAX_ALERT_PLATFORM_LENGTH = 80;
 const MAX_ALERT_TITLE_LENGTH = 160;
 const MAX_ALERT_BODY_LENGTH = 500;
 
-function boundedAlertText(value, fallback) {
+function boundedText(value, maxLength, fallback) {
   const text = typeof value === "string" ? value.trim() : "";
-  if (!text) return fallback;
-  return text.slice(0, value.length > MAX_ALERT_BODY_LENGTH ? MAX_ALERT_BODY_LENGTH : MAX_ALERT_TITLE_LENGTH);
+  return (text || fallback).slice(0, maxLength);
 }
 
 function safeIntegrationAlert(entry, title, body) {
-  const platform = typeof entry?.platform === "string" ? entry.platform.trim().slice(0, 80) : "unknown";
+  const platform = boundedText(entry?.platform, MAX_ALERT_PLATFORM_LENGTH, "unknown");
   return {
     platform,
-    title: boundedAlertText(title, `[${platform}] Integration alert`),
-    body: boundedAlertText(body, "Integration health requires administrator attention."),
+    title: boundedText(title, MAX_ALERT_TITLE_LENGTH, `[${platform}] Integration alert`),
+    body: boundedText(body, MAX_ALERT_BODY_LENGTH, "Integration health requires administrator attention."),
   };
 }
 
