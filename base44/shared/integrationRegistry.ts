@@ -37,28 +37,64 @@ export function isUnhealthy(status) {
   return UNHEALTHY.has(status);
 }
 
+function diagnosticType(error) {
+  if (error instanceof TypeError) return "typeerror";
+  if (error instanceof RangeError) return "rangeerror";
+  if (error instanceof SyntaxError) return "syntaxerror";
+  if (error instanceof ReferenceError) return "referenceerror";
+  return typeof error;
+}
+
+const MAX_ALERT_PLATFORM_LENGTH = 80;
+const MAX_ALERT_TITLE_LENGTH = 160;
+const MAX_ALERT_BODY_LENGTH = 500;
+const SAFE_ALERT_TEXT = /^[\p{L}\p{N}\p{P}\p{Z}\n\r]+$/u;
+const SENSITIVE_ALERT_TEXT = /(bearer\s+|api[_ -]?key|secret|password|token|authorization|cookie|set-cookie|recipient|email\s*[:=]|to\s*[:=]|cc\s*[:=]|bcc\s*[:=])/i;
+
+function boundedText(value, maxLength, fallback) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || !SAFE_ALERT_TEXT.test(text) || SENSITIVE_ALERT_TEXT.test(text)) return fallback;
+  return text.slice(0, maxLength);
+}
+
+function boundedPlatform(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || !/^[a-z0-9][a-z0-9._-]{0,79}$/i.test(text)) return "unknown";
+  return text;
+}
+
+function safeIntegrationAlert(entry, title, body) {
+  const platform = boundedPlatform(entry?.platform);
+  return {
+    platform,
+    title: boundedText(title, MAX_ALERT_TITLE_LENGTH, `[${platform}] Integration alert`),
+    body: boundedText(body, MAX_ALERT_BODY_LENGTH, "Integration health requires administrator attention."),
+  };
+}
+
 // Emit a deduplicated admin alert for an unhealthy integration. Skips creating
 // a new Notification when an unread integration alert for the same platform
 // already exists for an admin, so a persistent condition isn't re-alerted.
 export async function emitIntegrationAlert(sr, entry, title, body) {
+  const alert = safeIntegrationAlert(entry, title, body);
   try {
     const admins = await sr.entities.User.filter({ role: "admin" }).catch(() => []);
     for (const admin of admins) {
       const open = await sr.entities.Notification.filter({ user_id: admin.id, read: false }).catch(() => []);
       const dupe = open.some(
-        (n) => n.type === "system" && (n.link || "") === "/admin/integrations" && (n.title || "").includes(`[${entry.platform}]`)
+        (n) => n.type === "system" && (n.link || "") === "/admin/integrations" && (n.title || "").includes(`[${alert.platform}]`)
       );
       if (dupe) continue;
       await sr.entities.Notification.create({
         user_id: admin.id,
-        title,
-        body,
+        title: alert.title,
+        body: alert.body,
         type: "system",
         link: "/admin/integrations",
       });
     }
   } catch (e) {
-    console.error("emitIntegrationAlert failed:", e && e.message ? e.message : e);
+    console.error("emitIntegrationAlert failed", diagnosticType(e));
   }
 }
 
@@ -107,7 +143,7 @@ export async function assertPlatformAccess(sr, platform) {
   try {
     entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
   } catch (e) {
-    console.warn("assertPlatformAccess registry read failed:", e && e.message ? e.message : e);
+    console.warn("assertPlatformAccess registry read failed", diagnosticType(e));
     return { ok: true, status: null, reason: "registry unavailable (fail-open)" };
   }
   const entry = entries && entries[0];
@@ -148,7 +184,7 @@ export async function assertOboGrant(sr, agentName, userId, platform) {
   try {
     grants = await sr.entities.AuthorizationGrant.filter({ agent_name: agentName, user_id: userId, platform });
   } catch (e) {
-    console.warn("assertOboGrant read failed:", e && e.message ? e.message : e);
+    console.warn("assertOboGrant read failed", diagnosticType(e));
     return { ok: false, reason: "grant registry unavailable" };
   }
   const now = Date.now();
