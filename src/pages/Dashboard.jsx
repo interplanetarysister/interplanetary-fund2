@@ -19,6 +19,17 @@ import PageError from "@/components/PageError";
 
 const SAFE_DASHBOARD_ERROR = "We couldn't load your dashboard. Please try again.";
 
+function normalizeCampaigns(rows, userId) {
+  if (!Array.isArray(rows) || typeof userId !== "string" || !userId.trim()) return null;
+  return rows.filter((campaign) => (
+    campaign &&
+    typeof campaign === "object" &&
+    typeof campaign.id === "string" &&
+    campaign.id.trim() &&
+    campaign.created_by_id === userId
+  ));
+}
+
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
@@ -32,10 +43,11 @@ export default function Dashboard() {
         const me = await base44.auth.me();
         if (!me || typeof me.id !== "string" || !me.id.trim()) throw new Error("INVALID_AUTH");
         const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
-        if (!Array.isArray(mine)) throw new Error("INVALID_CAMPAIGNS");
+        const safeCampaigns = normalizeCampaigns(mine, me.id);
+        if (!safeCampaigns) throw new Error("INVALID_CAMPAIGNS");
         if (!active) return;
         setUser(me);
-        setCampaigns(mine);
+        setCampaigns(safeCampaigns);
         setError(null);
       } catch {
         if (!active) return;
@@ -49,8 +61,8 @@ export default function Dashboard() {
   if (!campaigns) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={4} /></div>;
 
   const needsOnboarding = !user?.onboarding_completed;
-  const totalRaised = campaigns.reduce((s, c) => s + (c.raised_amount || 0), 0);
-  const totalDonors = campaigns.reduce((s, c) => s + (c.donor_count || 0), 0);
+  const totalRaised = campaigns.reduce((s, c) => s + (typeof c.raised_amount === "number" ? c.raised_amount : 0), 0);
+  const totalDonors = campaigns.reduce((s, c) => s + (typeof c.donor_count === "number" ? c.donor_count : 0), 0);
   const active = campaigns.filter((c) => c.status === "active").length;
 
   return (
