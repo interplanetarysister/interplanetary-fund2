@@ -1,0 +1,32 @@
+{
+  "name": "FinancialOperation",
+  "type": "object",
+  "properties": {
+    "operation_key": { "type": "string", "description": "Stable idempotency key for the financial operation." },
+    "operation_type": { "type": "string", "enum": ["donation", "external_observation", "withdrawal"] },
+    "campaign_id": { "type": "string" },
+    "campaign_owner_user_id": { "type": "string" },
+    "provider": { "type": "string" },
+    "provider_transaction_id": { "type": "string" },
+    "gross_amount": { "type": "number", "default": 0 },
+    "platform_contribution": { "type": "number", "default": 0 },
+    "processing_fee": { "type": "number", "default": 0 },
+    "platform_fee": { "type": "number", "default": 0 },
+    "net_amount": { "type": "number", "default": 0 },
+    "payment_verified": { "type": "boolean", "default": false },
+    "status": { "type": "string", "enum": ["pending", "confirmed", "reserved", "completed", "cancelled", "observed"], "default": "pending" },
+    "reservation_id": { "type": "string" },
+    "payout_method": { "type": "string" },
+    "payout_destination": { "type": "string" },
+    "metadata": { "type": "object" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "cancelled_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["operation_key", "operation_type"],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "create": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
