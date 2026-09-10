@@ -48,14 +48,23 @@ function diagnosticType(error) {
 const MAX_ALERT_PLATFORM_LENGTH = 80;
 const MAX_ALERT_TITLE_LENGTH = 160;
 const MAX_ALERT_BODY_LENGTH = 500;
+const SAFE_ALERT_TEXT = /^[\p{L}\p{N}\p{P}\p{Z}\n\r]+$/u;
+const SENSITIVE_ALERT_TEXT = /(bearer\s+|api[_ -]?key|secret|password|token|authorization|cookie|set-cookie|recipient|email\s*[:=]|to\s*[:=]|cc\s*[:=]|bcc\s*[:=])/i;
 
 function boundedText(value, maxLength, fallback) {
   const text = typeof value === "string" ? value.trim() : "";
-  return (text || fallback).slice(0, maxLength);
+  if (!text || !SAFE_ALERT_TEXT.test(text) || SENSITIVE_ALERT_TEXT.test(text)) return fallback;
+  return text.slice(0, maxLength);
+}
+
+function boundedPlatform(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || !/^[a-z0-9][a-z0-9._-]{0,79}$/i.test(text)) return "unknown";
+  return text;
 }
 
 function safeIntegrationAlert(entry, title, body) {
-  const platform = boundedText(entry?.platform, MAX_ALERT_PLATFORM_LENGTH, "unknown");
+  const platform = boundedPlatform(entry?.platform);
   return {
     platform,
     title: boundedText(title, MAX_ALERT_TITLE_LENGTH, `[${platform}] Integration alert`),
