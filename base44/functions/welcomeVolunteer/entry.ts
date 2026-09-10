@@ -4,6 +4,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 // the "Volunteer Welcome Follow-up" workflow (service-scoped, no user context).
 // sendCommunication is user-context-bound (messages a campaign's donors), so
 // this delivers the welcome directly via the service role.
+const logFailure = (label, error) => {
+  const errorName = error instanceof Error ? error.name : typeof error;
+  console.error(label, { error_name: errorName });
+};
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -31,8 +36,8 @@ export default async function(req) {
           body: `Hi ${user.full_name || 'there'},\n\nThank you for volunteering for "${roleTitle}" in ${communityName}. We'll be in touch with next steps.\n\nIn the meantime, complete your profile so organizers can match you to more opportunities.\n\n— Interplanetary Fund`,
           from_name: 'Interplanetary Fund',
         });
-      } catch (e) {
-        console.error('welcome email failed:', e.message);
+      } catch (error) {
+        logFailure('welcome email failed', error);
       }
     }
 
@@ -46,7 +51,7 @@ export default async function(req) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error('welcomeVolunteer error:', error.message);
+    logFailure('welcomeVolunteer error', error);
     return Response.json({ error: 'Unable to send the welcome. Please try again.' }, { status: 500 });
   }
 }
