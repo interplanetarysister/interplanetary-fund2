@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import ActivityFeedCard from "./ActivityFeedCard";
 import { Loader2 } from "lucide-react";
@@ -8,6 +8,8 @@ import PageError from "@/components/PageError";
 // function, which applies server-side privacy filtering (guests see public
 // events only) and returns sanitized display fields. Supports cursor
 // pagination via "Load more". Works for both guests and signed-in users.
+const SAFE_FEED_ERROR = "We couldn't load the feed. Please retry.";
+
 export default function ActivityFeed() {
   const [items, setItems] = useState(null);
   const [cursor, setCursor] = useState(null);
@@ -15,17 +17,25 @@ export default function ActivityFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const loadGeneration = useRef(0);
+  const mounted = useRef(true);
+
+  useEffect(() => () => { mounted.current = false; }, []);
 
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     setError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20 });
-      const data = res.data || {};
-      setItems(data.items || []);
+      const data = res?.data;
+      if (!data || !Array.isArray(data.items)) throw new Error("Malformed feed response");
+      if (!mounted.current || generation !== loadGeneration.current) return;
+      setItems(data.items);
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
-    } catch (e) {
-      setError(e.message || "We couldn't load the feed.");
+    } catch {
+      if (!mounted.current || generation !== loadGeneration.current) return;
+      setError(SAFE_FEED_ERROR);
       setItems([]);
     }
   }, []);
@@ -34,15 +44,21 @@ export default function ActivityFeed() {
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return;
+    const generation = loadGeneration.current;
     setLoadingMore(true);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20, before: cursor });
-      const data = res.data || {};
-      setItems((prev) => [...prev, ...(data.items || [])]);
+      const data = res?.data;
+      if (!data || !Array.isArray(data.items)) throw new Error("Malformed feed response");
+      if (!mounted.current || generation !== loadGeneration.current) return;
+      setItems((prev) => [...(Array.isArray(prev) ? prev : []), ...data.items]);
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
-    } catch (e) { /* keep existing items */ }
-    setLoadingMore(false);
+    } catch {
+      if (mounted.current && generation === loadGeneration.current) setError(SAFE_FEED_ERROR);
+    } finally {
+      if (mounted.current && generation === loadGeneration.current) setLoadingMore(false);
+    }
   };
 
   if (error && (!items || items.length === 0)) {
