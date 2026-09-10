@@ -3,13 +3,38 @@
 // never throws to the caller — a failed feed event must not break the
 // donation, update, or campaign-creation flow it accompanies.
 
-const DIAGNOSTIC_TYPES = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError']);
+const MAX_METADATA_KEYS = 12;
+const MAX_METADATA_STRING_LENGTH = 160;
+const SAFE_METADATA_KEY = /^[a-zA-Z0-9_]{1,40}$/;
 
 function diagnosticType(error) {
-  if (error && typeof error.name === 'string' && DIAGNOSTIC_TYPES.has(error.name)) {
-    return error.name;
-  }
+  if (error instanceof TypeError) return 'TypeError';
+  if (error instanceof RangeError) return 'RangeError';
+  if (error instanceof SyntaxError) return 'SyntaxError';
+  if (error instanceof ReferenceError) return 'ReferenceError';
+  if (error instanceof Error) return 'Error';
   return typeof error;
+}
+
+function sanitizeMetadata(metadata) {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return undefined;
+
+  const safe = {};
+  let count = 0;
+  for (const [key, value] of Object.entries(metadata)) {
+    if (count >= MAX_METADATA_KEYS || !SAFE_METADATA_KEY.test(key)) continue;
+    if (typeof value === 'string') {
+      safe[key] = value.slice(0, MAX_METADATA_STRING_LENGTH);
+      count += 1;
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      safe[key] = value;
+      count += 1;
+    } else if (typeof value === 'boolean') {
+      safe[key] = value;
+      count += 1;
+    }
+  }
+  return Object.keys(safe).length ? safe : undefined;
 }
 
 export async function emitActivityEvent(base44, event) {
@@ -27,7 +52,7 @@ export async function emitActivityEvent(base44, event) {
       body: event.body,
       link: event.link || undefined,
       visibility: event.visibility || 'public',
-      metadata: event.metadata || undefined,
+      metadata: sanitizeMetadata(event.metadata),
     });
   } catch (e) {
     console.error('emitActivityEvent failed', { diagnosticType: diagnosticType(e) });
