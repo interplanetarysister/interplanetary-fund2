@@ -14,7 +14,9 @@ export default function MyGiving() {
     try {
       const me = await base44.auth.me();
       const mine = await base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date");
-      setDonations(mine);
+      // Financial truth boundary: only provider-verified gifts count as giving.
+      // Manual PayPal/Cash App reports remain pending until separately verified.
+      setDonations((mine || []).filter((d) => d.payment_verified === true));
     } catch (e) {
       setError(e.message || "We couldn't load your giving history.");
     }
@@ -58,7 +60,7 @@ export default function MyGiving() {
         <h2 className="font-display text-xl text-stone-900 mb-3">Donation history</h2>
         <div className="bg-white rounded-2xl border border-stone-200/70 px-5 py-2 shadow-sm">
           {donations.length === 0 ? (
-            <p className="text-sm text-stone-400 py-6 text-center">No donations yet — find a cause on the Discover page.</p>
+            <p className="text-sm text-stone-400 py-6 text-center">No confirmed donations yet — find a cause on the Discover page.</p>
           ) : (
             donations.map((d) => <DonationRow key={d.id} donation={d} />)
           )}
