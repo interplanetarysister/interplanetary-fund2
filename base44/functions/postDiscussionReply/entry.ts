@@ -38,6 +38,17 @@ function diagnosticType(error) {
   return typeof error;
 }
 
+function projectReply(value) {
+  if (!isRecord(value)) return null;
+  const id = typeof value.id === 'string' ? value.id.trim() : '';
+  const postId = typeof value.post_id === 'string' ? value.post_id.trim() : '';
+  const communityId = typeof value.community_id === 'string' ? value.community_id.trim() : '';
+  const content = boundedText(value.content, MAX_CONTENT_LENGTH);
+  const authorName = boundedText(value.author_name, MAX_AUTHOR_LENGTH);
+  if (!isValidId(id) || !isValidId(postId) || !isValidId(communityId) || !content || !authorName) return null;
+  return { id, post_id: postId, community_id: communityId, content, author_name: authorName };
+}
+
 async function getPostOrThrow(sr, postId) {
   try {
     return await sr.entities.DiscussionPost.get(postId);
@@ -100,7 +111,12 @@ export default async function(req) {
       { id: postId },
       { $inc: { reply_count: 1 } }
     );
-    return Response.json({ reply });
+    const safeReply = projectReply(reply);
+    if (!safeReply) {
+      console.error('postDiscussionReply error:', 'malformed_reply_response');
+      return Response.json({ error: SAFE_ERROR }, { status: 502 });
+    }
+    return Response.json({ reply: safeReply });
   } catch (error) {
     console.error('postDiscussionReply error:', diagnosticType(error));
     return Response.json({ error: SAFE_ERROR }, { status: 500 });
