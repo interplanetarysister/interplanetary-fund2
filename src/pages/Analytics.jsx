@@ -11,18 +11,38 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PageError from "@/components/PageError";
 
 const SAFE_ANALYTICS_ERROR = "We couldn't load your analytics. Please try again.";
+const MAX_PARALLEL_REQUESTS = 6;
+const MAX_LIST_SIZE = 200;
+const SENSITIVE_KEY_PATTERN = /(password|token|secret|ssn|social_security|bank|routing|withdrawal|private_key|api_key)/i;
 
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
-const isEntityList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id));
-const isDonationList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id) && Number.isFinite(Number(item.amount)));
+const hasSafeKeys = (value) => isRecord(value) && Object.keys(value).every((key) => !SENSITIVE_KEY_PATTERN.test(key));
+const isEntityList = (value) => Array.isArray(value) && value.length <= MAX_LIST_SIZE && value.every((item) => hasSafeKeys(item) && isNonEmptyString(item.id));
+const isDonationList = (value) => Array.isArray(value) && value.length <= MAX_LIST_SIZE && value.every((item) => hasSafeKeys(item) && isNonEmptyString(item.id) && Number.isFinite(item.amount) && item.amount >= 0);
 const isFunctionDonationResponse = (value) => isRecord(value) && isDonationList(value.data?.donations);
+
+async function mapWithConcurrency(items, worker, concurrency = MAX_PARALLEL_REQUESTS) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (true) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      results[index] = await worker(items[index], index);
+    }
+  });
+  await Promise.all(runners);
+  return results;
+}
 
 function normalizeAnalyticsPayload({ campaigns, communities, institutions, volunteerOpps, applications, opportunities, donations, signups }) {
   if (!isEntityList(campaigns) || !isEntityList(communities) || !isEntityList(institutions) || !isEntityList(volunteerOpps) || !isEntityList(applications) || !isEntityList(opportunities) || !isDonationList(donations) || !isEntityList(signups)) {
     throw new Error("Malformed analytics response");
   }
-  return { campaigns, communities, institutions, volunteerOpps, applications, opportunities, donations, signups };
+  const uniqueDonations = Array.from(new Map(donations.map((donation) => [donation.id, donation])).values());
+  return { campaigns, communities, institutions, volunteerOpps, applications, opportunities, donations: uniqueDonations, signups };
 }
 
 export default function Analytics() {
@@ -44,26 +64,22 @@ export default function Analytics() {
 
         const [campaigns, communities, institutions, volunteerOpps, applications, opportunities] = await Promise.all([
           base44.entities.Campaign.filter({ created_by_id: me.id }),
-          base44.entities.Community.list("-created_date", 200),
-          base44.entities.Institution.list("-created_date", 200),
-          base44.entities.VolunteerOpportunity.list("-created_date", 200),
+          base44.entities.Community.list("-created_date", MAX_LIST_SIZE),
+          base44.entities.Institution.list("-created_date", MAX_LIST_SIZE),
+          base44.entities.VolunteerOpportunity.list("-created_date", MAX_LIST_SIZE),
           base44.entities.GrantApplication.filter({ applicant_user_id: me.id }),
-          base44.entities.InstitutionOpportunity.list("-created_date", 200),
+          base44.entities.InstitutionOpportunity.list("-created_date", MAX_LIST_SIZE),
         ]);
 
         if (!isEntityList(campaigns) || !isEntityList(communities) || !isEntityList(institutions) || !isEntityList(volunteerOpps) || !isEntityList(applications) || !isEntityList(opportunities)) {
           throw new Error("Malformed analytics entity response");
         }
 
-        const dResults = await Promise.all(
-          campaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
-        );
+        const dResults = await mapWithConcurrency(campaigns, (campaign) => base44.functions.invoke("getCampaignDonations", { campaign_id: campaign.id }));
         if (!dResults.every(isFunctionDonationResponse)) throw new Error("Malformed donation response");
-        const donationLists = dResults.map((r) => r.data.donations);
+        const donationLists = dResults.map((result) => result.data.donations);
 
-        const signupLists = await Promise.all(
-          volunteerOpps.map((o) => base44.entities.VolunteerSignup.filter({ opportunity_id: o.id }))
-        );
+        const signupLists = await mapWithConcurrency(volunteerOpps, (opportunity) => base44.entities.VolunteerSignup.filter({ opportunity_id: opportunity.id }));
         if (!signupLists.every(isEntityList)) throw new Error("Malformed signup response");
 
         const nextData = normalizeAnalyticsPayload({
