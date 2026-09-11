@@ -2,11 +2,37 @@
   "name": "HelpArticle",
   "type": "object",
   "properties": {
-    "category": { "type": "string", "enum": ["Getting Started", "Creating Campaigns", "Donating", "Payouts", "Account & Security"] },
-    "question": { "type": "string" },
-    "answer": { "type": "string" },
-    "helpful_yes": { "type": "number", "default": 0 },
-    "helpful_no": { "type": "number", "default": 0 }
+    "category": {
+      "type": "string",
+      "enum": [
+        "Getting Started",
+        "Creating Campaigns",
+        "Donating",
+        "Payouts",
+        "Account & Security"
+      ]
+    },
+    "question": {
+      "type": "string"
+    },
+    "answer": {
+      "type": "string"
+    },
+    "helpful_yes": {
+      "type": "number",
+      "default": 0
+    },
+    "helpful_no": {
+      "type": "number",
+      "default": 0
+    },
+    "description": {
+      "type": "string"
+    }
   },
-  "required": ["category", "question", "answer"]
+  "required": [
+    "category",
+    "question",
+    "answer"
+  ]
 }

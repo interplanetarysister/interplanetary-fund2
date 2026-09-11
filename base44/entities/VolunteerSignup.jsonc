@@ -13,6 +13,9 @@
     },
     "user_name": {
       "type": "string"
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [
