@@ -6,9 +6,9 @@ const source = fs.readFileSync(path, 'utf8');
 const required = [
   "if (req.method !== 'POST')",
   "Allow: 'POST'",
-  "body = await req.json()",
-  "Array.isArray(body)",
-  "Object.keys(body)",
+  'body = await req.json()',
+  'Array.isArray(body)',
+  'Object.keys(body)',
   "body.institution_id === 'string'",
   'MAX_ID_LENGTH',
   'ID_PATTERN',
@@ -16,6 +16,9 @@ const required = [
   'diagnosticType(error)',
   "console.error('listInstitutionApplications failed', { type: diagnosticType(error) })",
   "error: 'Unable to load applications. Please try again.'",
+  'function projectApplication(application)',
+  'MAX_APPLICATIONS',
+  'projectedApplications.some((application) => application === null)',
 ];
 
 for (const fragment of required) {
@@ -27,6 +30,12 @@ if (/error\.message|JSON\.stringify\(error\)/.test(source)) {
 }
 if (/filter\(\{ institution_id \}/.test(source)) {
   throw new Error('Lookup must use the normalized institution identifier');
+}
+if (/return \{ \.\.\.application \}/.test(source)) {
+  throw new Error('Applications must cross the boundary through an explicit projection');
+}
+if (!/application\.amount_requested === 'number'/.test(source)) {
+  throw new Error('Numeric application fields must be type checked');
 }
 
 console.log('listInstitutionApplications boundary verifier passed');
