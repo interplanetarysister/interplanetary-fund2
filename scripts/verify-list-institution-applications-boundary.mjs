@@ -16,8 +16,12 @@ const required = [
   'diagnosticType(error)',
   "console.error('listInstitutionApplications failed', { type: diagnosticType(error) })",
   "error: 'Unable to load applications. Please try again.'",
+  'function validId(value)',
+  'function validDate(value)',
   'function projectApplication(application)',
   'MAX_APPLICATIONS',
+  'MAX_AMOUNT',
+  'application.amount_requested < 0',
   'projectedApplications.some((application) => application === null)',
 ];
 
@@ -36,6 +40,12 @@ if (/return \{ \.\.\.application \}/.test(source)) {
 }
 if (!/typeof application\.amount_requested === 'number'/.test(source)) {
   throw new Error('Numeric application fields must be type checked');
+}
+if (!/application\.amount_requested > MAX_AMOUNT/.test(source)) {
+  throw new Error('Application amount must be bounded');
+}
+if (!/projectedApplications\.some\(\(application\) => application === null\)/.test(source)) {
+  throw new Error('Malformed application rows must fail closed');
 }
 
 console.log('listInstitutionApplications boundary verifier passed');
