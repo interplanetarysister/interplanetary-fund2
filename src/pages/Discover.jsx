@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { base44 } from "@/api/base44Client";
 import { Search } from "lucide-react";
@@ -9,21 +9,53 @@ import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import PageError from "@/components/PageError";
 import PageTips from "@/components/coach/PageTips";
 
+const SAFE_DISCOVER_ERROR = "We couldn't load campaigns right now. Please try again.";
+
+function normalizeCampaigns(payload) {
+  if (!Array.isArray(payload)) throw new Error("invalid campaign payload");
+  if (payload.some((campaign) => (
+    !campaign ||
+    typeof campaign !== "object" ||
+    typeof campaign.id !== "string" ||
+    typeof campaign.title !== "string" ||
+    campaign.status !== "active"
+  ))) {
+    throw new Error("invalid campaign row");
+  }
+  return payload;
+}
+
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
+
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  const loadCampaigns = useCallback(async () => {
+    const requestId = ++requestRef.current;
+    try {
+      const response = await base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100);
+      const normalized = normalizeCampaigns(response);
+      if (!mountedRef.current || requestId !== requestRef.current) return;
+      setCampaigns(normalized);
+      setError(null);
+    } catch (e) {
+      if (!mountedRef.current || requestId !== requestRef.current) return;
+      setError(SAFE_DISCOVER_ERROR);
+    }
+  }, []);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
-      .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load campaigns."));
-  }, [refreshKey]);
+    void loadCampaigns();
+  }, [loadCampaigns, refreshKey]);
 
-  if (error) {
-    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
+  if (error && !campaigns) {
+    return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setRefreshKey((k) => k + 1); }} /></div>;
   }
   if (!campaigns) {
     return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><CampaignGridSkeleton count={6} /></div>;
@@ -45,6 +77,7 @@ export default function Discover() {
         <PageTips pageId="discover" />
       </div>
 
+      {error && <div role="alert" className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{error}</div>}
       <RecommendedCampaigns allCampaigns={campaigns} />
 
       <div className="relative mb-6">
