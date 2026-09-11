@@ -24,10 +24,27 @@ function boundedText(value, maxLength) {
   return normalized;
 }
 
+function isNotFoundError(error) {
+  if (!error) return false;
+  if (typeof error === 'object' && (error.status === 404 || error.code === 'NOT_FOUND')) return true;
+  if (typeof error === 'string') return /\b(?:404|not found)\b/i.test(error);
+  if (typeof error.message === 'string') return /\b(?:404|not found)\b/i.test(error.message);
+  return false;
+}
+
 function diagnosticType(error) {
   if (error instanceof Error) return error.name || 'Error';
   if (error === null) return 'null';
   return typeof error;
+}
+
+async function getPostOrThrow(sr, postId) {
+  try {
+    return await sr.entities.DiscussionPost.get(postId);
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export default async function(req) {
@@ -64,7 +81,7 @@ export default async function(req) {
     }
 
     const sr = base44.asServiceRole;
-    const post = await sr.entities.DiscussionPost.get(postId).catch(() => null);
+    const post = await getPostOrThrow(sr, postId);
     if (!post) return Response.json({ error: 'Post not found' }, { status: 404 });
 
     const serverCommunityId = typeof post.community_id === 'string' ? post.community_id.trim() : '';
