@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,9 @@ import { Loader2 } from "lucide-react";
 import { AUTOMATION_MODES } from "./platformCatalog";
 import CredentialFields from "./CredentialFields";
 
+const SAFE_SAVE_ERROR = "Couldn't save this connection. Please try again. If the problem continues, contact support.";
+const SAFE_CAMPAIGN_LOAD_ERROR = "Couldn't load your campaigns. Please try again.";
+
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
@@ -17,11 +20,19 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [campaignsError, setCampaignsError] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const loadGeneration = useRef(0);
 
   useEffect(() => {
     if (!open) return;
+    const generation = ++loadGeneration.current;
+    let mounted = true;
+    setError("");
+    setCampaignsError("");
+    setCampaignsLoading(true);
     setForm({
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
@@ -32,15 +43,37 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     });
     setCredentials(existing?.credentials || {});
     (async () => {
-      const me = await base44.auth.me();
-      setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
+      try {
+        const me = await base44.auth.me();
+        if (!me?.id) throw new Error("unauthorized");
+        const result = await base44.entities.Campaign.filter({ created_by_id: me.id });
+        if (!Array.isArray(result) || result.some((campaign) => !campaign || typeof campaign !== "object" || typeof campaign.id !== "string" || typeof campaign.title !== "string")) {
+          throw new Error("malformed_campaigns");
+        }
+        if (mounted && generation === loadGeneration.current) {
+          setCampaigns(result);
+          setCampaignsError("");
+        }
+      } catch {
+        if (mounted && generation === loadGeneration.current) {
+          setCampaignsError(SAFE_CAMPAIGN_LOAD_ERROR);
+          setCampaigns([]);
+        }
+      } finally {
+        if (mounted && generation === loadGeneration.current) setCampaignsLoading(false);
+      }
     })();
+    return () => {
+      mounted = false;
+    };
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
+    if (saving) return;
     setSaving(true);
+    setError("");
     try {
       // Route through the credential-merge function so secret values never
       // round-trip through the frontend and merges preserve unchanged secrets.
@@ -56,12 +89,12 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
       });
-      const saved = res.data.connection;
-      onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
+      const saved = res?.data?.connection;
+      if (!saved || typeof saved !== "object" || typeof saved.id !== "string") throw new Error("malformed_save_response");
+      onSaved(saved);
       onOpenChange(false);
-    } catch (e) {
-      console.error("ConnectDialog connection save failed:", e);
-      setError("Couldn't save this connection. Please try again. If the problem continues, contact support.");
+    } catch {
+      setError(SAFE_SAVE_ERROR);
     } finally {
       setSaving(false);
     }
@@ -86,12 +119,18 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />
           <div className="space-y-1.5">
             <Label>Linked Interplanetary Fund campaign</Label>
-            <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Optional — pick a campaign" /></SelectTrigger>
-              <SelectContent>
-                {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            {campaignsError ? (
+              <p role="alert" className="text-sm text-red-600">{campaignsError}</p>
+            ) : campaignsLoading ? (
+              <p role="status" aria-live="polite" className="text-sm text-stone-500">Loading your campaigns…</p>
+            ) : (
+              <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
+                <SelectTrigger><SelectValue placeholder="Optional — pick a campaign" /></SelectTrigger>
+                <SelectContent>
+                  {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
           </div>
           {isCrowd && (
             <div className="grid grid-cols-2 gap-3">
@@ -121,8 +160,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
                 : "Accept the AI Publishing Authorization above to enable automation options."}
             </p>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+          <Button onClick={save} disabled={saving || campaignsLoading || Boolean(campaignsError)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
           </Button>
         </div>
