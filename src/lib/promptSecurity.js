@@ -4,6 +4,12 @@
 // that prompt injection can be eliminated by string filtering alone.
 
 const MAX_UNTRUSTED_CHARS = 24000;
+const MAX_TASK_CHARS = 4000;
+const MAX_TRUSTED_CONTEXT_CHARS = 12000;
+const MAX_OUTPUT_DEPTH = 8;
+const MAX_OUTPUT_KEYS = 64;
+const MAX_OUTPUT_ARRAY = 128;
+const MAX_OUTPUT_STRING = 12000;
 const INVISIBLE_UNICODE = /[\u200B-\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF]/g;
 const DANGEROUS_MARKUP = /<(?:script|iframe|object|embed|img|link|meta)\b[^>]*>/gi;
 const INJECTION_PATTERNS = [
@@ -28,6 +34,48 @@ export function normalizeUntrustedText(value, maxChars = MAX_UNTRUSTED_CHARS) {
 }
 export function detectPromptInjection(value) { const text = normalizeUntrustedText(value); return INJECTION_PATTERNS.some((pattern) => pattern.test(text)); }
 export function wrapUntrustedData(label, value, maxChars) { const text = normalizeUntrustedText(value, maxChars); const flagged = detectPromptInjection(text); return `<UNTRUSTED_DATA label="${String(label).replace(/[<>\"']/g, "")}" injection_suspected="${flagged}">\n${text}\n</UNTRUSTED_DATA>`; }
-export function buildSecurePrompt({ task, trustedContext = "", untrusted = [] }) { const blocks = untrusted.map(({ label, value, maxChars }) => wrapUntrustedData(label, value, maxChars)).join("\n\n"); return `${PROMPT_SECURITY_RULES}\n\nTASK:\n${task}\n\nTRUSTED_CONTEXT:\n${trustedContext || "None."}\n\n${blocks}`.trim(); }
-export function validateLLMText(value) { const text = String(value ?? ""); if (/<(?:script|iframe|object|embed|img|link|meta)\b/i.test(text)) throw new Error("Unsafe model output blocked"); if (/\b(?:system|developer)\s+(?:prompt|message)\s*:/i.test(text)) throw new Error("Possible prompt disclosure blocked"); return text; }
-export function validateLLMObject(value) { if (typeof value === "string") return validateLLMText(value); if (Array.isArray(value)) return value.map(validateLLMObject); if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, validateLLMObject(item)])); return value; }
+export function buildSecurePrompt({ task, trustedContext = "", untrusted = [] }) {
+  const safeTask = normalizeUntrustedText(task, MAX_TASK_CHARS);
+  const safeTrustedContext = normalizeUntrustedText(trustedContext, MAX_TRUSTED_CONTEXT_CHARS);
+  const blocks = Array.isArray(untrusted) ? untrusted.map(({ label, value, maxChars }) => wrapUntrustedData(label, value, maxChars)).join("\n\n") : "";
+  return `${PROMPT_SECURITY_RULES}\n\nTASK:\n${safeTask}\n\nTRUSTED_CONTEXT:\n${safeTrustedContext || "None."}\n\n${blocks}`.trim();
+}
+export function validateLLMText(value) {
+  const text = String(value ?? "");
+  if (text.length > MAX_OUTPUT_STRING) throw new Error("Model output exceeded safety limits");
+  if (/<(?:script|iframe|object|embed|img|link|meta)\b/i.test(text)) throw new Error("Unsafe model output blocked");
+  if (/\b(?:system|developer)\s+(?:prompt|message)\s*:/i.test(text)) throw new Error("Possible prompt disclosure blocked");
+  return text;
+}
+
+function validateAgainstSchema(value, schema, depth = 0) {
+  if (!schema || depth > MAX_OUTPUT_DEPTH) return value;
+  if (schema.type === "object") {
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Model output shape rejected");
+    const properties = schema.properties || {};
+    const keys = Object.keys(value);
+    if (keys.length > MAX_OUTPUT_KEYS) throw new Error("Model output exceeded key limit");
+    if (schema.additionalProperties === false && keys.some((key) => !Object.prototype.hasOwnProperty.call(properties, key))) throw new Error("Unexpected model output field");
+    for (const key of schema.required || []) if (!Object.prototype.hasOwnProperty.call(value, key)) throw new Error("Required model output field missing");
+    for (const [key, item] of Object.entries(value)) validateAgainstSchema(item, properties[key], depth + 1);
+  } else if (schema.type === "array") {
+    if (!Array.isArray(value) || value.length > MAX_OUTPUT_ARRAY) throw new Error("Model output array rejected");
+    value.forEach((item) => validateAgainstSchema(item, schema.items, depth + 1));
+  } else if (schema.type === "string") {
+    if (typeof value !== "string") throw new Error("Model output string rejected");
+  } else if (schema.type === "number" || schema.type === "integer") {
+    if (typeof value !== "number" || !Number.isFinite(value) || (schema.type === "integer" && !Number.isInteger(value))) throw new Error("Model output number rejected");
+  } else if (schema.type === "boolean" && typeof value !== "boolean") throw new Error("Model output boolean rejected");
+  return value;
+}
+
+export function validateLLMObject(value, schema) {
+  validateAgainstSchema(value, schema);
+  if (typeof value === "string") return validateLLMText(value);
+  if (Array.isArray(value)) { if (value.length > MAX_OUTPUT_ARRAY) throw new Error("Model output array rejected"); return value.map((item) => validateLLMObject(item, schema?.items)); }
+  if (value && typeof value === "object") {
+    const keys = Object.keys(value); if (keys.length > MAX_OUTPUT_KEYS) throw new Error("Model output exceeded key limit");
+    return Object.fromEntries(keys.map((key) => [key, validateLLMObject(value[key], schema?.properties?.[key])]));
+  }
+  return value;
+}
