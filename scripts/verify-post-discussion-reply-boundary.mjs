@@ -15,7 +15,9 @@ const required = [
   ['atomic reply increment', source.includes('$inc: { reply_count: 1 }')],
   ['explicit not-found classification', source.includes('isNotFoundError')],
   ['lookup failure propagation', source.includes('getPostOrThrow') && !source.includes('.get(postId).catch(() => null)')],
-  ['no raw error.message logging', !source.includes('console.error(\'postDiscussionReply error:\', error.message)')],
+  ['safe reply projection', source.includes('projectReply(reply)') && source.includes('return { id, post_id: postId, community_id: communityId, content, author_name: authorName }')],
+  ['malformed reply fail-closed', source.includes('malformed_reply_response') && source.includes('status: 502')],
+  ['no raw error.message logging', !source.includes("console.error('postDiscussionReply error:', error.message)")],
 ];
 
 const failures = required.filter(([, ok]) => !ok).map(([name]) => name);
