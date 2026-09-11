@@ -13,13 +13,16 @@ const SAFE_DISCOVER_ERROR = "We couldn't load campaigns right now. Please try ag
 
 function normalizeCampaigns(payload) {
   if (!Array.isArray(payload)) throw new Error("invalid campaign payload");
-  return payload.filter((campaign) => (
-    campaign &&
-    typeof campaign === "object" &&
-    typeof campaign.id === "string" &&
-    typeof campaign.title === "string" &&
-    campaign.status === "active"
-  ));
+  if (payload.some((campaign) => (
+    !campaign ||
+    typeof campaign !== "object" ||
+    typeof campaign.id !== "string" ||
+    typeof campaign.title !== "string" ||
+    campaign.status !== "active"
+  ))) {
+    throw new Error("invalid campaign row");
+  }
+  return payload;
 }
 
 export default function Discover() {
