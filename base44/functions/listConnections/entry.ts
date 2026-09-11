@@ -22,13 +22,13 @@ const PUBLIC_CONNECTION_FIELDS = [
 ];
 
 function projectConnection(connection) {
-  if (!connection || typeof connection !== 'object') return null;
+  if (!connection || typeof connection !== 'object' || Array.isArray(connection)) return null;
   const projected = {};
   for (const field of PUBLIC_CONNECTION_FIELDS) {
     const value = connection[field];
     if (value === undefined) continue;
     if (typeof value === 'string' && value.length > 512) continue;
-    if (['id', 'platform', 'status', 'display_name', 'handle', 'username', 'instance', 'auth_type', 'environment', 'created_date', 'updated_date', 'last_synced_at'].includes(field) && typeof value !== 'string') continue;
+    if (typeof value !== 'string') continue;
     projected[field] = value;
   }
   const { credentials, credentials_meta } = redactCredentials(connection.credentials);
@@ -51,7 +51,15 @@ export default async function(req) {
       return Response.json({ error: 'Could not load connections.' }, { status: 502 });
     }
 
-    const connections = list.map(projectConnection).filter(Boolean);
+    const connections = [];
+    for (const connection of list) {
+      const projected = projectConnection(connection);
+      if (!projected) {
+        return Response.json({ error: 'Could not load connections.' }, { status: 502 });
+      }
+      connections.push(projected);
+    }
+
     return Response.json({ connections });
   } catch (error) {
     console.error('listConnections failed', { diagnostic_type: diagnosticType(error) });
