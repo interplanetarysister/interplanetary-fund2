@@ -13,6 +13,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "verify:analytics-safety": "node scripts/verify-analytics-safety.mjs",
+    "verify:agent-platform-access-safe-errors": "node scripts/verify-agent-platform-access-safe-errors.mjs",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
     "test:fees": "node scripts/test-fee-calc.mjs",
@@ -107,6 +108,7 @@
     "globals": "^15.14.0",
     "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"
   }
