@@ -9,6 +9,8 @@ import { Loader2 } from "lucide-react";
 import { AUTOMATION_MODES } from "./platformCatalog";
 import CredentialFields from "./CredentialFields";
 
+const SAFE_SAVE_ERROR = "Couldn't save this connection. Please try again. If the problem continues, contact support.";
+
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
@@ -22,6 +24,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   useEffect(() => {
     if (!open) return;
+    setError("");
     setForm({
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
@@ -32,15 +35,22 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     });
     setCredentials(existing?.credentials || {});
     (async () => {
-      const me = await base44.auth.me();
-      setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
+      try {
+        const me = await base44.auth.me();
+        const result = await base44.entities.Campaign.filter({ created_by_id: me.id });
+        setCampaigns(Array.isArray(result) ? result : []);
+      } catch {
+        setCampaigns([]);
+      }
     })();
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
+    if (saving) return;
     setSaving(true);
+    setError("");
     try {
       // Route through the credential-merge function so secret values never
       // round-trip through the frontend and merges preserve unchanged secrets.
@@ -56,12 +66,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
       });
-      const saved = res.data.connection;
+      const saved = res?.data?.connection;
       onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
       onOpenChange(false);
-    } catch (e) {
-      console.error("ConnectDialog connection save failed:", e);
-      setError("Couldn't save this connection. Please try again. If the problem continues, contact support.");
+    } catch {
+      setError(SAFE_SAVE_ERROR);
     } finally {
       setSaving(false);
     }
@@ -121,7 +130,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
                 : "Accept the AI Publishing Authorization above to enable automation options."}
             </p>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
           <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
           </Button>
