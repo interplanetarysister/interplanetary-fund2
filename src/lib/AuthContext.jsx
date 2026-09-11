@@ -6,6 +6,18 @@ import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
 
+const classifyDiagnostic = (error) => {
+  if (error === null || error === undefined) return 'nullish';
+  if (typeof error === 'string') return 'string';
+  if (error instanceof Error) return 'error';
+  if (typeof error === 'object') return 'object';
+  return typeof error;
+};
+
+const logSafeDiagnostic = (label, error) => {
+  console.error(`${label} [${classifyDiagnostic(error)}]`);
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -45,10 +57,10 @@ export const AuthProvider = ({ children }) => {
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
-        console.error('App state check failed:', appError);
+        logSafeDiagnostic('App state check failed:', appError);
         
         // Preserve intentional auth-state messages but never expose provider/server exception text.
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
+        if (appError?.status === 403 && appError?.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
           if (reason === 'auth_required') {
             setAuthError({
@@ -76,7 +88,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
+      logSafeDiagnostic('Unexpected error:', error);
       setAuthError({
         type: 'unknown',
         message: SAFE_APP_ERROR
@@ -103,12 +115,12 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
-      console.error('User auth check failed:', error);
+      logSafeDiagnostic('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
       
-      if (error.status === 401 || error.status === 403) {
+      if (error?.status === 401 || error?.status === 403) {
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'
