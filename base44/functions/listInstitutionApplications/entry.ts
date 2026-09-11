@@ -2,11 +2,36 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 const MAX_ID_LENGTH = 128;
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const MAX_APPLICATIONS = 500;
+const MAX_TEXT_LENGTH = 2000;
 
 function diagnosticType(error) {
   if (error instanceof Error) return error.name || 'Error';
   if (error === null) return 'null';
   return typeof error;
+}
+
+function boundedText(value) {
+  return typeof value === 'string' ? value.replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, MAX_TEXT_LENGTH) : value;
+}
+
+function projectApplication(application) {
+  if (!application || typeof application !== 'object' || Array.isArray(application)) return null;
+  const projected = {
+    id: typeof application.id === 'string' ? application.id : null,
+    institution_id: typeof application.institution_id === 'string' ? application.institution_id : null,
+    status: typeof application.status === 'string' ? boundedText(application.status) : null,
+    created_date: typeof application.created_date === 'string' ? application.created_date : null,
+    updated_date: typeof application.updated_date === 'string' ? application.updated_date : null,
+    title: typeof application.title === 'string' ? boundedText(application.title) : null,
+    description: typeof application.description === 'string' ? boundedText(application.description) : null,
+    amount_requested: typeof application.amount_requested === 'number' && Number.isFinite(application.amount_requested)
+      ? application.amount_requested
+      : null,
+    decision: typeof application.decision === 'string' ? boundedText(application.decision) : null,
+  };
+  if (!projected.id || !projected.institution_id) return null;
+  return projected;
 }
 
 // Lists grant applications for an institution — only the institution's owner
@@ -54,7 +79,14 @@ export default async function(req) {
       { institution_id: institutionId },
       '-created_date',
     );
-    return Response.json({ applications });
+    if (!Array.isArray(applications) || applications.length > MAX_APPLICATIONS) {
+      return Response.json({ error: 'Unable to load applications. Please try again.' }, { status: 502 });
+    }
+    const projectedApplications = applications.map(projectApplication);
+    if (projectedApplications.some((application) => application === null)) {
+      return Response.json({ error: 'Unable to load applications. Please try again.' }, { status: 502 });
+    }
+    return Response.json({ applications: projectedApplications });
   } catch (error) {
     console.error('listInstitutionApplications failed', { type: diagnosticType(error) });
     return Response.json({ error: 'Unable to load applications. Please try again.' }, { status: 500 });
