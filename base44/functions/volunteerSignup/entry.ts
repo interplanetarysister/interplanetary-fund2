@@ -20,8 +20,13 @@ export default async function(req) {
     return Response.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
-  const { opportunity_id } = body;
-  if (typeof opportunity_id !== 'string' || opportunity_id.trim().length === 0 || opportunity_id.length > 200) {
+  const keys = Object.keys(body);
+  if (keys.length !== 1 || keys[0] !== 'opportunity_id') {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  const opportunityId = typeof body.opportunity_id === 'string' ? body.opportunity_id.trim() : '';
+  if (!opportunityId || opportunityId.length > 200 || /[\u0000-\u001f\u007f]/.test(opportunityId)) {
     return Response.json({ error: 'Invalid opportunity_id.' }, { status: 400 });
   }
 
@@ -31,22 +36,22 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Sign in to volunteer.' }, { status: 401 });
 
     const sr = base44.asServiceRole;
-    const opp = await sr.entities.VolunteerOpportunity.get(opportunity_id).catch(() => null);
+    const opp = await sr.entities.VolunteerOpportunity.get(opportunityId).catch(() => null);
     if (!opp) return Response.json({ error: 'Opportunity not found' }, { status: 404 });
     if (opp.status !== 'open') return Response.json({ error: 'This opportunity is no longer open.' }, { status: 400 });
 
-    const existing = await sr.entities.VolunteerSignup.filter({ opportunity_id, user_id: user.id });
+    const existing = await sr.entities.VolunteerSignup.filter({ opportunity_id: opportunityId, user_id: user.id });
     if (existing && existing.length) return Response.json({ error: 'You already signed up.' }, { status: 400 });
 
     const signup = await base44.entities.VolunteerSignup.create({
-      opportunity_id,
+      opportunity_id: opportunityId,
       community_id: opp.community_id,
       user_id: user.id,
       user_name: user.full_name || user.email,
     });
     // Atomic increment — avoids the read-modify-write race on concurrent signups.
     await sr.entities.VolunteerOpportunity.updateMany(
-      { id: opportunity_id },
+      { id: opportunityId },
       { $inc: { volunteer_count: 1 } }
     );
 
