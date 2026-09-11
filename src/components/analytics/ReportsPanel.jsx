@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import ReportCard from "./ReportCard";
 import { FileText, Loader2 } from "lucide-react";
 import { format } from "date-fns";
+import { secureInvokeLLM } from "@/lib/secureLLM";
 
 const reportTypes = [
   { value: "executive_summary", label: "Executive Summary" },
@@ -46,10 +47,9 @@ export default function ReportsPanel({ data }) {
       institutions: institutions.length,
     };
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are the executive analyst for Crowdfund, a fundraising platform. Produce a ${reportTypes.find((t) => t.value === type).label} for this organization's activity.
-
-Platform snapshot:
+    const result = await secureInvokeLLM({
+      task: `Act as the executive analyst for Interplanetary Fund. Produce a ${reportTypes.find((t) => t.value === type).label}. Write an evidence-based analysis grounded strictly in supplied data: what happened, why, what is likely next, and what to do. Never invent data. Forecasts must be clearly labeled estimates, not guarantees.`,
+      untrusted: [{ label: "platform_snapshot", value: `Platform snapshot:
 - Total raised: $${snapshot.total_raised}
 - Donations: ${snapshot.donor_count} (${donations.filter((d) => d.is_recurring).length} recurring)
 - Campaigns: ${campaigns.length} total, ${snapshot.active_campaigns} active
@@ -64,7 +64,7 @@ Write an evidence-based analysis grounded strictly in these numbers. Answer: wha
 - concerns: 2-4 specific risks with numbers.
 - forecast: a projection with a clear confidence statement; make clear these are estimates, not guarantees.
 - recommended_actions: 3-5 specific, prioritized next steps.
-Never invent data that isn't in the snapshot.`,
+Never invent data that isn't in the snapshot.` }],
       response_json_schema: schema,
     });
 
