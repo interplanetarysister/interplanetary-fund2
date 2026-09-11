@@ -1,26 +1,44 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 
-// Retry-safe account deletion state machine. The account is deleted or
-// anonymized LAST — never first — so a mid-process failure leaves the user
-// intact and able to retry. Each stage is recorded in the AuditLog without PII
-// (only the user id is recorded; never email or name).
-//
-// Stage 1 — AUTHORIZE (no deletion): confirm the caller is the authenticated
-//   user. A prior run already in progress (account_deletion_pending) skips
-//   straight to cleanup.
-// Stage 2 — MARK PENDING + REVOKE ACCESS: set account_deletion_pending. The app
-//   revokes access for a pending account (frontend guard in AuthContext), so
-//   the user can no longer use the platform while cleanup runs.
-// Stage 3 — DATA CLEANUP: every step is idempotent (deleteMany/updateMany on
-//   already-empty / already-anonymized sets), so a retry after a mid-wipe
-//   failure resumes cleanly.
-// Stage 4 — DELETE OR ANONYMIZE LAST: attempt User.delete. If the platform
-//   refuses (e.g. the app owner cannot be deleted), anonymize the remaining
-//   custom data so the account is inert; the built-in identity fields cannot
-//   be cleared.
+const SAFE_ERROR = 'Unable to delete your account. Please try again or contact support.';
+const ALLOWED_METHOD = 'POST';
+const MAX_BODY_KEYS = 0;
+const MAX_DIAGNOSTIC_TYPE = 32;
+
+function diagnosticType(value) {
+  const tag = Object.prototype.toString.call(value);
+  if (tag === '[object Error]') return 'error';
+  if (tag === '[object String]') return 'string';
+  if (tag === '[object Object]') return 'object';
+  if (tag === '[object Null]') return 'null';
+  if (tag === '[object Undefined]') return 'undefined';
+  return tag.slice(8, -1).toLowerCase().slice(0, MAX_DIAGNOSTIC_TYPE);
+}
+
+function isExplicitNotFound(error) {
+  const status = Number(error?.status ?? error?.statusCode);
+  const code = String(error?.code ?? '').toUpperCase();
+  return status === 404 || code === 'NOT_FOUND';
+}
+
+async function parseEmptyBody(req) {
+  const raw = await req.text();
+  if (!raw.trim()) return {};
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch { throw new Response(null, { status: 400 }); }
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') throw new Response(null, { status: 400 });
+  if (Object.keys(parsed).length > MAX_BODY_KEYS) throw new Response(null, { status: 400 });
+  return parsed;
+}
+
 export default async function(req) {
   try {
+    if (req.method !== ALLOWED_METHOD) {
+      return Response.json({ error: 'Method not allowed.' }, { status: 405, headers: { Allow: ALLOWED_METHOD } });
+    }
+    await parseEmptyBody(req);
+
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -35,31 +53,32 @@ export default async function(req) {
       status: status || 'success',
     });
 
-    // ---- Stage 1: authorize (no deletion) ----
-    const fresh = await sr.entities.User.get(user.id).catch(() => null);
-    if (!fresh) {
-      // Account already gone from a completed prior run.
-      return Response.json({ deleted: true, resumed: true });
-    }
-    const resuming = !!fresh.account_deletion_pending;
-    if (!resuming) {
-      await audit('account_deletion_authorized', 'success', 'Deletion authorized; no data touched yet.');
-    }
+    const getFreshUser = async () => {
+      try {
+        return await sr.entities.User.get(user.id);
+      } catch (error) {
+        if (isExplicitNotFound(error)) return null;
+        console.error('deleteAccount user lookup failed', { diagnostic_type: diagnosticType(error) });
+        throw error;
+      }
+    };
 
-    // ---- Stage 2: mark pending + revoke access ----
+    const fresh = await getFreshUser();
+    if (!fresh) return Response.json({ deleted: true, resumed: true });
+    const resuming = !!fresh.account_deletion_pending;
+    if (!resuming) await audit('account_deletion_authorized', 'success', 'Deletion authorized; no data touched yet.');
+
     if (!resuming) {
       await sr.entities.User.update(user.id, { account_deletion_pending: true });
       await audit('account_deletion_pending', 'success', 'Access revoked; cleanup will run next.');
     }
 
-    // ---- Stage 3: data cleanup (idempotent) ----
     const runStep = async (name, fn) => {
       try {
         await fn();
       } catch (stepErr) {
-        const detail = stepErr && stepErr.message ? stepErr.message : String(stepErr);
-        console.error(`deleteAccount step "${name}" failed:`, detail);
-        await audit('account_deletion_failed', 'failure', `Step "${name}" failed: ${detail}`);
+        console.error('deleteAccount step failed', { step: name, diagnostic_type: diagnosticType(stepErr) });
+        await audit('account_deletion_failed', 'failure', `Step "${name}" failed.`);
         throw stepErr;
       }
     };
@@ -109,17 +128,12 @@ export default async function(req) {
 
     await audit('account_deletion_cleanup_done', 'success', 'All owned data wiped.');
 
-    // ---- Stage 4: delete or anonymize the account LAST ----
     try {
       await sr.entities.User.delete(user.id);
       await audit('account_deleted', 'success', 'Account deleted after data wipe.');
       return Response.json({ deleted: true });
     } catch (delErr) {
-      // The platform refused to delete the account (e.g. the app owner). Keep
-      // the account but anonymize every custom field so it is inert. The
-      // built-in identity fields (id, email, full_name) cannot be cleared.
-      const reason = delErr && delErr.message ? delErr.message : String(delErr);
-      console.error('deleteAccount: User.delete not permitted, anonymizing:', reason);
+      console.error('deleteAccount user deletion failed', { diagnostic_type: diagnosticType(delErr) });
       await sr.entities.User.update(user.id, {
         onboarding: {},
         comm_prefs: {},
@@ -131,11 +145,16 @@ export default async function(req) {
         account_deletion_pending: true,
         account_status: 'disabled',
       });
-      await audit('account_anonymized', 'success', 'Account could not be deleted; custom data anonymized. Built-in identity (id, email, full_name) is retained by the Base44 platform and cannot be cleared by the application.');
+      await audit('account_anonymized', 'success', 'Account could not be deleted; custom data anonymized.');
       return Response.json({ anonymized: true, reason: 'Account anonymized.' });
     }
   } catch (error) {
-    console.error('deleteAccount error:', error && error.message ? error.message : error);
-    return Response.json({ error: 'Unable to delete your account. Please try again or contact support.' }, { status: 500 });
+    if (error instanceof Response) {
+      return error.status === 400
+        ? Response.json({ error: 'Invalid request.' }, { status: 400 })
+        : error;
+    }
+    console.error('deleteAccount failed', { diagnostic_type: diagnosticType(error) });
+    return Response.json({ error: SAFE_ERROR }, { status: 500 });
   }
 }
