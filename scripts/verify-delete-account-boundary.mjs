@@ -9,6 +9,8 @@ assert.match(source, /Object\.keys\(parsed\)\.length > MAX_BODY_KEYS/);
 assert.match(source, /diagnosticType\(/);
 assert.match(source, /diagnostic_type/);
 assert.match(source, /isExplicitNotFound\(/);
+assert.match(source, /isExplicitDeletionRefusal\(/);
+assert.match(source, /if \(!isExplicitDeletionRefusal\(delErr\)\)/);
 assert.match(source, /return Response\.json\(\{ deleted: true, resumed: true \}\)/);
 assert.doesNotMatch(source, /error\.message/);
 assert.doesNotMatch(source, /String\(stepErr\)/);
