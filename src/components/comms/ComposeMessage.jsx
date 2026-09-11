@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { templates } from "./templates";
+import { secureInvokeLLM } from "@/lib/secureLLM";
 
 const commTypes = [
   { value: "update", label: "Campaign Update" },
@@ -59,14 +60,10 @@ export default function ComposeMessage({ onSent }) {
     setDrafting(true);
     setError("");
     const campaign = campaigns.find((c) => c.id === campaignId);
-    const res = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a fundraising communications expert. Write a warm, concise ${
-        commTypes.find((t) => t.value === commType)?.label || "campaign update"
-      } message from a campaign organizer to their donors.${
-        campaign
-          ? ` Campaign: "${campaign.title}". Summary: ${campaign.summary || "n/a"}. Raised $${campaign.raised_amount || 0} of $${campaign.goal_amount} goal from ${campaign.donor_count || 0} donors.`
-          : " It covers all of the organizer's campaigns."
-      } Keep it under 150 words, plain text, warm and genuine, no placeholder brackets.`,
+    const res = await secureInvokeLLM({
+      task: `Act as a fundraising communications expert. Write a warm, genuine ${commTypes.find((t) => t.value === commType)?.label || "campaign update"} from a campaign organizer to donors. Keep it under 150 words, plain text, with no placeholder brackets. Do not invent facts.`,
+      untrusted: campaign ? [{ label: "campaign", value: JSON.stringify({ title: campaign.title, summary: campaign.summary || "n/a", raised: campaign.raised_amount || 0, goal: campaign.goal_amount, donors: campaign.donor_count || 0 }) }] : [],
+      trustedContext: campaign ? "Draft for the supplied campaign record." : "Draft covers all of the organizer's campaigns; no campaign-specific facts were supplied.",
       response_json_schema: {
         type: "object",
         properties: { subject: { type: "string" }, content: { type: "string" } },
