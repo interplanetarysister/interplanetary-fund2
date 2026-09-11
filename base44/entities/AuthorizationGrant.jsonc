@@ -46,6 +46,9 @@
     },
     "revoked_reason": {
       "type": "string"
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [

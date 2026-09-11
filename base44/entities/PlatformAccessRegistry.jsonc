@@ -110,6 +110,9 @@
         "type": "string"
       },
       "description": "Detected cleanup issues: hardcoded_endpoint, decentralized_credentials, dev_creds_in_prod, bypasses_central_access, duplicate, unused."
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [
