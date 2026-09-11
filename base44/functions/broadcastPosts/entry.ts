@@ -6,15 +6,29 @@ import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 const MAX_ID_LENGTH = 128;
 const MAX_RESULTS = 100;
 const CONTROL = /[\u0000-\u001F\u007F]/;
-const classify = (e) => e instanceof Error ? 'error' : e === null ? 'null' : Array.isArray(e) ? 'array' : typeof e;
+const classify = (e) => Object.prototype.toString.call(e) === '[object Error]' ? 'error' : e === null ? 'null' : Array.isArray(e) ? 'array' : typeof e;
 const safeId = (v) => typeof v === 'string' && (v = v.trim()) && v.length <= MAX_ID_LENGTH && !CONTROL.test(v) ? v : null;
-const project = (p) => p && typeof p === 'object' && typeof p.id === 'string' && typeof p.status === 'string' ? {
-  id: p.id.slice(0, MAX_ID_LENGTH), status: p.status.slice(0, 32),
-  published_at: typeof p.published_at === 'string' ? p.published_at.slice(0, 64) : null,
-  external_post_url: typeof p.external_post_url === 'string' ? p.external_post_url.slice(0, 512) : null,
-  error: typeof p.error === 'string' ? p.error.slice(0, 160) : null,
-  retry_count: Number.isInteger(p.retry_count) && p.retry_count >= 0 && p.retry_count <= 100 ? p.retry_count : 0,
-} : null;
+const project = (p) => {
+  const id = safeId(p?.id);
+  const status = typeof p?.status === 'string' && p.status.length <= 32 && !CONTROL.test(p.status) ? p.status : null;
+  if (!id || !status) return null;
+  return {
+    id, status,
+    published_at: typeof p.published_at === 'string' ? p.published_at.slice(0, 64) : null,
+    external_post_url: typeof p.external_post_url === 'string' ? p.external_post_url.slice(0, 512) : null,
+    error: typeof p.error === 'string' ? p.error.slice(0, 160) : null,
+    retry_count: Number.isInteger(p.retry_count) && p.retry_count >= 0 && p.retry_count <= 100 ? p.retry_count : 0,
+  };
+};
+const isNotFound = (e) => {
+  const status = Number(e?.status ?? e?.statusCode);
+  const code = typeof e?.code === 'string' ? e.code : '';
+  return status === 404 || code === 'NOT_FOUND';
+};
+const getConnection = async (base44, id) => {
+  try { return await base44.entities.PlatformConnection.get(id); }
+  catch (e) { if (isNotFound(e)) return null; console.error('broadcastPosts connection lookup failed:', classify(e)); throw e; }
+};
 
 export default async function(req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed.' }, { status: 405, headers: { Allow: 'POST' } });
@@ -45,7 +59,7 @@ export default async function(req) {
     const pending = posts.filter((p) => p && typeof p === 'object' && ['pending_approval', 'draft', 'approved', 'failed'].includes(p.status));
     const results = { published: 0, manual: 0, failed: 0, total: pending.length, posts: [] };
     for (const post of pending) {
-      const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
+      const connection = await getConnection(base44, post.connection_id);
       if (!connection) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'failed', error: 'Connection no longer exists' });
         const safe = project(updated); if (!safe) return Response.json({ error: 'Unable to finalize broadcast results.' }, { status: 502 });
@@ -65,7 +79,7 @@ export default async function(req) {
         results.published++; results.posts.push(safe);
       } catch (e) {
         console.error('broadcastPosts publish failed:', classify(e));
-        const updated = await base44.entities.DistributedPost.update(post.id, { status: 'failed', error: 'Publishing failed.', retry_count: (Number.isInteger(post.retry_count) && post.retry_count >= 0 ? post.retry_count : 0) + 1 });
+        const updated = await base44.entities.DistributedPost.update(post.id, { status: 'failed', error: 'Publishing failed.', retry_count: Math.min(100, (Number.isInteger(post.retry_count) && post.retry_count >= 0 ? post.retry_count : 0) + 1) });
         const safe = project(updated); if (!safe) return Response.json({ error: 'Unable to finalize broadcast results.' }, { status: 502 });
         results.failed++; results.posts.push(safe);
       }
