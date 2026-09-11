@@ -16,11 +16,30 @@ const diagnosticType = (error) => {
   }
 };
 
+const PUBLIC_CONNECTION_FIELDS = [
+  'id', 'platform', 'status', 'display_name', 'handle', 'username', 'instance',
+  'auth_type', 'environment', 'created_date', 'updated_date', 'last_synced_at',
+];
+
+function projectConnection(connection) {
+  if (!connection || typeof connection !== 'object') return null;
+  const projected = {};
+  for (const field of PUBLIC_CONNECTION_FIELDS) {
+    const value = connection[field];
+    if (value === undefined) continue;
+    if (typeof value === 'string' && value.length > 512) continue;
+    if (['id', 'platform', 'status', 'display_name', 'handle', 'username', 'instance', 'auth_type', 'environment', 'created_date', 'updated_date', 'last_synced_at'].includes(field) && typeof value !== 'string') continue;
+    projected[field] = value;
+  }
+  const { credentials, credentials_meta } = redactCredentials(connection.credentials);
+  projected.credentials = credentials;
+  projected.credentials_meta = credentials_meta;
+  return projected;
+}
+
 // Returns the caller's PlatformConnection records with secret credential
-// values redacted (blanked) and a credentials_meta map indicating which secrets
-// are set. RLS already scopes reads to the owner (or all, for admins); this
-// layer ensures raw Bluesky/Mastodon/Ko-fi secrets never reach frontend state.
-// Non-secret identifiers (handles, instances) are kept so the edit form works.
+// values redacted and a strict response projection. Non-secret identifiers are
+// kept so the edit form works; unknown/private entity fields are not returned.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -32,11 +51,7 @@ export default async function(req) {
       return Response.json({ error: 'Could not load connections.' }, { status: 502 });
     }
 
-    const connections = list.map((c) => {
-      if (!c || typeof c !== 'object') return null;
-      const { credentials, credentials_meta } = redactCredentials(c.credentials);
-      return { ...c, credentials, credentials_meta };
-    }).filter(Boolean);
+    const connections = list.map(projectConnection).filter(Boolean);
     return Response.json({ connections });
   } catch (error) {
     console.error('listConnections failed', { diagnostic_type: diagnosticType(error) });
