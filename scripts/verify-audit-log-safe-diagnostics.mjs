@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 
 const source = fs.readFileSync('base44/shared/auditLog.ts', 'utf8');
 const required = [
@@ -16,6 +17,37 @@ const required = [
 
 for (const [name, ok] of required) {
   if (!ok) throw new Error(`audit-log safety check failed: ${name}`);
+}
+
+const runtimeSource = source.replace('export async function logAudit', 'async function logAudit');
+const runtimeContext = { console: { error: (...args) => runtimeContext.logged.push(args), log: () => {} }, runtimeContext: null, logged: [] };
+vm.createContext(runtimeContext);
+vm.runInContext(`${runtimeSource}\nruntimeContext.logAudit = logAudit;`, runtimeContext);
+
+const cases = [
+  new Error('sensitive provider stack'),
+  'attacker-controlled thrown string',
+  { message: 'raw object message', token: 'secret-token' },
+  null,
+];
+for (const thrown of cases) {
+  const base44 = {
+    asServiceRole: {
+      entities: {
+        AuditLog: {
+          create: async () => { throw thrown; },
+        },
+      },
+    },
+  };
+  await runtimeContext.logAudit(base44, { action: 'probe', detail: 'safe', metadata: { token: 'secret' } });
+}
+if (runtimeContext.logged.length !== cases.length) throw new Error('audit-log safety check failed: rejecting sink did not remain non-throwing');
+for (const args of runtimeContext.logged) {
+  const rendered = JSON.stringify(args);
+  if (/sensitive provider stack|attacker-controlled thrown string|raw object message|secret-token/.test(rendered)) {
+    throw new Error('audit-log safety check failed: raw thrown value reached logs');
+  }
 }
 
 // Executable contract check for the same bounded/redaction policy used by auditLog.
