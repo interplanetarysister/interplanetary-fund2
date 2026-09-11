@@ -13,7 +13,9 @@ const required = [
   ['bounded content', source.includes('MAX_CONTENT_LENGTH')],
   ['server-derived community persistence', source.includes('community_id: serverCommunityId')],
   ['atomic reply increment', source.includes('$inc: { reply_count: 1 }')],
-  ['no raw error.message logging', !source.includes('error.message')],
+  ['explicit not-found classification', source.includes('isNotFoundError')],
+  ['lookup failure propagation', source.includes('getPostOrThrow') && !source.includes('.get(postId).catch(() => null)')],
+  ['no raw error.message logging', !source.includes('console.error(\'postDiscussionReply error:\', error.message)')],
 ];
 
 const failures = required.filter(([, ok]) => !ok).map(([name]) => name);
