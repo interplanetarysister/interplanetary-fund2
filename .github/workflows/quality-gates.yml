@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - 'recovery/**'
   pull_request:
     branches:
       - main
@@ -36,6 +37,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Analytics safety contract
+        run: npm run verify:analytics-safety
+
       - name: Edit AI profile safe-error contract
         run: npm run verify:edit-ai-profile-safe-errors
 
@@ -43,10 +47,9 @@ jobs:
         run: npm run build
 
   typecheck:
-    name: Typecheck (informational baseline)
+    name: Typecheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -30,6 +30,9 @@
     },
     "metadata": {
       "type": "object"
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [

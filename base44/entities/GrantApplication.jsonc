@@ -45,6 +45,9 @@
     },
     "decision_note": {
       "type": "string"
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [

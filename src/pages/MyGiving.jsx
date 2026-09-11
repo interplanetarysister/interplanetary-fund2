@@ -13,6 +13,9 @@ export default function MyGiving() {
   const load = useCallback(async () => {
     try {
       setError(null);
+      // Financial truth boundary: only provider-verified gifts count as giving.
+      // getMyGiving returns verified donations server-side; manual PayPal/Cash
+      // App reports remain pending until separately verified.
       const { data } = await base44.functions.invoke("getMyGiving", {});
       setDonations(data?.donations || []);
     } catch (e) {

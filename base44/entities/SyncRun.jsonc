@@ -101,6 +101,9 @@
     "campaigns_covered": {
       "type": "number",
       "default": 0
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [

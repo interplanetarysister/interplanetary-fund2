@@ -19,6 +19,9 @@
         "member"
       ],
       "default": "member"
+    },
+    "description": {
+      "type": "string"
     }
   },
   "required": [

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { secureInvokeLLM } from "@/lib/secureLLM";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 
@@ -12,8 +12,9 @@ export default function AICoach({ campaign, updatesCount }) {
     setLoading(true);
     setError("");
     try {
-      const res = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are an AI fundraising coach. Give 3 short, specific, actionable tips (one sentence each, with a brief why) to improve this campaign. Never guarantee outcomes. Campaign: title "${campaign.title}", category ${campaign.category}, goal $${campaign.goal_amount}, raised $${campaign.raised_amount || 0}, donors ${campaign.donor_count || 0}, story length ${campaign.story?.length || 0} chars, updates posted ${updatesCount}, has cover image: ${!!campaign.cover_image_url}.`,
+      const res = await secureInvokeLLM({
+        task: "Act as a fundraising coach. Give exactly 3 short, specific, actionable tips, each one sentence with a brief reason. Never guarantee outcomes and never invent campaign facts.",
+        untrusted: [{ label: "campaign", value: JSON.stringify({ title: campaign.title, category: campaign.category, goal: campaign.goal_amount, raised: campaign.raised_amount || 0, donors: campaign.donor_count || 0, story_length: campaign.story?.length || 0, updates_posted: updatesCount, has_cover_image: !!campaign.cover_image_url }) }],
         response_json_schema: {
           type: "object",
           properties: { tips: { type: "array", items: { type: "string" } } },
