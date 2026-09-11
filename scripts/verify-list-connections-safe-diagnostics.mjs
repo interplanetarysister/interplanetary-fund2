@@ -9,7 +9,9 @@ const required = [
   "redactCredentials(connection.credentials)",
   "const PUBLIC_CONNECTION_FIELDS = [",
   "function projectConnection(connection)",
-  "const connections = list.map(projectConnection).filter(Boolean);",
+  "for (const connection of list)",
+  "if (!projected)",
+  "{ status: 502 }",
 ];
 for (const token of required) {
   if (!source.includes(token)) throw new Error(`missing contract: ${token}`);
@@ -23,7 +25,8 @@ if (!source.includes("case 'object': return error === null ? 'null' : 'object';"
 if (!source.includes("if (typeof value === 'string' && value.length > 512) continue;")) {
   throw new Error('bounded response string contract missing');
 }
-if (!source.includes("if (['id', 'platform', 'status'")) {
-  throw new Error('response field type guard missing');
+if (!source.includes("if (typeof value !== 'string') continue;")) {
+  throw new Error('projected field type guard missing');
 }
+if (source.includes('return { ...c')) throw new Error('wholesale record spread remains');
 console.log('listConnections safe-diagnostics contract passed');
