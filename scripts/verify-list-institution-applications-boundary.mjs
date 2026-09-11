@@ -34,7 +34,7 @@ if (/filter\(\{ institution_id \}/.test(source)) {
 if (/return \{ \.\.\.application \}/.test(source)) {
   throw new Error('Applications must cross the boundary through an explicit projection');
 }
-if (!/application\.amount_requested === 'number'/.test(source)) {
+if (!/typeof application\.amount_requested === 'number'/.test(source)) {
   throw new Error('Numeric application fields must be type checked');
 }
 
