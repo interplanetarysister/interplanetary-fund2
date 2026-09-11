@@ -4,6 +4,7 @@ const MAX_ID_LENGTH = 128;
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 const MAX_APPLICATIONS = 500;
 const MAX_TEXT_LENGTH = 2000;
+const MAX_AMOUNT = 1_000_000_000;
 
 function diagnosticType(error) {
   if (error instanceof Error) return error.name || 'Error';
@@ -15,23 +16,34 @@ function boundedText(value) {
   return typeof value === 'string' ? value.replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, MAX_TEXT_LENGTH) : value;
 }
 
+function validId(value) {
+  return typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH && ID_PATTERN.test(value);
+}
+
+function validDate(value) {
+  return value === null || (typeof value === 'string' && value.length <= 64 && !/[\u0000-\u001F\u007F]/.test(value));
+}
+
 function projectApplication(application) {
   if (!application || typeof application !== 'object' || Array.isArray(application)) return null;
-  const projected = {
-    id: typeof application.id === 'string' ? application.id : null,
-    institution_id: typeof application.institution_id === 'string' ? application.institution_id : null,
-    status: typeof application.status === 'string' ? boundedText(application.status) : null,
-    created_date: typeof application.created_date === 'string' ? application.created_date : null,
-    updated_date: typeof application.updated_date === 'string' ? application.updated_date : null,
-    title: typeof application.title === 'string' ? boundedText(application.title) : null,
-    description: typeof application.description === 'string' ? boundedText(application.description) : null,
-    amount_requested: typeof application.amount_requested === 'number' && Number.isFinite(application.amount_requested)
-      ? application.amount_requested
-      : null,
-    decision: typeof application.decision === 'string' ? boundedText(application.decision) : null,
+  if (!validId(application.id) || !validId(application.institution_id)) return null;
+  if (typeof application.status !== 'string' || typeof application.title !== 'string' || typeof application.description !== 'string') return null;
+  if (!validDate(application.created_date) || !validDate(application.updated_date)) return null;
+  if (application.decision !== null && typeof application.decision !== 'string') return null;
+  if (typeof application.amount_requested !== 'number' || !Number.isFinite(application.amount_requested)
+    || application.amount_requested < 0 || application.amount_requested > MAX_AMOUNT) return null;
+
+  return {
+    id: application.id,
+    institution_id: application.institution_id,
+    status: boundedText(application.status),
+    created_date: application.created_date,
+    updated_date: application.updated_date,
+    title: boundedText(application.title),
+    description: boundedText(application.description),
+    amount_requested: application.amount_requested,
+    decision: application.decision === null ? null : boundedText(application.decision),
   };
-  if (!projected.id || !projected.institution_id) return null;
-  return projected;
 }
 
 // Lists grant applications for an institution — only the institution's owner
