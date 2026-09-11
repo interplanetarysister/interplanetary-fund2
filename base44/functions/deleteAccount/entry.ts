@@ -22,6 +22,12 @@ function isExplicitNotFound(error) {
   return status === 404 || code === 'NOT_FOUND';
 }
 
+function isExplicitDeletionRefusal(error) {
+  const status = Number(error?.status ?? error?.statusCode);
+  const code = String(error?.code ?? '').toUpperCase();
+  return status === 400 || status === 403 || status === 409 || code === 'FORBIDDEN' || code === 'DELETE_NOT_ALLOWED';
+}
+
 async function parseEmptyBody(req) {
   const raw = await req.text();
   if (!raw.trim()) return {};
@@ -78,7 +84,7 @@ export default async function(req) {
         await fn();
       } catch (stepErr) {
         console.error('deleteAccount step failed', { step: name, diagnostic_type: diagnosticType(stepErr) });
-        await audit('account_deletion_failed', 'failure', `Step "${name}" failed.`);
+        await audit('account_deletion_failed', 'failure', `Step \"${name}\" failed.`);
         throw stepErr;
       }
     };
@@ -133,7 +139,11 @@ export default async function(req) {
       await audit('account_deleted', 'success', 'Account deleted after data wipe.');
       return Response.json({ deleted: true });
     } catch (delErr) {
-      console.error('deleteAccount user deletion failed', { diagnostic_type: diagnosticType(delErr) });
+      if (!isExplicitDeletionRefusal(delErr)) {
+        console.error('deleteAccount user deletion failed', { diagnostic_type: diagnosticType(delErr) });
+        throw delErr;
+      }
+      console.error('deleteAccount user deletion refused', { diagnostic_type: diagnosticType(delErr) });
       await sr.entities.User.update(user.id, {
         onboarding: {},
         comm_prefs: {},
