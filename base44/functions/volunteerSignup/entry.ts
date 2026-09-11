@@ -5,13 +5,30 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 // as the service role (VolunteerOpportunity.update is owner-only under RLS).
 // Dedupes one signup per user per opportunity and notifies the publisher.
 export default async function(req) {
+  if (req?.method && req.method !== 'POST') {
+    return Response.json({ error: 'Method not allowed.' }, { status: 405, headers: { Allow: 'POST' } });
+  }
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+  }
+
+  const { opportunity_id } = body;
+  if (typeof opportunity_id !== 'string' || opportunity_id.trim().length === 0 || opportunity_id.length > 200) {
+    return Response.json({ error: 'Invalid opportunity_id.' }, { status: 400 });
+  }
+
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Sign in to volunteer.' }, { status: 401 });
-
-    const { opportunity_id } = await req.json();
-    if (!opportunity_id) return Response.json({ error: 'Missing opportunity_id' }, { status: 400 });
 
     const sr = base44.asServiceRole;
     const opp = await sr.entities.VolunteerOpportunity.get(opportunity_id).catch(() => null);
@@ -44,7 +61,8 @@ export default async function(req) {
     }
     return Response.json({ signup });
   } catch (error) {
-    console.error('volunteerSignup error:', error.message);
+    const type = error instanceof Error ? error.name : typeof error;
+    console.error('volunteerSignup failed:', type);
     return Response.json({ error: 'Unable to sign you up. Please try again.' }, { status: 500 });
   }
 }
