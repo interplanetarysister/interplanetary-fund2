@@ -15,10 +15,25 @@ const PLAN_MAP = new Map([
   ['outreach:annual', 'price_1Tz8iSEkntycHB4N5iujmlJZ'],
 ]);
 
+function safeErrorName(error) {
+  if (error === null || typeof error !== 'object') return null;
+  let tag;
+  try { tag = Object.prototype.toString.call(error); } catch (_) { return null; }
+  if (tag !== '[object Error]' && tag !== '[object DOMException]') return null;
+  let name;
+  try { name = error.name; } catch (_) { return 'Error'; }
+  if (typeof name !== 'string' || !/^[A-Za-z][A-Za-z0-9_ -]{0,63}$/.test(name)) return 'Error';
+  return name;
+}
+
 function diagnosticType(error) {
-  if (error instanceof Error) return error.name || 'Error';
+  const name = safeErrorName(error);
+  if (name) return name;
   if (typeof error === 'string') return 'StringThrow';
   if (error === null) return 'NullThrow';
+  let tag;
+  try { tag = Object.prototype.toString.call(error); } catch (_) { tag = ''; }
+  if (tag === '[object Object]' || tag === '[object Array]') return 'ObjectThrow';
   return typeof error === 'object' ? 'ObjectThrow' : 'PrimitiveThrow';
 }
 
@@ -106,9 +121,15 @@ export default async function(req) {
     const user = guard.user;
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
-    const safeUserId = String(user.id).slice(0, 128);
+    const safeUserId = typeof user?.id === 'string' && user.id.length <= 128 ? user.id : null;
+    if (!safeUserId) {
+      console.error('createSubscriptionCheckout user identity invalid: UserIdentity');
+      return Response.json({ error: 'Could not start your subscription. Please try again.' }, { status: 503 });
+    }
+    const appId = secrets.get('BASE44_APP_ID');
+    const safeAppId = typeof appId === 'string' ? appId.slice(0, 128) : '';
     const metadata = {
-      base44_app_id: String(secrets.get('BASE44_APP_ID') || '').slice(0, 128),
+      base44_app_id: safeAppId,
       user_id: safeUserId,
       subscription_tier: tier,
       subscription_interval: interval,
