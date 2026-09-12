@@ -11,6 +11,9 @@ async function loadHandler({ user = { id: 'u1' }, fetchImpl }) {
   const logs = [];
   const context = {
     Response,
+    AbortController,
+    setTimeout,
+    clearTimeout,
     console: { error: (...args) => logs.push(args) },
     fetch: fetchImpl,
     createClientFromRequest: () => ({ auth: { me: async () => user } }),
@@ -37,9 +40,21 @@ async function invoke(options, body, method) {
 const ok = async (body) => new Response(JSON.stringify(body), { status: 200 });
 
 {
-  const { response } = await invoke({ fetchImpl: async () => ok([{ lat: '40.7128', lon: '-74.0060', display_name: 'New York, NY' }]) }, { city: 'New York' });
+  let captured;
+  const { response } = await invoke({ fetchImpl: async (url, options) => {
+    captured = { url, options };
+    return ok([{ lat: '40.7128', lon: '-74.0060', display_name: 'New York, NY', unsafe_private: 'omit' }]);
+  } }, { city: 'New York' });
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { lat: 40.7128, lng: -74.006, display: 'New York, NY' });
+  assert.match(captured.url, /^https:\/\/nominatim\.openstreetmap\.org\/search\?format=jsonv2&limit=1&q=New%20York$/);
+  assert.equal(captured.options.headers['User-Agent'], 'InterplanetaryFund/1.0 (geocoding)');
+  assert.ok(captured.options.signal instanceof AbortSignal);
+}
+
+{
+  const { response } = await invoke({ user: null, fetchImpl: async () => ok([]) }, { city: 'New York' });
+  assert.equal(response.status, 401);
 }
 
 for (const [body, expected] of [
@@ -56,6 +71,11 @@ for (const [body, expected] of [
 {
   const { response } = await invoke({ fetchImpl: async () => new Response('down', { status: 503 }) }, { city: 'New York' });
   assert.equal(response.status, 502);
+}
+
+{
+  const { response } = await invoke({ fetchImpl: async () => new Response('{not-json', { status: 200 }) }, { city: 'New York' });
+  assert.equal(response.status, 500);
 }
 
 for (const payload of [
@@ -82,10 +102,21 @@ for (const payload of [
 
 {
   const thrown = { secret: 'provider-secret' };
-  const { response, logs } = await invoke({ fetchImpl: async () => { throw thrown; } }, { city: 'New York' });
+  let calls = 0;
+  const { response, logs } = await invoke({ fetchImpl: async () => { calls += 1; throw thrown; } }, { city: 'New York' });
   assert.equal(response.status, 500);
+  assert.equal(calls, 1);
   assert.doesNotMatch(await response.text(), /provider-secret/);
   assert.deepEqual(logs, [['geocodeCity error:', 'object']]);
+}
+
+{
+  const { response } = await invoke({ fetchImpl: async (_url, options) => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.ok(options.signal);
+    return ok([{ lat: '40', lon: '-74', display_name: 'x' }]);
+  } }, { city: 'New York' });
+  assert.equal(response.status, 200);
 }
 
 {
