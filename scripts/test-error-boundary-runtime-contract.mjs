@@ -16,6 +16,7 @@ assert.match(source, /ref=\{this\.headingRef\}/);
 assert.match(source, /tabIndex=\{-1\}/);
 assert.match(source, /componentDidUpdate\(prevProps, prevState\)/);
 assert.match(source, /const enteredErrorState = !prevState\.error && this\.state\.error/);
+assert.match(source, /!this\.hasFocusedCurrentError/);
 assert.match(source, /this\.headingRef\.current\.focus\(\)/);
 assert.match(source, /aria-hidden=\"true\"/);
 assert.match(source, /min-h-\[44px\]/);
@@ -67,16 +68,25 @@ assert.equal(typeof runtime[0][1], "string");
 
 const focusBody = source.match(/componentDidUpdate\(prevProps, prevState\)\s*\{([\s\S]*?)\n\s*\}/)?.[1];
 assert.ok(focusBody, "componentDidUpdate body must be present");
+const resetBody = source.match(/reset = \(\) => \{([\s\S]*?)\n\s*\};/)?.[1];
+assert.ok(resetBody, "reset body must be present");
 const focusRuntime = vm.runInNewContext(`(() => {
   const calls = [];
   const heading = { focus() { calls.push("focus"); } };
   const componentDidUpdate = new Function("prevProps", "prevState", ${JSON.stringify(focusBody)});
-  const instance = { state: { error: new Error("x") }, headingRef: { current: heading } };
+  const reset = new Function(${JSON.stringify(resetBody)});
+  const instance = { state: { error: new Error("x") }, headingRef: { current: heading }, hasFocusedCurrentError: false, setState(next) { this.state = next; } };
   componentDidUpdate.call(instance, {}, { error: null });
-  componentDidUpdate.call(instance, {}, { error: new Error("same") });
-  return calls;
+  componentDidUpdate.call(instance, {}, { error: null });
+  reset.call(instance);
+  componentDidUpdate.call(instance, {}, { error: null });
+  return { calls, flag: instance.hasFocusedCurrentError, state: instance.state };
 })()`);
-assert.deepEqual(focusRuntime, ["focus"], "focus must occur only when entering the error state");
+assert.deepEqual(focusRuntime, {
+  calls: ["focus", "focus"],
+  flag: true,
+  state: { error: null },
+}, "focus must occur once per error entry and reset for a later recovery transition");
 
 const fallback = vm.runInNewContext(`(() => ({
   heading: "This page hit a snag",
