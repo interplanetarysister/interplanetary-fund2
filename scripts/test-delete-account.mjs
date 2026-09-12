@@ -22,16 +22,25 @@ for (const [name, ok] of checks) {
   if (!ok) { console.error(`FAIL ${name}`); failed++; } else { console.log(`ok  ${name}`); }
 }
 
+// The canonical destructive call must be the Stage 4 call, not an unrelated
+// earlier occurrence. Match only the service-role-qualified expression and
+// require the exact user.id argument; reject aliases or loose formatting.
+const deleteMatches = [...source.matchAll(/\bsr\.entities\.User\.delete\(user\.id\)/g)];
+if (deleteMatches.length !== 1) {
+  console.error(`FAIL expected exactly one canonical sr.entities.User.delete(user.id) call, found ${deleteMatches.length}`);
+  failed++;
+}
+const canonicalDeleteIdx = deleteMatches[0]?.index ?? -1;
+
 // User.delete must occur AFTER the pending flag is set (delete LAST, not first).
 const pendingIdx = source.indexOf('account_deletion_pending: true');
-const firstUserDeleteIdx = source.indexOf('User.delete(user.id)');
-if (pendingIdx === -1 || firstUserDeleteIdx === -1 || firstUserDeleteIdx < pendingIdx) {
+if (pendingIdx === -1 || canonicalDeleteIdx === -1 || canonicalDeleteIdx < pendingIdx) {
   console.error('FAIL User.delete occurs before the pending flag (must be last)'); failed++;
 } else { console.log('ok  User.delete occurs after the pending flag (last)'); }
 
 // User.delete must occur AFTER cleanup completes (Stage 4, not Stage 1).
-const cleanupDoneIdx = source.indexOf('account_deletion_cleanup_done');
-if (firstUserDeleteIdx < cleanupDoneIdx) {
+const cleanupDoneIdx = source.indexOf("'account_deletion_cleanup_done'");
+if (cleanupDoneIdx === -1 || canonicalDeleteIdx < cleanupDoneIdx) {
   console.error('FAIL User.delete appears before cleanup completes'); failed++;
 } else { console.log('ok  User.delete appears after cleanup completes (Stage 4)'); }
 
