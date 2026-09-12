@@ -9,6 +9,14 @@ assert.doesNotMatch(source, /componentDidCatch\(error,\s*info\)/);
 assert.match(source, /classifyRenderFailure\(error\)/);
 assert.match(source, /This page hit a snag/);
 assert.match(source, /An unexpected error occurred while rendering this page\./);
+assert.match(source, /role=\"alert\"/);
+assert.match(source, /aria-live=\"assertive\"/);
+assert.match(source, /aria-labelledby=\"route-error-heading\"/);
+assert.match(source, /ref=\{this\.headingRef\}/);
+assert.match(source, /tabIndex=\{-1\}/);
+assert.match(source, /componentDidUpdate\(\)/);
+assert.match(source, /this\.headingRef\.current\.focus\(\)/);
+assert.match(source, /aria-hidden=\"true\"/);
 assert.match(source, /min-h-\[44px\]/);
 assert.match(source, /to=\"\/\"/);
 
@@ -57,11 +65,17 @@ assert.equal(typeof runtime[0][1], "string");
 const fallback = vm.runInNewContext(`(() => ({
   heading: "This page hit a snag",
   body: "An unexpected error occurred while rendering this page.",
+  role: "alert",
+  live: "assertive",
+  focusTarget: "route-error-heading",
   rawErrorText: undefined,
 }))()`);
 assert.deepEqual(fallback, {
   heading: "This page hit a snag",
   body: "An unexpected error occurred while rendering this page.",
+  role: "alert",
+  live: "assertive",
+  focusTarget: "route-error-heading",
   rawErrorText: undefined,
 });
 
