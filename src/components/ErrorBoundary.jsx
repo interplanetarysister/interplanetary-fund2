@@ -30,7 +30,11 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidUpdate(prevProps, prevState) {
     const enteredErrorState = !prevState.error && this.state.error;
-    if (enteredErrorState && this.headingRef.current) {
+    if (
+      enteredErrorState &&
+      !this.hasFocusedCurrentError &&
+      this.headingRef.current
+    ) {
       this.headingRef.current.focus();
       this.hasFocusedCurrentError = true;
     }
