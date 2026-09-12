@@ -2,6 +2,16 @@ import React from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Link } from "react-router-dom";
 
+function classifyRenderFailure(value) {
+  if (value && typeof value === "object") return "object";
+  if (typeof value === "string") return "string";
+  if (typeof value === "function") return "function";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
+  if (value == null) return "nullish";
+  return "unknown";
+}
+
 // Per-route error boundary. Wraps <Outlet/> in the Layout so a render crash
 // in any page replaces only that page's content with a recovery card — the nav
 // and chrome stay mounted. "Try again" resets the boundary; "Home" navigates.
@@ -12,8 +22,8 @@ export default class ErrorBoundary extends React.Component {
     return { error };
   }
 
-  componentDidCatch(error, info) {
-    console.error("Route render error:", error, info);
+  componentDidCatch(error) {
+    console.error("Route render error:", classifyRenderFailure(error));
   }
 
   reset = () => this.setState({ error: null });
@@ -27,7 +37,7 @@ export default class ErrorBoundary extends React.Component {
           </div>
           <h2 className="font-display text-xl text-stone-900 mb-1">This page hit a snag</h2>
           <p className="text-sm text-stone-500 mb-5">
-            {this.state.error?.message || "An unexpected error occurred while rendering this page."}
+            An unexpected error occurred while rendering this page.
           </p>
           <div className="flex items-center justify-center gap-3">
             <button

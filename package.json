@@ -3,15 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": {"node": "22.x"},
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "verify:error-boundary-safe-diagnostics": "node scripts/verify-error-boundary-safe-diagnostics.mjs",
+    "verify:error-boundary-runtime-contract": "node scripts/test-error-boundary-runtime-contract.mjs",
     "verify:analytics-safety": "node scripts/verify-analytics-safety.mjs",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
@@ -44,7 +44,7 @@
     "@radix-ui/react-navigation-menu": "^1.2.5",
     "@radix-ui/react-popover": "^1.1.6",
     "@radix-ui/react-progress": "^1.1.2",
-    "@radix-ui/react-radio-group": "^1.2.3",
+    "@radix-ui/react-radio-group": "^1.2.5",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-select": "^2.1.6",
     "@radix-ui/react-separator": "^1.1.2",
