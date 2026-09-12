@@ -6,9 +6,10 @@ const MAX_DISPLAY_LENGTH = 240;
 const MAX_PROVIDER_ROWS = 5;
 
 function diagnosticType(error) {
-  if (error instanceof TypeError) return 'type_error';
-  if (error instanceof SyntaxError) return 'syntax_error';
-  if (error instanceof Error) return 'error';
+  const tag = Object.prototype.toString.call(error);
+  if (tag === '[object TypeError]') return 'type_error';
+  if (tag === '[object SyntaxError]') return 'syntax_error';
+  if (tag === '[object Error]') return 'error';
   if (typeof error === 'string') return 'string';
   if (error === null) return 'null';
   return typeof error;
@@ -20,6 +21,10 @@ function hasUnsafeControls(value) {
 
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isStrictCoordinate(value, min, max) {
+  return typeof value === 'string' && value.trim() !== '' && /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value.trim()) && Number.isFinite(Number(value)) && Number(value) >= min && Number(value) <= max;
 }
 
 export default async function (req) {
@@ -57,18 +62,21 @@ export default async function (req) {
     if (!r.ok) return Response.json({ error: 'Geocoding service unavailable' }, { status: 502 });
 
     const data = await r.json();
-    if (!Array.isArray(data) || data.length === 0 || data.length > MAX_PROVIDER_ROWS) {
-      return Response.json({ error: 'Location not found' }, { status: 404 });
-    }
+    if (!Array.isArray(data)) return Response.json({ error: 'Geocoding service returned an invalid response' }, { status: 502 });
+    if (data.length === 0) return Response.json({ error: 'Location not found' }, { status: 404 });
+    if (data.length > MAX_PROVIDER_ROWS) return Response.json({ error: 'Geocoding service returned too many results' }, { status: 502 });
 
     const hit = data[0];
-    if (!isPlainObject(hit)) return Response.json({ error: 'Location not found' }, { status: 404 });
+    if (!isPlainObject(hit)) return Response.json({ error: 'Geocoding service returned an invalid response' }, { status: 502 });
 
+    if (!isStrictCoordinate(hit.lat, -90, 90) || !isStrictCoordinate(hit.lon, -180, 180)) {
+      return Response.json({ error: 'Geocoding service returned an invalid response' }, { status: 502 });
+    }
     const lat = Number(hit.lat);
     const lng = Number(hit.lon);
     const display = typeof hit.display_name === 'string' ? hit.display_name.trim() : '';
-    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180 || !display || display.length > MAX_DISPLAY_LENGTH || hasUnsafeControls(display)) {
-      return Response.json({ error: 'Location not found' }, { status: 404 });
+    if (!display || display.length > MAX_DISPLAY_LENGTH || hasUnsafeControls(display)) {
+      return Response.json({ error: 'Geocoding service returned an invalid response' }, { status: 502 });
     }
 
     return Response.json({ lat, lng, display });
