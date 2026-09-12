@@ -10,6 +10,13 @@ This is the **authoritative user-facing Interplanetary Fund application implemen
 - **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior. Do not resume Vercel-specific or Convex-specific feature development and do not migrate obsolete hosting/runtime dependencies into this repository.
 - **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
 
+### Cross-repository reliability incident boundary
+
+- The production-reported Convex automation conflict incident remains a separately tracked cross-repository reliability workstream under Issue #310 and must not be silently dropped because this repository owns the Base44 application.
+- This repository may document, inventory, and preserve evidence for the incident, but it is **not** the owning Convex implementation target unless an authoritative source/deployment mapping explicitly identifies it as such.
+- Do not implement, deploy, or promote a Convex concurrency repair from this repository based only on production reports, stale snapshots, or inferred ownership. The owning backend repository/branch, Development deployment, schema/configuration identity, and executable Development validation must be established first.
+- Once the owning repository is identified, keep changes there focused on safe serialization/claiming, idempotency, duplicate-run prevention, and bounded retry semantics; never treat increased retries or suppressed errors as the fix.
+
 A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
 
 ## Required first reads
