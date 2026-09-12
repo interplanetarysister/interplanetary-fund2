@@ -7,7 +7,8 @@ assert.match(source, /setError\("Couldn't save this connection\. Please try agai
 assert.match(source, /console\.error\("ConnectDialog connection save failed:", e\)/);
 assert.doesNotMatch(source, /setError\(e\.message/);
 assert.doesNotMatch(source, /setError\(.*error\.message/);
-assert.match(source, /PlatformConnection\.(update|create)/);
+assert.match(source, /saveConnectionCredentials/);
+assert.match(source, /base44\.functions\.invoke\("saveConnectionCredentials"/);
 assert.match(source, /campaign_id/);
 assert.match(source, /credentials/);
 
