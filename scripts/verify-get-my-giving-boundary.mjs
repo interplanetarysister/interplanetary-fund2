@@ -31,7 +31,6 @@ const context = {
   Array,
   Set,
   RegExp,
-  createClientFromRequest: null,
 };
 vm.createContext(context);
 vm.runInContext(`${transformed}\nthis.handler = handler;`, context);
@@ -50,7 +49,7 @@ const validRow = {
   pending_secret: 'must-not-escape',
 };
 
-function installClient({ auth = { user: { id: 'user-1' } }, rows = [validRow], filterArgs = [] } = {}) {
+function installClient({ auth = { user: { id: 'user-1' } }, rows = [validRow], filterArgs = [], filterError = null } = {}) {
   context.createClientFromRequest = () => ({
     auth: {
       async me() {
@@ -63,6 +62,7 @@ function installClient({ auth = { user: { id: 'user-1' } }, rows = [validRow], f
         Donation: {
           async filter(...args) {
             filterArgs.push(args);
+            if (filterError !== null) throw filterError;
             return rows;
           },
         },
@@ -83,16 +83,35 @@ const successBody = await success.json();
 if (successBody.donations.length !== 1 || successBody.donations[0].id !== 'donation-1') throw new Error('projection failed');
 if (JSON.stringify(successBody).includes('pending_secret')) throw new Error('raw provider field leaked');
 
-const malformed = await context.handler(req({ unexpected: true }));
-if (malformed.status !== 400) throw new Error('unexpected body accepted');
+for (const invalidBody of [{ unexpected: true }, [], 'text', 1]) {
+  const malformed = await context.handler(req(invalidBody));
+  if (malformed.status !== 400) throw new Error('malformed body accepted');
+}
 
 const methodResponse = await context.handler(req(undefined, { method: 'GET' }));
 if (methodResponse.status !== 405) throw new Error('method guard failed');
+if (methodResponse.headers.get('allow') !== 'POST') throw new Error('allow header missing');
 
 const malformedRow = { ...validRow, amount: '12.34' };
 installClient({ rows: [malformedRow] });
 const malformedRowResponse = await context.handler(req(undefined));
 if (malformedRowResponse.status !== 502) throw new Error('malformed provider row not rejected');
+
+const throwingRow = {};
+Object.defineProperty(throwingRow, 'id', { get() { throw new Error('getter-secret'); } });
+installClient({ rows: [throwingRow] });
+const hostileRowResponse = await context.handler(req(undefined));
+if (hostileRowResponse.status !== 500 && hostileRowResponse.status !== 502) throw new Error('hostile row failure contract failed');
+if ((await hostileRowResponse.text()).includes('getter-secret')) throw new Error('hostile getter leaked');
+
+installClient({ rows: Array.from({ length: 1001 }, () => validRow) });
+const oversizedResponse = await context.handler(req(undefined));
+if (oversizedResponse.status !== 502) throw new Error('oversized provider response not rejected');
+
+installClient({ filterError: new Error('provider-secret') });
+const providerFailure = await context.handler(req(undefined));
+if (providerFailure.status !== 500) throw new Error('provider failure status failed');
+if ((await providerFailure.text()).includes('provider-secret')) throw new Error('provider exception leaked');
 
 const otherUserRow = { ...validRow, donor_user_id: 'other-user' };
 installClient({ rows: [otherUserRow] });
