@@ -2,28 +2,70 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertOboGrant } from '../../shared/integrationRegistry.ts';
 
-// Agent-access gatekeeper. Before an agent (or a backend function acting on an
-// agent's behalf) uses an external platform, it calls this to: locate the
-// registry entry, verify the environment, confirm the agent is authorized, and
-// confirm the integration is healthy. On success it returns the secret
-// REFERENCE NAMES (never values) the caller must then load through the
-// protected secret mechanism. Every call is audit-logged. Works whether invoked
-// by an authenticated app user (agent) or by another service-scoped function.
+const MAX_TEXT = 200;
+const MAX_ID = 200;
+
+function jsonError(error, status) {
+  return Response.json({ error }, { status });
+}
+
+function isObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function boundedText(value, fallback = '', max = MAX_TEXT) {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.replace(/[\u0000-\u001F\u007F]/g, ' ').replace(/\s+/g, ' ').trim();
+  return normalized ? normalized.slice(0, max) : fallback;
+}
+
+function normalizeId(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim();
+  if (!normalized || normalized.length > MAX_ID || /[\u0000-\u001F\u007F]/.test(normalized)) return null;
+  return normalized;
+}
+
+function diagnosticType(value) {
+  const tag = Object.prototype.toString.call(value);
+  if (tag === '[object Error]') return 'error';
+  if (tag === '[object String]') return 'string';
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+  return tag.slice(8, -1).toLowerCase() || 'unknown';
+}
 
 export default async function(req) {
+  if (req?.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed.' }), {
+      status: 405,
+      headers: { 'content-type': 'application/json', allow: 'POST' },
+    });
+  }
+
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return jsonError('Invalid request body.', 400);
+  }
+  if (!isObject(body)) return jsonError('Invalid request body.', 400);
+
+  const agentName = normalizeId(body.agent_name);
+  const platform = normalizeId(body.platform);
+  const task = boundedText(body.task, 'access');
+  const oboUserId = body.obo_user_id == null ? null : normalizeId(body.obo_user_id);
+  const allowedKeys = new Set(['agent_name', 'platform', 'task', 'obo_user_id']);
+  if (Object.keys(body).some((key) => !allowedKeys.has(key))) return jsonError('Invalid request body.', 400);
+  if (!agentName || !platform || (body.obo_user_id != null && !oboUserId)) {
+    return jsonError('agent_name and platform are required', 400);
+  }
+
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
     let user = null;
     try { user = await base44.auth.me(); } catch (_) { /* service-to-service call: no user context */ }
-
-    const body = await req.json().catch(() => ({}));
-    const agentName = body.agent_name;
-    const platform = body.platform;
-    const task = body.task || 'access';
-    if (!agentName || !platform) {
-      return Response.json({ error: 'agent_name and platform are required' }, { status: 400 });
-    }
 
     const entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
     const entry = entries[0];
@@ -32,31 +74,25 @@ export default async function(req) {
     let reason = 'no registry entry for platform';
 
     if (entry) {
-      const authorizedAgents = entry.authorized_agents || [];
+      const authorizedAgents = Array.isArray(entry.authorized_agents) ? entry.authorized_agents : [];
       const status = entry.status || 'ACTIVE';
       if (!authorizedAgents.includes(agentName)) {
-        reason = `agent "${agentName}" is not authorized for "${platform}"`;
+        reason = 'agent is not authorized for platform';
       } else if (status !== 'ACTIVE') {
-        authorized = false;
-        reason = `integration status is ${status}`;
+        reason = 'integration is inactive';
       } else if (entry.environment && entry.environment !== 'production') {
-        authorized = false;
-        reason = `environment is ${entry.environment}, not production`;
+        reason = 'integration environment is not production';
       } else {
         authorized = true;
         reason = 'authorized';
       }
     }
 
-    // OBO: a saved platform credential is NOT authorization to act for a user.
-    // When the caller specifies an on-behalf-of user, require an explicit, active
-    // AuthorizationGrant for (agent, user, platform) — integrated with the
-    // existing registry/gatekeeper, not a parallel auth system.
-    if (authorized && body.obo_user_id) {
-      const grant = await assertOboGrant(sr, agentName, body.obo_user_id, platform);
+    if (authorized && oboUserId) {
+      const grant = await assertOboGrant(sr, agentName, oboUserId, platform);
       if (!grant.ok) {
         authorized = false;
-        reason = grant.reason;
+        reason = boundedText(grant.reason, 'on-behalf-of authorization denied');
       }
     }
 
@@ -64,23 +100,21 @@ export default async function(req) {
       action: 'agent_integration_access',
       actor_user_id: (user && user.id) || agentName,
       target_type: 'PlatformAccessRegistry',
-      target_id: entry ? entry.id : '',
-      detail: `agent=${agentName} platform=${platform} task=${task} authorized=${authorized} (${reason})`,
+      target_id: entry ? boundedText(entry.id, '', MAX_ID) : '',
+      detail: `agent=${agentName} platform=${platform} task=${task} authorized=${authorized}`,
       status: authorized ? 'success' : 'failure',
-      metadata: { agent_name: agentName, platform, task, authorized, reason },
+      metadata: { agent_name: agentName, platform, task, authorized },
     });
 
-    // Never return secret values — only the reference names the caller must
-    // load through the protected secret mechanism, and only when authorized.
     return Response.json({
       authorized,
       status: entry ? entry.status : null,
       environment: entry ? entry.environment : null,
-      secret_refs: authorized ? (entry.secret_refs || []) : [],
+      secret_refs: authorized && Array.isArray(entry.secret_refs) ? entry.secret_refs : [],
       reason,
     });
   } catch (error) {
-    console.error('verifyAgentPlatformAccess error:', error.message);
-    return Response.json({ authorized: false, reason: 'verification failed', error: error.message }, { status: 500 });
+    console.error('verifyAgentPlatformAccess failed', { diagnostic_type: diagnosticType(error) });
+    return Response.json({ authorized: false, reason: 'verification failed' }, { status: 500 });
   }
 }
