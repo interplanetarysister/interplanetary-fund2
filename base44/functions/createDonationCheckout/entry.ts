@@ -52,6 +52,17 @@ function boundedId(value) {
   return normalized;
 }
 
+function isSafeCheckoutUrl(value) {
+  if (typeof value !== 'string' || value.length > 2048) return false;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password) return false;
+    return url.hostname === 'checkout.stripe.com' || url.hostname.endsWith('.stripe.com');
+  } catch (_) {
+    return false;
+  }
+}
+
 async function readBody(req) {
   let body;
   try {
@@ -167,7 +178,7 @@ export default async function(req) {
       metadata,
       ...(isRecurring ? { subscription_data: { metadata } } : {}),
     });
-    if (!session || typeof session.url !== 'string' || !/^https:\/\//.test(session.url) || session.url.length > 2048) {
+    if (!session || !isSafeCheckoutUrl(session.url)) {
       console.error('createDonationCheckout provider response invalid: ProviderResponse');
       return Response.json({ error: 'Could not start checkout safely. Please try again.' }, { status: 503 });
     }
