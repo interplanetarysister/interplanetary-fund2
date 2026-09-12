@@ -5,7 +5,7 @@ import vm from 'node:vm';
 const source = await fs.readFile(new URL('../base44/functions/geocodeCity/entry.ts', import.meta.url), 'utf8');
 const executable = source
   .replace(/^import .*?;\n\n/s, '')
-  .replace('export default async function', 'async function');
+  .replace('export default async function', 'const handler = async function');
 
 async function loadHandler({ user = { id: 'u1' }, fetchImpl }) {
   const logs = [];
