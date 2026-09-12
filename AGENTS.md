@@ -7,15 +7,17 @@ This is the **authoritative user-facing Interplanetary Fund application implemen
 ### Current repository ownership
 
 - **Application implementation target:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior. Do not resume Vercel-specific or Convex-specific feature development and do not migrate obsolete hosting/runtime dependencies into this repository.
+- **Authoritative Convex/internal-agent runtime repository named by the current source-of-truth guide:** `interplanetarysister/InterplanetaryFund` — persistent agent identity, permissions, memory, outcomes, orchestration, scheduled intelligence, treasury/payments backend, and backend protocol.
 - **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
+- **Other Vercel/preview/duplicate repositories:** reference/evidence only for recovering useful application behavior; do not resume obsolete hosting/runtime feature development here.
 
 ### Cross-repository reliability incident boundary
 
 - The production-reported Convex automation conflict incident remains a separately tracked cross-repository reliability workstream under Issue #310 and must not be silently dropped because this repository owns the Base44 application.
-- This repository may document, inventory, and preserve evidence for the incident, but it is **not** the owning Convex implementation target unless an authoritative source/deployment mapping explicitly identifies it as such.
-- Do not implement, deploy, or promote a Convex concurrency repair from this repository based only on production reports, stale snapshots, or inferred ownership. The owning backend repository/branch, Development deployment, schema/configuration identity, and executable Development validation must be established first.
-- Once the owning repository is identified, keep changes there focused on safe serialization/claiming, idempotency, duplicate-run prevention, and bounded retry semantics; never treat increased retries or suppressed errors as the fix.
+- This repository may document, inventory, and preserve evidence for the incident, and may perform documentation-only or bridge/interface work needed to protect the Base44 application, but it is **not** the owning Convex implementation target.
+- The current owning Convex repository is identified by the source-of-truth guide as `interplanetarysister/InterplanetaryFund`; however, the exact owning branch, deployed Production project, Development project, schema/configuration identity, and deployed function mapping for the reported automation names remain **UNRESOLVED** until directly reconciled against authoritative runtime evidence.
+- Do not implement, deploy, or promote a Convex concurrency repair from this repository based only on production reports, stale snapshots, inferred ownership, or repository names. Legitimate documentation, evidence preservation, migration planning, emergency rollback preparation, or an explicit application-to-backend bridge is allowed when it does not overwrite unknown deployed behavior.
+- Before any Convex behavior change, establish the owning repository/branch/environment and exact deployed mapping, then validate in Development first. The repair must use safe serialization/claiming, idempotency, duplicate-run prevention, and bounded retry semantics; increasing retries or suppressing errors is not a fix.
 
 A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
 
