@@ -35,18 +35,24 @@ const hostile = new Proxy(Object.create({ name: "proto-secret" }), {
 });
 assert.equal(classifier(hostile), "object");
 
+const methodBody = source.match(/componentDidCatch\(error\)\s*\{([\s\S]*?)\n\s*\}/)?.[1];
+assert.ok(methodBody, "componentDidCatch body must be present");
 const runtime = vm.runInNewContext(`(() => {
   ${classifierSource}
   const calls = [];
-  const component = { componentDidCatch(error) { calls.push(["Route render error:", classifyRenderFailure(error)]); } };
+  const console = { error(...args) { calls.push(args); } };
+  const componentDidCatch = new Function("error", ${JSON.stringify(methodBody)});
   const hostileError = new Proxy(Object.create({ name: "proto-secret" }), {
     get() { throw new Error("runtime getter leaked"); },
-    ownKeys() { throw new Error("runtime ownKeys leaked"); }
+    ownKeys() { throw new Error("runtime ownKeys leaked"); },
+    getOwnPropertyDescriptor() { throw new Error("runtime descriptor leaked"); }
   });
-  component.componentDidCatch(hostileError);
+  componentDidCatch.call({ classifyRenderFailure }, hostileError);
   return calls;
 })()`);
 assert.deepEqual(runtime, [["Route render error:", "object"]]);
+assert.equal(runtime[0].length, 2, "diagnostic sink must receive exactly two bounded arguments");
+assert.equal(typeof runtime[0][1], "string");
 
 const fallback = vm.runInNewContext(`(() => ({
   heading: "This page hit a snag",
