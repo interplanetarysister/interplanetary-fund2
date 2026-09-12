@@ -2,7 +2,7 @@
 
 ## Project Context
 
-This is the **authoritative user-facing Interplanetary Fund application implementation repository**, prepared for Base44 hosting.
+This repository is the **authoritative consolidation destination for the user-facing Interplanetary Fund application implementation**, prepared for the current Base44 / React+Vite application architecture. This statement comes from the current source-of-truth guide; the active Base44↔GitHub linkage and deployment workflow must still be verified from current project evidence before making environment-specific claims.
 
 ### Current repository ownership
 
@@ -75,7 +75,7 @@ Use the existing Base44 application architecture in this repository. Do not add 
 
 When correcting, extending, or improving existing work, edit the current implementation/artifact rather than recreating it from scratch. Preserve valid functionality, architecture, interfaces, and history where practical. Make the smallest coherent modification that satisfies the task.
 
-A full rewrite is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. Document the reason, preserved behavior, and verification plan. This applies to code, configuration, schemas, documentation, agent definitions, workflows, prompts, generated assets, and other produced artifacts.
+A full rewrite is allowed only when the existing artifact cannot safely be edited or the task explicitly requires replacement. Document the reason, preserved behavior, and verification plan. This applies to code, configuration, schemas, agent definitions, workflows, prompts, generated assets, and other produced artifacts.
 
 ## Continuity rule
 
