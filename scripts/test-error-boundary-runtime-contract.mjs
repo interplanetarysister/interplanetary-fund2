@@ -14,11 +14,14 @@ assert.match(source, /aria-live=\"assertive\"/);
 assert.match(source, /aria-labelledby=\"route-error-heading\"/);
 assert.match(source, /ref=\{this\.headingRef\}/);
 assert.match(source, /tabIndex=\{-1\}/);
-assert.match(source, /componentDidUpdate\(\)/);
+assert.match(source, /componentDidUpdate\(prevProps, prevState\)/);
+assert.match(source, /const enteredErrorState = !prevState\.error && this\.state\.error/);
 assert.match(source, /this\.headingRef\.current\.focus\(\)/);
 assert.match(source, /aria-hidden=\"true\"/);
 assert.match(source, /min-h-\[44px\]/);
 assert.match(source, /to=\"\/\"/);
+assert.match(source, /hasFocusedCurrentError = false/);
+assert.match(source, /this\.hasFocusedCurrentError = false/);
 
 const classifierSource = source.match(/function classifyRenderFailure\(value\) \{[\s\S]*?\n\}/)?.[0];
 assert.ok(classifierSource, "classifier must be present");
@@ -61,6 +64,19 @@ const runtime = vm.runInNewContext(`(() => {
 assert.deepEqual(runtime, [["Route render error:", "object"]]);
 assert.equal(runtime[0].length, 2, "diagnostic sink must receive exactly two bounded arguments");
 assert.equal(typeof runtime[0][1], "string");
+
+const focusBody = source.match(/componentDidUpdate\(prevProps, prevState\)\s*\{([\s\S]*?)\n\s*\}/)?.[1];
+assert.ok(focusBody, "componentDidUpdate body must be present");
+const focusRuntime = vm.runInNewContext(`(() => {
+  const calls = [];
+  const heading = { focus() { calls.push("focus"); } };
+  const componentDidUpdate = new Function("prevProps", "prevState", ${JSON.stringify(focusBody)});
+  const instance = { state: { error: new Error("x") }, headingRef: { current: heading } };
+  componentDidUpdate.call(instance, {}, { error: null });
+  componentDidUpdate.call(instance, {}, { error: new Error("same") });
+  return calls;
+})()`);
+assert.deepEqual(focusRuntime, ["focus"], "focus must occur only when entering the error state");
 
 const fallback = vm.runInNewContext(`(() => ({
   heading: "This page hit a snag",
