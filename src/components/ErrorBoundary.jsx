@@ -18,6 +18,7 @@ function classifyRenderFailure(value) {
 export default class ErrorBoundary extends React.Component {
   state = { error: null };
   headingRef = React.createRef();
+  hasFocusedCurrentError = false;
 
   static getDerivedStateFromError(error) {
     return { error };
@@ -27,13 +28,18 @@ export default class ErrorBoundary extends React.Component {
     console.error("Route render error:", classifyRenderFailure(error));
   }
 
-  componentDidUpdate() {
-    if (this.state.error && this.headingRef.current) {
+  componentDidUpdate(prevProps, prevState) {
+    const enteredErrorState = !prevState.error && this.state.error;
+    if (enteredErrorState && this.headingRef.current) {
       this.headingRef.current.focus();
+      this.hasFocusedCurrentError = true;
     }
   }
 
-  reset = () => this.setState({ error: null });
+  reset = () => {
+    this.hasFocusedCurrentError = false;
+    this.setState({ error: null });
+  };
 
   render() {
     if (this.state.error) {
