@@ -4,6 +4,7 @@ const SAFE_ERROR = 'Unable to geocode this location right now';
 const MAX_CITY_LENGTH = 200;
 const MAX_DISPLAY_LENGTH = 240;
 const MAX_PROVIDER_ROWS = 5;
+const FETCH_TIMEOUT_MS = 8000;
 
 function diagnosticType(error) {
   const tag = Object.prototype.toString.call(error);
@@ -56,9 +57,17 @@ export default async function (req) {
     }
 
     const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(city)}`;
-    const r = await fetch(url, {
-      headers: { 'User-Agent': 'InterplanetaryFund/1.0 (geocoding)' },
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    let r;
+    try {
+      r = await fetch(url, {
+        headers: { 'User-Agent': 'InterplanetaryFund/1.0 (geocoding)' },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!r.ok) return Response.json({ error: 'Geocoding service unavailable' }, { status: 502 });
 
     const data = await r.json();
