@@ -14,6 +14,8 @@ const required = [
   "provider response invalid",
   "encodeURIComponent(campaignId)",
   "typeof session.url !== 'string'",
+  "function isSafeCheckoutUrl(value)",
+  "hostname === 'checkout.stripe.com'",
   "return Response.json({ url: session.url })",
 ];
 for (const needle of required) {
@@ -21,4 +23,5 @@ for (const needle of required) {
 }
 if (source.includes('error?.message || error')) throw new Error('raw error disclosure remains');
 if (source.includes('campaign_id}?donation=success')) throw new Error('unencoded campaign redirect remains');
+if (source.includes("return /^https:\\/\\//.test(session.url)")) throw new Error('checkout URL validation is too broad');
 console.log('createDonationCheckout boundary contract verified');
