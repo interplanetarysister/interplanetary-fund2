@@ -16,7 +16,7 @@ ok('guard re-reads the user via the service role', guard.includes('asServiceRole
 
 // --- Every sensitive authenticated function must apply the guard ---
 const REQUIRED = [
-  ['createDonationCheckout', 'assertActiveAccount'],
+  ['createDonationCheckout', 'assertActiveAccountIfSignedIn'],
   ['recordDonation', 'assertActiveAccountIfSignedIn'],
   ['capturePayPalOrder', 'assertActiveAccountIfSignedIn'],
   ['createPayPalOrder', 'assertActiveAccountIfSignedIn'],
