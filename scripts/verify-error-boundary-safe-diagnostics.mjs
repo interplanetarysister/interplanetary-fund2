@@ -5,7 +5,9 @@ const source = fs.readFileSync("src/components/ErrorBoundary.jsx", "utf8");
 
 assert.match(source, /function classifyRenderFailure\(value\)/);
 assert.match(source, /console\.error\("Route render error:", classifyRenderFailure\(error\)\)/);
-assert.doesNotMatch(source, /console\.error\([^\n]*\b(?:error|info)\b(?!\))/);
+// Inspect only the console.error argument expressions, not approved string labels.
+const consoleErrorCall = source.match(/console\.error\(([^\n]+)\)/)?.[1] ?? "";
+assert.doesNotMatch(consoleErrorCall, /\b(?:error|info)\b(?!\s*\))/);
 assert.doesNotMatch(source, /this\.state\.error\?\.message/);
 assert.match(source, /An unexpected error occurred while rendering this page\./);
 assert.match(source, /reset = \(\) => this\.setState\(\{ error: null \}\)/);

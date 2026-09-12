@@ -49,6 +49,7 @@ const runtime = vm.runInNewContext(`(() => {
   ${classifierSource}
   const calls = [];
   const console = { error(...args) { calls.push(args); } };
+  const classifyRenderFailure = globalThis.classifyRenderFailure;
   const componentDidCatch = new Function("error", ${JSON.stringify(methodBody)});
   const hostileError = new Proxy(Object.create({ name: "proto-secret" }), {
     get() { throw new Error("runtime getter leaked"); },
