@@ -121,7 +121,7 @@ export default async function(req) {
     const user = guard.user;
 
     const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
-    const safeUserId = typeof user?.id === 'string' && user.id.length <= 128 ? user.id : null;
+    const safeUserId = typeof user?.id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(user.id) ? user.id : null;
     if (!safeUserId) {
       console.error('createSubscriptionCheckout user identity invalid: UserIdentity');
       return Response.json({ error: 'Could not start your subscription. Please try again.' }, { status: 503 });
