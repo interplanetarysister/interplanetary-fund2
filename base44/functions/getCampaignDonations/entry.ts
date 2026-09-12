@@ -7,7 +7,8 @@ const MAX_AMOUNT = 100_000_000;
 const SAFE_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 
 function diagnosticType(error) {
-  if (error instanceof Error) return error.name || 'Error';
+  const tag = Object.prototype.toString.call(error);
+  if (tag === '[object Error]') return typeof error?.name === 'string' ? error.name.slice(0, 64) : 'Error';
   if (typeof error === 'string') return 'string';
   if (error === null) return 'null';
   if (Array.isArray(error)) return 'array';
@@ -22,17 +23,17 @@ function isSafeId(value) {
   return typeof value === 'string'
     && value.trim().length > 0
     && value.trim().length <= MAX_ID_LENGTH
-    && !/[\\u0000-\\u001f\\u007f]/.test(value);
+    && !/[\u0000-\u001f\u007f]/.test(value);
 }
 
 function boundedText(value, fallback = '') {
   if (typeof value !== 'string') return fallback;
-  const normalized = value.replace(/[\\u0000-\\u001f\\u007f]/g, '').trim();
+  const normalized = value.replace(/[\u0000-\u001f\u007f]/g, '').trim();
   return normalized.slice(0, MAX_TEXT_LENGTH);
 }
 
 function safeDate(value) {
-  return typeof value === 'string' && SAFE_DATE.test(value) ? value : null;
+  return typeof value === 'string' && SAFE_DATE.test(value) && !Number.isNaN(Date.parse(value)) ? value : null;
 }
 
 function projectDonation(row, includePrivateFields) {
@@ -42,9 +43,10 @@ function projectDonation(row, includePrivateFields) {
   const createdDate = safeDate(row.created_date);
   if (!createdDate) return null;
   if (typeof row.payment_verified !== 'boolean') return null;
+  if (typeof row.id !== 'string' || !isSafeId(row.id)) return null;
 
   const base = {
-    id: typeof row.id === 'string' && isSafeId(row.id) ? row.id.trim() : undefined,
+    id: row.id.trim(),
     donor_name: boundedText(row.donor_name, 'Anonymous') || 'Anonymous',
     amount,
     is_recurring: typeof row.is_recurring === 'boolean' ? row.is_recurring : false,
