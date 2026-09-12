@@ -24,7 +24,7 @@ for (const [name, ok] of checks) {
 
 // User.delete must occur AFTER the pending flag is set (delete LAST, not first).
 const pendingIdx = source.indexOf('account_deletion_pending: true');
-const firstUserDeleteIdx = source.indexOf('User.delete(user.id)');
+const firstUserDeleteIdx = source.search(/(?:sr\.entities\.)?User\.delete\(/);
 if (pendingIdx === -1 || firstUserDeleteIdx === -1 || firstUserDeleteIdx < pendingIdx) {
   console.error('FAIL User.delete occurs before the pending flag (must be last)'); failed++;
 } else { console.log('ok  User.delete occurs after the pending flag (last)'); }
