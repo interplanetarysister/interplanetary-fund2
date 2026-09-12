@@ -7,7 +7,7 @@ const executable = source
   .replace(/^import .*?;\n\n/s, '')
   .replace('export default async function', 'const handler = async function');
 
-async function loadHandler({ user = { id: 'u1' }, fetchImpl }) {
+async function loadHandler({ user = { id: 'u1' }, authError, fetchImpl }) {
   const logs = [];
   const context = {
     Response,
@@ -16,7 +16,10 @@ async function loadHandler({ user = { id: 'u1' }, fetchImpl }) {
     clearTimeout,
     console: { error: (...args) => logs.push(args) },
     fetch: fetchImpl,
-    createClientFromRequest: () => ({ auth: { me: async () => user } }),
+    createClientFromRequest: () => ({ auth: { me: async () => {
+      if (authError !== undefined) throw authError;
+      return user;
+    } } }),
   };
   const script = new vm.Script(`(async () => { ${executable}; return handler; })()`);
   const handler = await script.runInNewContext(context);
@@ -57,6 +60,13 @@ const ok = async (body) => new Response(JSON.stringify(body), { status: 200 });
   assert.equal(response.status, 401);
 }
 
+{
+  const { response, logs } = await invoke({ authError: { secret: 'auth-secret' }, fetchImpl: async () => ok([]) }, { city: 'New York' });
+  assert.equal(response.status, 401);
+  assert.deepEqual(logs, []);
+  assert.doesNotMatch(await response.text(), /auth-secret/);
+}
+
 for (const [body, expected] of [
   [{ city: '' }, 400],
   [{ city: 'x'.repeat(201) }, 400],
@@ -78,6 +88,11 @@ for (const [body, expected] of [
   assert.equal(response.status, 500);
 }
 
+{
+  const { response } = await invoke({ fetchImpl: async () => ({ ok: true }) }, { city: 'New York' });
+  assert.equal(response.status, 500);
+}
+
 for (const payload of [
   { lat: true, lon: '-74', display_name: 'x' },
   { lat: [], lon: '-74', display_name: 'x' },
@@ -88,6 +103,17 @@ for (const payload of [
 ]) {
   const { response } = await invoke({ fetchImpl: async () => ok([payload]) }, { city: 'New York' });
   assert.equal(response.status, 502);
+}
+
+{
+  const hostile = {};
+  Object.defineProperty(hostile, 'lat', { get() { throw new Error('lat-secret'); } });
+  Object.defineProperty(hostile, 'lon', { value: '-74' });
+  Object.defineProperty(hostile, 'display_name', { value: 'x' });
+  const { response, logs } = await invoke({ fetchImpl: async () => ({ ok: true, json: async () => [hostile] }) }, { city: 'New York' });
+  assert.equal(response.status, 500);
+  assert.deepEqual(logs, [['geocodeCity error:', 'error']]);
+  assert.doesNotMatch(await response.text(), /lat-secret/);
 }
 
 {
@@ -117,6 +143,14 @@ for (const payload of [
     return ok([{ lat: '40', lon: '-74', display_name: 'x' }]);
   } }, { city: 'New York' });
   assert.equal(response.status, 200);
+}
+
+{
+  const { response } = await invoke({ fetchImpl: async (_url, options) => new Promise((resolve, reject) => {
+    options.signal.addEventListener('abort', () => reject(new DOMException('timeout-secret', 'AbortError')));
+  }) }, { city: 'New York' });
+  assert.equal(response.status, 500);
+  assert.doesNotMatch(await response.text(), /timeout-secret/);
 }
 
 {
