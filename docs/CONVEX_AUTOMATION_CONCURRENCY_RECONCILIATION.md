@@ -20,11 +20,13 @@ The visible `interplanetary-fund2` source must not be treated as the deployed Co
 
 Before changing Production behavior, record all of the following. Each item is independently `RESOLVED` or `UNRESOLVED` with an evidence link and owner; missing evidence must not be inferred.
 
-1. **Deployed identity** — Convex deployment/environment, deployed function names, deployment timestamp, and the source revision or artifact hash that produced it.
-2. **Canonical repository mapping** — exact GitHub repository, branch, commit, and files that own the deployed functions, or an explicit record that the owner is outside this repository.
-3. **Schema/index mapping** — deployed definitions for automation state, cron commit/mutation records, agent state, and `distributedPosts`, including field names, uniqueness constraints, indexes, retention/lease fields, and whether `cron_commit_mut...` is the shared mutable record.
-4. **Scheduler/configuration mapping** — cron schedules, retry budgets, concurrency settings, and every external scheduler, webhook, manual, or post-production trigger that can invoke the same logical work.
-5. **Promotion boundary** — Development and Production deployment identifiers recorded separately; a clean Development result is not evidence that Production changed.
+| Gate | Required artifact | Minimum evidence | Owner | Status |
+|---|---|---|---|---|
+| Deployed identity | Convex Production and Development deployment/environment identifiers | dashboard/export/API evidence with deployment timestamp and revision/artifact hash | Convex owner | `UNRESOLVED` |
+| Canonical repository mapping | exact GitHub repository, branch, commit, and files owning deployed functions | source URL/commit plus deployment linkage, or explicit external-owner record | Convex owner | `UNRESOLVED` |
+| Schema/index mapping | deployed definitions for automation state, cron commit/mutation records, agent state, and `distributedPosts` | schema export or equivalent runtime evidence naming fields, indexes, uniqueness, and retention | Convex owner | `UNRESOLVED` |
+| Scheduler/configuration mapping | all cron, webhook, manual, and post-production triggers | scheduler export/logs showing cadence, retry budget, concurrency, and trigger owner | Operations owner | `UNRESOLVED` |
+| Promotion boundary | separate Development and Production promotion records | exact candidate revision, deploy log, and rollback target for each environment | Release owner | `UNRESOLVED` |
 
 If any item is unavailable, mark it `UNRESOLVED` and do not infer or overwrite the missing implementation.
 
@@ -40,6 +42,48 @@ The eventual repair must satisfy all invariants below; these are mandatory, not 
 - **Explicit trigger ownership:** each affected function has one declared orchestration owner; duplicate trigger paths must share the same claim/idempotency boundary.
 - **Write partitioning:** coordination state is separated from per-target side effects where possible; unrelated automations must not mutate one shared coordination document in the same transaction.
 - **Bounded retry semantics:** retry only transient conflict/transport failures, with jitter/backoff and a finite attempt budget. Do not retry validation, authorization, or schema failures.
+
+## Required durable schema contract
+
+The implementation must document and validate an equivalent durable schema before code approval. Names may differ only if the mapping is explicit and tested.
+
+### Logical job / claim record
+
+Required fields:
+
+- `logicalJobKey` — canonical unique key for function + target scope + execution window.
+- `triggerType` — `cron | manual | webhook | postProduction`.
+- `targetScope` — bounded canonical scope identifier.
+- `windowStart` / `windowEnd` — UTC execution window boundaries.
+- `status` — `pending | claimed | running | succeeded | failed | expired`.
+- `claimToken` — unique opaque fencing token for the current owner.
+- `claimOwner` — bounded worker/run identifier.
+- `leaseExpiresAt` — UTC timestamp.
+- `attemptCount` and `maxAttempts` — finite retry budget.
+- `lastErrorClass` — bounded reason class; never raw exception payload.
+- `idempotencyKey` — stable side-effect key derived from logical job + target operation.
+- `createdAt`, `updatedAt`, `completedAt` — UTC timestamps.
+
+Required uniqueness/index semantics:
+
+- unique index on `logicalJobKey`;
+- unique index on `idempotencyKey` for each side-effect namespace;
+- indexed lookup on active lease (`status` + `leaseExpiresAt`);
+- atomic claim must update `status`, `claimToken`, `claimOwner`, `leaseExpiresAt`, and `attemptCount` only when the prior record is claimable (`pending` or expired `claimed/running`).
+
+### Shared-write fencing rule
+
+Every write touching `cron_commit_mut...`, agent state, `distributedPosts`, or a derived side-effect record must validate the current `logicalJobKey` and `claimToken` in the same transaction or equivalent atomic compare-and-set. A worker with an expired, replaced, or mismatched token must receive a durable `stale_worker_rejected` result and must not write.
+
+### `cron_commit_mut...` boundary
+
+The deployed schema mapping must answer, with evidence, whether `cron_commit_mut...` is:
+
+1. the claim record,
+2. a commit ledger that must be append-only, or
+3. another shared mutable coordination document.
+
+If it is a shared mutable document, the repair must either partition writes away from it or prove atomic field-level compare-and-set plus fencing. Blind retries against the same record are not an acceptable repair.
 
 ## Required Development validation
 
@@ -71,11 +115,11 @@ Capture exact repository commit, deployed function revision/hash, harness comman
 
 Before Production promotion, define and test:
 
-- counters for claim conflicts, stale-token rejections, duplicate-suppressed runs, retry exhaustion, lost/partial side-effect detection, and final job outcomes;
-- alert thresholds for renewed `cron_commit_mut...` conflict storms and retry-budget exhaustion;
+- counters for `claim_conflict`, `stale_worker_rejected`, `duplicate_suppressed`, `retry_exhausted`, `lost_side_effect_detected`, `partial_failure`, and final job outcomes;
+- alert thresholds: any non-zero lost-side-effect or stale-worker write, any duplicate side effect, any retry-budget exhaustion on a successful-path test, or a renewed `cron_commit_mut...` conflict rate above the pre-repair baseline for two consecutive schedule windows is a release blocker;
 - dashboards or query paths that identify the affected function, logical-job key, deployment revision, and run token;
-- a rollback artifact and exact rollback owner/command;
-- a post-promotion observation window long enough to cover the affected schedules, with explicit go/no-go thresholds and recorded evidence.
+- a rollback artifact and exact rollback owner/command, with a tested restore to the last known-good revision;
+- a post-promotion observation window covering at least two executions of every affected schedule, with go/no-go thresholds of zero duplicate/lost side effects, zero stale-worker writes, no retry-budget exhaustion, and no renewed conflict storm.
 
 ## Production promotion gate
 
