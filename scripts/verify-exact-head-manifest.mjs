@@ -6,6 +6,7 @@ const root = process.cwd();
 const manifestPath = path.join(root, "docs", "EXACT_HEAD_VERIFIER_MANIFEST.md");
 const packagePath = path.join(root, "package.json");
 const workflowPath = path.join(root, ".github", "workflows", "quality-gates.yml");
+const COMMAND_TIMEOUT_MS = 120_000;
 
 const manifest = fs.readFileSync(manifestPath, "utf8");
 const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
@@ -71,9 +72,20 @@ if (hasManifestDrivenExecution) {
 if (process.argv.includes("--execute")) {
   for (const command of manifestCommands) {
     console.log(`Executing manifest command: npm run ${command}`);
-    const result = spawnSync("npm", ["run", command], { cwd: root, stdio: "inherit" });
+    const result = spawnSync("npm", ["run", command], {
+      cwd: root,
+      stdio: "inherit",
+      timeout: COMMAND_TIMEOUT_MS,
+      killSignal: "SIGTERM",
+    });
     if (result.error) {
-      throw result.error;
+      if (result.error.code === "ETIMEDOUT") {
+        throw new Error(`Manifest command timed out after ${COMMAND_TIMEOUT_MS}ms: npm run ${command}`);
+      }
+      throw new Error(`Manifest command could not start: npm run ${command}: ${result.error.message}`);
+    }
+    if (result.signal) {
+      throw new Error(`Manifest command terminated by signal ${result.signal}: npm run ${command}`);
     }
     if (result.status !== 0) {
       throw new Error(`Manifest command failed: npm run ${command} (exit ${result.status ?? "unknown"})`);
