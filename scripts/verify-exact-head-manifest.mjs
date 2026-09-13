@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
 const manifestPath = path.join(root, "docs", "EXACT_HEAD_VERIFIER_MANIFEST.md");
@@ -48,7 +49,21 @@ const missingWorkflowCommands = manifestCommands.filter((command) => !workflowCo
 console.log(`Manifest/package command mapping: PASS (${manifestCommands.length} current-main commands)`);
 console.log(`Workflow command references: ${workflowCommands.length} registered calls; unknown references: NONE`);
 if (missingWorkflowCommands.length > 0) {
-  console.log(`Workflow coverage gaps (reported, not silently omitted): ${missingWorkflowCommands.join(", ")}`);
+  console.log(`Workflow coverage gaps before dynamic execution: ${missingWorkflowCommands.join(", ")}`);
 } else {
-  console.log("Workflow coverage gaps: NONE");
+  console.log("Workflow coverage gaps before dynamic execution: NONE");
+}
+
+if (process.argv.includes("--execute")) {
+  for (const command of manifestCommands) {
+    console.log(`Executing manifest command: npm run ${command}`);
+    const result = spawnSync("npm", ["run", command], { cwd: root, stdio: "inherit" });
+    if (result.error) {
+      throw result.error;
+    }
+    if (result.status !== 0) {
+      throw new Error(`Manifest command failed: npm run ${command} (exit ${result.status ?? "unknown"})`);
+    }
+  }
+  console.log(`Manifest-driven execution: PASS (${manifestCommands.length} commands)`);
 }
