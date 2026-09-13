@@ -34,6 +34,12 @@ if (duplicateCommands.length > 0) {
   throw new Error(`Duplicate current-main manifest commands: ${duplicateCommands.join(", ")}`);
 }
 
+const manifestDrivenScriptNames = Object.keys(pkg.scripts ?? {}).filter((command) => /^(?:verify|test):/.test(command));
+const unlistedPackageCommands = manifestDrivenScriptNames.filter((command) => !manifestCommands.includes(command));
+if (unlistedPackageCommands.length > 0) {
+  throw new Error(`Package verifier/test scripts missing from exact-head manifest: ${unlistedPackageCommands.join(", ")}`);
+}
+
 const missingPackageCommands = manifestCommands.filter((command) => typeof pkg.scripts?.[command] !== "string");
 if (missingPackageCommands.length > 0) {
   throw new Error(`Manifest commands missing from package.json scripts: ${missingPackageCommands.join(", ")}`);
@@ -52,6 +58,7 @@ if (!hasManifestDrivenExecution && missingWorkflowCommands.length > 0) {
 }
 
 console.log(`Manifest/package command mapping: PASS (${manifestCommands.length} current-main commands)`);
+console.log(`Manifest completeness: PASS (${manifestDrivenScriptNames.length} verifier/test scripts)`);
 console.log(`Workflow command references: ${workflowCommands.length} registered calls; unknown references: NONE`);
 if (hasManifestDrivenExecution) {
   console.log("Workflow coverage: PASS (manifest-driven execution is enabled)");
