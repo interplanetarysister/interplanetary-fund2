@@ -29,7 +29,7 @@ const runnable = source
   .replace(/import[^;]+;\n/g, '')
   .replace('export default async function(req)', 'async function handler(req)');
 
-function makeRuntime({ user = { id: 'u1', role: 'user' }, campaign = null, campaignError = null, ensureError = null, creator = null } = {}) {
+function makeRuntime({ user = { id: 'u1', role: 'user' }, campaign = null, campaignError = null, ensureError = null, emitError = null, creator = null } = {}) {
   const events = [];
   const logs = [];
   const context = {
@@ -48,7 +48,10 @@ function makeRuntime({ user = { id: 'u1', role: 'user' }, campaign = null, campa
       events.push('canonical');
       if (ensureError) throw ensureError;
     },
-    emitActivityEvent: async () => { events.push('activity'); },
+    emitActivityEvent: async () => {
+      events.push('activity');
+      if (emitError) throw emitError;
+    },
   };
   const script = new vm.Script(`${runnable}\nhandler;`);
   const handler = script.runInNewContext(context);
@@ -90,10 +93,32 @@ assert.deepEqual(ensureFailure, { status: 503, body: { error: 'Unable to publish
 assert.deepEqual(runtime.events, ['canonical']);
 assert.deepEqual(runtime.logs, [['recordCampaignCreated error:', 'error']]);
 
+runtime = makeRuntime({ campaign: { id: 'c1', created_by_id: 'u1', status: 'active', title: 'T' }, emitError: new Error('secret activity') });
+const emitFailure = await json(await runtime.handler({ method: 'POST', json: async () => ({ campaign_id: 'c1' }) }));
+assert.deepEqual(emitFailure, { status: 503, body: { error: 'Unable to publish campaign because the canonical backend could not be updated.' }, allow: null });
+assert.deepEqual(runtime.events, ['canonical', 'activity']);
+assert.deepEqual(runtime.logs, [['recordCampaignCreated error:', 'error']]);
+
 runtime = makeRuntime({ campaign: { id: 'c1', created_by_id: 'u1', status: 'active', title: 'T' } });
 for (const body of [null, [], { campaign_id: 123 }, { campaign_id: 'bad id' }, { campaign_id: 'c1', extra: true }]) {
   const result = await json(await runtime.handler({ method: 'POST', json: async () => body }));
   assert.equal(result.status, 400);
 }
+
+runtime = makeRuntime({ campaign: { id: 'c1', created_by_id: 'u1', status: 'active', title: 'T' } });
+assert.equal((await json(await runtime.handler({ method: 'POST', json: async () => { throw new Error('secret json'); } }))).status, 503);
+assert.deepEqual(runtime.logs, [['recordCampaignCreated error:', 'error']]);
+
+runtime = makeRuntime({ campaign: { id: 'c1', created_by_id: 'u1', status: 'active', title: 'T' } });
+const hostileBody = new Proxy({ campaign_id: 'c1' }, { ownKeys() { throw new Error('secret keys'); } });
+assert.equal((await json(await runtime.handler({ method: 'POST', json: async () => hostileBody }))).status, 503);
+assert.deepEqual(runtime.logs, [['recordCampaignCreated error:', 'error']]);
+
+runtime = makeRuntime({ campaign: { id: 'c1', created_by_id: 'u1', status: 'active', title: 'T' } });
+const replayRequest = { method: 'POST', json: async () => ({ campaign_id: 'c1' }) };
+await runtime.handler(replayRequest);
+await runtime.handler(replayRequest);
+assert.deepEqual(runtime.events, ['canonical', 'activity', 'canonical', 'activity']);
+assert.equal(runtime.events.filter((event) => event === 'activity').length, 2, 'replay behavior is not idempotent in this handler; durable deduplication must be supplied by shared helpers');
 
 console.log('recordCampaignCreated boundary verifier passed');
