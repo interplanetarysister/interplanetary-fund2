@@ -25,7 +25,7 @@ The current `main` `package.json` exposes these deterministic checks:
 - `verify:stripe-webhook-errors` — Stripe webhook error contract
 - `verify:edit-ai-profile-safe-errors` — AI profile safe-error contract
 
-The current `main` package does **not** yet register every focused verifier present on active unmerged PR branches. That distinction is intentional and must remain visible until the PR is reconciled and validated.
+The current `main` `package.json` does **not** yet register every focused verifier present on active unmerged PR branches. That distinction is intentional and must remain visible until the PR is reconciled and validated.
 
 ## Active PR-local verifier inventory
 
@@ -34,7 +34,7 @@ The current `main` package does **not** yet register every focused verifier pres
 | Issue #239 / PR #240 | `verify:inbox-safety` | PR-local / unmerged | Exact-head runtime, malformed/provider privacy, overlap/retry/unmount, hosted auth/RLS review |
 | Issue #241 / PR #242 | `verify:followed-campaigns-safety` | PR-local / unmerged | Mutation concurrency, rollback isolation, response-loss/idempotency, hosted privacy review |
 | Issue #243 / PR #244/#245/#252 | `verify:discover-safety` | PR-local / unmerged | Malformed rows, refresh preservation, overlap/retry/unmount, caller/mobile review |
-| Issue #254 / PR #255 | ConnectDialog verifier | PR-local / unmerged | Save-response integrity, credential boundary, caller/accessibility review |
+| Issue #254 / PR #255 | ConnectDialog verifier (see owning PR command) | PR-local / unmerged | Save-response integrity, credential boundary, caller/accessibility review |
 | Issue #256 / PR #257/#284 | `verify:agent-platform-access-safe-errors` | PR-local / unmerged | Runtime auth/OBO failure classes, secret-reference-only response, hosted least privilege |
 | Issue #258 / PR #259 | `verify:audit-log-safe-diagnostics` | PR-local / unmerged | Redaction/bounding, rejecting-sink runtime proof, retention/access review |
 | Issue #260 / PR #261 | `verify:volunteer-signup-boundary` | PR-local / unmerged | Duplicate signup, counter behavior, notification and RLS review |
@@ -45,19 +45,21 @@ The current `main` package does **not** yet register every focused verifier pres
 | Issue #270 / PR #271 | `verify:post-discussion-reply-boundary` | PR-local / unmerged | Auth, provider shape, counter update, replay/response-loss semantics |
 | Issue #272 / PR #273 | `verify:auth-context-safe-diagnostics` | PR-local / unmerged | Cross-realm failure privacy, loading settlement, revoked-session review |
 | Issue #274 / PR #275 | `verify:broadcast-posts-boundary` | PR-local / unmerged | Consent, provider failure, bounded projection, retry/idempotency, hosted privacy |
-| Issue #276 / PR #277 | shared rate-limit verifier | PR-local / unmerged | Development contention, rollover, duplicate/replay, truthful remaining counts |
+| Issue #276 / PR #277 | shared rate-limit verifier (exact command must be taken from PR #277) | PR-local / unmerged | Development contention, rollover, duplicate/replay, truthful remaining counts |
 | Issue #278 / PR #279 | `verify:delete-account-boundary` | PR-local / unmerged | Stage failure privacy, anonymization fallback, retry/duplicate semantics, RLS |
 | Issue #280 / PR #281 | `verify:get-campaign-donations-boundary` | PR-local / unmerged | Public/owner pending semantics, malformed rows, ledger consistency, RLS |
 | Issue #282 / PR #283 | `verify:volunteer-follow-up-boundary` | PR-local / unmerged | Email safety, notification behavior, duplicate side effects, hosted privacy |
-| Issue #285 / PR #286/#288 | geocode verifier | PR-local / unmerged | Provider timeout/abort, strict coordinates, Nominatim/privacy, caller review |
+| Issue #285 / PR #286/#288 | geocode verifier (exact command must be taken from owning PR) | PR-local / unmerged | Provider timeout/abort, strict coordinates, Nominatim/privacy, caller review |
 | Issue #289 / PR #290 | `verify:get-my-giving-boundary` | PR-local / unmerged | Confirmed-only semantics, financial privacy, malformed rows, response-loss |
 | Issue #291 / PR #292 | `verify:create-donation-checkout-boundary` | PR-local / unmerged | Trusted origins, Stripe shape, durable idempotency, webhook/RLS/ledger proof |
-| Issue #293 / PR #294 | subscription boundary verifier | PR-local / unmerged | Origin inventory, checkout idempotency, webhook entitlement reconciliation |
-| Issue #295 / PR #296/#298 | agent-mail runtime verifier | PR-local / unmerged | OBO/revoked behavior, poisoned rows, projection/privacy, replay semantics |
-| Issue #302 / PR #303/#305/#307 | ErrorBoundary verifier | PR-local / unmerged | Hostile thrown values, exact sink capture, focus/accessibility, route reset |
-| Issue #304 / PR #305 | ErrorBoundary runtime contract | PR-local / unmerged | Exact component execution and browser/mobile/WebView compatibility |
+| Issue #293 / PR #294 | subscription boundary verifier (exact command must be taken from owning PR) | PR-local / unmerged | Origin inventory, checkout idempotency, webhook entitlement reconciliation |
+| Issue #295 / PR #296/#298 | agent-mail runtime verifier (exact command must be taken from owning PR) | PR-local / unmerged | OBO/revoked behavior, poisoned rows, projection/privacy, replay semantics |
+| Issue #302 / PR #303 | `verify:error-boundary-safe-diagnostics` | PR-local / unmerged | Hostile thrown values, bounded sink, safe fallback copy, no raw diagnostics |
+| Issue #304 / PR #305 | `verify:error-boundary-runtime-contract` | PR-local / unmerged | Runtime contract, exact sink capture, caller/telemetry compatibility |
+| Issue #306 / PR #307 | `verify:error-boundary-runtime-contract` (extended on PR #307) | PR-local / unmerged | Actual component-equivalent execution, hostile proxy cases, fallback/accessibility contract |
+| Issue #308 / PR #309 | no new verifier command; extends `verify:error-boundary-runtime-contract` | PR-local / unmerged | Rendered React/browser/mobile/WebView focus, route reset, screen-reader and caller/telemetry evidence |
 | Issue #313 / PR #314 | `verify:record-campaign-created-boundary` | PR-local / unmerged | Real handler execution, auth/order/replay, hosted RLS/privacy, ID compatibility |
-| Issue #30 / PR #316 | community membership verifier | PR-local / unmerged | Malformed rows, mutation failures, durable uniqueness/idempotency, RLS/privacy |
+| Issue #30 / PR #316 | `verify:community-membership-boundary` | PR-local / unmerged | Malformed rows, mutation failures, durable uniqueness/idempotency, RLS/privacy |
 
 ## Inclusion rules
 
