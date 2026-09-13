@@ -34,6 +34,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
+      - name: Exact-head manifest discovery
+        run: npm run verify:exact-head-manifest
+
       - name: Lint
         run: npm run lint
 
