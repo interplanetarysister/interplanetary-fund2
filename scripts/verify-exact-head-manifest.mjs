@@ -15,9 +15,22 @@ if (!currentMainSection) {
   throw new Error("Missing Current-main commands section in exact-head manifest");
 }
 
-const manifestCommands = [...currentMainSection[1].matchAll(/`([^`]+)`\s+—/g)].map((match) => match[1]);
+const sectionText = currentMainSection[1];
+const rows = sectionText.split(/\r?\n/).filter((line) => line.trim().startsWith("-") && line.includes("`"));
+const manifestCommands = [];
+for (const row of rows) {
+  const match = row.match(/^\s*-\s+`([^`]+)`\s+—\s+.+$/);
+  if (!match) {
+    throw new Error(`Malformed current-main command row: ${row.trim()}`);
+  }
+  manifestCommands.push(match[1]);
+}
 if (manifestCommands.length === 0) {
   throw new Error("No current-main commands discovered from exact-head manifest");
+}
+const duplicateCommands = [...new Set(manifestCommands.filter((command, index) => manifestCommands.indexOf(command) !== index))];
+if (duplicateCommands.length > 0) {
+  throw new Error(`Duplicate current-main manifest commands: ${duplicateCommands.join(", ")}`);
 }
 
 const missingPackageCommands = manifestCommands.filter((command) => typeof pkg.scripts?.[command] !== "string");
