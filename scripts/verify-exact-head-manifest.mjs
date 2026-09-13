@@ -45,13 +45,20 @@ if (unknownWorkflowCommands.length > 0) {
   throw new Error(`quality-gates.yml invokes commands absent from package.json: ${unknownWorkflowCommands.join(", ")}`);
 }
 
+const hasManifestDrivenExecution = /npm run verify:exact-head-manifest\s+--\s+--execute/.test(workflow);
 const missingWorkflowCommands = manifestCommands.filter((command) => !workflowCommands.includes(command));
+if (!hasManifestDrivenExecution && missingWorkflowCommands.length > 0) {
+  throw new Error(`Workflow omits manifest commands and has no manifest-driven execution: ${missingWorkflowCommands.join(", ")}`);
+}
+
 console.log(`Manifest/package command mapping: PASS (${manifestCommands.length} current-main commands)`);
 console.log(`Workflow command references: ${workflowCommands.length} registered calls; unknown references: NONE`);
-if (missingWorkflowCommands.length > 0) {
-  console.log(`Workflow coverage gaps before dynamic execution: ${missingWorkflowCommands.join(", ")}`);
+if (hasManifestDrivenExecution) {
+  console.log("Workflow coverage: PASS (manifest-driven execution is enabled)");
+} else if (missingWorkflowCommands.length > 0) {
+  console.log(`Workflow coverage gaps: ${missingWorkflowCommands.join(", ")}`);
 } else {
-  console.log("Workflow coverage gaps before dynamic execution: NONE");
+  console.log("Workflow coverage: PASS (all manifest commands referenced directly)");
 }
 
 if (process.argv.includes("--execute")) {
