@@ -2,26 +2,63 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
 import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
 
+const MAX_CAMPAIGN_ID = 128;
+const SAFE_ID = /^[A-Za-z0-9_-]+$/;
+
+function diagnosticType(value) {
+  if (value instanceof Error) return 'error';
+  if (value === null) return 'null';
+  if (typeof value === 'string') return 'string';
+  return typeof value;
+}
+
+function jsonError(error, status, headers = {}) {
+  return Response.json({ error }, { status, headers });
+}
+
 // Publishes a campaign into the Community feed and registers its stable
 // application identity with the canonical Convex backend. Financial writes
 // fail closed unless this mapping exists, so registration happens before the
 // public campaign-created event.
 export default async function(req) {
+  if (req?.method !== 'POST') {
+    return jsonError('Method not allowed.', 405, { Allow: 'POST' });
+  }
+
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
 
     let user = null;
     try { user = await base44.auth.me(); } catch (_) { /* not signed in */ }
-    if (!user) return Response.json({ error: 'Sign in required' }, { status: 401 });
+    if (!user) return jsonError('Sign in required', 401);
 
-    const { campaign_id } = await req.json();
-    if (!campaign_id) return Response.json({ error: 'Campaign is required' }, { status: 400 });
+    const body = await req.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return jsonError('Campaign is required', 400);
+    }
+    const keys = Object.keys(body);
+    if (keys.some((key) => key !== 'campaign_id')) {
+      return jsonError('Campaign is required', 400);
+    }
+    if (typeof body.campaign_id !== 'string') {
+      return jsonError('Campaign is required', 400);
+    }
+    const campaign_id = body.campaign_id.trim();
+    if (!campaign_id || campaign_id.length > MAX_CAMPAIGN_ID || !SAFE_ID.test(campaign_id)) {
+      return jsonError('Campaign is required', 400);
+    }
 
-    const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
-    if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+    let campaign;
+    try {
+      campaign = await sr.entities.Campaign.get(campaign_id);
+    } catch (dependencyError) {
+      console.error('recordCampaignCreated campaign lookup failure:', diagnosticType(dependencyError));
+      return jsonError('Unable to load campaign.', 503);
+    }
+    if (!campaign) return jsonError('Campaign not found', 404);
     if (campaign.created_by_id !== user.id && user.role !== 'admin') {
-      return Response.json({ error: 'Only the campaign owner can publish this event.' }, { status: 403 });
+      return jsonError('Only the campaign owner can publish this event.', 403);
     }
     if (campaign.status !== 'active') {
       return Response.json({ ok: true, skipped: true });
@@ -50,7 +87,7 @@ export default async function(req) {
 
     return Response.json({ ok: true, canonical_registered: true });
   } catch (error) {
-    console.error('recordCampaignCreated error:', error && error.message ? error.message : error);
-    return Response.json({ error: 'Unable to publish campaign because the canonical backend could not be updated.' }, { status: 503 });
+    console.error('recordCampaignCreated error:', diagnosticType(error));
+    return jsonError('Unable to publish campaign because the canonical backend could not be updated.', 503);
   }
 }
