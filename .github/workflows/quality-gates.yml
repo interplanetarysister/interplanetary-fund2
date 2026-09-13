@@ -24,6 +24,14 @@ jobs:
     steps:
       - name: Checkout exact candidate head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Report checked-out candidate SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "Checked-out candidate SHA: $(git rev-parse HEAD)"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -50,6 +58,14 @@ jobs:
     steps:
       - name: Checkout exact candidate head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Report checked-out candidate SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "Checked-out candidate SHA: $(git rev-parse HEAD)"
 
       - name: Setup Node
         uses: actions/setup-node@v4
