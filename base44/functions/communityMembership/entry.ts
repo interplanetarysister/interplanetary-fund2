@@ -17,6 +17,20 @@ function jsonError(error, status) {
   return Response.json({ error }, { status });
 }
 
+function validMembershipRow(row, expectedCommunityId, expectedUserId) {
+  return Boolean(
+    row &&
+      typeof row === 'object' &&
+      typeof row.id === 'string' &&
+      row.id.length > 0 &&
+      row.id.length <= MAX_ID_LENGTH &&
+      typeof row.community_id === 'string' &&
+      row.community_id.trim() === expectedCommunityId &&
+      typeof row.user_id === 'string' &&
+      row.user_id.trim() === expectedUserId,
+  );
+}
+
 export default async function(req) {
   try {
     if (req?.method !== 'POST') {
@@ -65,10 +79,16 @@ export default async function(req) {
         console.error('communityMembership dependency failure:', safeDiagnostic(error));
         return jsonError('Unable to update your community membership. Please try again.', 503);
       }
-      const m = Array.isArray(members) ? members[0] : null;
-      if (!m || typeof m.id !== 'string' || !m.id) return jsonError('You are not a member of this community.', 400);
-      await base44.entities.CommunityMember.delete(m.id);
-      await sr.entities.Community.updateMany({ id: communityId }, { $inc: { member_count: -1 } });
+      if (!Array.isArray(members)) return jsonError('Unable to update your community membership. Please try again.', 503);
+      const m = members.length === 1 && validMembershipRow(members[0], communityId, user.id) ? members[0] : null;
+      if (!m) return jsonError('You are not a member of this community.', 400);
+      try {
+        await base44.entities.CommunityMember.delete(m.id);
+        await sr.entities.Community.updateMany({ id: communityId }, { $inc: { member_count: -1 } });
+      } catch (error) {
+        console.error('communityMembership mutation failure:', safeDiagnostic(error));
+        return jsonError('Unable to update your community membership. Please try again.', 503);
+      }
       return Response.json({ ok: true });
     }
 
@@ -79,15 +99,25 @@ export default async function(req) {
       console.error('communityMembership dependency failure:', safeDiagnostic(error));
       return jsonError('Unable to update your community membership. Please try again.', 503);
     }
-    if (Array.isArray(existing) && existing.length) return jsonError('You are already a member.', 400);
+    if (!Array.isArray(existing)) return jsonError('Unable to update your community membership. Please try again.', 503);
+    if (existing.length > 0) {
+      const validExisting = existing.every((row) => validMembershipRow(row, communityId, user.id));
+      if (!validExisting) return jsonError('Unable to update your community membership. Please try again.', 503);
+      return jsonError('You are already a member.', 400);
+    }
 
-    await base44.entities.CommunityMember.create({
-      community_id: communityId,
-      user_id: user.id,
-      user_name: typeof user.full_name === 'string' && user.full_name ? user.full_name : user.email,
-      role: 'member',
-    });
-    await sr.entities.Community.updateMany({ id: communityId }, { $inc: { member_count: 1 } });
+    try {
+      await base44.entities.CommunityMember.create({
+        community_id: communityId,
+        user_id: user.id,
+        user_name: typeof user.full_name === 'string' && user.full_name ? user.full_name : user.email,
+        role: 'member',
+      });
+      await sr.entities.Community.updateMany({ id: communityId }, { $inc: { member_count: 1 } });
+    } catch (error) {
+      console.error('communityMembership mutation failure:', safeDiagnostic(error));
+      return jsonError('Unable to update your community membership. Please try again.', 503);
+    }
     return Response.json({ ok: true });
   } catch (error) {
     console.error('communityMembership error:', safeDiagnostic(error));
