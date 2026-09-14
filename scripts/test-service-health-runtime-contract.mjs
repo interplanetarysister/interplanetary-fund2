@@ -17,6 +17,7 @@ const expected = new Map([
   [null, 'nullish'],
   [undefined, 'nullish'],
   [new Error('secret'), 'object'],
+  [new TypeError('secret'), 'object'],
   ['secret', 'string'],
   [1, 'number'],
   [true, 'boolean'],
@@ -44,7 +45,7 @@ const safeNames = ['Identity & Auth', 'Campaign OS', 'A-1'];
 for (const name of safeNames) {
   if (context.sanitizeServiceName(name) !== name) throw new Error(`Safe service name rejected: ${name}`);
 }
-for (const name of ['bad\\nname', 'bad\\tname', 'secret:token', '', 'x'.repeat(65), 'snowman ☃']) {
+for (const name of ['bad\\nname', 'bad\\tname', 'secret:token', '', 'x'.repeat(65), 'snowman ☃', '\u0000bad']) {
   if (context.sanitizeServiceName(name) !== 'unknown-service') throw new Error(`Hostile service name accepted: ${JSON.stringify(name)}`);
 }
 
@@ -54,6 +55,9 @@ const requiredLiterals = [
   'Math.round(performance.now() - start)',
   'logPlatformEvent({',
   'outcome: failed.length ? "warning" : "success"',
+  'const failed = out.filter((r) => r.status !== "operational")',
+  'const out = await Promise.all(',
+  'setRunning(false);',
 ];
 for (const literal of requiredLiterals) {
   if (!source.includes(literal)) throw new Error(`Missing behavior contract: ${literal}`);
@@ -62,5 +66,10 @@ for (const literal of requiredLiterals) {
 if (source.includes('console.error(e') || source.includes('console.error(error') || source.includes('JSON.stringify(e)')) {
   throw new Error('Raw exception sink detected');
 }
+
+const diagnosticMatch = source.match(/console\.error\(`([^`]+)`\);/);
+if (!diagnosticMatch) throw new Error('Missing bounded diagnostic console call');
+if (!diagnosticMatch[1].includes('sanitizeServiceName(s.name)')) throw new Error('Diagnostic does not sanitize service name');
+if (!diagnosticMatch[1].includes('(\\${failureType})')) throw new Error('Diagnostic does not use bounded failure type');
 
 console.log('Service-health runtime contract verification passed.');
