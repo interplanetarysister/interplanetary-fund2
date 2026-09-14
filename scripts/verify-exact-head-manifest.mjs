@@ -7,6 +7,7 @@ const manifestPath = path.join(root, "docs", "EXACT_HEAD_VERIFIER_MANIFEST.md");
 const packagePath = path.join(root, "package.json");
 const workflowPath = path.join(root, ".github", "workflows", "quality-gates.yml");
 const COMMAND_TIMEOUT_MS = 120_000;
+const COMMAND_OUTPUT_LIMIT = 256 * 1024;
 
 const manifest = fs.readFileSync(manifestPath, "utf8");
 const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
@@ -74,13 +75,24 @@ if (process.argv.includes("--execute")) {
     console.log(`Executing manifest command: npm run ${command}`);
     const result = spawnSync("npm", ["run", command], {
       cwd: root,
-      stdio: "inherit",
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
       timeout: COMMAND_TIMEOUT_MS,
       killSignal: "SIGTERM",
+      maxBuffer: COMMAND_OUTPUT_LIMIT,
     });
+    const stdout = typeof result.stdout === "string" ? result.stdout : "";
+    const stderr = typeof result.stderr === "string" ? result.stderr : "";
+    const boundedOutput = `${stdout}${stderr}`.slice(0, COMMAND_OUTPUT_LIMIT);
+    if (boundedOutput) {
+      process.stdout.write(boundedOutput);
+    }
     if (result.error) {
       if (result.error.code === "ETIMEDOUT") {
         throw new Error(`Manifest command timed out after ${COMMAND_TIMEOUT_MS}ms: npm run ${command}`);
+      }
+      if (result.error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+        throw new Error(`Manifest command exceeded ${COMMAND_OUTPUT_LIMIT}-byte output limit: npm run ${command}`);
       }
       throw new Error(`Manifest command could not start: npm run ${command}: ${result.error.message}`);
     }
