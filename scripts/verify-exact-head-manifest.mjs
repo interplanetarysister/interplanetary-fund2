@@ -47,23 +47,50 @@ if (missingPackageCommands.length > 0) {
   throw new Error(`Manifest commands missing from package.json scripts: ${missingPackageCommands.join(", ")}`);
 }
 
-const workflowCommands = [...workflow.matchAll(/npm run ([A-Za-z0-9:_-]+)/g)].map((match) => match[1]);
+function extractActiveRunCommands(yaml) {
+  const commands = [];
+  const lines = yaml.split(/\r?\n/);
+  let inRunBlock = false;
+  let runIndent = null;
+  for (const rawLine of lines) {
+    const indent = rawLine.match(/^\s*/)?.[0].length ?? 0;
+    const trimmed = rawLine.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    if (inRunBlock && indent <= runIndent && !trimmed.startsWith("-")) {
+      inRunBlock = false;
+      runIndent = null;
+    }
+    if (!inRunBlock && /^run:\s*\|\s*$/.test(trimmed)) {
+      inRunBlock = true;
+      runIndent = indent;
+      continue;
+    }
+    if (!inRunBlock) continue;
+    const uncommented = rawLine.replace(/\s+#.*$/, "");
+    for (const match of uncommented.matchAll(/\bnpm run ([A-Za-z0-9:_-]+)/g)) {
+      commands.push(match[1]);
+    }
+  }
+  return commands;
+}
+
+const workflowCommands = extractActiveRunCommands(workflow);
 const unknownWorkflowCommands = [...new Set(workflowCommands.filter((command) => typeof pkg.scripts?.[command] !== "string"))];
 if (unknownWorkflowCommands.length > 0) {
   throw new Error(`quality-gates.yml invokes commands absent from package.json: ${unknownWorkflowCommands.join(", ")}`);
 }
 
-const hasManifestDrivenExecution = /npm run verify:exact-head-manifest\s+--\s+--execute/.test(workflow);
+const hasManifestDrivenExecution = workflowCommands.includes("verify:exact-head-manifest");
 const missingWorkflowCommands = manifestCommands.filter((command) => !workflowCommands.includes(command));
 if (!hasManifestDrivenExecution && missingWorkflowCommands.length > 0) {
-  throw new Error(`Workflow omits manifest commands and has no manifest-driven execution: ${missingWorkflowCommands.join(", ")}`);
+  throw new Error(`Workflow omits manifest commands and has no active manifest-driven execution: ${missingWorkflowCommands.join(", ")}`);
 }
 
 console.log(`Manifest/package command mapping: PASS (${manifestCommands.length} current-main commands)`);
 console.log(`Manifest completeness: PASS (${manifestDrivenScriptNames.length} verifier/test scripts)`);
-console.log(`Workflow command references: ${workflowCommands.length} registered calls; unknown references: NONE`);
+console.log(`Active workflow command references: ${workflowCommands.length}; unknown references: NONE`);
 if (hasManifestDrivenExecution) {
-  console.log("Workflow coverage: PASS (manifest-driven execution is enabled)");
+  console.log("Workflow coverage: PASS (active manifest-driven execution is enabled)");
 } else if (missingWorkflowCommands.length > 0) {
   console.log(`Workflow coverage gaps: ${missingWorkflowCommands.join(", ")}`);
 } else {
