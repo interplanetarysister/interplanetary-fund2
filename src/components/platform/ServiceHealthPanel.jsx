@@ -18,6 +18,13 @@ const services = [
 
 const SAFE_SERVICE_ERROR = "Service health check failed.";
 
+function classifyServiceFailure(value) {
+  const tag = Object.prototype.toString.call(value);
+  if (tag === "[object Error]") return "error";
+  if (value === null || value === undefined) return "nullish";
+  return typeof value;
+}
+
 export default function ServiceHealthPanel() {
   const [results, setResults] = useState(null);
   const [running, setRunning] = useState(false);
@@ -31,7 +38,8 @@ export default function ServiceHealthPanel() {
           await s.check();
           return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
         } catch (e) {
-          console.error(`Service health check failed for ${s.name}:`, e);
+          const failureType = classifyServiceFailure(e);
+          console.error(`Service health check failed for ${s.name} (${failureType}).`);
           return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: SAFE_SERVICE_ERROR };
         }
       })
