@@ -17,10 +17,16 @@ const services = [
 ];
 
 const SAFE_SERVICE_ERROR = "Service health check failed.";
+const FAILURE_TYPES = new Set(["nullish", "error", "string", "number", "boolean", "bigint", "symbol", "function", "object"]);
 
 function classifyServiceFailure(value) {
   if (value === null || value === undefined) return "nullish";
-  return typeof value;
+  const type = typeof value;
+  return FAILURE_TYPES.has(type) ? type : "object";
+}
+
+function sanitizeServiceName(name) {
+  return typeof name === "string" && /^[A-Za-z0-9 &-]{1,64}$/.test(name) ? name : "unknown-service";
 }
 
 export default function ServiceHealthPanel() {
@@ -37,7 +43,7 @@ export default function ServiceHealthPanel() {
           return { name: s.name, status: "operational", latency: Math.round(performance.now() - start) };
         } catch (e) {
           const failureType = classifyServiceFailure(e);
-          console.error(`Service health check failed for ${s.name} (${failureType}).`);
+          console.error(`Service health check failed for ${sanitizeServiceName(s.name)} (${failureType}).`);
           return { name: s.name, status: "degraded", latency: Math.round(performance.now() - start), error: SAFE_SERVICE_ERROR };
         }
       })
