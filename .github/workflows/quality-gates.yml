@@ -22,16 +22,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Resolve candidate head
+        id: candidate
+        shell: bash
+        run: |
+          expected_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          if [[ ! "$expected_sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Candidate SHA is missing or malformed: '$expected_sha'" >&2
+            exit 1
+          fi
+          echo "expected_sha=$expected_sha" >> "$GITHUB_OUTPUT"
+
       - name: Checkout exact candidate head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ steps.candidate.outputs.expected_sha }}
           fetch-depth: 1
 
       - name: Assert exact candidate head
         shell: bash
         run: |
-          expected_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          expected_sha="${{ steps.candidate.outputs.expected_sha }}"
           actual_sha="$(git rev-parse HEAD)"
           printf 'Expected candidate SHA: %s\nChecked out SHA: %s\n' "$expected_sha" "$actual_sha"
           test "$actual_sha" = "$expected_sha"
@@ -62,16 +73,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Resolve candidate head
+        id: candidate
+        shell: bash
+        run: |
+          expected_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          if [[ ! "$expected_sha" =~ ^[0-9a-fA-F]{40}$ ]]; then
+            echo "Candidate SHA is missing or malformed: '$expected_sha'" >&2
+            exit 1
+          fi
+          echo "expected_sha=$expected_sha" >> "$GITHUB_OUTPUT"
+
       - name: Checkout exact candidate head
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ steps.candidate.outputs.expected_sha }}
           fetch-depth: 1
 
       - name: Assert exact candidate head
         shell: bash
         run: |
-          expected_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          expected_sha="${{ steps.candidate.outputs.expected_sha }}"
           actual_sha="$(git rev-parse HEAD)"
           printf 'Expected candidate SHA: %s\nChecked out SHA: %s\n' "$expected_sha" "$actual_sha"
           test "$actual_sha" = "$expected_sha"
