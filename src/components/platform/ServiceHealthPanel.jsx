@@ -19,8 +19,6 @@ const services = [
 const SAFE_SERVICE_ERROR = "Service health check failed.";
 
 function classifyServiceFailure(value) {
-  const tag = Object.prototype.toString.call(value);
-  if (tag === "[object Error]") return "error";
   if (value === null || value === undefined) return "nullish";
   return typeof value;
 }
