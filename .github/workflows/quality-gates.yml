@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint and production build
+    name: Lint, deterministic contracts, and production build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -58,6 +58,12 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Payment and financial contracts
+        run: npm run test:payments
+
+      - name: Stripe webhook error contract
+        run: npm run verify:stripe-webhook-errors
 
       - name: Analytics safety contract
         run: npm run verify:analytics-safety
