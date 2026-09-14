@@ -45,6 +45,20 @@ The evidence package must contain a single immutable record (commit, exported JS
 
 Until this artifact exists, the runtime repair remains `AWAITING_START` and no code from this repository may be promoted as the fix.
 
+### Partial deployment evidence (not sufficient for resolution)
+
+A read-only inspection of the canonical runtime repository `interplanetarysister/InterplanetaryFund` found the following source-controlled configuration:
+
+- `.env.example` declares `CONVEX_DEPLOYMENT=rosy-butterfly-2` and `VITE_CONVEX_URL=https://rosy-butterfly-2.convex.cloud`.
+- This is a **production candidate/reference only**, because the file is source-controlled configuration rather than a deployment export or runtime dashboard record.
+- The Development deployment identifier, deployed commit mapping, runtime schema/index state, and concrete `cron_commit_mut...` writer path remain `UNRESOLVED`.
+
+Evidence references:
+
+- Canonical `.env.example` blob: `f073f428b68184fbfb04024b2de6924fb0152d94`.
+- Canonical automation source candidate: `convex/agentAutomation.ts`, blob `b1ef7b951fbba1636fc2db86ffe9ae3023ee86cd`.
+- This section must not be interpreted as authorization to deploy or promote any Convex change.
+
 ## Mandatory implementation invariants
 
 The eventual repair must satisfy all invariants below; these are mandatory, not preferences:
@@ -223,3 +237,18 @@ Until every gate is complete, status is `AWAITING_START`, `IN_PROGRESS`, or `TRU
 | Development conflict reproduction | Not run | `AWAITING_START` | Implementation owner: create executable harness after mapping |
 | Repair implementation | Not started in this repository | `AWAITING_START` | Actual owning backend repository/branch only |
 | Production promotion | Not authorized | `AWAITING_START` | Release owner: wait for all gates |
+
+## Provenance update — source-controlled Production candidate only
+
+The canonical runtime repository's source-controlled configuration provides a useful candidate reference but does not resolve the deployment gate:
+
+- Candidate production deployment: `rosy-butterfly-2`
+- Candidate production URL: `https://rosy-butterfly-2.convex.cloud`
+- Evidence source: `interplanetarysister/InterplanetaryFund/.env.example` at blob `f073f428b68184fbfb04024b2de6924fb0152d94`
+- Evidence class: source-controlled configuration, **not** dashboard/export/runtime proof
+- Development deployment ID: `UNRESOLVED`
+- Deployed commit mapping: `UNRESOLVED`
+- Runtime schema/index mapping: `UNRESOLVED`
+- Concrete `cron_commit_mut...` writer path: `UNRESOLVED`
+
+This update narrows the search space without authorizing implementation, deployment, promotion, or merge. The runtime repair remains gated on authoritative Production/Development reconciliation and Development-first validation.
