@@ -32,6 +32,19 @@ Before changing Production behavior, record all of the following. Each item is i
 
 If any item is unavailable, mark it `UNRESOLVED` and do not infer or overwrite the missing implementation.
 
+### Required reconciliation artifact (must be attached before runtime code approval)
+
+The evidence package must contain a single immutable record (commit, exported JSON, or equivalent) with:
+
+- `productionDeploymentId`, `developmentDeploymentId`, deployment URLs, and capture timestamps;
+- deployed function names/revisions for all five affected functions;
+- canonical source repository/branch/commit for each function, or an explicit `external-owner` value;
+- schema/index names and definitions for automation-state, cron-commit/mutation, agent-state, and `distributedPosts` records;
+- cron/manual/webhook/post-production trigger list with cadence, retry policy, and declared owner;
+- hash/checksum of each exported artifact so later evidence cannot silently drift.
+
+Until this artifact exists, the runtime repair remains `AWAITING_START` and no code from this repository may be promoted as the fix.
+
 ## Mandatory implementation invariants
 
 The eventual repair must satisfy all invariants below; these are mandatory, not preferences:
@@ -87,6 +100,20 @@ The deployed schema mapping must answer, with evidence, whether `cron_commit_mut
 
 If it is a shared mutable document, the repair must either partition writes away from it or prove atomic field-level compare-and-set plus fencing. Blind retries against the same record are not an acceptable repair.
 
+## Trigger ownership and dedupe inventory
+
+Before implementation approval, enumerate every caller and assign exactly one owner/dedupe boundary per logical job:
+
+| Trigger path | Affected function(s) | Required owner field | Shared dedupe boundary | Current status |
+|---|---|---|---|---|
+| Scheduled cron | all five reported functions | `cronScheduler` or named equivalent | `logicalJobKey` + unique claim index | `UNRESOLVED` |
+| Manual/admin action | each function exposed to operators | named command/UI owner | same claim/idempotency namespace as cron | `UNRESOLVED` |
+| Webhook/event callback | any function reachable from provider callbacks | named webhook handler | event/provider idempotency key mapped to logical job | `UNRESOLVED` |
+| Post-production hook | `runPostProductionAutomation` and downstream calls | post-production orchestrator | same claim record, not a second lock | `UNRESOLVED` |
+| Retry/replay worker | any retry queue or scheduler replay | retry coordinator | same claim token/fencing semantics | `UNRESOLVED` |
+
+A row may move to `RESOLVED` only with exact source/runtime evidence naming the caller and the durable dedupe boundary.
+
 ## Required Development validation
 
 Development validation is incomplete until the exact candidate revision is deployed to a named Development environment and each affected function has executable evidence for:
@@ -102,6 +129,21 @@ Development validation is incomplete until the exact candidate revision is deplo
 - zero duplicate side effects and zero lost side effects in the tested scenarios;
 - bounded conflict retries: no more than the configured finite budget, with final durable status;
 - authorization and service-role boundaries unchanged.
+
+### Executable validation matrix (required command/evidence fields)
+
+For every row, attach: exact candidate commit, Development deployment/revision, seed script or fixture, invocation command, concurrency level, expected durable states, observed durable states, before/after conflict counts, and artifact checksum.
+
+| Scenario | Minimum invocation | Required assertions | Status |
+|---|---|---|---|
+| Same-key overlap | launch 2+ concurrent invocations for one logical key | exactly one claim owner; loser is deduped/claim-conflict; one side-effect set | `AWAITING_START` |
+| Different-key overlap | launch 2+ concurrent invocations for distinct keys | no cross-key blocking or shared-record collision; both converge | `AWAITING_START` |
+| Response loss | commit succeeds, caller response is discarded, replay same request | no duplicate side effect; durable status remains singular/succeeded | `AWAITING_START` |
+| Lease expiry | pause owner beyond lease, start replacement owner | old token rejected; replacement may complete; no stale write | `AWAITING_START` |
+| Partial failure | fail one target after claim, allow remaining targets to proceed | per-target durable result; retry only failed target; no duplicate success | `AWAITING_START` |
+| Duplicate triggers | cron + manual or webhook + post-production for same window | one dedupe boundary; no duplicate writes | `AWAITING_START` |
+| Retry exhaustion | force transient conflicts until budget exhausted | bounded attempts; durable `failed`/`retry_exhausted`; no infinite loop | `AWAITING_START` |
+| Authorization regression | authorized, revoked, and cross-user invocations | unchanged authorization boundary; no service-role widening | `AWAITING_START` |
 
 Record numeric thresholds for the candidate revision:
 
@@ -151,6 +193,10 @@ Until every gate is complete, status is `AWAITING_START`, `IN_PROGRESS`, or `TRU
 - Claim record/index definition:
 - Lease/run-token/fencing semantics:
 - Reproduction harness and command:
+- Seed fixtures:
+- Concurrency level:
+- Expected durable states:
+- Observed durable states:
 - Conflict counts before:
 - Conflict counts after:
 - Duplicate side-effect result:
