@@ -4,6 +4,8 @@
 
 This is an evidence and promotion-gate document. It does **not** claim that the affected Production implementation is present in `interplanetary-fund2`, nor that any repair has been deployed. Status values are limited to `UNRESOLVED`, `AWAITING_START`, `IN_PROGRESS`, `TRUNCATED / INCOMPLETE`, and `ACCOMPLISHED`; `ACCOMPLISHED` is permitted only after implementation is merged/published, Development validation passes, and Production promotion plus observation are verified.
 
+**Current runbook status:** `TRUNCATED / INCOMPLETE` — the document defines mandatory gates and evidence requirements, but no deployed-runtime reconciliation, implementation, Development deployment, or Production promotion evidence is attached yet.
+
 ## Incident scope
 
 Production has reported recurring write conflicts between parallel automation functions and `cron_commit_mut...` documents involving:
@@ -162,3 +164,16 @@ Until every gate is complete, status is `AWAITING_START`, `IN_PROGRESS`, or `TRU
 - Agent 3 final review reference:
 - Production promotion decision:
 - Observation-window result:
+
+## Current evidence ledger
+
+| Evidence item | Current value | Status | Owner / next action |
+|---|---|---|---|
+| Production deployment identity | Not captured in this repository | `UNRESOLVED` | Convex owner: attach dashboard/export/API evidence |
+| Development deployment identity | Not captured in this repository | `UNRESOLVED` | Convex owner: attach named Development deployment and revision |
+| Deployed source mapping | Not proven from visible `fund2` source | `UNRESOLVED` | Convex owner: attach deployment-to-repository linkage or external-owner record |
+| Deployed schema/index mapping | Not captured | `UNRESOLVED` | Convex owner: attach schema/index export or equivalent |
+| Scheduler/trigger mapping | Not captured | `UNRESOLVED` | Operations owner: attach scheduler/log evidence |
+| Development conflict reproduction | Not run | `AWAITING_START` | Implementation owner: create executable harness after mapping |
+| Repair implementation | Not started in this repository | `AWAITING_START` | Actual owning backend repository/branch only |
+| Production promotion | Not authorized | `AWAITING_START` | Release owner: wait for all gates |
