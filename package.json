@@ -12,6 +12,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
+    "verify:record-campaign-created-boundary": "node scripts/verify-record-campaign-created-boundary.mjs",
     "verify:analytics-safety": "node scripts/verify-analytics-safety.mjs",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
