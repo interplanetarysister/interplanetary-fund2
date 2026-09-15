@@ -20,28 +20,33 @@ jobs:
   quality:
     name: Lint and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Report checked-out candidate SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "Checked-out candidate SHA: $(git rev-parse HEAD)"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
 
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
+      - name: Execute manifest-driven deterministic checks
+        run: npm run verify:exact-head-manifest -- --execute
+
       - name: Lint
         run: npm run lint
-
-      - name: Analytics safety contract
-        run: npm run verify:analytics-safety
-
-      - name: Edit AI profile safe-error contract
-        run: npm run verify:edit-ai-profile-safe-errors
 
       - name: Production build
         run: npm run build
@@ -51,13 +56,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout exact candidate head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Report checked-out candidate SHA
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          echo "Checked-out candidate SHA: $(git rev-parse HEAD)"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
 
       - name: Install locked dependencies
