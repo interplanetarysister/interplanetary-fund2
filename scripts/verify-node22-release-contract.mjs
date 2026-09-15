@@ -13,6 +13,20 @@ function read(path) {
   }
 }
 
+function parseNodeVersionDeclarations(text) {
+  const declarations = [];
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.replace(/#.*$/, '').trim();
+    if (!line || line.startsWith('-')) continue;
+    const match = line.match(/^node-version\s*:\s*(.+)$/);
+    if (!match) continue;
+    const rawValue = match[1].trim();
+    const value = rawValue.replace(/^['"]|['"]$/g, '');
+    declarations.push({ rawValue, value });
+  }
+  return declarations;
+}
+
 const pkgText = read('package.json');
 let pkg = {};
 try {
@@ -36,10 +50,14 @@ if (workflowFiles.length === 0) errors.push('no workflow files found under .gith
 for (const file of workflowFiles) {
   const path = join('.github', 'workflows', file);
   const text = read(path);
-  const nodeVersions = [...text.matchAll(/node-version:\s*['\"]?([^'\"\s]+)['\"]?/g)].map((m) => m[1]);
-  if (nodeVersions.length === 0) errors.push(`${path} has no node-version declaration`);
-  for (const version of nodeVersions) {
-    if (version !== '22' && version !== '22.x') errors.push(`${path} pins node-version ${version}`);
+  const declarations = parseNodeVersionDeclarations(text);
+  if (declarations.length === 0) errors.push(`${path} has no node-version declaration`);
+  for (const { rawValue, value } of declarations) {
+    if (value.includes('${{') || value.includes('*') || value.includes('|') || value.includes('>')) {
+      errors.push(`${path} has non-literal node-version ${rawValue}`);
+    } else if (value !== '22' && value !== '22.x') {
+      errors.push(`${path} pins node-version ${value}`);
+    }
   }
 }
 
