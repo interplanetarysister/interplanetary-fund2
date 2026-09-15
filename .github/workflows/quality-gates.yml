@@ -37,6 +37,9 @@ jobs:
       - name: Verify Node 22 release contract
         run: npm run verify:node22-release-contract
 
+      - name: Test Node 22 release contract failure cases
+        run: npm run test:node22-release-contract
+
       - name: Lint
         run: npm run lint
 
