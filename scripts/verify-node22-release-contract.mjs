@@ -13,16 +13,31 @@ function read(path) {
   }
 }
 
-const pkg = JSON.parse(read('package.json'));
+const pkgText = read('package.json');
+let pkg = {};
+try {
+  pkg = JSON.parse(pkgText);
+} catch {
+  errors.push('package.json must be valid JSON');
+}
 if (pkg.engines?.node !== '22.x') errors.push('package.json engines.node must be 22.x');
 if (read('.node-version').trim() !== '22') errors.push('.node-version must be 22');
 if (read('.nvmrc').trim() !== '22') errors.push('.nvmrc must be 22');
 
 const workflowsDir = join(root, '.github', 'workflows');
-for (const file of readdirSync(workflowsDir).filter((name) => /\.(yml|yaml)$/.test(name))) {
+let workflowFiles = [];
+try {
+  workflowFiles = readdirSync(workflowsDir).filter((name) => /\.(yml|yaml)$/.test(name));
+} catch {
+  errors.push('missing:.github/workflows');
+}
+if (workflowFiles.length === 0) errors.push('no workflow files found under .github/workflows');
+
+for (const file of workflowFiles) {
   const path = join('.github', 'workflows', file);
   const text = read(path);
   const nodeVersions = [...text.matchAll(/node-version:\s*['\"]?([^'\"\s]+)['\"]?/g)].map((m) => m[1]);
+  if (nodeVersions.length === 0) errors.push(`${path} has no node-version declaration`);
   for (const version of nodeVersions) {
     if (version !== '22' && version !== '22.x') errors.push(`${path} pins node-version ${version}`);
   }
