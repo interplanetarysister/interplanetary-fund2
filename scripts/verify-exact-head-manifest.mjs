@@ -29,7 +29,8 @@ const duplicateCommands = [...new Set(manifestCommands.filter((command, index) =
 if (duplicateCommands.length > 0) throw new Error(`Duplicate current-main manifest commands: ${duplicateCommands.join(", ")}`);
 
 const manifestDrivenScriptNames = Object.keys(pkg.scripts ?? {}).filter((command) => /^(?:verify|test):/.test(command));
-const unlistedPackageCommands = manifestDrivenScriptNames.filter((command) => !manifestCommands.includes(command));
+const selfReferentialCommands = new Set(["verify:exact-head-manifest"]);
+const unlistedPackageCommands = manifestDrivenScriptNames.filter((command) => !selfReferentialCommands.has(command) && !manifestCommands.includes(command));
 if (unlistedPackageCommands.length > 0) throw new Error(`Package verifier/test scripts missing from exact-head manifest: ${unlistedPackageCommands.join(", ")}`);
 
 const missingPackageCommands = manifestCommands.filter((command) => typeof pkg.scripts?.[command] !== "string");
@@ -75,7 +76,7 @@ if (!hasManifestDrivenExecution && missingWorkflowCommands.length > 0) {
 }
 
 console.log(`Manifest/package command mapping: PASS (${manifestCommands.length} current-main commands)`);
-console.log(`Manifest completeness: PASS (${manifestDrivenScriptNames.length} verifier/test scripts)`);
+console.log(`Manifest completeness: PASS (${manifestDrivenScriptNames.length} verifier/test scripts; self-check excluded from inventory drift)`);
 console.log(`Active workflow command references: ${workflowCommands.length}; unknown references: NONE`);
 console.log(hasManifestDrivenExecution
   ? "Workflow coverage: PASS (active manifest-driven execution is enabled)"
