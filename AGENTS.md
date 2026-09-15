@@ -7,7 +7,8 @@ This is the **authoritative user-facing Interplanetary Fund application implemen
 ### Current repository ownership
 
 - **Application implementation target:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior. Do not resume Vercel-specific or Convex-specific feature development and do not migrate obsolete hosting/runtime dependencies into this repository.
+- **Existing backend/runtime authority:** `InterplanetaryFund` remains the authoritative Convex backend/runtime for already-deployed payment, deduplication, agent-memory, and related bridges until an explicitly reviewed replacement is verified. Treat it as current backend ownership/evidence, not as disposable historical code.
+- **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior when they are not the current owner. Do not copy obsolete hosting/runtime dependencies or create competing state in Base44.
 - **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
 
 A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
@@ -17,11 +18,11 @@ A PR must target the repository that owns the current change. Never merge a PR f
 Before substantial work, read:
 
 1. `docs/ZERO_CREDIT_CONTINUOUS_WORK.md` — mandatory zero-credit/resumable work policy.
-2. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — use current applicable ownership information; if it conflicts with the newer zero-credit/Base44-only directive, update it rather than following stale Vercel/Convex scope.
-3. `docs/IF_FEATURE_RECONCILIATION_2026-08-21.md` — evidence-based feature baseline when feature work is involved; historical infrastructure statements are evidence, not current authority.
+2. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — use current applicable ownership information; preserve the authoritative Convex backend boundary unless a newer reviewed decision explicitly changes it.
+3. `docs/IF_FEATURE_RECONCILIATION_2026-08-21.md` — evidence-based feature baseline when feature work is involved; historical infrastructure statements are evidence, not automatic permission to duplicate runtime.
 4. The current issue/PR, branch/head, existing handoffs, and recent findings.
 
-Do not rely on old chat transcripts or stale archived infrastructure decisions when a newer repository directive supersedes them.
+Do not rely on old chat transcripts or stale archived infrastructure decisions when a newer repository directive supersedes them, but do not silently override an existing backend/runtime owner with a documentation-only Base44 rule.
 
 ## Mandatory zero-credit development rule
 
@@ -44,7 +45,7 @@ Never assume runtime configuration, payment availability, deployment state, envi
 
 ## Base44 application boundary
 
-Use the existing Base44 application architecture in this repository. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not duplicate Convex runtime/backend implementation. Older implementations may be inspected as read-only evidence for application behavior that is still needed.
+Use the existing Base44 application architecture in this repository for product work that it owns. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not duplicate Convex runtime/backend implementation. Preserve existing Convex-owned payment, deduplication, and agent-memory bridges until a reviewed migration replaces them. Older implementations may be inspected as read-only evidence for application behavior that is still needed.
 
 ## Key Files
 
@@ -52,7 +53,6 @@ Use the existing Base44 application architecture in this repository. Do not add 
 - `src/api/base44Client.js`: frontend Base44 SDK client.
 - `vite.config.js`: Vite config and Base44 Vite plugin setup.
 - `base44/`: Base44 entities and application-layer agent/workflow definitions/configuration.
-- `.env.local`: local-only environment values; never commit secrets.
 
 ## Working Notes
 
@@ -70,4 +70,4 @@ A full rewrite is allowed only when the existing artifact cannot safely be edite
 
 ## Continuity rule
 
-When a new decision changes repository ownership, agent roles, workflow, hosting scope, or application boundaries, update the affected durable repository instructions so stale guidance cannot silently override the newer decision.
+When a new decision changes repository ownership, agent roles, workflow, hosting scope, or application boundaries, update the affected durable repository instructions so stale guidance cannot silently override the newer decision. Runtime/version claims must be derived from the exact current `main` configuration and kept consistent across package metadata, lockfiles, version files, CI, and active PR handoffs; documentation alone cannot declare a new Node target.
