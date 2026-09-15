@@ -4,9 +4,33 @@ import vm from 'node:vm';
 const source = fs.readFileSync('src/components/platform/ServiceHealthPanel.jsx', 'utf8');
 
 function extractFunction(name) {
-  const match = source.match(new RegExp(`function ${name}\\(.*?\\) \\{[\\s\\S]*?\\n\\}`));
+  const signature = new RegExp(`function\\s+${name}\\s*\\(`);
+  const match = signature.exec(source);
   if (!match) throw new Error(`Missing ${name}`);
-  return match[0];
+  const openBrace = source.indexOf('{', match.index);
+  if (openBrace < 0) throw new Error(`Missing body for ${name}`);
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+  for (let i = openBrace; i < source.length; i += 1) {
+    const ch = source[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') {
+      quote = ch;
+      continue;
+    }
+    if (ch === '{') depth += 1;
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) return source.slice(match.index, i + 1);
+    }
+  }
+  throw new Error(`Unclosed body for ${name}`);
 }
 
 const context = { Set, console };
@@ -67,7 +91,7 @@ if (source.includes('console.error(e') || source.includes('console.error(error')
   throw new Error('Raw exception sink detected');
 }
 
-const diagnosticMatch = source.match(/console\.error\(`([^`]+)`\);/);
+const diagnosticMatch = source.match(/console\\.error\\(`([^`]+)`\\);/);
 if (!diagnosticMatch) throw new Error('Missing bounded diagnostic console call');
 if (!diagnosticMatch[1].includes('sanitizeServiceName(s.name)')) throw new Error('Diagnostic does not sanitize service name');
 if (!diagnosticMatch[1].includes('(\\${failureType})')) throw new Error('Diagnostic does not use bounded failure type');
