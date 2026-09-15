@@ -14,38 +14,26 @@ const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
 const workflow = fs.readFileSync(workflowPath, "utf8");
 
 const currentMainSection = manifest.match(/## Current-main commands([\s\S]*?)## Active PR-local verifier inventory/);
-if (!currentMainSection) {
-  throw new Error("Missing Current-main commands section in exact-head manifest");
-}
+if (!currentMainSection) throw new Error("Missing Current-main commands section in exact-head manifest");
 
-const sectionText = currentMainSection[1];
-const rows = sectionText.split(/\r?\n/).filter((line) => line.trim().startsWith("-") && line.includes("`"));
 const manifestCommands = [];
-for (const row of rows) {
+for (const row of currentMainSection[1].split(/\r?\n/)) {
+  if (!row.trim().startsWith("-") || !row.includes("`")) continue;
   const match = row.match(/^\s*-\s+`([^`]+)`\s+—\s+.+$/);
-  if (!match) {
-    throw new Error(`Malformed current-main command row: ${row.trim()}`);
-  }
+  if (!match) throw new Error(`Malformed current-main command row: ${row.trim()}`);
   manifestCommands.push(match[1]);
 }
-if (manifestCommands.length === 0) {
-  throw new Error("No current-main commands discovered from exact-head manifest");
-}
+if (manifestCommands.length === 0) throw new Error("No current-main commands discovered from exact-head manifest");
+
 const duplicateCommands = [...new Set(manifestCommands.filter((command, index) => manifestCommands.indexOf(command) !== index))];
-if (duplicateCommands.length > 0) {
-  throw new Error(`Duplicate current-main manifest commands: ${duplicateCommands.join(", ")}`);
-}
+if (duplicateCommands.length > 0) throw new Error(`Duplicate current-main manifest commands: ${duplicateCommands.join(", ")}`);
 
 const manifestDrivenScriptNames = Object.keys(pkg.scripts ?? {}).filter((command) => /^(?:verify|test):/.test(command));
 const unlistedPackageCommands = manifestDrivenScriptNames.filter((command) => !manifestCommands.includes(command));
-if (unlistedPackageCommands.length > 0) {
-  throw new Error(`Package verifier/test scripts missing from exact-head manifest: ${unlistedPackageCommands.join(", ")}`);
-}
+if (unlistedPackageCommands.length > 0) throw new Error(`Package verifier/test scripts missing from exact-head manifest: ${unlistedPackageCommands.join(", ")}`);
 
 const missingPackageCommands = manifestCommands.filter((command) => typeof pkg.scripts?.[command] !== "string");
-if (missingPackageCommands.length > 0) {
-  throw new Error(`Manifest commands missing from package.json scripts: ${missingPackageCommands.join(", ")}`);
-}
+if (missingPackageCommands.length > 0) throw new Error(`Manifest commands missing from package.json scripts: ${missingPackageCommands.join(", ")}`);
 
 function extractActiveRunCommands(yaml) {
   const commands = [];
@@ -66,19 +54,19 @@ function extractActiveRunCommands(yaml) {
       continue;
     }
     if (!inRunBlock) continue;
+
     const uncommented = rawLine.replace(/\s+#.*$/, "");
-    for (const match of uncommented.matchAll(/\bnpm run ([A-Za-z0-9:_-]+)/g)) {
-      commands.push(match[1]);
-    }
+    const executable = uncommented.trim();
+    if (!executable || executable.startsWith("#") || /^(?:echo|printf|cat|test)\b/.test(executable)) continue;
+    const match = executable.match(/^npm\s+run\s+([A-Za-z0-9:_-]+)(?:\s|$)/);
+    if (match) commands.push(match[1]);
   }
   return commands;
 }
 
 const workflowCommands = extractActiveRunCommands(workflow);
 const unknownWorkflowCommands = [...new Set(workflowCommands.filter((command) => typeof pkg.scripts?.[command] !== "string"))];
-if (unknownWorkflowCommands.length > 0) {
-  throw new Error(`quality-gates.yml invokes commands absent from package.json: ${unknownWorkflowCommands.join(", ")}`);
-}
+if (unknownWorkflowCommands.length > 0) throw new Error(`quality-gates.yml invokes commands absent from package.json: ${unknownWorkflowCommands.join(", ")}`);
 
 const hasManifestDrivenExecution = workflowCommands.includes("verify:exact-head-manifest");
 const missingWorkflowCommands = manifestCommands.filter((command) => !workflowCommands.includes(command));
@@ -89,13 +77,11 @@ if (!hasManifestDrivenExecution && missingWorkflowCommands.length > 0) {
 console.log(`Manifest/package command mapping: PASS (${manifestCommands.length} current-main commands)`);
 console.log(`Manifest completeness: PASS (${manifestDrivenScriptNames.length} verifier/test scripts)`);
 console.log(`Active workflow command references: ${workflowCommands.length}; unknown references: NONE`);
-if (hasManifestDrivenExecution) {
-  console.log("Workflow coverage: PASS (active manifest-driven execution is enabled)");
-} else if (missingWorkflowCommands.length > 0) {
-  console.log(`Workflow coverage gaps: ${missingWorkflowCommands.join(", ")}`);
-} else {
-  console.log("Workflow coverage: PASS (all manifest commands referenced directly)");
-}
+console.log(hasManifestDrivenExecution
+  ? "Workflow coverage: PASS (active manifest-driven execution is enabled)"
+  : missingWorkflowCommands.length > 0
+    ? `Workflow coverage gaps: ${missingWorkflowCommands.join(", ")}`
+    : "Workflow coverage: PASS (all manifest commands referenced directly)");
 
 if (process.argv.includes("--execute")) {
   for (const command of manifestCommands) {
@@ -111,24 +97,14 @@ if (process.argv.includes("--execute")) {
     const stdout = typeof result.stdout === "string" ? result.stdout : "";
     const stderr = typeof result.stderr === "string" ? result.stderr : "";
     const boundedOutput = `${stdout}${stderr}`.slice(0, COMMAND_OUTPUT_LIMIT);
-    if (boundedOutput) {
-      process.stdout.write(boundedOutput);
-    }
+    if (boundedOutput) process.stdout.write(boundedOutput);
     if (result.error) {
-      if (result.error.code === "ETIMEDOUT") {
-        throw new Error(`Manifest command timed out after ${COMMAND_TIMEOUT_MS}ms: npm run ${command}`);
-      }
-      if (result.error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
-        throw new Error(`Manifest command exceeded ${COMMAND_OUTPUT_LIMIT}-byte output limit: npm run ${command}`);
-      }
+      if (result.error.code === "ETIMEDOUT") throw new Error(`Manifest command timed out after ${COMMAND_TIMEOUT_MS}ms: npm run ${command}`);
+      if (result.error.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") throw new Error(`Manifest command exceeded ${COMMAND_OUTPUT_LIMIT}-byte output limit: npm run ${command}`);
       throw new Error(`Manifest command could not start: npm run ${command}: ${result.error.message}`);
     }
-    if (result.signal) {
-      throw new Error(`Manifest command terminated by signal ${result.signal}: npm run ${command}`);
-    }
-    if (result.status !== 0) {
-      throw new Error(`Manifest command failed: npm run ${command} (exit ${result.status ?? "unknown"})`);
-    }
+    if (result.signal) throw new Error(`Manifest command terminated by signal ${result.signal}: npm run ${command}`);
+    if (result.status !== 0) throw new Error(`Manifest command failed: npm run ${command} (exit ${result.status ?? "unknown"})`);
   }
   console.log(`Manifest-driven execution: PASS (${manifestCommands.length} commands)`);
 }
