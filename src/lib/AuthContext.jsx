@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { safeErrorDiagnostic } from '@/lib/safe-error-diagnostic';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
@@ -45,7 +46,7 @@ export const AuthProvider = ({ children }) => {
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
-        console.error('App state check failed:', appError);
+        console.error('App state check failed:', safeErrorDiagnostic(appError));
         
         // Preserve intentional auth-state messages but never expose provider/server exception text.
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
@@ -76,7 +77,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
+      console.error('Unexpected error:', safeErrorDiagnostic(error));
       setAuthError({
         type: 'unknown',
         message: SAFE_APP_ERROR
@@ -103,7 +104,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
-      console.error('User auth check failed:', error);
+      console.error('User auth check failed:', safeErrorDiagnostic(error));
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
@@ -139,22 +140,15 @@ export const AuthProvider = ({ children }) => {
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
-      appPublicSettings,
       authChecked,
+      appPublicSettings,
       logout,
       navigateToLogin,
-      checkUserAuth,
-      checkAppState
+      checkUserAuth
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
