@@ -15,6 +15,7 @@
     "verify:analytics-safety": "node scripts/verify-analytics-safety.mjs",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
+    "verify:ops-center-safe-diagnostics": "node scripts/verify-ops-center-safe-diagnostics.mjs",
     "test:fees": "node scripts/test-fee-calc.mjs",
     "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
     "test:financial-integrity": "node scripts/test-financial-integrity.mjs",
@@ -107,7 +108,7 @@
     "eslint-plugin-react-refresh": "^0.4.18",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^15.14.0",
-    "postcss": "^8.5.26",
+    "postcss": "^8.5.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"
