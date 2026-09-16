@@ -10,6 +10,18 @@ import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
+const SAFE_OPS_ERROR = "We couldn't load Ops Center data.";
+const SAFE_SYNC_ERROR = "Sync failed — showing cached data.";
+
+function hasMeaningfulMessage(value) {
+  if (value === null || (typeof value !== "object" && typeof value !== "function")) return false;
+  try {
+    return typeof value.message === "string" && value.message.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
 // Base44 entities so the dashboard works offline; Sync Now refreshes it.
 export default function OpsCenter() {
@@ -35,7 +47,8 @@ export default function OpsCenter() {
       setTreasury(t[0] || null);
       setReports(r);
     } catch (e) {
-      setError(e.message || "We couldn't load Ops Center data.");
+      void hasMeaningfulMessage(e);
+      setError(SAFE_OPS_ERROR);
     } finally {
       setLoading(false);
     }
@@ -48,12 +61,14 @@ export default function OpsCenter() {
     setSyncError("");
     try {
       const res = await base44.functions.invoke("syncFromConvex", {});
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Sync request failed");
       await load();
     } catch (e) {
-      setSyncError(e.message || "Sync failed — showing cached data.");
+      void hasMeaningfulMessage(e);
+      setSyncError(SAFE_SYNC_ERROR);
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   };
 
   const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
