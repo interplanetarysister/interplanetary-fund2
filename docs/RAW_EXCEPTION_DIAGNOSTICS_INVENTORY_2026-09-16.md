@@ -36,11 +36,16 @@ This inventory records raw or conditionally raw exception diagnostics found on e
 | 11 | `base44/functions/publishPost/entry.ts` | Conditional raw publish error | conditional-unbounded | External posting path | Issue #94; new remediation PR required | Bound diagnostics; preserve durable failure state and retry semantics. |
 | 12 | `base44/functions/volunteerFollowUp/entry.ts` | `e.message` | conditional-unbounded | Email side effect | Issue #94; new remediation PR required | Bound diagnostics; preserve non-blocking behavior. |
 | 13 | `base44/functions/deleteAccount/entry.ts` | Step error detail interpolated into log/audit | confirmed-raw | Account deletion path | Issue #94; new remediation PR required | Bound diagnostics; preserve auditability without exposing raw provider/user data. |
+| 14 | `base44/shared/integrationRegistry.ts` | `e && e.message ? e.message : e` in `console.error` | conditional-unbounded | Integration/provider diagnostics | Issue #94; new remediation PR required | Bound diagnostics; verify credential/provider detail exclusion. |
+| 15 | `base44/functions/recordDonation/entry.ts` | Additional exact-head diagnostic sink identified by review | unresolved | Financial ingestion path | Issue #94; new remediation PR required | Revalidate exact expression and downstream visibility before remediation. |
+| 16 | `src/pages/Profile.jsx` | Additional exact-head diagnostic sink identified by review | unresolved | Client profile path | Issue #94; new remediation PR required | Revalidate exact expression and whether any user-visible/error boundary path is involved. |
+| 17 | `src/components/ErrorBoundary.jsx` | Additional exact-head diagnostic sink identified by review | already-bounded/false-positive | Client error boundary | PRs #303/#305/#307/#309 | Preserve existing owner; do not duplicate remediation in this PR. |
 
 ## Cross-check against active remediation work
 
 - ErrorBoundary sinks are owned by PRs #303/#305/#307/#309 and are not duplicated here.
 - ServiceHealthPanel is owned by PR #322 and is not duplicated here.
+- `src/components/ErrorBoundary.jsx` is retained as an explicit already-bounded/owned disposition only.
 - All other rows remain unowned remediation candidates under Issue #94 until a focused PR is opened.
 - Convex automation concurrency remains a separate source-of-truth/Development-first workstream under Issue #310/#218 and is intentionally excluded from this inventory.
 
