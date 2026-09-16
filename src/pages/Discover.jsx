@@ -8,6 +8,7 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import PageError from "@/components/PageError";
 import PageTips from "@/components/coach/PageTips";
+import { getSafeErrorDiagnostic } from "@/lib/safe-error-diagnostic";
 
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
@@ -19,7 +20,10 @@ export default function Discover() {
   useEffect(() => {
     base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
       .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load campaigns."));
+      .catch((e) => {
+        console.error("Discover campaign load failed", getSafeErrorDiagnostic(e));
+        setError("We couldn't load campaigns right now. Please try again.");
+      });
   }, [refreshKey]);
 
   if (error) {
