@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RefreshCw, Loader2 } from "lucide-react";
@@ -13,15 +13,6 @@ import PageError from "@/components/PageError";
 const SAFE_OPS_ERROR = "We couldn't load Ops Center data.";
 const SAFE_SYNC_ERROR = "Sync failed — showing cached data.";
 
-function hasMeaningfulMessage(value) {
-  if (value === null || (typeof value !== "object" && typeof value !== "function")) return false;
-  try {
-    return typeof value.message === "string" && value.message.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
 // Base44 entities so the dashboard works offline; Sync Now refreshes it.
 export default function OpsCenter() {
@@ -33,8 +24,11 @@ export default function OpsCenter() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [error, setError] = useState(null);
+  const syncInFlight = useRef(false);
+  const loadGeneration = useRef(0);
 
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     try {
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
@@ -42,31 +36,34 @@ export default function OpsCenter() {
         base44.entities.TreasurySnapshot.list("-created_date", 1),
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
+      if (generation !== loadGeneration.current) return;
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
       setReports(r);
-    } catch (e) {
-      void hasMeaningfulMessage(e);
-      setError(SAFE_OPS_ERROR);
+    } catch {
+      if (generation === loadGeneration.current) setError(SAFE_OPS_ERROR);
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const syncNow = async () => {
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
     setSyncing(true);
     setSyncError("");
     try {
       const res = await base44.functions.invoke("syncFromConvex", {});
-      if (res.data?.error) throw new Error("Sync request failed");
+      const data = res && typeof res.data === "object" && res.data !== null ? res.data : null;
+      if (data && data.error) throw new Error("Sync request failed");
       await load();
-    } catch (e) {
-      void hasMeaningfulMessage(e);
+    } catch {
       setSyncError(SAFE_SYNC_ERROR);
     } finally {
+      syncInFlight.current = false;
       setSyncing(false);
     }
   };
