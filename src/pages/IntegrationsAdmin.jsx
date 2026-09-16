@@ -7,6 +7,13 @@ import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
 
+const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry.";
+const SAFE_HEALTH_ERROR = "Health check failed.";
+
+function safeMessage() {
+  return SAFE_REGISTRY_ERROR;
+}
+
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
   const [entries, setEntries] = useState(null);
@@ -16,30 +23,36 @@ export default function IntegrationsAdmin() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
+    let active = true;
     (async () => {
       try {
         const me = await base44.auth.me();
+        if (!active) return;
         setUser(me);
         if (me.role !== "admin") return;
         const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-        setEntries(list);
-      } catch (e) {
-        setError(e.message || "Couldn't load the integration registry.");
+        if (!active) return;
+        setEntries(Array.isArray(list) ? list : []);
+      } catch {
+        if (active) setError(safeMessage());
       }
     })();
+    return () => { active = false; };
   }, [refreshKey]);
 
   const reload = () => setRefreshKey((k) => k + 1);
 
   const runHealthCheck = async () => {
+    if (checking) return;
     setChecking(true);
     try {
       await base44.functions.invoke("validateIntegrationHealth", {});
       reload();
-    } catch (e) {
-      setError(e.message || "Health check failed.");
+    } catch {
+      setError(SAFE_HEALTH_ERROR);
+    } finally {
+      setChecking(false);
     }
-    setChecking(false);
   };
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
