@@ -39,9 +39,6 @@ jobs:
           ref: ${{ env.EXPECTED_COMMIT_SHA }}
           fetch-depth: 1
 
-      - name: Assert exact candidate checkout
-        run: npm run verify:exact-head-checkout
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -50,6 +47,9 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+
+      - name: Assert exact candidate checkout
+        run: npm run verify:exact-head-checkout
 
       - name: Verify Node 22 release contract
         run: npm run verify:node22-release-contract
@@ -88,9 +88,6 @@ jobs:
           ref: ${{ env.EXPECTED_COMMIT_SHA }}
           fetch-depth: 1
 
-      - name: Assert exact candidate checkout
-        run: npm run verify:exact-head-checkout
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -99,6 +96,9 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+
+      - name: Assert exact candidate checkout
+        run: npm run verify:exact-head-checkout
 
       - name: Typecheck
         run: npm run typecheck
