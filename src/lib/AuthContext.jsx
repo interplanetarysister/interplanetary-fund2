@@ -6,6 +6,18 @@ import { safeErrorDiagnostic } from '@/lib/safe-error-diagnostic';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
+const SAFE_AUTH_REASONS = new Set(['auth_required', 'user_not_registered']);
+
+function readIntentionalAuthReason(value) {
+  try {
+    if (!value || typeof value !== 'object') return null;
+    if (value.status !== 403) return null;
+    const reason = value.data?.extra_data?.reason;
+    return SAFE_AUTH_REASONS.has(reason) ? reason : null;
+  } catch {
+    return null;
+  }
+}
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -47,31 +59,13 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', safeErrorDiagnostic(appError));
-        
-        // Preserve intentional auth-state messages but never expose provider/server exception text.
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: SAFE_APP_ERROR
-            });
-          }
+        const reason = readIntentionalAuthReason(appError);
+        if (reason === 'auth_required') {
+          setAuthError({ type: 'auth_required', message: 'Authentication required' });
+        } else if (reason === 'user_not_registered') {
+          setAuthError({ type: 'user_not_registered', message: 'User not registered for this app' });
         } else {
-          setAuthError({
-            type: 'unknown',
-            message: SAFE_APP_ERROR
-          });
+          setAuthError({ type: 'unknown', message: SAFE_APP_ERROR });
         }
         setIsLoadingPublicSettings(false);
         setIsLoadingAuth(false);
@@ -91,8 +85,6 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
-      // Revoke access for an account whose deletion is in progress — the
-      // backend state machine set account_deletion_pending before wiping data.
       if (currentUser?.account_deletion_pending) {
         setIsLoadingAuth(false);
         setAuthChecked(true);
@@ -108,12 +100,12 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
-      
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
+      try {
+        if (error?.status === 401 || error?.status === 403) {
+          setAuthError({ type: 'auth_required', message: 'Authentication required' });
+        }
+      } catch {
+        // Ignore hostile thrown values and preserve safe unauthenticated state.
       }
     }
   };
@@ -144,11 +136,18 @@ export const AuthProvider = ({ children }) => {
       appPublicSettings,
       logout,
       navigateToLogin,
-      checkUserAuth
+      checkUserAuth,
+      checkAppState
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
