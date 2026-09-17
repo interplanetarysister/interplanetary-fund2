@@ -8,6 +8,7 @@ import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { safeAuthPageError } from "@/lib/safe-auth-page-error";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -25,8 +26,8 @@ export default function Login() {
     try {
       await base44.auth.loginViaEmailPassword(email, password);
       window.location.href = returnTo;
-    } catch (err) {
-      setError(err.message || "Invalid email or password");
+    } catch (_err) {
+      setError(safeAuthPageError());
     } finally {
       setLoading(false);
     }
@@ -72,7 +73,7 @@ export default function Login() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm" role="alert">
           {error}
         </div>
       )}
