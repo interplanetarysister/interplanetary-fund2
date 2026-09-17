@@ -24,6 +24,7 @@ export default function IntegrationsAdmin() {
 
   useEffect(() => {
     let active = true;
+    let authResolved = false;
     const requestId = ++requestIdRef.current;
     setError(null);
     setEntries(null);
@@ -32,6 +33,7 @@ export default function IntegrationsAdmin() {
       try {
         const me = await base44.auth.me();
         if (!active || requestId !== requestIdRef.current) return;
+        authResolved = true;
         setUser(me);
         if (me?.role !== "admin") return;
         const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
@@ -41,10 +43,9 @@ export default function IntegrationsAdmin() {
           return;
         }
         setEntries(list);
-      } catch (value) {
+      } catch {
         if (!active || requestId !== requestIdRef.current) return;
-        if (user === null) setError(SAFE_AUTH_ERROR);
-        else setError(SAFE_REGISTRY_ERROR);
+        setError(authResolved ? SAFE_REGISTRY_ERROR : SAFE_AUTH_ERROR);
       }
     })();
     return () => { active = false; };
