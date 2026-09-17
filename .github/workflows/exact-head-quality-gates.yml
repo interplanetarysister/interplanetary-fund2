@@ -1,0 +1,58 @@
+name: Exact-head quality gates
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: exact-head-quality-gates-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
+
+      - name: Deterministic payment and financial checks
+        run: npm run test:payments
+
+      - name: Run all committed verifier scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          verifiers=(scripts/verify-*.mjs)
+          if [ ${#verifiers[@]} -eq 0 ]; then
+            echo "No verifier scripts found; failing release gate."
+            exit 1
+          fi
+          for verifier in "${verifiers[@]}"; do
+            echo "Running ${verifier}"
+            node "${verifier}"
+          done
