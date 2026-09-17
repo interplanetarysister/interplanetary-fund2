@@ -5,6 +5,28 @@ import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
+const ALLOWED_AUTH_REASONS = new Set(['auth_required', 'user_not_registered']);
+
+const classifyDiagnostic = (error) => {
+  if (error === null || error === undefined) return 'nullish';
+  if (typeof error === 'string') return 'string';
+  if (typeof error === 'object') {
+    const tag = Object.prototype.toString.call(error);
+    if (tag === '[object Error]') return 'error';
+    return 'object';
+  }
+  return typeof error;
+};
+
+const logSafeDiagnostic = (label, error) => {
+  console.error(`${label} [${classifyDiagnostic(error)}]`);
+};
+
+const getSafeAuthReason = (error) => {
+  if (error?.status !== 403 || typeof error?.data?.extra_data?.reason !== 'string') return null;
+  const reason = error.data.extra_data.reason;
+  return ALLOWED_AUTH_REASONS.has(reason) ? reason : 'unknown';
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -45,27 +67,20 @@ export const AuthProvider = ({ children }) => {
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
-        console.error('App state check failed:', appError);
+        logSafeDiagnostic('App state check failed:', appError);
         
-        // Preserve intentional auth-state messages but never expose provider/server exception text.
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
-          if (reason === 'auth_required') {
-            setAuthError({
-              type: 'auth_required',
-              message: 'Authentication required'
-            });
-          } else if (reason === 'user_not_registered') {
-            setAuthError({
-              type: 'user_not_registered',
-              message: 'User not registered for this app'
-            });
-          } else {
-            setAuthError({
-              type: reason,
-              message: SAFE_APP_ERROR
-            });
-          }
+        // Preserve only the intentional, documented auth-state messages.
+        const reason = getSafeAuthReason(appError);
+        if (reason === 'auth_required') {
+          setAuthError({
+            type: 'auth_required',
+            message: 'Authentication required'
+          });
+        } else if (reason === 'user_not_registered') {
+          setAuthError({
+            type: 'user_not_registered',
+            message: 'User not registered for this app'
+          });
         } else {
           setAuthError({
             type: 'unknown',
@@ -76,7 +91,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingAuth(false);
       }
     } catch (error) {
-      console.error('Unexpected error:', error);
+      logSafeDiagnostic('Unexpected error:', error);
       setAuthError({
         type: 'unknown',
         message: SAFE_APP_ERROR
@@ -103,12 +118,12 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
-      console.error('User auth check failed:', error);
+      logSafeDiagnostic('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
       
-      if (error.status === 401 || error.status === 403) {
+      if (error?.status === 401 || error?.status === 403) {
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'
