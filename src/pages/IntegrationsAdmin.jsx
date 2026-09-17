@@ -51,7 +51,7 @@ export default function IntegrationsAdmin() {
           setError(SAFE_AUTH_PAYLOAD_ERROR);
           return;
         }
-        setUser(me);
+        setUser({ role: authState.role });
         if (authState.role !== "admin") return;
         const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
         if (!active || requestId !== requestIdRef.current) return;
