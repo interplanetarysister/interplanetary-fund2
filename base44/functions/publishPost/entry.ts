@@ -4,6 +4,24 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
+const SAFE_DIAGNOSTIC_TYPES = new Set([
+  'Error',
+  'TypeError',
+  'RangeError',
+  'ReferenceError',
+  'SyntaxError',
+  'URIError',
+  'AbortError',
+]);
+
+function diagnosticType(error: unknown): string {
+  if (error && typeof error === 'object' && 'name' in error) {
+    const name = (error as { name?: unknown }).name;
+    if (typeof name === 'string' && SAFE_DIAGNOSTIC_TYPES.has(name)) return name;
+  }
+  return typeof error;
+}
+
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
 // real; otherwise it returns manual=true so the UI hands the owner the
@@ -54,12 +72,12 @@ export default async function(req) {
       });
       await base44.entities.PlatformConnection.update(connection.id, {
         last_synced: new Date().toISOString(),
-        history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
+        history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for \"${post.campaign_title}\"` }].slice(-30),
       });
       await logAudit(base44, { action: 'post_published', target_type: 'distributed_post', target_id: post_id, detail: `Published to ${connection.platform}`, status: 'success' });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {
-      console.error('publishPost publish error:', pubError && pubError.message ? pubError.message : pubError);
+      console.error('publishPost publish failed:', diagnosticType(pubError));
       await base44.entities.DistributedPost.update(post_id, {
         status: 'failed',
         error: 'Publishing failed.',
@@ -69,7 +87,7 @@ export default async function(req) {
       return Response.json({ error: 'Publishing failed. Try again or post manually on the platform.' }, { status: 502 });
     }
   } catch (error) {
-    console.error('publishPost error:', error.message);
+    console.error('publishPost failed:', diagnosticType(error));
     return Response.json({ error: 'Unable to publish this post. Please try again.' }, { status: 500 });
   }
 }
