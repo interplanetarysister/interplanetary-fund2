@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,10 @@ import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
 
+const SAFE_AUTH_ERROR = "We couldn't verify administrator access.";
 const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry.";
+const SAFE_REGISTRY_UNAVAILABLE = "The integration registry is temporarily unavailable.";
 const SAFE_HEALTH_ERROR = "Health check failed.";
-
-function safeMessage() {
-  return SAFE_REGISTRY_ERROR;
-}
 
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
@@ -21,20 +19,32 @@ export default function IntegrationsAdmin() {
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const requestIdRef = useRef(0);
+  const healthFlightRef = useRef(null);
 
   useEffect(() => {
     let active = true;
+    const requestId = ++requestIdRef.current;
+    setError(null);
+    setEntries(null);
+
     (async () => {
       try {
         const me = await base44.auth.me();
-        if (!active) return;
+        if (!active || requestId !== requestIdRef.current) return;
         setUser(me);
-        if (me.role !== "admin") return;
+        if (me?.role !== "admin") return;
         const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-        if (!active) return;
-        setEntries(Array.isArray(list) ? list : []);
-      } catch {
-        if (active) setError(safeMessage());
+        if (!active || requestId !== requestIdRef.current) return;
+        if (!Array.isArray(list)) {
+          setError(SAFE_REGISTRY_UNAVAILABLE);
+          return;
+        }
+        setEntries(list);
+      } catch (value) {
+        if (!active || requestId !== requestIdRef.current) return;
+        if (user === null) setError(SAFE_AUTH_ERROR);
+        else setError(SAFE_REGISTRY_ERROR);
       }
     })();
     return () => { active = false; };
@@ -43,16 +53,21 @@ export default function IntegrationsAdmin() {
   const reload = () => setRefreshKey((k) => k + 1);
 
   const runHealthCheck = async () => {
-    if (checking) return;
-    setChecking(true);
-    try {
-      await base44.functions.invoke("validateIntegrationHealth", {});
-      reload();
-    } catch {
-      setError(SAFE_HEALTH_ERROR);
-    } finally {
-      setChecking(false);
-    }
+    if (healthFlightRef.current) return healthFlightRef.current;
+    const flight = (async () => {
+      setChecking(true);
+      try {
+        await base44.functions.invoke("validateIntegrationHealth", {});
+        reload();
+      } catch {
+        setError(SAFE_HEALTH_ERROR);
+      } finally {
+        healthFlightRef.current = null;
+        setChecking(false);
+      }
+    })();
+    healthFlightRef.current = flight;
+    return flight;
   };
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
