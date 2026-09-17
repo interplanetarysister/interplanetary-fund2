@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link2, Rocket, Share2, RefreshCw } from "lucide-react";
@@ -8,6 +8,11 @@ import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import PageError from "@/components/PageError";
+
+const SAFE_LOAD_ERROR = "We couldn't load your connections. Please try again.";
+const SAFE_SYNC_ERROR = "We couldn't sync your linked platforms. Please try again.";
+const SAFE_MALFORMED_CONNECTIONS = "Connections are temporarily unavailable. Please try again.";
+const SAFE_MALFORMED_SYNC = "Sync returned an unavailable response. Please try again.";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -20,41 +25,72 @@ export default function Connections() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [fetchPlatform, setFetchPlatform] = useState(null);
+  const requestGeneration = useRef(0);
+  const syncInFlight = useRef(false);
+  const mountedRef = useRef(true);
   const subscriptionActive = user?.subscription_status === "active";
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
   const syncAll = async () => {
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
     setSyncing(true);
     setSyncResult(null);
     try {
       const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
-      setSyncResult(data);
+      if (!mountedRef.current) return;
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        setSyncResult({ error: SAFE_MALFORMED_SYNC });
+        return;
+      }
+      const nextResult = data.error ? { error: SAFE_SYNC_ERROR } : data;
+      setSyncResult(nextResult);
       const r = await base44.functions.invoke("listConnections", {});
-      setConnections(r.data.connections);
+      if (!mountedRef.current) return;
+      const nextConnections = r?.data?.connections;
+      if (!Array.isArray(nextConnections)) {
+        setSyncResult({ error: SAFE_MALFORMED_CONNECTIONS });
+        return;
+      }
+      setConnections(nextConnections);
     } catch (e) {
-      setSyncResult({ error: e.message || "Sync failed." });
+      if (mountedRef.current) setSyncResult({ error: SAFE_SYNC_ERROR });
+    } finally {
+      syncInFlight.current = false;
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
 
   useEffect(() => {
+    mountedRef.current = true;
+    const generation = ++requestGeneration.current;
     (async () => {
      try {
       const [me, connRes] = await Promise.all([
         base44.auth.me(),
         base44.functions.invoke("listConnections", {}),
       ]);
+      if (!mountedRef.current || generation !== requestGeneration.current) return;
+      const nextConnections = connRes?.data?.connections;
+      if (!Array.isArray(nextConnections)) {
+        setError(SAFE_MALFORMED_CONNECTIONS);
+        return;
+      }
       setUser(me);
-      setConnections(connRes.data.connections);
+      setConnections(nextConnections);
      } catch (e) {
-       setError(e.message || "We couldn't load your connections.");
+       if (mountedRef.current && generation === requestGeneration.current) setError(SAFE_LOAD_ERROR);
      }
     })();
+    return () => {
+      mountedRef.current = false;
+      requestGeneration.current += 1;
+    };
   }, []);
 
   if (error) {
-    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); }} /></div>;
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); window.location.reload(); }} /></div>;
   }
   if (!connections) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
