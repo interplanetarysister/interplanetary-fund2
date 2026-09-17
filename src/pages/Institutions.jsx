@@ -15,6 +15,8 @@ const programFilters = [
   { value: "offers_volunteer_program", label: "Volunteer Programs" },
 ];
 
+const SAFE_LOAD_ERROR = "We couldn't load institutions. Please try again.";
+
 export default function Institutions() {
   const [institutions, setInstitutions] = useState(null);
   const [query, setQuery] = useState("");
@@ -22,14 +24,20 @@ export default function Institutions() {
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const loadInstitutions = () => {
+    setError(null);
+    setInstitutions(null);
     base44.entities.Institution.list("-created_date", 100)
       .then(setInstitutions)
-      .catch((e) => setError(e.message || "We couldn't load institutions."));
+      .catch(() => setError(SAFE_LOAD_ERROR));
+  };
+
+  useEffect(() => {
+    loadInstitutions();
   }, []);
 
   if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); }} /></div>;
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={loadInstitutions} /></div>;
   }
   if (!institutions) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
