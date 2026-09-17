@@ -8,9 +8,21 @@ import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
 
 const SAFE_AUTH_ERROR = "We couldn't verify administrator access.";
+const SAFE_AUTH_PAYLOAD_ERROR = "We couldn't verify the administrator account.";
 const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry.";
 const SAFE_REGISTRY_UNAVAILABLE = "The integration registry is temporarily unavailable.";
 const SAFE_HEALTH_ERROR = "Health check failed.";
+
+function readAdminRole(value) {
+  if (!value || (typeof value !== "object" && typeof value !== "function")) {
+    return { kind: "malformed" };
+  }
+  try {
+    return { kind: "role", role: value.role };
+  } catch {
+    return { kind: "malformed" };
+  }
+}
 
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
@@ -34,8 +46,13 @@ export default function IntegrationsAdmin() {
         const me = await base44.auth.me();
         if (!active || requestId !== requestIdRef.current) return;
         authResolved = true;
+        const authState = readAdminRole(me);
+        if (authState.kind === "malformed") {
+          setError(SAFE_AUTH_PAYLOAD_ERROR);
+          return;
+        }
         setUser(me);
-        if (me?.role !== "admin") return;
+        if (authState.role !== "admin") return;
         const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
         if (!active || requestId !== requestIdRef.current) return;
         if (!Array.isArray(list)) {
