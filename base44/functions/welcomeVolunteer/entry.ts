@@ -4,6 +4,29 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 // the "Volunteer Welcome Follow-up" workflow (service-scoped, no user context).
 // sendCommunication is user-context-bound (messages a campaign's donors), so
 // this delivers the welcome directly via the service role.
+
+function classifyThrownValue(value: unknown): string {
+  try {
+    if (value === null) return 'null';
+    switch (typeof value) {
+      case 'undefined': return 'undefined';
+      case 'string': return 'string';
+      case 'number': return 'number';
+      case 'boolean': return 'boolean';
+      case 'bigint': return 'bigint';
+      case 'symbol': return 'symbol';
+      case 'function': return 'function';
+      default: return 'object';
+    }
+  } catch {
+    return 'unknown';
+  }
+}
+
+function logSafeFailure(scope: string, value: unknown): void {
+  console.error(`${scope} failed`, { kind: classifyThrownValue(value) });
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -31,8 +54,8 @@ export default async function(req) {
           body: `Hi ${user.full_name || 'there'},\n\nThank you for volunteering for "${roleTitle}" in ${communityName}. We'll be in touch with next steps.\n\nIn the meantime, complete your profile so organizers can match you to more opportunities.\n\n— Interplanetary Fund`,
           from_name: 'Interplanetary Fund',
         });
-      } catch (e) {
-        console.error('welcome email failed:', e.message);
+      } catch (error) {
+        logSafeFailure('welcome email', error);
       }
     }
 
@@ -46,7 +69,7 @@ export default async function(req) {
 
     return Response.json({ ok: true });
   } catch (error) {
-    console.error('welcomeVolunteer error:', error.message);
+    logSafeFailure('welcomeVolunteer', error);
     return Response.json({ error: 'Unable to send the welcome. Please try again.' }, { status: 500 });
   }
 }
