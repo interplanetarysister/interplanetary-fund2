@@ -24,7 +24,9 @@
     "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs",
     "preview": "vite preview",
     "verify:node22-release-contract": "node scripts/verify-node22-release-contract.mjs",
-    "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs"
+    "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
+    "verify:inbox-safe-aggregation": "node scripts/verify-inbox-safe-aggregation.mjs",
+    "test:inbox-aggregation-runtime-contract": "node scripts/test-inbox-aggregation-runtime-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",
@@ -73,7 +75,6 @@
     "input-otp": "^1.4.2",
     "jspdf": "^4.2.1",
     "lodash": "^4.17.21",
-    "lucide-react": "^0.475.0",
     "moment": "^2.30.1",
     "next-themes": "^0.4.4",
     "react": "^18.2.0",
