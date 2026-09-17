@@ -13,6 +13,8 @@ const SAFE_LOAD_ERROR = "We couldn't load your connections. Please try again.";
 const SAFE_SYNC_ERROR = "We couldn't sync your linked platforms. Please try again.";
 const SAFE_MALFORMED_CONNECTIONS = "Connections are temporarily unavailable. Please try again.";
 const SAFE_MALFORMED_SYNC = "Sync returned an unavailable response. Please try again.";
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isConnectionList = (value) => Array.isArray(value) && value.every(isRecord);
 
 export default function Connections() {
   const [connections, setConnections] = useState(null);
@@ -24,35 +26,39 @@ export default function Connections() {
   const [fetchPlatform, setFetchPlatform] = useState(null);
   const requestGeneration = useRef(0);
   const syncInFlight = useRef(false);
-  const mountedRef = useRef(true);
+  const mountedRef = useRef(false);
   const subscriptionActive = user?.subscription_status === "active";
 
+  const isCurrent = (generation) => mountedRef.current && generation === requestGeneration.current;
+
   const syncAll = async () => {
-    if (syncInFlight.current) return;
+    if (syncInFlight.current || !mountedRef.current) return;
     syncInFlight.current = true;
+    const generation = ++requestGeneration.current;
     setSyncing(true);
     setSyncResult(null);
     try {
-      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
-      if (!mountedRef.current) return;
-      if (!data || typeof data !== "object" || Array.isArray(data)) {
+      const response = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
+      if (!isCurrent(generation)) return;
+      const data = isRecord(response?.data) ? response.data : null;
+      if (!data) {
         setSyncResult({ error: SAFE_MALFORMED_SYNC });
         return;
       }
       setSyncResult(data.error ? { error: SAFE_SYNC_ERROR } : data);
-      const r = await base44.functions.invoke("listConnections", {});
-      if (!mountedRef.current) return;
-      const nextConnections = r?.data?.connections;
-      if (!Array.isArray(nextConnections)) {
+      const refreshed = await base44.functions.invoke("listConnections", {});
+      if (!isCurrent(generation)) return;
+      const nextConnections = refreshed?.data?.connections;
+      if (!isConnectionList(nextConnections)) {
         setSyncResult({ error: SAFE_MALFORMED_CONNECTIONS });
         return;
       }
       setConnections(nextConnections);
     } catch {
-      if (mountedRef.current) setSyncResult({ error: SAFE_SYNC_ERROR });
+      if (isCurrent(generation)) setSyncResult({ error: SAFE_SYNC_ERROR });
     } finally {
+      if (isCurrent(generation)) setSyncing(false);
       syncInFlight.current = false;
-      if (mountedRef.current) setSyncing(false);
     }
   };
 
@@ -62,16 +68,16 @@ export default function Connections() {
     (async () => {
       try {
         const [me, connRes] = await Promise.all([base44.auth.me(), base44.functions.invoke("listConnections", {})]);
-        if (!mountedRef.current || generation !== requestGeneration.current) return;
+        if (!isCurrent(generation)) return;
         const nextConnections = connRes?.data?.connections;
-        if (!Array.isArray(nextConnections)) {
+        if (!isConnectionList(nextConnections)) {
           setError(SAFE_MALFORMED_CONNECTIONS);
           return;
         }
         setUser(me);
         setConnections(nextConnections);
       } catch {
-        if (mountedRef.current && generation === requestGeneration.current) setError(SAFE_LOAD_ERROR);
+        if (isCurrent(generation)) setError(SAFE_LOAD_ERROR);
       }
     })();
     return () => {
