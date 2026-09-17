@@ -2,6 +2,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertOboGrant } from '../../shared/integrationRegistry.ts';
 
+const SAFE_ACCESS_ERROR = 'verification failed';
+
+function classifyError(error) {
+  if (error instanceof TypeError) return 'type_error';
+  if (error instanceof SyntaxError) return 'syntax_error';
+  if (error instanceof Error) return 'error';
+  return typeof error === 'string' ? 'string_error' : 'unknown_error';
+}
+
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
 // agent's behalf) uses an external platform, it calls this to: locate the
 // registry entry, verify the environment, confirm the agent is authorized, and
@@ -80,7 +89,8 @@ export default async function(req) {
       reason,
     });
   } catch (error) {
-    console.error('verifyAgentPlatformAccess error:', error.message);
-    return Response.json({ authorized: false, reason: 'verification failed', error: error.message }, { status: 500 });
+    const diagnostic = classifyError(error);
+    console.error('verifyAgentPlatformAccess failed:', diagnostic);
+    return Response.json({ authorized: false, reason: SAFE_ACCESS_ERROR }, { status: 500 });
   }
 }
