@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,21 +17,42 @@ import PageTips from "@/components/coach/PageTips";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_DASHBOARD_ERROR = "We couldn't load your dashboard.";
+
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
+  const requestRef = useRef(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    const requestId = ++requestRef.current;
     (async () => {
       try {
         const me = await base44.auth.me();
-        setUser(me);
+        if (!me || typeof me !== "object" || typeof me.id !== "string" || me.id.length === 0) {
+          throw new Error("invalid auth payload");
+        }
         const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
-        setCampaigns(mine);
-      } catch (e) { setError(e.message || "We couldn't load your dashboard."); }
+        if (!Array.isArray(mine)) throw new Error("invalid campaign payload");
+        if (mountedRef.current && requestRef.current === requestId) {
+          setUser(me);
+          setCampaigns(mine);
+          setError(null);
+        }
+      } catch (e) {
+        if (mountedRef.current && requestRef.current === requestId) {
+          setError(SAFE_DASHBOARD_ERROR);
+          setCampaigns(null);
+        }
+      }
     })();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshKey]);
 
   if (error) return <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setCampaigns(null); setRefreshKey((k) => k + 1); }} /></div>;
