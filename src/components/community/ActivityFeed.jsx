@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import ActivityFeedCard from "./ActivityFeedCard";
 import { Loader2 } from "lucide-react";
@@ -8,25 +8,39 @@ import PageError from "@/components/PageError";
 // function, which applies server-side privacy filtering (guests see public
 // events only) and returns sanitized display fields. Supports cursor
 // pagination via "Load more". Works for both guests and signed-in users.
+const SAFE_FEED_ERROR = "We couldn't load the feed. Please retry.";
+
 export default function ActivityFeed() {
   const [items, setItems] = useState(null);
   const [cursor, setCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+  const [paginationError, setPaginationError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const loadGeneration = useRef(0);
+  const loadMoreRequest = useRef(0);
+  const mounted = useRef(true);
+
+  useEffect(() => () => { mounted.current = false; }, []);
 
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     setError(null);
+    setPaginationError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20 });
-      const data = res.data || {};
-      setItems(data.items || []);
+      const data = res?.data;
+      if (!data || !Array.isArray(data.items)) throw new Error("Malformed feed response");
+      if (!mounted.current || generation !== loadGeneration.current) return;
+      setItems(data.items);
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
-    } catch (e) {
-      setError(e.message || "We couldn't load the feed.");
-      setItems([]);
+    } catch {
+      if (!mounted.current || generation !== loadGeneration.current) return;
+      setError(SAFE_FEED_ERROR);
+      // Preserve previously rendered items during refresh/retry so a transient
+      // provider failure is never presented as an empty feed.
     }
   }, []);
 
@@ -34,15 +48,27 @@ export default function ActivityFeed() {
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return;
+    const generation = loadGeneration.current;
+    const requestId = ++loadMoreRequest.current;
     setLoadingMore(true);
+    setPaginationError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20, before: cursor });
-      const data = res.data || {};
-      setItems((prev) => [...prev, ...(data.items || [])]);
+      const data = res?.data;
+      if (!data || !Array.isArray(data.items)) throw new Error("Malformed feed response");
+      if (!mounted.current || generation !== loadGeneration.current || requestId !== loadMoreRequest.current) return;
+      setItems((prev) => [...(Array.isArray(prev) ? prev : []), ...data.items]);
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
-    } catch (e) { /* keep existing items */ }
-    setLoadingMore(false);
+    } catch {
+      if (mounted.current && generation === loadGeneration.current && requestId === loadMoreRequest.current) {
+        setPaginationError(SAFE_FEED_ERROR);
+      }
+    } finally {
+      // A refresh may supersede this request; only the matching request may
+      // clear the control state for the currently active pagination attempt.
+      if (mounted.current && requestId === loadMoreRequest.current) setLoadingMore(false);
+    }
   };
 
   if (error && (!items || items.length === 0)) {
@@ -56,11 +82,23 @@ export default function ActivityFeed() {
   }
   return (
     <div>
+      {error && (
+        <div role="alert" className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span>{error}</span>
+          <button onClick={() => { setError(null); setRefreshKey((k) => k + 1); }} className="min-h-[44px] rounded-lg px-3 font-medium underline underline-offset-2">Retry</button>
+        </div>
+      )}
       <div className="space-y-3">
         {items.map((e) => <ActivityFeedCard key={e.id} event={e} />)}
       </div>
       {hasMore && (
-        <div className="flex justify-center mt-6">
+        <div className="mt-6 flex flex-col items-center gap-3">
+          {paginationError && (
+            <div role="alert" className="flex w-full items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <span>{paginationError}</span>
+              <button onClick={loadMore} disabled={loadingMore} className="min-h-[44px] rounded-lg px-3 font-medium underline underline-offset-2 disabled:opacity-50">Retry</button>
+            </div>
+          )}
           <button onClick={loadMore} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50 min-h-[44px]">
             {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : "Load more"}
           </button>
