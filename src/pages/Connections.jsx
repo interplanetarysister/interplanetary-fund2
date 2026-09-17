@@ -16,6 +16,39 @@ const SAFE_MALFORMED_SYNC = "Sync returned an unavailable response. Please try a
 const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const isConnectionList = (value) => Array.isArray(value) && value.every(isRecord);
 
+const readData = (response) => {
+  try {
+    return isRecord(response) && isRecord(response.data) ? response.data : null;
+  } catch {
+    return null;
+  }
+};
+
+const readConnections = (response) => {
+  try {
+    const data = readData(response);
+    return data && isConnectionList(data.connections) ? data.connections : null;
+  } catch {
+    return null;
+  }
+};
+
+const readSyncResult = (response) => {
+  try {
+    const data = readData(response);
+    if (!data) return null;
+    return {
+      campaigns_covered: typeof data.campaigns_covered === "number" ? data.campaigns_covered : 0,
+      total_discovered: typeof data.total_discovered === "number" ? data.total_discovered : 0,
+      total_imported: typeof data.total_imported === "number" ? data.total_imported : 0,
+      overall_status: typeof data.overall_status === "string" ? data.overall_status.slice(0, 64) : "unknown",
+      hasError: typeof data.error === "string" && data.error.length > 0,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export default function Connections() {
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
@@ -37,27 +70,40 @@ export default function Connections() {
     const generation = ++requestGeneration.current;
     setSyncing(true);
     setSyncResult(null);
+    setConnections(null);
     try {
       const response = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
       if (!isCurrent(generation)) return;
-      const data = isRecord(response?.data) ? response.data : null;
+      const data = readSyncResult(response);
       if (!data) {
         setSyncResult({ error: SAFE_MALFORMED_SYNC });
+        setError(SAFE_MALFORMED_SYNC);
         return;
       }
-      setSyncResult(data.error ? { error: SAFE_SYNC_ERROR } : data);
+      if (data.hasError) {
+        setSyncResult({ error: SAFE_SYNC_ERROR });
+        setError(SAFE_SYNC_ERROR);
+        return;
+      }
+      setSyncResult(data);
+
+      const refreshGeneration = ++requestGeneration.current;
       const refreshed = await base44.functions.invoke("listConnections", {});
-      if (!isCurrent(generation)) return;
-      const nextConnections = refreshed?.data?.connections;
-      if (!isConnectionList(nextConnections)) {
+      if (!isCurrent(refreshGeneration)) return;
+      const nextConnections = readConnections(refreshed);
+      if (!nextConnections) {
         setSyncResult({ error: SAFE_MALFORMED_CONNECTIONS });
+        setError(SAFE_MALFORMED_CONNECTIONS);
         return;
       }
       setConnections(nextConnections);
     } catch {
-      if (isCurrent(generation)) setSyncResult({ error: SAFE_SYNC_ERROR });
+      if (isCurrent(generation)) {
+        setSyncResult({ error: SAFE_SYNC_ERROR });
+        setError(SAFE_SYNC_ERROR);
+      }
     } finally {
-      if (isCurrent(generation)) setSyncing(false);
+      if (mountedRef.current && generation === requestGeneration.current) setSyncing(false);
       syncInFlight.current = false;
     }
   };
@@ -69,8 +115,8 @@ export default function Connections() {
       try {
         const [me, connRes] = await Promise.all([base44.auth.me(), base44.functions.invoke("listConnections", {})]);
         if (!isCurrent(generation)) return;
-        const nextConnections = connRes?.data?.connections;
-        if (!isConnectionList(nextConnections)) {
+        const nextConnections = readConnections(connRes);
+        if (!nextConnections) {
           setError(SAFE_MALFORMED_CONNECTIONS);
           return;
         }
@@ -87,7 +133,7 @@ export default function Connections() {
   }, []);
 
   if (error) {
-    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); }} /></div>;
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); requestGeneration.current += 1; }} /></div>;
   }
   if (!connections) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -115,7 +161,7 @@ export default function Connections() {
       <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900 mb-1"><span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center"><Link2 className="w-5 h-5 text-white" /></span>Connections</h1>
       <p className="text-stone-500 mb-6">Create once. Connect once. Fund everywhere. Manage every fundraising and social destination from one place.</p>
       <div className="flex flex-wrap items-center gap-2 mb-6"><Button onClick={syncAll} disabled={syncing} className="rounded-xl">{syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Linked Platforms</Button>{!subscriptionActive && <span className="text-xs text-stone-400">Fetch Credentials / API Info is a subscription feature.</span>}</div>
-      {syncResult && <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">{syncResult.error ? <p className="text-red-600">{syncResult.error}</p> : <p className="text-stone-700">Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · discovered <span className="font-medium">${(syncResult.total_discovered || 0).toLocaleString()}</span> · imported <span className="font-medium">{syncResult.total_imported}</span> · status <span className="font-medium">{syncResult.overall_status}</span></p>}</div>}
+      {syncResult && <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">{syncResult.error ? <p className="text-red-600">{syncResult.error}</p> : <p className="text-stone-700">Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · discovered <span className="font-medium">${syncResult.total_discovered.toLocaleString()}</span> · imported <span className="font-medium">{syncResult.total_imported}</span> · status <span className="font-medium">{syncResult.overall_status}</span></p>}</div>}
       <div className="mb-8"><AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} /></div>
       {connections.length > 0 && <div className="mb-8"><h2 className="font-display text-xl text-stone-900 mb-3">Connected</h2><div className="space-y-3">{connections.map((c) => <ConnectionCard key={c.id} connection={c} platform={ALL_PLATFORMS.find((p) => p.id === c.platform)} onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })} onRemoved={(id) => setConnections((prev) => prev.filter((x) => x.id !== id))} onUpdated={(u) => setConnections((prev) => prev.map((x) => (x.id === u.id ? u : x)))} subscriptionActive={subscriptionActive} onFetchCredentials={setFetchPlatform} />)}</div></div>}
       {catalogSection("Crowdfunding platforms", Rocket, kinds.crowdfunding)}
