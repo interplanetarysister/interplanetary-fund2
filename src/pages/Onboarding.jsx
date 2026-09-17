@@ -9,6 +9,7 @@ import ConnectStep from "@/components/onboarding/ConnectStep";
 import AutomateStep from "@/components/onboarding/AutomateStep";
 import CompleteStep from "@/components/onboarding/CompleteStep";
 import { useToast } from "@/components/ui/use-toast";
+import { safeErrorDiagnostic } from "@/lib/safe-error-diagnostic";
 
 const STEPS = [
   { id: "welcome", render: () => <WelcomeStep /> },
@@ -34,11 +35,12 @@ export default function Onboarding() {
       const updates = { full_name: data.full_name || undefined };
       await base44.auth.updateMe({ ...updates, onboarding: data, onboarding_completed: true });
       navigate("/mission");
-    } catch (e) {
-      console.error("Onboarding save failed", e);
+    } catch (error) {
+      console.error("Onboarding save failed", safeErrorDiagnostic(error));
       toast({ title: "Couldn't save setup", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const step = STEPS[current];
