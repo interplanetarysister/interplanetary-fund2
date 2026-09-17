@@ -5,14 +5,21 @@ const TERMS_DATE = "August 3, 2026";
 
 // Legal gate — shown once to new visitors. Acceptance is stored in
 // localStorage so the modal doesn't re-appear on subsequent visits.
+// Once this gate is displayed, it must remain open until the user explicitly
+// activates the agreement button. Do not add timeout-, focus-, backdrop-,
+// navigation-, render-, or initialization-based dismissal behavior.
 export default function TermsAcceptance({ children }) {
   const [accepted, setAccepted] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(TERMS_KEY) === "true") setAccepted(true);
+      setAccepted(localStorage.getItem(TERMS_KEY) === "true");
     } catch {
       // Storage unavailable; show the gate on each visit.
+      setAccepted(false);
+    } finally {
+      setInitialized(true);
     }
   }, []);
 
@@ -20,11 +27,16 @@ export default function TermsAcceptance({ children }) {
     try {
       localStorage.setItem(TERMS_KEY, "true");
     } catch {
-      // ignore
+      // Storage failure must not prevent an explicit user acceptance from
+      // dismissing the currently displayed gate.
     }
     setAccepted(true);
   };
 
+  // Avoid rendering either the application or the gate until persisted
+  // acceptance has been checked. After the gate appears, only accept() can
+  // transition it away.
+  if (!initialized) return null;
   if (accepted) return <>{children}</>;
 
   return (
@@ -54,6 +66,7 @@ export default function TermsAcceptance({ children }) {
           <p>The Interplanetary Fund name and code are proprietary — copying is prohibited.</p>
         </div>
         <button
+          type="button"
           onClick={accept}
           className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold text-base hover:opacity-90 transition-opacity"
         >
