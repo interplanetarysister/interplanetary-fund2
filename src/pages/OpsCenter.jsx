@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RefreshCw, Loader2 } from "lucide-react";
@@ -9,6 +9,9 @@ import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
+
+const SAFE_OPS_ERROR = "We couldn't load Ops Center data. Please try again.";
+const SAFE_SYNC_ERROR = "Sync failed — showing cached data.";
 
 // Ops Center — live mirror of the Convex mission backend. Data is cached in
 // Base44 entities so the dashboard works offline; Sync Now refreshes it.
@@ -21,8 +24,11 @@ export default function OpsCenter() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [error, setError] = useState(null);
+  const requestGeneration = useRef(0);
+  const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     try {
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
@@ -30,30 +36,45 @@ export default function OpsCenter() {
         base44.entities.TreasurySnapshot.list("-created_date", 1),
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
+      if (!mountedRef.current || generation !== requestGeneration.current) return;
+      if (!Array.isArray(a) || !Array.isArray(c) || !Array.isArray(t) || !Array.isArray(r)) {
+        throw new Error("invalid_ops_response");
+      }
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
       setReports(r);
-    } catch (e) {
-      setError(e.message || "We couldn't load Ops Center data.");
+      setError(null);
+    } catch {
+      if (!mountedRef.current || generation !== requestGeneration.current) return;
+      setError(SAFE_OPS_ERROR);
     } finally {
-      setLoading(false);
+      if (mountedRef.current && generation === requestGeneration.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => { mountedRef.current = false; requestGeneration.current += 1; };
+  }, [load]);
 
   const syncNow = async () => {
+    if (syncing) return;
     setSyncing(true);
     setSyncError("");
     try {
       const res = await base44.functions.invoke("syncFromConvex", {});
-      if (res.data?.error) throw new Error(res.data.error);
+      if (!res || typeof res !== "object" || (res.data && typeof res.data !== "object")) {
+        throw new Error("invalid_sync_response");
+      }
+      if (res.data?.error) throw new Error("sync_failed");
       await load();
-    } catch (e) {
-      setSyncError(e.message || "Sync failed — showing cached data.");
+    } catch {
+      if (mountedRef.current) setSyncError(SAFE_SYNC_ERROR);
+    } finally {
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
 
   const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
@@ -77,12 +98,12 @@ export default function OpsCenter() {
             {syncing ? "Syncing…" : "Sync Now"}
           </button>
         </div>
-        {syncError && <p className="mt-2 text-xs text-rose-400">{syncError}</p>}
+        {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>}
 
         {error ? (
           <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
         ) : loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
+          <div className="flex justify-center py-20" role="status" aria-live="polite"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
             <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 rounded-xl h-11">
