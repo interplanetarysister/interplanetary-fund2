@@ -75,7 +75,7 @@ export function verifyReleaseContract(root = process.cwd()) {
       if (!job || typeof job !== 'object' || !Array.isArray(job.steps)) continue;
       for (const step of job.steps) {
         if (!step || typeof step !== 'object' || typeof step.uses !== 'string') continue;
-        if (!/^actions\/setup-node@/.test(step.uses)) continue;
+        if (!/^actions\/setup-node@/i.test(step.uses)) continue;
 
         setupNodeDeclarations += 1;
         const declared = step.with?.['node-version'];
