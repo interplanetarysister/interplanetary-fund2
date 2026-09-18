@@ -25,7 +25,8 @@
     "preview": "vite preview",
     "verify:node22-release-contract": "node scripts/verify-node22-release-contract.mjs",
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
-    "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs"
+    "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs",
+    "verify:fraud-control-authority-boundary": "node scripts/verify-fraud-control-authority-boundary.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",
