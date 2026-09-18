@@ -6,6 +6,8 @@ import DonationRow from "@/components/giving/DonationRow";
 import { DollarSign, Repeat, Flame, Loader2 } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_MY_GIVING_ERROR = "We couldn't load your giving history.";
+
 export default function MyGiving() {
   const [donations, setDonations] = useState(null);
   const [error, setError] = useState(null);
@@ -18,8 +20,8 @@ export default function MyGiving() {
       // App reports remain pending until separately verified.
       const { data } = await base44.functions.invoke("getMyGiving", {});
       setDonations(data?.donations || []);
-    } catch (e) {
-      setError(e.message || "We couldn't load your giving history.");
+    } catch {
+      setError(SAFE_MY_GIVING_ERROR);
     }
   }, []);
 
