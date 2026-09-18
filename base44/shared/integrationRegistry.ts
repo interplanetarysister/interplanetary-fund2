@@ -2,6 +2,50 @@
 // validator, the agent-access gatekeeper, and the admin management function.
 // Never imports or handles secret values — only reference names and metadata.
 
+const DIAGNOSTIC_TYPES = new Set(["error", "string", "object", "nullish", "primitive"]);
+
+export function classifyDiagnostic(value) {
+  if (value == null) return "nullish";
+  const kind = typeof value;
+  if (kind === "string") return "string";
+  if (kind === "object" || kind === "function") return "object";
+  if (kind === "number" || kind === "boolean" || kind === "bigint" || kind === "symbol") return "primitive";
+  return DIAGNOSTIC_TYPES.has(kind) ? kind : "object";
+}
+
+// Emit a deduplicated admin alert for an unhealthy integration. Skips creating
+// a new Notification when an unread integration alert for the same platform
+// already exists for an admin, so a persistent condition isn't re-alerted.
+export async function emitIntegrationAlert(sr, entry, title, body) {
+  try {
+    const admins = await sr.entities.User.filter({ role: "admin" }).catch(() => []);
+    for (const admin of admins) {
+      const open = await sr.entities.Notification.filter({ user_id: admin.id, read: false }).catch(() => []);
+      const dupe = open.some(
+        (n) => n.type === "system" && (n.link || "") === "/admin/integrations" && (n.title || "").includes(`[${entry.platform}]`)
+      );
+      if (dupe) continue;
+      await sr.entities.Notification.create({
+        user_id: admin.id,
+        title,
+        body,
+        type: "system",
+        link: "/admin/integrations",
+      });
+    }
+  } catch (e) {
+    console.error("emitIntegrationAlert failed", { type: classifyDiagnostic(e) });
+  }
+}
+
+// Credential fields that are actual secrets (never returned to the frontend,
+// never logged). Non-secret identifiers (handles, instances) stay visible.
+export const SECRET_FIELDS = [
+  "kofi_verification_token",
+  "bluesky_app_password",
+  "mastodon_access_token",
+];
+
 export const STATUS_LABEL = {
   ACTIVE: "Active",
   REAUTH_REQUIRED: "Reauthorization required",
@@ -37,39 +81,6 @@ export function isUnhealthy(status) {
   return UNHEALTHY.has(status);
 }
 
-// Emit a deduplicated admin alert for an unhealthy integration. Skips creating
-// a new Notification when an unread integration alert for the same platform
-// already exists for an admin, so a persistent condition isn't re-alerted.
-export async function emitIntegrationAlert(sr, entry, title, body) {
-  try {
-    const admins = await sr.entities.User.filter({ role: "admin" }).catch(() => []);
-    for (const admin of admins) {
-      const open = await sr.entities.Notification.filter({ user_id: admin.id, read: false }).catch(() => []);
-      const dupe = open.some(
-        (n) => n.type === "system" && (n.link || "") === "/admin/integrations" && (n.title || "").includes(`[${entry.platform}]`)
-      );
-      if (dupe) continue;
-      await sr.entities.Notification.create({
-        user_id: admin.id,
-        title,
-        body,
-        type: "system",
-        link: "/admin/integrations",
-      });
-    }
-  } catch (e) {
-    console.error("emitIntegrationAlert failed:", e && e.message ? e.message : e);
-  }
-}
-
-// Credential fields that are actual secrets (never returned to the frontend,
-// never logged). Non-secret identifiers (handles, instances) stay visible.
-export const SECRET_FIELDS = [
-  "kofi_verification_token",
-  "bluesky_app_password",
-  "mastodon_access_token",
-];
-
 // Strip secret values from a credentials object and report which secrets are
 // set, so the UI can show "set — enter new to replace" without ever holding
 // the raw value in frontend state.
@@ -82,9 +93,6 @@ export function redactCredentials(creds) {
   return { credentials: redacted, credentials_meta: meta };
 }
 
-// Merge incoming credential edits onto existing ones. Secret fields are only
-// overwritten when a new non-empty value is provided; otherwise the stored
-// value is preserved (so a redacted edit form never has to round-trip secrets).
 export function mergeSecrets(existingCreds, incomingCreds) {
   const merged = { ...(existingCreds || {}) };
   const incoming = incomingCreds || {};
@@ -97,17 +105,12 @@ export function mergeSecrets(existingCreds, incomingCreds) {
   return merged;
 }
 
-// Centralized access gate. Before a backend function touches an external
-// platform it calls this to confirm the registry entry is healthy. Fails open
-// only on a transient registry read error (so a brief DB hiccup can't take
-// down critical user-facing flows), but blocks hard on a revoked/disconnected/
-// misconfigured/missing entry. Returns { ok, status, reason }.
 export async function assertPlatformAccess(sr, platform) {
   let entries;
   try {
     entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
   } catch (e) {
-    console.warn("assertPlatformAccess registry read failed:", e && e.message ? e.message : e);
+    console.warn("assertPlatformAccess registry read failed", { type: classifyDiagnostic(e) });
     return { ok: true, status: null, reason: "registry unavailable (fail-open)" };
   }
   const entry = entries && entries[0];
@@ -116,13 +119,6 @@ export async function assertPlatformAccess(sr, platform) {
   return { ok, status: entry.status, reason: ok ? "ok" : `status ${entry.status}` };
 }
 
-// Resolves a Convex query endpoint from whatever form the admin stored in
-// CONVEX_QUERY_URL: a full "https://<dep>.convex.cloud/api/query", a base
-// "https://<dep>.convex.cloud", a bare deployment name "<dep>", or a Convex
-// deployment reference "dev:<dep>|<token>". Returns { url, token } where url is
-// a valid https://...convex.cloud/api/query (or null if it can't be derived)
-// and token is the optional credential carried after a "|" — never logged.
-// This keeps the centralized config robust to how the value was entered.
 export function resolveConvex(raw) {
   const r = String(raw || "").trim();
   if (!r) return { url: null, token: null };
@@ -138,17 +134,12 @@ export function resolveConvex(raw) {
   return { url: u, token };
 }
 
-// OBO (On-Behalf-Of) authorization. A saved platform credential is NOT
-// authorization to act — an explicit, active AuthorizationGrant must exist for
-// (agent, user, platform). Integrates with the existing gatekeeper
-// (verifyAgentPlatformAccess) rather than defining a parallel auth system.
-// Returns { ok, reason, grant? }.
 export async function assertOboGrant(sr, agentName, userId, platform) {
   let grants;
   try {
     grants = await sr.entities.AuthorizationGrant.filter({ agent_name: agentName, user_id: userId, platform });
   } catch (e) {
-    console.warn("assertOboGrant read failed:", e && e.message ? e.message : e);
+    console.warn("assertOboGrant read failed", { type: classifyDiagnostic(e) });
     return { ok: false, reason: "grant registry unavailable" };
   }
   const now = Date.now();
