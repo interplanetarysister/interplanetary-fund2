@@ -1,6 +1,27 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 
+const SAFE_DELETE_DIAGNOSTIC = 'dependency_failure';
+const SAFE_DELETE_STEPS = new Set(['personal_data', 'anonymize_donations', 'owned_campaigns', 'connections']);
+
+function classifyDeleteFailure(value) {
+  if (value instanceof Error) return 'error';
+  if (value === null || value === undefined) return 'empty';
+  const type = typeof value;
+  if (type === 'string') return 'string';
+  if (type === 'object') return 'object';
+  return type;
+}
+
+function safeStepName(value) {
+  return SAFE_DELETE_STEPS.has(value) ? value : 'unknown_step';
+}
+
+function safeDeleteDetail(scope, value) {
+  const category = classifyDeleteFailure(value);
+  return `${scope}:${SAFE_DELETE_DIAGNOSTIC}:${category}`;
+}
+
 // Retry-safe account deletion state machine. The account is deleted or
 // anonymized LAST — never first — so a mid-process failure leaves the user
 // intact and able to retry. Each stage is recorded in the AuditLog without PII
@@ -54,12 +75,13 @@ export default async function(req) {
 
     // ---- Stage 3: data cleanup (idempotent) ----
     const runStep = async (name, fn) => {
+      const safeName = safeStepName(name);
       try {
         await fn();
       } catch (stepErr) {
-        const detail = stepErr && stepErr.message ? stepErr.message : String(stepErr);
-        console.error(`deleteAccount step "${name}" failed:`, detail);
-        await audit('account_deletion_failed', 'failure', `Step "${name}" failed: ${detail}`);
+        const detail = safeDeleteDetail(safeName, stepErr);
+        console.error(`deleteAccount step ${safeName} failed [${detail}]`);
+        await audit('account_deletion_failed', 'failure', detail);
         throw stepErr;
       }
     };
@@ -118,8 +140,8 @@ export default async function(req) {
       // The platform refused to delete the account (e.g. the app owner). Keep
       // the account but anonymize every custom field so it is inert. The
       // built-in identity fields (id, email, full_name) cannot be cleared.
-      const reason = delErr && delErr.message ? delErr.message : String(delErr);
-      console.error('deleteAccount: User.delete not permitted, anonymizing:', reason);
+      const reason = safeDeleteDetail('user_delete', delErr);
+      console.error(`deleteAccount user deletion unavailable [${reason}]`);
       await sr.entities.User.update(user.id, {
         onboarding: {},
         comm_prefs: {},
@@ -135,7 +157,8 @@ export default async function(req) {
       return Response.json({ anonymized: true, reason: 'Account anonymized.' });
     }
   } catch (error) {
-    console.error('deleteAccount error:', error && error.message ? error.message : error);
+    const detail = safeDeleteDetail('request', error);
+    console.error(`deleteAccount request failed [${detail}]`);
     return Response.json({ error: 'Unable to delete your account. Please try again or contact support.' }, { status: 500 });
   }
 }
