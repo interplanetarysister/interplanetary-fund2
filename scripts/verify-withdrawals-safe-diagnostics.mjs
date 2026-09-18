@@ -8,6 +8,11 @@ const checks = [
   ["approval path is explicitly identified", source.includes('requestWithdrawal')],
   ["withdrawal dialog remains URL-addressable", source.includes('searchParams.get("withdraw")')],
   ["admin queue remains role-gated", source.includes('user?.role === "admin"')],
+  ["canonical 7% fee policy is represented", source.includes("7% platform fee")],
+  ["load path has lifecycle fencing before state commits", /generation|mounted|isMounted|AbortController/.test(source)],
+  ["approval path has single-flight protection", /approv(e|ing).*ref|pendingApproval|singleFlight|inFlight/.test(source)],
+  ["donation payload is shape-validated before aggregation", /Array\.isArray\(.*donations|Array\.isArray\(dRes\.data/.test(source)],
+  ["admin queue authority is not treated as a client-only role check", !source.includes('Withdrawal.filter({ status: "under_review" })')],
 ];
 
 const failures = checks.filter(([, ok]) => !ok).map(([label]) => label);
