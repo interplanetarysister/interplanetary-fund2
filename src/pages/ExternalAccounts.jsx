@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ShieldAlert } from "lucide-react";
@@ -9,6 +9,22 @@ import PostLookupPanel from "@/components/admin/PostLookupPanel";
 import ActionQueuePanel from "@/components/admin/ActionQueuePanel";
 import PageError from "@/components/PageError";
 
+const SAFE_EXTERNAL_ACCOUNTS_ERROR = "We couldn't load external account data. Please try again.";
+
+function isRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function readArray(value, label) {
+  if (!Array.isArray(value)) throw new Error(`Malformed ${label} response`);
+  return value;
+}
+
+function readConnections(response) {
+  const connections = response?.data?.connections;
+  return readArray(connections, "connections");
+}
+
 export default function ExternalAccounts() {
   const [user, setUser] = useState(null);
   const [connections, setConnections] = useState(null);
@@ -18,27 +34,44 @@ export default function ExternalAccounts() {
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const generationRef = useRef(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
+
     (async () => {
       try {
         const me = await base44.auth.me();
+        if (!mountedRef.current || generation !== generationRef.current) return;
         setUser(me);
         if (me.role !== "admin") return;
-        const [cs, ps, ags, camps] = await Promise.all([
-          base44.functions.invoke("listConnections", {}).then((r) => r.data.connections),
+        const [csResponse, psResponse, agsResponse, campsResponse] = await Promise.all([
+          base44.functions.invoke("listConnections", {}),
           base44.entities.DistributedPost.list("-created_date", 300),
           base44.entities.Agent.list().catch(() => []),
           base44.entities.Campaign.list("-created_date", 200),
         ]);
+        const cs = readConnections(csResponse);
+        const ps = readArray(psResponse, "distributed posts");
+        const ags = readArray(agsResponse, "agents");
+        const camps = readArray(campsResponse, "campaigns");
+        if (!mountedRef.current || generation !== generationRef.current) return;
         setConnections(cs);
         setPosts(ps);
         setAgents(ags);
-        setCampaigns(Object.fromEntries(camps.map((c) => [c.id, c])));
-      } catch (e) {
-        setError(e.message || "Couldn't load external accounts.");
+        setCampaigns(Object.fromEntries(camps.filter(isRecord).map((c) => [c.id, c])));
+      } catch (errorValue) {
+        if (!mountedRef.current || generation !== generationRef.current) return;
+        setError(SAFE_EXTERNAL_ACCOUNTS_ERROR);
       }
     })();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshKey]);
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
