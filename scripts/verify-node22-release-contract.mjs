@@ -1,46 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-
-function stripYamlComment(line) {
-  let singleQuoted = false;
-  let doubleQuoted = false;
-
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index];
-    if (character === "'" && !doubleQuoted) singleQuoted = !singleQuoted;
-    if (character === '"' && !singleQuoted && line[index - 1] !== '\\') doubleQuoted = !doubleQuoted;
-    if (character === '#' && !singleQuoted && !doubleQuoted) return line.slice(0, index);
-  }
-
-  return line;
-}
-
-function activeYamlLines(text) {
-  const active = [];
-  let blockIndent = null;
-
-  for (const rawLine of text.split(/\r?\n/)) {
-    const indent = rawLine.match(/^\s*/)[0].length;
-    const trimmed = rawLine.trim();
-
-    if (blockIndent !== null) {
-      if (!trimmed || indent > blockIndent) continue;
-      blockIndent = null;
-    }
-
-    const line = stripYamlComment(rawLine);
-    if (/^\s*[^#][^:]*:\s*[>|][+-]?\s*$/.test(line)) {
-      blockIndent = indent;
-      active.push(line);
-      continue;
-    }
-
-    active.push(line);
-  }
-
-  return active;
-}
+import yaml from 'js-yaml';
 
 export function verifyReleaseContract(root = process.cwd()) {
   const errors = [];
@@ -91,23 +52,45 @@ export function verifyReleaseContract(root = process.cwd()) {
 
   if (!workflowFiles.length) errors.push('workflow inventory must contain at least one YAML file');
 
-  let nodeVersionDeclarations = 0;
+  let setupNodeDeclarations = 0;
   for (const file of workflowFiles) {
     const path = join('.github', 'workflows', file);
     const text = readRequired(path);
     if (text === null || !text.trim()) continue;
 
-    for (const line of activeYamlLines(text)) {
-      const match = line.match(/^\s*node-version\s*:\s*(.*?)\s*$/);
-      if (!match) continue;
-      nodeVersionDeclarations += 1;
-      const version = match[1].replace(/^(['"])(.*)\1$/, '$2');
-      if (version !== '22' && version !== '22.x') errors.push(`${path} pins node-version ${version || '<empty>'}`);
+    let workflow;
+    try {
+      workflow = yaml.load(text);
+      if (!workflow || typeof workflow !== 'object' || Array.isArray(workflow)) {
+        errors.push(`malformed:${path}: root must be an object`);
+        continue;
+      }
+    } catch {
+      errors.push(`malformed:${path}: invalid YAML`);
+      continue;
+    }
+
+    const jobs = workflow.jobs && typeof workflow.jobs === 'object' ? Object.values(workflow.jobs) : [];
+    for (const job of jobs) {
+      if (!job || typeof job !== 'object' || !Array.isArray(job.steps)) continue;
+      for (const step of job.steps) {
+        if (!step || typeof step !== 'object' || typeof step.uses !== 'string') continue;
+        if (!/^actions\/setup-node@/.test(step.uses)) continue;
+
+        setupNodeDeclarations += 1;
+        const declared = step.with?.['node-version'];
+        const version = typeof declared === 'string' || typeof declared === 'number'
+          ? String(declared).trim()
+          : '';
+        if (version !== '22' && version !== '22.x') {
+          errors.push(`${path} setup-node pins ${version || '<missing>'}; expected literal 22 or 22.x`);
+        }
+      }
     }
   }
 
-  if (workflowFiles.length && !nodeVersionDeclarations) {
-    errors.push('workflow inventory must contain an active node-version declaration');
+  if (workflowFiles.length && !setupNodeDeclarations) {
+    errors.push('workflow inventory must contain an active actions/setup-node declaration');
   }
 
   const lock = parseRequiredJson('package-lock.json');
