@@ -62,6 +62,7 @@ Use the existing Base44 application architecture in this repository. Do not add 
 - A fresh command shell confirmed Node 22.23.2 and npm 10.9.8. Typecheck, production build, and the Node 22 release-contract verifier passed after the change.
 - Run app commands from `/app` (explicit `cd /app` was verified). Before installs/builds/typechecks after a new sandbox session, check `node --version`, `npm --version`, and `command -v node`; metadata alone does not select the running executable.
 - The sandbox OS installation is not guaranteed to survive sandbox recreation. Available Base44 tools/documentation exposed no persistent sandbox-image Node selector. Do not claim this changes Base44's internal sync service or guarantees its hosted build runtime. Re-establish Node 22 through an authorized supported path if the sandbox resets.
+- Repository commands fail closed when the executing runtime is not Node 22: `.npmrc` enables `engine-strict`, `scripts/require-node22.mjs` checks the actual process and executable, npm lifecycle hooks protect install/build/lint/typecheck and release tests, and the release-contract verifier independently checks its executing Node process. A Node 20 rejection is intentional and must not be bypassed.
 - Base44 backend functions use their platform Deno runtime; this Node 22 rule concerns Node-based development/build tooling.
 
 ## Working Notes
