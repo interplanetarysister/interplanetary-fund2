@@ -141,10 +141,12 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
       resumeTimers.add(timer);
     };
 
+    const onPointerUp = (e) => finishPointer(e, true);
+    const onPointerCancel = (e) => finishPointer(e, false);
     renderer.domElement.addEventListener("pointerdown", onDown);
     renderer.domElement.addEventListener("pointermove", onMove);
-    renderer.domElement.addEventListener("pointerup", (e) => finishPointer(e, true));
-    renderer.domElement.addEventListener("pointercancel", (e) => finishPointer(e, false));
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointercancel", onPointerCancel);
 
     const resize = () => {
       width = Math.max(1, container.clientWidth);
@@ -172,7 +174,10 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
       cancelAnimationFrame(raf);
       resumeTimers.forEach((timer) => window.clearTimeout(timer));
       ro.disconnect();
-      renderer.domElement.replaceWith(renderer.domElement.cloneNode(false));
+      renderer.domElement.removeEventListener("pointerdown", onDown);
+      renderer.domElement.removeEventListener("pointermove", onMove);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointercancel", onPointerCancel);
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) Array.isArray(obj.material) ? obj.material.forEach((m) => m.dispose()) : obj.material.dispose();
