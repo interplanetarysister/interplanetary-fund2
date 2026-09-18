@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -25,29 +25,39 @@ export default function Community() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [error, setError] = useState(null);
+  const requestIdRef = useRef(0);
 
-  useEffect(() => {
-    (async () => {
+  const loadCommunities = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    setError(null);
+    setCommunities(null);
+    try {
+      let isAuthed = false;
+      let memberships = [];
       try {
         const me = await base44.auth.me();
-        setAuthed(true);
-        const [all, memberships] = await Promise.all([
-          base44.entities.Community.list("-created_date", 100),
-          base44.entities.CommunityMember.filter({ user_id: me.id }),
-        ]);
-        setCommunities(all);
-        setMyMemberships(memberships.map((m) => m.community_id));
+        isAuthed = true;
+        memberships = await base44.entities.CommunityMember.filter({ user_id: me.id });
       } catch {
         // Guest — public communities only.
-        try {
-          const all = await base44.entities.Community.list("-created_date", 100);
-          setCommunities(all);
-        } catch (e) {
-          setError(e.message || "We couldn't load communities.");
-        }
       }
-    })();
+      const all = await base44.entities.Community.list("-created_date", 100);
+      if (requestId !== requestIdRef.current) return;
+      setAuthed(isAuthed);
+      setMyMemberships(memberships.map((m) => m.community_id));
+      setCommunities(Array.isArray(all) ? all : []);
+    } catch {
+      if (requestId !== requestIdRef.current) return;
+      setError("We couldn't load communities right now. Please try again.");
+    }
   }, []);
+
+  useEffect(() => {
+    void loadCommunities();
+    return () => {
+      requestIdRef.current += 1;
+    };
+  }, [loadCommunities]);
 
   const q = query.toLowerCase();
   const filtered = (communities || []).filter(
@@ -80,7 +90,7 @@ export default function Community() {
       ) : (
         <div className="mt-6">
           {error ? (
-            <PageError message={error} onRetry={() => { setError(null); setCommunities(null); }} />
+            <PageError message={error} onRetry={loadCommunities} />
           ) : !communities ? (
             <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
           ) : (
