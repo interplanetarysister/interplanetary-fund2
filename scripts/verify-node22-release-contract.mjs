@@ -45,6 +45,10 @@ function activeYamlLines(text) {
 export function verifyReleaseContract(root = process.cwd()) {
   const errors = [];
 
+  if (Number(process.versions.node.split('.')[0]) !== 22) {
+    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 22.x is required`);
+  }
+
   function readRequired(path) {
     try {
       const value = readFileSync(join(root, path), 'utf8');
