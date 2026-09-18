@@ -15,6 +15,37 @@ const PLATFORM_SECRETS = {
   paypal: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MODE'],
 };
 
+const SAFE_FAILURE = 'Integration health check could not complete.';
+const SAFE_ROW_FAILURE = 'Integration registry response was unavailable.';
+
+function safeThrownKind(value) {
+  try {
+    if (value === null) return 'nullish';
+    if (value === undefined) return 'nullish';
+    const type = typeof value;
+    if (type === 'object') return 'object';
+    if (type === 'function') return 'function';
+    return type;
+  } catch {
+    return 'unknown';
+  }
+}
+
+function safeFailure(kind, value) {
+  return `${kind}:${safeThrownKind(value)}`;
+}
+
+function isValidRegistryEntry(value) {
+  return !!value && typeof value === 'object' && typeof value.id === 'string' && typeof value.platform === 'string';
+}
+
+function classifyProbePayload(payload) {
+  if (!payload || typeof payload !== 'object') return 'ambiguous';
+  if (payload.status === 'success') return 'success';
+  if (payload.status === 'error') return 'error';
+  return 'ambiguous';
+}
+
 function checkSecrets(platform) {
   const names = PLATFORM_SECRETS[platform] || [];
   const missing = names.filter((n) => !secrets.get(n));
@@ -30,8 +61,8 @@ async function validateEntry(sr, e, now) {
 
   if (PLATFORM_SECRETS[p]) {
     const { names, missing } = checkSecrets(p);
-    checks.push({ check: 'secret_refs_present', ok: missing.length === 0, detail: missing.length ? `missing ${missing.join(', ')}` : `${names.length} reference(s) present` });
-    if (missing.length) { status = 'MISCONFIGURED'; lastFailure = `Missing secret reference(s): ${missing.join(', ')}`; }
+    checks.push({ check: 'secret_refs_present', ok: missing.length === 0, detail: missing.length ? `missing ${missing.length} configured reference(s)` : `${names.length} reference(s) present` });
+    if (missing.length) { status = 'MISCONFIGURED'; lastFailure = `Missing ${missing.length} required secret reference(s).`; }
     if (p === 'paypal') {
       const mode = (secrets.get('PAYPAL_MODE') || '').toLowerCase();
       if (mode.includes('sandbox') && e.environment === 'production') {
@@ -43,9 +74,6 @@ async function validateEntry(sr, e, now) {
   }
 
   if (e.auth_type === 'oauth') {
-    // Platform-managed OAuth (e.g. the Google login provider) is maintained by
-    // Base44, not an app connector — skip the live connector check so it isn't
-    // false-flagged as REAUTH_REQUIRED.
     if (String(e.account_identifier || '').toLowerCase().includes('platform-managed')) {
       checks.push({ check: 'platform_managed', ok: true, detail: 'platform-managed login provider' });
     } else {
@@ -59,9 +87,9 @@ async function validateEntry(sr, e, now) {
           if (!lastFailure) lastFailure = 'OAuth connector is not authorized.';
         }
       } catch (err) {
-        checks.push({ check: 'oauth_authorized', ok: false, detail: err.message || 'connector check failed' });
+        checks.push({ check: 'oauth_authorized', ok: false, detail: safeFailure('oauth_check_failed', err) });
         status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
-        if (!lastFailure) lastFailure = `OAuth check failed: ${err.message || 'unknown'}`;
+        if (!lastFailure) lastFailure = 'OAuth connector check failed.';
       }
     }
   }
@@ -74,16 +102,13 @@ async function validateEntry(sr, e, now) {
   if (p === 'convex') {
     const resolved = resolveConvex(secrets.get('CONVEX_QUERY_URL'));
     const cToken = secrets.get('CONVEX_AUTH_TOKEN');
-    checks.push({ check: 'centralized_endpoint', ok: !!resolved.url, detail: resolved.url ? `endpoint: ${resolved.url}` : 'CONVEX_QUERY_URL not a valid Convex endpoint' });
+    checks.push({ check: 'centralized_endpoint', ok: !!resolved.url, detail: resolved.url ? 'endpoint configured' : 'CONVEX_QUERY_URL is invalid or unavailable' });
     if (!resolved.url) {
       flags.push('bypasses_central_access');
       status = 'MISCONFIGURED';
-      if (!lastFailure) lastFailure = 'Centralized Convex endpoint (CONVEX_QUERY_URL) is not configured or is malformed.';
+      if (!lastFailure) lastFailure = 'Centralized Convex endpoint is not configured or is malformed.';
     } else {
-      checks.push({ check: 'convex_auth', ok: !!cToken, detail: cToken ? 'auth token configured' : 'no auth token — queries may be public' });
-      // Live, non-destructive auth + reachability probe (read query only; never
-      // mutates). Surfaces a 401 or a missing-function deployment instead of a
-      // false ACTIVE so the gate blocks the sync until it's fixed.
+      checks.push({ check: 'convex_auth', ok: !!cToken, detail: cToken ? 'auth token configured' : 'no auth token configured' });
       try {
         const probeHeaders = { 'Content-Type': 'application/json' };
         if (cToken) probeHeaders['Authorization'] = `Bearer ${cToken}`;
@@ -91,47 +116,49 @@ async function validateEntry(sr, e, now) {
           method: 'POST', headers: probeHeaders,
           body: JSON.stringify({ path: 'agents:getAgents', args: {}, format: 'json' }),
         });
+        const pj = await probeRes.json().catch(() => null);
+        const probeStatus = classifyProbePayload(pj);
         if (probeRes.status === 401) {
-          checks.push({ check: 'convex_auth_probe', ok: false, detail: 'authentication rejected (401)' });
+          checks.push({ check: 'convex_auth_probe', ok: false, detail: 'authentication rejected' });
           status = 'REAUTH_REQUIRED';
-          if (!lastFailure) lastFailure = 'Convex rejected the configured auth token (401). Set a valid Convex auth token in CONVEX_AUTH_TOKEN, or unset it for public queries.';
+          if (!lastFailure) lastFailure = 'Convex rejected the configured auth token.';
+        } else if (!probeRes.ok || probeStatus !== 'success') {
+          checks.push({ check: 'convex_auth_probe', ok: false, detail: probeStatus === 'error' ? 'deployment returned an error' : 'deployment response was ambiguous' });
+          status = status === 'ACTIVE' ? 'DISCONNECTED' : status;
+          if (!lastFailure) lastFailure = 'Convex probe did not return explicit success evidence.';
         } else {
-          const pj = await probeRes.json().catch(() => ({}));
-          const fnNotFound = pj.status === 'error' && String(pj.errorMessage || '').includes('Could not find public function');
-          if (fnNotFound) {
-            checks.push({ check: 'convex_auth_probe', ok: false, detail: 'reachable but function not found — deployment lacks the schema' });
-            status = 'MISCONFIGURED';
-            if (!lastFailure) lastFailure = 'Convex is reachable but does not expose the expected public query (agents:getAgents). Deploy the matching schema to this deployment.';
-          } else {
-            checks.push({ check: 'convex_auth_probe', ok: true, detail: 'authenticated, function reachable' });
-          }
+          checks.push({ check: 'convex_auth_probe', ok: true, detail: 'endpoint returned explicit success evidence' });
         }
-      } catch (e) {
-        checks.push({ check: 'convex_auth_probe', ok: false, detail: e.message || 'probe failed' });
+      } catch (err) {
+        checks.push({ check: 'convex_auth_probe', ok: false, detail: safeFailure('convex_probe_failed', err) });
         status = status === 'ACTIVE' ? 'DISCONNECTED' : status;
-        if (!lastFailure) lastFailure = `Convex unreachable: ${e.message}`;
+        if (!lastFailure) lastFailure = 'Convex probe failed.';
       }
     }
   }
 
-  if (e.dependencies && e.dependencies.length) {
-    checks.push({ check: 'dependencies_referenced', ok: true, detail: e.dependencies.join(', ') });
+  if (e.dependencies && Array.isArray(e.dependencies) && e.dependencies.length) {
+    checks.push({ check: 'dependencies_referenced', ok: true, detail: `${e.dependencies.length} dependency reference(s)` });
   }
 
   const alertTitle = isUnhealthy(status) ? `[${p}] ${STATUS_LABEL[status] || status}` : '';
-  const alertBody = lastFailure || `Integration "${p}" requires attention: ${status}.`;
+  const alertBody = lastFailure || `Integration requires attention: ${status}.`;
   return { status, flags, checks, lastFailure, alertTitle, alertBody };
 }
 
 export default async function(req) {
   try {
+    if (req?.method && req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405, headers: { Allow: 'POST' } });
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const sr = base44.asServiceRole;
-    const entries = await sr.entities.PlatformAccessRegistry.list(undefined, 200);
+    const rawEntries = await sr.entities.PlatformAccessRegistry.list(undefined, 200);
+    if (!Array.isArray(rawEntries)) return Response.json({ error: SAFE_ROW_FAILURE }, { status: 503 });
+    const entries = rawEntries.filter(isValidRegistryEntry);
+    if (entries.length !== rawEntries.length) return Response.json({ error: SAFE_ROW_FAILURE }, { status: 503 });
     const now = new Date().toISOString();
     const report = [];
 
@@ -144,7 +171,7 @@ export default async function(req) {
         status: result.status,
         cleanup_flags: result.flags,
         last_failure: result.lastFailure || '',
-        auth_failures: result.status === 'ACTIVE' ? 0 : (e.auth_failures || 0),
+        auth_failures: result.status === 'ACTIVE' ? 0 : (Number.isFinite(e.auth_failures) ? e.auth_failures : 0),
       };
       if (result.status === 'ACTIVE') update.last_successful_verification = now;
       await sr.entities.PlatformAccessRegistry.update(e.id, update);
@@ -155,7 +182,7 @@ export default async function(req) {
           actor_user_id: user.id,
           target_type: 'PlatformAccessRegistry',
           target_id: e.id,
-          detail: `${e.platform}: ${before} -> ${result.status}`,
+          detail: `${e.platform}: ${before || 'unknown'} -> ${result.status}`,
           status: 'success',
           metadata: { platform: e.platform, from: before, to: result.status, flags: result.flags },
         });
@@ -170,7 +197,7 @@ export default async function(req) {
 
     return Response.json({ ok: true, checked: entries.length, at: now, report });
   } catch (error) {
-    console.error('validateIntegrationHealth error:', error.message);
-    return Response.json({ error: 'Integration health check could not complete.' }, { status: 500 });
+    console.error('validateIntegrationHealth failed', safeFailure('outer_failure', error));
+    return Response.json({ error: SAFE_FAILURE }, { status: 500 });
   }
 }
