@@ -3,9 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": {"node": "22.x"},
   "scripts": {
     "verify:runtime-node22": "node scripts/require-node22.mjs",
     "preinstall": "npm run verify:runtime-node22 --silent",
@@ -36,6 +34,8 @@
     "verify:analytics-safety": "node scripts/verify-analytics-safety.mjs",
     "verify:stripe-webhook-errors": "node scripts/verify-stripe-webhook-error-contract.mjs",
     "verify:edit-ai-profile-safe-errors": "node scripts/verify-edit-ai-profile-safe-errors.mjs",
+    "verify:integrations-admin-safe-diagnostics": "node scripts/verify-integrations-admin-safe-diagnostics.mjs",
+    "test:integrations-admin-runtime-contract": "node scripts/test-integrations-admin-runtime-contract.mjs",
     "test:fees": "node scripts/test-fee-calc.mjs",
     "test:stripe-idempotency": "node scripts/test-stripe-idempotency.mjs",
     "test:financial-integrity": "node scripts/test-financial-integrity.mjs",
@@ -43,7 +43,7 @@
     "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
     "test:account-guard": "node scripts/test-account-guard.mjs",
     "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs",
-    "preview": "vite preview",
+    "preview": "vite",
     "verify:node22-release-contract": "node scripts/verify-node22-release-contract.mjs",
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
     "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs"

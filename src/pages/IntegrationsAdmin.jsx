@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,16 @@ import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
+import {
+  SAFE_AUTH_ERROR,
+  SAFE_AUTH_PAYLOAD_ERROR,
+  SAFE_REGISTRY_ERROR,
+  SAFE_REGISTRY_UNAVAILABLE,
+  SAFE_HEALTH_ERROR,
+  readAdminRole,
+  classifyRegistryResponse,
+  createSingleFlight,
+} from "@/lib/integrations-admin-contract";
 
 export default function IntegrationsAdmin() {
   const [user, setUser] = useState(null);
@@ -14,32 +24,63 @@ export default function IntegrationsAdmin() {
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const requestIdRef = useRef(0);
+  const healthFlightRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    let authResolved = false;
+    const requestId = ++requestIdRef.current;
+    setError(null);
+    setEntries(null);
+
     (async () => {
       try {
         const me = await base44.auth.me();
-        setUser(me);
-        if (me.role !== "admin") return;
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
+        authResolved = true;
+        const authState = readAdminRole(me);
+        if (authState.kind === "malformed") {
+          setError(SAFE_AUTH_PAYLOAD_ERROR);
+          return;
+        }
+        setUser({ role: authState.role });
+        if (authState.role !== "admin") return;
         const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-        setEntries(list);
-      } catch (e) {
-        setError(e.message || "Couldn't load the integration registry.");
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
+        const registryState = classifyRegistryResponse(list);
+        if (registryState.kind !== "ok") {
+          setError(SAFE_REGISTRY_UNAVAILABLE);
+          return;
+        }
+        setEntries(registryState.entries);
+      } catch {
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
+        setError(authResolved ? SAFE_REGISTRY_ERROR : SAFE_AUTH_ERROR);
       }
     })();
+    return () => { mountedRef.current = false; };
   }, [refreshKey]);
 
   const reload = () => setRefreshKey((k) => k + 1);
 
   const runHealthCheck = async () => {
-    setChecking(true);
-    try {
-      await base44.functions.invoke("validateIntegrationHealth", {});
-      reload();
-    } catch (e) {
-      setError(e.message || "Health check failed.");
-    }
-    setChecking(false);
+    if (healthFlightRef.current?.active) return healthFlightRef.current.promise;
+    const flight = createSingleFlight();
+    healthFlightRef.current = { active: true, promise: flight.run(async () => {
+      setChecking(true);
+      try {
+        await base44.functions.invoke("validateIntegrationHealth", {});
+        if (mountedRef.current) reload();
+      } catch {
+        if (mountedRef.current) setError(SAFE_HEALTH_ERROR);
+      } finally {
+        if (mountedRef.current) setChecking(false);
+        healthFlightRef.current = null;
+      }
+    }) };
+    return healthFlightRef.current.promise;
   };
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
