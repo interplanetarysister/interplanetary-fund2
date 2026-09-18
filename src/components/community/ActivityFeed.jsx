@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import ActivityFeedCard from "./ActivityFeedCard";
 import { Loader2 } from "lucide-react";
 import PageError from "@/components/PageError";
+
+const SAFE_FEED_ERROR = "We couldn't load the community activity feed.";
 
 // Live Community activity feed. Loaded from the getCommunityFeed backend
 // function, which applies server-side privacy filtering (guests see public
@@ -15,17 +17,28 @@ export default function ActivityFeed() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const requestIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const load = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setError(null);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20 });
-      const data = res.data || {};
-      setItems(data.items || []);
-      setCursor(data.next_cursor || null);
-      setHasMore(!!data.next_cursor);
-    } catch (e) {
-      setError(e.message || "We couldn't load the feed.");
+      const data = res?.data;
+      if (!data || typeof data !== "object" || Array.isArray(data) || !Array.isArray(data.items)) {
+        throw new Error("Malformed community feed response");
+      }
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      setItems(data.items);
+      const nextCursor = typeof data.next_cursor === "string" && data.next_cursor.length > 0 ? data.next_cursor : null;
+      setCursor(nextCursor);
+      setHasMore(Boolean(nextCursor));
+    } catch {
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      setError(SAFE_FEED_ERROR);
       setItems([]);
     }
   }, []);
@@ -34,15 +47,22 @@ export default function ActivityFeed() {
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return;
+    const requestId = ++requestIdRef.current;
     setLoadingMore(true);
     try {
       const res = await base44.functions.invoke("getCommunityFeed", { limit: 20, before: cursor });
-      const data = res.data || {};
-      setItems((prev) => [...prev, ...(data.items || [])]);
-      setCursor(data.next_cursor || null);
-      setHasMore(!!data.next_cursor);
-    } catch (e) { /* keep existing items */ }
-    setLoadingMore(false);
+      const data = res?.data;
+      if (!data || typeof data !== "object" || Array.isArray(data) || !Array.isArray(data.items)) return;
+      if (!mountedRef.current || requestId !== requestIdRef.current) return;
+      setItems((prev) => Array.isArray(prev) ? [...prev, ...data.items] : data.items);
+      const nextCursor = typeof data.next_cursor === "string" && data.next_cursor.length > 0 ? data.next_cursor : null;
+      setCursor(nextCursor);
+      setHasMore(Boolean(nextCursor));
+    } catch {
+      // Keep existing items and cursor on pagination failure.
+    } finally {
+      if (mountedRef.current && requestId === requestIdRef.current) setLoadingMore(false);
+    }
   };
 
   if (error && (!items || items.length === 0)) {
