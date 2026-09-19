@@ -13,9 +13,85 @@ import PageError from "@/components/PageError";
 const SAFE_OPS_ERROR = "We couldn't load Ops Center data. Please try again.";
 const SAFE_SYNC_ERROR = "Sync failed. Cached operational data remains visible.";
 
-const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
-const isRecordList = (value) => Array.isArray(value) && value.every(isRecord);
-const isLatestSnapshotList = (value) => Array.isArray(value) && value.every(isRecord);
+const safeOwn = (value, key) => {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+    return Object.prototype.hasOwnProperty.call(value, key) ? value[key] : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isPlainRecord = (value) => {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  } catch {
+    return false;
+  }
+};
+
+const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
+const isBoolean = (value) => typeof value === "boolean";
+
+const isAgentRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  const name = safeOwn(value, "name");
+  const status = safeOwn(value, "status");
+  const role = safeOwn(value, "role");
+  const trustScore = safeOwn(value, "trust_score");
+  return isNonEmptyString(id) && isNonEmptyString(name) && isNonEmptyString(status)
+    && isNonEmptyString(role) && isFiniteNumber(trustScore) && trustScore >= 0 && trustScore <= 100;
+};
+
+const isCampaignRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  const title = safeOwn(value, "title");
+  const status = safeOwn(value, "status");
+  const goal = safeOwn(value, "goal_amount");
+  const raised = safeOwn(value, "raised_amount");
+  return isNonEmptyString(id) && isNonEmptyString(title) && isNonEmptyString(status)
+    && isFiniteNumber(goal) && goal >= 0 && isFiniteNumber(raised) && raised >= 0
+    && ["outreach_enabled", "payment_active", "story_present", "cover_image_present"].every((key) => {
+      const field = safeOwn(value, key);
+      return field === undefined || isBoolean(field);
+    });
+};
+
+const isTreasurySnapshot = (value) => {
+  if (!isPlainRecord(value)) return false;
+  return ["total_raised", "total_held", "total_fees", "net_position"].every((key) => {
+    const field = safeOwn(value, key);
+    return isFiniteNumber(field) && field >= 0;
+  });
+};
+
+const isReportRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  return isNonEmptyString(id);
+};
+
+const hasUniqueIds = (rows) => {
+  const seen = new Set();
+  for (const row of rows) {
+    const id = safeOwn(row, "id");
+    if (!isNonEmptyString(id) || seen.has(id)) return false;
+    seen.add(id);
+  }
+  return true;
+};
+
+const readSyncEnvelope = (value) => {
+  if (!isPlainRecord(value)) return { ok: false };
+  const error = safeOwn(value, "error");
+  const success = safeOwn(value, "success");
+  return { ok: success === true && !error };
+};
 
 // Ops Center — operational mirror of the Convex mission backend. Convex remains authoritative.
 export default function OpsCenter() {
@@ -41,9 +117,11 @@ export default function OpsCenter() {
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
       if (!mountedRef.current || generation !== requestGenerationRef.current) return;
-      if (!isRecordList(a) || !isRecordList(c) || !isLatestSnapshotList(t) || !isRecordList(r)) {
-        throw new Error("MALFORMED_OPS_RESPONSE");
-      }
+      const validAgents = Array.isArray(a) && a.every(isAgentRow) && hasUniqueIds(a);
+      const validCampaigns = Array.isArray(c) && c.every(isCampaignRow) && hasUniqueIds(c);
+      const validTreasury = Array.isArray(t) && t.length <= 1 && (t.length === 0 || isTreasurySnapshot(t[0]));
+      const validReports = Array.isArray(r) && r.every(isReportRow) && hasUniqueIds(r);
+      if (!validAgents || !validCampaigns || !validTreasury || !validReports) throw new Error("MALFORMED_OPS_RESPONSE");
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
@@ -73,7 +151,8 @@ export default function OpsCenter() {
     setSyncError("");
     try {
       const res = await base44.functions.invoke("syncFromConvex", {});
-      if (!isRecord(res?.data) || res.data.error) throw new Error("SYNC_FAILED");
+      const data = safeOwn(res, "data");
+      if (!readSyncEnvelope(data).ok) throw new Error("SYNC_FAILED");
       await load();
     } catch {
       if (mountedRef.current) setSyncError(SAFE_SYNC_ERROR);
