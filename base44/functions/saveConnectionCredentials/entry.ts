@@ -60,6 +60,7 @@ export default async function(req) {
       automation_mode: automation_mode || existing?.automation_mode || 'manual',
       credentials: mergedCreds,
       external_total: reportedTotal,
+      external_currency: 'USD',
       external_donor_count: reportedDonors,
       status: 'disconnected',
       verification_status: 'unverified',
