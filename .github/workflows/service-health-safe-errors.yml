@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/components/platform/ServiceHealthPanel.jsx'
       - 'scripts/verify-service-health-safe-errors.mjs'
+      - 'scripts/test-service-health-runtime-contract.mjs'
       - '.github/workflows/service-health-safe-errors.yml'
 
 jobs:
@@ -18,4 +19,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/verify-service-health-safe-errors.mjs
+      - run: npm run verify:service-health-runtime-contract
       - run: npm run build
