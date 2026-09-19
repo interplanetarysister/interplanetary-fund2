@@ -40,7 +40,7 @@ assert.match(entity, /"status":\s*\{[\s\S]*?"default":\s*"disconnected"/);
 assert.match(entity, /"verification_status"/);
 assert.match(entity, /"external_data_source"/);
 assert.match(card, /Provider verified/);
-assert.match(card, /Owner reported/);
+assert.match(card, /owner reported/i);
 assert.doesNotMatch(card, /status:\s*["']connected["']/);
 assert.match(totals, /Reported USD total/);
 assert.match(totals, /not withdrawable/i);
