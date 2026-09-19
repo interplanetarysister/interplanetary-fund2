@@ -34,7 +34,7 @@ const InfoRow = ({ k, v, cap, bool, danger }) => (
   </div>
 );
 
-export default function AccountDetailPanel({ connection, campaigns, agents, posts, onClose, onSynced }) {
+export default function AccountDetailPanel({ connection, campaigns, agents, posts, onClose }) {
   const c = connection;
   const open = !!c;
   const hs = c ? healthStatus(c) : null;
