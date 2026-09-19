@@ -4,6 +4,19 @@
 // Use a stable key that identifies the actor + action, e.g.
 // `sendCommunication:<userId>`. Fails OPEN: a limiter outage never blocks a
 // legitimate request.
+
+function diagnosticType(value) {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return 'string';
+  if (typeof value === 'function') return 'function';
+  if (typeof value !== 'object') return typeof value;
+  try {
+    return Object.prototype.toString.call(value).slice(8, -1).toLowerCase() || 'object';
+  } catch {
+    return 'object';
+  }
+}
+
 export async function checkRateLimit(base44, key, max, windowSeconds) {
   try {
     const sr = base44.asServiceRole;
@@ -30,8 +43,8 @@ export async function checkRateLimit(base44, key, max, windowSeconds) {
 
     const retryAfterSeconds = Math.max(1, Math.ceil((windowStartMs + windowSeconds * 1000 - now) / 1000));
     return { allowed: false, remaining: 0, retryAfterSeconds };
-  } catch (e) {
-    console.error('checkRateLimit failed (failing open):', e && e.message ? e.message : e);
+  } catch (error) {
+    console.error('checkRateLimit failed (failing open):', { diagnostic_type: diagnosticType(error) });
     return { allowed: true, remaining: 0, retryAfterSeconds: 0 };
   }
 }
