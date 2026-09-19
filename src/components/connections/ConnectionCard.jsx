@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, RefreshCw, Unplug, History, Globe2, Rocket, KeyRound } from "lucide-react";
+import { ExternalLink, Unplug, History, Globe2, Rocket, KeyRound } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AUTOMATION_MODES } from "./platformCatalog";
 
@@ -24,18 +24,6 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
     onRemoved(connection.id);
   };
 
-  const refresh = async () => {
-    setBusy(true);
-    const now = new Date().toISOString();
-    const updated = await base44.entities.PlatformConnection.update(connection.id, {
-      status: "connected",
-      last_synced: now,
-      last_error: "",
-      history: [...(connection.history || []), { at: now, event: "refreshed", detail: "Connection refreshed" }].slice(-30),
-    });
-    onUpdated(updated || { ...connection, status: "connected", last_synced: now });
-    setBusy(false);
-  };
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
@@ -68,7 +56,6 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
         {subscriptionActive && (
           <Button size="sm" variant="outline" onClick={() => onFetchCredentials?.(platform)} disabled={busy} className="rounded-lg"><KeyRound className="w-3.5 h-3.5" />Fetch Credentials</Button>
         )}
-        <Button size="sm" variant="outline" onClick={refresh} disabled={busy} className="rounded-lg"><RefreshCw className="w-3.5 h-3.5" />Refresh</Button>
         {connection.external_url && (
           <a href={connection.external_url} target="_blank" rel="noopener noreferrer">
             <Button size="sm" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" />Open</Button>
