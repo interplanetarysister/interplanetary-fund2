@@ -169,7 +169,6 @@ export default async function (req) {
         } catch (err) {
           await sr.entities.PlatformConnection.update(conn.id, {
             status: 'error',
-            last_synced: new Date().toISOString(),
             last_error: String(err?.message || 'sync failed').slice(0, 500),
           }).catch(() => {});
           providerResults.push({
