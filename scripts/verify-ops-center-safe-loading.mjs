@@ -8,7 +8,10 @@ const checks = [
   ['mounted fencing', source.includes('mountedRef')],
   ['request generation fencing', source.includes('requestGenerationRef')],
   ['single-flight sync guard', source.includes('syncingRef')],
-  ['record response validation', source.includes('isRecordList')],
+  ['plain-record validation', source.includes('isPlainRecord')],
+  ['strict child-row validation', source.includes('isAgentRow') && source.includes('isCampaignRow') && source.includes('isTreasurySnapshot') && source.includes('isReportRow')],
+  ['duplicate-id rejection', source.includes('hasUniqueIds')],
+  ['explicit sync success envelope', source.includes('success === true')],
   ['offline-first claim removed', !source.includes('works offline') && source.includes('Convex remains authoritative')],
 ];
 
