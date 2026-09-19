@@ -62,6 +62,11 @@ export default function Connections() {
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
   const connectedIds = connections.map((c) => c.platform);
+  const discoveredTotals = syncResult?.discovered_totals ||
+    (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
+  const discoveredSummary = discoveredTotals
+    .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
+    .join(", ");
   const kinds = { crowdfunding: CROWDFUNDING_PLATFORMS, social: SOCIAL_PLATFORMS };
 
   const catalogSection = (title, Icon, items) => (
@@ -105,10 +110,13 @@ export default function Connections() {
             <p className="text-red-600">{syncResult.error}</p>
           ) : (
             <p className="text-stone-700">
-              Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · discovered{" "}
-              <span className="font-medium">${(syncResult.total_discovered || 0).toLocaleString()}</span> · imported{" "}
+              Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · observed{" "}
+              <span className="font-medium">{discoveredSummary || "no external totals"}</span> · new external observations{" "}
               <span className="font-medium">{syncResult.total_imported}</span> · status{" "}
-              <span className="font-medium">{syncResult.overall_status}</span>
+              <span className="font-medium">{syncResult.overall_status}</span>.
+              <span className="block mt-1 text-xs text-stone-500">
+                External totals are informational, currency-specific, and not withdrawable until a verified transfer enters the Interplanetary Fund ledger.
+              </span>
             </p>
           )}
         </div>
