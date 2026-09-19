@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const read = (path) => fs.readFileSync(new URL(\`../\${path}\`, import.meta.url), "utf8");
+const read = (path) => fs.readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const source = read("src/components/connections/ConnectDialog.jsx");
 const save = read("base44/functions/saveConnectionCredentials/entry.ts");
 const entity = read("base44/entities/PlatformConnection.jsonc");
