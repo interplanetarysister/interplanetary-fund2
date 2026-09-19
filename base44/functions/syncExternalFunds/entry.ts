@@ -204,7 +204,8 @@ export default async function (req) {
       completed_at: completedAt,
       overall_status: overall,
       provider_results: providerResults,
-      total_discovered: totalDiscovered,
+      total_discovered: totalDiscoveredUsd,
+      discovered_totals: discoveredTotals,
       total_imported: totalImported,
       campaigns_covered: campaignsCovered,
     });
