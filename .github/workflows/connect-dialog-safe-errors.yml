@@ -1,9 +1,23 @@
-name: ConnectDialog Safe Errors
+name: Connection Authorization and Data Truth
 
 on:
   pull_request:
     paths:
       - 'src/components/connections/ConnectDialog.jsx'
+      - 'src/components/connections/ConnectionCard.jsx'
+      - 'src/components/campaigns/CrossPlatformTotals.jsx'
+      - 'src/components/admin/**'
+      - 'src/lib/externalAccounts.js'
+      - 'src/pages/Connections.jsx'
+      - 'base44/functions/saveConnectionCredentials/entry.ts'
+      - 'base44/functions/kofiWebhook/entry.ts'
+      - 'base44/functions/syncExternalFunds/entry.ts'
+      - 'base44/functions/publishPost/entry.ts'
+      - 'base44/functions/broadcastPosts/entry.ts'
+      - 'base44/functions/postCampaignUpdate/entry.ts'
+      - 'base44/functions/syncConnections/entry.ts'
+      - 'base44/entities/PlatformConnection.jsonc'
+      - 'base44/entities/SyncRun.jsonc'
       - 'scripts/verify-connect-dialog-safe-errors.mjs'
       - '.github/workflows/connect-dialog-safe-errors.yml'
 
