@@ -8,7 +8,10 @@ const required = [
   ["single flight", "busyRef"],
   ["finally cleanup", "finally { busyRef.current.delete(key); }"],
   ["safe catch", "catch { safeMessage(false); return false; }"],
-  ["array fail closed", "const asArray = (value) => (Array.isArray(value) ? value : []);"],
+  ["array validation", "const asArray = (value) => (Array.isArray(value) ? value : []);"],
+  ["response envelope validation", "const responseData = (response)"],
+  ["authoritative approval function", 'base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: w.id })'],
+  ["approval status discrimination", '["paid", "reconciliation_pending", "provider_status_unknown"].includes(data.status)'],
 ];
 for (const [name, needle] of required) {
   if (!file.includes(needle)) throw new Error(`Missing ${name}: ${needle}`);
@@ -18,5 +21,8 @@ for (const forbidden of ["e.message", "error.message", "String(e)", "String(erro
 }
 for (const action of ["approve:", "deny:", "unfreeze:", "freeze:"]) {
   if (!file.includes(action)) throw new Error(`Missing action key: ${action}`);
+}
+if (file.includes("base44.entities.Withdrawal.update(w.id, { status: \"paid\"")) {
+  throw new Error("Direct client approval mutation remains; use requestWithdrawal authority.");
 }
 console.log("FraudControlPanel safe-action verifier passed.");
