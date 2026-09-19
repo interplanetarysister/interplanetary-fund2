@@ -215,7 +215,7 @@ export default async function (req) {
       actor_user_id: user ? user.id : null,
       target_type: 'SyncRun',
       target_id: run.id,
-      detail: `scope=${scope} campaigns=${campaignsCovered} observed=$${totalDiscovered} new_observations=${totalImported} overall=${overall}`,
+      detail: `scope=${scope} campaigns=${campaignsCovered} observed_currency_groups=${discoveredTotals.length} new_observations=${totalImported} overall=${overall}`,
       status: overall === 'failed' ? 'failure' : 'success',
       metadata: {
         scope,
