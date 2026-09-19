@@ -8,7 +8,7 @@ import { AUTOMATION_MODES } from "./platformCatalog";
 
 // One connected destination: status, health, last sync, granted automation,
 // totals, and the manage / refresh / disconnect / history controls.
-export default function ConnectionCard({ connection, platform, onManage, onRemoved, onUpdated, subscriptionActive, onFetchCredentials }) {
+export default function ConnectionCard({ connection, platform, onManage, onRemoved, subscriptionActive, onFetchCredentials }) {
   const [busy, setBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
