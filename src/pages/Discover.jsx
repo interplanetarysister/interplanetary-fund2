@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { base44 } from "@/api/base44Client";
 import { Search } from "lucide-react";
@@ -9,17 +9,39 @@ import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import PageError from "@/components/PageError";
 import PageTips from "@/components/coach/PageTips";
 
+const SAFE_DISCOVER_ERROR = "We couldn't load campaigns right now. Please try again.";
+const MAX_CAMPAIGNS = 100;
+
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
-      .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load campaigns."));
+    mountedRef.current = true;
+    const requestId = ++requestRef.current;
+    setError(null);
+    setCampaigns(null);
+
+    base44.entities.Campaign.filter({ status: "active" }, "-created_date", MAX_CAMPAIGNS)
+      .then((result) => {
+        if (!Array.isArray(result) || result.length > MAX_CAMPAIGNS) throw new Error("invalid-campaign-payload");
+        if (mountedRef.current && requestRef.current === requestId) setCampaigns(result);
+      })
+      .catch(() => {
+        if (mountedRef.current && requestRef.current === requestId) {
+          setCampaigns(null);
+          setError(SAFE_DISCOVER_ERROR);
+        }
+      });
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshKey]);
 
   if (error) {
