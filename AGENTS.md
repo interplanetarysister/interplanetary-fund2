@@ -73,6 +73,14 @@ Use the existing Base44 application architecture in this repository. Do not add 
 - Historical/reconstructed feature material is evidence, not automatic production truth.
 - Run relevant confirmed zero-credit checks before finishing code changes.
 
+## External integration truth boundary
+
+- Saving provider credentials or an external profile is configuration only. It must leave the connection disconnected/unverified until a real provider-backed webhook, API read, or successful publish proves access.
+- An admin acknowledgement or UI refresh must never manufacture `connected`, `verified`, or `last_synced` state. Provider evidence owns those fields.
+- Owner-entered external fundraising totals are `owner_reported`, informational, currency-specific, and non-withdrawable. Never add different currencies into one displayed amount, and never credit them to the Interplanetary Fund ledger without a separate verified transfer.
+- Every connection write tied to a campaign must validate campaign ownership server-side; client filtering is not an authorization boundary.
+- Preserve these capability semantics if a future Convex/Vercel implementation returns: configuration, provider verification, external observation, and ledger credit remain distinct interfaces.
+
 ## Builder preservation rule
 
 When correcting, extending, or improving existing work, edit the current implementation/artifact rather than recreating it from scratch. Preserve valid functionality, architecture, interfaces, and history where practical. Make the smallest coherent modification that satisfies the task.
