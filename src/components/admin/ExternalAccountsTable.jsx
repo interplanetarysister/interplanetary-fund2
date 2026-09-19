@@ -6,11 +6,10 @@ import {
 } from "@/lib/externalAccounts";
 import { Search, ExternalLink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 const COMPLETENESS_COLOR = { incomplete: "bg-red-500", partial: "bg-amber-500", complete: "bg-emerald-500" };
 
-export default function ExternalAccountsTable({ connections, campaigns, agents, onRowClick, onUpdated }) {
+export default function ExternalAccountsTable({ connections, campaigns, agents, onRowClick }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("all");
   const [health, setHealth] = useState("all");
