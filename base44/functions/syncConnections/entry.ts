@@ -51,6 +51,13 @@ export default async function(req) {
           await sr.entities.DistributedPost.update(post.id, {
             status: 'published', published_at: now.toISOString(), external_post_url: url, error: '',
           });
+          await sr.entities.PlatformConnection.update(connection.id, {
+            status: 'connected',
+            verification_status: 'verified',
+            external_data_source: 'provider_verified',
+            last_synced: now.toISOString(),
+            last_error: '',
+          });
           report.published++;
         } catch (e) {
           const retries = (post.retry_count || 0) + 1;
