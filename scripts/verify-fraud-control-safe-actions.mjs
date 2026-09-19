@@ -1,7 +1,8 @@
 import fs from "node:fs";
 
-const file = fs.readFileSync("src/components/platform/FraudControlPanel.jsx", "utf8");
-const required = [
+const panel = fs.readFileSync("src/components/platform/FraudControlPanel.jsx", "utf8");
+const endpoint = fs.readFileSync("base44/functions/fraudControlAction/entry.ts", "utf8");
+const requiredPanel = [
   ["stable safe error", 'SAFE_FRAUD_ERROR = "The requested fraud-control action could not be completed. Please retry."'],
   ["mounted fencing", "mountedRef"],
   ["load generation fencing", "loadGenerationRef"],
@@ -11,18 +12,33 @@ const required = [
   ["array validation", "const asArray = (value) => (Array.isArray(value) ? value : []);"],
   ["response envelope validation", "const responseData = (response)"],
   ["authoritative approval function", 'base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: w.id })'],
-  ["approval status discrimination", '["paid", "reconciliation_pending", "provider_status_unknown"].includes(data.status)'],
+  ["authoritative fraud action function", 'base44.functions.invoke("fraudControlAction"'],
+  ["strict response action validation", "data.ok !== true || data.action !== action || data.target_id !== targetId"],
 ];
-for (const [name, needle] of required) {
-  if (!file.includes(needle)) throw new Error(`Missing ${name}: ${needle}`);
+for (const [name, needle] of requiredPanel) {
+  if (!panel.includes(needle)) throw new Error(`Missing ${name}: ${needle}`);
 }
-for (const forbidden of ["e.message", "error.message", "String(e)", "String(error)", "{e}"]) {
-  if (file.includes(forbidden)) throw new Error(`Raw diagnostic sink remains: ${forbidden}`);
+for (const forbidden of ["e.message", "error.message", "String(e)", "String(error)", "{e}", 'base44.entities.Withdrawal.update(w.id, { status: "paid"']) {
+  if (panel.includes(forbidden)) throw new Error(`Unsafe client mutation or raw diagnostic remains: ${forbidden}`);
 }
 for (const action of ["approve:", "deny:", "unfreeze:", "freeze:"]) {
-  if (!file.includes(action)) throw new Error(`Missing action key: ${action}`);
+  if (!panel.includes(action)) throw new Error(`Missing action key: ${action}`);
 }
-if (file.includes("base44.entities.Withdrawal.update(w.id, { status: \"paid\"")) {
-  throw new Error("Direct client approval mutation remains; use requestWithdrawal authority.");
+
+const requiredEndpoint = [
+  ["admin authorization", "user.role !== 'admin'"],
+  ["supported action allowlist", "actionSet"],
+  ["target validation", "targetId"],
+  ["deny state transition", "withdrawal.status !== 'under_review'"],
+  ["freeze idempotency", "duplicate: true"],
+  ["audit logging", "logAudit"],
+  ["safe endpoint error", "The requested fraud-control action could not be completed. Please retry."],
+];
+for (const [name, needle] of requiredEndpoint) {
+  if (!endpoint.includes(needle)) throw new Error(`Missing ${name}: ${needle}`);
 }
-console.log("FraudControlPanel safe-action verifier passed.");
+for (const forbidden of ["console.error", "err?.message", "error.message", "String(error)"]) {
+  if (endpoint.includes(forbidden)) throw new Error(`Raw diagnostic sink remains in endpoint: ${forbidden}`);
+}
+
+console.log("FraudControlPanel authoritative safe-action verifier passed.");
