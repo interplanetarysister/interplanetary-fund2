@@ -22,12 +22,30 @@ export default async function(req) {
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
+    const reportedTotal = Number(external_total ?? 0);
+    const reportedDonors = Number(external_donor_count ?? 0);
+    if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
+      return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
+    }
+    if (!Number.isInteger(reportedDonors) || reportedDonors < 0) {
+      return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
+    }
+
     let existing = null;
     if (connection_id) {
       existing = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
       if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
       if (existing.created_by_id !== user.id && user.role !== 'admin') {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
+    const effectiveCampaignId = campaign_id || existing?.campaign_id || undefined;
+    if (effectiveCampaignId) {
+      const campaign = await base44.entities.Campaign.get(effectiveCampaignId).catch(() => null);
+      if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+      if (campaign.created_by_id !== user.id && user.role !== 'admin') {
+        return Response.json({ error: 'You can only connect accounts to campaigns you own.' }, { status: 403 });
       }
     }
 
@@ -38,15 +56,16 @@ export default async function(req) {
       kind: kind || existing?.kind || 'crowdfunding',
       display_name: display_name ?? existing?.display_name ?? '',
       external_url: external_url ?? existing?.external_url ?? '',
-      campaign_id: campaign_id || existing?.campaign_id || undefined,
+      campaign_id: effectiveCampaignId,
       automation_mode: automation_mode || existing?.automation_mode || 'manual',
       credentials: mergedCreds,
-      external_total: Number(external_total) || 0,
-      external_donor_count: Number(external_donor_count) || 0,
-      status: 'connected',
-      last_synced: now,
+      external_total: reportedTotal,
+      external_donor_count: reportedDonors,
+      status: 'disconnected',
+      verification_status: 'unverified',
+      external_data_source: 'owner_reported',
       last_error: '',
-      history: [...(existing?.history || []), { at: now, event: existing ? 'synced' : 'connected', detail: existing ? 'Details updated' : `Connected ${platform}` }].slice(-30),
+      history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
 
     let saved;
