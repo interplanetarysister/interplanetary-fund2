@@ -36,6 +36,13 @@ export default function FraudControlPanel() {
     finally { busyRef.current.delete(key); }
   };
 
+  const invokeFraudAction = async (action, targetId, reason = "") => {
+    const response = await base44.functions.invoke("fraudControlAction", { action, target_id: targetId, reason });
+    const data = responseData(response);
+    if (!data || data.ok !== true || data.action !== action || data.target_id !== targetId) throw new Error("Invalid fraud-control response");
+    return data;
+  };
+
   const load = async () => {
     const generation = ++loadGenerationRef.current;
     try {
@@ -79,7 +86,8 @@ export default function FraudControlPanel() {
     const reason = denyReason.trim();
     const key = `deny:${w?.id || "unknown"}`;
     await runSingleFlight(key, async () => {
-      await base44.entities.Withdrawal.update(w.id, { status: "failed", review_note: reason });
+      const data = await invokeFraudAction("deny", w.id, reason);
+      if (data.status !== "failed") throw new Error("Invalid denial status");
       safeMessage(true, "Payout denied. Funds returned to holding account.");
       setDenyTarget(null); setDenyReason("");
       await load();
@@ -89,7 +97,8 @@ export default function FraudControlPanel() {
   const unfreeze = async (c) => {
     const key = `unfreeze:${c?.id || "unknown"}`;
     await runSingleFlight(key, async () => {
-      await base44.entities.Campaign.update(c.id, { status: "active" });
+      const data = await invokeFraudAction("unfreeze", c.id);
+      if (data.status !== "active") throw new Error("Invalid restore status");
       safeMessage(true, "Campaign restored to active.");
       await load();
     });
@@ -99,7 +108,8 @@ export default function FraudControlPanel() {
     if (!freezeReason.trim() || !String(campaignId || "").trim()) { safeMessage(false); return; }
     const key = `freeze:${campaignId}`;
     await runSingleFlight(key, async () => {
-      await base44.entities.Campaign.update(campaignId, { status: "paused" });
+      const data = await invokeFraudAction("freeze", campaignId, freezeReason.trim());
+      if (data.status !== "paused") throw new Error("Invalid pause status");
       safeMessage(true, "Campaign paused.");
       setFreezeTarget(null); setFreezeReason("");
       await load();
