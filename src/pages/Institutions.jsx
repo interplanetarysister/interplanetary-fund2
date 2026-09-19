@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import InstitutionCard from "@/components/institutions/InstitutionCard";
@@ -7,6 +7,9 @@ import MyApplications from "@/components/institutions/MyApplications";
 import { Search, Loader2 } from "lucide-react";
 import { institutionTypes } from "@/components/institutions/institutionTypes";
 import PageError from "@/components/PageError";
+
+const SAFE_INSTITUTIONS_ERROR = "We couldn't load institutions right now. Please try again.";
+const isInstitutionRow = (value) => value && typeof value === "object" && typeof value.id === "string";
 
 const programFilters = [
   { value: "all", label: "All" },
@@ -21,15 +24,33 @@ export default function Institutions() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
+  const requestGeneration = useRef(0);
+  const mounted = useRef(true);
 
-  useEffect(() => {
-    base44.entities.Institution.list("-created_date", 100)
-      .then(setInstitutions)
-      .catch((e) => setError(e.message || "We couldn't load institutions."));
+  const loadInstitutions = useCallback(async () => {
+    const generation = ++requestGeneration.current;
+    setError(null);
+    setInstitutions(null);
+    try {
+      const response = await base44.entities.Institution.list("-created_date", 100);
+      if (!Array.isArray(response) || !response.every(isInstitutionRow)) throw new Error("malformed institutions response");
+      if (mounted.current && generation === requestGeneration.current) setInstitutions(response);
+    } catch {
+      if (mounted.current && generation === requestGeneration.current) setError(SAFE_INSTITUTIONS_ERROR);
+    }
   }, []);
 
+  useEffect(() => {
+    mounted.current = true;
+    void loadInstitutions();
+    return () => {
+      mounted.current = false;
+      requestGeneration.current += 1;
+    };
+  }, [loadInstitutions]);
+
   if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); }} /></div>;
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={loadInstitutions} /></div>;
   }
   if (!institutions) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
