@@ -136,10 +136,13 @@ export default async function (req) {
 
           const now = new Date().toISOString();
           const update = {
-            last_synced: now,
             last_error: result.status === 'error' ? result.note : '',
           };
           if (lastObservation && observedCurrency) {
+            update.status = 'connected';
+            update.verification_status = 'verified';
+            update.external_data_source = 'provider_verified';
+            update.last_synced = now;
             update.external_total = Number(lastObservation.observedTotal || 0);
             update.external_donor_count = Number(lastObservation.observedCount || 0);
             update.external_currency = observedCurrency;
