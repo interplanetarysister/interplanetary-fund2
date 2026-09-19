@@ -1,8 +1,8 @@
 // Shared logic for the Admin → External Accounts area. All "agent assignment"
 // and "profile completeness" values here are *derived* from the fields a
 // PlatformConnection actually has — we never invent data the entity doesn't
-// store (no verification flag, no per-account agent link). Derived values are
-// honest proxies, documented inline.
+// store (including the explicit provider-verification flag, but no per-account
+// agent link). Derived values are honest proxies, documented inline.
 
 import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 
@@ -67,21 +67,23 @@ export const isStale = (c) => {
   return d === null || d >= STALE_DAYS;
 };
 
-// Credential status shown to admin — "Connected"/"Not connected", never values.
+// Credential status shown to admin never treats stored secrets as proof that
+// the provider accepted them.
 export const credentialStatus = (c) => {
   const cr = c.credentials || {};
   const hasCred = cr.kofi_verification_token ||
     (cr.bluesky_handle && cr.bluesky_app_password) ||
     (cr.mastodon_instance && cr.mastodon_access_token);
-  if (hasCred) return "Connected";
-  if (["kofi", "bluesky", "mastodon"].includes(c.platform)) return "Not connected";
-  return c.external_url ? "Linked" : "Not connected";
+  if (c.verification_status === "verified") return "Provider verified";
+  if (hasCred) return "Configured; verification pending";
+  if (["kofi", "bluesky", "mastodon"].includes(c.platform)) return "Not configured";
+  return c.external_url ? "Profile linked; unverified" : "Not configured";
 };
 
 // Aggregate health bucket, in priority order. The stale-marker string written
 // by syncConnections is excluded from "requires_action" so stale != error.
 export const healthStatus = (c) => {
-  if (c.status === "error" || c.status === "disconnected" ||
+  if (c.verification_status !== "verified" || c.status === "error" || c.status === "disconnected" ||
       (c.last_error && c.last_error !== "No synchronization in over 7 days")) return "requires_action";
   if (isStale(c)) return "stale";
   if (completenessLevel(c) === "incomplete") return "incomplete";
