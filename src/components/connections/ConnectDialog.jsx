@@ -14,7 +14,7 @@ import CredentialFields from "./CredentialFields";
 // AI automation permission for that destination.
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
-  const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_donor_count: "" });
+  const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -28,6 +28,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       campaign_id: existing?.campaign_id || "",
       automation_mode: existing?.automation_mode || "manual",
       external_total: existing?.external_total ?? "",
+      external_currency: existing?.external_currency || "USD",
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
@@ -53,6 +54,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         campaign_id: form.campaign_id || undefined,
         automation_mode: form.automation_mode,
         external_total: isCrowd ? Number(form.external_total) || 0 : 0,
+        external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
       });
@@ -94,14 +96,21 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             </Select>
           </div>
           {isCrowd && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Raised there ($)</Label>
-                <Input type="number" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Donors there</Label>
-                <Input type="number" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
+            <div className="space-y-2">
+              <p className="text-xs text-stone-500">Enter owner-reported external figures. They remain informational until the provider verifies them.</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Reported total</Label>
+                  <Input type="number" min="0" step="0.01" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Currency</Label>
+                  <Input value={form.external_currency} maxLength={3} onChange={(e) => set("external_currency", e.target.value.toUpperCase())} placeholder="USD" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Reported donors</Label>
+                  <Input type="number" min="0" step="1" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
+                </div>
               </div>
             </div>
           )}
