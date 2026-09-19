@@ -187,6 +187,8 @@ export default async function (req) {
     }
 
     const completedAt = new Date().toISOString();
+    const discoveredTotals = [...discoveredByCurrency.entries()].map(([currency, amount]) => ({ currency, amount }));
+    const totalDiscoveredUsd = num(discoveredByCurrency.get('USD'));
     const hasError = providerResults.some((r) => r.status === 'error');
     const hasOk = providerResults.some((r) => r.status !== 'error');
     const overall = hasError ? (hasOk ? 'partial' : 'failed') : 'success';
