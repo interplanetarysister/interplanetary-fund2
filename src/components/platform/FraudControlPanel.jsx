@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 const SAFE_FRAUD_ERROR = "The requested fraud-control action could not be completed. Please retry.";
 const money = (n) => `$${(Number.isFinite(Number(n)) ? Number(n) : 0).toFixed(2)}`;
 const asArray = (value) => (Array.isArray(value) ? value : []);
+const responseData = (response) => response && typeof response === "object" && response.data && typeof response.data === "object" ? response.data : null;
 
 export default function FraudControlPanel() {
   const [withdrawals, setWithdrawals] = useState([]);
@@ -64,8 +65,11 @@ export default function FraudControlPanel() {
   const approve = async (w) => {
     const key = `approve:${w?.id || "unknown"}`;
     await runSingleFlight(key, async () => {
-      await base44.entities.Withdrawal.update(w.id, { status: "paid" });
-      safeMessage(true, `Approved — ${money(w.net_amount)} payout marked paid.`);
+      const response = await base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: w.id });
+      const data = responseData(response);
+      if (!data || data.error || !["paid", "reconciliation_pending", "provider_status_unknown"].includes(data.status)) throw new Error("Invalid approval response");
+      if (data.status === "paid") safeMessage(true, `Approved — ${money(w.net_amount)} payout marked paid.`);
+      else safeMessage(true, "Approval submitted for provider reconciliation.");
       await load();
     });
   };
@@ -86,17 +90,17 @@ export default function FraudControlPanel() {
     const key = `unfreeze:${c?.id || "unknown"}`;
     await runSingleFlight(key, async () => {
       await base44.entities.Campaign.update(c.id, { status: "active" });
-      safeMessage(true, `Campaign restored to active.`);
+      safeMessage(true, "Campaign restored to active.");
       await load();
     });
   };
 
-  const freeze = async (campaignId, title) => {
+  const freeze = async (campaignId) => {
     if (!freezeReason.trim() || !String(campaignId || "").trim()) { safeMessage(false); return; }
     const key = `freeze:${campaignId}`;
     await runSingleFlight(key, async () => {
       await base44.entities.Campaign.update(campaignId, { status: "paused" });
-      safeMessage(true, `Campaign paused.`);
+      safeMessage(true, "Campaign paused.");
       setFreezeTarget(null); setFreezeReason("");
       await load();
     });
@@ -117,7 +121,7 @@ export default function FraudControlPanel() {
         <h3 className="font-medium text-stone-800 mb-3">Paused Campaigns ({campaigns.length})</h3>
         {campaigns.length === 0 ? <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-400 text-sm">No campaigns paused.</div> : <div className="space-y-3">{campaigns.map((c) => <div key={c.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-center justify-between gap-3"><div><p className="font-medium text-stone-900">{c.title}</p><p className="text-xs text-stone-500">Raised: {money(c.raised_amount)}</p></div><Button size="sm" variant="ghost" className="bg-emerald-50 text-emerald-700 border border-emerald-200" onClick={() => unfreeze(c)}><Unlock className="w-3.5 h-3.5 mr-1" /> Restore</Button></div>)}</div>}
       </section>
-      <section className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4"><h3 className="font-medium text-stone-800 mb-3 flex items-center gap-2"><Lock className="w-4 h-4 text-rose-500" /> Pause a Campaign</h3>{freezeTarget === null ? <Button variant="ghost" size="sm" className="text-rose-600 border border-rose-200 bg-rose-50" onClick={() => setFreezeTarget("")}>Enter campaign ID to pause…</Button> : <div className="space-y-2"><input type="text" placeholder="Campaign ID" value={freezeTarget} onChange={(e) => setFreezeTarget(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" /><input type="text" placeholder="Reason for pause (required)" value={freezeReason} onChange={(e) => setFreezeReason(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" /><div className="flex gap-2"><Button size="sm" variant="ghost" className="flex-1 text-stone-500" onClick={() => { setFreezeTarget(null); setFreezeReason(""); }}>Cancel</Button><Button size="sm" className="flex-1 bg-rose-600 text-white hover:bg-rose-700" disabled={!String(freezeTarget || "").trim() || !freezeReason.trim()} onClick={() => freeze(freezeTarget, freezeTarget)}>Pause Campaign</Button></div></div>}</section>
+      <section className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4"><h3 className="font-medium text-stone-800 mb-3 flex items-center gap-2"><Lock className="w-4 h-4 text-rose-500" /> Pause a Campaign</h3>{freezeTarget === null ? <Button variant="ghost" size="sm" className="text-rose-600 border border-rose-200 bg-rose-50" onClick={() => setFreezeTarget("")}>Enter campaign ID to pause…</Button> : <div className="space-y-2"><input type="text" placeholder="Campaign ID" value={freezeTarget} onChange={(e) => setFreezeTarget(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" /><input type="text" placeholder="Reason for pause (required)" value={freezeReason} onChange={(e) => setFreezeReason(e.target.value)} className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm text-stone-800 outline-none focus:ring-2 focus:ring-rose-300" /><div className="flex gap-2"><Button size="sm" variant="ghost" className="flex-1 text-stone-500" onClick={() => { setFreezeTarget(null); setFreezeReason(""); }}>Cancel</Button><Button size="sm" className="flex-1 bg-rose-600 text-white hover:bg-rose-700" disabled={!String(freezeTarget || "").trim() || !freezeReason.trim()} onClick={() => freeze(freezeTarget)}>Pause Campaign</Button></div></div>}</section>
     </div>
   );
 }
