@@ -68,14 +68,18 @@ export default async function (req) {
     const targetUserId = oboUserId || (scope === 'user' && user ? user.id : null);
     const startedAt = new Date().toISOString();
     const providerResults = [];
-    let totalDiscovered = 0;
+    const discoveredByCurrency = new Map();
     let totalImported = 0;
     let campaignsCovered = 0;
 
     let campaigns = [];
     if (body.campaign_id) {
       const c = await sr.entities.Campaign.get(body.campaign_id).catch(() => null);
-      if (c) campaigns = [c];
+      if (!c) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
+      if (user && user.role !== 'admin' && c.created_by_id !== user.id) {
+        return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: 403 });
+      }
+      campaigns = [c];
     } else if (scope === 'user' && targetUserId) {
       campaigns = await sr.entities.Campaign.filter({ created_by_id: targetUserId }, '-created_date', 100);
     } else {
@@ -142,13 +146,16 @@ export default async function (req) {
           }
           await sr.entities.PlatformConnection.update(conn.id, update);
 
-          totalDiscovered += num(result.amount_discovered);
+          const amountDiscovered = num(result.amount_discovered);
+          const resultCurrency = observedCurrency || 'UNSPECIFIED';
+          discoveredByCurrency.set(resultCurrency, num(discoveredByCurrency.get(resultCurrency)) + amountDiscovered);
           totalImported += imported;
           providerResults.push({
             provider: conn.platform,
             campaign_id: campaign.id,
             status: result.status,
-            amount_discovered: num(result.amount_discovered),
+            amount_discovered: amountDiscovered,
+            currency: resultCurrency,
             transactions_imported: imported,
             transaction_ids: txIds,
             external_only: true,
@@ -167,6 +174,7 @@ export default async function (req) {
             campaign_id: campaign.id,
             status: 'error',
             amount_discovered: 0,
+            currency: String(conn.external_currency || 'UNSPECIFIED').trim().toUpperCase(),
             transactions_imported: 0,
             transaction_ids: [],
             external_only: true,
