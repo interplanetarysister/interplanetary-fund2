@@ -34,6 +34,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
+      - name: Verify canonical quality-gate verifier manifest
+        run: node scripts/verify-quality-gate-verifier-manifest.mjs
+
       - name: Verify Node 22 release contract
         run: npm run verify:node22-release-contract
 
@@ -48,6 +51,12 @@ jobs:
 
       - name: Edit AI profile safe-error contract
         run: npm run verify:edit-ai-profile-safe-errors
+
+      - name: Auth pages safe-diagnostics contract
+        run: npm run verify:auth-pages-safe-diagnostics
+
+      - name: Stripe webhook safe-error contract
+        run: npm run verify:stripe-webhook-errors
 
       - name: Production build
         run: npm run build
