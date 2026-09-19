@@ -43,7 +43,7 @@ assert.match(card, /Provider verified/);
 assert.match(card, /owner reported/i);
 assert.doesNotMatch(card, /status:\s*["']connected["']/);
 assert.match(totals, /Reported USD total/);
-assert.match(totals, /not withdrawable/i);
+assert.match(totals, /not Interplanetary Fund-withdrawable/i);
 assert.match(totals, /excludedCurrencies/);
 
 assert.match(sync, /discoveredByCurrency/);
