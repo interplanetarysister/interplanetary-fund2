@@ -124,6 +124,13 @@ Return JSON only.`;
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
                 status: 'published', published_at: new Date().toISOString(), external_post_url: postUrl,
               });
+              await base44.entities.PlatformConnection.update(conn.id, {
+                status: 'connected',
+                verification_status: 'verified',
+                external_data_source: 'provider_verified',
+                last_synced: new Date().toISOString(),
+                last_error: '',
+              });
               crosspost.published++;
             } catch (e) {
               await base44.entities.DistributedPost.create({
