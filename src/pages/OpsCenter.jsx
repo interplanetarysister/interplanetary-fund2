@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RefreshCw, Loader2 } from "lucide-react";
@@ -10,8 +10,90 @@ import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
-// Ops Center — live mirror of the Convex mission backend. Data is cached in
-// Base44 entities so the dashboard works offline; Sync Now refreshes it.
+const SAFE_OPS_ERROR = "We couldn't load Ops Center data. Please try again.";
+const SAFE_SYNC_ERROR = "Sync failed. Cached operational data remains visible.";
+
+const safeOwn = (value, key) => {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+    return Object.prototype.hasOwnProperty.call(value, key) ? value[key] : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isPlainRecord = (value) => {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  } catch {
+    return false;
+  }
+};
+
+const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
+const isBoolean = (value) => typeof value === "boolean";
+
+const isAgentRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  const name = safeOwn(value, "name");
+  const status = safeOwn(value, "status");
+  const role = safeOwn(value, "role");
+  const trustScore = safeOwn(value, "trust_score");
+  return isNonEmptyString(id) && isNonEmptyString(name) && isNonEmptyString(status)
+    && isNonEmptyString(role) && isFiniteNumber(trustScore) && trustScore >= 0 && trustScore <= 100;
+};
+
+const isCampaignRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  const title = safeOwn(value, "title");
+  const status = safeOwn(value, "status");
+  const goal = safeOwn(value, "goal_amount");
+  const raised = safeOwn(value, "raised_amount");
+  return isNonEmptyString(id) && isNonEmptyString(title) && isNonEmptyString(status)
+    && isFiniteNumber(goal) && goal >= 0 && isFiniteNumber(raised) && raised >= 0
+    && ["outreach_enabled", "payment_active", "story_present", "cover_image_present"].every((key) => {
+      const field = safeOwn(value, key);
+      return field === undefined || isBoolean(field);
+    });
+};
+
+const isTreasurySnapshot = (value) => {
+  if (!isPlainRecord(value)) return false;
+  return ["total_raised", "total_held", "total_fees", "net_position"].every((key) => {
+    const field = safeOwn(value, key);
+    return isFiniteNumber(field) && field >= 0;
+  });
+};
+
+const isReportRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  return isNonEmptyString(id);
+};
+
+const hasUniqueIds = (rows) => {
+  const seen = new Set();
+  for (const row of rows) {
+    const id = safeOwn(row, "id");
+    if (!isNonEmptyString(id) || seen.has(id)) return false;
+    seen.add(id);
+  }
+  return true;
+};
+
+const readSyncEnvelope = (value) => {
+  if (!isPlainRecord(value)) return { ok: false };
+  const error = safeOwn(value, "error");
+  const success = safeOwn(value, "success");
+  return { ok: success === true && !error };
+};
+
+// Ops Center — operational mirror of the Convex mission backend. Convex remains authoritative.
 export default function OpsCenter() {
   const [agents, setAgents] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -21,8 +103,12 @@ export default function OpsCenter() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [error, setError] = useState(null);
+  const mountedRef = useRef(false);
+  const requestGenerationRef = useRef(0);
+  const syncingRef = useRef(false);
 
   const load = useCallback(async () => {
+    const generation = ++requestGenerationRef.current;
     try {
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
@@ -30,35 +116,55 @@ export default function OpsCenter() {
         base44.entities.TreasurySnapshot.list("-created_date", 1),
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
+      if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+      const validAgents = Array.isArray(a) && a.every(isAgentRow) && hasUniqueIds(a);
+      const validCampaigns = Array.isArray(c) && c.every(isCampaignRow) && hasUniqueIds(c);
+      const validTreasury = Array.isArray(t) && t.length <= 1 && (t.length === 0 || isTreasurySnapshot(t[0]));
+      const validReports = Array.isArray(r) && r.every(isReportRow) && hasUniqueIds(r);
+      if (!validAgents || !validCampaigns || !validTreasury || !validReports) throw new Error("MALFORMED_OPS_RESPONSE");
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
       setReports(r);
-    } catch (e) {
-      setError(e.message || "We couldn't load Ops Center data.");
+      setError(null);
+    } catch {
+      if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+      setError(SAFE_OPS_ERROR);
     } finally {
-      setLoading(false);
+      if (mountedRef.current && generation === requestGenerationRef.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => {
+      mountedRef.current = false;
+      requestGenerationRef.current += 1;
+    };
+  }, [load]);
 
   const syncNow = async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     setSyncError("");
     try {
       const res = await base44.functions.invoke("syncFromConvex", {});
-      if (res.data?.error) throw new Error(res.data.error);
+      const data = safeOwn(res, "data");
+      if (!readSyncEnvelope(data).ok) throw new Error("SYNC_FAILED");
       await load();
-    } catch (e) {
-      setSyncError(e.message || "Sync failed — showing cached data.");
+    } catch {
+      if (mountedRef.current) setSyncError(SAFE_SYNC_ERROR);
+    } finally {
+      syncingRef.current = false;
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
 
   const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
   const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
-  const offline = agents.length === 0;
+  const showingFallback = agents.length === 0;
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -66,7 +172,7 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{offline ? " · showing in-app agents (Convex offline)" : " · Convex mission backend"}</p>
+            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{showingFallback ? " · showing in-app agents (mirror unavailable)" : " · Convex mission backend mirror"}</p>
           </div>
           <button
             onClick={syncNow}
@@ -93,7 +199,7 @@ export default function OpsCenter() {
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
-              {offline && <p className="text-xs text-amber-400/80 text-center py-3">Convex mission backend offline — showing the platform's in-app agents. Tap Sync Now to retry.</p>}
+              {showingFallback && <p className="text-xs text-amber-400/80 text-center py-3">Convex mission backend mirror unavailable — showing in-app agents. Tap Sync Now to retry.</p>}
               {displayAgents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
             </TabsContent>
             <TabsContent value="campaigns" className="mt-4 space-y-3">
