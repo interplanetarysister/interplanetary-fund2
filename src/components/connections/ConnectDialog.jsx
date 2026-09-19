@@ -98,7 +98,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           {isCrowd && (
             <div className="space-y-2">
               <p className="text-xs text-stone-500">Enter owner-reported external figures. They remain informational until the provider verifies them.</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Reported total</Label>
                   <Input type="number" min="0" step="0.01" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
