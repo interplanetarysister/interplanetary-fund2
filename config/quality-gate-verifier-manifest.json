@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "node": "22.x",
+  "commands": [
+    {
+      "script": "verify:node22-release-contract",
+      "source": "scripts/verify-node22-release-contract.mjs",
+      "workflow": ".github/workflows/quality-gates.yml",
+      "required": true
+    },
+    {
+      "script": "test:node22-release-contract",
+      "source": "scripts/test-node22-release-contract.mjs",
+      "workflow": ".github/workflows/quality-gates.yml",
+      "required": true
+    },
+    {
+      "script": "verify:analytics-safety",
+      "source": "scripts/verify-analytics-safety.mjs",
+      "workflow": ".github/workflows/quality-gates.yml",
+      "required": true
+    },
+    {
+      "script": "verify:edit-ai-profile-safe-errors",
+      "source": "scripts/verify-edit-ai-profile-safe-errors.mjs",
+      "workflow": ".github/workflows/quality-gates.yml",
+      "required": true
+    },
+    {
+      "script": "verify:auth-pages-safe-diagnostics",
+      "source": "scripts/verify-auth-pages-safe-diagnostics.mjs",
+      "workflow": ".github/workflows/quality-gates.yml",
+      "required": true
+    },
+    {
+      "script": "verify:stripe-webhook-errors",
+      "source": "scripts/verify-stripe-webhook-error-contract.mjs",
+      "workflow": ".github/workflows/quality-gates.yml",
+      "required": true
+    }
+  ]
+}
