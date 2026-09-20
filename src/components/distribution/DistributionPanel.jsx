@@ -23,10 +23,13 @@ export default function DistributionPanel({ campaign }) {
 
   useEffect(() => {
     (async () => {
-      const [conns, existing] = await Promise.all([
-        base44.entities.PlatformConnection.filter({}),
+      const [connectionResponse, existing] = await Promise.all([
+        base44.functions.invoke("listConnections", {}),
         base44.entities.DistributedPost.filter({ campaign_id: campaign.id }, "-created_date", 30),
       ]);
+      const conns = (connectionResponse.data?.connections || []).filter(
+        (connection) => !connection.campaign_id || connection.campaign_id === campaign.id
+      );
       setConnections(conns);
       setSelected(conns.filter((c) => c.automation_mode !== "manual").map((c) => c.id));
       setPosts(existing);
