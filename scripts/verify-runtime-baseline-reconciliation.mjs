@@ -3,15 +3,19 @@ import path from "node:path";
 
 const root = process.cwd();
 const failures = [];
+const APPROVED_NODE = "22";
+const APPROVED_NODE_X = "22.x";
+
+function addFailure(code, target) {
+  failures.push(`${code}: ${target}`);
+}
 
 function readText(relativePath, { required = false } = {}) {
   const absolutePath = path.join(root, relativePath);
   try {
     return fs.readFileSync(absolutePath, "utf8");
-  } catch (error) {
-    if (required) {
-      failures.push(`${relativePath} is missing or unreadable: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  } catch {
+    if (required) addFailure("MISSING_OR_UNREADABLE", relativePath);
     return null;
   }
 }
@@ -21,30 +25,50 @@ function readJson(relativePath, { required = false } = {}) {
   if (text === null) return null;
   try {
     return JSON.parse(text);
-  } catch (error) {
-    failures.push(`${relativePath} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  } catch {
+    addFailure("MALFORMED_JSON", relativePath);
     return null;
   }
 }
 
 function assertExact(label, actual, expected) {
   if (actual !== expected) {
-    failures.push(`${label} must be ${JSON.stringify(expected)}; found ${JSON.stringify(actual)}`);
+    addFailure("UNAPPROVED_VALUE", `${label}=${JSON.stringify(actual)}`);
   }
 }
 
 const packageJson = readJson("package.json", { required: true });
 const lockfile = readJson("package-lock.json", { required: true });
 
-assertExact("package.json engines.node", packageJson?.engines?.node, "22.x");
-assertExact("package-lock.json packages[''].engines.node", lockfile?.packages?.[""]?.engines?.node, "22.x");
+assertExact("package.json engines.node", packageJson?.engines?.node, APPROVED_NODE_X);
+assertExact("package-lock.json packages[''].engines.node", lockfile?.packages?.[""]?.engines?.node, APPROVED_NODE_X);
 
 for (const selector of [".nvmrc", ".node-version"]) {
   const value = readText(selector, { required: true });
-  if (value !== null) assertExact(selector, value.trim(), "22");
+  if (value !== null) assertExact(selector, value.trim(), APPROVED_NODE);
 }
 
-const selectorFiles = [
+function discoverFiles(relativeDir, predicate) {
+  const absoluteDir = path.join(root, relativeDir);
+  if (!fs.existsSync(absoluteDir)) return [];
+  const found = [];
+  const pending = [absoluteDir];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const absolute = path.join(current, entry.name);
+      const relative = path.relative(root, absolute);
+      if (entry.isDirectory()) {
+        if (!entry.name.startsWith(".") || entry.name === ".github" || entry.name === ".devcontainer") pending.push(absolute);
+      } else if (predicate(entry.name, relative)) {
+        found.push(relative);
+      }
+    }
+  }
+  return found;
+}
+
+const selectorFiles = new Set([
   ".tool-versions",
   ".node-version",
   ".nvmrc",
@@ -55,12 +79,14 @@ const selectorFiles = [
   ".devcontainer.json",
   "codemagic.yaml",
   "codemagic.yml",
-];
-for (const selector of selectorFiles) {
-  const content = readText(selector);
+  "vercel.json",
+  ".vercel/project.json",
+]);
+for (const file of discoverFiles(".", (name, relative) => selectorFiles.has(relative) || /(?:Dockerfile|codemagic|vercel|node-version|nvmrc|tool-versions)/i.test(name))) {
+  const content = readText(file);
   if (content === null) continue;
-  if (/node(?:js)?\s*[:=]\s*(?:20|21|23|24)|node-version\s*:\s*["']?(?:20|21|23|24)/im.test(content)) {
-    failures.push(`${selector} contains a non-22 Node selector`);
+  if (/(?:node(?:js)?|node-version|NODE_VERSION)\s*[:=]\s*["']?(?:18|19|20|21|23|24)(?:\b|["'])/im.test(content)) {
+    addFailure("NON_22_SELECTOR", file);
   }
 }
 
@@ -71,24 +97,26 @@ try {
     const relativePath = `.github/workflows/${file}`;
     const content = readText(relativePath, { required: true });
     if (content === null) continue;
-    const setupNodeUses = [...content.matchAll(/uses:\s*actions\/setup-node@[^\n]+/g)];
-    const nodeVersions = [...content.matchAll(/node-version:\s*([^\n#]+)/g)].map((match) => match[1].trim().replace(/["']/g, ""));
-    if (setupNodeUses.length > 0) {
-      if (nodeVersions.length !== setupNodeUses.length) {
-        failures.push(`${relativePath} must declare exactly one node-version for every setup-node step`);
-      }
-      for (const value of nodeVersions) {
-        if (value !== "22" && value !== "22.x") {
-          failures.push(`${relativePath} setup-node must use Node 22; found ${JSON.stringify(value)}`);
-        }
+
+    const setupNodeUses = [...content.matchAll(/^\s*-?\s*uses:\s*actions\/setup-node@[^\n]+$/gm)];
+    const nodeVersionLines = [...content.matchAll(/^\s*node-version:\s*([^\n#]+)$/gm)].map((match) => match[1].trim().replace(/["']/g, ""));
+    const matrixNodeVersions = [...content.matchAll(/^\s*node-version\s*:\s*\[([^\]]+)\]/gm)].flatMap((match) => match[1].split(",").map((value) => value.trim().replace(/["']/g, "")));
+    const allVersions = [...nodeVersionLines, ...matrixNodeVersions];
+
+    if (setupNodeUses.length > 0 && allVersions.length < setupNodeUses.length) {
+      addFailure("WORKFLOW_SELECTOR_MISSING", relativePath);
+    }
+    for (const value of allVersions) {
+      if (value !== APPROVED_NODE && value !== APPROVED_NODE_X) {
+        addFailure("WORKFLOW_NON_22_SELECTOR", `${relativePath}:${value}`);
       }
     }
-    if (/node-version:\s*[^\n]*(?:20|21|23|24)/i.test(content)) {
-      failures.push(`${relativePath} contains a non-22 node-version selector`);
+    if (/\b(?:node|node-version)\s*[:=]\s*["']?(?:18|19|20|21|23|24)(?:\b|["'])/i.test(content)) {
+      addFailure("WORKFLOW_NON_22_SELECTOR", relativePath);
     }
   }
-} catch (error) {
-  failures.push(`.github/workflows is missing or unreadable: ${error instanceof Error ? error.message : String(error)}`);
+} catch {
+  addFailure("MISSING_OR_UNREADABLE", ".github/workflows");
 }
 
 if (failures.length > 0) {
