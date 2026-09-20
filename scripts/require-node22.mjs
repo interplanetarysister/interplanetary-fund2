@@ -13,7 +13,7 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-const SUPPORTED = [20, 22];
+const SUPPORTED = [22];
 
 if (!SUPPORTED.includes(nodeMajor)) {
   console.error(
