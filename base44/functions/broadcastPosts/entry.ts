@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
@@ -24,6 +24,10 @@ export default async function(req) {
       return Response.json({ error: 'Only the campaign owner can broadcast.' }, { status: 403 });
     }
 
+    const consentOwner = campaign.created_by_id === user.id
+      ? user
+      : await base44.asServiceRole.entities.User.get(campaign.created_by_id).catch(() => null);
+    const aiConsentGranted = hasAiPublishingConsent(consentOwner);
     const access = await assertPlatformAccess(base44.asServiceRole, 'social_publish');
     if (!access.ok) return Response.json({ error: `Social publishing is currently disabled: ${access.reason}` }, { status: 403 });
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
@@ -46,7 +50,7 @@ export default async function(req) {
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-      if (!canAutoPublish(connection)) {
+      if (!canAutoPublish(connection) || !aiConsentGranted) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
