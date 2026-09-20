@@ -86,11 +86,8 @@ export default async function (req) {
     const user = await base44.auth.me().catch(() => null);
     const body = await req.json().catch(() => ({}));
 
-    const isWorkflow = !user && (body.initiator_type === 'workflow' || body.initiator_type === 'scheduled');
-    if (!isWorkflow) {
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      if (user.role !== 'admin') return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
 
     const sr = base44.asServiceRole;
 
@@ -129,7 +126,8 @@ export default async function (req) {
 
     const allOk = Object.values(results).every((r) => r.ok);
     const anyFailed = Object.values(results).some((r) => !r.ok);
-    const overall = allOk ? 'success' : anyFailed ? 'partial' : 'failed';
+    const anySucceeded = Object.values(results).some((r) => r.ok);
+    const overall = allOk ? 'success' : anySucceeded ? 'partial' : 'failed';
 
     await logAudit(base44, {
       action: 'github_sync',
