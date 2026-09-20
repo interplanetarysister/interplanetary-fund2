@@ -23,11 +23,15 @@ export default function CrossPlatformTotals({ campaign }) {
   if (!connections.length) return null;
 
   const ifRaised = campaign.raised_amount || 0;
-  const usdConnections = connections.filter((c) => !c.external_currency || c.external_currency === "USD");
-  const excludedCurrencies = [...new Set(connections.map((c) => c.external_currency).filter((currency) => currency && currency !== "USD"))];
+  const usdConnections = connections.filter((c) => c.external_currency === "USD");
+  const excludedCurrencies = [...new Set(
+    connections
+      .map((c) => c.external_currency || "UNSPECIFIED")
+      .filter((currency) => currency !== "USD")
+  )];
   const externalRaised = usdConnections.reduce((s, c) => s + (c.external_total || 0), 0);
   const totalDonors = (campaign.donor_count || 0) + connections.reduce((s, c) => s + (c.external_donor_count || 0), 0);
-  const formatExternal = (connection) => `${connection.external_currency || "USD"} ${(connection.external_total || 0).toLocaleString()}`;
+  const formatExternal = (connection) => `${connection.external_currency || "UNSPECIFIED"} ${(connection.external_total || 0).toLocaleString()}`;
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
