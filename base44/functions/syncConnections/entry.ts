@@ -43,8 +43,11 @@ export default async function(req) {
         : null;
       const ownerUserId = campaign?.created_by_id || post.created_by_id;
       const ownerChainMatches = !!campaign &&
+        !!post.created_by_id &&
+        !!connection.created_by_id &&
         connection.created_by_id === campaign.created_by_id &&
-        (!post.created_by_id || post.created_by_id === campaign.created_by_id);
+        post.created_by_id === campaign.created_by_id &&
+        (!connection.campaign_id || connection.campaign_id === campaign.id);
       const owner = ownerUserId
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
