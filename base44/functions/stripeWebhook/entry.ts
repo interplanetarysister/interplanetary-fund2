@@ -5,6 +5,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
 import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
+import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 
 function webhookOrder(rows) {
   return [...(rows || [])].sort((a, b) => {
@@ -130,7 +131,7 @@ async function applyStripeDonation({
   });
 
   await mirrorCanonicalCampaignTotal(sr, campaignId, canonical);
-  await reconcileDonationMirror(sr, canonical.operationId, {
+  const donation = await reconcileDonationMirror(sr, canonical.operationId, {
     campaign_id: campaignId,
     campaign_title: campaign.title,
     amount: total,
@@ -183,6 +184,11 @@ async function applyStripeDonation({
     processed_at: new Date().toISOString(),
     last_error: '',
   });
+
+  // Automated receipt: email the donor a receipt for every verified gift.
+  if (canonical.applied) {
+    await sendDonationReceipt(sr, { ...donation, donor_email: donorEmail }, campaign);
+  }
   return canonical;
 }
 

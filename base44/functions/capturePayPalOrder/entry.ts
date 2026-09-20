@@ -6,6 +6,7 @@ import { round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
+import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 
 // Captures a PayPal/Google Pay order and applies the resulting donation through
 // Convex's transactional financial boundary. Provider capture idempotency + the
@@ -135,6 +136,11 @@ export default async function (req) {
         status: 'success',
         metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: cap.capture_id || order_id },
       });
+    }
+
+    // Automated receipt: email the donor a receipt for every verified gift.
+    if (canonical.applied) {
+      await sendDonationReceipt(sr, { ...donation, donor_email: donor?.email }, campaign);
     }
 
     return Response.json({
