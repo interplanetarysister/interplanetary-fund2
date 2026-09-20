@@ -44,7 +44,7 @@ async function adapterFor(connection) {
   }
   return {
     status: 'no_read_api',
-    amount_discovered: num(connection.external_total),
+    amount_discovered: 0,
     transactions: [],
     note: `${p} has no configured authoritative read adapter. Existing external totals are informational only.`,
   };
