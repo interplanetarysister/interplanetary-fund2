@@ -48,7 +48,9 @@
       "enum": [
         "success",
         "partial",
-        "failed"
+        "failed",
+        "unavailable",
+        "no_connections"
       ]
     },
     "provider_results": {
