@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
 
 // AI Campaign Distribution Engine — generates platform-tailored post content
 // for each connected social AND crowdfunding destination (never identical
@@ -56,14 +57,23 @@ export default async function(req) {
 
     const campaign = await base44.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
-    if (campaign.created_by_id !== user.id && user.role !== 'admin') {
+    if (campaign.created_by_id !== user.id) {
       return Response.json({ error: 'Only the campaign owner can distribute it.' }, { status: 403 });
     }
+    if (!hasAiPublishingConsent(user)) {
+      return Response.json({ error: 'AI preparation and publishing authorization is required.' }, { status: 403 });
+    }
 
-    // Connections are read user-scoped — RLS guarantees they belong to the caller.
-    // Both social and crowdfunding destinations are eligible for distribution.
+    // Fail closed across the complete campaign → connection ownership chain.
+    // Unscoped owner connections may serve the owner's campaigns; a connection
+    // scoped to another campaign is never eligible.
     const all = await base44.entities.PlatformConnection.filter({});
-    const targets = all.filter((c) => connection_ids.includes(c.id) && c.automation_mode !== 'manual');
+    const targets = all.filter((c) =>
+      connection_ids.includes(c.id) &&
+      c.automation_mode !== 'manual' &&
+      c.created_by_id === campaign.created_by_id &&
+      (!c.campaign_id || c.campaign_id === campaign.id)
+    );
     if (!targets.length) {
       return Response.json({ error: 'No selected platforms allow AI content. Check each connection\'s automation setting.' }, { status: 400 });
     }
