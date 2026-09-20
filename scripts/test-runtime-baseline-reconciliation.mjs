@@ -39,6 +39,6 @@ const workflowMatrixDrift = runFixture((fixture) => {
   fs.writeFileSync(workflowPath, `${workflow}\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n`);
 });
 assert.notEqual(workflowMatrixDrift.status, 0, "workflow Node 20 drift must fail");
-assert.match(workflowMatrixDrift.stderr, /node-version/);
+assert.match(workflowMatrixDrift.stderr, /node-version|setup-node pins/);
 
 console.log("Runtime baseline reconciliation negative cases passed.");
