@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
-import GoogleIcon from "@/components/GoogleIcon";
+import SocialButtons from "@/components/auth/SocialButtons";
 import { toast } from "@/components/ui/use-toast";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { safeAuthErrorMessage } from "@/lib/safe-auth-error";
 
 export default function Register() {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -46,6 +47,13 @@ export default function Register() {
       const result = await base44.auth.verifyOtp({ email, otpCode });
       if (result?.access_token) {
         base44.auth.setToken(result.access_token);
+        if (username.trim()) {
+          try {
+            await base44.auth.updateMe({ username: username.trim() });
+          } catch {
+            // Username save is best-effort; don't block login on it.
+          }
+        }
       }
       window.location.href = safeReturnTo();
     } catch (err) {
@@ -66,10 +74,6 @@ export default function Register() {
     } catch (err) {
       setError(safeAuthErrorMessage("resend"));
     }
-  };
-
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", safeReturnTo());
   };
 
   if (showOtp) {
@@ -143,14 +147,7 @@ export default function Register() {
         </>
       }
     >
-      <Button
-        variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
-        onClick={handleGoogle}
-      >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
-      </Button>
+      <SocialButtons returnTo={safeReturnTo()} />
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">
@@ -168,6 +165,22 @@ export default function Register() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <div className="relative">
+            <UserPlus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="username"
+              type="text"
+              autoComplete="username"
+              placeholder="yourhandle"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="pl-10 h-12"
+              required
+            />
+          </div>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">

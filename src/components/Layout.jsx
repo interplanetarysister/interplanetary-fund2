@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2, Plug, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2, Plug, ShieldCheck, Radio } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -19,7 +19,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/facebook": "Facebook Outreach", "/connect": "Connect AI Assistant", "/admin/external-accounts": "External Accounts", "/admin/integrations": "Integrations",
+  "/social": "Social", "/facebook": "Facebook Outreach", "/connect": "Connect AI Assistant", "/admin/external-accounts": "External Accounts", "/admin/integrations": "Integrations",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -51,6 +51,7 @@ const navSections = [
   {
     label: "Engage",
     items: [
+      { to: "/social", label: "Interplanetary Social", icon: Radio },
       { to: "/community", label: "Community", icon: Users },
       { to: "/institutions", label: "Institutions", icon: Building2 },
       { to: "/communications", label: "Messages", icon: MessageSquare },
