@@ -110,12 +110,17 @@ export default function Connections() {
             <p className="text-red-600">{syncResult.error}</p>
           ) : (
             <p className="text-stone-700">
-              Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · observed{" "}
-              <span className="font-medium">{discoveredSummary || "no external totals"}</span> · new external observations{" "}
+              {["success", "partial"].includes(syncResult.overall_status) ? "Synchronized" : "Checked"}{" "}
+              <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · authoritative provider observations{" "}
+              <span className="font-medium">{discoveredSummary || "none"}</span> · new external observations{" "}
               <span className="font-medium">{syncResult.total_imported}</span> · status{" "}
               <span className="font-medium">{syncResult.overall_status}</span>.
               <span className="block mt-1 text-xs text-stone-500">
-                External totals are informational, currency-specific, and not withdrawable until a verified transfer enters the Interplanetary Fund ledger.
+                {syncResult.overall_status === "unavailable"
+                  ? "No configured provider supported an authoritative pull. Owner-reported totals were not counted as synchronized data."
+                  : syncResult.overall_status === "no_connections"
+                    ? "No eligible crowdfunding connections were available to synchronize."
+                    : "External totals are informational, currency-specific, and not withdrawable until a verified transfer enters the Interplanetary Fund ledger."}
               </span>
             </p>
           )}
