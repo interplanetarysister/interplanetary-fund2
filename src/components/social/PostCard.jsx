@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Image } from "@/components/ui/image";
-import { Heart, Repeat2, MessageCircle, Sparkles, Pin, Trash2 } from "lucide-react";
+import { Heart, Repeat2, MessageCircle, Sparkles, Pin, Trash2, Share2 } from "lucide-react";
 import { BannerBadge } from "@/components/social/ProfileBanner";
 
 const PLATFORM_LABELS = {
@@ -10,7 +10,7 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn", threads: "Threads", reddit: "Reddit",
 };
 
-export default function PostCard({ post, currentUser, onLike, onDelete }) {
+export default function PostCard({ post, currentUser, onLike, onDelete, onShare }) {
   const isOwner = currentUser?.id === post.author_user_id;
   const hasMedia = !!post.media_url;
 
@@ -68,6 +68,11 @@ export default function PostCard({ post, currentUser, onLike, onDelete }) {
             <span className="flex items-center gap-1.5 text-slate-400 text-xs">
               <MessageCircle className="w-4 h-4" /> {post.comments_count || 0}
             </span>
+            {onShare && (
+              <button onClick={() => onShare(post)} className="flex items-center gap-1.5 text-slate-400 hover:text-cyan-300 text-xs transition-colors">
+                <Share2 className="w-4 h-4" /> Share
+              </button>
+            )}
             {isOwner && onDelete && (
               <button onClick={() => onDelete(post)} className="ml-auto text-slate-500 hover:text-rose-400 text-xs transition-colors">
                 <Trash2 className="w-4 h-4" />
