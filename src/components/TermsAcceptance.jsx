@@ -90,9 +90,8 @@ export default function TermsAcceptance({ children }) {
           <p className="text-slate-500 text-xs mb-5 leading-relaxed">
             By continuing, you agree to the Interplanetary Fund Terms of Service
             and Privacy Policy. The platform is provided "AS IS" without
-            warranties. Campaign outcomes and third-party services may involve
-            risks. Users are responsible for the campaigns, content, and actions
-            they initiate.
+            warranties. Campaign outcomes, donations, and third-party services may involve risks.
+            Users are responsible for the campaigns, content, and actions they initiate through the platform.
           </p>
 
           <button
@@ -100,7 +99,7 @@ export default function TermsAcceptance({ children }) {
             onClick={accept}
             className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-opacity glow-primary"
           >
-            I Agree — Enter Interplanetary Fund
+            I Agree — Continue
           </button>
         </div>
       </div>

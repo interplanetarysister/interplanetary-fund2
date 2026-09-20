@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getTierFromScore } from "@/components/social/ProfileBanner";

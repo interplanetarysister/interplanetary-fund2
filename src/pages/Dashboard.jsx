@@ -8,7 +8,6 @@ import TreasurySnapshotCard from "@/components/dashboard/TreasurySnapshotCard";
 import FollowFeed from "@/components/dashboard/FollowFeed";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
-import CampaignCard from "@/components/campaigns/CampaignCard";
 import CampaignTabs from "@/components/campaigns/CampaignTabs";
 import FeaturedCarousel from "@/components/campaigns/FeaturedCarousel";
 import SuccessStories from "@/components/campaigns/SuccessStories";
