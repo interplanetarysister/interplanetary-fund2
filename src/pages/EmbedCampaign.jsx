@@ -15,20 +15,31 @@ export default function EmbedCampaign() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ id })
-      .then((rows) => {
-        const c = rows[0];
-        setCampaign(c && c.status !== "draft" ? c : null);
-      })
+    base44.entities.Campaign.get(id)
+      .then((c) => setCampaign(c && c.status !== "draft" ? c : null))
       .catch(() => setCampaign(null))
       .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="w-5 h-5 animate-spin text-cyan-500" /></div>;
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <Loader2 className="w-5 h-5 animate-spin text-cyan-500" />
+      </div>
+    );
   }
+
   if (!campaign) {
-    return <div className="p-6 text-sm text-stone-500 text-center">Campaign unavailable.</div>;
+    return (
+      <div className="p-6 text-sm text-stone-500 text-center h-screen flex items-center justify-center bg-white">
+        <div>
+          <p>Campaign unavailable.</p>
+          <a href={`${window.location.origin}/discover`} className="text-cyan-600 hover:underline mt-2 inline-block">
+            Browse campaigns →
+          </a>
+        </div>
+      </div>
+    );
   }
 
   const goal = campaign.goal_amount || 0;

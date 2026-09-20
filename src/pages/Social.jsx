@@ -1,61 +1,53 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Radio, Loader2, Link2, Sparkles, RefreshCw } from "lucide-react";
+import { Radio, Loader2, Link2, RefreshCw, Users } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PostComposer from "@/components/social/PostComposer";
-import PostCard from "@/components/social/PostCard";
+import SocialFeed from "@/components/social/SocialFeed";
 import ProfileBanner, { getTierFromScore } from "@/components/social/ProfileBanner";
+import ShareToProfileDialog from "@/components/social/ShareToProfileDialog";
+import AdminContentPanel from "@/components/social/AdminContentPanel";
+import ActivityFeed from "@/components/community/ActivityFeed";
 import PageError from "@/components/PageError";
 
 export default function Social() {
   const [user, setUser] = useState(null);
-  const [posts, setPosts] = useState([]);
   const [connections, setConnections] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("social");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [shareTarget, setShareTarget] = useState(null); // { sourceType, sourceId }
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadUser = useCallback(async () => {
     try {
-      const [u, p, conns, camps] = await Promise.all([
+      const [u, conns, camps] = await Promise.all([
         base44.auth.me(),
-        base44.entities.SocialPost.list("-created_date", 100),
         base44.entities.PlatformConnection.filter({}).catch(() => []),
         base44.entities.Campaign.filter({}).catch(() => []),
       ]);
       setUser(u);
-      setPosts(Array.isArray(p) ? p : []);
       setConnections(Array.isArray(conns) ? conns : []);
       setCampaigns(Array.isArray(camps) ? camps.filter((c) => c.status === "active" || c.status === "draft") : []);
-    } catch (err) {
+    } catch {
       setError("We couldn't load the social feed.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll, refreshKey]);
+  useEffect(() => { loadUser(); }, [loadUser]);
 
   const handlePosted = (_post, newScore, newTier) => {
     setUser((prev) => ({ ...prev, social_score: newScore, banner_tier: newTier }));
     setRefreshKey((k) => k + 1);
   };
 
-  const handleLike = async (post) => {
-    try {
-      const updated = await base44.entities.SocialPost.update(post.id, { likes_count: (post.likes_count || 0) + 1 });
-      setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, likes_count: updated.likes_count } : p)));
-    } catch { /* best-effort */ }
-  };
-
-  const handleDelete = async (post) => {
-    try {
-      await base44.entities.SocialPost.delete(post.id);
-      setPosts((prev) => prev.filter((p) => p.id !== post.id));
-    } catch { /* best-effort */ }
+  const handleShared = (_post, newScore, newTier) => {
+    setUser((prev) => ({ ...prev, social_score: newScore, banner_tier: newTier }));
+    setRefreshKey((k) => k + 1);
   };
 
   if (loading) {
@@ -65,12 +57,14 @@ export default function Social() {
       </div>
     );
   }
-  if (error) return <PageError message={error} onRetry={() => setRefreshKey((k) => k + 1)} />;
+  if (error) return <PageError message={error} onRetry={() => { setError(""); setLoading(true); loadUser(); }} />;
 
-  const topPosts = posts.filter((p) => p.is_top_post);
-  const feedPosts = posts.filter((p) => !p.is_top_post);
   const currentTier = user?.banner_tier || getTierFromScore(user?.social_score || 0);
-  const connectedPlatforms = connections.filter((c) => c.status === "connected");
+  const isAdmin = user?.role === "admin";
+  // Users see only their own connections; admins see all (RLS enforces this).
+  // For the sidebar, show only the user's own to keep the view clean.
+  const userConnections = connections.filter((c) => c.created_by_id === user?.id);
+  const connectedPlatforms = userConnections.filter((c) => c.status === "connected");
 
   return (
     <div className="min-h-screen deep-space pb-20">
@@ -91,43 +85,40 @@ export default function Social() {
           </button>
         </div>
 
+        {/* Tabs: Social + Community combined */}
+        <Tabs value={tab} onValueChange={setTab} className="mb-6">
+          <TabsList className="bg-white/5 border border-white/10">
+            <TabsTrigger value="social" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-200">
+              <Radio className="w-3.5 h-3.5 mr-1.5" /> Social
+            </TabsTrigger>
+            <TabsTrigger value="community" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-200">
+              <Users className="w-3.5 h-3.5 mr-1.5" /> Community
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="grid lg:grid-cols-[1fr_280px] gap-6">
-          {/* Main feed */}
+          {/* Main content */}
           <div className="space-y-4">
-            {user && (
-              <PostComposer
-                user={user}
-                connections={connections}
-                campaigns={campaigns}
-                onPosted={handlePosted}
-              />
+            {tab === "social" ? (
+              <>
+                {user && (
+                  <PostComposer
+                    user={user}
+                    connections={userConnections}
+                    campaigns={campaigns}
+                    onPosted={handlePosted}
+                  />
+                )}
+                <SocialFeed
+                  key={refreshKey}
+                  user={user}
+                  onShare={(post) => setShareTarget({ sourceType: "social_post", sourceId: post.id })}
+                />
+              </>
+            ) : (
+              <ActivityFeed />
             )}
-
-            {topPosts.length > 0 && (
-              <div>
-                <p className="text-cyan-300 text-xs font-medium mb-2 px-1 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Top Posts
-                </p>
-                <div className="space-y-3">
-                  {topPosts.map((p) => (
-                    <PostCard key={p.id} post={p} currentUser={user} onLike={handleLike} onDelete={handleDelete} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {feedPosts.length === 0 && !topPosts.length ? (
-                <div className="glass-panel rounded-2xl p-10 text-center">
-                  <Radio className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-300 text-sm">No posts yet. Be the first to broadcast!</p>
-                </div>
-              ) : (
-                feedPosts.map((p) => (
-                  <PostCard key={p.id} post={p} currentUser={user} onLike={handleLike} onDelete={handleDelete} />
-                ))
-              )}
-            </div>
           </div>
 
           {/* Sidebar */}
@@ -170,9 +161,48 @@ export default function Social() {
                 <p>🌠 500 pts → Platinum commander</p>
               </div>
             </div>
+
+            {/* Admin-only: AI Content Studio + all platform connections */}
+            {isAdmin && (
+              <>
+                <AdminContentPanel onGenerated={() => setRefreshKey((k) => k + 1)} />
+                <div className="glass-panel rounded-2xl p-4">
+                  <p className="text-slate-300 text-sm font-medium mb-2">Admin: All Connections</p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {connections.length === 0 ? (
+                      <p className="text-xs text-slate-500">No platform connections.</p>
+                    ) : (
+                      connections.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between text-xs">
+                          <span className="text-slate-300">{c.display_name || c.platform}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                            c.status === "connected" ? "bg-emerald-500/20 text-emerald-300" :
+                            c.status === "error" ? "bg-rose-500/20 text-rose-300" :
+                            "bg-slate-500/20 text-slate-400"
+                          }`}>{c.status}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Share-to-Profile dialog */}
+      {shareTarget && (
+        <ShareToProfileDialog
+          open={!!shareTarget}
+          onClose={() => setShareTarget(null)}
+          sourceType={shareTarget.sourceType}
+          sourceId={shareTarget.sourceId}
+          user={user}
+          connections={userConnections}
+          onShared={handleShared}
+        />
+      )}
     </div>
   );
 }

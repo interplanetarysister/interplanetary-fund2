@@ -40,8 +40,11 @@ export default function TermsAcceptance({ children }) {
     setAccepted(true);
   };
 
+  // Embed routes and public iframe content bypass the per-session gate so
+  // embedded campaign cards render on external sites without a click.
+  const isEmbedRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/embed/");
   if (!initialized) return null;
-  if (accepted) return <>{children}</>;
+  if (accepted || isEmbedRoute) return <>{children}</>;
 
   return (
     <div className="fixed inset-0 z-[60] deep-space flex items-center justify-center p-4 overflow-y-auto">
