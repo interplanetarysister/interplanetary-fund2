@@ -10,20 +10,17 @@ try {
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
 } catch {
-  // npm availability is reported for diagnostics; Node major is the hard gate.
+  // npm availability is reported for diagnostics; Node 22 is the hard gate.
 }
 
-const SUPPORTED = [20, 22];
-
-if (!SUPPORTED.includes(nodeMajor)) {
+if (nodeMajor !== 22) {
   console.error(
-    `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Supported runtimes: Node ${SUPPORTED.join(' or ')}. ` +
-    'Select a supported runtime before install, build, typecheck, lint, or verification.',
+    `Node 22 runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
+    'Select a supported Node 22 runtime before install, build, typecheck, lint, or verification.',
   );
   process.exit(1);
 }
 
 console.log(
-  `Node runtime preflight passed: Node ${nodeVersion}, npm ${npmVersion}, executable ${process.execPath}.`,
+  `Node 22 runtime preflight passed: Node ${nodeVersion}, npm ${npmVersion}, executable ${process.execPath}.`,
 );
