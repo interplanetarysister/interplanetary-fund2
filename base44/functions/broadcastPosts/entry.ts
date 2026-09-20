@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -20,16 +20,22 @@ export default async function(req) {
 
     const campaign = await base44.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
-    if (campaign.created_by_id !== user.id && user.role !== 'admin') {
+    if (campaign.created_by_id !== user.id) {
       return Response.json({ error: 'Only the campaign owner can broadcast.' }, { status: 403 });
     }
 
-    const consentOwner = campaign.created_by_id === user.id
-      ? user
-      : await base44.asServiceRole.entities.User.get(campaign.created_by_id).catch(() => null);
+    const sr = base44.asServiceRole;
+    const consentOwner = user;
     const aiConsentGranted = hasAiPublishingConsent(consentOwner);
-    const access = await assertPlatformAccess(base44.asServiceRole, 'social_publish');
-    if (!access.ok) return Response.json({ error: `Social publishing is currently disabled: ${access.reason}` }, { status: 403 });
+    if (!aiConsentGranted) {
+      return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
+    }
+    const access = await assertPlatformAccess(sr, 'social_publish');
+    const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish');
+    if (!access.ok || !obo.ok) {
+      const reason = !access.ok ? access.reason : obo.reason;
+      return Response.json({ error: `Social publishing is currently disabled: ${reason}` }, { status: 403 });
+    }
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const pending = posts.filter((p) =>
       ['pending_approval', 'draft', 'approved', 'failed'].includes(p.status)
@@ -45,6 +51,16 @@ export default async function(req) {
         });
         results.failed++;
         results.posts.push(updated);
+        continue;
+      }
+      const ownerChainMatches = !!post.created_by_id &&
+        !!connection.created_by_id &&
+        post.created_by_id === campaign.created_by_id &&
+        connection.created_by_id === campaign.created_by_id &&
+        (!connection.campaign_id || connection.campaign_id === campaign.id);
+      if (!ownerChainMatches) {
+        results.failed++;
+        results.posts.push({ id: post.id, status: 'blocked', error: 'Post, campaign, and connection ownership do not match.' });
         continue;
       }
 
