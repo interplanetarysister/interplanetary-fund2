@@ -8,6 +8,27 @@
         "user"
       ]
     },
+    "username": {
+      "type": "string",
+      "description": "The unique display handle the user chose at registration, shown across the Interplanetary Fund social feed and profile."
+    },
+    "banner_tier": {
+      "type": "string",
+      "enum": [
+        "none",
+        "bronze",
+        "silver",
+        "gold",
+        "platinum"
+      ],
+      "default": "none",
+      "description": "Reward banner tier earned by posting on the Interplanetary Fund social feed. Higher tiers unlock premium profile banners and top-feed placement."
+    },
+    "social_score": {
+      "type": "number",
+      "default": 0,
+      "description": "Accumulated reward points from social posting activity. Determines banner tier and top-placement eligibility."
+    },
     "onboarding_completed": {
       "type": "boolean",
       "default": false,
