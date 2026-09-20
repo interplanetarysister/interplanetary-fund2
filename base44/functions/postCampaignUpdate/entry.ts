@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
@@ -69,8 +70,15 @@ export default async function(req) {
     // 2. Cross-post to social connections (unless the owner opted out for this post)
     const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0 };
     if (cross_post !== false) {
-      // User-scoped read respects RLS — only the owner's connections come back.
-      const connections = await base44.entities.PlatformConnection.filter({});
+      const sr = base44.asServiceRole;
+      const connections = user.role === 'admin' && campaign.created_by_id !== user.id
+        ? await sr.entities.PlatformConnection.filter({ created_by_id: campaign.created_by_id })
+        : await base44.entities.PlatformConnection.filter({});
+      const consentOwner = campaign.created_by_id === user.id
+        ? user
+        : await sr.entities.User.get(campaign.created_by_id).catch(() => null);
+      const aiConsentGranted = hasAiPublishingConsent(consentOwner);
+      const platformAccess = await assertPlatformAccess(sr, 'social_publish');
       const targets = connections.filter((c) => c.automation_mode !== 'manual');
       crosspost.skipped = connections.length - targets.length;
 
@@ -116,7 +124,7 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
-          if (conn.automation_mode === 'auto' && canAutoPublish(conn)) {
+          if (conn.automation_mode === 'auto' && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({
