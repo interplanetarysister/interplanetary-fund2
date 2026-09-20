@@ -54,18 +54,19 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    let user = null;
-    try { user = await base44.auth.me(); } catch (_) { /* scheduled/workflow call */ }
-    const body = await req.json().catch(() => ({}));
-    const initiatorType = body.initiator_type || (user ? 'user' : 'scheduled');
-    const oboUserId = body.obo_user_id || null;
-
-    const scope = body.scope || (user ? 'user' : 'all');
-    if (user && user.role !== 'admin' && (scope === 'all' || (oboUserId && oboUserId !== user.id))) {
-      return Response.json({ error: 'You can only synchronize your own funds.' }, { status: 403 });
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) {
+      return Response.json({ error: 'Unauthorized. Scheduled synchronization requires a trusted authenticated invocation.' }, { status: 401 });
     }
-
-    const targetUserId = oboUserId || (scope === 'user' && user ? user.id : null);
+    const body = await req.json().catch(() => ({}));
+    const requestedScope = body.scope || 'user';
+    if (!['user', 'all'].includes(requestedScope)) {
+      return Response.json({ error: 'scope must be "user" or "all".' }, { status: 400 });
+    }
+    const scope = user.role === 'admin' ? requestedScope : 'user';
+    const oboUserId = user.role === 'admin' ? (body.obo_user_id || null) : null;
+    const initiatorType = user.role === 'admin' && body.initiator_type === 'scheduled' ? 'scheduled' : 'user';
+    const targetUserId = oboUserId || (scope === 'user' ? user.id : null);
     const startedAt = new Date().toISOString();
     const providerResults = [];
     const discoveredByCurrency = new Map();
@@ -76,7 +77,7 @@ export default async function (req) {
     if (body.campaign_id) {
       const c = await sr.entities.Campaign.get(body.campaign_id).catch(() => null);
       if (!c) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
-      if (user && user.role !== 'admin' && c.created_by_id !== user.id) {
+      if (user.role !== 'admin' && c.created_by_id !== user.id) {
         return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: 403 });
       }
       campaigns = [c];
