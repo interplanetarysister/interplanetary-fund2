@@ -15,7 +15,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
   const verified = connection.status === "connected" && connection.verification_status === "verified";
   const failed = connection.status === "error";
   const providerAmount = connection.external_data_source === "provider_verified";
-  const currency = connection.external_currency || "USD";
+  const currency = connection.external_currency || "UNSPECIFIED";
   const mode = AUTOMATION_MODES.find((m) => m.value === connection.automation_mode);
 
   const disconnect = async () => {
