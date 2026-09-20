@@ -39,14 +39,17 @@ export default function AccountManagement({ user, onUserChanged }) {
     setExporting(true);
     try {
       const me = await base44.auth.me();
-      const [campaigns, follows, notifications, connections, inbox, donations] = await Promise.all([
+      const [campaigns, follows, notifications, connectionResponse, inbox, donations] = await Promise.all([
         base44.entities.Campaign.filter({ created_by_id: me.id }),
         base44.entities.FollowedCampaign.filter({ user_id: me.id }),
         base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 200),
-        base44.entities.PlatformConnection.list("-updated_date", 100),
+        base44.functions.invoke("listConnections", {}),
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 200),
         base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date", 200),
       ]);
+      const connections = (connectionResponse.data?.connections || [])
+        .filter((connection) => connection.created_by_id === me.id)
+        .map(({ credentials, credentials_meta, ...connection }) => connection);
       const payload = { exported_at: new Date().toISOString(), profile: me, campaigns, followed_campaigns: follows, notifications, connections, inbox, donations };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
