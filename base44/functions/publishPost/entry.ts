@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
@@ -30,7 +30,10 @@ export default async function(req) {
 
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-    if (!canAutoPublish(connection)) {
+    const consentOwner = connection.created_by_id === user.id
+      ? user
+      : await base44.asServiceRole.entities.User.get(connection.created_by_id).catch(() => null);
+    if (!canAutoPublish(connection) || !hasAiPublishingConsent(consentOwner)) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
