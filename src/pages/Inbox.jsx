@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,6 +8,12 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
+
+const INBOX_LOAD_ERROR = "We couldn't load your inbox. Please try again.";
+
+function loadGenerationIsCurrent(generationRef, generation) {
+  return generationRef.current === generation;
+}
 
 // The Universal Inbox — one communication center aggregating connected-platform
 // interactions (InboxItems, e.g. live Ko-fi gifts), Interplanetary Fund
@@ -20,46 +26,61 @@ export default function Inbox() {
   const [platform, setPlatform] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const generationRef = useRef(0);
 
   useEffect(() => {
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
+    let active = true;
+
     (async () => {
-     try {
-      const me = await base44.auth.me();
-      const [inboxItems, notifications, myCampaigns] = await Promise.all([
-        base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
-        base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
-        base44.entities.Campaign.filter({ created_by_id: me.id }),
-      ]);
-      const dResults = await Promise.all(
-        myCampaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
-      );
-      const donationLists = dResults.map((r) => (r.data && r.data.donations) || []);
+      try {
+        const me = await base44.auth.me();
+        const [inboxItems, notifications, myCampaigns] = await Promise.all([
+          base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
+          base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
+          base44.entities.Campaign.filter({ created_by_id: me.id }),
+        ]);
+        const dResults = await Promise.all(
+          myCampaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
+        );
+        const donationLists = dResults.map((r) => (r?.data && Array.isArray(r.data.donations) ? r.data.donations : []));
 
-      const merged = [
-        ...inboxItems.map((i) => ({
-          key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
-          content: i.content, link: i.link, campaign_id: i.campaign_id,
-          campaign_title: i.campaign_title || myCampaigns.find((c) => c.id === i.campaign_id)?.title,
-          status: i.status, date: i.created_date, ai_draft: i.ai_draft,
-        })),
-        ...donationLists.flat().map((d) => ({
-          key: `d-${d.id}`, platform: "interplanetary", type: "donation", author: d.donor_name || "Anonymous",
-          content: `Gave $${(d.amount || 0).toLocaleString()}${d.message ? ` — "${d.message}"` : ""}`,
-          link: `/campaign/${d.campaign_id}`, campaign_id: d.campaign_id, campaign_title: d.campaign_title,
-          status: "done", date: d.created_date,
-        })),
-        ...notifications.map((n) => ({
-          key: `n-${n.id}`, notification_id: n.id, platform: "interplanetary", type: n.type === "donation" ? "donation" : "system",
-          author: "", content: `${n.title}${n.body ? ` — ${n.body}` : ""}`, link: n.link,
-          status: n.read ? "done" : "open", date: n.created_date,
-        })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const merged = [
+          ...inboxItems.map((i) => ({
+            key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
+            content: i.content, link: i.link, campaign_id: i.campaign_id,
+            campaign_title: i.campaign_title || myCampaigns.find((c) => c.id === i.campaign_id)?.title,
+            status: i.status, date: i.created_date, ai_draft: i.ai_draft,
+          })),
+          ...donationLists.flat().map((d) => ({
+            key: `d-${d.id}`, platform: "interplanetary", type: "donation", author: d.donor_name || "Anonymous",
+            content: `Gave $${(d.amount || 0).toLocaleString()}${d.message ? ` — "${d.message}"` : ""}`,
+            link: `/campaign/${d.campaign_id}`, campaign_id: d.campaign_id, campaign_title: d.campaign_title,
+            status: "done", date: d.created_date,
+          })),
+          ...notifications.map((n) => ({
+            key: `n-${n.id}`, notification_id: n.id, platform: "interplanetary", type: n.type === "donation" ? "donation" : "system",
+            author: "", content: `${n.title}${n.body ? ` — ${n.body}` : ""}`, link: n.link,
+            status: n.read ? "done" : "open", date: n.created_date,
+          })),
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      setItems(merged);
-     } catch (e) {
-       setError(e.message || "We couldn't load your inbox.");
-     }
+        if (active && loadGenerationIsCurrent(generationRef, generation)) {
+          setItems(merged);
+          setError(null);
+        }
+      } catch {
+        if (active && loadGenerationIsCurrent(generationRef, generation)) {
+          setError(INBOX_LOAD_ERROR);
+          setItems(null);
+        }
+      }
     })();
+
+    return () => {
+      active = false;
+    };
   }, [refreshKey]);
 
   if (error) {
