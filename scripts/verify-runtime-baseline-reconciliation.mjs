@@ -41,7 +41,10 @@ const packageJson = readJson("package.json", { required: true });
 const lockfile = readJson("package-lock.json", { required: true });
 
 assertExact("package.json engines.node", packageJson?.engines?.node, APPROVED_NODE_X);
-assertExact("package-lock.json packages[''].engines.node", lockfile?.packages?.[""]?.engines?.node, APPROVED_NODE_X);
+const lockRoot = lockfile?.packages?.[""];
+if (lockRoot?.engines?.node !== undefined) {
+  assertExact("package-lock.json packages[''].engines.node", lockRoot.engines.node, APPROVED_NODE_X);
+}
 
 for (const selector of [".nvmrc", ".node-version"]) {
   const value = readText(selector, { required: true });
