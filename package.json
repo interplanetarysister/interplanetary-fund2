@@ -27,6 +27,8 @@
     "pretest:payments": "npm run verify:runtime-node22 --silent",
     "preverify:node22-release-contract": "npm run verify:runtime-node22 --silent",
     "pretest:node22-release-contract": "npm run verify:runtime-node22 --silent",
+    "preverify:runtime-baseline-reconciliation": "npm run verify:runtime-node22 --silent",
+    "pretest:runtime-baseline-reconciliation": "npm run verify:runtime-node22 --silent",
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-node22 --silent",
     "dev": "vite",
     "build": "vite build",
@@ -46,6 +48,8 @@
     "preview": "vite preview",
     "verify:node22-release-contract": "node scripts/verify-node22-release-contract.mjs",
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
+    "verify:runtime-baseline-reconciliation": "node scripts/verify-runtime-baseline-reconciliation.mjs",
+    "test:runtime-baseline-reconciliation": "node scripts/test-runtime-baseline-reconciliation.mjs",
     "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs"
   },
   "dependencies": {
