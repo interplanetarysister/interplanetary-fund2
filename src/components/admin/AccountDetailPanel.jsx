@@ -91,7 +91,7 @@ export default function AccountDetailPanel({ connection, campaigns, agents, post
                   <InfoRow k="Automation" v={mode?.label || c.automation_mode || "—"} />
                   <InfoRow k="OBO permission" v={oboGranted(c) ? "Granted" : "Not granted"} bool={oboGranted(c)} />
                   <InfoRow k="Credential status" v={credentialStatus(c)} />
-                  {c.kind === "crowdfunding" && <InfoRow k="Raised on platform" v={`$${(c.external_total || 0).toLocaleString()} · ${c.external_donor_count || 0} donors`} />}
+                  {c.kind === "crowdfunding" && <InfoRow k="Raised on platform" v={`${c.external_currency || "UNSPECIFIED"} ${(c.external_total || 0).toLocaleString()} · ${c.external_donor_count || 0} donors`} />}
                 </dl>
               </Section>
 
