@@ -30,18 +30,15 @@ async function getGitHubToken(base44) {
   return null;
 }
 
-async function run(cmd) {
-  const proc = new Deno.Command('bash', {
-    args: ['-c', cmd],
-    cwd: '/app',
-    stdout: 'piped',
-    stderr: 'piped',
-  });
-  const { code, stdout, stderr } = await proc.output();
+// Base44 backend functions cannot execute shell commands or mutate the app's
+// checked-out git worktree. Keep this compatibility surface fail-closed and
+// truthful: repository synchronization must use Base44's native GitHub
+// integration, not a simulated backend-side git operation.
+async function run(_cmd) {
   return {
-    ok: code === 0,
-    stdout: new TextDecoder().decode(stdout).trim(),
-    stderr: new TextDecoder().decode(stderr).trim(),
+    ok: false,
+    stdout: '',
+    stderr: 'Backend git execution is unavailable on Base44; use the native GitHub synchronization control.',
   };
 }
 
