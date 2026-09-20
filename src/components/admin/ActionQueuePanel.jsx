@@ -13,13 +13,10 @@ export default function ActionQueuePanel({ connections, campaigns, onResolved })
     const now = new Date().toISOString();
     try {
       await base44.entities.PlatformConnection.update(c.id, {
-        status: "disconnected",
-        verification_status: "unverified",
-        last_error: "",
         history: [...(c.history || []), {
           at: now,
           event: "admin_acknowledged",
-          detail: "Admin acknowledged the error; provider verification is still required",
+          detail: `Admin acknowledged: ${c.last_error || "provider verification is still required"}`,
         }].slice(-30),
       });
       onResolved?.();
