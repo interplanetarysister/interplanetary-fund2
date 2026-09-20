@@ -13,13 +13,13 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-const SUPPORTED = [20, 22];
+const SUPPORTED_MAJOR = 22;
 
-if (!SUPPORTED.includes(nodeMajor)) {
+if (nodeMajor !== SUPPORTED_MAJOR) {
   console.error(
     `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Supported runtimes: Node ${SUPPORTED.join(' or ')}. ` +
-    'Select a supported runtime before install, build, typecheck, lint, or verification.',
+    `Supported runtime: Node ${SUPPORTED_MAJOR}. ` +
+    'Select Node 22 before install, build, typecheck, lint, or verification.',
   );
   process.exit(1);
 }
