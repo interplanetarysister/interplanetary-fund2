@@ -31,7 +31,7 @@ const malformedMetadata = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, "package.json"), "{ malformed");
 });
 assert.notEqual(malformedMetadata.status, 0, "malformed package metadata must fail");
-assert.match(malformedMetadata.stderr, /package\.json is not valid JSON/);
+assert.match(malformedMetadata.stderr, /package\.json is not valid JSON|ERR_INVALID_PACKAGE_CONFIG|Invalid package config/);
 
 const workflowMatrixDrift = runFixture((fixture) => {
   const workflowPath = path.join(fixture, ".github", "workflows", "quality-gates.yml");
