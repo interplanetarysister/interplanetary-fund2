@@ -29,30 +29,59 @@ function pageTitle(pathname) {
   return "Interplanetary Fund";
 }
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/discover", label: "Discover", icon: Compass },
-  { to: "/globe", label: "Global Globe", icon: Globe2 },
-  { to: "/giving", label: "My Giving", icon: HeartHandshake },
-  { to: "/communications", label: "Communications", icon: MessageSquare },
-  { to: "/inbox", label: "Inbox", icon: MailOpen },
-  { to: "/following", label: "Following", icon: Heart },
-  { to: "/mission", label: "Mission Control", icon: Sparkles },
-  { to: "/agents", label: "AI Agents", icon: Bot },
-  { to: "/ops", label: "Ops Center", icon: Satellite },
-  { to: "/connections", label: "Connections", icon: Link2 },
-  { to: "/admin/external-accounts", label: "External Accounts", icon: Link2 },
-  { to: "/admin/integrations", label: "Integrations", icon: ShieldCheck },
-  { to: "/community", label: "Community", icon: Users },
-  { to: "/institutions", label: "Institutions", icon: Building2 },
-  { to: "/analytics", label: "Command Center", icon: BarChart3 },
-  { to: "/subscriptions", label: "Plans", icon: CreditCard },
-  { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
-  { to: "/platform", label: "Platform", icon: Server },
-  { to: "/facebook", label: "Facebook Outreach", icon: Share2 },
-  { to: "/connect", label: "Connect AI Assistant", icon: Plug },
-  { to: "/create", label: "New Campaign", icon: PlusCircle },
+const navSections = [
+  {
+    label: "Fundraise",
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/create", label: "New Campaign", icon: PlusCircle },
+      { to: "/discover", label: "Discover", icon: Compass },
+      { to: "/globe", label: "Global Globe", icon: Globe2 },
+    ],
+  },
+  {
+    label: "Giving",
+    items: [
+      { to: "/giving", label: "My Giving", icon: HeartHandshake },
+      { to: "/following", label: "Following", icon: Heart },
+      { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
+      { to: "/subscriptions", label: "Plans", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Engage",
+    items: [
+      { to: "/community", label: "Community", icon: Users },
+      { to: "/institutions", label: "Institutions", icon: Building2 },
+      { to: "/communications", label: "Messages", icon: MessageSquare },
+      { to: "/inbox", label: "Inbox", icon: MailOpen },
+      { to: "/facebook", label: "Facebook Outreach", icon: Share2 },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { to: "/mission", label: "Mission Control", icon: Sparkles },
+      { to: "/agents", label: "AI Agents", icon: Bot },
+      { to: "/ops", label: "Ops Center", icon: Satellite },
+      { to: "/analytics", label: "Command Center", icon: BarChart3 },
+      { to: "/connect", label: "Connect Assistant", icon: Plug },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { to: "/connections", label: "Connections", icon: Link2 },
+      { to: "/admin/external-accounts", label: "External Accounts", icon: Link2 },
+      { to: "/admin/integrations", label: "Integrations", icon: ShieldCheck },
+      { to: "/platform", label: "Platform", icon: Server },
+      { to: "/profile", label: "Profile", icon: User },
+    ],
+  },
 ];
+
+// Flat list kept for backward-compatible lookups (e.g. mobile menu).
+const navItems = navSections.flatMap((s) => s.items);
 
 const bottomNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -123,22 +152,29 @@ export default function Layout() {
   }, [open]);
 
   const nav = (
-    <nav className="flex flex-col gap-1 px-3">
-      {navItems.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={to === "/"}
-          onClick={() => setOpen(false)}
-          className={({ isActive }) =>
-          `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-            isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
-          }`
-          }
-        >
-          <Icon className="w-4 h-4" strokeWidth={1.75} />
-          {label}
-        </NavLink>
+    <nav className="flex flex-col gap-3 px-3 overflow-y-auto scrollbar-hide pb-4">
+      {navSections.map((section) => (
+        <div key={section.label}>
+          <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
+          <div className="flex flex-col gap-0.5">
+            {section.items.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
+                }`
+                }
+              >
+                <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                <span className="truncate">{label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
       ))}
     </nav>
   );
