@@ -10,20 +10,17 @@ try {
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
 } catch {
-  // npm availability is reported for diagnostics; runtime compatibility is the hard gate.
+  // npm availability is reported for diagnostics; Node 22 is the hard gate.
 }
 
-// Base44's build workers may run either the maintained Node 20 or Node 22
-// runtime. This app does not depend on Node-22-only APIs, so accept both
-// supported runtime families while still rejecting unsupported older versions.
-if (nodeMajor < 20) {
+if (nodeMajor !== 22) {
   console.error(
-    `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    'Use a supported Node 20 or Node 22 runtime before install, build, typecheck, lint, or verification.',
+    `Node 22 runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
+    'Select a supported Node 22 runtime before install, build, typecheck, lint, or verification.',
   );
   process.exit(1);
 }
 
 console.log(
-  `Node runtime preflight passed: Node ${nodeVersion}, npm ${npmVersion}, executable ${process.execPath}.`,
+  `Node 22 runtime preflight passed: Node ${nodeVersion}, npm ${npmVersion}, executable ${process.execPath}.`,
 );
