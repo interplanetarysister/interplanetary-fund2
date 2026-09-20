@@ -53,8 +53,8 @@ export default async function(req) {
     const consentOwner = existing && existing.created_by_id !== user.id
       ? await base44.asServiceRole.entities.User.get(existing.created_by_id).catch(() => null)
       : user;
-    if (effectiveAutomationMode === 'auto' && !hasAiPublishingConsent(consentOwner)) {
-      return Response.json({ error: 'AI publishing authorization is required before automatic publishing can be enabled.' }, { status: 403 });
+    if (effectiveAutomationMode !== 'manual' && !hasAiPublishingConsent(consentOwner)) {
+      return Response.json({ error: 'AI preparation and publishing authorization is required before an AI-assisted mode can be enabled.' }, { status: 403 });
     }
 
     const effectiveCampaignId = campaign_id || existing?.campaign_id || undefined;
