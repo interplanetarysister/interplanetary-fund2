@@ -3,9 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": {
-    "node": "22.x"
-  },
+  "engines": {"node": "22.x"},
   "scripts": {
     "verify:runtime-node22": "node scripts/require-node22.mjs",
     "preinstall": "npm run verify:runtime-node22 --silent",
@@ -124,7 +122,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "baseline-browser-mapping": "^2.11.25",
-    "browserslist": "^4.29.0",
     "browserslist": "^4.29.0",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
