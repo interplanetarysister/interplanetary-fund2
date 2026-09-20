@@ -27,12 +27,15 @@ export default function FacebookGroups() {
   const [selectedCampaign, setSelectedCampaign] = useState("");
 
   const load = async () => {
-    const [conn, p, c] = await Promise.all([
-      base44.entities.PlatformConnection.filter({ platform: "facebook" }),
+    const [connectionResponse, p, c] = await Promise.all([
+      base44.functions.invoke("listConnections", {}),
       base44.entities.DistributedPost.filter({ platform: "facebook" }),
       base44.entities.Campaign.list("-raised_amount", 100),
     ]);
-    setConnections(conn || []);
+    const conn = (connectionResponse.data?.connections || []).filter(
+      (connection) => connection.platform === "facebook"
+    );
+    setConnections(conn);
     setPosts(p || []);
     setCampaigns(c || []);
     setLoading(false);
