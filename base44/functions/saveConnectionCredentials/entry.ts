@@ -42,7 +42,7 @@ export default async function(req) {
 
     const effectiveKind = kind || existing?.kind || 'crowdfunding';
     const effectiveCurrency = effectiveKind === 'crowdfunding'
-      ? String(external_currency || existing?.external_currency || 'USD').trim().toUpperCase()
+      ? String(external_currency || existing?.external_currency || '').trim().toUpperCase()
       : undefined;
     if (effectiveCurrency && !/^[A-Z]{3}$/.test(effectiveCurrency)) {
       return Response.json({ error: 'external_currency must be a three-letter ISO currency code' }, { status: 400 });
