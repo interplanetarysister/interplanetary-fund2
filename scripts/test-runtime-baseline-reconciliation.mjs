@@ -9,7 +9,7 @@ const sourceRoot = process.cwd();
 
 function runFixture(mutator) {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "ifund-runtime-baseline-"));
-  fs.cpSync(sourceRoot, fixture, { recursive: true, filter: (entry) => !entry.includes("node_modules") && !entry.includes(".git") });
+  fs.cpSync(sourceRoot, fixture, { recursive: true, filter: (entry) => path.basename(entry) !== "node_modules" && path.basename(entry) !== ".git" });
   fs.symlinkSync(path.join(sourceRoot, "node_modules"), path.join(fixture, "node_modules"), "dir");
   mutator(fixture);
   return spawnSync(process.execPath, [path.join(fixture, "scripts/verify-runtime-baseline-reconciliation.mjs")], {
