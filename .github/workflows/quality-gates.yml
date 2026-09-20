@@ -40,6 +40,12 @@ jobs:
       - name: Test Node 22 release contract failure cases
         run: npm run test:node22-release-contract
 
+      - name: Verify runtime baseline reconciliation
+        run: npm run verify:runtime-baseline-reconciliation
+
+      - name: Test runtime baseline reconciliation failure cases
+        run: npm run test:runtime-baseline-reconciliation
+
       - name: Lint
         run: npm run lint
 
