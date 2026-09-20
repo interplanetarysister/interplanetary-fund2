@@ -10,9 +10,13 @@ export default function CrossPlatformTotals({ campaign }) {
   const [connections, setConnections] = useState([]);
 
   useEffect(() => {
-    base44.entities.PlatformConnection
-      .filter({ campaign_id: campaign.id, kind: "crowdfunding" })
-      .then(setConnections)
+    base44.functions
+      .invoke("listConnections", {})
+      .then(({ data }) => setConnections(
+        (data?.connections || []).filter(
+          (connection) => connection.campaign_id === campaign.id && connection.kind === "crowdfunding"
+        )
+      ))
       .catch(() => {});
   }, [campaign.id]);
 
