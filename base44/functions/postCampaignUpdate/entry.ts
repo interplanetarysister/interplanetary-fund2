@@ -71,7 +71,7 @@ export default async function(req) {
     });
 
     // 2. Cross-post to social connections (unless the owner opted out for this post)
-    const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0 };
+    const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0, authorization_blocked: '' };
     if (cross_post !== false) {
       const sr = base44.asServiceRole;
       const connections = user.role === 'admin' && campaign.created_by_id !== user.id
