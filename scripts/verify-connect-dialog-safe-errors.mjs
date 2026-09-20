@@ -26,6 +26,12 @@ const broadcastPosts = read("base44/functions/broadcastPosts/entry.ts");
 const syncConnections = read("base44/functions/syncConnections/entry.ts");
 const socialPublish = read("base44/shared/socialPublish.ts");
 const githubSync = read("base44/functions/syncGitHub/entry.ts");
+const integrationRegistry = read("base44/shared/integrationRegistry.ts");
+const userEntity = read("base44/entities/User.jsonc");
+const externalAccounts = read("src/lib/externalAccounts.js");
+const accountDetail = read("src/components/admin/AccountDetailPanel.jsx");
+const actionQueue = read("src/components/admin/ActionQueuePanel.jsx");
+const runtimeGate = read("scripts/require-node22.mjs");
 const frontendSources = readSourceTree(path.join(appRoot, "src"));
 const adminSources = [
   read("src/components/admin/ActionQueuePanel.jsx"),
@@ -40,6 +46,8 @@ assert.doesNotMatch(source, /setError\(.*error\.message/);
 assert.match(source, /base44\.functions\.invoke\(\s*["']saveConnectionCredentials["']\s*,/);
 assert.doesNotMatch(source, /PlatformConnection\s*\.\s*(?:update|create)\s*\(/);
 assert.match(source, /external_currency/);
+assert.match(source, /existing \? \(existing\.external_currency \|\| ""\) : "USD"/);
+assert.doesNotMatch(source, /existing\?\.external_currency \|\| "USD"/);
 
 assert.match(save, /base44\.auth\.me\(\)/);
 assert.match(save, /Campaign\.get\(effectiveCampaignId\)/);
@@ -75,6 +83,9 @@ assert.match(sync, /discoveredByCurrency/);
 assert.match(sync, /discovered_totals: discoveredTotals/);
 assert.match(sync, /total_discovered: totalDiscoveredUsd/);
 assert.match(sync, /c\.created_by_id !== user\.id/);
+assert.match(sync, /if \(!user\)/);
+assert.match(sync, /Scheduled synchronization requires a trusted authenticated invocation/);
+assert.doesNotMatch(sync, /user \? 'user' : 'scheduled'/);
 assert.doesNotMatch(sync, /observed=\$\$\{totalDiscovered\}/);
 assert.match(syncRun, /"discovered_totals"/);
 assert.match(kofi, /verification_status:\s*'verified'/);
@@ -91,12 +102,30 @@ assert.match(accountManagement, /\.map\(\(\{ credentials, credentials_meta, \.\.
 assert.match(socialPublish, /hasAiPublishingConsent/);
 assert.match(postCampaignUpdate, /hasAiPublishingConsent\(consentOwner\)/);
 assert.match(postCampaignUpdate, /assertPlatformAccess\(sr, 'social_publish'\)/);
+assert.match(postCampaignUpdate, /assertOboGrant/);
+assert.match(postCampaignUpdate, /platformAccess\.ok && obo\.ok/);
 assert.match(syncConnections, /hasAiPublishingConsent\(owner\)/);
+assert.match(syncConnections, /connection\.created_by_id === campaign\.created_by_id/);
+assert.match(syncConnections, /post\.created_by_id === campaign\.created_by_id/);
 assert.match(publishPost, /hasAiPublishingConsent\(consentOwner\)/);
 assert.match(broadcastPosts, /hasAiPublishingConsent\(consentOwner\)/);
 
 assert.doesNotMatch(githubSync, /Deno\.Command/);
 assert.match(githubSync, /native GitHub synchronization control/);
+assert.match(githubSync, /if \(!user\) return Response\.json\(\{ error: 'Unauthorized' \}/);
+assert.match(githubSync, /anySucceeded \? 'partial' : 'failed'/);
+
+assert.match(integrationRegistry, /registry unavailable \(fail-closed\)/);
+assert.doesNotMatch(integrationRegistry, /registry unavailable \(fail-open\)/);
+assert.match(userEntity, /"ai_publishing_consent"/);
+assert.match(userEntity, /"granted"/);
+assert.match(externalAccounts, /credentials_meta/);
+assert.match(externalAccounts, /bluesky_app_password_set/);
+assert.match(accountDetail, /UNSPECIFIED/);
+assert.doesNotMatch(actionQueue, /last_error:\s*""/);
+assert.doesNotMatch(actionQueue, /status:\s*"disconnected"/);
+assert.match(runtimeGate, /const SUPPORTED = \[22\];/);
+assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*20/);
 
 assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
