@@ -29,7 +29,7 @@ async function adapterFor(connection) {
   if (p === 'kofi') {
     return {
       status: 'realtime_webhook',
-      amount_discovered: num(connection.external_total),
+      amount_discovered: 0,
       transactions: [],
       note: 'Ko-fi payments synchronize in real time through the canonical webhook observation path; no pull API is used.',
     };
@@ -37,7 +37,7 @@ async function adapterFor(connection) {
   if (p === 'buymeacoffee' || p === 'patreon') {
     return {
       status: 'credentials_required',
-      amount_discovered: num(connection.external_total),
+      amount_discovered: 0,
       transactions: [],
       note: `${p} transaction discovery requires a valid per-connection access token. Existing owner-reported totals remain informational only.`,
     };
@@ -193,8 +193,15 @@ export default async function (req) {
     const discoveredTotals = [...discoveredByCurrency.entries()].map(([currency, amount]) => ({ currency, amount }));
     const totalDiscoveredUsd = num(discoveredByCurrency.get('USD'));
     const hasError = providerResults.some((r) => r.status === 'error');
-    const hasOk = providerResults.some((r) => r.status !== 'error');
-    const overall = hasError ? (hasOk ? 'partial' : 'failed') : 'success';
+    const hasImported = providerResults.some((r) => r.status === 'imported');
+    const hasUnavailable = providerResults.some((r) => ['realtime_webhook', 'credentials_required', 'no_read_api'].includes(r.status));
+    const overall = providerResults.length === 0
+      ? 'no_connections'
+      : hasError
+        ? (hasImported ? 'partial' : 'failed')
+        : hasImported
+          ? (hasUnavailable ? 'partial' : 'success')
+          : 'unavailable';
 
     const run = await sr.entities.SyncRun.create({
       initiator_type: initiatorType,
@@ -219,7 +226,7 @@ export default async function (req) {
       target_type: 'SyncRun',
       target_id: run.id,
       detail: `scope=${scope} campaigns=${campaignsCovered} observed_currency_groups=${discoveredTotals.length} new_observations=${totalImported} overall=${overall}`,
-      status: overall === 'failed' ? 'failure' : 'success',
+      status: ['success', 'partial'].includes(overall) ? 'success' : 'failure',
       metadata: {
         scope,
         obo_user_id: oboUserId,
@@ -233,7 +240,7 @@ export default async function (req) {
     });
 
     return Response.json({
-      ok: true,
+      ok: ['success', 'partial'].includes(overall),
       run_id: run.id,
       overall_status: overall,
       campaigns_covered: campaignsCovered,
