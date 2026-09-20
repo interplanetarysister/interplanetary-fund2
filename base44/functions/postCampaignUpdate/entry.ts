@@ -57,6 +57,9 @@ export default async function(req) {
     if (campaign.created_by_id !== user.id && user.role !== 'admin') {
       return Response.json({ error: 'Only the campaign owner can post updates.' }, { status: 403 });
     }
+    if (cross_post !== false && campaign.created_by_id !== user.id) {
+      return Response.json({ error: 'Only the campaign owner can authorize AI preparation or cross-platform publishing.' }, { status: 403 });
+    }
 
     // 1. Store the update
     const update = await base44.entities.CampaignUpdate.create({
@@ -85,8 +88,15 @@ export default async function(req) {
         campaign.created_by_id,
         'social_publish',
       );
-      const targets = connections.filter((c) => c.automation_mode !== 'manual');
+      const targets = aiConsentGranted
+        ? connections.filter((c) =>
+            c.automation_mode !== 'manual' &&
+            c.created_by_id === campaign.created_by_id &&
+            (!c.campaign_id || c.campaign_id === campaign.id)
+          )
+        : [];
       crosspost.skipped = connections.length - targets.length;
+      if (!aiConsentGranted) crosspost.authorization_blocked = 'AI preparation and publishing authorization is not active.';
 
       if (targets.length) {
         const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
