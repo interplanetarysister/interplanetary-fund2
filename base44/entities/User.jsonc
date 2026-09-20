@@ -64,6 +64,24 @@
         }
       }
     },
+    "ai_publishing_consent": {
+      "type": "object",
+      "description": "Explicit, revocable authorization for AI-assisted external publishing. Automatic publishing must fail closed unless granted is true.",
+      "properties": {
+        "granted": {
+          "type": "boolean",
+          "default": false
+        },
+        "decided_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "granted",
+        "decided_at"
+      ]
+    },
     "subscription_tier": {
       "type": "string",
       "description": "Active AI subscription tier id (from the plans catalog). 'free' when none.",
