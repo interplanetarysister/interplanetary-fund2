@@ -56,6 +56,12 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
+      - name: Verify Node 22 release contract
+        run: npm run verify:node22-release-contract
+
+      - name: Test Node 22 release contract failure cases
+        run: npm run test:node22-release-contract
+
       - name: Lint
         run: npm run lint
 
@@ -70,6 +76,9 @@ jobs:
 
       - name: Edit AI profile safe-error contract
         run: npm run verify:edit-ai-profile-safe-errors
+
+      - name: Connection authorization and data-truth contract
+        run: node scripts/verify-connect-dialog-safe-errors.mjs
 
       - name: Production build
         run: npm run build

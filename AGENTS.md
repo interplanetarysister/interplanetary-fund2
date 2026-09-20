@@ -54,6 +54,17 @@ Use the existing Base44 application architecture in this repository. Do not add 
 - `base44/`: Base44 entities and application-layer agent/workflow definitions/configuration.
 - `.env.local`: local-only environment values; never commit secrets.
 
+## Node and npm runtime memory (verified 2026-09-18 UTC)
+
+- Interplanetary Fund app `6a67a778342a8fe05ee79cba` targets Node **22.x**, not Node 24. Preserve `package.json` engines.node `22.x`, lockfile root engine `22.x`, `.nvmrc` and `.node-version` `22`, and Node 22 GitHub workflow pins.
+- The active Base44 sandbox was updated from Node `20.20.2` to **22.23.2**, with **npm 10.9.8** bundled with that official Node distribution. These exact patch versions are verified environment observations, not a new permanent package-version pin.
+- Installation: official nodejs.org Linux x64 archive, verified against its SHA-256 manifest, extracted to `/opt/ifund-node22`; `/usr/local/bin/node`, `npm`, and `npx` link to its bin directory, ahead of `/usr/bin` on PATH.
+- A fresh command shell confirmed Node 22.23.2 and npm 10.9.8. Typecheck, production build, and the Node 22 release-contract verifier passed after the change.
+- Run app commands from `/app` (explicit `cd /app` was verified). Before installs/builds/typechecks after a new sandbox session, check `node --version`, `npm --version`, and `command -v node`; metadata alone does not select the running executable.
+- The sandbox OS installation is not guaranteed to survive sandbox recreation. Available Base44 tools/documentation exposed no persistent sandbox-image Node selector. Do not claim this changes Base44's internal sync service or guarantees its hosted build runtime. Re-establish Node 22 through an authorized supported path if the sandbox resets.
+- Repository commands fail closed when the executing runtime is not Node 22: `.npmrc` enables `engine-strict`, `scripts/require-node22.mjs` checks the actual process and executable, npm lifecycle hooks protect install/build/lint/typecheck and release tests, and the release-contract verifier independently checks its executing Node process. The verifier parses the complete workflow inventory as YAML and requires every `actions/setup-node` step to use a literal `22` or `22.x`; missing, malformed, stray, dynamic/matrix, and incompatible declarations fail the contract. A Node 20 rejection is intentional and must not be bypassed.
+- Base44 backend functions use their platform Deno runtime; this Node 22 rule concerns Node-based development/build tooling.
+
 ## Working Notes
 
 - Do not trigger Base44 commands merely to test whether credits remain.
@@ -61,6 +72,14 @@ Use the existing Base44 application architecture in this repository. Do not add 
 - Reuse existing SDK/client/plugin patterns before adding integration paths.
 - Historical/reconstructed feature material is evidence, not automatic production truth.
 - Run relevant confirmed zero-credit checks before finishing code changes.
+
+## External integration truth boundary
+
+- Saving provider credentials or an external profile is configuration only. It must leave the connection disconnected/unverified until a real provider-backed webhook, API read, or successful publish proves access.
+- An admin acknowledgement or UI refresh must never manufacture `connected`, `verified`, or `last_synced` state. Provider evidence owns those fields.
+- Owner-entered external fundraising totals are `owner_reported`, informational, currency-specific, and non-withdrawable. Never add different currencies into one displayed amount, and never credit them to the Interplanetary Fund ledger without a separate verified transfer.
+- Every connection write tied to a campaign must validate campaign ownership server-side; client filtering is not an authorization boundary.
+- Preserve these capability semantics if a future Convex/Vercel implementation returns: configuration, provider verification, external observation, and ledger credit remain distinct interfaces.
 
 ## Builder preservation rule
 

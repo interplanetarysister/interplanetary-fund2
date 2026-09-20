@@ -71,6 +71,10 @@
             "type": "number",
             "default": 0
           },
+          "currency": {
+            "type": "string",
+            "description": "ISO currency for amount_discovered, or UNSPECIFIED for legacy owner-reported records without currency provenance."
+          },
           "transactions_imported": {
             "type": "number",
             "default": 0
@@ -92,7 +96,23 @@
     },
     "total_discovered": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "description": "Backward-compatible USD-only discovered total. Other currencies are never converted or added here."
+    },
+    "discovered_totals": {
+      "type": "array",
+      "description": "Informational external totals grouped by currency without conversion.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      }
     },
     "total_imported": {
       "type": "number",

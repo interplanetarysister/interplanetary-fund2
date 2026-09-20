@@ -12,7 +12,7 @@ export default function ShareCampaignKit({ campaign }) {
 
   const embedHtml = `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);">&#128640; Donate &mdash; Interplanetary Fund</a>`;
 
-  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="420" style="border:0;border-radius:16px;overflow:hidden" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"></iframe>`;
+  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="440" style="border:0;border-radius:16px;overflow:hidden" loading="lazy" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"><a href="${window.location.origin}/campaign/${campaign.id}" target="_blank" rel="noopener">Support ${campaign.title || 'this campaign'}</a></iframe>`;
 
   const copy = async (what, text) => {
     await navigator.clipboard.writeText(text);

@@ -13,6 +13,7 @@ import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIIns
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import MediaUpload from "@/components/media/MediaUpload";
 import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
+import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 
@@ -50,16 +51,29 @@ export default function CreateCampaign() {
     setLocating(false);
   };
 
-  const generateCover = () => {
+  const generateCover = async () => {
     setGeneratingImage(true);
+    // AI image production agent: every generated cover uses the Interplanetary
+    // Fund signature style (cyberpunk, afropunk, interstellar, comic) grounded
+    // in the campaign's purpose. Falls back to the credit-free SVG if the AI
+    // image service is unavailable so creation never blocks.
     try {
+      const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: form.story, regenCount });
+      const res = await base44.integrations.Core.GenerateImage({ prompt });
+      if (res?.url) {
+        set("cover_image_url", res.url);
+        setRegenCount((c) => c + 1);
+        return;
+      }
+      throw new Error("No image returned");
+    } catch {
       const url = generateCampaignCoverDataUrl({ title: form.title, category: form.category, regenCount });
       set("cover_image_url", url);
       setRegenCount((c) => c + 1);
-    } catch {
-      toast({ title: "Couldn't generate cover", description: "Please try again or upload your own image.", variant: "destructive" });
+      toast({ title: "Using a placeholder cover", description: "AI image generation was unavailable — a branded cover was created. You can upload your own or try regenerating.", variant: "default" });
+    } finally {
+      setGeneratingImage(false);
     }
-    setGeneratingImage(false);
   };
 
   const launch = async (status) => {

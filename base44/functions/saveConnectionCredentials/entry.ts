@@ -18,9 +18,18 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     const {
       connection_id, platform, kind, display_name, external_url,
-      campaign_id, automation_mode, external_total, external_donor_count, credentials,
+      campaign_id, automation_mode, external_total, external_currency, external_donor_count, credentials,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
+
+    const reportedTotal = Number(external_total ?? 0);
+    const reportedDonors = Number(external_donor_count ?? 0);
+    if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
+      return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
+    }
+    if (!Number.isInteger(reportedDonors) || reportedDonors < 0) {
+      return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
+    }
 
     let existing = null;
     if (connection_id) {
@@ -31,22 +40,41 @@ export default async function(req) {
       }
     }
 
+    const effectiveKind = kind || existing?.kind || 'crowdfunding';
+    const effectiveCurrency = effectiveKind === 'crowdfunding'
+      ? String(external_currency || existing?.external_currency || 'USD').trim().toUpperCase()
+      : undefined;
+    if (effectiveCurrency && !/^[A-Z]{3}$/.test(effectiveCurrency)) {
+      return Response.json({ error: 'external_currency must be a three-letter ISO currency code' }, { status: 400 });
+    }
+
+    const effectiveCampaignId = campaign_id || existing?.campaign_id || undefined;
+    if (effectiveCampaignId) {
+      const campaign = await base44.entities.Campaign.get(effectiveCampaignId).catch(() => null);
+      if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
+      if (campaign.created_by_id !== user.id && user.role !== 'admin') {
+        return Response.json({ error: 'You can only connect accounts to campaigns you own.' }, { status: 403 });
+      }
+    }
+
     const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
     const now = new Date().toISOString();
     const data = {
       platform,
-      kind: kind || existing?.kind || 'crowdfunding',
+      kind: effectiveKind,
       display_name: display_name ?? existing?.display_name ?? '',
       external_url: external_url ?? existing?.external_url ?? '',
-      campaign_id: campaign_id || existing?.campaign_id || undefined,
+      campaign_id: effectiveCampaignId,
       automation_mode: automation_mode || existing?.automation_mode || 'manual',
       credentials: mergedCreds,
-      external_total: Number(external_total) || 0,
-      external_donor_count: Number(external_donor_count) || 0,
-      status: 'connected',
-      last_synced: now,
+      external_total: reportedTotal,
+      external_currency: effectiveCurrency,
+      external_donor_count: reportedDonors,
+      status: 'disconnected',
+      verification_status: 'unverified',
+      external_data_source: 'owner_reported',
       last_error: '',
-      history: [...(existing?.history || []), { at: now, event: existing ? 'synced' : 'connected', detail: existing ? 'Details updated' : `Connected ${platform}` }].slice(-30),
+      history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
 
     let saved;

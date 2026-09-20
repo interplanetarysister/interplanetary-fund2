@@ -2,17 +2,20 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, RefreshCw, Unplug, History, Globe2, Rocket, KeyRound } from "lucide-react";
+import { ExternalLink, Unplug, History, Globe2, Rocket, KeyRound } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { AUTOMATION_MODES } from "./platformCatalog";
 
 // One connected destination: status, health, last sync, granted automation,
-// totals, and the manage / refresh / disconnect / history controls.
-export default function ConnectionCard({ connection, platform, onManage, onRemoved, onUpdated, subscriptionActive, onFetchCredentials }) {
+// totals, provenance, and the manage / disconnect / history controls.
+export default function ConnectionCard({ connection, platform, onManage, onRemoved, subscriptionActive, onFetchCredentials }) {
   const [busy, setBusy] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const healthy = connection.status === "connected";
+  const verified = connection.status === "connected" && connection.verification_status === "verified";
+  const failed = connection.status === "error";
+  const providerAmount = connection.external_data_source === "provider_verified";
+  const currency = connection.external_currency || "USD";
   const mode = AUTOMATION_MODES.find((m) => m.value === connection.automation_mode);
 
   const disconnect = async () => {
@@ -21,33 +24,21 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
     onRemoved(connection.id);
   };
 
-  const refresh = async () => {
-    setBusy(true);
-    const now = new Date().toISOString();
-    const updated = await base44.entities.PlatformConnection.update(connection.id, {
-      status: "connected",
-      last_synced: now,
-      last_error: "",
-      history: [...(connection.history || []), { at: now, event: "refreshed", detail: "Connection refreshed" }].slice(-30),
-    });
-    onUpdated(updated || { ...connection, status: "connected", last_synced: now });
-    setBusy(false);
-  };
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
-            <span className="shrink-0" title={healthy ? "Connected and healthy" : "Not connected or offline"}>
-              {healthy ? <Globe2 className="w-4 h-4 text-emerald-500" /> : <Rocket className="w-4 h-4 text-red-500" />}
+            <span className="shrink-0" title={verified ? "Provider verified" : failed ? "Connection needs attention" : "Configured; provider verification pending"}>
+              {verified ? <Globe2 className="w-4 h-4 text-emerald-500" /> : <Rocket className={`w-4 h-4 ${failed ? "text-red-500" : "text-stone-400"}`} />}
             </span>
             <span className="truncate">{platform?.name || connection.platform}</span>
             {connection.display_name && <span className="text-stone-400 font-normal text-sm truncate">· {connection.display_name}</span>}
           </p>
           <p className="text-xs text-stone-400 mt-1">
-            {healthy ? "Healthy" : `Error: ${connection.last_error || "connection issue"}`}
-            {connection.last_synced && <> · synced {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>}
+            {verified ? "Provider verified" : failed ? `Error: ${connection.last_error || "connection issue"}` : "Configured · provider verification pending"}
+            {connection.last_synced && <> · last provider event {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>}
           </p>
         </div>
         <Badge variant="secondary" className="shrink-0">{mode?.label || "Manual"}</Badge>
@@ -55,8 +46,8 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
       {connection.kind === "crowdfunding" && (
         <p className="text-sm text-stone-600 mt-2">
-          <span className="font-semibold text-primary">${(connection.external_total || 0).toLocaleString()}</span> raised
-          · {connection.external_donor_count || 0} donors on that platform
+          <span className="font-semibold text-primary">{currency} {(connection.external_total || 0).toLocaleString()}</span> reported
+          · {connection.external_donor_count || 0} donors · {providerAmount ? "provider verified" : "owner reported · informational"}
         </p>
       )}
 
@@ -65,7 +56,6 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
         {subscriptionActive && (
           <Button size="sm" variant="outline" onClick={() => onFetchCredentials?.(platform)} disabled={busy} className="rounded-lg"><KeyRound className="w-3.5 h-3.5" />Fetch Credentials</Button>
         )}
-        <Button size="sm" variant="outline" onClick={refresh} disabled={busy} className="rounded-lg"><RefreshCw className="w-3.5 h-3.5" />Refresh</Button>
         {connection.external_url && (
           <a href={connection.external_url} target="_blank" rel="noopener noreferrer">
             <Button size="sm" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" />Open</Button>

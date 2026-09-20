@@ -156,6 +156,8 @@ export default async function(req) {
       // is retained; the connection is flagged for explicit conversion/review.
       await sr.entities.PlatformConnection.update(connection.id, {
         status: 'error',
+        verification_status: 'verified',
+        external_data_source: 'provider_verified',
         last_synced: now,
         last_error: `Ko-fi observation received in ${currency}; existing connection total is ${priorCurrency}. Currency conversion/reconciliation required.`,
       });
@@ -165,6 +167,8 @@ export default async function(req) {
         external_donor_count: Number(observation.observedCount || 0),
         external_currency: currency,
         status: 'connected',
+        verification_status: 'verified',
+        external_data_source: 'provider_verified',
         last_synced: now,
         last_error: '',
         history: [

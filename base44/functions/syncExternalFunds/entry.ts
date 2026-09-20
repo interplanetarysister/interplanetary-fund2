@@ -68,14 +68,18 @@ export default async function (req) {
     const targetUserId = oboUserId || (scope === 'user' && user ? user.id : null);
     const startedAt = new Date().toISOString();
     const providerResults = [];
-    let totalDiscovered = 0;
+    const discoveredByCurrency = new Map();
     let totalImported = 0;
     let campaignsCovered = 0;
 
     let campaigns = [];
     if (body.campaign_id) {
       const c = await sr.entities.Campaign.get(body.campaign_id).catch(() => null);
-      if (c) campaigns = [c];
+      if (!c) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
+      if (user && user.role !== 'admin' && c.created_by_id !== user.id) {
+        return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: 403 });
+      }
+      campaigns = [c];
     } else if (scope === 'user' && targetUserId) {
       campaigns = await sr.entities.Campaign.filter({ created_by_id: targetUserId }, '-created_date', 100);
     } else {
@@ -132,23 +136,29 @@ export default async function (req) {
 
           const now = new Date().toISOString();
           const update = {
-            last_synced: now,
             last_error: result.status === 'error' ? result.note : '',
           };
           if (lastObservation && observedCurrency) {
+            update.status = 'connected';
+            update.verification_status = 'verified';
+            update.external_data_source = 'provider_verified';
+            update.last_synced = now;
             update.external_total = Number(lastObservation.observedTotal || 0);
             update.external_donor_count = Number(lastObservation.observedCount || 0);
             update.external_currency = observedCurrency;
           }
           await sr.entities.PlatformConnection.update(conn.id, update);
 
-          totalDiscovered += num(result.amount_discovered);
+          const amountDiscovered = num(result.amount_discovered);
+          const resultCurrency = observedCurrency || 'UNSPECIFIED';
+          discoveredByCurrency.set(resultCurrency, num(discoveredByCurrency.get(resultCurrency)) + amountDiscovered);
           totalImported += imported;
           providerResults.push({
             provider: conn.platform,
             campaign_id: campaign.id,
             status: result.status,
-            amount_discovered: num(result.amount_discovered),
+            amount_discovered: amountDiscovered,
+            currency: resultCurrency,
             transactions_imported: imported,
             transaction_ids: txIds,
             external_only: true,
@@ -159,7 +169,6 @@ export default async function (req) {
         } catch (err) {
           await sr.entities.PlatformConnection.update(conn.id, {
             status: 'error',
-            last_synced: new Date().toISOString(),
             last_error: String(err?.message || 'sync failed').slice(0, 500),
           }).catch(() => {});
           providerResults.push({
@@ -167,6 +176,7 @@ export default async function (req) {
             campaign_id: campaign.id,
             status: 'error',
             amount_discovered: 0,
+            currency: String(conn.external_currency || 'UNSPECIFIED').trim().toUpperCase(),
             transactions_imported: 0,
             transaction_ids: [],
             external_only: true,
@@ -179,6 +189,8 @@ export default async function (req) {
     }
 
     const completedAt = new Date().toISOString();
+    const discoveredTotals = [...discoveredByCurrency.entries()].map(([currency, amount]) => ({ currency, amount }));
+    const totalDiscoveredUsd = num(discoveredByCurrency.get('USD'));
     const hasError = providerResults.some((r) => r.status === 'error');
     const hasOk = providerResults.some((r) => r.status !== 'error');
     const overall = hasError ? (hasOk ? 'partial' : 'failed') : 'success';
@@ -194,7 +206,8 @@ export default async function (req) {
       completed_at: completedAt,
       overall_status: overall,
       provider_results: providerResults,
-      total_discovered: totalDiscovered,
+      total_discovered: totalDiscoveredUsd,
+      discovered_totals: discoveredTotals,
       total_imported: totalImported,
       campaigns_covered: campaignsCovered,
     });
@@ -204,14 +217,15 @@ export default async function (req) {
       actor_user_id: user ? user.id : null,
       target_type: 'SyncRun',
       target_id: run.id,
-      detail: `scope=${scope} campaigns=${campaignsCovered} observed=$${totalDiscovered} new_observations=${totalImported} overall=${overall}`,
+      detail: `scope=${scope} campaigns=${campaignsCovered} observed_currency_groups=${discoveredTotals.length} new_observations=${totalImported} overall=${overall}`,
       status: overall === 'failed' ? 'failure' : 'success',
       metadata: {
         scope,
         obo_user_id: oboUserId,
         overall,
         campaigns_covered: campaignsCovered,
-        total_discovered: totalDiscovered,
+        total_discovered_usd: totalDiscoveredUsd,
+        discovered_totals: discoveredTotals,
         total_imported: totalImported,
         withdrawable_imported: 0,
       },
@@ -222,7 +236,8 @@ export default async function (req) {
       run_id: run.id,
       overall_status: overall,
       campaigns_covered: campaignsCovered,
-      total_discovered: totalDiscovered,
+      total_discovered: totalDiscoveredUsd,
+      discovered_totals: discoveredTotals,
       total_imported: totalImported,
       withdrawable_imported: 0,
       provider_results: providerResults,

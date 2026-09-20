@@ -13,8 +13,14 @@ export default function ActionQueuePanel({ connections, campaigns, onResolved })
     const now = new Date().toISOString();
     try {
       await base44.entities.PlatformConnection.update(c.id, {
-        status: "connected", last_error: "", last_synced: now,
-        history: [...(c.history || []), { at: now, event: "admin_resolved", detail: "Admin marked action complete" }].slice(-30),
+        status: "disconnected",
+        verification_status: "unverified",
+        last_error: "",
+        history: [...(c.history || []), {
+          at: now,
+          event: "admin_acknowledged",
+          detail: "Admin acknowledged the error; provider verification is still required",
+        }].slice(-30),
       });
       onResolved?.();
     } finally { setBusyId(null); }
@@ -40,7 +46,7 @@ export default function ActionQueuePanel({ connections, campaigns, onResolved })
               className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 text-white px-4 h-9 min-h-[44px] text-sm font-medium hover:bg-emerald-700 disabled:opacity-60"
             >
               {busyId === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-              Mark resolved
+              Acknowledge error
             </button>
           </div>
         ))}

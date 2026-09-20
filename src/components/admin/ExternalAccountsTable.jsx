@@ -1,23 +1,20 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
 import { platformName } from "@/components/connections/platformCatalog";
 import {
   healthStatus, HEALTH_BADGE, completenessPct, completenessLevel,
   daysSinceSync, roleForPlatform, accentForRole, agentForRole,
 } from "@/lib/externalAccounts";
-import { Search, ExternalLink, RefreshCw, X, Loader2 } from "lucide-react";
+import { Search, ExternalLink, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 const COMPLETENESS_COLOR = { incomplete: "bg-red-500", partial: "bg-amber-500", complete: "bg-emerald-500" };
 
-export default function ExternalAccountsTable({ connections, campaigns, agents, onRowClick, onUpdated }) {
+export default function ExternalAccountsTable({ connections, campaigns, agents, onRowClick }) {
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("all");
   const [health, setHealth] = useState("all");
   const [role, setRole] = useState("all");
   const [selected, setSelected] = useState(new Set());
-  const [busy, setBusy] = useState(false);
 
   const filtered = connections.filter((c) => {
     if (kind !== "all" && c.kind !== kind) return false;
@@ -42,18 +39,6 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
     const next = new Set(selected);
     next.has(id) ? next.delete(id) : next.add(id);
     setSelected(next);
-  };
-
-  const bulkSync = async () => {
-    setBusy(true);
-    const now = new Date().toISOString();
-    try {
-      await base44.entities.PlatformConnection.bulkUpdate(
-        [...selected].map((id) => ({ id, status: "connected", last_synced: now, last_error: "" }))
-      );
-      setSelected(new Set());
-      onUpdated?.();
-    } finally { setBusy(false); }
   };
 
   return (
@@ -87,10 +72,7 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
         <div className="flex items-center justify-between gap-3 mb-4 rounded-xl bg-stone-900 text-white px-4 py-2.5 shadow-lg">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="flex items-center gap-2">
-            <Button size="sm" onClick={bulkSync} disabled={busy} className="rounded-lg bg-white text-stone-900 hover:bg-stone-100 min-h-[44px]">
-              {busy ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
-              Sync selected
-            </Button>
+            <span className="text-xs text-stone-300">Provider status cannot be changed manually.</span>
             <button onClick={() => setSelected(new Set())} className="inline-flex items-center gap-1 rounded-lg px-3 text-sm text-stone-200 hover:text-white min-h-[44px]">
               <X className="w-3.5 h-3.5" /> Clear
             </button>

@@ -56,7 +56,26 @@
         "error",
         "disconnected"
       ],
-      "default": "connected"
+      "default": "disconnected",
+      "description": "Provider transport state. Configuration alone must not set connected; only successful provider verification may do so."
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "verified"
+      ],
+      "default": "unverified",
+      "description": "Whether the provider has independently verified this connection. Missing values on legacy records are treated as unverified."
+    },
+    "external_data_source": {
+      "type": "string",
+      "enum": [
+        "owner_reported",
+        "provider_verified"
+      ],
+      "default": "owner_reported",
+      "description": "Provenance for external totals. Owner-reported values remain informational and must never be presented as provider-verified or withdrawable."
     },
     "automation_mode": {
       "type": "string",

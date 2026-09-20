@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import CampaignGlobe from "@/components/globe/CampaignGlobe";
@@ -9,6 +9,9 @@ import BrandLogo from "@/components/brand/BrandLogo";
 import { Loader2, Globe2, MapPin, X } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_GLOBE_ERROR = "We couldn't load the globe right now. Please try again.";
+const MAX_CAMPAIGNS = 200;
+
 // Public global activity surface: an interactive 3D globe of every active
 // campaign that has a city location. Tap a pin to open a quick card, then jump
 // to the full campaign. A list below keeps everything accessible without WebGL.
@@ -16,15 +19,37 @@ export default function GlobalGlobe() {
   const [campaigns, setCampaigns] = useState(null);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const mountedRef = useRef(true);
+  const requestRef = useRef(0);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", 200)
-      .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load the globe."));
-  }, []);
+    mountedRef.current = true;
+    const requestId = ++requestRef.current;
+    setError(null);
+    setCampaigns(null);
+
+    (async () => {
+      try {
+        const result = await base44.entities.Campaign.filter({ status: "active" }, "-raised_amount", MAX_CAMPAIGNS);
+        if (!Array.isArray(result) || result.length > MAX_CAMPAIGNS) throw new Error("invalid-campaign-payload");
+        if (mountedRef.current && requestRef.current === requestId) setCampaigns(result);
+      } catch {
+        if (mountedRef.current && requestRef.current === requestId) {
+          setCampaigns(null);
+          setError(SAFE_GLOBE_ERROR);
+        }
+      }
+    })();
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [refreshKey]);
 
   const withCoords = (campaigns || []).filter(
-    (c) => typeof c.location_lat === "number" && typeof c.location_lng === "number"
+    (c) => c && typeof c.location_lat === "number" && Number.isFinite(c.location_lat)
+      && typeof c.location_lng === "number" && Number.isFinite(c.location_lng)
   );
 
   return (
@@ -47,7 +72,7 @@ export default function GlobalGlobe() {
         </div>
 
         {error ? (
-          <PageError message={error} onRetry={() => { setError(null); setCampaigns(null); }} />
+          <PageError message={error} onRetry={() => { setError(null); setRefreshKey((value) => value + 1); }} />
         ) : !campaigns ? (
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
         ) : withCoords.length === 0 ? (

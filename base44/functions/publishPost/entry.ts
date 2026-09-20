@@ -53,6 +53,9 @@ export default async function(req) {
         error: '',
       });
       await base44.entities.PlatformConnection.update(connection.id, {
+        status: 'connected',
+        verification_status: 'verified',
+        external_data_source: 'provider_verified',
         last_synced: new Date().toISOString(),
         history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
       });

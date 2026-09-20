@@ -1,14 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { base44 } from "@/api/base44Client";
 import { platformName, AUTOMATION_MODES } from "@/components/connections/platformCatalog";
 import {
   healthStatus, HEALTH_BADGE, completenessPct, completenessLevel,
   daysSinceSync, roleForPlatform, accentForRole, agentForRole, oboGranted, credentialStatus,
 } from "@/lib/externalAccounts";
-import { ExternalLink, RefreshCw, AlertTriangle } from "lucide-react";
+import { ExternalLink, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const POST_STATUS = { published: "Published", approved: "Approved", pending_approval: "Pending", scheduled: "Scheduled", draft: "Draft", failed: "Failed" };
@@ -35,8 +34,7 @@ const InfoRow = ({ k, v, cap, bool, danger }) => (
   </div>
 );
 
-export default function AccountDetailPanel({ connection, campaigns, agents, posts, onClose, onSynced }) {
-  const [busy, setBusy] = useState(false);
+export default function AccountDetailPanel({ connection, campaigns, agents, posts, onClose }) {
   const c = connection;
   const open = !!c;
   const hs = c ? healthStatus(c) : null;
@@ -47,20 +45,6 @@ export default function AccountDetailPanel({ connection, campaigns, agents, post
   const mode = c ? AUTOMATION_MODES.find((m) => m.value === c.automation_mode) : null;
   const recent = useMemo(() => c ? (posts || []).filter((p) => p.connection_id === c.id).slice(0, 10) : [], [c, posts]);
   const d = c ? daysSinceSync(c) : null;
-
-  const syncNow = async () => {
-    if (!c) return;
-    setBusy(true);
-    const now = new Date().toISOString();
-    try {
-      await base44.entities.PlatformConnection.update(c.id, {
-        status: "connected", last_synced: now, last_error: "",
-        history: [...(c.history || []), { at: now, event: "admin_synced", detail: "Admin triggered sync from External Accounts" }].slice(-30),
-      });
-      onSynced?.();
-      onClose?.();
-    } finally { setBusy(false); }
-  };
 
   return (
     <Sheet open={open} onOpenChange={(o) => { if (!o) onClose?.(); }}>
@@ -117,9 +101,9 @@ export default function AccountDetailPanel({ connection, campaigns, agents, post
                   <InfoRow k="Last synced" v={c.last_synced ? `${formatDistanceToNow(new Date(c.last_synced), { addSuffix: true })} (${d}d)` : "never"} />
                   <InfoRow k="Last error" v={c.last_error || "None"} danger={!!c.last_error} />
                 </dl>
-                <Button variant="outline" size="sm" onClick={syncNow} disabled={busy} className="rounded-xl mt-3 min-h-[44px]">
-                  <RefreshCw className={`w-3.5 h-3.5 mr-2 ${busy ? "animate-spin" : ""}`} />Sync now
-                </Button>
+                <p className="text-xs text-stone-500 mt-3">
+                  Provider state changes only after a provider-backed webhook, API operation, or synchronization workflow succeeds.
+                </p>
               </Section>
 
               {hs === "requires_action" && (
