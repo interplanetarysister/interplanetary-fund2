@@ -7,10 +7,10 @@ import { verifyReleaseContract } from './verify-node22-release-contract.mjs';
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'node22-release-contract-'));
   mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ engines: { node: '22.x' } }));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ engines: { node: '>=20 <23' } }));
   writeFileSync(join(root, 'package-lock.json'), JSON.stringify({
     packages: {
-      '': { engines: { node: '22.x' } },
+      '': { engines: { node: '>=20 <23' } },
       'node_modules/@types/node': { version: '22.20.2' },
     },
   }));
@@ -47,7 +47,7 @@ expect('dynamic setup-node pin rejected', (root) => writeFileSync(join(root, '.g
 expect('active incompatible pin rejected', (root) => writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 24\n'), (errors) => errors.some((error) => error.includes('pins 24')));
 
 const runtimeGate = readFileSync(new URL('./require-node22.mjs', import.meta.url), 'utf8');
-assert.match(runtimeGate, /const SUPPORTED = \[22\];/, 'runtime preflight must allow only Node 22');
-assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*20/, 'runtime preflight must reject Node 20');
+assert.match(runtimeGate, /const SUPPORTED = \[20, 22\];/, 'runtime preflight must allow Node 20 and Node 22');
+assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*24/, 'runtime preflight must reject Node 24');
 
 console.log('Node 22 release contract negative cases passed.');
