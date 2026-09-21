@@ -61,6 +61,9 @@ jobs:
       - name: Connection authorization and data-truth contract
         run: node scripts/verify-connect-dialog-safe-errors.mjs
 
+      - name: Builder agent authorization boundary
+        run: npm run verify:builder-agent-boundary
+
       - name: Production build
         run: npm run build
 

@@ -61,8 +61,9 @@ export default async function(req) {
     if (effectiveCampaignId) {
       const campaign = await base44.entities.Campaign.get(effectiveCampaignId).catch(() => null);
       if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
-      if (campaign.created_by_id !== user.id && user.role !== 'admin') {
-        return Response.json({ error: 'You can only connect accounts to campaigns you own.' }, { status: 403 });
+      const connectionOwnerId = existing?.created_by_id || user.id;
+      if (campaign.created_by_id !== connectionOwnerId) {
+        return Response.json({ error: 'A connection and its campaign must have the same owner.' }, { status: 403 });
       }
     }
 
