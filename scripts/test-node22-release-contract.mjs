@@ -11,7 +11,7 @@ function fixture() {
   writeFileSync(join(root, 'package-lock.json'), JSON.stringify({ packages: { '': { engines: { node: '>=20 <23' } } } }));
   writeFileSync(join(root, '.node-version'), '20\n');
   writeFileSync(join(root, '.nvmrc'), '20\n');
-  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n');
+  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  base44:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n  compatibility:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n');
   return root;
 }
 
@@ -26,10 +26,10 @@ function expect(name, mutate, expected) {
   }
 }
 
-expect('valid Node 20 baseline', () => {}, (errors) => errors.length === 0);
-expect('Node 22 compatibility may coexist', (root) => {
-  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  base44:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n  compatibility:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n');
-}, (errors) => errors.length === 0);
+expect('valid Node 20 baseline with Node 22 compatibility', () => {}, (errors) => errors.length === 0);
+expect('Node-20-only regression rejected', (root) => {
+  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n');
+}, (errors) => errors.some((error) => error.includes('do not remove the Node 22 release lane')));
 expect('Node-22-only regression rejected', (root) => {
   writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n');
 }, (errors) => errors.some((error) => error.includes('do not revert to Node-22-only')));
