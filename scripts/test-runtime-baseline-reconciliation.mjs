@@ -21,7 +21,7 @@ function runFixture(mutator) {
 const conflictingEngines = runFixture((fixture) => {
   const packagePath = path.join(fixture, "package.json");
   const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-  pkg.engines.node = ">=20 <23";
+  pkg.engines.node = ">=20 <24";
   fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 });
 assert.notEqual(conflictingEngines.status, 0, "conflicting package engine range must fail");
