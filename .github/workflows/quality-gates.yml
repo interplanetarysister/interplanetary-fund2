@@ -52,6 +52,9 @@ jobs:
       - name: Verify NotificationBell runtime contract
         run: node scripts/verify-notificationbell-runtime-contract.mjs
 
+      - name: Test NotificationBell runtime contract failure cases
+        run: node scripts/test-notificationbell-runtime-contract.mjs
+
       - name: Lint
         run: npm run lint
 
