@@ -75,7 +75,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-stone-500 -mt-2">{platform.api}</p>
+        <p className="text-xs text-stone-500 -mt-2">{existing ? "On" : "Off"} · Interplanetary Fund will handle the connection method for you.</p>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
