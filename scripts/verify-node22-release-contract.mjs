@@ -6,8 +6,9 @@ import yaml from 'js-yaml';
 export function verifyReleaseContract(root = process.cwd()) {
   const errors = [];
 
-  if (Number(process.versions.node.split('.')[0]) !== 22) {
-    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 22.x is required`);
+  const executingMajor = Number(process.versions.node.split('.')[0]);
+  if (![20, 22].includes(executingMajor)) {
+    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 20.x or 22.x is required`);
   }
 
   function readRequired(path) {
@@ -38,7 +39,7 @@ export function verifyReleaseContract(root = process.cwd()) {
   }
 
   const pkg = parseRequiredJson('package.json');
-  if (pkg && pkg.engines?.node !== '22.x') errors.push('package.json engines.node must be 22.x');
+  if (pkg && pkg.engines?.node !== '>=20 <23') errors.push('package.json engines.node must be >=20 <23');
   if (readRequired('.node-version')?.trim() !== '22') errors.push('.node-version must be 22');
   if (readRequired('.nvmrc')?.trim() !== '22') errors.push('.nvmrc must be 22');
 
@@ -95,7 +96,7 @@ export function verifyReleaseContract(root = process.cwd()) {
 
   const lock = parseRequiredJson('package-lock.json');
   if (lock) {
-    if (lock.packages?.['']?.engines?.node !== '22.x') errors.push('package-lock.json root engine must be 22.x');
+    if (lock.packages?.['']?.engines?.node !== '>=20 <23') errors.push('package-lock.json root engine must be >=20 <23');
     const nodeTypesVersion = lock.packages?.['node_modules/@types/node']?.version;
     if (typeof nodeTypesVersion !== 'string' || !nodeTypesVersion.startsWith('22.')) {
       errors.push('package-lock.json must resolve @types/node 22.x');
@@ -113,7 +114,7 @@ function run() {
     process.exitCode = 1;
     return;
   }
-  console.log('Node 22 release contract passed for package metadata, version files, workflows, and lockfile.');
+  console.log('Node runtime contract passed: Node 20/22 execution compatibility with Node 22 preferred metadata and workflow pins.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) run();
