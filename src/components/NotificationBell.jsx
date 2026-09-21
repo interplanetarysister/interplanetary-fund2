@@ -99,24 +99,31 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!userId) return undefined;
     const subscriptionGeneration = authGenerationRef.current;
-    const unsubscribe = base44.entities.Notification.subscribe((event) => {
-      if (
-        !mountedRef.current ||
-        subscriptionGeneration !== authGenerationRef.current ||
-        readSafeProperty(event, "type") !== "create"
-      ) return;
-      const eventData = readSafeProperty(event, "data");
-      const eventUserId = readSafeProperty(eventData, "user_id");
-      if (eventUserId !== userId) return;
-      const incoming = normalizeNotifications([eventData])?.[0];
-      if (!incoming) return;
-      const incomingId = readSafeProperty(incoming, "id");
-      setNotifications((prev) => {
-        const withoutDuplicate = prev.filter((item) => readSafeProperty(item, "id") !== incomingId);
-        return [incoming, ...withoutDuplicate].slice(0, MAX_NOTIFICATIONS);
+    let unsubscribe;
+    try {
+      unsubscribe = base44.entities.Notification.subscribe((event) => {
+        if (
+          !mountedRef.current ||
+          subscriptionGeneration !== authGenerationRef.current ||
+          readSafeProperty(event, "type") !== "create"
+        ) return;
+        const eventData = readSafeProperty(event, "data");
+        const eventUserId = readSafeProperty(eventData, "user_id");
+        if (eventUserId !== userId) return;
+        const incoming = normalizeNotifications([eventData])?.[0];
+        if (!incoming) return;
+        const incomingId = readSafeProperty(incoming, "id");
+        setNotifications((prev) => {
+          const withoutDuplicate = prev.filter((item) => readSafeProperty(item, "id") !== incomingId);
+          return [incoming, ...withoutDuplicate].slice(0, MAX_NOTIFICATIONS);
+        });
+        setError(null);
       });
-      setError(null);
-    });
+    } catch {
+      if (mountedRef.current && subscriptionGeneration === authGenerationRef.current) {
+        setError(SAFE_NOTIFICATION_ERROR);
+      }
+    }
     return () => {
       if (typeof unsubscribe === "function") unsubscribe();
     };
