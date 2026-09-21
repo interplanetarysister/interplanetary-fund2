@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useId } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Bell } from "lucide-react";
@@ -43,6 +43,7 @@ function normalizeNotifications(value) {
 }
 
 export default function NotificationBell() {
+  const statusId = `notification-bell-status-${useId().replace(/:/g, "")}`;
   const [userId, setUserId] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [error, setError] = useState(null);
@@ -136,7 +137,7 @@ export default function NotificationBell() {
       to="/notifications"
       className="relative p-2 text-stone-400 hover:text-stone-100 transition-colors cursor-pointer"
       aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
-      aria-describedby={error ? "notification-bell-status" : undefined}
+      aria-describedby={error ? statusId : undefined}
     >
       <Bell className="w-5 h-5" strokeWidth={1.75} />
       {unread > 0 && (
@@ -145,7 +146,7 @@ export default function NotificationBell() {
         </span>
       )}
       {error && (
-        <span id="notification-bell-status" role="status" aria-live="polite" className="sr-only">
+        <span id={statusId} role="status" aria-live="polite" className="sr-only">
           {error}
         </span>
       )}
