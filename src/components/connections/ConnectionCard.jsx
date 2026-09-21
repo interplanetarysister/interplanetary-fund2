@@ -25,7 +25,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
-            <span className="shrink-0" title={verified ? "Provider verified" : failed ? "Connection needs attention" : "Configured; provider verification pending"}>
+            <span className="shrink-0" title={failed ? "Needs attention" : verified ? "On and working" : "On"}>
               {verified ? <Globe2 className="w-4 h-4 text-emerald-500" /> : <Rocket className={`w-4 h-4 ${failed ? "text-red-500" : "text-stone-400"}`} />}
             </span>
             <span className="truncate">{platform?.name || connection.platform}</span>
