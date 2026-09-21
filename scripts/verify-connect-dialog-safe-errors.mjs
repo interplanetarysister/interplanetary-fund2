@@ -145,8 +145,8 @@ assert.match(externalAccounts, /bluesky_app_password_set/);
 assert.match(accountDetail, /UNSPECIFIED/);
 assert.doesNotMatch(actionQueue, /last_error:\s*""/);
 assert.doesNotMatch(actionQueue, /status:\s*"disconnected"/);
-assert.match(runtimeGate, /const SUPPORTED = \[22\];/);
-assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*20/);
+assert.match(runtimeGate, /const SUPPORTED = \[20, 22\];/);
+assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*24/);
 
 assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
