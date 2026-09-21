@@ -9,7 +9,7 @@ import { recordAgentInteraction } from "@/lib/recordAgentInteraction";
 // Conversation UI for an in-app AI agent. Starts a new conversation when the
 // agent changes, streams assistant replies via the agents SDK subscription,
 // and persists a best-effort interaction summary to the authoritative agent runtime.
-export default function AgentChat({ agentName, agentLabel, greeting }) {
+export default function AgentChat({ agentName, agentLabel, greeting, requiresAdmin = false }) {
   const convRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -24,6 +24,12 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     convRef.current = null;
     (async () => {
       try {
+        if (requiresAdmin) {
+          const currentUser = await base44.auth.me();
+          if (currentUser?.role !== "admin") {
+            throw new Error("ADMIN_REQUIRED");
+          }
+        }
         const conv = await base44.agents.createConversation({
           agent_name: agentName,
           metadata: { name: agentLabel },
@@ -36,12 +42,15 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
         });
       } catch (e) {
         console.error("Agent conversation start failed", e);
-        setMessages([{ role: "assistant", content: `Couldn't start a conversation with ${agentLabel}. Please try again.` }]);
+        const content = e?.message === "ADMIN_REQUIRED"
+          ? "Administrator access is required for this builder."
+          : `Couldn't start a conversation with ${agentLabel}. Please try again.`;
+        setMessages([{ role: "assistant", content }]);
       }
       if (!cancelled) setStarting(false);
     })();
     return () => { cancelled = true; unsub(); };
-  }, [agentName, agentLabel]);
+  }, [agentName, agentLabel, requiresAdmin]);
 
   const send = async () => {
     const content = input.trim();
