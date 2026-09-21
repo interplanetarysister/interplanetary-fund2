@@ -181,7 +181,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
@@ -242,7 +242,7 @@ export default function Layout() {
         })}
       </nav>
 
-      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip">
+      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip bg-background text-foreground">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}

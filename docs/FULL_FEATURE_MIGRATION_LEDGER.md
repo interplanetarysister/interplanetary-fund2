@@ -92,7 +92,7 @@ The active Agent Team uses this order:
 
 1. **Completeness** — inventory all historical pages/features/workflows/automations/integrations and compare with exact fund2 main.
 2. **Legacy recovery** — identify intended capability and provenance; separate product behavior from old infrastructure.
-3. **Agent 1 implementation** — implement the smallest complete safe Base44-compatible delta on Node 22.
+3. **Agent 1 implementation** — implement the smallest complete safe Base44-compatible delta on the Node 20 Base44 baseline, retaining Node 22 compatibility.
 4. **Agent 2 review** — review exact head for architecture, security, authorization, privacy, payments, accessibility, dependencies, and regressions.
 5. **Agent 1 repair** — correct every verified review finding and rerun available checks.
 6. **Agent 3 verification** — independently verify exact-head behavior, including negative authorization, responsive/mobile, accessibility, error states, and data/payment integrity where applicable.
@@ -128,7 +128,7 @@ The Base44 phase is complete only when:
 4. Vercel/Convex **product capabilities** required by the platform have safe Base44 equivalents where feasible; only infrastructure-specific work remains deferred.
 5. Public/user/admin authorization boundaries, withdrawal/payment rules, privacy, and data integrity are independently verified.
 6. No UI invents connected/live/configured/deployed/payment state without evidence.
-7. Node 22 build/dependency checks pass where available and Base44 publishing remains healthy.
+7. Node 20 Base44-baseline build/dependency checks pass, Node 22 compatibility checks pass where available, and Base44 publishing remains healthy.
 8. Responsive/mobile behavior, navigation, scrolling, accessibility, error states, and approved branding are verified across the complete page inventory.
 9. No source repository is archived/deleted solely because migration appears complete; equivalence and dependency removal must be proven first.
 10. Future Convex/Vercel reimplementation has preserved capability provenance and interface/contract notes sufficient to begin a later infrastructure phase without rediscovering platform requirements.

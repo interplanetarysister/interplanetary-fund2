@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": ">=20 <23"
   },
   "scripts": {
     "verify:runtime-node22": "node scripts/require-node22.mjs",
@@ -50,7 +50,8 @@
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
     "verify:runtime-baseline-reconciliation": "node scripts/verify-runtime-baseline-reconciliation.mjs",
     "test:runtime-baseline-reconciliation": "node scripts/test-runtime-baseline-reconciliation.mjs",
-    "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs"
+    "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs",
+    "verify:builder-agent-boundary": "node scripts/verify-builder-agent-boundary.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.48",

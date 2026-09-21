@@ -13,7 +13,9 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-const SUPPORTED = [22];
+// Node 22 remains the preferred CI/release toolchain, while Base44 and other
+// managed sandboxes that currently provide Node 20 are fully supported.
+const SUPPORTED = [20, 22];
 
 if (!SUPPORTED.includes(nodeMajor)) {
   console.error(
