@@ -15,4 +15,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Runtime baseline reconciliation passed: Node 20/22 compatibility metadata agrees, with Node 22 preferred by version files and workflows.');
+console.log('Runtime baseline reconciliation passed: Node 20 is the Base44/default toolchain and Node 22 remains supported; Node-22-only and Node 24 regressions are rejected.');
