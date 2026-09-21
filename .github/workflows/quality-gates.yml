@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint and production build
+    name: Node 20 Base44 build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,16 +28,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
 
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
-      - name: Verify Node 22 release contract
+      - name: Verify Node 20/22 runtime contract
         run: npm run verify:node22-release-contract
 
-      - name: Test Node 22 release contract failure cases
+      - name: Test runtime contract failure cases
         run: npm run test:node22-release-contract
 
       - name: Verify runtime baseline reconciliation
@@ -45,6 +45,9 @@ jobs:
 
       - name: Test runtime baseline reconciliation failure cases
         run: npm run test:runtime-baseline-reconciliation
+
+      - name: Verify shared text contrast contract
+        run: node scripts/verify-text-contrast-contract.mjs
 
       - name: Lint
         run: npm run lint
@@ -61,8 +64,21 @@ jobs:
       - name: Production build
         run: npm run build
 
+  node22-compatibility:
+    name: Node 22 compatibility build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+
   typecheck:
-    name: Typecheck
+    name: Typecheck on Base44 baseline
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -72,7 +88,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
 
       - name: Install locked dependencies
