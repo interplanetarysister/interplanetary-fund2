@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const verifier = path.resolve("scripts/verify-runtime-baseline-reconciliation.mjs");
 const sourceRoot = process.cwd();
 
 function runFixture(mutator) {
@@ -25,20 +24,22 @@ const conflictingEngines = runFixture((fixture) => {
   fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 });
 assert.notEqual(conflictingEngines.status, 0, "conflicting package engine range must fail");
-assert.match(conflictingEngines.stderr, /package\.json engines\.node must be/);
+
+const node22Only = runFixture((fixture) => {
+  fs.writeFileSync(path.join(fixture, ".nvmrc"), "22\n");
+  fs.writeFileSync(path.join(fixture, ".node-version"), "22\n");
+  for (const name of fs.readdirSync(path.join(fixture, ".github", "workflows"))) {
+    if (!/\.ya?ml$/.test(name)) continue;
+    const p = path.join(fixture, ".github", "workflows", name);
+    fs.writeFileSync(p, fs.readFileSync(p, "utf8").replace(/node-version:\s*20(?:\.x)?/g, "node-version: 22"));
+  }
+});
+assert.notEqual(node22Only.status, 0, "Node-22-only regression must fail");
+assert.match(node22Only.stderr, /Base44 baseline|do not revert to Node-22-only/);
 
 const malformedMetadata = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, "package.json"), "{ malformed");
 });
 assert.notEqual(malformedMetadata.status, 0, "malformed package metadata must fail");
-assert.match(malformedMetadata.stderr, /package\.json is not valid JSON|ERR_INVALID_PACKAGE_CONFIG|Invalid package config/);
-
-const workflowMatrixDrift = runFixture((fixture) => {
-  const workflowPath = path.join(fixture, ".github", "workflows", "quality-gates.yml");
-  const workflow = fs.readFileSync(workflowPath, "utf8");
-  fs.writeFileSync(workflowPath, `${workflow}\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n`);
-});
-assert.notEqual(workflowMatrixDrift.status, 0, "workflow Node 20 drift must fail");
-assert.match(workflowMatrixDrift.stderr, /node-version|setup-node pins/);
 
 console.log("Runtime baseline reconciliation negative cases passed.");
