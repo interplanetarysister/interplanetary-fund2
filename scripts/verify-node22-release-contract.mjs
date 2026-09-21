@@ -58,6 +58,7 @@ export function verifyReleaseContract(root = process.cwd()) {
 
   let setupNodeDeclarations = 0;
   let node20Declarations = 0;
+  let node22Declarations = 0;
   for (const file of workflowFiles) {
     const path = join('.github', 'workflows', file);
     const text = readRequired(path);
@@ -88,6 +89,7 @@ export function verifyReleaseContract(root = process.cwd()) {
           ? String(declared).trim()
           : '';
         if (version === '20' || version === '20.x') node20Declarations += 1;
+        if (version === '22' || version === '22.x') node22Declarations += 1;
         if (!['20', '20.x', '22', '22.x'].includes(version)) {
           errors.push(`${path} setup-node pins ${version || '<missing>'}; expected Node 20 or Node 22`);
         }
@@ -100,6 +102,9 @@ export function verifyReleaseContract(root = process.cwd()) {
   }
   if (setupNodeDeclarations && !node20Declarations) {
     errors.push('workflow inventory must retain at least one Node 20 Base44 compatibility check; do not revert to Node-22-only');
+  }
+  if (setupNodeDeclarations && !node22Declarations) {
+    errors.push('workflow inventory must retain at least one Node 22 compatibility check; do not remove the Node 22 release lane');
   }
 
   const lock = parseRequiredJson('package-lock.json');
