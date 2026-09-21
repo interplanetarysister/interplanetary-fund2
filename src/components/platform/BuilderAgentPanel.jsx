@@ -20,7 +20,7 @@ export default function BuilderAgentPanel() {
           Describe a defect, regression, or configuration problem. The builder examines available
           operational evidence, proposes the smallest repair, and records work through the approved
           repair path. It never changes payments, permissions, users, or production code without an
-          explicit authorized tool and confirmation.
+          explicit authorized tool and confirmation. Repository code changes still use the approved Base44/GitHub development path.
         </p>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-500">
           <ShieldCheck className="h-3.5 w-3.5" />
