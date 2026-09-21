@@ -49,6 +49,9 @@ jobs:
       - name: Verify shared text contrast contract
         run: node scripts/verify-text-contrast-contract.mjs
 
+      - name: Verify NotificationBell runtime contract
+        run: node scripts/verify-notificationbell-runtime-contract.mjs
+
       - name: Lint
         run: npm run lint
 
