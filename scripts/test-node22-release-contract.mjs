@@ -1,4 +1,5 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { verifyReleaseContract } from './verify-node22-release-contract.mjs';
@@ -44,5 +45,9 @@ expect('setup-node without pin rejected', (root) => writeFileSync(join(root, '.g
 expect('case-variant setup-node cannot bypass contract', (root) => writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  valid:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n  invalid:\n    steps:\n      - uses: Actions/Setup-Node@v4\n'), (errors) => errors.some((error) => error.includes('pins <missing>')));
 expect('dynamic setup-node pin rejected', (root) => writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: ${{ matrix.node }}\n'), (errors) => errors.some((error) => error.includes('expected literal 22')));
 expect('active incompatible pin rejected', (root) => writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 24\n'), (errors) => errors.some((error) => error.includes('pins 24')));
+
+const runtimeGate = readFileSync(new URL('./require-node22.mjs', import.meta.url), 'utf8');
+assert.match(runtimeGate, /const SUPPORTED = \[22\];/, 'runtime preflight must allow only Node 22');
+assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*20/, 'runtime preflight must reject Node 20');
 
 console.log('Node 22 release contract negative cases passed.');

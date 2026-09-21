@@ -29,7 +29,7 @@ async function adapterFor(connection) {
   if (p === 'kofi') {
     return {
       status: 'realtime_webhook',
-      amount_discovered: num(connection.external_total),
+      amount_discovered: 0,
       transactions: [],
       note: 'Ko-fi payments synchronize in real time through the canonical webhook observation path; no pull API is used.',
     };
@@ -37,14 +37,14 @@ async function adapterFor(connection) {
   if (p === 'buymeacoffee' || p === 'patreon') {
     return {
       status: 'credentials_required',
-      amount_discovered: num(connection.external_total),
+      amount_discovered: 0,
       transactions: [],
       note: `${p} transaction discovery requires a valid per-connection access token. Existing owner-reported totals remain informational only.`,
     };
   }
   return {
     status: 'no_read_api',
-    amount_discovered: num(connection.external_total),
+    amount_discovered: 0,
     transactions: [],
     note: `${p} has no configured authoritative read adapter. Existing external totals are informational only.`,
   };
@@ -54,18 +54,19 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    let user = null;
-    try { user = await base44.auth.me(); } catch (_) { /* scheduled/workflow call */ }
-    const body = await req.json().catch(() => ({}));
-    const initiatorType = body.initiator_type || (user ? 'user' : 'scheduled');
-    const oboUserId = body.obo_user_id || null;
-
-    const scope = body.scope || (user ? 'user' : 'all');
-    if (user && user.role !== 'admin' && (scope === 'all' || (oboUserId && oboUserId !== user.id))) {
-      return Response.json({ error: 'You can only synchronize your own funds.' }, { status: 403 });
+    const user = await base44.auth.me().catch(() => null);
+    if (!user) {
+      return Response.json({ error: 'Unauthorized. Scheduled synchronization requires a trusted authenticated invocation.' }, { status: 401 });
     }
-
-    const targetUserId = oboUserId || (scope === 'user' && user ? user.id : null);
+    const body = await req.json().catch(() => ({}));
+    const requestedScope = body.scope || 'user';
+    if (!['user', 'all'].includes(requestedScope)) {
+      return Response.json({ error: 'scope must be "user" or "all".' }, { status: 400 });
+    }
+    const scope = user.role === 'admin' ? requestedScope : 'user';
+    const oboUserId = user.role === 'admin' ? (body.obo_user_id || null) : null;
+    const initiatorType = user.role === 'admin' && body.initiator_type === 'scheduled' ? 'scheduled' : 'user';
+    const targetUserId = oboUserId || (scope === 'user' ? user.id : null);
     const startedAt = new Date().toISOString();
     const providerResults = [];
     const discoveredByCurrency = new Map();
@@ -76,7 +77,7 @@ export default async function (req) {
     if (body.campaign_id) {
       const c = await sr.entities.Campaign.get(body.campaign_id).catch(() => null);
       if (!c) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
-      if (user && user.role !== 'admin' && c.created_by_id !== user.id) {
+      if (user.role !== 'admin' && c.created_by_id !== user.id) {
         return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: 403 });
       }
       campaigns = [c];
@@ -192,8 +193,15 @@ export default async function (req) {
     const discoveredTotals = [...discoveredByCurrency.entries()].map(([currency, amount]) => ({ currency, amount }));
     const totalDiscoveredUsd = num(discoveredByCurrency.get('USD'));
     const hasError = providerResults.some((r) => r.status === 'error');
-    const hasOk = providerResults.some((r) => r.status !== 'error');
-    const overall = hasError ? (hasOk ? 'partial' : 'failed') : 'success';
+    const hasImported = providerResults.some((r) => r.status === 'imported');
+    const hasUnavailable = providerResults.some((r) => ['realtime_webhook', 'credentials_required', 'no_read_api'].includes(r.status));
+    const overall = providerResults.length === 0
+      ? 'no_connections'
+      : hasError
+        ? (hasImported ? 'partial' : 'failed')
+        : hasImported
+          ? (hasUnavailable ? 'partial' : 'success')
+          : 'unavailable';
 
     const run = await sr.entities.SyncRun.create({
       initiator_type: initiatorType,
@@ -218,7 +226,7 @@ export default async function (req) {
       target_type: 'SyncRun',
       target_id: run.id,
       detail: `scope=${scope} campaigns=${campaignsCovered} observed_currency_groups=${discoveredTotals.length} new_observations=${totalImported} overall=${overall}`,
-      status: overall === 'failed' ? 'failure' : 'success',
+      status: ['success', 'partial'].includes(overall) ? 'success' : 'failure',
       metadata: {
         scope,
         obo_user_id: oboUserId,
@@ -232,7 +240,7 @@ export default async function (req) {
     });
 
     return Response.json({
-      ok: true,
+      ok: ['success', 'partial'].includes(overall),
       run_id: run.id,
       overall_status: overall,
       campaigns_covered: campaignsCovered,

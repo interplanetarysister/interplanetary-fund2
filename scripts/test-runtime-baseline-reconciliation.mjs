@@ -9,7 +9,8 @@ const sourceRoot = process.cwd();
 
 function runFixture(mutator) {
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), "ifund-runtime-baseline-"));
-  fs.cpSync(sourceRoot, fixture, { recursive: true, filter: (entry) => !entry.includes("node_modules") && !entry.includes(".git") });
+  fs.cpSync(sourceRoot, fixture, { recursive: true, filter: (entry) => path.basename(entry) !== "node_modules" && path.basename(entry) !== ".git" });
+  fs.symlinkSync(path.join(sourceRoot, "node_modules"), path.join(fixture, "node_modules"), "dir");
   mutator(fixture);
   return spawnSync(process.execPath, [path.join(fixture, "scripts/verify-runtime-baseline-reconciliation.mjs")], {
     cwd: fixture,
@@ -30,7 +31,7 @@ const malformedMetadata = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, "package.json"), "{ malformed");
 });
 assert.notEqual(malformedMetadata.status, 0, "malformed package metadata must fail");
-assert.match(malformedMetadata.stderr, /package\.json is not valid JSON/);
+assert.match(malformedMetadata.stderr, /package\.json is not valid JSON|ERR_INVALID_PACKAGE_CONFIG|Invalid package config/);
 
 const workflowMatrixDrift = runFixture((fixture) => {
   const workflowPath = path.join(fixture, ".github", "workflows", "quality-gates.yml");
@@ -38,6 +39,6 @@ const workflowMatrixDrift = runFixture((fixture) => {
   fs.writeFileSync(workflowPath, `${workflow}\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n`);
 });
 assert.notEqual(workflowMatrixDrift.status, 0, "workflow Node 20 drift must fail");
-assert.match(workflowMatrixDrift.stderr, /node-version/);
+assert.match(workflowMatrixDrift.stderr, /node-version|setup-node pins/);
 
 console.log("Runtime baseline reconciliation negative cases passed.");

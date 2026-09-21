@@ -34,10 +34,11 @@ export const agentForRole = (agents, role) =>
 // Profile completeness — derived from the fields the connection actually has.
 const credentialFilled = (c) => {
   const cr = c.credentials || {};
+  const meta = c.credentials_meta || {};
   switch (c.platform) {
-    case "kofi": return !!cr.kofi_verification_token;
-    case "bluesky": return !!cr.bluesky_handle && !!cr.bluesky_app_password;
-    case "mastodon": return !!cr.mastodon_instance && !!cr.mastodon_access_token;
+    case "kofi": return !!meta.kofi_verification_token_set;
+    case "bluesky": return !!cr.bluesky_handle && !!meta.bluesky_app_password_set;
+    case "mastodon": return !!cr.mastodon_instance && !!meta.mastodon_access_token_set;
     default: return null; // platform stores no credential — not counted
   }
 };
@@ -70,10 +71,7 @@ export const isStale = (c) => {
 // Credential status shown to admin never treats stored secrets as proof that
 // the provider accepted them.
 export const credentialStatus = (c) => {
-  const cr = c.credentials || {};
-  const hasCred = cr.kofi_verification_token ||
-    (cr.bluesky_handle && cr.bluesky_app_password) ||
-    (cr.mastodon_instance && cr.mastodon_access_token);
+  const hasCred = credentialFilled(c);
   if (c.verification_status === "verified") return "Provider verified";
   if (hasCred) return "Configured; verification pending";
   if (["kofi", "bluesky", "mastodon"].includes(c.platform)) return "Not configured";

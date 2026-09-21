@@ -23,11 +23,12 @@ export default function Social() {
 
   const loadUser = useCallback(async () => {
     try {
-      const [u, conns, camps] = await Promise.all([
+      const [u, connectionResponse, camps] = await Promise.all([
         base44.auth.me(),
-        base44.entities.PlatformConnection.filter({}).catch(() => []),
+        base44.functions.invoke("listConnections", {}),
         base44.entities.Campaign.filter({}).catch(() => []),
       ]);
+      const conns = connectionResponse.data?.connections || [];
       setUser(u);
       setConnections(Array.isArray(conns) ? conns : []);
       setCampaigns(Array.isArray(camps) ? camps.filter((c) => c.status === "active" || c.status === "draft") : []);

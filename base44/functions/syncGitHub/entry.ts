@@ -30,18 +30,15 @@ async function getGitHubToken(base44) {
   return null;
 }
 
-async function run(cmd) {
-  const proc = new Deno.Command('bash', {
-    args: ['-c', cmd],
-    cwd: '/app',
-    stdout: 'piped',
-    stderr: 'piped',
-  });
-  const { code, stdout, stderr } = await proc.output();
+// Base44 backend functions cannot execute shell commands or mutate the app's
+// checked-out git worktree. Keep this compatibility surface fail-closed and
+// truthful: repository synchronization must use Base44's native GitHub
+// integration, not a simulated backend-side git operation.
+async function run(_cmd) {
   return {
-    ok: code === 0,
-    stdout: new TextDecoder().decode(stdout).trim(),
-    stderr: new TextDecoder().decode(stderr).trim(),
+    ok: false,
+    stdout: '',
+    stderr: 'Backend git execution is unavailable on Base44; use the native GitHub synchronization control.',
   };
 }
 
@@ -89,11 +86,8 @@ export default async function (req) {
     const user = await base44.auth.me().catch(() => null);
     const body = await req.json().catch(() => ({}));
 
-    const isWorkflow = !user && (body.initiator_type === 'workflow' || body.initiator_type === 'scheduled');
-    if (!isWorkflow) {
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-      if (user.role !== 'admin') return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
 
     const sr = base44.asServiceRole;
 
@@ -132,7 +126,8 @@ export default async function (req) {
 
     const allOk = Object.values(results).every((r) => r.ok);
     const anyFailed = Object.values(results).some((r) => !r.ok);
-    const overall = allOk ? 'success' : anyFailed ? 'partial' : 'failed';
+    const anySucceeded = Object.values(results).some((r) => r.ok);
+    const overall = allOk ? 'success' : anySucceeded ? 'partial' : 'failed';
 
     await logAudit(base44, {
       action: 'github_sync',

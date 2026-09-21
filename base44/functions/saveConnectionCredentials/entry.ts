@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS } from '../../shared/integrationRegistry.ts';
+import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -42,10 +43,18 @@ export default async function(req) {
 
     const effectiveKind = kind || existing?.kind || 'crowdfunding';
     const effectiveCurrency = effectiveKind === 'crowdfunding'
-      ? String(external_currency || existing?.external_currency || 'USD').trim().toUpperCase()
+      ? String(external_currency || existing?.external_currency || '').trim().toUpperCase()
       : undefined;
     if (effectiveCurrency && !/^[A-Z]{3}$/.test(effectiveCurrency)) {
       return Response.json({ error: 'external_currency must be a three-letter ISO currency code' }, { status: 400 });
+    }
+
+    const effectiveAutomationMode = automation_mode || existing?.automation_mode || 'manual';
+    const consentOwner = existing && existing.created_by_id !== user.id
+      ? await base44.asServiceRole.entities.User.get(existing.created_by_id).catch(() => null)
+      : user;
+    if (effectiveAutomationMode !== 'manual' && !hasAiPublishingConsent(consentOwner)) {
+      return Response.json({ error: 'AI preparation and publishing authorization is required before an AI-assisted mode can be enabled.' }, { status: 403 });
     }
 
     const effectiveCampaignId = campaign_id || existing?.campaign_id || undefined;
@@ -65,7 +74,7 @@ export default async function(req) {
       display_name: display_name ?? existing?.display_name ?? '',
       external_url: external_url ?? existing?.external_url ?? '',
       campaign_id: effectiveCampaignId,
-      automation_mode: automation_mode || existing?.automation_mode || 'manual',
+      automation_mode: effectiveAutomationMode,
       credentials: mergedCreds,
       external_total: reportedTotal,
       external_currency: effectiveCurrency,

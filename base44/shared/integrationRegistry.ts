@@ -98,17 +98,16 @@ export function mergeSecrets(existingCreds, incomingCreds) {
 }
 
 // Centralized access gate. Before a backend function touches an external
-// platform it calls this to confirm the registry entry is healthy. Fails open
-// only on a transient registry read error (so a brief DB hiccup can't take
-// down critical user-facing flows), but blocks hard on a revoked/disconnected/
-// misconfigured/missing entry. Returns { ok, status, reason }.
+// platform it calls this to confirm the registry entry is healthy. Registry
+// uncertainty fails closed: an unavailable authorization source can never be
+// treated as permission for an external side effect. Returns { ok, status, reason }.
 export async function assertPlatformAccess(sr, platform) {
   let entries;
   try {
     entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
   } catch (e) {
     console.warn("assertPlatformAccess registry read failed:", e && e.message ? e.message : e);
-    return { ok: true, status: null, reason: "registry unavailable (fail-open)" };
+    return { ok: false, status: null, reason: "registry unavailable (fail-closed)" };
   }
   const entry = entries && entries[0];
   if (!entry) return { ok: false, status: null, reason: `no registry entry for ${platform}` };
