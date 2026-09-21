@@ -1,6 +1,6 @@
 {
   "name": "Social Media Autopilot",
-  "description": "Fully autonomous social media management: daily generates one truthful post per eligible campaign and stages it on the owner's connected social destinations \u2014 auto connections get it scheduled for publishing, ask/draft connections stage it for owner approval. Gated by owner AI-publishing consent and on-behalf-of grants, capped at one post per campaign per week.",
+  "description": "Fully autonomous social media management: daily generates one truthful post per eligible campaign and stages it on the owner's connected social destinations \u2014 auto connections get it scheduled for publishing, ask/draft connections stage it for owner approval. Gated by the owner's explicit, revocable AI-publishing consent plus campaign and destination automation settings; no separate recurring grant or per-post reconfirmation is required. Capped at one post per campaign per week.",
   "trigger": {
     "condition": null,
     "config": {
