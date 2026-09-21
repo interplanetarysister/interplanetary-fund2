@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, Link2, Rocket, Share2, RefreshCw } from "lucide-react";
-import FetchCredentialsDialog from "@/components/connections/FetchCredentialsDialog";
 import { CROWDFUNDING_PLATFORMS, SOCIAL_PLATFORMS, ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
@@ -19,7 +18,6 @@ export default function Connections() {
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
-  const [fetchPlatform, setFetchPlatform] = useState(null);
   const subscriptionActive = user?.subscription_status === "active";
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
@@ -77,7 +75,7 @@ export default function Connections() {
           <div key={p.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="font-semibold text-stone-900">{p.name}</p>
-              <p className="text-xs text-stone-400 mt-0.5">{p.api}</p>
+              <p className="text-xs text-stone-400 mt-0.5">Off</p>
             </div>
             <Button size="sm" onClick={() => setDialog({ platform: { ...p, kind: items === CROWDFUNDING_PLATFORMS ? "crowdfunding" : "social" } })} className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">
               Connect
@@ -100,9 +98,8 @@ export default function Connections() {
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
         <Button onClick={syncAll} disabled={syncing} className="rounded-xl">
-          {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Linked Platforms
+          {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Refresh now
         </Button>
-        {!subscriptionActive && <span className="text-xs text-stone-400">Fetch Credentials / API Info is a subscription feature.</span>}
       </div>
       {syncResult && (
         <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">
@@ -110,18 +107,11 @@ export default function Connections() {
             <p className="text-red-600">{syncResult.error}</p>
           ) : (
             <p className="text-stone-700">
-              {["success", "partial"].includes(syncResult.overall_status) ? "Synchronized" : "Checked"}{" "}
-              <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · authoritative provider observations{" "}
-              <span className="font-medium">{discoveredSummary || "none"}</span> · new external observations{" "}
-              <span className="font-medium">{syncResult.total_imported}</span> · status{" "}
-              <span className="font-medium">{syncResult.overall_status}</span>.
-              <span className="block mt-1 text-xs text-stone-500">
-                {syncResult.overall_status === "unavailable"
-                  ? "No configured provider supported an authoritative pull. Owner-reported totals were not counted as synchronized data."
-                  : syncResult.overall_status === "no_connections"
-                    ? "No eligible crowdfunding connections were available to synchronize."
-                    : "External totals are informational, currency-specific, and not withdrawable until a verified transfer enters the Interplanetary Fund ledger."}
-              </span>
+              {["success", "partial"].includes(syncResult.overall_status)
+                ? `Working. ${discoveredSummary ? `${discoveredSummary} found.` : "Your connected platforms were checked."}`
+                : syncResult.overall_status === "no_connections"
+                  ? "Nothing is on yet. Turn on a platform below to get started."
+                  : "One or more connections need attention. Use Fix Connection below."}
             </p>
           )}
         </div>
@@ -142,8 +132,6 @@ export default function Connections() {
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
                 onRemoved={(id) => setConnections((prev) => prev.filter((x) => x.id !== id))}
-                subscriptionActive={subscriptionActive}
-                onFetchCredentials={setFetchPlatform}
               />
             ))}
           </div>
@@ -169,7 +157,6 @@ export default function Connections() {
         />
       )}
 
-      <FetchCredentialsDialog platform={fetchPlatform} open={!!fetchPlatform} onOpenChange={(o) => !o && setFetchPlatform(null)} />
     </div>
   );
 }
