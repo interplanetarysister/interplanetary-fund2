@@ -52,13 +52,15 @@ assert.equal(bounded[0].id, "id-0");
 assert.equal(bounded.at(-1).id, "id-19");
 
 assert.deepEqual(
-  normalizeNotifications([
-    { id: "a", read: false },
-    { id: "a", read: true },
-    { id: "b", read: true },
-    null,
-    { id: "", read: false },
-  ]).map((row) => row.id),
+  Array.from(
+    normalizeNotifications([
+      { id: "a", read: false },
+      { id: "a", read: true },
+      { id: "b", read: true },
+      null,
+      { id: "", read: false },
+    ]).map((row) => row.id),
+  ),
   ["a", "b"],
 );
 
