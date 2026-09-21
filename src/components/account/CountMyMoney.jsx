@@ -58,7 +58,7 @@ export default function CountMyMoney() {
             </div>
           ))}
           {!(result.provider_results || []).length && (
-            <p className="text-xs text-stone-400">No connected fundraising platforms found. Connect a platform in the Connections Center to start syncing.</p>
+            <p className="text-xs text-stone-400">Nothing is on yet. Turn on a fundraising platform in Connections to get started.</p>
           )}
         </div>
       )}
