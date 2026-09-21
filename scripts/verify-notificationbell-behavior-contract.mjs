@@ -23,7 +23,34 @@ const throwingRow = new Proxy({ id: "throwing", read: false }, {
 
 assert.equal(readSafeProperty(throwingRow, "read"), undefined);
 assert.equal(isSafeNotificationRow(throwingRow), false);
+
+const throwingIdRow = new Proxy({ read: false }, {
+  get(target, property) {
+    if (property === "id") throw new Error("hostile id getter");
+    return target[property];
+  },
+});
+assert.equal(isSafeNotificationRow(throwingIdRow), false);
+
+const thenablePayload = {
+  then() {
+    throw new Error("thenable payload must never be awaited by normalization");
+  },
+};
+assert.deepEqual(normalizeNotifications(thenablePayload), null);
 assert.deepEqual(normalizeNotifications({ not: "an array" }), null);
+
+const oversizedId = "x".repeat(161);
+assert.equal(isSafeNotificationRow({ id: oversizedId, read: false }), false);
+assert.equal(isSafeNotificationRow({ id: "ok", read: "false" }), false);
+assert.equal(isSafeNotificationRow({ id: "ok", read: undefined }), true);
+
+const rows = Array.from({ length: 25 }, (_, index) => ({ id: `id-${index}`, read: index % 2 === 0 }));
+const bounded = normalizeNotifications(rows);
+assert.equal(bounded.length, 20);
+assert.equal(bounded[0].id, "id-0");
+assert.equal(bounded.at(-1).id, "id-19");
+
 assert.deepEqual(
   normalizeNotifications([
     { id: "a", read: false },
