@@ -2,7 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const source = fs.readFileSync(path.join(root, "src/components/NotificationBell.jsx"), "utf8");
+const sourcePath = process.env.NOTIFICATIONBELL_SOURCE_PATH
+  ? path.resolve(root, process.env.NOTIFICATIONBELL_SOURCE_PATH)
+  : path.join(root, "src/components/NotificationBell.jsx");
+const source = fs.readFileSync(sourcePath, "utf8");
 
 const required = [
   ["mounted lifecycle fence", /mountedRef/],
