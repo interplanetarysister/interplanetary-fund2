@@ -61,17 +61,16 @@ assert.equal(bounded.length, 20);
 assert.equal(bounded[0].id, "id-0");
 assert.equal(bounded.at(-1).id, "id-19");
 
-assert.deepEqual(
-  Array.from(
-    normalizeNotifications([
-      { id: "a", read: false },
-      { id: "a", read: true },
-      { id: "b", read: true },
-      null,
-      { id: "", read: false },
-    ]).map((row) => row.id),
-  ),
-  ["a", "b"],
+const duplicateIds = Array.from(
+  normalizeNotifications([
+    { id: "a", read: false },
+    { id: "a", read: true },
+    { id: "b", read: true },
+    null,
+    { id: "", read: false },
+  ]),
+  (row) => row.id,
 );
+assert.deepEqual(duplicateIds, ["a", "b"]);
 
 console.log("NotificationBell behavior contract passed");
