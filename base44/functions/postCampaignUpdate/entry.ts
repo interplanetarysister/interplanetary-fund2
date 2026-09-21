@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
@@ -82,12 +82,6 @@ export default async function(req) {
         : await sr.entities.User.get(campaign.created_by_id).catch(() => null);
       const aiConsentGranted = hasAiPublishingConsent(consentOwner);
       const platformAccess = await assertPlatformAccess(sr, 'social_publish');
-      const obo = await assertOboGrant(
-        sr,
-        'platform_outreach_agent',
-        campaign.created_by_id,
-        'social_publish',
-      );
       const targets = aiConsentGranted
         ? connections.filter((c) =>
             c.automation_mode !== 'manual' &&
@@ -140,7 +134,7 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
-          if (conn.automation_mode === 'auto' && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
+          if (conn.automation_mode === 'auto' && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({
