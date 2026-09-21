@@ -68,8 +68,8 @@ export default function Social() {
   const connectedPlatforms = userConnections.filter((c) => c.status === "connected");
 
   return (
-    <div className="min-h-screen deep-space pb-20">
-      <div className="max-w-5xl mx-auto px-4 py-6 pt-safe">
+    <div className="min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden deep-space pb-24">
+      <div className="w-full min-w-0 max-w-5xl mx-auto px-3 sm:px-4 py-6 pt-safe">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -98,9 +98,9 @@ export default function Social() {
           </TabsList>
         </Tabs>
 
-        <div className="grid lg:grid-cols-[1fr_280px] gap-6">
+        <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_280px] gap-6">
           {/* Main content */}
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {tab === "social" ? (
               <>
                 {user && (
