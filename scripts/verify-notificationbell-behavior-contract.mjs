@@ -40,6 +40,16 @@ const thenablePayload = {
 assert.deepEqual(normalizeNotifications(thenablePayload), null);
 assert.deepEqual(normalizeNotifications({ not: "an array" }), null);
 
+const thenableRow = new Proxy({ id: "thenable-row", read: false }, {
+  get(target, property) {
+    if (property === "then") throw new Error("thenable row must never be awaited by normalization");
+    return target[property];
+  },
+});
+const normalizedThenableRow = normalizeNotifications([thenableRow]);
+assert.equal(normalizedThenableRow.length, 1);
+assert.equal(normalizedThenableRow[0].id, "thenable-row");
+
 const oversizedId = "x".repeat(161);
 assert.equal(isSafeNotificationRow({ id: oversizedId, read: false }), false);
 assert.equal(isSafeNotificationRow({ id: "ok", read: "false" }), false);
