@@ -90,7 +90,14 @@
     },
     "credentials": {
       "type": "object",
-      "description": "Per-platform integration credentials, visible only to the connection owner under RLS. Enables live sync/publishing where the platform supports it.",
+      "description": "Per-platform integration credentials. Raw secret values are service/admin-only; owner-facing reads use the redacted listConnections function.",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      },
       "properties": {
         "kofi_verification_token": {
           "type": "string",
