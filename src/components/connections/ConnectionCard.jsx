@@ -33,7 +33,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
           </p>
           <p className="text-xs text-stone-400 mt-1">
             {verified ? "On · Working" : failed ? "Needs attention" : "On · Checking connection"}
-            {connection.last_synced && <> · checked {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>
+            {connection.last_synced && <> · checked {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>}
           </p>
         </div>
         <span className={`text-sm font-semibold shrink-0 ${failed ? "text-red-600" : "text-emerald-600"}`}>{failed ? "Needs attention" : "On"}</span>
