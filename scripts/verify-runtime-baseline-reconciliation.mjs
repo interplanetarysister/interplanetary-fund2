@@ -15,4 +15,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Runtime baseline reconciliation passed: Node 22 metadata, lockfile, and active workflow pins agree.');
+console.log('Runtime baseline reconciliation passed: Node 20/22 compatibility metadata agrees, with Node 22 preferred by version files and workflows.');
