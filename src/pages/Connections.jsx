@@ -18,7 +18,6 @@ export default function Connections() {
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
-  const subscriptionActive = user?.subscription_status === "active";
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -31,7 +30,7 @@ export default function Connections() {
       const r = await base44.functions.invoke("listConnections", {});
       setConnections(r.data.connections);
     } catch (e) {
-      setSyncResult({ error: e.message || "Sync failed." });
+      setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     }
     setSyncing(false);
   };
