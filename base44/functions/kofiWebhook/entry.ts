@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
 import { reconcileInboxMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 
 // Ko-fi webhooks report payments made directly into the creator's connected
