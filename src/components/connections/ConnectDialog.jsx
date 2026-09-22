@@ -14,10 +14,12 @@ import CredentialFields from "./CredentialFields";
 // AI automation permission for that destination.
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
+  const usesProviderOAuth = !isCrowd && ["linkedin", "facebook", "instagram", "discord", "tiktok"].includes(platform.id);
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -39,6 +41,26 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const connectWithProvider = async () => {
+    setConnecting(true);
+    setError("");
+    try {
+      const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
+      if (!data?.configured || !data?.connector_id) {
+        setError("Secure provider sign-in is not configured for this platform yet.");
+        return;
+      }
+      sessionStorage.setItem("ifund_pending_oauth_platform", platform.id);
+      const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
+      window.location.href = redirectUrl;
+    } catch (e) {
+      console.error("Provider OAuth start failed:", e);
+      setError("Couldn't open the provider sign-in. Please try again.");
+    } finally {
+      setConnecting(false);
+    }
+  };
 
   const save = async () => {
     setSaving(true);
@@ -75,17 +97,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-stone-500 -mt-2">{existing ? "On" : "Off"} · Interplanetary Fund will handle the connection method for you.</p>
+        <p className="text-xs text-stone-500 -mt-2">{existing ? "On" : "Off"} · {usesProviderOAuth ? "Sign in with the provider. Interplanetary Fund never asks you to paste OAuth tokens." : "Interplanetary Fund will handle the connection method for you."}</p>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
             <Input value={form.display_name} onChange={(e) => set("display_name", e.target.value)} placeholder={isCrowd ? "e.g. Help Rebuild Our Shelter" : "e.g. @interplanetaryfund"} />
-          </div>
-          <div className="space-y-1.5">
+          </div>}
+          {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
-          </div>
-          <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />
+          </div>}
+          {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
           <div className="space-y-1.5">
             <Label>Linked Interplanetary Fund campaign</Label>
             <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
@@ -131,9 +153,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             </p>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
-          </Button>
+          {usesProviderOAuth && !existing ? (
+            <Button onClick={connectWithProvider} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : `Connect with ${platform.name}`}
+            </Button>
+          ) : (
+            <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
