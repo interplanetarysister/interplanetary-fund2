@@ -140,7 +140,7 @@ export default async function (req) {
       payment_method: 'paypal',
       payment_verified: true,
       cleared: false,
-      stripe_session_id: order_id,
+      provider_transaction_id: String(cap.capture_id || order_id),
     });
 
     if (campaign.created_by_id) {
