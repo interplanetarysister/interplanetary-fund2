@@ -26,7 +26,6 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [platformContribution, setPlatformContribution] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stripeLoading, setStripeLoading] = useState(false);
-  const [paypalLoading, setPaypalLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [capabilities, setCapabilities] = useState(null);
@@ -71,21 +70,6 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
     setSaving(false);
   };
 
-  const startPayPalCheckout = async () => {
-    if (!paypalApiAvailable) { setError("PayPal checkout is not currently available."); return; }
-    const value = parseFloat(amount);
-    if (!value || value < MIN_DONATION) { setError(`Enter an amount of at least $${MIN_DONATION}.`); return; }
-    setPaypalLoading(true); setError("");
-    try {
-      const { data: order } = await base44.functions.invoke("createPayPalOrder", {
-        campaign_id: campaign.id, amount: value, platform_contribution: platformContribution,
-      });
-      if (!order?.id) { setError(order?.error || "Couldn't start PayPal checkout."); setPaypalLoading(false); return; }
-      const paypalUrl = `https://www.paypal.com/checkoutnow?token=${encodeURIComponent(order.id)}`;
-      window.location.href = paypalUrl;
-    } catch (_) { setError("Couldn't start PayPal checkout. Please try again."); setPaypalLoading(false); }
-  };
-
   const startStripeCheckout = async () => {
     if (!stripeAvailable) { setError("Card payments are not currently available."); return; }
     const value = parseFloat(amount);
@@ -126,7 +110,6 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {!capabilities && !capabilityError && <div className="flex items-center justify-center py-4 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking available payment methods…</div>}
             {capabilityError && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Payment availability could not be verified. No provider has been assumed available. Please try again.</p>}
 
-            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><Button onClick={startPayPalCheckout} disabled={paypalLoading || !amount} className="w-full h-10 rounded-xl bg-[#FFD140] hover:bg-[#FFD140]/90 text-[#003087] border-0">{paypalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Continue to PayPal"}</Button><p className="text-[11px] text-stone-400 mt-2 text-center">You will complete payment securely with PayPal. Donations are credited only after provider confirmation.</p></div>}
 
             {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /><p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p></div>}
 
