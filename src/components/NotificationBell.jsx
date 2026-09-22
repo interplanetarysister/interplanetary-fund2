@@ -23,7 +23,7 @@ function isSafeNotificationRow(row) {
     typeof id === "string" &&
     id.length > 0 &&
     id.length <= MAX_ID_LENGTH &&
-    (read === undefined || typeof read === "boolean")
+    (read === undefined || read === null || typeof read === "boolean")
   );
 }
 
