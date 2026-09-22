@@ -9,7 +9,7 @@ const source = fs.readFileSync(componentPath, "utf8");
 
 assert.match(
   source,
-  /!\s*readSafeProperty\(\s*[^,]+,\s*["']read["']\s*\)/,
+  /readSafeProperty\(\s*[^,]+,\s*["']read["']\s*\)\s*!==\s*true/,
   "NotificationBell must use the explicit unread policy: any value other than true is unread",
 );
 
