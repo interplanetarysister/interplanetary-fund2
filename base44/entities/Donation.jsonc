@@ -67,7 +67,7 @@
     },
     "payment_verified": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "description": "True only when payment was confirmed by an authorized server/provider path. Pending manual reports must not increase confirmed totals or withdrawable value."
     },
     "is_institutional": {
