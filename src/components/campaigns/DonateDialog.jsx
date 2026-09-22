@@ -62,7 +62,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         idempotency_key: idempotencyRef.current,
       });
       if (data?.pending_verification) {
-        setError("Payment reported. It will appear after the payment provider is verified.");
+        setError("Payment reported as pending. It will not affect the campaign total until an administrator separately verifies that it arrived.");
       } else {
         setError(data?.error || "We couldn't record your payment.");
       }
@@ -115,10 +115,10 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {stripeAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{recurring ? "Monthly giving via card" : "Give with a card"}</p><Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">{stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${bd.totalCharged.toFixed(2)} with card` : "Donate with card"}</Button><p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p></div>}
 
-            {!recurring && campaign.cashapp_tag && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Cash App</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I completed my Cash App payment"}</Button></div>}
+            {!recurring && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400"><Lock className="w-3 h-3" /> Only verified available payment methods are shown</p>
+            <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400"><Lock className="w-3 h-3" /> Provider-confirmed methods appear only when available. Owner-provided manual methods are labeled separately.</p>
           </div>
         )}
       </DialogContent>

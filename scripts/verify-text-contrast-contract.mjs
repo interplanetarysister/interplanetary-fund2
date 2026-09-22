@@ -4,26 +4,230 @@ import { readFileSync } from 'node:fs';
 const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
 const layout = readFileSync(new URL('../src/components/Layout.jsx', import.meta.url), 'utf8');
 
-function hasStaticElementClasses(source, tagName, requiredClasses) {
-  const openingTag = new RegExp(
-    '<' + tagName + '\\b[^>]*\\bclassName\\s*=\\s*"([^"]*)"',
-    'g'
-  );
+function stripComments(source) {
+  let output = '';
+  let quote = null;
 
-  return [...source.matchAll(openingTag)].some((match) => {
-    const classes = new Set(match[1].trim().split(/\s+/).filter(Boolean));
-    return requiredClasses.every((className) => classes.has(className));
-  });
+  for (let i = 0; i < source.length; i += 1) {
+    const char = source[i];
+    const next = source[i + 1];
+
+    if (quote) {
+      output += char;
+      if (char === '\\' && next !== undefined) {
+        output += next;
+        i += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+
+    if (char === '"' || char === "'" || char.charCodeAt(0) === 96) {
+      quote = char;
+      output += char;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      output += '  ';
+      i += 2;
+      while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) {
+        output += source[i] === '\n' ? '\n' : ' ';
+        i += 1;
+      }
+      if (i < source.length) {
+        output += '  ';
+        i += 1;
+      }
+      continue;
+    }
+
+    if (char === '/' && next === '/') {
+      output += '  ';
+      i += 2;
+      while (i < source.length && source[i] !== '\n') {
+        output += ' ';
+        i += 1;
+      }
+      if (i < source.length) output += '\n';
+      continue;
+    }
+
+    output += char;
+  }
+
+  return output;
+}
+
+function skipQuoted(source, start) {
+  const quote = source[start];
+  let index = start + 1;
+  while (index < source.length) {
+    if (source[index] === '\\') {
+      index += 2;
+      continue;
+    }
+    if (source[index] === quote) return index + 1;
+    index += 1;
+  }
+  return source.length;
+}
+
+function skipBalancedBraces(source, start) {
+  let depth = 0;
+  let index = start;
+  while (index < source.length) {
+    const char = source[index];
+    if (char === '"' || char === "'" || char.charCodeAt(0) === 96) {
+      index = skipQuoted(source, index);
+      continue;
+    }
+    if (char === '{') depth += 1;
+    if (char === '}') {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+    index += 1;
+  }
+  return source.length;
+}
+
+function staticClassSetsForTag(source, tagName) {
+  const clean = stripComments(source);
+  const classSets = [];
+  let index = 0;
+
+  while ((index = clean.indexOf('<', index)) !== -1) {
+    let cursor = index + 1;
+    if (clean[cursor] === '/') {
+      index = cursor + 1;
+      continue;
+    }
+
+    const nameStart = cursor;
+    while (/[A-Za-z0-9_.:-]/.test(clean[cursor] || '')) cursor += 1;
+    if (clean.slice(nameStart, cursor) !== tagName) {
+      index = Math.max(cursor, index + 1);
+      continue;
+    }
+
+    while (cursor < clean.length) {
+      while (/\s/.test(clean[cursor] || '')) cursor += 1;
+      if (clean[cursor] === '>' || (clean[cursor] === '/' && clean[cursor + 1] === '>')) {
+        index = cursor + 1;
+        break;
+      }
+
+      const attributeStart = cursor;
+      while (cursor < clean.length && !/[\s=/>]/.test(clean[cursor])) cursor += 1;
+      const attributeName = clean.slice(attributeStart, cursor);
+      while (/\s/.test(clean[cursor] || '')) cursor += 1;
+
+      if (clean[cursor] !== '=') continue;
+      cursor += 1;
+      while (/\s/.test(clean[cursor] || '')) cursor += 1;
+
+      const delimiter = clean[cursor];
+      if (delimiter === '"' || delimiter === "'") {
+        const valueStart = cursor + 1;
+        cursor = skipQuoted(clean, cursor);
+        if (attributeName === 'className') {
+          const value = clean.slice(valueStart, Math.max(valueStart, cursor - 1));
+          classSets.push(new Set(value.trim().split(/\s+/).filter(Boolean)));
+        }
+      } else if (delimiter === '{') {
+        cursor = skipBalancedBraces(clean, cursor);
+      } else {
+        while (cursor < clean.length && !/[\s>]/.test(clean[cursor])) cursor += 1;
+      }
+    }
+
+    if (cursor >= clean.length) break;
+  }
+
+  return classSets;
+}
+
+function hasStaticElementClasses(source, tagName, requiredClasses) {
+  return staticClassSetsForTag(source, tagName)
+    .some((classes) => requiredClasses.every((className) => classes.has(className)));
+}
+
+function cssRuleBodiesForSelector(source, selector) {
+  const clean = stripComments(source);
+  const stack = [];
+  const bodies = [];
+  let boundary = 0;
+  let index = 0;
+
+  while (index < clean.length) {
+    const char = clean[index];
+    if (char === '"' || char === "'") {
+      index = skipQuoted(clean, index);
+      continue;
+    }
+    if (char === '{') {
+      stack.push({ prelude: clean.slice(boundary, index).trim(), bodyStart: index + 1 });
+      boundary = index + 1;
+    } else if (char === '}') {
+      const rule = stack.pop();
+      if (rule && rule.prelude.split(',').map((part) => part.trim()).includes(selector)) {
+        bodies.push(clean.slice(rule.bodyStart, index));
+      }
+      boundary = index + 1;
+    } else if (char === ';') {
+      boundary = index + 1;
+    }
+    index += 1;
+  }
+
+  return bodies;
+}
+
+function topLevelCssText(body) {
+  let output = '';
+  let depth = 0;
+  let index = 0;
+
+  while (index < body.length) {
+    const char = body[index];
+    if (char === '"' || char === "'") {
+      const end = skipQuoted(body, index);
+      if (depth === 0) output += ' ';
+      index = end;
+      continue;
+    }
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0) {
+      output += char;
+    }
+    index += 1;
+  }
+
+  return output;
 }
 
 function ruleAppliesClasses(source, selector, requiredClasses) {
-  const rule = new RegExp(selector + '\\s*\\{([^}]*)\\}', 'g');
+  return cssRuleBodiesForSelector(source, selector).some((body) => {
+    const directText = topLevelCssText(body);
+    return [...directText.matchAll(/(?:^|;)\s*@apply\s+([^;]+);/g)].some((match) => {
+      const classes = new Set(match[1].trim().split(/\s+/).filter(Boolean));
+      return requiredClasses.every((className) => classes.has(className));
+    });
+  });
+}
 
-  return [...source.matchAll(rule)].some((match) => {
-    const apply = match[1].match(/@apply\s+([^;]+);/);
-    if (!apply) return false;
-    const classes = new Set(apply[1].trim().split(/\s+/).filter(Boolean));
-    return requiredClasses.every((className) => classes.has(className));
+function ruleHasDeclaration(source, selector, property, expectedValue) {
+  return cssRuleBodiesForSelector(source, selector).some((body) => {
+    const directText = topLevelCssText(body);
+    const declaration = new RegExp('(?:^|;)\\s*' + property + '\\s*:\\s*([^;]+);', 'g');
+    return [...directText.matchAll(declaration)].some(
+      (match) => match[1].replace(/\s+/g, '') === expectedValue.replace(/\s+/g, '')
+    );
   });
 }
 
@@ -31,9 +235,8 @@ assert.ok(
   ruleAppliesClasses(css, 'body', ['bg-background', 'text-foreground']),
   'body must define semantic background and foreground regardless of class order'
 );
-assert.match(
-  css,
-  /\.deep-space\s*\{[\s\S]*?color:\s*hsl\(var\(--sidebar-foreground\)\)/,
+assert.ok(
+  ruleHasDeclaration(css, '.deep-space', 'color', 'hsl(var(--sidebar-foreground))'),
   'deep-space surfaces must set a readable inherited foreground'
 );
 assert.ok(
@@ -47,8 +250,8 @@ assert.ok(
   'shared app shell must pair a viewport-height class with semantic background and foreground'
 );
 
-// Regression checks for the semantic matcher: harmless class reordering must pass,
-// while removal of either color role must fail.
+// Parser regression fixtures: comments, unrelated attributes/selectors, and
+// missing color roles must never satisfy the production contract.
 assert.equal(
   hasStaticElementClasses(
     '<div className="text-foreground min-h-dvh bg-background">',
@@ -60,17 +263,75 @@ assert.equal(
 );
 assert.equal(
   hasStaticElementClasses(
+    '{/* <div className="min-h-dvh bg-background text-foreground"> */}',
+    'div',
+    ['min-h-dvh', 'bg-background', 'text-foreground']
+  ),
+  false,
+  'commented JSX must not satisfy the shell contract'
+);
+assert.equal(
+  hasStaticElementClasses(
+    '<div data-note=\'className="min-h-dvh bg-background text-foreground"\'>',
+    'div',
+    ['min-h-dvh', 'bg-background', 'text-foreground']
+  ),
+  false,
+  'className text inside an unrelated attribute must not satisfy the shell contract'
+);
+assert.equal(
+  hasStaticElementClasses(
     '<div className="min-h-dvh bg-background">',
     'div',
     ['min-h-dvh', 'bg-background', 'text-foreground']
   ),
   false,
-  'semantic class checks must reject a missing foreground role'
+  'a shell missing its foreground role must fail'
 );
 assert.equal(
-  ruleAppliesClasses('body { @apply bg-background font-body; }', 'body', ['bg-background', 'text-foreground']),
+  ruleAppliesClasses(
+    '/* body { @apply bg-background text-foreground; } */',
+    'body',
+    ['bg-background', 'text-foreground']
+  ),
   false,
-  'semantic CSS checks must reject a missing foreground role'
+  'commented CSS must not satisfy the body contract'
+);
+assert.equal(
+  ruleAppliesClasses(
+    '.somebody { @apply bg-background text-foreground; }',
+    'body',
+    ['bg-background', 'text-foreground']
+  ),
+  false,
+  'an unrelated selector must not satisfy the body contract'
+);
+assert.equal(
+  ruleAppliesClasses(
+    'body { color: red; .nested { @apply bg-background text-foreground; } }',
+    'body',
+    ['bg-background', 'text-foreground']
+  ),
+  false,
+  'a nested unrelated rule must not satisfy the body contract'
+);
+assert.equal(
+  ruleAppliesClasses(
+    'body { @apply text-foreground font-body bg-background; }',
+    'body',
+    ['bg-background', 'text-foreground']
+  ),
+  true,
+  'semantic CSS checks must accept reordered class tokens'
+);
+assert.equal(
+  ruleAppliesClasses(
+    'body { @apply bg-background font-body; }',
+    'body',
+    ['bg-background', 'text-foreground']
+  ),
+  false,
+  'a body rule missing its foreground role must fail'
 );
 
 console.log('Shared text contrast contract passed.');
