@@ -3,7 +3,7 @@ import { createOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
-import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 
 // Creates a PayPal v2 order for a Google Pay donation. All financially
 // meaningful values are encoded server-side into PayPal custom_id so capture
