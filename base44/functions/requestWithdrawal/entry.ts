@@ -119,6 +119,7 @@ async function verifyPendingDonation(base44, sr, donation, adminUser) {
 
 async function markPaidAfterProvider(base44, sr, withdrawal, payout, actorId) {
   const operationKey = withdrawal.canonical_operation_key || operationKeyFor(withdrawal.id);
+  const holdingOperationKey = `holding:withdrawal:${withdrawal.id}:paid`;
   try {
     await completeCanonicalWithdrawal(sr, {
       operationKey,
@@ -298,8 +299,8 @@ export default async function(req) {
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
     const available = (allDonations || []).filter((d) => {
       if (d.withdrawal_id) return false;
-      if (d.cleared) return d.payment_verified !== false;
-      if (d.payment_verified === false || d.is_institutional) return false;
+      if (d.cleared) return d.payment_verified === true;
+      if (d.payment_verified !== true || d.is_institutional) return false;
       return new Date(d.created_date) <= cutoff;
     });
     let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));
