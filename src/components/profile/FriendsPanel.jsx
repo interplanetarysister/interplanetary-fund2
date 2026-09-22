@@ -41,6 +41,14 @@ export default function FriendsPanel() {
     } catch { setMsg("Couldn't send the request."); }
     setBusy(false);
   };
+  const invite = async () => {
+    setBusy(true);
+    try {
+      await base44.functions.invoke("manageFriends", { action: "invite", email: query.trim() });
+      setLookup(null); setQuery(""); setMsg("Invitation sent by Interplanetary Fund.");
+    } catch { setMsg("Couldn't send the invitation."); }
+    setBusy(false);
+  };
   const respond = async (id, action) => { await base44.functions.invoke("manageFriends", { action, friendship_id: id }); load(); };
   const remove = async (id) => { await base44.functions.invoke("manageFriends", { action: "remove", friendship_id: id }); load(); };
 
@@ -63,7 +71,12 @@ export default function FriendsPanel() {
           <Button size="sm" onClick={() => sendRequest(lookup.user_id)} disabled={busy} className="shrink-0">Add friend</Button>
         </div>
       )}
-      {lookup && !lookup.found && <p className="text-xs text-stone-500 mb-3">No account found.</p>}
+      {lookup && !lookup.found && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 p-2 mb-3">
+          <p className="text-xs text-stone-500">No account found.{lookup.can_invite ? " Send them an invitation." : ""}</p>
+          {lookup.can_invite && <Button size="sm" variant="outline" onClick={invite} disabled={busy}>Invite</Button>}
+        </div>
+      )}
       {msg && <p className="text-xs text-stone-500 mb-3">{msg}</p>}
       {pendingIncoming.length > 0 && (
         <div className="mb-3">
