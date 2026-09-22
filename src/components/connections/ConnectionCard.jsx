@@ -13,8 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 //   signal that a provider (not the owner) confirmed the figure.
 // - Otherwise the total is "owner reported" — entered by the campaign owner
 //   and informational only; it is never withdrawable from Interplanetary Fund.
-// - Changing display_name, external_url, or credentials never sets
-//   status: 'connected' or last_synced — only a successful provider sync may.
+
 export default function ConnectionCard({ connection, platform, onManage, onRemoved }) {
   const [busy, setBusy] = useState(false);
 
