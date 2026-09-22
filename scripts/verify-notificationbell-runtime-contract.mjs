@@ -41,6 +41,14 @@ const required = [
     "subscription cleanup guard",
     /typeof\s+unsubscribe\s*!==\s*["']function["']/,
   ],
+  [
+    "subscription cleanup invocation",
+    /if\s*\(\s*typeof\s+unsubscribe\s*!==\s*["']function["']\s*\)\s*return;[\s\S]*?unsubscribe\(\)/,
+  ],
+  [
+    "teardown cleanup",
+    /return\s*\(\s*\)\s*=>\s*\{[\s\S]*?unsubscribe\(\)/,
+  ],
 ];
 
 for (const [label, pattern] of required) {
