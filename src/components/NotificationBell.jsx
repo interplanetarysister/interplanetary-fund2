@@ -59,9 +59,12 @@ export default function NotificationBell() {
       if (
         !mountedRef.current ||
         authGeneration !== authGenerationRef.current ||
-        requestGeneration !== requestGenerationRef.current ||
-        !normalized
+        requestGeneration !== requestGenerationRef.current
       ) return;
+      if (!normalized) {
+        setError(SAFE_NOTIFICATION_ERROR);
+        return;
+      }
       setNotifications(normalized);
       setError(null);
     } catch {
@@ -126,7 +129,12 @@ export default function NotificationBell() {
       }
     }
     return () => {
-      if (typeof unsubscribe === "function") unsubscribe();
+      if (typeof unsubscribe !== "function") return;
+      try {
+        unsubscribe();
+      } catch {
+        // Provider cleanup failures must not escape React teardown.
+      }
     };
   }, [userId]);
 
