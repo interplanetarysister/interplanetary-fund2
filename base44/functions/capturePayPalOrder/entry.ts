@@ -4,7 +4,7 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 
