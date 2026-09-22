@@ -29,6 +29,7 @@ const required = [
   ["stable safe error", /SAFE_NOTIFICATION_ERROR/],
   ["accessible status", /role=\"status\"/],
   ["subscription cleanup guard", /typeof unsubscribe === \"function\"/],
+  ["null read compatibility", /read === undefined \|\| read === null \|\| typeof read === \"boolean\"/],
 ];
 
 for (const [label, pattern] of required) {
