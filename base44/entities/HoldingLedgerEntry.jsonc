@@ -42,7 +42,8 @@
       ]
     },
     "source_provider": {
-      "type": "string"
+      "type": "string",
+      "description": "Origin provider for the funds. For exterior settlement this identifies the fundraising platform; provider_transaction_id identifies the receiving PayPal settlement."
     },
     "source_account_ref": {
       "type": "string",
@@ -84,7 +85,8 @@
       "type": "string"
     },
     "external_observation_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Canonical exterior observation identifier reconciled to this custody movement. Required for exterior-platform settlements."
     },
     "settled_at": {
       "type": "string",
