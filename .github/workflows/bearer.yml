@@ -9,25 +9,22 @@ name: Bearer
 
 on:
   push:
-    branches: ["main" ]
-  pull_request:
-    # The branches below must be a subset of the branches above
     branches: ["main"]
   schedule:
     - cron: '42 16 * * 5'
 
 permissions:
-  contents: read # for actions/checkout to fetch code
-  security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-  actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+  contents: read
+  security-events: write
+  actions: read
 
 jobs:
   bearer:
     runs-on: ubuntu-latest
     steps:
-      # Checkout project source
-      - uses: actions/checkout@v4
-      # Scan code using Bearer CLI
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
       - name: Run Report
         id: report
         uses: bearer/bearer-action@828eeb928ce2f4a7ca5ed57fb8b59508cb8c79bc
@@ -36,7 +33,6 @@ jobs:
           format: sarif
           output: results.sarif
           exit-code: 0
-      # Upload SARIF file generated in previous step
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
