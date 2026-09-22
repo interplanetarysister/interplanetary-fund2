@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, Activity, GitFork } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function IntegrationsAdmin() {
+  const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [entries, setEntries] = useState(null);
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -42,6 +45,31 @@ export default function IntegrationsAdmin() {
     setChecking(false);
   };
 
+  const runGitHubSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await base44.functions.invoke("syncGitHub", { direction: "both" });
+      const data = res?.data || res;
+      if (data?.ok) {
+        const details = Object.entries(data.results || {})
+          .map(([k, v]) => `${k}: ${v.detail}`)
+          .join(" · ");
+        toast({ title: "GitHub sync complete", description: details || "Sync completed successfully." });
+      } else if (data?.skipped) {
+        toast({ title: "GitHub sync skipped", description: data.reason || "GitHub integration not active.", variant: "destructive" });
+      } else {
+        const reason =
+          data?.reason ||
+          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
+          "Sync encountered an issue.";
+        toast({ title: "GitHub sync issue", description: reason, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "GitHub sync failed", description: e.message || "Could not reach the sync function.", variant: "destructive" });
+    }
+    setSyncing(false);
+  };
+
   if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   if (user.role !== "admin") {
@@ -59,6 +87,7 @@ export default function IntegrationsAdmin() {
 
   const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
   const counts = entries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
+  const githubEntry = entries.find((e) => e.platform === "github");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -67,10 +96,23 @@ export default function IntegrationsAdmin() {
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Integration Registry</h1>
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
-        <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl">
-          {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
-          Run health check
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {githubEntry && (
+            <Button
+              onClick={runGitHubSync}
+              disabled={syncing || checking}
+              variant="outline"
+              className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
+              Sync GitHub
+            </Button>
+          )}
+          <Button onClick={runHealthCheck} disabled={checking || syncing} className="rounded-xl">
+            {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
+            Run health check
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
