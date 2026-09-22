@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { resolveConvex } from '../../shared/integrationRegistry.ts';
 
-// Convex is authoritative for persistent agent memory and outcomes.
-const CONVEX_MUTATION_URL = 'https://rosy-butterfly-2.convex.cloud/api/mutation';
+// Convex is authoritative for persistent agent memory and outcomes. Resolve its
+// endpoint from protected Base44 configuration instead of a hardcoded host.
 
 export default async function(req) {
   try {
@@ -25,7 +26,11 @@ export default async function(req) {
       format: 'json',
     };
 
-    const res = await fetch(CONVEX_MUTATION_URL, {
+    const resolved = resolveConvex(Deno.env.get('CONVEX_QUERY_URL'));
+    if (!resolved.url) return Response.json({ error: 'Agent memory backend is not configured.' }, { status: 503 });
+    const mutationUrl = resolved.url.replace(/\/api\/query$/, '/api/mutation');
+
+    const res = await fetch(mutationUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
