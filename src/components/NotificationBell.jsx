@@ -31,7 +31,7 @@ function normalizeNotifications(value) {
   if (!Array.isArray(value)) return null;
   const seen = new Set();
   const bounded = [];
-  for (const row of value) {
+  for (const row of value.slice(0, MAX_NOTIFICATIONS)) {
     if (!isSafeNotificationRow(row)) continue;
     const id = readSafeProperty(row, "id");
     if (typeof id !== "string" || seen.has(id)) continue;
