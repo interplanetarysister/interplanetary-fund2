@@ -272,10 +272,24 @@ export default async function(req) {
     if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
     if (campaign.created_by_id !== user.id) return Response.json({ error: 'You can only withdraw funds from your own campaigns.' }, { status: 403 });
 
-    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
-    const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
-    const alreadyToday = (recent || []).some((w) => !['failed', 'cancelled'].includes(w.status) && new Date(w.created_date) >= startToday);
-    if (alreadyToday) return Response.json({ error: 'You can only withdraw once per day. Please try again tomorrow.' }, { status: 400 });
+    // Active subscribers are exempt from the once-per-day withdrawal limit.
+    // Subscription state is provider-backed through the Stripe webhook; never infer
+    // entitlement from the selected tier alone.
+    const hasWithdrawalSubscription =
+      user.subscription_status === 'active' || user.subscription_status === 'trialing';
+    if (!hasWithdrawalSubscription) {
+      const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+      const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
+      const alreadyToday = (recent || []).some((w) =>
+        !['failed', 'cancelled'].includes(w.status) && new Date(w.created_date) >= startToday
+      );
+      if (alreadyToday) {
+        return Response.json(
+          { error: 'You can only withdraw once per day without an active subscription. Please try again tomorrow.' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Seed pre-canonical funds before any local donation row gets reserved.
     await ensureCanonicalCampaign(sr, campaign);
