@@ -9,7 +9,7 @@ const source = fs.readFileSync(sourcePath, "utf8");
 
 const forbidden = [
   ["generic inbox route", /\bto\s*=\s*["']\/inbox["']/],
-  ["raw empty catch", /catch\s*\(\s*\)\s*=>\s*\{?\s*\}?/],
+  ["raw empty catch", /catch\s*(?:\(\s*\)\s*=>\s*\{\s*\}|\{\s*\})/],
   [
     "unguarded direct async state commit",
     /\.then\(\s*\(\s*me\s*\)\s*=>\s*\{\s*setUserId\(\s*me\.id\s*\)/,
