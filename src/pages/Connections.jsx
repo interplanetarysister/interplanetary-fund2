@@ -38,6 +38,15 @@ export default function Connections() {
   useEffect(() => {
     (async () => {
      try {
+      const pendingOAuthPlatform = sessionStorage.getItem("ifund_pending_oauth_platform");
+      if (pendingOAuthPlatform) {
+        try {
+          const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", { platform: pendingOAuthPlatform });
+          if (data?.connected) sessionStorage.removeItem("ifund_pending_oauth_platform");
+        } catch (oauthError) {
+          console.error("OAuth connection finalization failed:", oauthError);
+        }
+      }
       const [me, connRes] = await Promise.all([
         base44.auth.me(),
         base44.functions.invoke("listConnections", {}),
