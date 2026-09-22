@@ -14,7 +14,11 @@ try {
   const validFixture = path.join(tempDir, "valid.jsx");
   const invalidFixture = path.join(tempDir, "invalid.jsx");
   fs.writeFileSync(validFixture, source, "utf8");
-  fs.writeFileSync(invalidFixture, source.replace('to="/notifications"', 'to="/inbox"'), "utf8");
+  fs.writeFileSync(
+    invalidFixture,
+    `${source}\n<Link to="/inbox">legacy inbox fixture</Link>\n`,
+    "utf8",
+  );
 
   const valid = spawnSync(process.execPath, [verifier], {
     cwd: root,
