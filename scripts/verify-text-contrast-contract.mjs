@@ -5,26 +5,24 @@ const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
 const layout = readFileSync(new URL('../src/components/Layout.jsx', import.meta.url), 'utf8');
 
 function hasStaticElementClasses(source, tagName, requiredClasses) {
-  const escapedTag = tagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const openingTag = new RegExp(
-    `<${escapedTag}\\b[^>]*\\bclassName\\s*=\\s*(["'])([^"']*)\\1`,
+    '<' + tagName + '\\b[^>]*\\bclassName\\s*=\\s*(["\\'])([^"\\']*)\\1',
     'g'
   );
 
   return [...source.matchAll(openingTag)].some((match) => {
-    const classes = new Set(match[2].trim().split(/\\s+/).filter(Boolean));
+    const classes = new Set(match[2].trim().split(/\s+/).filter(Boolean));
     return requiredClasses.every((className) => classes.has(className));
   });
 }
 
 function ruleAppliesClasses(source, selector, requiredClasses) {
-  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const rule = new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`, 'g');
+  const rule = new RegExp(selector + '\\s*\\{([^}]*)\\}', 'g');
 
   return [...source.matchAll(rule)].some((match) => {
-    const apply = match[1].match(/@apply\\s+([^;]+);/);
+    const apply = match[1].match(/@apply\s+([^;]+);/);
     if (!apply) return false;
-    const classes = new Set(apply[1].trim().split(/\\s+/).filter(Boolean));
+    const classes = new Set(apply[1].trim().split(/\s+/).filter(Boolean));
     return requiredClasses.every((className) => classes.has(className));
   });
 }
@@ -35,7 +33,7 @@ assert.ok(
 );
 assert.match(
   css,
-  /\\.deep-space\\s*\\{[\\s\\S]*?color:\\s*hsl\\(var\\(--sidebar-foreground\\)\\)/,
+  /\.deep-space\s*\{[\s\S]*?color:\s*hsl\(var\(--sidebar-foreground\)\)/,
   'deep-space surfaces must set a readable inherited foreground'
 );
 assert.ok(
