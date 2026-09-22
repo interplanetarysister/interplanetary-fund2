@@ -12,6 +12,11 @@ assert.match(
   /readSafeProperty\(\s*[^,]+,\s*["']read["']\s*\)\s*!==\s*true/,
   "NotificationBell must use the explicit unread policy: any value other than true is unread",
 );
+assert.match(
+  source,
+  /read === undefined \|\| read === null \|\| typeof read === "boolean"/,
+  "NotificationBell must accept legacy null/missing read values as unread-compatible rows",
+);
 
 const isUnread = (row) => row.read !== true;
 assert.equal(isUnread({}), true, "missing read must remain unread");
