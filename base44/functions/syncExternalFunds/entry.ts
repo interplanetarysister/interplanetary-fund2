@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
 
 // Centralized external-fund synchronization engine used by scheduled sync,
 // Count My Money, Sync Linked Platforms, and Migrate Funds discovery.
