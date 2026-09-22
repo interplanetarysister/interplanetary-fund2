@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror } from '../../shared/financialMirrors.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 
