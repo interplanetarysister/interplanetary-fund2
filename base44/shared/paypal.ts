@@ -177,3 +177,40 @@ export async function getTransaction(transactionId) {
     transactionUpdatedDate: info.transaction_updated_date || '',
   };
 }
+
+
+// Lists recent transactions visible to the designated business PayPal account.
+// Used only for custody discovery; callers must still reconcile each candidate
+// against an exterior observation before creating held value.
+export async function listTransactions({ startDate, endDate, pageSize = 100 } = {}) {
+  const token = await getAccessToken();
+  const end = endDate ? new Date(endDate) : new Date();
+  const start = startDate ? new Date(startDate) : new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end) {
+    throw new Error('Invalid PayPal transaction search window.');
+  }
+  const size = Math.max(1, Math.min(500, Number(pageSize) || 100));
+  const params = new URLSearchParams({
+    start_date: start.toISOString(),
+    end_date: end.toISOString(),
+    fields: 'all',
+    page_size: String(size),
+  });
+  const res = await fetch(`${apiBase()}/v1/reporting/transactions?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || `PayPal transaction search failed (${res.status})`);
+  return (Array.isArray(data?.transaction_details) ? data.transaction_details : []).map((row) => {
+    const info = row?.transaction_info || {};
+    const amount = info.transaction_amount || {};
+    return {
+      id: String(info.transaction_id || ''),
+      status: String(info.transaction_status || ''),
+      amount: Number.parseFloat(amount.value || '0'),
+      currency: String(amount.currency_code || '').toUpperCase(),
+      transactionInitiationDate: info.transaction_initiation_date || '',
+      transactionUpdatedDate: info.transaction_updated_date || '',
+    };
+  }).filter((tx) => tx.id);
+}
