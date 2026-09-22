@@ -8,9 +8,12 @@ const sourcePath = process.env.NOTIFICATIONBELL_SOURCE_PATH
 const source = fs.readFileSync(sourcePath, "utf8");
 
 const forbidden = [
-  ["generic inbox route", /to=\"\/inbox\"/],
-  ["raw empty catch", /catch\s*\(\)\s*=>\s*\{?\s*\}?/],
-  ["unguarded direct async state commit", /\.then\(\(me\)\s*=>\s*\{\s*setUserId\(me\.id\)/],
+  ["generic inbox route", /\bto\s*=\s*["']\/inbox["']/],
+  ["raw empty catch", /catch\s*\(\s*\)\s*=>\s*\{?\s*\}?/],
+  [
+    "unguarded direct async state commit",
+    /\.then\(\s*\(\s*me\s*\)\s*=>\s*\{\s*setUserId\(\s*me\.id\s*\)/,
+  ],
 ];
 
 for (const [label, pattern] of forbidden) {
@@ -20,16 +23,22 @@ for (const [label, pattern] of forbidden) {
 }
 
 const required = [
-  ["mounted lifecycle fence", /mountedRef/],
-  ["request-generation fence", /requestGenerationRef/],
-  ["auth-generation fence", /authGenerationRef/],
-  ["safe property access", /readSafeProperty/],
-  ["bounded normalization", /MAX_NOTIFICATIONS\s*=\s*20/],
-  ["dedicated notifications route", /to=\"\/notifications\"/],
-  ["stable safe error", /SAFE_NOTIFICATION_ERROR/],
-  ["accessible status", /role=\"status\"/],
-  ["subscription cleanup guard", /typeof unsubscribe === \"function\"/],
-  ["null read compatibility", /read === undefined \|\| read === null \|\| typeof read === \"boolean\"/],
+  ["mounted lifecycle fence", /\bmountedRef\b/],
+  ["request-generation fence", /\brequestGenerationRef\b/],
+  ["auth-generation fence", /\bauthGenerationRef\b/],
+  ["safe property access", /\breadSafeProperty\b/],
+  ["bounded normalization", /\bMAX_NOTIFICATIONS\s*=\s*20\b/],
+  ["dedicated notifications route", /\bto\s*=\s*["']\/notifications["']/],
+  ["stable safe error", /\bSAFE_NOTIFICATION_ERROR\b/],
+  ["accessible status", /\brole\s*=\s*["']status["']/],
+  [
+    "subscription cleanup guard",
+    /typeof\s+unsubscribe\s*===\s*["']function["']/,
+  ],
+  [
+    "null read compatibility",
+    /read\s*===\s*undefined[\s\S]*read\s*===\s*null[\s\S]*typeof\s+read\s*===\s*["']boolean["']|typeof\s+read\s*===\s*["']boolean["'][\s\S]*read\s*===\s*undefined[\s\S]*read\s*===\s*null/,
+  ],
 ];
 
 for (const [label, pattern] of required) {
