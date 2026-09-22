@@ -1,0 +1,48 @@
+{
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/15 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Los_Angeles",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "GitHub Sync",
+  "description": "Two-way sync between Base44 sandbox and GitHub every 15 minutes. Pulls new commits from GitHub into Base44 (fast-forward only) and pushes Base44 commits to GitHub using the GitHub OAuth connector. Conflicts are surfaced as admin notifications rather than silently overwriting code.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "github_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncGitHub",
+            "args": {
+              "direction": "both",
+              "initiator_type": "scheduled"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Two-way GitHub sync",
+            "description": "Pull from GitHub then push Base44 changes to GitHub"
+          }
+        }
+      }
+    ]
+  }
+}
