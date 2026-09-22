@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -31,8 +31,10 @@ export default async function(req) {
       return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
     }
     const access = await assertPlatformAccess(sr, 'social_publish');
-    if (!access.ok) {
-      return Response.json({ error: `Social publishing is currently disabled: ${access.reason}` }, { status: 403 });
+    const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish');
+    if (!access.ok || !obo.ok) {
+      const reason = !access.ok ? access.reason : obo.reason;
+      return Response.json({ error: `Social publishing is currently disabled: ${reason}` }, { status: 403 });
     }
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const pending = posts.filter((p) =>

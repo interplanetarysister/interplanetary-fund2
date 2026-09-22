@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -57,9 +57,10 @@ export default async function(req) {
       // Centralized access gate: if social publishing is revoked/disabled at the
       // registry level, fall back to a manual handoff instead of auto-posting.
       const access = await assertPlatformAccess(sr, 'social_publish');
-      if (!access.ok) {
+      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish');
+      if (!access.ok || !obo.ok) {
         const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
-        const reason = access.reason;
+        const reason = !access.ok ? access.reason : obo.reason;
         await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked: ${reason}`, status: 'failure' });
         return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason });
       }
