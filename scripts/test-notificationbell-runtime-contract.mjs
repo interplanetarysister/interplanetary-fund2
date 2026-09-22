@@ -30,9 +30,10 @@ try {
   );
   fs.writeFileSync(
     invalidStatusIdFixture,
-    source
-      .replace(/const statusId = `notification-bell-status-\$\{useId\(\)\.replace\(\/\\:\/g, \"\"\)\}`;/, 'const statusId = "notification-bell-status";')
-      .replace(/\["instance-unique status id", \/\\buseId\\s\*\\(\)\/\],/, '["instance-unique status id", /\\buseId\\s*\\(/],'),
+    source.replace(
+      'const statusId = `notification-bell-status-${useId().replace(/:/g, "")}`;',
+      'const statusId = "notification-bell-status";',
+    ),
     "utf8",
   );
 
@@ -45,7 +46,7 @@ try {
 
   const invalidStatusId = runVerifier(invalidStatusIdFixture);
   assert.notEqual(invalidStatusId.status, 0, "fixed status-id fixture must fail the contract verifier");
-  assert.match(invalidStatusId.stderr, /non-unique status id|instance-unique status id/);
+  assert.match(invalidStatusId.stderr, /non-unique status id/);
 
   console.log("NotificationBell runtime contract negative-case tests passed");
 } finally {
