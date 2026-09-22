@@ -181,7 +181,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh w-full min-w-0 overflow-x-hidden bg-background text-foreground">
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
@@ -242,7 +242,7 @@ export default function Layout() {
         })}
       </nav>
 
-      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip">
+      <main className="w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden bg-background text-foreground">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
@@ -250,6 +250,7 @@ export default function Layout() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: "100%" }}
             transition={{ duration: 0.25, ease: "easeOut" }}
+            className="w-full min-w-0 max-w-full overflow-x-hidden"
           >
             <ErrorBoundary>
               <Outlet />

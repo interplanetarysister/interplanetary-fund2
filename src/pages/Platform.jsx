@@ -11,6 +11,7 @@ import StandardsPanel from "@/components/platform/StandardsPanel";
 import OperationsPanel from "@/components/platform/OperationsPanel";
 import FraudControlPanel from "@/components/platform/FraudControlPanel";
 import UserManagementPanel from "@/components/platform/UserManagementPanel";
+import BuilderAgentPanel from "@/components/platform/BuilderAgentPanel";
 import { Loader2, ShieldAlert } from "lucide-react";
 
 export default function Platform() {
@@ -53,6 +54,7 @@ export default function Platform() {
           <TabsTrigger value="knowledge">Knowledge</TabsTrigger>
           <TabsTrigger value="fraud">Fraud</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
+          <TabsTrigger value="builder">Builder</TabsTrigger>
         </TabsList>
         <TabsContent value="health"><ServiceHealthPanel /></TabsContent>
         <TabsContent value="blueprint"><BlueprintPanel /></TabsContent>
@@ -64,6 +66,7 @@ export default function Platform() {
         <TabsContent value="knowledge"><KnowledgePanel /></TabsContent>
         <TabsContent value="fraud"><FraudControlPanel /></TabsContent>
         <TabsContent value="users"><UserManagementPanel /></TabsContent>
+        <TabsContent value="builder"><BuilderAgentPanel /></TabsContent>
       </Tabs>
     </div>
   );

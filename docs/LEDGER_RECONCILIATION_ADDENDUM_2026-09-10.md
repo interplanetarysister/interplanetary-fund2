@@ -13,7 +13,7 @@ This addendum is part of the canonical capability ledger for `interplanetary-fun
 
 ## Runtime release gate
 
-Node 22 is the canonical Base44 runtime target. Release evidence must reconcile `package.json`, `package-lock.json`, `.node-version`, `.nvmrc`, CI workflows, and the exact PR head. Node 24 evidence does not substitute for Node 22 evidence unless a reviewed compatibility matrix explicitly says otherwise.
+Node 20 is the Base44/default build baseline and Node 22 remains supported. Release evidence must reconcile `package.json`, `package-lock.json`, `.node-version`, `.nvmrc`, CI workflows, and the exact PR head. CI must retain Node 20 coverage; a Node-22-only gate is a regression. Node 24 remains unsupported.
 
 ## Inventory status corrections
 
@@ -44,4 +44,4 @@ A non-null GitHub `merge_commit_sha` on an open or Draft PR is metadata only. Pu
 1. Re-run current-main inventory/classification against this addendum and the 2026-08-21 reconciliation baseline.
 2. Complete the queued focused PR reviews in order without parallel duplicate implementations.
 3. Preserve the Convex source-of-truth boundary; do not modify deployed Convex behavior until the authoritative deployed topology is reconciled.
-4. For any runtime change, attach exact-head Node 22 and focused behavior evidence before Agent 2+3 review and Agent 3 final verification.
+4. For any runtime change, attach exact-head Node 20 Base44-baseline evidence, Node 22 compatibility evidence where applicable, and focused behavior evidence before Agent 2+3 review and Agent 3 final verification.

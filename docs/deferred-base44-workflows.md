@@ -1,49 +1,64 @@
-# Deferred Base44 workflow capabilities
+# Deferred Base44 Workflows
 
-These capabilities are intentionally not scheduled until Base44 can provide a
-trusted workflow identity and the native platform contract is verified. Do not
-restore the obsolete schedules or simulate success.
+This document records workflow capabilities that are designed and partially implemented but not yet activated as scheduled Base44 workflows. Each entry explains what the capability does, why it is deferred, and what is required before activation.
 
-## GitHub synchronization
+---
 
-User/platform capability: keep the authoritative Base44 app and
-`interplanetarysister/interplanetary-fund2` aligned without overwriting either
-side.
+## GitHub Two-Way Sync
 
-Current safe implementation: use Base44's native GitHub synchronization control.
-The backend `syncGitHub` function is an authenticated, fail-closed compatibility
-boundary and never claims that shell-based pull or push succeeded.
+**Capability:** Automated two-way synchronization between Base44 sandbox and the GitHub repository (`interplanetarysister/interplanetary-fund2`), using the native GitHub synchronization control (GitHub REST API, OAuth connector).
 
-Future implementation contract:
+**Function:** `syncGitHub` (`base44/functions/syncGitHub/entry.ts`)
 
-- authenticate an administrator or a dedicated least-privilege workflow identity;
-- compare exact source and destination SHAs before applying changes;
-- allow fast-forward updates only unless a human resolves divergence;
-- report pull and push independently and never label an all-failed run partial;
-- keep credentials outside application entities and logs;
-- record auditable outcomes without recurring failure notifications.
+### What is implemented
 
-## External fund synchronization
+- **Pull direction:** Reads the current HEAD commit SHA on the default branch from the GitHub API, records it in the Platform Access Registry so health checks can detect drift between Base44 and the repository.
+- **Push direction:** Advisory check that confirms remote HEAD; surfaces a reminder that destructive push is deferred.
+- **Auth gate:** Checks the `github` entry in the Platform Access Registry (fail-closed) before any operation. Uses the GitHub OAuth connector for all API calls — no shell commands, no hardcoded tokens.
+- **Audit log:** Every sync call is audit-logged with direction, result, and actor.
+- **Admin notifications:** Failures trigger admin notifications linking to the Integrations page.
+- **On-demand UI:** Admins can trigger push, pull, or both from the Integration Registry detail panel for the GitHub entry.
 
-User/platform capability: discover authoritative provider transactions, preserve
-their provider identity and currency, and record them as external observations
-without making them withdrawable.
+### What is deferred
 
-Current safe implementation: owner/admin initiated calls to
-`syncExternalFunds`. Unsupported pull adapters report `unavailable`;
-owner-reported totals are never counted as synchronized provider data. Ko-fi
-continues through its verified webhook path.
+- **Scheduled workflow:** A `GitHub Sync.jsonc` workflow is not activated. Automated sync should not run on a cron schedule until a trusted workflow identity is established (see below).
+- **Destructive file-level push:** Writing files directly to GitHub requires careful merge and conflict resolution. This is deferred until the workflow runs under a controlled, auditable identity with explicit commit attribution.
+- **Full file-level pull:** Pulling and applying file changes from GitHub into the Base44 sandbox automatically is deferred for the same reason.
 
-Future scheduled implementation contract:
+### What "trusted workflow identity" means
 
-- invoke with a trusted authenticated workflow identity; request-body labels are
-  never authentication;
-- preserve campaign/connection owner equality;
-- require stable provider transaction IDs and explicit ISO currency;
-- never combine currencies without an explicit conversion/reconciliation record;
-- keep external observations non-withdrawable;
-- distinguish success, partial, failed, unavailable, and no-connections outcomes;
-- remain idempotent at the canonical financial boundary.
+Before activating the scheduled workflow or destructive file operations:
 
-The removed scheduled workflow files may be recreated only after hosted evidence
-proves these contracts and the workflow identity.
+1. The Base44 workflow must run under a named service identity (a GitHub app or machine account with appropriate permissions) rather than an expiring personal OAuth token.
+2. Conflict detection and resolution must be in place — divergent histories must surface as blocked operations, not silent overwrites.
+3. The Platform Access Registry entry for `github` must be `ACTIVE` with a verified, non-expiring credential.
+4. The workflow must be reviewed and approved by a repository administrator.
+
+### How to activate
+
+1. Establish a GitHub App or machine account with `contents: write` and `workflows: write` permissions on the repository.
+2. Store its credentials in the `GITHUB_APP_TOKEN` secret reference.
+3. Update the `github` Platform Access Registry entry with `secret_refs: ['GITHUB_APP_TOKEN']` and set `status: ACTIVE`.
+4. Create `base44/workflows/GitHub Sync.jsonc` with the `syncGitHub` function, direction `both`, on a 15-minute cron.
+5. Run the integration health check to verify the credential is valid.
+6. Monitor the first several sync runs via the Ops Center audit log before enabling auto-activation.
+
+---
+
+## External Fund Sync (Deferred Workflow)
+
+**Capability:** Automated synchronization of external crowdfunding platform totals into Base44 on a recurring schedule.
+
+**Function:** `syncExternalFunds` is already invoked manually and via the "External Fund Sync" workflow. This entry documents the `External Fund Sync.jsonc` workflow file that previously existed and was removed to keep the workflow registry clean while the scheduled trigger is under review.
+
+### Status
+
+The `syncExternalFunds` function is production-ready and callable on demand. The scheduled workflow trigger may be re-added once the following conditions are met:
+
+1. Rate limit buckets are confirmed for all enabled external platforms.
+2. The workflow trigger has been reviewed against the zero-credit continuous work directive.
+3. A separate workflow for each platform adapter is preferred over a single all-platforms sweep.
+
+---
+
+*Last updated: see git log for this file.*

@@ -19,6 +19,8 @@ export const CANONICAL_AGENT_IDS = {
   'Donor Relations Agent': 'donor_relations',
   'Scout Agent': 'scout',
   'Platform Coordinator Agent': 'platform_coordinator',
+  'Admin Builder': 'builder',
+  builder_agent: 'builder',
 };
 
 export function resolveCanonicalAgentId(name) {

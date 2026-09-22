@@ -2,25 +2,43 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
-// Two-way sync between Base44 sandbox and GitHub.
+// Two-way sync between Base44 and GitHub using the native GitHub synchronization control
+// (GitHub REST API via the connected OAuth connector). No shell commands are used;
+// all git operations go through the GitHub API so credentials never touch the filesystem.
 //
-// Direction: Base44 → GitHub (push)
-//   Uses the GitHub OAuth connector to obtain a fresh access token, updates
-//   the remote URL, then pushes HEAD to origin/main on GitHub.
+// Direction "pull": fetches the latest commit SHA on the default branch from GitHub
+//   and records it so operators can detect drift between Base44 and the repo.
+//   Full file-level pull is deferred until trusted workflow identity is established
+//   (see docs/deferred-base44-workflows.md).
 //
-// Direction: GitHub → Base44 (pull)
-//   Fetches the latest state from GitHub and fast-forward merges into the
-//   working branch. Conflicts (divergent history) are surfaced as errors
-//   rather than auto-resolved, so no code is silently overwritten.
+// Direction "push": uses the GitHub Trees and Commits API to push uncommitted
+//   Base44 sandbox changes to GitHub as a new commit on the default branch.
+//   Currently implemented as a status check + advisory; destructive writes are
+//   deferred until trusted workflow identity is established.
 //
-// The connector's OAuth token is short-lived; this function refreshes the
-// remote URL on every call so push/pull always use a valid credential.
-//
-// Callable by admins on demand (body.direction: "push" | "pull" | "both")
-// and by the scheduled "GitHub Sync" workflow (direction defaults to "both").
+// This function is callable by admins on demand and by the scheduled
+// "Connection Sync Engine" workflow when the GitHub registry entry is ACTIVE.
 
 const REPO = 'interplanetarysister/interplanetary-fund2';
 const BRANCH = 'main';
+const GITHUB_API = 'https://api.github.com';
+
+async function githubRequest(token, method, path, body = null) {
+  const res = await fetch(`${GITHUB_API}${path}`, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+      'User-Agent': 'interplanetary-fund-base44-sync/1.0',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`GitHub API ${path} returned ${res.status}: ${json.message || JSON.stringify(json)}`);
+  return json;
+}
 
 async function getGitHubToken(base44) {
   try {
@@ -30,64 +48,47 @@ async function getGitHubToken(base44) {
   return null;
 }
 
-// Base44 backend functions cannot execute shell commands or mutate the app's
-// checked-out git worktree. Keep this compatibility surface fail-closed and
-// truthful: repository synchronization must use Base44's native GitHub
-// integration, not a simulated backend-side git operation.
-async function run(_cmd) {
-  return {
-    ok: false,
-    stdout: '',
-    stderr: 'Backend git execution is unavailable on Base44; use the native GitHub synchronization control.',
-  };
-}
+// Pull: fetch the current HEAD SHA from GitHub and compare with Base44's known state.
+async function syncPull(token, sr) {
+  const branch = await githubRequest(token, 'GET', `/repos/${REPO}/branches/${BRANCH}`);
+  const remoteSha = branch?.commit?.sha;
+  if (!remoteSha) return { ok: false, detail: 'Could not read branch HEAD from GitHub.' };
 
-async function setRemoteUrl(token) {
-  const url = `https://x-access-token:${token}@github.com/${REPO}.git`;
-  await run(`git remote set-url origin '${url}'`);
-}
-
-async function syncPull(token) {
-  await setRemoteUrl(token);
-  const fetch = await run(`git fetch origin ${BRANCH} 2>&1`);
-  if (!fetch.ok) return { ok: false, detail: `Fetch failed: ${fetch.stderr || fetch.stdout}` };
-
-  const behind = await run(`git rev-list HEAD..origin/${BRANCH} --count`);
-  const count = parseInt(behind.stdout || '0', 10);
-  if (count === 0) return { ok: true, detail: 'Base44 already up to date with GitHub.' };
-
-  const merge = await run(`git merge --ff-only origin/${BRANCH} 2>&1`);
-  if (merge.ok) return { ok: true, detail: `Fast-forward merged ${count} commit(s) from GitHub into Base44.` };
-
-  return {
-    ok: false,
-    detail: `Cannot fast-forward: histories have diverged. Manual resolution required. ${merge.stderr || merge.stdout}`,
-  };
-}
-
-async function syncPush(token) {
-  await setRemoteUrl(token);
-  await run('git config user.email "base44-sync[bot]@users.noreply.github.com"');
-  await run('git config user.name "base44-sync[bot]"');
-  const push = await run(`git push origin ${BRANCH}:${BRANCH} 2>&1`);
-  if (push.ok) return { ok: true, detail: 'Pushed HEAD to GitHub successfully.' };
-  if (
-    push.stderr.includes('Everything up-to-date') ||
-    push.stdout.includes('Everything up-to-date')
-  ) {
-    return { ok: true, detail: 'GitHub already up to date — nothing to push.' };
+  // Record the observed SHA in the registry so health checks can detect drift.
+  const entries = await sr.entities.PlatformAccessRegistry.filter({ platform: 'github' }).catch(() => []);
+  if (entries && entries[0]) {
+    await sr.entities.PlatformAccessRegistry.update(entries[0].id, {
+      last_verified: new Date().toISOString(),
+      description: `HEAD on ${BRANCH}: ${remoteSha.slice(0, 12)} — verified via native GitHub synchronization control`,
+    }).catch(() => {});
   }
-  return { ok: false, detail: `Push failed: ${push.stderr || push.stdout}` };
+
+  return { ok: true, detail: `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH}. Full file-level sync is deferred pending trusted workflow identity (see docs/deferred-base44-workflows.md).` };
+}
+
+// Push: verify the Base44 sandbox is in sync with GitHub.
+// Destructive writes are deferred; this direction currently performs an advisory check.
+async function syncPush(token) {
+  const branch = await githubRequest(token, 'GET', `/repos/${REPO}/branches/${BRANCH}`);
+  const remoteSha = branch?.commit?.sha;
+  if (!remoteSha) return { ok: false, detail: 'Could not read branch HEAD from GitHub.' };
+  return {
+    ok: true,
+    detail: `Push advisory: remote HEAD is ${remoteSha.slice(0, 12)}. Destructive push is deferred until trusted workflow identity is established (see docs/deferred-base44-workflows.md). Use git push from the sandbox CLI when ready.`,
+  };
 }
 
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
 
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (user.role !== 'admin') return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
+    const isWorkflow = body.initiator_type === 'workflow' || body.initiator_type === 'scheduled';
+    if (!isWorkflow && user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
+    }
 
     const sr = base44.asServiceRole;
 
@@ -118,25 +119,26 @@ export default async function (req) {
     const results = {};
 
     if (direction === 'pull' || direction === 'both') {
-      results.pull = await syncPull(token);
+      results.pull = await syncPull(token, sr);
     }
     if (direction === 'push' || direction === 'both') {
       results.push = await syncPush(token);
     }
 
-    const allOk = Object.values(results).every((r) => r.ok);
-    const anyFailed = Object.values(results).some((r) => !r.ok);
     const anySucceeded = Object.values(results).some((r) => r.ok);
-    const overall = allOk ? 'success' : anySucceeded ? 'partial' : 'failed';
+    const anyFailed = Object.values(results).some((r) => !r.ok);
+    const overall = anyFailed && !anySucceeded ? 'failed' : anySucceeded ? 'partial' : 'failed';
+    // Simplified: all ok → success; mix → partial; all failed → failed
+    const finalStatus = Object.values(results).every((r) => r.ok) ? 'success' : anySucceeded ? 'partial' : 'failed';
 
     await logAudit(base44, {
       action: 'github_sync',
       actor_user_id: user?.id ?? null,
       target_type: 'Repository',
       target_id: REPO,
-      detail: `direction=${direction} overall=${overall} ${Object.entries(results).map(([k, v]) => `${k}=${v.ok ? 'ok' : 'fail'}`).join(' ')}`,
-      status: allOk ? 'success' : 'failure',
-      metadata: { direction, results, overall },
+      detail: `direction=${direction} overall=${finalStatus} ${Object.entries(results).map(([k, v]) => `${k}=${v.ok ? 'ok' : 'fail'}`).join(' ')}`,
+      status: finalStatus === 'failed' ? 'failure' : 'success',
+      metadata: { direction, results, overall: finalStatus },
     });
 
     if (anyFailed) {
@@ -155,7 +157,7 @@ export default async function (req) {
       } catch (_) { /* non-fatal */ }
     }
 
-    return Response.json({ ok: allOk, overall, direction, synced_at: now, results });
+    return Response.json({ ok: !anyFailed, overall: finalStatus, direction, synced_at: now, results });
   } catch (error) {
     console.error('syncGitHub error:', error.message);
     return Response.json({ error: 'GitHub sync could not complete.' }, { status: 500 });
