@@ -1,12 +1,12 @@
 // Cross-path financial-integrity release contracts.
 // These are static invariants that prevent accidental return to split Base44
 // financial writes. They complement, but do not replace, runtime provider and
-// Convex deployment verification.
+// Base44 runtime/provider verification.
 import { readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(p, 'utf8');
 const files = {
-  bridge: read('base44/shared/convexFinancial.ts'),
+  bridge: read('base44/shared/base44Financial.ts'),
   mirrors: read('base44/shared/financialMirrors.ts'),
   manual: read('base44/functions/recordDonation/entry.ts'),
   grants: read('base44/functions/decideGrantApplication/entry.ts'),
@@ -24,14 +24,15 @@ const files = {
 };
 
 const checks = [
-  ['central bridge writes donations through Convex', files.bridge.includes("financialIntegrity:recordDonation")],
-  ['central bridge reserves withdrawals through Convex', files.bridge.includes("financialIntegrity:reserveWithdrawal")],
-  ['central bridge completes withdrawals through Convex', files.bridge.includes("financialIntegrity:completeWithdrawal")],
-  ['central bridge cancels withdrawals through Convex', files.bridge.includes("financialIntegrity:cancelWithdrawal")],
-  ['central bridge records external observations separately', files.bridge.includes("externalFinancialObservations:recordObservation")],
-  ['legacy baseline excludes canonical mirrors', files.bridge.includes('donation.canonical_operation_id')],
-  ['legacy baseline excludes already-withdrawn funds from available balance', /legacy\.filter\(\(d\)\s*=>\s*!d\.withdrawal_id\)/.test(files.bridge)],
-  ['legacy migration fails closed at batch limit', files.bridge.includes('Legacy campaign baseline exceeds the safe migration batch size')],
+  ['Base44 financial boundary uses FinancialOperation', files.bridge.includes('sr.entities.FinancialOperation')],
+  ['Base44 financial boundary records donations', files.bridge.includes("operation_type: 'donation'")],
+  ['Base44 financial boundary reserves withdrawals', files.bridge.includes("operation_type: 'withdrawal_reservation'")],
+  ['Base44 financial boundary completes reserved withdrawals', files.bridge.includes("op.state !== 'reserved'") && files.bridge.includes("state: 'completed'")],
+  ['Base44 financial boundary cancels withdrawals', files.bridge.includes("state: 'cancelled'")],
+  ['Base44 financial boundary records external observations separately', files.bridge.includes("operation_type: 'external_observation'")],
+  ['Base44 campaign totals require explicit payment verification', files.bridge.includes('d.payment_verified === true')],
+  ['Base44 available balance excludes already-withdrawn funds', files.bridge.includes('!d.withdrawal_id')],
+  ['Base44 financial baseline fails closed at batch limit', files.bridge.includes('Campaign financial baseline exceeds the safe batch size')],
 
   ['manual gifts use canonical donation boundary', files.manual.includes('recordCanonicalDonation')],
   ['manual gifts are pending until verified', files.manual.includes('paymentVerified: false')],
