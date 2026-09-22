@@ -83,6 +83,10 @@
     },
     "description": {
       "type": "string"
+    },
+    "provider_transaction_id": {
+      "type": "string",
+      "description": "Canonical provider transaction/capture reference. Do not place non-Stripe provider ids in stripe_session_id."
     }
   },
   "required": [
