@@ -25,7 +25,7 @@ requireMatch(
 );
 requireMatch(
   layout,
-  /<div\s+className="[^"]*\bmin-h-screen\b[^"]*\bbg-background\b[^"]*\btext-foreground\b/,
+  /<div\s+className="[^"]*\bmin-h-(?:screen|dvh)\b[^"]*\bbg-background\b[^"]*\btext-foreground\b/,
   'shared app shell must explicitly pair background and foreground'
 );
 
