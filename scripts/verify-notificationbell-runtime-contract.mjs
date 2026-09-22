@@ -7,6 +7,18 @@ const sourcePath = process.env.NOTIFICATIONBELL_SOURCE_PATH
   : path.join(root, "src/components/NotificationBell.jsx");
 const source = fs.readFileSync(sourcePath, "utf8");
 
+const forbidden = [
+  ["generic inbox route", /to=\"\/inbox\"/],
+  ["raw empty catch", /catch\s*\(\)\s*=>\s*\{?\s*\}?/],
+  ["unguarded direct async state commit", /\.then\(\(me\)\s*=>\s*\{\s*setUserId\(me\.id\)/],
+];
+
+for (const [label, pattern] of forbidden) {
+  if (pattern.test(source)) {
+    throw new Error(`NotificationBell runtime contract regression: ${label}`);
+  }
+}
+
 const required = [
   ["mounted lifecycle fence", /mountedRef/],
   ["request-generation fence", /requestGenerationRef/],
@@ -22,18 +34,6 @@ const required = [
 for (const [label, pattern] of required) {
   if (!pattern.test(source)) {
     throw new Error(`NotificationBell runtime contract missing: ${label}`);
-  }
-}
-
-const forbidden = [
-  ["generic inbox route", /to=\"\/inbox\"/],
-  ["raw empty catch", /catch\s*\(\)\s*=>\s*\{?\s*\}?/],
-  ["unguarded direct async state commit", /\.then\(\(me\)\s*=>\s*\{\s*setUserId\(me\.id\)/],
-];
-
-for (const [label, pattern] of forbidden) {
-  if (pattern.test(source)) {
-    throw new Error(`NotificationBell runtime contract regression: ${label}`);
   }
 }
 
