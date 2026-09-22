@@ -146,3 +146,34 @@ export async function captureOrder(orderId) {
     currency: capture?.amount?.currency_code || unit?.amount?.currency_code || "",
   };
 }
+
+
+// Verify a transaction against the designated business PayPal account before
+// exterior funds are admitted to the custody ledger. This is intentionally a
+// read-only provider check; it does not create financial value by itself.
+export async function getTransaction(transactionId) {
+  const id = String(transactionId || '').trim();
+  if (!id) throw new Error('PayPal transaction id is required.');
+  const token = await getAccessToken();
+  const res = await fetch(`${apiBase()}/v1/reporting/transactions?transaction_id=${encodeURIComponent(id)}&fields=all&page_size=10`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || `PayPal transaction lookup failed (${res.status})`);
+  const details = Array.isArray(data?.transaction_details) ? data.transaction_details : [];
+  const row = details.find((x) => String(x?.transaction_info?.transaction_id || '') === id);
+  if (!row) return null;
+  const info = row.transaction_info || {};
+  const amount = info.transaction_amount || {};
+  return {
+    id: String(info.transaction_id || ''),
+    status: String(info.transaction_status || ''),
+    amount: Number.parseFloat(amount.value || '0'),
+    currency: String(amount.currency_code || '').toUpperCase(),
+    paypalAccountId: String(info.paypal_account_id || ''),
+    transactionSubject: String(info.transaction_subject || ''),
+    transactionNote: String(info.transaction_note || ''),
+    transactionInitiationDate: info.transaction_initiation_date || '',
+    transactionUpdatedDate: info.transaction_updated_date || '',
+  };
+}
