@@ -41,7 +41,7 @@ const adminSources = [
   read("src/components/admin/ExternalAccountsTable.jsx"),
 ].join("\n");
 
-assert.match(source, /setError\("Couldn't save this connection\. Please try again\. If the problem continues, contact support\."\)/);
+assert.match(source, /setError\("Couldn't save this connection\\. Please try again\\. If the problem continues, contact support\\."\)/);
 assert.match(source, /console\.error\("ConnectDialog connection save failed:", e\)/);
 assert.doesNotMatch(source, /setError\(e\.message/);
 assert.doesNotMatch(source, /setError\(.*error\.message/);
@@ -145,8 +145,8 @@ assert.match(externalAccounts, /bluesky_app_password_set/);
 assert.match(accountDetail, /UNSPECIFIED/);
 assert.doesNotMatch(actionQueue, /last_error:\s*""/);
 assert.doesNotMatch(actionQueue, /status:\s*"disconnected"/);
-assert.match(runtimeGate, /const SUPPORTED = \[20, 22\];/);
-assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*24/);
+assert.match(runtimeGate, /const SUPPORTED = \[22\];/);
+assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*20/);
 
 assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
