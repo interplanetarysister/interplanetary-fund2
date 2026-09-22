@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { getTransaction } from '../../shared/paypal.ts';
 
 const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCase());
 
@@ -34,6 +35,22 @@ export default async function (req) {
     const iso = String(currency || '').trim().toUpperCase();
     if (!(value > 0) || !validCurrency(iso)) {
       return Response.json({ error: 'A positive amount and valid ISO currency are required.' }, { status: 400 });
+    }
+
+    // Never trust an admin-entered transaction id/amount as settlement proof.
+    // PayPal reporting is the receiving-account source of truth.
+    const paypalTx = await getTransaction(paypal_transaction_id).catch(() => null);
+    if (!paypalTx) {
+      return Response.json({ error: 'PayPal could not verify this transaction in the designated holding account.' }, { status: 409 });
+    }
+    // PayPal transaction status "S" means successfully completed in the
+    // Transaction Search API. Other states remain pending/failed and cannot
+    // create held value.
+    if (paypalTx.status !== 'S') {
+      return Response.json({ error: 'PayPal transaction is not settled.', paypal_status: paypalTx.status || 'unknown' }, { status: 409 });
+    }
+    if (Math.abs(Number(paypalTx.amount) - value) > 0.01 || paypalTx.currency !== iso) {
+      return Response.json({ error: 'PayPal settlement amount or currency does not match the requested reconciliation.' }, { status: 409 });
     }
 
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
@@ -73,7 +90,7 @@ export default async function (req) {
       source_type: 'external_platform',
       source_provider: String(connection.platform || 'external'),
       source_account_ref: 'interplanetary_business_paypal',
-      provider_transaction_id: String(paypal_transaction_id),
+      provider_transaction_id: paypalTx.id,
       campaign_id,
       beneficiary_user_id: campaign.created_by_id,
       amount: value,
@@ -98,7 +115,7 @@ export default async function (req) {
         beneficiary_user_id: campaign.created_by_id,
         external_connection_id,
         external_observation_id,
-        paypal_transaction_id: String(paypal_transaction_id),
+        paypal_transaction_id: paypalTx.id,
       },
     });
 
