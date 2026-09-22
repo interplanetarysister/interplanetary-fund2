@@ -144,11 +144,35 @@ async function markPaidAfterProvider(base44, sr, withdrawal, payout, actorId) {
     return { ok: false, reconciliationPending: true };
   }
 
+  const paidAt = new Date().toISOString();
+  const existingHolding = await sr.entities.HoldingLedgerEntry.filter({ operation_key: holdingOperationKey }).catch(() => []);
+  if (!existingHolding?.length) {
+    await sr.entities.HoldingLedgerEntry.create({
+      operation_key: holdingOperationKey,
+      direction: 'out',
+      state: 'paid',
+      source_type: 'withdrawal',
+      source_provider: 'paypal',
+      source_account_ref: 'interplanetary_business_paypal',
+      provider_transaction_id: String(payout.payout_batch_id || payout.sender_batch_id),
+      campaign_id: withdrawal.campaign_id,
+      beneficiary_user_id: withdrawal.owner_user_id,
+      amount: Number(withdrawal.net_amount || 0),
+      currency: 'USD',
+      platform_contribution: 0,
+      processing_fee: 0,
+      withdrawal_id: withdrawal.id,
+      canonical_operation_id: String(withdrawal.canonical_ledger_entry_id || ''),
+      settled_at: paidAt,
+      reconciliation_note: 'Verified PayPal payout from the Interplanetary business PayPal holding account.',
+    });
+  }
+
   await sr.entities.Withdrawal.update(withdrawal.id, {
     status: 'paid',
     payout_batch_id: payout.payout_batch_id || '',
     provider_sender_batch_id: payout.sender_batch_id || '',
-    processed_at: new Date().toISOString(),
+    processed_at: paidAt,
     review_note: '',
   });
   return { ok: true };
