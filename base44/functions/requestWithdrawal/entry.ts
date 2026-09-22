@@ -10,7 +10,7 @@ import {
   reserveCanonicalWithdrawal,
   completeCanonicalWithdrawal,
   cancelCanonicalWithdrawal,
-} from '../../shared/convexFinancial.ts';
+} from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 
 const CLEARING_DAYS = 7;
