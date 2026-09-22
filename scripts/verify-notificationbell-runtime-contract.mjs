@@ -33,7 +33,7 @@ const required = [
   ["accessible status", /\brole\s*=\s*["']status["']/],
   [
     "subscription cleanup guard",
-    /typeof\s+unsubscribe\s*===\s*["']function["']/,
+    /typeof\s+unsubscribe\s*!==\s*["']function["']/,
   ],
 ];
 
