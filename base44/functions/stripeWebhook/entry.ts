@@ -3,7 +3,7 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
-import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 
