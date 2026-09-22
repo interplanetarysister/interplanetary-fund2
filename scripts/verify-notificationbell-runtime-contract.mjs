@@ -14,6 +14,10 @@ const forbidden = [
     "unguarded direct async state commit",
     /\.then\(\s*\(\s*me\s*\)\s*=>\s*\{\s*setUserId\(\s*me\.id\s*\)/,
   ],
+  [
+    "non-unique status id",
+    /id\s*=\s*["']notification-bell-status["']/,
+  ],
 ];
 
 for (const [label, pattern] of forbidden) {
@@ -31,6 +35,8 @@ const required = [
   ["dedicated notifications route", /\bto\s*=\s*["']\/notifications["']/],
   ["stable safe error", /\bSAFE_NOTIFICATION_ERROR\b/],
   ["accessible status", /\brole\s*=\s*["']status["']/],
+  ["instance-unique status id", /\buseId\s*\(/],
+  ["status id linkage", /aria-describedby=\{error\s*\?\s*statusId\s*:/],
   [
     "subscription cleanup guard",
     /typeof\s+unsubscribe\s*!==\s*["']function["']/,
