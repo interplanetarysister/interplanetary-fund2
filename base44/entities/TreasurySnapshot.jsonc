@@ -6,13 +6,15 @@
       "type": "number"
     },
     "total_held": {
-      "type": "number"
+      "type": "number",
+      "description": "Verified funds physically settled into Interplanetary Fund-controlled payment/holding accounts. External observed balances are excluded until a provider/bank settlement is verified."
     },
     "total_fees": {
       "type": "number"
     },
     "net_position": {
-      "type": "number"
+      "type": "number",
+      "description": "Treasury position derived only from verified settled funds and recorded liabilities; external observed balances are excluded."
     },
     "campaign_totals": {
       "type": "array",
@@ -45,7 +47,11 @@
   },
   "required": [],
   "rls": {
-    "read": {},
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
     "create": {
       "user_condition": {
         "role": "admin"
