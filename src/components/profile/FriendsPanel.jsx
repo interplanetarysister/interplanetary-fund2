@@ -29,7 +29,12 @@ export default function FriendsPanel() {
     setBusy(true); setMsg("");
     try {
       const { data } = await base44.functions.invoke("manageFriends", { action: "lookup", query });
-      setLookup(data);
+      if (!data.found && data.can_invite) {
+        await base44.functions.invoke("manageFriends", { action: "invite", email: query.trim() });
+        setLookup(null); setQuery(""); setMsg("No account was found, so Interplanetary Fund sent an invitation.");
+      } else {
+        setLookup(data);
+      }
     } catch { setMsg("Couldn't find that account."); }
     setBusy(false);
   };
@@ -39,14 +44,6 @@ export default function FriendsPanel() {
       await base44.functions.invoke("manageFriends", { action: "request", addressee_user_id: userId });
       setLookup(null); setQuery(""); setMsg("Friend request sent."); load();
     } catch { setMsg("Couldn't send the request."); }
-    setBusy(false);
-  };
-  const invite = async () => {
-    setBusy(true);
-    try {
-      await base44.functions.invoke("manageFriends", { action: "invite", email: query.trim() });
-      setLookup(null); setQuery(""); setMsg("Invitation sent by Interplanetary Fund.");
-    } catch { setMsg("Couldn't send the invitation."); }
     setBusy(false);
   };
   const respond = async (id, action) => { await base44.functions.invoke("manageFriends", { action, friendship_id: id }); load(); };
@@ -71,12 +68,7 @@ export default function FriendsPanel() {
           <Button size="sm" onClick={() => sendRequest(lookup.user_id)} disabled={busy} className="shrink-0">Add friend</Button>
         </div>
       )}
-      {lookup && !lookup.found && (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-stone-200 p-2 mb-3">
-          <p className="text-xs text-stone-500">No account found.{lookup.can_invite ? " Send them an invitation." : ""}</p>
-          {lookup.can_invite && <Button size="sm" variant="outline" onClick={invite} disabled={busy}>Invite</Button>}
-        </div>
-      )}
+      {lookup && !lookup.found && <p className="text-xs text-stone-500 mb-3">No account found. Enter an email address to invite them automatically.</p>}
       {msg && <p className="text-xs text-stone-500 mb-3">{msg}</p>}
       {pendingIncoming.length > 0 && (
         <div className="mb-3">
