@@ -26,11 +26,15 @@ const auditedSet = new Set(auditedFiles);
 const findings = [];
 const omittedCandidates = [];
 
+function normalizeRelativePath(relativePath) {
+  return relativePath.split(path.sep).join(path.posix.sep);
+}
+
 function walk(relativeDir) {
   const absoluteDir = path.join(repoRoot, relativeDir);
   if (!fs.existsSync(absoluteDir)) return [];
   return fs.readdirSync(absoluteDir, { withFileTypes: true }).flatMap((entry) => {
-    const relativePath = path.join(relativeDir, entry.name);
+    const relativePath = normalizeRelativePath(path.posix.join(relativeDir, entry.name));
     if (entry.isDirectory()) return walk(relativePath);
     return /\.(jsx?|tsx?)$/.test(entry.name) ? [relativePath] : [];
   });
