@@ -35,16 +35,20 @@ const required = [
     "subscription cleanup guard",
     /typeof\s+unsubscribe\s*===\s*["']function["']/,
   ],
-  [
-    "null read compatibility",
-    /read\s*===\s*undefined[\s\S]*read\s*===\s*null[\s\S]*typeof\s+read\s*===\s*["']boolean["']|typeof\s+read\s*===\s*["']boolean["'][\s\S]*read\s*===\s*undefined[\s\S]*read\s*===\s*null/,
-  ],
 ];
 
 for (const [label, pattern] of required) {
   if (!pattern.test(source)) {
     throw new Error(`NotificationBell runtime contract missing: ${label}`);
   }
+}
+
+const readPolicyPresent =
+  source.includes('read === undefined') &&
+  source.includes('read === null') &&
+  source.includes('typeof read === "boolean"');
+if (!readPolicyPresent) {
+  throw new Error("NotificationBell runtime contract missing: null read compatibility");
 }
 
 console.log("NotificationBell runtime contract passed");
