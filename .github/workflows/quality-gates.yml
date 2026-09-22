@@ -55,6 +55,9 @@ jobs:
       - name: Test NotificationBell runtime contract failure cases
         run: node scripts/test-notificationbell-runtime-contract.mjs
 
+      - name: Test NotificationBell read-policy edge cases
+        run: node scripts/test-notificationbell-read-policy.mjs
+
       - name: Lint
         run: npm run lint
 
