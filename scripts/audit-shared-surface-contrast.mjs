@@ -15,6 +15,9 @@ const auditedFiles = [
   "src/components/dashboard/StatCard.jsx",
   "src/components/analytics/ReportCard.jsx",
   "src/components/comms/MessageHistory.jsx",
+  "src/components/connections/ConnectionCard.jsx",
+  "src/components/admin/ExternalAccountsTable.jsx",
+  "src/components/campaigns/DonateDialog.jsx",
 ];
 
 const tokenPattern = /text-stone-(400|500|600|700|800|900)/g;
