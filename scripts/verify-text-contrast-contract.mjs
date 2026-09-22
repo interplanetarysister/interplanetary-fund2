@@ -6,12 +6,12 @@ const layout = readFileSync(new URL('../src/components/Layout.jsx', import.meta.
 
 function hasStaticElementClasses(source, tagName, requiredClasses) {
   const openingTag = new RegExp(
-    '<' + tagName + '\\b[^>]*\\bclassName\\s*=\\s*(["\\'])([^"\\']*)\\1',
+    '<' + tagName + '\\b[^>]*\\bclassName\\s*=\\s*"([^"]*)"',
     'g'
   );
 
   return [...source.matchAll(openingTag)].some((match) => {
-    const classes = new Set(match[2].trim().split(/\s+/).filter(Boolean));
+    const classes = new Set(match[1].trim().split(/\s+/).filter(Boolean));
     return requiredClasses.every((className) => classes.has(className));
   });
 }
