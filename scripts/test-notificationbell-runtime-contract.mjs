@@ -28,14 +28,17 @@ try {
     `${source}\n<Link to="/inbox">legacy inbox fixture</Link>\n`,
     "utf8",
   );
-  fs.writeFileSync(
-    invalidStatusIdFixture,
-    source.replace(
-      'const statusId = `notification-bell-status-${useId().replace(/:/g, "")}`;',
-      'const statusId = "notification-bell-status";',
-    ),
-    "utf8",
+
+  const fixedStatusIdSource = source.replace(
+    /const\s+statusId\s*=\s*`notification-bell-status-\$\{useId\(\)\.replace\(\/\:\/g,\s*["']{1}\)["']\)\}`\s*;/,
+    'const statusId = "notification-bell-status";',
   );
+  assert.notEqual(
+    fixedStatusIdSource,
+    source,
+    "status-id regression fixture must replace the production unique-id expression",
+  );
+  fs.writeFileSync(invalidStatusIdFixture, fixedStatusIdSource, "utf8");
 
   const valid = runVerifier(validFixture);
   assert.equal(valid.status, 0, `valid fixture should pass: ${valid.stderr}`);
