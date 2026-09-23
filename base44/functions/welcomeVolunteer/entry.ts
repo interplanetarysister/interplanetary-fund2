@@ -21,6 +21,11 @@ function classifyError(error) {
   return 'internal';
 }
 
+function isNotFoundError(error) {
+  return Boolean(error && typeof error === 'object'
+    && (error.status === 404 || error.statusCode === 404));
+}
+
 function safeLog(event, error) {
   console.error(`welcomeVolunteer:${event}:${classifyError(error)}`);
 }
@@ -49,10 +54,16 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    const signup = await sr.entities.VolunteerSignup.get(body.signup_id).catch((error) => {
+    let signup;
+    try {
+      signup = await sr.entities.VolunteerSignup.get(body.signup_id);
+    } catch (error) {
       safeLog('signup_lookup', error);
-      return null;
-    });
+      if (isNotFoundError(error)) {
+        return Response.json({ error: 'Signup not found' }, { status: 404 });
+      }
+      return Response.json({ error: SAFE_ERROR }, { status: 503, headers: { 'Retry-After': '30' } });
+    }
     if (!signup) return Response.json({ error: 'Signup not found' }, { status: 404 });
 
     const [opp, community, user] = await Promise.all([
