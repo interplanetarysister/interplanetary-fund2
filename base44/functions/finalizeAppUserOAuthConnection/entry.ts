@@ -1,11 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const CONFIG: Record<string, { env: string; kind: string }> = {
-  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social' },
-  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social' },
-  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social' },
-  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social' },
-  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social' },
+const CONFIG: Record<string, { env: string; kind: string; capabilities: string[] }> = {
+  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social', capabilities: ['read','write','post','comment','message','follow','join'] },
+  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social', capabilities: ['read','write','post','comment','message','follow','join'] },
+  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social', capabilities: ['read','write','post','comment','message','follow'] },
+  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social', capabilities: ['read','write','post','comment','message','join'] },
+  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social', capabilities: ['read','write','post','comment','message','follow'] },
 };
 
 export default async function(req) {
@@ -35,12 +35,24 @@ export default async function(req) {
       display_name: existing?.display_name || key,
       external_url: existing?.external_url || '',
       automation_mode: existing?.automation_mode || 'manual',
+      obo_consent: {
+        granted: true,
+        granted_at: now,
+        permission_version: '2026-09-shared-agent-v1',
+        requested_capabilities: cfg.capabilities,
+        granted_capabilities: cfg.capabilities,
+        provider_capabilities: cfg.capabilities,
+      },
+      agent_access: {
+        shared_with_agents: true,
+        automation_enabled: existing?.agent_access?.automation_enabled || existing?.automation_mode === 'auto',
+      },
       status: 'connected',
       verification_status: 'verified',
       external_data_source: 'provider_verified',
       last_synced: now,
       last_error: '',
-      history: [...(existing?.history || []), { at: now, event: 'oauth_connected', detail: 'Provider OAuth connection verified' }].slice(-30),
+      history: [...(existing?.history || []), { at: now, event: 'oauth_connected', detail: 'Provider OAuth connection verified; applicable OBO capabilities shared with the user’s agent team' }].slice(-30),
     };
     const saved = existing
       ? await base44.entities.PlatformConnection.update(existing.id, data)
