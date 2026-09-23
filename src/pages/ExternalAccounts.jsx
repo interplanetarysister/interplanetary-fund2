@@ -7,6 +7,7 @@ import ExternalAccountsTable from "@/components/admin/ExternalAccountsTable";
 import AccountDetailPanel from "@/components/admin/AccountDetailPanel";
 import PostLookupPanel from "@/components/admin/PostLookupPanel";
 import ActionQueuePanel from "@/components/admin/ActionQueuePanel";
+import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
 import PageError from "@/components/PageError";
 
 export default function ExternalAccounts() {
@@ -69,13 +70,17 @@ export default function ExternalAccounts() {
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="accounts">Accounts ({connections.length})</TabsTrigger>
           <TabsTrigger value="posts">Post Lookup ({posts.length})</TabsTrigger>
-          <TabsTrigger value="queue">Action Queue</TabsTrigger>
+          <TabsTrigger value="approvals">Automation Approvals</TabsTrigger>
+          <TabsTrigger value="queue">Account Issues</TabsTrigger>
         </TabsList>
         <TabsContent value="accounts">
           <ExternalAccountsTable connections={connections} campaigns={campaigns} agents={agents} onRowClick={setSelected} onUpdated={reload} />
         </TabsContent>
         <TabsContent value="posts">
           <PostLookupPanel posts={posts} campaigns={campaigns} agents={agents} connections={connections} />
+        </TabsContent>
+        <TabsContent value="approvals">
+          <AdminApprovalQueue />
         </TabsContent>
         <TabsContent value="queue">
           <ActionQueuePanel connections={connections} campaigns={campaigns} onResolved={reload} />
