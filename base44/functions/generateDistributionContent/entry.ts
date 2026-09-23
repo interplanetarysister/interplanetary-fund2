@@ -70,12 +70,12 @@ export default async function(req) {
     const all = await base44.entities.PlatformConnection.filter({});
     const targets = all.filter((c) =>
       connection_ids.includes(c.id) &&
-      c.automation_mode !== 'manual' &&
+      c.status === 'connected' &&
       c.created_by_id === campaign.created_by_id &&
       (!c.campaign_id || c.campaign_id === campaign.id)
     );
     if (!targets.length) {
-      return Response.json({ error: 'No selected platforms allow AI content. Check each connection\'s automation setting.' }, { status: 400 });
+      return Response.json({ error: 'None of the selected accounts are ready for content preparation.' }, { status: 400 });
     }
 
     const p = campaign.ai_profile || {};
