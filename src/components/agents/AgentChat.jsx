@@ -15,12 +15,14 @@ export default function AgentChat({ agentName, agentLabel, greeting, requiresAdm
   const [input, setInput] = useState("");
   const [starting, setStarting] = useState(true);
   const [sending, setSending] = useState(false);
+  const [authorized, setAuthorized] = useState(!requiresAdmin);
 
   useEffect(() => {
     let unsub = () => {};
     let cancelled = false;
     setStarting(true);
     setMessages([]);
+    setAuthorized(!requiresAdmin);
     convRef.current = null;
     (async () => {
       try {
@@ -29,6 +31,7 @@ export default function AgentChat({ agentName, agentLabel, greeting, requiresAdm
           if (currentUser?.role !== "admin") {
             throw new Error("ADMIN_REQUIRED");
           }
+          if (!cancelled) setAuthorized(true);
         }
         const conv = await base44.agents.createConversation({
           agent_name: agentName,
@@ -54,7 +57,7 @@ export default function AgentChat({ agentName, agentLabel, greeting, requiresAdm
 
   const send = async () => {
     const content = input.trim();
-    if (!content || !convRef.current || sending) return;
+    if (!content || !convRef.current || sending || (requiresAdmin && !authorized)) return;
     setInput("");
     setSending(true);
     try {
@@ -105,13 +108,14 @@ export default function AgentChat({ agentName, agentLabel, greeting, requiresAdm
       <div className="mt-3 flex gap-2 items-end">
         <Textarea
           value={input}
+          disabled={starting || (requiresAdmin && !authorized) || !convRef.current}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask ${agentLabel}…`}
           rows={1}
           className="flex-1 resize-none rounded-xl"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
-        <Button onClick={send} disabled={sending || !input.trim()} className="rounded-xl"><Send className="w-4 h-4" /></Button>
+        <Button onClick={send} disabled={sending || starting || !input.trim() || !convRef.current || (requiresAdmin && !authorized)} className="rounded-xl"><Send className="w-4 h-4" /></Button>
       </div>
     </div>
   );
