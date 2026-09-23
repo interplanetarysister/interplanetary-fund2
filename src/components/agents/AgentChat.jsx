@@ -9,30 +9,21 @@ import { recordAgentInteraction } from "@/lib/recordAgentInteraction";
 // Conversation UI for an in-app AI agent. Starts a new conversation when the
 // agent changes, streams assistant replies via the agents SDK subscription,
 // and persists a best-effort interaction summary to the authoritative agent runtime.
-export default function AgentChat({ agentName, agentLabel, greeting, requiresAdmin = false }) {
+export default function AgentChat({ agentName, agentLabel, greeting }) {
   const convRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [starting, setStarting] = useState(true);
   const [sending, setSending] = useState(false);
-  const [authorized, setAuthorized] = useState(!requiresAdmin);
 
   useEffect(() => {
     let unsub = () => {};
     let cancelled = false;
     setStarting(true);
     setMessages([]);
-    setAuthorized(!requiresAdmin);
     convRef.current = null;
     (async () => {
       try {
-        if (requiresAdmin) {
-          const currentUser = await base44.auth.me();
-          if (currentUser?.role !== "admin") {
-            throw new Error("ADMIN_REQUIRED");
-          }
-          if (!cancelled) setAuthorized(true);
-        }
         const conv = await base44.agents.createConversation({
           agent_name: agentName,
           metadata: { name: agentLabel },
@@ -45,33 +36,38 @@ export default function AgentChat({ agentName, agentLabel, greeting, requiresAdm
         });
       } catch (e) {
         console.error("Agent conversation start failed", e);
-        const content = e?.message === "ADMIN_REQUIRED"
-          ? "Administrator access is required for this builder."
-          : `Couldn't start a conversation with ${agentLabel}. Please try again.`;
-        setMessages([{ role: "assistant", content }]);
+        setMessages([{ role: "assistant", content: `Couldn't start a conversation with ${agentLabel}. Please try again.` }]);
       }
       if (!cancelled) setStarting(false);
     })();
     return () => { cancelled = true; unsub(); };
-  }, [agentName, agentLabel, requiresAdmin]);
+  }, [agentName, agentLabel]);
 
   const send = async () => {
     const content = input.trim();
-    if (!content || !convRef.current || sending || (requiresAdmin && !authorized)) return;
+    if (!content || !convRef.current || sending) return;
     setInput("");
     setSending(true);
     try {
       await base44.agents.addMessage(convRef.current, { role: "user", content });
-      await recordAgentInteraction({
-        agentName,
-        summary: content,
-        outcome: "conversation",
-      });
+      try {
+        await recordAgentInteraction({
+          agentName,
+          summary: content,
+          outcome: "conversation",
+        });
+      } catch (recordError) {
+        // Interaction logging is best-effort and must never make a successfully
+        // delivered chat message appear to have failed.
+        console.error("Agent interaction logging failed", recordError);
+      }
     } catch (e) {
       console.error("Agent message send failed", e);
+      setInput((current) => current || content);
       setMessages((m) => [...m, { role: "assistant", content: "I couldn't send that message. Please try again." }]);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   return (
@@ -108,14 +104,14 @@ export default function AgentChat({ agentName, agentLabel, greeting, requiresAdm
       <div className="mt-3 flex gap-2 items-end">
         <Textarea
           value={input}
-          disabled={starting || (requiresAdmin && !authorized) || !convRef.current}
+          disabled={starting || !convRef.current}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask ${agentLabel}…`}
           rows={1}
           className="flex-1 resize-none rounded-xl"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
-        <Button onClick={send} disabled={sending || starting || !input.trim() || !convRef.current || (requiresAdmin && !authorized)} className="rounded-xl"><Send className="w-4 h-4" /></Button>
+        <Button onClick={send} disabled={sending || starting || !input.trim() || !convRef.current} className="rounded-xl"><Send className="w-4 h-4" /></Button>
       </div>
     </div>
   );

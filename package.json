@@ -50,7 +50,10 @@
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
     "verify:runtime-baseline-reconciliation": "node scripts/verify-runtime-baseline-reconciliation.mjs",
     "test:runtime-baseline-reconciliation": "node scripts/test-runtime-baseline-reconciliation.mjs",
-    "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs"
+    "verify:auth-pages-safe-diagnostics": "node scripts/verify-auth-pages-safe-diagnostics.mjs",
+    "verify:builder-agent-boundary": "node scripts/verify-builder-agent-boundary.mjs",
+    "verify:agent-chat-resilience": "node scripts/verify-agent-chat-resilience.mjs",
+    "verify:agent-training-expansion": "node scripts/verify-agent-training-expansion.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.50",

@@ -53,8 +53,10 @@ assert.doesNotMatch(source, /existing\?\.external_currency \|\| "USD"/);
 
 assert.match(save, /base44\.auth\.me\(\)/);
 assert.match(save, /Campaign\.get\(effectiveCampaignId\)/);
-assert.match(save, /campaign\.created_by_id !== user\.id/);
 assert.match(save, /user\.role !== 'admin'/);
+assert.match(save, /const connectionOwnerId = existing\?\.created_by_id \|\| user\.id/);
+assert.match(save, /campaign\.created_by_id !== connectionOwnerId/);
+assert.match(save, /A connection and its campaign must have the same owner/);
 assert.match(save, /external_total must be a non-negative number/);
 assert.match(save, /external_donor_count must be a non-negative integer/);
 assert.match(save, /\^\[A-Z\]\{3\}\$/);

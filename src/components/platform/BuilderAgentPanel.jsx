@@ -24,7 +24,7 @@ export default function BuilderAgentPanel() {
         </p>
         <p className="mt-2 flex items-center gap-1.5 text-xs text-stone-500">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Access is checked before a conversation starts.
+          This Builder is available inside the administrator-only Platform console; privileged backend actions still enforce their own authorization.
         </p>
       </div>
 
@@ -33,7 +33,6 @@ export default function BuilderAgentPanel() {
           agentName="builder_agent"
           agentLabel="Admin Builder"
           greeting="I’m the Admin Builder. Tell me what is broken, where you saw it, and what you expected. I’ll verify the evidence, isolate the cause, and use only the repair actions I’m authorized to perform."
-          requiresAdmin
         />
       </div>
     </section>

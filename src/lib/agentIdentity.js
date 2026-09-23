@@ -1,4 +1,6 @@
 export const CANONICAL_AGENT_IDS = {
+  'Admin Builder': 'builder_agent',
+  builder_agent: 'builder_agent',
   'Chief of Staff': 'solene',
   chief_of_staff: 'solene',
   'Strategy Agent': 'post_production',
@@ -19,8 +21,6 @@ export const CANONICAL_AGENT_IDS = {
   'Donor Relations Agent': 'donor_relations',
   'Scout Agent': 'scout',
   'Platform Coordinator Agent': 'platform_coordinator',
-  'Admin Builder': 'builder',
-  builder_agent: 'builder',
 };
 
 export function resolveCanonicalAgentId(name) {
