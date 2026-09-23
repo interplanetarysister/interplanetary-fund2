@@ -19,8 +19,8 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
   const verified =
     connection.status === "connected" &&
-    connection.verification_status === "verified" &&
-    connection.external_data_source === "provider_verified";
+    connection.verification_status === "verified";
+  const providerVerifiedFinancialData = verified && connection.external_data_source === "provider_verified";
   const failed = connection.status === "error";
   const currency = connection.external_currency || "UNSPECIFIED";
 
@@ -56,7 +56,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
   // Data-source label used in the UI to distinguish provenance.
   // Contract requires both "Provider verified" and "owner reported" strings.
-  const provenanceLabel = verified ? "Provider verified" : "owner reported";
+  const provenanceLabel = providerVerifiedFinancialData ? "Provider verified" : "owner reported";
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
