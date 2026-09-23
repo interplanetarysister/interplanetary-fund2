@@ -1,0 +1,48 @@
+{
+  "name": "External Fund Sync",
+  "description": "Pre-built daily external crowdfunding observation sync. Invokes the canonical syncExternalFunds engine for all campaigns under trusted scheduled execution. Provider observations never become Interplanetary Fund-held or withdrawable money without a separately verified transfer.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "15 3 * * *",
+      "one_time_date": null,
+      "timezone": "America/Los_Angeles",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "external_fund_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync_external_funds": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncExternalFunds",
+            "args": {
+              "scope": "all",
+              "initiator_type": "scheduled"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Synchronize external funds",
+            "description": "Refresh provider-verified external observations without manufacturing custody or withdrawable balance"
+          }
+        }
+      }
+    ]
+  }
+}
