@@ -9,6 +9,9 @@ const required = [
   'MAX_SIGNUP_ID_LENGTH',
   'Array.isArray(body)',
   "Response.json({ error: 'Invalid request' }, { status: 400 })",
+  'isNotFoundError',
+  "status: 503",
+  "'Retry-After': '30'",
   'safeLog',
   'SAFE_ERROR',
 ];
@@ -18,6 +21,7 @@ const forbidden = [
   'console.error(\'welcomeVolunteer error:',
   'const { signup_id } = await req.json()',
   'if (!signup_id)',
+  '.catch(() => null)',
 ];
 
 for (const token of required) {
