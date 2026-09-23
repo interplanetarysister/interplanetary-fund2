@@ -44,11 +44,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // One comprehensive IF consent per user/platform. This describes the full
+  // application-wide capability envelope; the provider still decides which
+  // permissions it can actually grant in its immediately-following auth step.
   const permissionItems = usesProviderOAuth ? [
-    "See the connected account and campaign-related information",
-    "Create or update campaign posts when the provider allows it",
-    "Read and respond to campaign interactions when supported",
-    "Use the same authorized connection across your Interplanetary Fund agent team",
+    "Connect your account, profile, pages, campaigns, groups, channels, and other available resources",
+    "Create, update, publish, and manage campaign content and media when supported",
+    "Read and respond to comments, replies, mentions, messages, and other campaign interactions",
+    "Support outreach, discovery, follows, joins, communities, and engagement where the platform permits",
+    "Read available analytics, engagement, campaign, donation, payment, transaction, and balance information",
+    "Use available event/webhook, reconciliation, settlement, payout, or transfer capabilities when separately supported by the platform",
+    "Reuse this one authorized connection across your Interplanetary Fund agents and workflows within your settings",
   ] : [];
 
   const connectWithProvider = async () => {
@@ -60,8 +66,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         setError("Secure provider sign-in is not configured for this platform yet.");
         return;
       }
+      // The IF consent and provider grant are one continuous connection event.
+      // Persist only non-secret resume context; the connector owns OAuth state
+      // and credentials. Provider authorization starts immediately after consent.
       sessionStorage.setItem("ifund_pending_oauth_platform", platform.id);
       sessionStorage.setItem("ifund_pending_oauth_shared_agent_consent", permissionAccepted ? "true" : "false");
+      sessionStorage.setItem("ifund_pending_oauth_started_at", new Date().toISOString());
+      sessionStorage.setItem("ifund_pending_oauth_permission_version", "2026-09-comprehensive-platform-v1");
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
       window.location.href = redirectUrl;
     } catch (e) {
@@ -164,14 +175,14 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           </div>
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
-              <p className="text-sm font-semibold text-foreground">Allow Interplanetary Fund to help with this connection?</p>
-              <p className="text-xs text-muted-foreground">We’ll ask {platform.name} for the useful campaign permissions it supports. {platform.name} decides what is actually available.</p>
+              <p className="text-sm font-semibold text-foreground">Connect {platform.name} to Interplanetary Fund?</p>
+              <p className="text-xs text-muted-foreground">Approve Interplanetary Fund once here. We’ll immediately open {platform.name} to request the full set of useful permissions it supports for Interplanetary Fund. You should not need separate approvals for each IF agent or feature.</p>
               <div className="space-y-1.5">
                 {permissionItems.map((item) => <p key={item} className="flex gap-2 text-xs text-foreground"><Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />{item}</p>)}
               </div>
               <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
                 <input type="checkbox" checked={permissionAccepted} onChange={(e) => setPermissionAccepted(e.target.checked)} className="mt-0.5" />
-                <span>I allow this connection to be shared with my Interplanetary Fund agents for these supported campaign actions.</span>
+                <span>I approve this platform connection for the supported Interplanetary Fund uses above. This one connection may be reused by my IF agents and workflows within my settings.</span>
               </label>
             </div>
           )}
