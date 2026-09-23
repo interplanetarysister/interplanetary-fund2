@@ -30,3 +30,62 @@ Reading an external donation does not make that money held by Interplanetary Fun
 
 ## Memory and training
 Agent conversations and instructions should persist for the user through the platform memory system. Chief of Staff receives cross-agent context when available. Each specialist keeps separate role training; verified knowledge can overlap. Delegated real work and verified outcomes are learning signals, but learning never expands authorization.
+
+
+## Build reference: current implementation to change
+
+Use the existing implementation as the starting point; do not rebuild the connection or agent systems from scratch.
+
+| Requirement | Current implementation to reference | Refinement target |
+|---|---|---|
+| Connections page / platform selection | `src/pages/Connections.jsx` | Replace/augment the current separate catalog cards with a compact selectable/dropdown-style platform experience. Keep existing catalog data and connection loading. A verified connection should show the small green dot; disconnected and needs-attention states remain simple. |
+| First-time connection UI | `src/components/connections/ConnectDialog.jsx` | Keep the existing provider OAuth redirect flow, but before redirect show one plain-language permission window listing the applicable capabilities requested for that provider. User accepts once; do not ask them to understand tokens/scopes/PATs. |
+| OAuth finalization | `base44/functions/finalizeAppUserOAuthConnection/entry.ts` | Persist the capabilities actually requested/granted/known supported. Do not assume a capability merely because it appears in our desired capability catalog. Provider response/discovery is authoritative. |
+| Connection record | `base44/entities/PlatformConnection.jsonc` | Use `obo_consent` + `agent_access` as the shared capability contract. Preserve existing status, verification, provenance, automation and credential security fields. |
+| Connected status | `src/components/connections/ConnectionCard.jsx` | Preserve current health/provenance behavior and use the green dot only for a verified working connection. |
+| Existing AI publishing consent | `src/components/connections/AIConsentCard.jsx` and current `ai_publishing_consent` checks | Do not silently discard this control. Reconcile it with connection-level OBO consent so old users are migrated safely and the user sees one understandable permission model. |
+| Existing update/cross-post engine | `base44/functions/postCampaignUpdate/entry.ts` | Extend rather than duplicate. It already resolves campaign connections, tailors posts, stages drafts/pending approval and auto-publishes authorized targets. Add explicit destination selection/prefill support for agent handoffs. |
+| Existing social automation | `base44/functions/runSocialAutopilot/entry.ts` | Reuse its owner/connection/automation/cadence gates. Expand capabilities without bypassing provider or user authorization. |
+| Existing external fund observation | `base44/functions/syncExternalFunds/entry.ts` | Extend provider adapters for donation/balance reads. Keep its custody rule: observed external money is not IF-held/withdrawable until a real transfer/settlement is verified. |
+| Agent chat | `src/components/agents/AgentChat.jsx` | It currently creates a fresh conversation when switching agents. Add durable per-user conversation continuity and structured handoff context rather than relying only on best-effort interaction summaries. |
+| Agent selector | `src/pages/Agents.jsx` | Preserve the existing specialist team. Add tool/workflow handoffs instead of creating a second agent UI. |
+| Chief of Staff | `base44/agents/chief_of_staff.jsonc` | Use cross-conversation context plus structured delegation. It should know what was delegated, to whom, campaign/context, status and result. |
+| Shared training | `docs/AGENT_TRAINING_CORE.md` and role-specific `.agents/skills/*.md` / `base44/agents/*.jsonc` | Shared principles belong in core training; specialties and executable behavior belong in each role's own training/config. |
+
+## Required refinements before this feature is considered complete
+
+1. **Capability catalog must be provider-specific.** Define desired capabilities separately from provider-confirmed capabilities. Example: Facebook might support page posting but not an arbitrary account action; a crowdfunding provider may expose donation reads but no withdrawal API. The UI may say “We’ll request everything this connection can use,” but stored `granted_capabilities` must reflect reality.
+2. **Permission changes need reauthorization.** If a later release adds a capability that was not in the original grant, mark it as needing permission rather than silently treating the old grant as full access.
+3. **Disconnect must revoke local agent authority immediately.** Deleting/disconnecting a connection must prevent all agents, queued jobs and automation from using it. Revoke provider authorization where the provider supports revocation; otherwise discard/disable local credentials and mark disconnected.
+4. **Queued actions must re-check permission at execution time.** A post/message/withdrawal queued while authorized must not execute after consent is revoked.
+5. **Role access is purpose-limited, not credential-limited.** Agents share the connection but never receive raw credentials. All external actions go through server-side capability functions that check user ownership, connection status, provider capability, OBO grant, role/action purpose and automation/approval state.
+6. **Financial transfer is separate from financial observation.** Add provider-specific transfer/withdraw adapters only where legitimately supported. Record requested amount, provider transfer ID, gross, provider fee, IF fee, refund/chargeback adjustments, currency, settled amount and net user-available amount. Never manufacture a “withdraw” action for a provider that lacks one.
+7. **Idempotency/audit is mandatory for consequential actions.** Posting, messaging, joining/following and financial transfers need operation IDs, timestamps, acting agent, user/campaign, provider, capability used, result and retry state so automation cannot duplicate work.
+8. **Cross-agent memory needs structure.** Conversation text can inform the Chief of Staff, but delegation should also create a structured task/handoff record. User-specific facts remain separate from generalized agent training.
+9. **Agent learning uses verified outcomes.** A delegated action can become training evidence only after its outcome is known. Do not train a role to treat a draft, attempted submission or failed interaction as successful.
+10. **Grant/relief assistance must distinguish research, preparation and submission.** Strategy/Growth can discover programs and prepare applications. Eligibility, deadlines and requirements should be source-backed/current when researched. Actual submission occurs only through a supported authorized workflow and must record what was submitted.
+11. **Fluid handoff state should be explicit.** Define a small handoff payload such as `{campaign_id, source_agent, destination_tool, draft_content, selected_connection_ids, requested_action}`. Do not make users reselect known campaign/platform information.
+12. **Migration/backward compatibility.** Existing connections without `obo_consent` are not automatically “full access.” Preserve their current working permissions and prompt for the new expanded consent when a newly requested capability requires it.
+
+## Concrete UX examples
+
+### Example A — first connection
+User selects LinkedIn. Interplanetary Fund shows: “Allow Interplanetary Fund’s agents to use this connection for your campaigns?” followed by human-readable items that are actually requestable, such as “See your connected account/page,” “Create campaign posts,” “Read and respond to campaign interactions” when supported. The user taps **Allow & connect** once, then the provider's authorization screen opens. After provider verification the platform row shows a green dot and “Connected.” The user never handles a PAT, OAuth scope name or API token.
+
+### Example B — Outreach -> Update
+User tells Outreach: “Make a post about reaching 60% and put it on LinkedIn and Facebook.” Outreach reads the user's campaign data, drafts truthful copy, and returns an editable draft. Choosing “Use this” routes to the existing update/distribution flow with `campaign_id`, draft content and the LinkedIn/Facebook connection IDs already selected. If automation is Auto and all permissions are valid, the authorized execution path may publish; Ask stages approval; Draft remains a draft.
+
+### Example C — Communications
+A provider-supported campaign comment/message arrives. Communications can read it through the shared connection, use campaign/conversation context to draft a reply, and either send under Auto where that action is explicitly authorized or stage it for approval under Ask/Draft. The audit record identifies Communications as the acting agent and the exact provider capability used.
+
+### Example D — Finance
+Finance sees a provider-verified $100 external donation. It reports that $100 is external/observed, not automatically IF-held. If that provider supports an authorized transfer, Finance can initiate the supported transfer workflow. Suppose the verified settlement is $96 after provider fees and an IF fee later applies according to platform rules: the ledger records each component rather than rewriting the donation as $96. User-facing “available” is derived from settled custody and ledger entries, not the external observation.
+
+### Example E — Chief of Staff delegation
+User says: “Find any grants that could help this campaign and handle what you can.” Chief of Staff delegates opportunity/eligibility planning to Strategy and discovery/pipeline work to Growth, carrying the campaign ID and user constraints. It can later summarize both agents' findings without requiring the user to repeat the request. Application submission is not inferred from research; it uses the appropriate supported approval/action workflow.
+
+### Example F — revoked permission
+User disconnects Instagram after an automated post was scheduled. When the scheduled job runs it re-checks the connection and OBO capability, sees that authorization is gone, marks the operation blocked/cancelled, and does not publish.
+
+## Definition of done
+The implementation is complete only when a user can connect once, understand and grant applicable permissions without technical jargon, see connection health simply, use that same connection across appropriate agents, revoke it centrally, and have autonomous/user-triggered actions enforce the same permission gates. Agent handoffs preserve context; Chief of Staff can coordinate cross-agent work; role training remains distinct; financial custody/fees remain auditable; and unsupported provider capabilities are never simulated as working.
