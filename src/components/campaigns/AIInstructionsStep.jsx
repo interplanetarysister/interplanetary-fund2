@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Lightbulb } from "lucide-react";
 
 // The campaign's permanent AI profile. Every question is optional so the
 // creator can skip now and edit later. These answers are reused by every AI
@@ -23,6 +23,8 @@ export const emptyAiProfile = {
   primary_goal: "",
   who_helping: "",
   ideal_donors: "",
+  donor_discovery_mode: "ai_research",
+  donor_discovery_notes: "",
   tone: "",
   never_change: "",
   always_emphasize: "",
@@ -62,7 +64,8 @@ export default function AIInstructionsStep({ value, onChange }) {
           <Input value={v.who_helping} onChange={(e) => set("who_helping", e.target.value)} placeholder="e.g. Maria, a single mother of two" />
         </Field>
         <Field label="Who do you believe your ideal donors are?">
-          <Input value={v.ideal_donors} onChange={(e) => set("ideal_donors", e.target.value)} placeholder="e.g. local community, healthcare workers" />
+          <Input value={v.ideal_donors} onChange={(e) => set("ideal_donors", e.target.value)} placeholder="Optional — e.g. local community, healthcare workers" />
+          <p className="text-xs text-stone-500 mt-1">Optional. You do not need to know this yourself.</p>
         </Field>
         <Field label="What tone would you like the AI to use?">
           <Select value={v.tone} onValueChange={(val) => set("tone", val)}>
@@ -82,6 +85,19 @@ export default function AIInstructionsStep({ value, onChange }) {
         </Field>
         <Field label="Organizations, communities, or industries that may be interested">
           <Input value={v.interested_orgs} onChange={(e) => set("interested_orgs", e.target.value)} placeholder="e.g. local churches, Rotary clubs" />
+        </Field>
+      </div>
+
+      <div className="rounded-2xl border border-cyan-200 bg-cyan-50/60 p-4 space-y-3">
+        <div className="flex gap-2">
+          <Lightbulb className="w-4 h-4 text-cyan-700 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-stone-900">Let the AI discover likely supporters</p>
+            <p className="text-xs text-stone-600 mt-1">Instead of requiring you to define an audience, Interplanetary Fund can use the campaign facts you provide to research and test likely donor groups, communities, organizations, and outreach angles. Your answer above remains useful context, not a restriction.</p>
+          </div>
+        </div>
+        <Field label="Anything the AI should know while researching supporters?">
+          <Textarea rows={2} value={v.donor_discovery_notes} onChange={(e) => set("donor_discovery_notes", e.target.value)} placeholder="Optional context, boundaries, communities, locations, or ideas to explore." />
         </Field>
       </div>
 
