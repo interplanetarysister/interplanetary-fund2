@@ -27,9 +27,10 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { platform } = await req.json().catch(() => ({}));
+    const { platform, shared_agent_consent } = await req.json().catch(() => ({}));
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
+    const sharedAgentConsent = shared_agent_consent === true;
     const connectorId = cfg ? (Deno.env.get(cfg.env) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
 
@@ -51,18 +52,18 @@ export default async function(req) {
       external_url: existing?.external_url || '',
       automation_mode: existing?.automation_mode || 'manual',
       obo_consent: {
-        granted: true,
+        granted: sharedAgentConsent,
         granted_at: now,
         permission_version: '2026-09-shared-agent-v1',
         requested_capabilities: cfg.requestedCapabilities,
         // Never copy desired capabilities into granted/provider capabilities.
         // Unknown remains unknown until the connector/provider reports it.
-        granted_capabilities: confirmed,
+        granted_capabilities: sharedAgentConsent ? confirmed : [],
         provider_capabilities: confirmed,
       },
       agent_access: {
-        shared_with_agents: true,
-        automation_enabled: existing?.agent_access?.automation_enabled || existing?.automation_mode === 'auto',
+        shared_with_agents: sharedAgentConsent,
+        automation_enabled: sharedAgentConsent && (existing?.agent_access?.automation_enabled || existing?.automation_mode === 'auto'),
       },
       status: 'connected',
       verification_status: 'verified',
