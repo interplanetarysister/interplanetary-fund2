@@ -20,6 +20,7 @@ export default function FundMigrationDashboard() {
   const [campaigns, setCampaigns] = useState([]);
   const [pending, setPending] = useState([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
+  const [campaignSearch, setCampaignSearch] = useState("");
 
   const [step, setStep] = useState("entries"); // entries | payout | confirm | result
   const [migrations, setMigrations] = useState([emptyEntry()]);
@@ -84,6 +85,12 @@ export default function FundMigrationDashboard() {
       return next;
     });
   };
+
+  const visibleCampaigns = campaigns.filter((c) => {
+    const q = campaignSearch.trim().toLowerCase();
+    if (!q) return true;
+    return `${c.title || ""} ${c.id || ""}`.toLowerCase().includes(q);
+  });
 
   const billable = migrations.filter((m) => parseFloat(m.grossAmount) > 0);
   const totalGross = billable.reduce((s, m) => s + (parseFloat(m.grossAmount) || 0), 0);
@@ -267,13 +274,20 @@ export default function FundMigrationDashboard() {
                   </button>
                 )}
               </div>
+              <input
+                type="search"
+                value={campaignSearch}
+                onChange={(e) => setCampaignSearch(e.target.value)}
+                placeholder="Search campaigns…"
+                className="w-full rounded-lg bg-black/30 border border-white/10 text-slate-200 px-3 py-2 text-sm placeholder:text-slate-600"
+              />
               <select
                 value={m.campaignId}
                 onChange={(e) => updateRow(i, "campaignId", e.target.value)}
                 className="w-full rounded-lg bg-black/30 border border-white/10 text-slate-200 px-3 py-2 text-sm"
               >
                 <option value="">Select campaign…</option>
-                {campaigns.map((c) => (
+                {visibleCampaigns.map((c) => (
                   <option key={c.id} value={c.id}>{c.title}</option>
                 ))}
               </select>
