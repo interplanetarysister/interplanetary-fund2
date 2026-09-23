@@ -52,7 +52,14 @@ export default async function(req) {
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
       const consentGranted = hasAiPublishingConsent(owner);
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && ownerChainMatches && consentGranted && access.ok) {
+      const connectionAutomationAllowed = connection.obo_consent?.granted === true &&
+        connection.agent_access?.shared_with_agents === true &&
+        connection.agent_access?.automation_enabled === true;
+      const providerPublishCapabilityConfirmed = connection.obo_consent?.capability_status === 'confirmed' &&
+        (connection.obo_consent?.granted_capabilities || []).some((capability) =>
+          ['create_post', 'publish_post', 'post'].includes(String(capability).toLowerCase())
+        );
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed && providerPublishCapabilityConfirmed && ownerChainMatches && consentGranted && access.ok) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -61,7 +68,6 @@ export default async function(req) {
           await sr.entities.PlatformConnection.update(connection.id, {
             status: 'connected',
             verification_status: 'verified',
-            external_data_source: 'provider_verified',
             last_synced: now.toISOString(),
             last_error: '',
           });
@@ -84,13 +90,19 @@ export default async function(req) {
             report.failed++;
           } else report.retried++;
         }
-      } else if (post.status === 'scheduled') {
-        // Ask/draft mode, no direct API, disabled registry access, or revoked AI consent —
-        // hand back to the owner instead of allowing an automated external side effect.
+      } else if (post.status === 'scheduled' || post.status === 'failed') {
+        // Ask/draft mode, no direct API, disabled registry access, revoked AI
+        // consent, unknown/unconfirmed provider capability, or a failed retry
+        // that is no longer authorized — hand back to the owner instead of
+        // allowing an automated external side effect.
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
           ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
             ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }
+            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !connectionAutomationAllowed
+              ? { error: 'Automatic publishing blocked: this connection is not authorized for agent automation.' }
+            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !providerPublishCapabilityConfirmed
+              ? { error: 'Automatic publishing blocked: provider publish capability is not confirmed.' }
             : connection.automation_mode === 'auto' && canAutoPublish(connection) && !consentGranted
               ? { error: 'Automatic publishing blocked: AI publishing authorization is not active.' }
             : {}),
