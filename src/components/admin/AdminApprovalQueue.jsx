@@ -1,64 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Check, X, Loader2, ShieldCheck } from "lucide-react";
-
-export default function AdminApprovalQueue() {
-  const [items, setItems] = useState(null);
-  const [busy, setBusy] = useState(null);
-  const load = async () => setItems(await base44.entities.AdminApproval.filter({ status: "pending" }, "-requested_at", 200));
-  useEffect(() => { load(); }, []);
-
-  const resolve = async (item, status) => {
-    setBusy(item.id);
-    try {
-      const me = await base44.auth.me();
-      if (status === "approved" && item.action_type === "create_platform_account") {
-        const existing = await base44.entities.PlatformOwnedAccount.filter({ platform: item.target_id });
-        if (!existing.some((a) => a.status !== "retired")) {
-          await base44.entities.PlatformOwnedAccount.create({
-            platform: item.target_id,
-            display_name: `Interplanetary Fund on ${item.target_id}`,
-            profile_description: "Interplanetary Fund helps people build, manage, share, and grow fundraising campaigns across the places their communities already gather.",
-            status: "setup_in_progress",
-            discovered_by: item.requested_by_agent || "outreach",
-            last_checked_at: new Date().toISOString(),
-          });
-        }
-      }
-      if (status === "approved" && item.action_type === "publish_platform_weekly_update") {
-        const matches = await base44.entities.DistributedPost.filter({ connection_id: item.target_id }, "-created_date", 20);
-        const post = matches.find((p) => p.campaign_id === "platform-official" && p.status === "pending_approval");
-        if (post) {
-          await base44.entities.DistributedPost.update(post.id, { status: "approved" });
-          await base44.functions.invoke("publishPost", { post_id: post.id }).catch(() => null);
-        }
-      }
-      await base44.entities.AdminApproval.update(item.id, {
-        status,
-        resolved_at: new Date().toISOString(),
-        resolved_by_user_id: me.id,
-      });
-      await load();
-    } finally { setBusy(null); }
-  };
-
-  if (!items) return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin" /></div>;
-  return <div className="space-y-3">
-    <div className="flex items-center gap-2 text-sm text-stone-600"><ShieldCheck className="w-4 h-4" />{items.length} automation action{items.length === 1 ? "" : "s"} awaiting admin decision.</div>
-    {items.map((item) => <div key={item.id} className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-      <div className="flex flex-wrap justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium text-stone-900">{item.title}</p>
-          <p className="text-sm text-stone-600 mt-1">{item.description}</p>
-          {item.payload_summary && <p className="text-xs text-stone-500 mt-1">{item.payload_summary}</p>}
-          <p className="text-xs text-stone-400 mt-2">{item.requested_by_agent || "Platform automation"} · {item.action_type} · {item.risk_level || "medium"} risk</p>
-        </div>
-        <div className="flex gap-2">
-          <button disabled={busy === item.id} onClick={() => resolve(item, "approved")} className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 text-white px-3 min-h-[44px] text-sm"><Check className="w-4 h-4"/>Approve</button>
-          <button disabled={busy === item.id} onClick={() => resolve(item, "denied")} className="inline-flex items-center gap-1 rounded-xl bg-rose-600 text-white px-3 min-h-[44px] text-sm"><X className="w-4 h-4"/>Deny</button>
-        </div>
-      </div>
-    </div>)}
-    {!items.length && <div className="rounded-2xl border border-stone-200 bg-white p-10 text-center text-stone-400">No automation approvals are waiting.</div>}
-  </div>;
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Check, X, Loader2, ShieldCheck, Search, MessageCircleQuestion, KeyRound } from "lucide-react";
+export default function AdminApprovalQueue(){
+ const[items,setItems]=useState(null),[busy,setBusy]=useState(null),[open,setOpen]=useState(null),[note,setNote]=useState(""),[username,setUsername]=useState(""),[secret,setSecret]=useState("");
+ const load=async()=>setItems(await base44.entities.AdminApproval.filter({},"-requested_at",200)); useEffect(()=>{load()},[]);
+ const message=async(item,type,content,extra={})=>{const me=await base44.auth.me();await base44.entities.AdminActionMessage.create({approval_id:item.id,sender_type:"admin",sender_user_id:me.id,message_type:type,content,created_at:new Date().toISOString(),...extra})};
+ const resolve=async(item,status)=>{setBusy(item.id);try{const me=await base44.auth.me();if(status==="approved"&&item.action_type==="create_platform_account"){const existing=await base44.entities.PlatformOwnedAccount.filter({platform:item.target_id});if(!existing.some(a=>a.status!=="retired"))await base44.entities.PlatformOwnedAccount.create({platform:item.target_id,display_name:`Interplanetary Fund on ${item.target_id}`,profile_description:"Interplanetary Fund helps people build, manage, share, and grow fundraising campaigns across the places their communities already gather.",status:"setup_in_progress",discovered_by:item.requested_by_agent||"outreach",last_checked_at:new Date().toISOString()})}if(status==="approved"&&item.action_type==="publish_platform_weekly_update"){const matches=await base44.entities.DistributedPost.filter({connection_id:item.target_id},"-created_date",20);const post=matches.find(p=>p.campaign_id==="platform-official"&&p.status==="pending_approval");if(post){await base44.entities.DistributedPost.update(post.id,{status:"approved"});await base44.functions.invoke("publishPost",{post_id:post.id}).catch(()=>null)}}if(note.trim())await message(item,"message",note.trim());await base44.entities.AdminApproval.update(item.id,{status,resolved_at:new Date().toISOString(),resolved_by_user_id:me.id,resolution_note:note.trim()||item.resolution_note});setNote("");setOpen(null);await load()}finally{setBusy(null)}};
+ const ask=async item=>{if(!note.trim())return;setBusy(item.id);try{await message(item,"request_more_information",note.trim());await base44.entities.AdminApproval.update(item.id,{status:"needs_information",admin_question:note.trim()});setNote("");setOpen(null);await load()}finally{setBusy(null)}};
+ const investigate=async item=>{setBusy(item.id);try{if(note.trim())await message(item,"investigation_note",note.trim());await base44.entities.AdminApproval.update(item.id,{status:"investigating",investigation_notes:note.trim()||item.investigation_notes});setNote("");setOpen(null);await load()}finally{setBusy(null)}};
+ const credentials=async item=>{if(!username.trim()||!secret)return;setBusy(item.id);try{await message(item,"credentials_submitted","Admin supplied account sign-in details for this action.",{credential_username:username.trim(),credential_secret:secret});await base44.entities.AdminApproval.update(item.id,{credential_status:"received",status:"pending"});setUsername("");setSecret("");setOpen(null);await load()}finally{setBusy(null)}};
+ if(!items)return <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin"/></div>;const active=items.filter(i=>!["executed","cancelled"].includes(i.status));
+ return <div className="space-y-3"><div className="flex items-center gap-2 text-sm text-stone-600"><ShieldCheck className="w-4 h-4"/>{active.length} item{active.length===1?"":"s"} in the admin action inbox.</div>{active.map(item=><div key={item.id} className="rounded-2xl border border-stone-200 bg-white p-4"><div className="flex flex-wrap justify-between gap-3"><div className="min-w-0 flex-1"><p className="font-medium text-stone-900">{item.title}</p><p className="text-sm text-stone-600 mt-1">{item.description}</p>{item.payload_summary&&<p className="text-xs text-stone-500 mt-1">{item.payload_summary}</p>}<p className="text-xs text-stone-400 mt-2">{item.requested_by_agent||"Interplanetary Fund"} · {item.category||"action"} · {item.status}</p></div><Button variant="outline" onClick={()=>setOpen(open===item.id?null:item.id)}>Review</Button></div>{open===item.id&&<div className="mt-4 border-t pt-4 space-y-3">{item.category==="account_access"&&<div className="rounded-xl bg-stone-50 p-3 space-y-2"><p className="text-sm font-medium flex gap-2 items-center"><KeyRound className="w-4 h-4"/>Give the agent the account sign-in</p><p className="text-xs text-stone-500">These details stay in the admin-only action record and are not shown in notifications or ordinary agent messages.</p><Input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username or email"/><Input value={secret} onChange={e=>setSecret(e.target.value)} type="password" placeholder="Password or sign-in secret"/><Button onClick={()=>credentials(item)} disabled={!username.trim()||!secret||busy===item.id}>Send sign-in details</Button></div>}<Textarea value={note} onChange={e=>setNote(e.target.value)} placeholder={item.category==="complaint"?"Add a question, finding, or investigation note…":"Add a note or question…"} className="min-h-24"/><div className="flex flex-wrap gap-2"><Button onClick={()=>resolve(item,"approved")} disabled={busy===item.id}><Check className="w-4 h-4"/>Approve</Button><Button variant="destructive" onClick={()=>resolve(item,"denied")} disabled={busy===item.id}><X className="w-4 h-4"/>Deny</Button><Button variant="outline" onClick={()=>ask(item)} disabled={!note.trim()||busy===item.id}><MessageCircleQuestion className="w-4 h-4"/>Ask for more information</Button><Button variant="outline" onClick={()=>investigate(item)} disabled={busy===item.id}><Search className="w-4 h-4"/>Investigate</Button></div></div>}</div>)}{!active.length&&<div className="rounded-2xl border border-stone-200 bg-white p-10 text-center text-stone-400">Nothing needs an admin decision right now.</div>}</div>
 }
