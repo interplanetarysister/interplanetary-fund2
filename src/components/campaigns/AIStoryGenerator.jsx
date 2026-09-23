@@ -118,7 +118,7 @@ Writing requirements:
         )}
       </div>
 
-      {error && <p className="text-sm text-rose-300">{error}</p>
+      {error && <p className="text-sm text-rose-300">{error}</p>}
 
       {draft && (
         <div className="space-y-2">
