@@ -12,6 +12,27 @@ export default function AdminApprovalQueue() {
     setBusy(item.id);
     try {
       const me = await base44.auth.me();
+      if (status === "approved" && item.action_type === "create_platform_account") {
+        const existing = await base44.entities.PlatformOwnedAccount.filter({ platform: item.target_id });
+        if (!existing.some((a) => a.status !== "retired")) {
+          await base44.entities.PlatformOwnedAccount.create({
+            platform: item.target_id,
+            display_name: `Interplanetary Fund on ${item.target_id}`,
+            profile_description: "Interplanetary Fund helps people build, manage, share, and grow fundraising campaigns across the places their communities already gather.",
+            status: "setup_in_progress",
+            discovered_by: item.requested_by_agent || "outreach",
+            last_checked_at: new Date().toISOString(),
+          });
+        }
+      }
+      if (status === "approved" && item.action_type === "publish_platform_weekly_update") {
+        const matches = await base44.entities.DistributedPost.filter({ connection_id: item.target_id }, "-created_date", 20);
+        const post = matches.find((p) => p.campaign_id === "platform-official" && p.status === "pending_approval");
+        if (post) {
+          await base44.entities.DistributedPost.update(post.id, { status: "approved" });
+          await base44.functions.invoke("publishPost", { post_id: post.id }).catch(() => null);
+        }
+      }
       await base44.entities.AdminApproval.update(item.id, {
         status,
         resolved_at: new Date().toISOString(),
