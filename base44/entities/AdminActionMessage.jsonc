@@ -24,6 +24,7 @@
       "enum": [
         "message",
         "request_more_information",
+        "information_response",
         "credentials_submitted",
         "investigation_note",
         "status_update"
@@ -43,6 +44,20 @@
     "created_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "processing_status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "processing",
+        "processed",
+        "failed"
+      ],
+      "default": "new"
     }
   },
   "required": [
