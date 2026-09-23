@@ -7,20 +7,29 @@ export default function AICoach({ campaign, updatesCount }) {
   const [tips, setTips] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [round, setRound] = useState(0);
+  const [previousTips, setPreviousTips] = useState([]);
 
   const ask = async () => {
     setLoading(true);
     setError("");
     try {
+      const nextRound = round + 1;
       const res = await secureInvokeLLM({
-        task: "Act as a fundraising coach. Give exactly 3 short, specific, actionable tips, each one sentence with a brief reason. Never guarantee outcomes and never invent campaign facts.",
-        untrusted: [{ label: "campaign", value: JSON.stringify({ title: campaign.title, category: campaign.category, goal: campaign.goal_amount, raised: campaign.raised_amount || 0, donors: campaign.donor_count || 0, story_length: campaign.story?.length || 0, updates_posted: updatesCount, has_cover_image: !!campaign.cover_image_url }) }],
+        task: `Act as a dynamic fundraising coach. Give exactly 3 short, specific, actionable tips, each one sentence with a brief reason. Analyze the current campaign state rather than repeating a canned checklist. This is coaching round ${nextRound}. Deliberately choose different useful angles from previous rounds: rotate among story clarity, trust/transparency, campaign presentation, updates, sharing, audience discovery, supporter retention, milestones, calls to action, accessibility, and next-step experimentation. Do not repeat or lightly paraphrase prior tips supplied below unless the campaign state makes one urgently necessary. Never guarantee outcomes and never invent campaign facts.`,
+        untrusted: [
+          { label: "campaign", value: JSON.stringify({ title: campaign.title, category: campaign.category, summary: campaign.summary || "", goal: campaign.goal_amount, raised: campaign.raised_amount || 0, donors: campaign.donor_count || 0, story_length: campaign.story?.length || 0, updates_posted: updatesCount, has_cover_image: !!campaign.cover_image_url, status: campaign.status }) },
+          { label: "previous_coaching", value: JSON.stringify(previousTips.slice(-9)) },
+        ],
         response_json_schema: {
           type: "object",
           properties: { tips: { type: "array", items: { type: "string" } } },
         },
       });
-      setTips(res.tips || []);
+      const fresh = res.tips || [];
+      setTips(fresh);
+      setPreviousTips((old) => [...old, ...fresh].slice(-12));
+      setRound(nextRound);
     } catch (e) {
       setError("Couldn't generate tips right now. Please try again.");
     }
@@ -35,7 +44,7 @@ export default function AICoach({ campaign, updatesCount }) {
           <h3 className="font-display text-lg text-slate-100">AI Coach</h3>
         </div>
         <Button size="sm" variant="ghost" onClick={ask} disabled={loading} className="text-cyan-400 hover:text-cyan-300 hover:bg-white/5">
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Get tips"}
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : tips ? "Fresh tips" : "Get tips"}
         </Button>
       </div>
       {error && <p className="text-xs text-red-400">{error}</p>}
