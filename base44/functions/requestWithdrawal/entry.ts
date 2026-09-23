@@ -10,7 +10,7 @@ import {
   reserveCanonicalWithdrawal,
   completeCanonicalWithdrawal,
   cancelCanonicalWithdrawal,
-} from '../../shared/convexFinancial.ts';
+} from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 
 const CLEARING_DAYS = 7;
@@ -119,6 +119,7 @@ async function verifyPendingDonation(base44, sr, donation, adminUser) {
 
 async function markPaidAfterProvider(base44, sr, withdrawal, payout, actorId) {
   const operationKey = withdrawal.canonical_operation_key || operationKeyFor(withdrawal.id);
+  const holdingOperationKey = `holding:withdrawal:${withdrawal.id}:paid`;
   try {
     await completeCanonicalWithdrawal(sr, {
       operationKey,
@@ -143,11 +144,35 @@ async function markPaidAfterProvider(base44, sr, withdrawal, payout, actorId) {
     return { ok: false, reconciliationPending: true };
   }
 
+  const paidAt = new Date().toISOString();
+  const existingHolding = await sr.entities.HoldingLedgerEntry.filter({ operation_key: holdingOperationKey }).catch(() => []);
+  if (!existingHolding?.length) {
+    await sr.entities.HoldingLedgerEntry.create({
+      operation_key: holdingOperationKey,
+      direction: 'out',
+      state: 'paid',
+      source_type: 'withdrawal',
+      source_provider: 'paypal',
+      source_account_ref: 'interplanetary_business_paypal',
+      provider_transaction_id: String(payout.payout_batch_id || payout.sender_batch_id),
+      campaign_id: withdrawal.campaign_id,
+      beneficiary_user_id: withdrawal.owner_user_id,
+      amount: Number(withdrawal.net_amount || 0),
+      currency: 'USD',
+      platform_contribution: 0,
+      processing_fee: 0,
+      withdrawal_id: withdrawal.id,
+      canonical_operation_id: String(withdrawal.canonical_ledger_entry_id || ''),
+      settled_at: paidAt,
+      reconciliation_note: 'Verified PayPal payout from the Interplanetary business PayPal holding account.',
+    });
+  }
+
   await sr.entities.Withdrawal.update(withdrawal.id, {
     status: 'paid',
     payout_batch_id: payout.payout_batch_id || '',
     provider_sender_batch_id: payout.sender_batch_id || '',
-    processed_at: new Date().toISOString(),
+    processed_at: paidAt,
     review_note: '',
   });
   return { ok: true };
@@ -272,10 +297,24 @@ export default async function(req) {
     if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
     if (campaign.created_by_id !== user.id) return Response.json({ error: 'You can only withdraw funds from your own campaigns.' }, { status: 403 });
 
-    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
-    const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
-    const alreadyToday = (recent || []).some((w) => !['failed', 'cancelled'].includes(w.status) && new Date(w.created_date) >= startToday);
-    if (alreadyToday) return Response.json({ error: 'You can only withdraw once per day. Please try again tomorrow.' }, { status: 400 });
+    // Active subscribers are exempt from the once-per-day withdrawal limit.
+    // Subscription state is provider-backed through the Stripe webhook; never infer
+    // entitlement from the selected tier alone.
+    const hasWithdrawalSubscription =
+      user.subscription_status === 'active' || user.subscription_status === 'trialing';
+    if (!hasWithdrawalSubscription) {
+      const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+      const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
+      const alreadyToday = (recent || []).some((w) =>
+        !['failed', 'cancelled'].includes(w.status) && new Date(w.created_date) >= startToday
+      );
+      if (alreadyToday) {
+        return Response.json(
+          { error: 'You can only withdraw once per day without an active subscription. Please try again tomorrow.' },
+          { status: 400 }
+        );
+      }
+    }
 
     // Seed pre-canonical funds before any local donation row gets reserved.
     await ensureCanonicalCampaign(sr, campaign);
@@ -284,8 +323,8 @@ export default async function(req) {
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
     const available = (allDonations || []).filter((d) => {
       if (d.withdrawal_id) return false;
-      if (d.cleared) return d.payment_verified !== false;
-      if (d.payment_verified === false || d.is_institutional) return false;
+      if (d.cleared) return d.payment_verified === true;
+      if (d.payment_verified !== true || d.is_institutional) return false;
       return new Date(d.created_date) <= cutoff;
     });
     let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));

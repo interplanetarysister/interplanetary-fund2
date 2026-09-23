@@ -3,7 +3,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
-import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror } from '../../shared/financialMirrors.ts';
 
 // Records a supporter-reported manual PayPal/Cash App gift as PENDING only.

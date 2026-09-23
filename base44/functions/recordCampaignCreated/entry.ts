@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
-import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 
 // Publishes a campaign into the Community feed and registers its stable
 // application identity with the canonical Convex backend. Financial writes

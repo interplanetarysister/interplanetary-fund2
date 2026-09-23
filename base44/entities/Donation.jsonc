@@ -67,7 +67,7 @@
     },
     "payment_verified": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "description": "True only when payment was confirmed by an authorized server/provider path. Pending manual reports must not increase confirmed totals or withdrawable value."
     },
     "is_institutional": {
@@ -83,6 +83,10 @@
     },
     "description": {
       "type": "string"
+    },
+    "provider_transaction_id": {
+      "type": "string",
+      "description": "Canonical provider transaction/capture reference. Do not place non-Stripe provider ids in stripe_session_id."
     }
   },
   "required": [

@@ -20,7 +20,7 @@ export default async function (req) {
       if (!q) return Response.json({ error: 'Enter an email or handle.' }, { status: 400 });
       const users = await sr.entities.User.list(undefined, 500).catch(() => []);
       const found = users.find((u) => (u.email || '').toLowerCase() === q || (u.handle || '').toLowerCase() === q);
-      if (!found || found.id === user.id) return Response.json({ found: false });
+      if (!found || found.id === user.id) return Response.json({ found: false, can_invite: /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(q) });
       return Response.json({ found: true, user_id: found.id, display_name: found.full_name || 'Interplanetary Fund member' });
     }
 
@@ -38,6 +38,21 @@ export default async function (req) {
       }
       const withNames = (arr, otherKey) => arr.map((f) => ({ ...f, other_name: names[f[otherKey]] || 'Interplanetary Fund member' }));
       return Response.json({ outgoing: withNames(outgoing, 'addressee_user_id'), incoming: withNames(incoming, 'requester_user_id') });
+    }
+
+    if (action === 'invite') {
+      const email = String(body.email || '').trim().toLowerCase();
+      if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) return Response.json({ error: 'Enter a valid email address.' }, { status: 400 });
+      const existingUsers = await sr.entities.User.list(undefined, 500).catch(() => []);
+      if (existingUsers.some((u) => String(u.email || '').toLowerCase() === email)) return Response.json({ error: 'That person already has an Interplanetary Fund account.' }, { status: 409 });
+      const inviter = user.full_name || user.handle || user.username || 'A friend';
+      await sr.integrations.Core.SendEmail({
+        to: email,
+        subject: `${inviter} invited you to Interplanetary Fund`,
+        body: `${inviter} invited you to join Interplanetary Fund. Create an account to connect with them and participate in the community.\\n\\nInterplanetary Fund\\nEndless possibilities start with one question: What if?`,
+      });
+      await logAudit(base44, { action: 'friend_invitation_sent', actor_user_id: user.id, target_type: 'Invitation', target_id: email, detail: 'Friend invitation email sent', status: 'success' });
+      return Response.json({ ok: true, invited: true });
     }
 
     if (action === 'request') {

@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { canAutoPublish, hasAiPublishingConsent } from '../../shared/socialPublish.ts';
-import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Autonomous Social Media Autopilot (invoked by the "Social Media Autopilot"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -71,11 +71,6 @@ export default async function(req) {
       }
       if (!hasAiPublishingConsent(owner)) {
         report.skipped.push({ id: campaign.id, reason: 'no AI publishing consent' });
-        continue;
-      }
-      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish');
-      if (!obo.ok) {
-        report.skipped.push({ id: campaign.id, reason: obo.reason });
         continue;
       }
       const targets = activeConnections.filter((c) =>

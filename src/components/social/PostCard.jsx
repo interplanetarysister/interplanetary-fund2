@@ -15,21 +15,21 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onShare 
   const hasMedia = !!post.media_url;
 
   return (
-    <div className={`glass-panel rounded-2xl p-4 sm:p-5 ${post.is_top_post ? "ring-1 ring-cyan-400/40 shadow-lg shadow-cyan-500/10" : ""}`}>
+    <div className={`glass-panel w-full min-w-0 max-w-full overflow-hidden rounded-2xl p-4 sm:p-5 ${post.is_top_post ? "ring-1 ring-cyan-400/40 shadow-lg shadow-cyan-500/10" : ""}`}>
       {post.is_top_post && (
         <div className="flex items-center gap-1.5 text-cyan-300 text-xs font-medium mb-3">
           <Pin className="w-3.5 h-3.5" />
           Top Post
         </div>
       )}
-      <div className="flex items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center text-white font-semibold text-sm shrink-0">
           {(post.author_name || post.author_username || "?")[0]?.toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-slate-100 text-sm">{post.author_name || "Explorer"}</span>
-            {post.author_username && <span className="text-slate-400 text-xs">@{post.author_username}</span>}
+            <span className="font-medium text-slate-100 text-sm break-words">{post.author_name || "Explorer"}</span>
+            {post.author_username && <span className="min-w-0 max-w-full break-all text-slate-400 text-xs">@{post.author_username}</span>}
             <BannerBadge tier={post.author_banner_tier} />
             {post.ai_generated && (
               <span className="inline-flex items-center gap-1 text-violet-300 text-[10px] font-medium">
@@ -58,7 +58,7 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onShare 
               ))}
             </div>
           )}
-          <div className="flex items-center gap-5 mt-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-3 mt-3">
             <button onClick={() => onLike?.(post)} className="flex items-center gap-1.5 text-slate-400 hover:text-rose-400 text-xs transition-colors">
               <Heart className="w-4 h-4" /> {post.likes_count || 0}
             </button>

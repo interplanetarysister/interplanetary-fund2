@@ -29,7 +29,12 @@ export default function FriendsPanel() {
     setBusy(true); setMsg("");
     try {
       const { data } = await base44.functions.invoke("manageFriends", { action: "lookup", query });
-      setLookup(data);
+      if (!data.found && data.can_invite) {
+        await base44.functions.invoke("manageFriends", { action: "invite", email: query.trim() });
+        setLookup(null); setQuery(""); setMsg("No account was found, so Interplanetary Fund sent an invitation.");
+      } else {
+        setLookup(data);
+      }
     } catch { setMsg("Couldn't find that account."); }
     setBusy(false);
   };
@@ -63,7 +68,7 @@ export default function FriendsPanel() {
           <Button size="sm" onClick={() => sendRequest(lookup.user_id)} disabled={busy} className="shrink-0">Add friend</Button>
         </div>
       )}
-      {lookup && !lookup.found && <p className="text-xs text-stone-500 mb-3">No account found.</p>}
+      {lookup && !lookup.found && <p className="text-xs text-stone-500 mb-3">No account found. Enter an email address to invite them automatically.</p>}
       {msg && <p className="text-xs text-stone-500 mb-3">{msg}</p>}
       {pendingIncoming.length > 0 && (
         <div className="mb-3">

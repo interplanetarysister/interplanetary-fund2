@@ -1,50 +1,123 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, Activity, GitFork } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
+import { useToast } from "@/components/ui/use-toast";
+
+const SAFE_REGISTRY_ERROR = "We couldn\'t load the integration registry. Please try again.";
+const SAFE_HEALTH_ERROR = "We couldn\'t complete the integration health check. Please try again.";
+
+function isAdminUser(value) {
+  return Boolean(value && typeof value === "object" && value.role === "admin");
+}
+
+function isRegistryResponse(value) {
+  return Array.isArray(value) && value.every((entry) => entry && typeof entry === "object");
+}
+
+function isHealthResponse(value) {
+  return Boolean(value && typeof value === "object" && value.data && typeof value.data === "object" && !Array.isArray(value.data));
+}
 
 export default function IntegrationsAdmin() {
+  const { toast } = useToast();
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
   const [entries, setEntries] = useState(null);
-  const [error, setError] = useState(null);
+  const [registryError, setRegistryError] = useState(null);
+  const [healthError, setHealthError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const requestGeneration = useRef(0);
+  const mounted = useRef(true);
+
+  const loadRegistry = useCallback(async () => {
+    const generation = ++requestGeneration.current;
+    try {
+      const me = await base44.auth.me();
+      if (!mounted.current || generation !== requestGeneration.current) return;
+      if (!me || typeof me !== "object" || typeof me.role !== "string") throw new Error("Malformed auth response");
+      setUser(me);
+      setAuthReady(true);
+      if (!isAdminUser(me)) return;
+      const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
+      if (!isRegistryResponse(list)) throw new Error("Malformed registry response");
+      if (!mounted.current || generation !== requestGeneration.current) return;
+      setEntries(list);
+      setRegistryError(null);
+    } catch (e) {
+      console.error("IntegrationsAdmin registry load failed:", e?.name || "UnknownError");
+      if (!mounted.current || generation !== requestGeneration.current) return;
+      setAuthReady(true);
+      setRegistryError(SAFE_REGISTRY_ERROR);
+    }
+  }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const me = await base44.auth.me();
-        setUser(me);
-        if (me.role !== "admin") return;
-        const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-        setEntries(list);
-      } catch (e) {
-        setError(e.message || "Couldn't load the integration registry.");
-      }
-    })();
-  }, [refreshKey]);
+    mounted.current = true;
+    loadRegistry();
+    return () => {
+      mounted.current = false;
+      requestGeneration.current += 1;
+    };
+  }, [loadRegistry, refreshKey]);
 
   const reload = () => setRefreshKey((k) => k + 1);
 
   const runHealthCheck = async () => {
+    if (checking) return;
     setChecking(true);
+    setHealthError(null);
     try {
-      await base44.functions.invoke("validateIntegrationHealth", {});
+      const response = await base44.functions.invoke("validateIntegrationHealth", {});
+      if (!isHealthResponse(response)) throw new Error("Malformed health response");
       reload();
     } catch (e) {
-      setError(e.message || "Health check failed.");
+      console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
+      if (mounted.current) setHealthError(SAFE_HEALTH_ERROR);
+    } finally {
+      if (mounted.current) setChecking(false);
     }
-    setChecking(false);
   };
 
-  if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  const runGitHubSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await base44.functions.invoke("syncGitHub", { direction: "both" });
+      const data = res?.data || res;
+      if (data?.ok) {
+        const details = Object.entries(data.results || {})
+          .map(([k, v]) => `${k}: ${v.detail}`)
+          .join(" · ");
+        toast({ title: "GitHub sync complete", description: details || "Sync completed successfully." });
+      } else if (data?.skipped) {
+        toast({ title: "GitHub sync skipped", description: data.reason || "GitHub integration not active.", variant: "destructive" });
+      } else {
+        const reason =
+          data?.reason ||
+          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
+          "Sync encountered an issue.";
+        toast({ title: "GitHub sync issue", description: reason, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "GitHub sync failed", description: e.message || "Could not reach the sync function.", variant: "destructive" });
+    }
+    setSyncing(false);
+  };
 
-  if (user.role !== "admin") {
+  if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
+
+  if (registryError) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={registryError} onRetry={() => { setRegistryError(null); reload(); }} /></div>;
+
+  if (!user) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
+
+  if (!isAdminUser(user)) {
     return (
       <div className="max-w-md mx-auto text-center py-24 px-6">
         <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" />
@@ -54,11 +127,11 @@ export default function IntegrationsAdmin() {
     );
   }
 
-  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); setEntries(null); reload(); }} /></div>;
-  if (!entries) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
   const counts = entries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
+  const githubEntry = entries.find((e) => e.platform === "github");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -67,11 +140,26 @@ export default function IntegrationsAdmin() {
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Integration Registry</h1>
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
-        <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl">
-          {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
-          Run health check
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {githubEntry && (
+            <Button
+              onClick={runGitHubSync}
+              disabled={syncing || checking}
+              variant="outline"
+              className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
+              {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
+              Sync GitHub
+            </Button>
+          )}
+          <Button onClick={runHealthCheck} disabled={checking || syncing} className="rounded-xl" aria-busy={checking}>
+            {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
+            {checking ? "Checking…" : "Run health check"}
+          </Button>
+        </div>
       </div>
+
+      {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
         <Stat label="Registered" value={entries.length} />

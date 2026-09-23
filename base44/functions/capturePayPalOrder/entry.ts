@@ -4,7 +4,7 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 
@@ -99,6 +99,33 @@ export default async function (req) {
 
     await mirrorCanonicalCampaignTotal(sr, campaign_id, canonical);
 
+    // The designated Interplanetary Fund holding account is the business PayPal
+    // account. A COMPLETED capture is provider evidence that this direct PayPal
+    // donation reached that account. Mirror custody separately from beneficial
+    // ownership so pooled PayPal funds remain allocated to the correct campaign.
+    const holdingOperationKey = `holding:paypal:${cap.capture_id || order_id}`;
+    const existingHolding = await sr.entities.HoldingLedgerEntry.filter({ operation_key: holdingOperationKey }).catch(() => []);
+    if (!existingHolding?.length) {
+      await sr.entities.HoldingLedgerEntry.create({
+        operation_key: holdingOperationKey,
+        direction: 'in',
+        state: 'settled',
+        source_type: 'payment_processor',
+        source_provider: 'paypal',
+        source_account_ref: 'interplanetary_business_paypal',
+        provider_transaction_id: String(cap.capture_id || order_id),
+        campaign_id,
+        beneficiary_user_id: campaign.created_by_id || '',
+        amount: total,
+        currency: cap.currency,
+        platform_contribution: contribution,
+        processing_fee: processingFee,
+        canonical_operation_id: String(canonical.operationId),
+        settled_at: new Date().toISOString(),
+        reconciliation_note: 'Verified PayPal capture received into the designated Interplanetary Fund business PayPal holding account.',
+      });
+    }
+
     const donation = await reconcileDonationMirror(sr, canonical.operationId, {
       campaign_id,
       campaign_title: campaign.title,
@@ -113,7 +140,7 @@ export default async function (req) {
       payment_method: 'paypal',
       payment_verified: true,
       cleared: false,
-      stripe_session_id: order_id,
+      provider_transaction_id: String(cap.capture_id || order_id),
     });
 
     if (campaign.created_by_id) {

@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
 
 // Centralized external-fund synchronization engine used by scheduled sync,
 // Count My Money, Sync Linked Platforms, and Migrate Funds discovery.
@@ -132,6 +132,28 @@ export default async function (req) {
             });
             lastObservation = observation;
             if (observation.created) imported++;
+
+            // Keep a Base44 provenance mirror for custody matching. This row is
+            // external-only and never creates withdrawable value. It gives the
+            // PayPal settlement matcher a concrete campaign/user/provider record
+            // without treating an observed external donation as money IF holds.
+            const observationKey = `external:${conn.platform}:${conn.id}:${txId}`;
+            const mirrored = await sr.entities.ExternalFundObservation.filter({ operation_key: observationKey }).catch(() => []);
+            if (!mirrored?.length) {
+              await sr.entities.ExternalFundObservation.create({
+                operation_key: observationKey,
+                provider: String(conn.platform),
+                provider_transaction_id: txId,
+                external_connection_id: conn.id,
+                campaign_id: campaign.id,
+                beneficiary_user_id: campaign.created_by_id,
+                amount,
+                currency,
+                observed_at: new Date().toISOString(),
+                settlement_state: 'external',
+                description: 'Provider-verified exterior funds; not held or withdrawable until receiving PayPal settlement is independently verified.',
+              });
+            }
             txIds.push(txId);
           }
 

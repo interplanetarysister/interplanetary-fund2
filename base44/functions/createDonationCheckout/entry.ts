@@ -4,7 +4,7 @@ import { secrets } from 'base44:runtime';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
-import { ensureCanonicalCampaign } from '../../shared/convexFinancial.ts';
+import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 
 export default async function(req) {
   try {

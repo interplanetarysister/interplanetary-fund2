@@ -86,8 +86,36 @@
     @apply border-border outline-ring/50;
   }
 
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground font-body;
+  }
+
+  img,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  p,
+  li,
+  blockquote,
+  td,
+  th {
+    overflow-wrap: anywhere;
   }
 
   /* Keep entered text, placeholders, carets, and browser autofill readable on

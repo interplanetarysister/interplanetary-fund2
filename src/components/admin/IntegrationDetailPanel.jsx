@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
-import { Loader2, RefreshCw, ShieldOff, ShieldCheck } from "lucide-react";
+import { Loader2, RefreshCw, ShieldOff, ShieldCheck, GitFork } from "lucide-react";
 
 function Row({ label, children }) {
   return (
@@ -29,6 +29,29 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
       onUpdated?.();
     } catch (e) {
       toast({ title: "Couldn't update", description: e.message, variant: "destructive" });
+    }
+    setBusy(null);
+  };
+
+  const syncGitHub = async (direction) => {
+    setBusy(`github-sync-${direction}`);
+    try {
+      const res = await base44.functions.invoke("syncGitHub", { direction });
+      const data = res?.data || res;
+      if (data?.ok) {
+        const details = Object.entries(data.results || {})
+          .map(([k, v]) => `${k}: ${v.detail}`)
+          .join(" · ");
+        toast({ title: "GitHub sync complete", description: details || "Sync completed successfully." });
+      } else {
+        const reason =
+          data?.reason ||
+          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
+          "Sync failed.";
+        toast({ title: "GitHub sync issue", description: reason, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "GitHub sync failed", description: e.message, variant: "destructive" });
     }
     setBusy(null);
   };
@@ -59,6 +82,60 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           {(entry.cleanup_flags || []).length ? <Row label="Flags">{entry.cleanup_flags.join(", ")}</Row> : null}
           {entry.reauth_instructions ? <Row label="Reauth steps">{entry.reauth_instructions}</Row> : null}
         </div>
+
+        {/* GitHub-specific two-way sync controls */}
+        {entry.platform === "github" && (
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 mt-1">
+            <p className="text-xs font-medium text-blue-700 mb-2">Two-way sync</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => syncGitHub("pull")}
+                disabled={!!busy}
+                className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100"
+              >
+                {busy === "github-sync-pull" ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <GitFork className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                Pull from GitHub
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => syncGitHub("push")}
+                disabled={!!busy}
+                className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100"
+              >
+                {busy === "github-sync-push" ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />
+                )}
+                Push to GitHub
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => syncGitHub("both")}
+                disabled={!!busy}
+                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {busy === "github-sync-both" ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                Sync now (both)
+              </Button>
+            </div>
+            <p className="text-xs text-blue-500 mt-2">
+              Pull fast-forwards Base44 to match GitHub. Push sends Base44 commits to GitHub.
+              Conflicts surface as notifications rather than silently overwriting code.
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 pt-2">
           <Button size="sm" variant="outline" onClick={() => run("reauthorize")} disabled={!!busy} className="rounded-lg">
