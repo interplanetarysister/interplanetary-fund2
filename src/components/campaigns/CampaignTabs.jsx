@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import CampaignCard from "@/components/campaigns/CampaignCard";
-import { PlusCircle, Flame, CheckCircle2, FileEdit } from "lucide-react";
+import { PlusCircle, Flame, CheckCircle2, FileEdit, Rocket } from "lucide-react";
 
 // Tabbed campaign management view — separates active fundraising projects
 // from completed ones and drafts, so organizers can quickly switch context.
@@ -73,7 +73,7 @@ export default function CampaignTabs({ campaigns, emptyCta = true }) {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
-          {list.map((c) => <CampaignCard key={c.id} campaign={c} />)}
+          {list.map((c) => <div key={c.id} className="space-y-2"><CampaignCard campaign={c} />{tab === "draft" && <Link to={`/create?draft=${encodeURIComponent(c.id)}`} className="block"><Button variant="outline" className="w-full rounded-xl border-cyan-500/30 text-cyan-700 dark:text-cyan-200"><Rocket className="w-4 h-4 mr-2" /> Continue building</Button></Link>}</div>)}
         </div>
       )}
     </div>
