@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import { format } from "date-fns";
 import { Users, CalendarDays, Heart, ShieldCheck } from "lucide-react";
+import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
+import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
 
 // The funding + Donate Now block. Rendered high on the page on phones (so the
 // donation action is above the fold) and in the sticky sidebar on desktop.
@@ -20,17 +22,18 @@ export default function CampaignFundingCard({ campaign, onDonate, className = ""
           <span className="flex items-center gap-1.5"><CalendarDays className="w-4 h-4" />Ends {format(new Date(campaign.end_date), "MMM d")}</span>
         )}
       </div>
+      {PRELAUNCH_MODE && <PrelaunchNotice compact payment className="mb-4" />}
       <Button
         onClick={onDonate}
         className="w-full rounded-xl h-12 text-base font-semibold bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"
       >
-        <Heart className="w-5 h-5 mr-2" /> Donate Now
+        <Heart className="w-5 h-5 mr-2" /> {PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Donate Now"}
       </Button>
       <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400 mt-3">
-        <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" /> Secure payments via PayPal
+        <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" /> {PRELAUNCH_MODE ? "Prelaunch support payment" : "Secure payments via PayPal"}
       </p>
       <div className="mt-4 pt-4 border-t border-stone-100">
-        <PayPalDonateButton />
+        <PayPalDonateButton label={PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Support this campaign!"} />
       </div>
     </div>
   );
