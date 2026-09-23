@@ -49,6 +49,9 @@ jobs:
       - name: Verify shared text contrast contract
         run: node scripts/verify-text-contrast-contract.mjs
 
+      - name: Welcome volunteer safe-input contract
+        run: npm run verify:welcome-volunteer-safe-input
+
       - name: Lint
         run: npm run lint
 
