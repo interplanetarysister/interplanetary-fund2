@@ -88,6 +88,26 @@
       "default": "manual",
       "description": "AI publishing authorization for this destination: publish automatically, ask before every post, generate drafts only, or manual posting only."
     },
+    "obo_consent": {
+      "type": "object",
+      "description": "Plain-language on-behalf-of authorization granted by the user for this connection. Provider capabilities remain authoritative; consent never creates a capability the provider does not support.",
+      "properties": {
+        "granted": { "type": "boolean", "default": false },
+        "granted_at": { "type": "string", "format": "date-time" },
+        "permission_version": { "type": "string" },
+        "requested_capabilities": { "type": "array", "items": { "type": "string" } },
+        "granted_capabilities": { "type": "array", "items": { "type": "string" } },
+        "provider_capabilities": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "agent_access": {
+      "type": "object",
+      "description": "Shared connection capability available to the user's agents. Role purpose and provider/user authorization still gate each action.",
+      "properties": {
+        "shared_with_agents": { "type": "boolean", "default": true },
+        "automation_enabled": { "type": "boolean", "default": false }
+      }
+    },
     "credentials": {
       "type": "object",
       "description": "Per-platform integration credentials. Raw secret values are service/admin-only; owner-facing reads use the redacted listConnections function.",
