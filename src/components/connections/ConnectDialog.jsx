@@ -35,7 +35,10 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
-    setPermissionAccepted(!!existing);
+    const resumingThisPlatform =
+      sessionStorage.getItem("ifund_pending_oauth_platform") === platform.id &&
+      sessionStorage.getItem("ifund_pending_oauth_shared_agent_consent") === "true";
+    setPermissionAccepted(!!existing || resumingThisPlatform);
     (async () => {
       const me = await base44.auth.me();
       setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
