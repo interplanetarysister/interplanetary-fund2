@@ -13,13 +13,13 @@ This document is the source-of-truth contract for the NotificationBell client bo
 
 ## Read/unread compatibility
 
-The deployed schema declares `read` as a boolean with a default of `false`. Client normalization therefore uses an explicit unread policy:
+The deployed schema declares `read` as a boolean with a default of `false`. Client normalization uses one explicit compatibility policy:
 
-- missing, `undefined`, `null`, or `false` => unread
-- `true` => read
-- non-boolean values are malformed and must be rejected by row normalization
+- missing, `undefined`, `null`, or `false` => accepted as unread-compatible;
+- `true` => accepted as read;
+- every other non-boolean value (for example strings, numbers, objects, or arrays) => malformed and rejected by row normalization.
 
-This policy is intentionally fail-closed for malformed rows while remaining compatible with legacy rows that predate the default.
+This is intentionally fail-closed for malformed values while remaining compatible with legacy rows that predate the default. The same policy must be used by unread counting and mark-read acceptance tests.
 
 ## Required acceptance evidence
 
