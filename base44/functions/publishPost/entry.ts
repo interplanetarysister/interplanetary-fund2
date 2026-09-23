@@ -47,7 +47,9 @@ export default async function(req) {
     if (!hasAiPublishingConsent(consentOwner)) {
       return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
     }
-    if (!canAutoPublish(connection)) {
+    const connectionOboAllowed = connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
+    const connectionAutomationAllowed = connectionOboAllowed && connection.agent_access?.automation_enabled === true;
+    if (!canAutoPublish(connection) || !connectionAutomationAllowed) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
@@ -74,7 +76,6 @@ export default async function(req) {
       await base44.entities.PlatformConnection.update(connection.id, {
         status: 'connected',
         verification_status: 'verified',
-        external_data_source: 'provider_verified',
         last_synced: new Date().toISOString(),
         history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
       });
