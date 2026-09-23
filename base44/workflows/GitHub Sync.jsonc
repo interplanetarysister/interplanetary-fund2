@@ -1,0 +1,48 @@
+{
+  "name": "GitHub Sync",
+  "description": "Pre-built scheduled GitHub synchronization path. Every 15 minutes it invokes the guarded syncGitHub function. The function remains fail-closed unless the GitHub Platform Access Registry entry and connector credential are valid; destructive file application remains blocked until conflict-safe implementation is completed.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/15 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Los_Angeles",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "github_sync",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sync_github": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "syncGitHub",
+            "args": {
+              "direction": "both",
+              "initiator_type": "workflow"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Synchronize GitHub",
+            "description": "Run guarded bidirectional synchronization checks; fail closed when identity, access, or conflict safety is unavailable"
+          }
+        }
+      }
+    ]
+  }
+}
