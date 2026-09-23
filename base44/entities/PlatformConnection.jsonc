@@ -97,7 +97,13 @@
         "permission_version": { "type": "string" },
         "requested_capabilities": { "type": "array", "items": { "type": "string" } },
         "granted_capabilities": { "type": "array", "items": { "type": "string" } },
-        "provider_capabilities": { "type": "array", "items": { "type": "string" } }
+        "provider_capabilities": { "type": "array", "items": { "type": "string" } },
+        "capability_status": {
+          "type": "string",
+          "enum": ["confirmed", "unknown", "reauthorization_required"],
+          "default": "unknown",
+          "description": "Whether detailed provider capabilities are confirmed. Missing legacy values and unknown never grant an action."
+        }
       }
     },
     "agent_access": {
