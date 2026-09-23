@@ -18,6 +18,7 @@ export default function Connections() {
   const [error, setError] = useState(null);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [connectionNotice, setConnectionNotice] = useState(null);
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -42,9 +43,15 @@ export default function Connections() {
       if (pendingOAuthPlatform) {
         try {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", { platform: pendingOAuthPlatform, shared_agent_consent: sessionStorage.getItem("ifund_pending_oauth_shared_agent_consent") === "true" });
-          if (data?.connected) { sessionStorage.removeItem("ifund_pending_oauth_platform"); sessionStorage.removeItem("ifund_pending_oauth_shared_agent_consent"); }
+          if (data?.connected) {
+            ["ifund_pending_oauth_platform", "ifund_pending_oauth_shared_agent_consent", "ifund_pending_oauth_started_at", "ifund_pending_oauth_permission_version"].forEach((key) => sessionStorage.removeItem(key));
+            setConnectionNotice({ ok: true, text: `${pendingOAuthPlatform} is connected. Your approved connection is ready for supported Interplanetary Fund features.` });
+          } else {
+            setConnectionNotice({ ok: false, text: `Finish connecting ${pendingOAuthPlatform}. Your Interplanetary Fund consent is saved for this connection attempt, so you can resume the provider step without starting over.` });
+          }
         } catch (oauthError) {
           console.error("OAuth connection finalization failed:", oauthError);
+          setConnectionNotice({ ok: false, text: `We couldn't finish the provider connection. Your Interplanetary Fund consent is still saved for this connection attempt; resume the provider step instead of approving IF again.` });
         }
       }
       const [me, connRes] = await Promise.all([
@@ -103,6 +110,12 @@ export default function Connections() {
         Connections
       </h1>
       <p className="text-stone-500 mb-6">Create once. Connect once. Fund everywhere. Manage every fundraising and social destination from one place.</p>
+
+      {connectionNotice && (
+        <div className={`mb-4 rounded-xl border p-3 text-sm ${connectionNotice.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+          {connectionNotice.text}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
         <Button onClick={syncAll} disabled={syncing} className="rounded-xl">
