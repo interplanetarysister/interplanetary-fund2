@@ -83,7 +83,21 @@
           "type": "string"
         },
         "ideal_donors": {
-          "type": "string"
+          "type": "string",
+          "description": "Optional creator hypothesis about likely supporters. AI audience discovery must not treat this as a fixed targeting constraint."
+        },
+        "donor_discovery_mode": {
+          "type": "string",
+          "enum": [
+            "ai_research",
+            "creator_guided"
+          ],
+          "default": "ai_research",
+          "description": "Controls whether agents independently discover plausible supporter audiences from campaign facts or primarily use creator guidance."
+        },
+        "donor_discovery_notes": {
+          "type": "string",
+          "description": "Optional context and boundaries for AI supporter research and audience discovery."
         },
         "tone": {
           "type": "string"
