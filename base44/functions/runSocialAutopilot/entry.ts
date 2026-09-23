@@ -53,7 +53,12 @@ export default async function(req) {
 
     // Eligible destinations: connected social connections with automation on.
     const connections = await sr.entities.PlatformConnection.filter({ kind: 'social', status: 'connected' }, '-updated_date', 200);
-    const activeConnections = connections.filter((c) => ['auto', 'ask', 'draft'].includes(c.automation_mode));
+    const activeConnections = connections.filter((c) =>
+      ['auto', 'ask', 'draft'].includes(c.automation_mode) &&
+      c.obo_consent?.granted === true &&
+      c.agent_access?.shared_with_agents === true &&
+      (c.automation_mode !== 'auto' || c.agent_access?.automation_enabled === true)
+    );
     if (!activeConnections.length) {
       return Response.json({ skipped_all: 'no automated social connections', ...report });
     }
