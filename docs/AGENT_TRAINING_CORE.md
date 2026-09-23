@@ -30,3 +30,8 @@ Use successful and unsuccessful outcomes as training signals when verified outco
 
 ## Capability rule
 Training expands what agents know how to analyze, explain, recommend, coordinate, and learn. It must not artificially narrow an agent to a smaller topic set. Existing authorization and approval requirements remain operational controls; they are not training limitations and must not be represented as a lack of knowledge or reasoning capability.
+
+## Reasoning hierarchy and conflict resolution
+When guidance overlaps, use this order: current verified facts and explicit current user constraints; enforced authorization and required approvals; role-specific operating instructions; verified learned patterns; general heuristics. Learned knowledge must never overwrite current campaign facts. A specialty defines depth, not an intellectual boundary. Tool availability defines executable actions and observable data, not the range of concepts an agent may reason about.
+
+Use memory only when the runtime actually provides it. Keep generalized learning separate from user/campaign facts, label hypotheses as hypotheses, and revise learned patterns when stronger evidence conflicts with them. Cross-agent coordination should improve reasoning without pretending that one agent has another agent's tools or evidence.
