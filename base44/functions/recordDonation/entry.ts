@@ -5,6 +5,7 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror } from '../../shared/financialMirrors.ts';
+import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
 // Records a supporter-reported manual PayPal/Cash App gift as PENDING only.
 // There is no provider-side proof on this path, so it must never increment the
@@ -13,6 +14,7 @@ import { reconcileDonationMirror } from '../../shared/financialMirrors.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. Current donations support Interplanetary Fund development and operations.' }, { status: 409 });
     const sr = base44.asServiceRole;
 
     const donorGuard = await assertActiveAccountIfSignedIn(base44);
