@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader2, ShieldAlert } from "lucide-react";
 import OpsAgentCard from "@/components/ops/OpsAgentCard";
 import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
@@ -21,9 +21,18 @@ export default function OpsCenter() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   const load = useCallback(async () => {
     try {
+      const me = await base44.auth.me();
+      setUser(me || null);
+      setAuthReady(true);
+      if (me?.role !== "admin") {
+        setLoading(false);
+        return;
+      }
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
         base44.entities.MonitoredCampaign.list("-raised_amount", 50),
@@ -35,7 +44,8 @@ export default function OpsCenter() {
       setTreasury(t[0] || null);
       setReports(r);
     } catch (e) {
-      setError(e.message || "We couldn't load Ops Center data.");
+      setAuthReady(true);
+      setError("We couldn't load Ops Center data.");
     } finally {
       setLoading(false);
     }
@@ -53,6 +63,20 @@ export default function OpsCenter() {
     }
     setSyncing(false);
   };
+
+  if (!authReady) {
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>;
+  }
+
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="max-w-md mx-auto text-center py-24 px-6">
+        <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" />
+        <h1 className="font-display text-2xl text-stone-900 mt-4">Administrators only</h1>
+        <p className="text-stone-500 mt-2">Ops Center and platform financial operations are restricted to platform administrators.</p>
+      </div>
+    );
+  }
 
   const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
   const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
