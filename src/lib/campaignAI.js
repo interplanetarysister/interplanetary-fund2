@@ -53,7 +53,9 @@ export function buildCampaignContext(campaign, aiProfile = {}) {
   const p = aiProfile || {};
   if (p.primary_goal) lines.push(`Primary fundraising goal: ${p.primary_goal}`);
   if (p.who_helping) lines.push(`Who this helps: ${p.who_helping}`);
-  if (p.ideal_donors) lines.push(`Ideal donors: ${p.ideal_donors}`);
+  if (p.ideal_donors) lines.push(`Creator-suggested donor possibilities (hypothesis, not a restriction): ${p.ideal_donors}`);
+  if (p.donor_discovery_mode === "ai_research") lines.push("Audience discovery: AI should independently identify and test plausible supporter audiences from campaign facts; creator suggestions are optional hypotheses.");
+  if (p.donor_discovery_notes) lines.push(`Audience discovery context/boundaries: ${p.donor_discovery_notes}`);
   if (p.tone) lines.push(`Preferred tone: ${p.tone}`);
   if (p.priority) lines.push(`Priority approach: ${PRIORITY_LABELS[p.priority] || p.priority}`);
   if (p.always_emphasize) lines.push(`Always emphasize: ${p.always_emphasize}`);
