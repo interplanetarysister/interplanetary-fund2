@@ -72,6 +72,7 @@ export default async function(req) {
         // Unknown remains unknown until the connector/provider reports it.
         granted_capabilities: sharedAgentConsent ? confirmed : [],
         provider_capabilities: confirmed,
+        capability_status: confirmed.length ? 'confirmed' : 'unknown',
       },
       agent_access: {
         shared_with_agents: sharedAgentConsent,
