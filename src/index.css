@@ -167,6 +167,44 @@
     transition: background-color 9999s ease-out 0s;
   }
 
+  /* Dialogs are rendered through a portal, so they do not inherit page-level
+     color context. Lock editable text to the dialog surface tokens in every
+     interaction state; this prevents Android/WebKit composition, selection,
+     autofill, or focus from turning typed text into an invisible color. */
+  [role="dialog"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  [role="dialog"] textarea,
+  [role="dialog"] select {
+    color: hsl(var(--foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    caret-color: #22d3ee !important;
+    opacity: 1;
+  }
+
+  [role="dialog"] input:focus,
+  [role="dialog"] input:active,
+  [role="dialog"] textarea:focus,
+  [role="dialog"] textarea:active,
+  [role="dialog"] select:focus {
+    color: hsl(var(--foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  }
+
+  [role="dialog"] input::selection,
+  [role="dialog"] textarea::selection {
+    background: rgb(34 211 238 / .28);
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
+  }
+
+  [role="dialog"] input:-webkit-autofill,
+  [role="dialog"] input:-webkit-autofill:hover,
+  [role="dialog"] input:-webkit-autofill:focus,
+  [role="dialog"] textarea:-webkit-autofill,
+  [role="dialog"] textarea:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+    caret-color: #22d3ee !important;
+  }
+
   /* Android WebView readiness: kill default rubber-band / scroll-chaining on
      the page and main scroll areas. PullToRefresh sets its own overscroll
      inline on its container, so it keeps working. */
