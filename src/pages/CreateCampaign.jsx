@@ -80,8 +80,7 @@ export default function CreateCampaign() {
     if (status === "active") {
       const missing = [];
       if (!form.title?.trim()) missing.push("title");
-      if (!form.summary?.trim()) missing.push("summary");
-      if (!form.story?.trim()) missing.push("story");
+      if (!form.story?.trim() && !form.summary?.trim()) missing.push("campaign story");
       if (!form.cover_image_url) missing.push("cover image");
       // End date is optional during creation; campaigns can launch without one.
       if (!(parseFloat(form.goal_amount) > 0)) missing.push("goal amount");
@@ -94,6 +93,9 @@ export default function CreateCampaign() {
     try {
       const campaign = await base44.entities.Campaign.create({
         ...form,
+        // Summary is optional. If the creator leaves it blank, derive the public
+        // short summary from the authoritative story instead of blocking launch.
+        summary: form.summary?.trim() || form.story?.trim().replace(/\s+/g, " ").slice(0, 220) || "",
         goal_amount: parseFloat(form.goal_amount),
         end_date: form.end_date || undefined,
         location: form.location || undefined,
