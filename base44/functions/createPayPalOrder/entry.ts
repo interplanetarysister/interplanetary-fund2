@@ -4,6 +4,7 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
+import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
 // Creates a PayPal v2 order for a Google Pay donation. All financially
 // meaningful values are encoded server-side into PayPal custom_id so capture
@@ -12,6 +13,7 @@ import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. Current donations support Interplanetary Fund development and operations.' }, { status: 409 });
     const sr = base44.asServiceRole;
 
     const donorGuard = await assertActiveAccountIfSignedIn(base44);
