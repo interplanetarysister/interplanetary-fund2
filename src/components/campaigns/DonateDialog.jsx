@@ -9,6 +9,9 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
+import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
+import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
+import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
 import { Heart, Loader2, Lock, CheckCircle2, Sparkles, CreditCard } from "lucide-react";
 import { computeBreakdown, MIN_DONATION } from "../../../base44/shared/fees.js";
 
@@ -91,8 +94,14 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setConfirmed(false); newIntent(); } }}>
       {!hideTrigger && <DialogTrigger asChild><Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"><Heart className="w-4 h-4 mr-2" /> Donate</Button></DialogTrigger>}
       <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="font-display text-xl">Support this campaign</DialogTitle></DialogHeader>
-        {confirmed ? (
+        <DialogHeader><DialogTitle className="font-display text-xl">{PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Support this campaign"}</DialogTitle></DialogHeader>
+        {PRELAUNCH_MODE ? (
+          <div className="space-y-4">
+            <PrelaunchNotice payment />
+            <p className="text-sm text-stone-600">Campaign pages remain available as previews, but public campaign fundraising is not open yet. Any payment accepted now supports Interplanetary Fund itself.</p>
+            <PayPalDonateButton label="Donate to Interplanetary Fund" />
+          </div>
+        ) : confirmed ? (
           <div className="text-center py-6"><CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" /><p className="font-display text-lg text-stone-900 mb-1">Thank you.</p><p className="text-sm text-stone-500">Your gift has been added to this campaign.</p></div>
         ) : (
           <div className="space-y-4">
