@@ -96,13 +96,14 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
       <div className="mt-3 flex gap-2 items-end">
         <Textarea
           value={input}
+          disabled={starting || !convRef.current}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask ${agentLabel}…`}
           rows={1}
           className="flex-1 resize-none rounded-xl"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
-        <Button onClick={send} disabled={sending || !input.trim()} className="rounded-xl"><Send className="w-4 h-4" /></Button>
+        <Button onClick={send} disabled={sending || starting || !input.trim() || !convRef.current} className="rounded-xl"><Send className="w-4 h-4" /></Button>
       </div>
     </div>
   );
