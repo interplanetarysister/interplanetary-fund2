@@ -1,11 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
+const COMMON_IF_CAPABILITIES = [
+  'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
+  'create_post', 'edit_post', 'delete_own_post', 'upload_media',
+  'read_interactions', 'comment', 'reply_comment', 'read_messages', 'reply_message',
+  'discover', 'follow', 'join', 'read_analytics',
+  'read_donations', 'read_payments', 'read_transactions', 'read_balance',
+  'subscribe_events', 'reconcile_external_funds', 'settlement_status', 'transfer_or_payout',
+];
+
 const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities: string[] }> = {
-  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social', requestedCapabilities: ['read_account','read_interactions','create_post','edit_post','comment','reply_message','follow','join'] },
-  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social', requestedCapabilities: ['read_account','read_interactions','create_post','edit_post','comment','reply_message','follow','join'] },
-  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social', requestedCapabilities: ['read_account','read_interactions','create_post','edit_post','comment','reply_message','follow'] },
-  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social', requestedCapabilities: ['read_account','read_interactions','create_post','edit_post','comment','reply_message','join'] },
-  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social', requestedCapabilities: ['read_account','read_interactions','create_post','edit_post','comment','reply_message','follow'] },
+  // Request the complete foreseeable IF capability envelope once. These are
+  // desired capabilities only; provider-reported scopes remain the sole source
+  // for what is actually granted and usable.
+  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
 };
 
 function providerCapabilities(oauth: any): string[] {
@@ -53,8 +65,8 @@ export default async function(req) {
       automation_mode: existing?.automation_mode || 'manual',
       obo_consent: {
         granted: sharedAgentConsent,
-        granted_at: now,
-        permission_version: '2026-09-shared-agent-v1',
+        granted_at: sharedAgentConsent ? now : null,
+        permission_version: '2026-09-comprehensive-platform-v1',
         requested_capabilities: cfg.requestedCapabilities,
         // Never copy desired capabilities into granted/provider capabilities.
         // Unknown remains unknown until the connector/provider reports it.
