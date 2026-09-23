@@ -8,6 +8,7 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
+import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
 
 // The Universal Inbox — one communication center aggregating connected-platform
 // interactions (InboxItems, e.g. live Ko-fi gifts), Interplanetary Fund
@@ -20,11 +21,13 @@ export default function Inbox() {
   const [platform, setPlatform] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     (async () => {
      try {
       const me = await base44.auth.me();
+      setIsAdmin(me.role === "admin");
       const [inboxItems, notifications, myCampaigns] = await Promise.all([
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
         base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
@@ -88,6 +91,11 @@ export default function Inbox() {
         Universal Inbox
       </h1>
       <p className="text-stone-500 mb-6">Every donation, comment, and alert from every connected platform — one communication center.</p>
+      {isAdmin && <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
+        <h2 className="font-display text-lg text-stone-900 mb-1">Admin action inbox</h2>
+        <p className="text-sm text-stone-500 mb-4">Requests from agents and the platform that need a decision, account sign-in, more information, or investigation.</p>
+        <AdminApprovalQueue />
+      </div>}
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Tabs value={tab} onValueChange={setTab}>
