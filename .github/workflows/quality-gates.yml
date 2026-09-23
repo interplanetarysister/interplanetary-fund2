@@ -49,6 +49,9 @@ jobs:
       - name: Verify shared text contrast contract
         run: node scripts/verify-text-contrast-contract.mjs
 
+      - name: Test shared text contrast contract
+        run: node scripts/test-text-contrast-contract.mjs
+
       - name: Lint
         run: npm run lint
 
