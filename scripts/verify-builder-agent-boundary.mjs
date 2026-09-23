@@ -1,21 +1,24 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+const exists = (p) => fs.existsSync(new URL(`../${p}`, import.meta.url));
 const read = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const platform = read("src/pages/Platform.jsx");
-const builder = JSON.parse(read("base44/agents/builder_agent.jsonc"));
-const panel = read("src/components/platform/BuilderAgentPanel.jsx");
 const chat = read("src/components/agents/AgentChat.jsx");
 const bridge = read("base44/functions/recordAgentInteraction/entry.ts");
-assert.match(platform, /user\.role !== ["']admin["']/,
-  "Platform console must remain admin-only");
-assert.match(platform, /BuilderAgentPanel/);
-assert.match(platform, /value=["']builder["']/);
-assert.equal(builder.allow_anonymous_access, false);
-assert.match(builder.instructions, /TRAINING EXPANSION:/);
-assert.match(builder.instructions, /operational permissions remain enforced separately/i);
-assert.match(panel, /administrator-only Platform console/i);
+const identities = read("src/lib/agentIdentity.js");
+const runbook = read("docs/deferred-admin-builder-agent.md");
+
+assert.equal(exists("base44/agents/builder_agent.jsonc"), false,
+  "Builder Agent configuration must stay absent until Base44 enforces an admin-only conversation boundary");
+assert.equal(exists("src/components/platform/BuilderAgentPanel.jsx"), false,
+  "Platform must not advertise a Builder Agent that authenticated non-admins can invoke directly");
+assert.doesNotMatch(platform, /builder_agent|BuilderAgentPanel|value=["']builder["']/);
+assert.doesNotMatch(identities, /builder_agent|Admin Builder/);
 assert.doesNotMatch(chat, /requiresAdmin|ADMIN_REQUIRED/,
   "generic AgentChat must not pretend a client-side prop is a server authorization boundary");
 assert.match(bridge, /requestedAgent === 'builder_agent' && user\.role !== 'admin'/,
-  "builder interaction bridge must reject non-admin callers");
-console.log("Builder Agent layered authorization and training boundary passed");
+  "the existing logging bridge should retain defense in depth for stale hosted callers");
+assert.match(runbook, /server-enforced admin role\s+boundary/);
+assert.match(runbook, /cannot be bypassed/);
+assert.match(runbook, /credentials, tokens, or payment secrets/);
+console.log("Builder Agent authorization boundary passed");
