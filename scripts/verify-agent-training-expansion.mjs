@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 const dir = new URL("../base44/agents/", import.meta.url);
 const files = fs.readdirSync(dir).filter((name) => name.endsWith(".jsonc"));
-assert.ok(files.length >= 7, "expected the in-app specialist agent team");
+assert.ok(files.length >= 8, "expected the in-app specialist agent team");
 for (const file of files) {
   const config = JSON.parse(fs.readFileSync(new URL(file, dir), "utf8"));
   assert.match(config.instructions || "", /TRAINING EXPANSION:/, `${file} must include expanded training`);

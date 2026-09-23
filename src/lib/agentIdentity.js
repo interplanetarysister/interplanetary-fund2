@@ -1,4 +1,6 @@
 export const CANONICAL_AGENT_IDS = {
+  'Admin Builder': 'builder_agent',
+  builder_agent: 'builder_agent',
   'Chief of Staff': 'solene',
   chief_of_staff: 'solene',
   'Strategy Agent': 'post_production',
