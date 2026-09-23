@@ -66,7 +66,8 @@ export default async function(req) {
       },
       status: 'connected',
       verification_status: 'verified',
-      external_data_source: 'provider_verified',
+      // OAuth verifies the account connection, not crowdfunding totals/provenance.
+      external_data_source: existing?.external_data_source || 'owner_reported',
       last_synced: now,
       last_error: '',
       history: [...(existing?.history || []), {
