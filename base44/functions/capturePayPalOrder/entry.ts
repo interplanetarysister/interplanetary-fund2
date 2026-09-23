@@ -7,6 +7,7 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
+import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
 // Captures a PayPal/Google Pay order and applies the resulting donation through
 // Convex's transactional financial boundary. Provider capture idempotency + the
@@ -15,6 +16,7 @@ import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. This campaign payment was not captured.' }, { status: 409 });
     const sr = base44.asServiceRole;
 
     const { order_id, campaign_id, donor_name, message, is_recurring } = await req.json();
