@@ -13,7 +13,7 @@ export default function ShareCampaignKit({ campaign }) {
 
   const embedHtml = `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);">&#128640; ${PRELAUNCH_MODE ? "Campaign Preview" : "Donate &mdash; Interplanetary Fund"}</a>`;
 
-  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="440" style="border:0;border-radius:16px;overflow:hidden" loading="lazy" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"><a href="${window.location.origin}/campaign/${campaign.id}" target="_blank" rel="noopener">Support ${campaign.title || 'this campaign'}</a></iframe>`;
+  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="440" style="border:0;border-radius:16px;overflow:hidden" loading="lazy" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"><a href="${window.location.origin}/campaign/${campaign.id}" target="_blank" rel="noopener">${PRELAUNCH_MODE ? `Preview ${campaign.title || "this campaign"} — prelaunch donations support Interplanetary Fund, not this campaign` : `Support ${campaign.title || "this campaign"}`}</a></iframe>`;
 
   const copy = async (what, text) => {
     await navigator.clipboard.writeText(text);
@@ -32,7 +32,7 @@ export default function ShareCampaignKit({ campaign }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
       <h3 className="flex items-center gap-2 font-display text-lg text-stone-900 mb-1">
-        <Share2 className="w-4 h-4 text-primary" /> Universal Donation Button
+        <Share2 className="w-4 h-4 text-primary" /> {PRELAUNCH_MODE ? "Universal Campaign Preview" : "Universal Donation Button"}
       </h3>
       <p className="text-xs text-stone-500 mb-4">
         {PRELAUNCH_MODE ? "Campaign sharing remains available during prelaunch. Embedded links open the preview; any current donations support Interplanetary Fund itself, not the campaign." : "One permanent campaign URL. Embed the button anywhere — every click opens this donation page."}
