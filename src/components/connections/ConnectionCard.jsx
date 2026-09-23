@@ -41,7 +41,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
           <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
             <span className="shrink-0" title={failed ? "Needs attention" : verified ? "On and working" : "On"}>
               {verified ? (
-                <Globe2 className="w-4 h-4 text-emerald-500" />
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" aria-label="Connected" /><Globe2 className="w-4 h-4 text-emerald-500" /></span>
               ) : (
                 <Rocket className={`w-4 h-4 ${failed ? "text-red-500" : "text-stone-400"}`} />
               )}
