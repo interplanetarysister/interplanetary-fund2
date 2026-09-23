@@ -11,6 +11,7 @@ import {
   AUDIENCES,
   buildCampaignContext,
   styleLabel,
+  styleGuidance,
   audienceLabel,
 } from "@/lib/campaignAI";
 import { secureInvokeLLM } from "@/lib/secureLLM";
@@ -48,6 +49,7 @@ ${wrapUntrustedData("campaign_context", context)}
 
 Writing requirements:
 - Writing style: ${styleLabel(style)}.
+- Apply this style behavior materially: ${styleGuidance(style)}
 - Audience approach: ${audience === "auto" ? "Use the campaign facts and AI profile to infer the most plausible supporter audience for this story. Treat any creator-suggested ideal donors as hypotheses, not hard targeting constraints." : `${audienceLabel(audience)} — tailor framing and emphasis to them.`}
 - ${seo ? "Optimize for search: include a natural, descriptive opening sentence and relevant keywords from the context; avoid keyword stuffing." : "No SEO optimization needed."}
 - ${accessibility ? "Optimize for accessibility: short paragraphs, plain language, descriptive but simple sentences, readable by screen readers, no jargon." : "Standard formatting."}
@@ -90,18 +92,25 @@ Writing requirements:
         )}
       </div>
 
+      <div className="space-y-2">
+        <Label className="text-xs">How should the story feel?</Label>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {STORY_STYLES.map((s) => (
+            <button key={s.value} type="button" onClick={() => setStyle(s.value)} aria-pressed={style === s.value}
+              className={`text-left rounded-xl border p-3 transition-colors ${style === s.value ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-stone-200 bg-white hover:border-stone-300"}`}>
+              <span className="block text-sm font-medium text-stone-900">{s.label}</span>
+              <span className="block text-xs text-stone-500 mt-0.5">{s.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label className="text-xs">Writing style</Label>
-          <Select value={style} onValueChange={setStyle}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STORY_STYLES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Label className="text-xs">Supporter audience</Label>
+          <p className="text-[11px] text-stone-500">Optional. Let AI infer likely supporters, or choose a broad audience yourself.</p>
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs">Target audience</Label>
+        <div className="space-y-1.5 sm:col-start-2">
           <Select value={audience} onValueChange={setAudience}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
