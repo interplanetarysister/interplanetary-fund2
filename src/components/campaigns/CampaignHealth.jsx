@@ -5,9 +5,9 @@ export default function CampaignHealth({ campaign, updatesCount }) {
   const checks = [
     { label: "Detailed story (200+ characters)", ok: !!campaign.story && campaign.story.length >= 200 },
     { label: "Cover image added", ok: !!campaign.cover_image_url },
-    { label: "Short summary written", ok: !!campaign.summary },
+    { label: "Quick summary ready", ok: !!campaign.summary || !!campaign.story },
     { label: "At least one update posted", ok: updatesCount > 0 },
-    { label: "End date set", ok: !!campaign.end_date },
+    { label: "Campaign goal set", ok: Number(campaign.goal_amount || 0) > 0 },
     { label: "First donation received", ok: (campaign.donor_count || 0) > 0 },
   ];
   const score = Math.round((checks.filter((c) => c.ok).length / checks.length) * 100);
