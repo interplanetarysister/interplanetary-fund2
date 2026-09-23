@@ -14,7 +14,7 @@ export const pageTips = {
     title: "Discover tips",
     items: [
       "Browse active campaigns and filter by category to find a cause you care about.",
-      "Tap a campaign to read its full story and donate — no account needed to give.",
+      "Tap a campaign to read its full story. During prelaunch, campaign fundraising is preview-only; any donation currently accepted supports Interplanetary Fund itself.",
       "Follow a campaign to get its updates in your Follow Feed.",
     ],
   },
