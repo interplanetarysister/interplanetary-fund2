@@ -5,10 +5,12 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
+import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. Current donations support Interplanetary Fund development and operations.' }, { status: 409 });
     const donorGuard = await assertActiveAccountIfSignedIn(base44);
     if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
     const donor = donorGuard.donor;
