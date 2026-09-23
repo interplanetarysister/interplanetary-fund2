@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Heart } from "lucide-react";
+import { PRELAUNCH_MODE, PRELAUNCH_PAYMENT_NOTICE } from "../../base44/shared/prelaunch.js";
 
 // Public, bare-bones embeddable campaign card — designed to live inside an
 // <iframe> on external sites. Only active (non-draft) campaigns are embeddable.
@@ -49,7 +50,7 @@ export default function EmbedCampaign() {
 
   return (
     <div className="w-full max-w-sm mx-auto p-2 font-body bg-transparent">
-      <a href={fullUrl} target="_blank" rel="noopener noreferrer" aria-label={`Donate to ${campaign.title} — opens in a new tab`} className="block rounded-2xl overflow-hidden border border-stone-200 shadow-lg bg-white">
+      <a href={fullUrl} target="_blank" rel="noopener noreferrer" aria-label={PRELAUNCH_MODE ? `Preview ${campaign.title}; prelaunch payments support Interplanetary Fund — opens in a new tab` : `Donate to ${campaign.title} — opens in a new tab`} className="block rounded-2xl overflow-hidden border border-stone-200 shadow-lg bg-white">
         <div className="relative h-40">
           <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={campaign.title} fittingType="fill" className="w-full h-full" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
@@ -66,10 +67,11 @@ export default function EmbedCampaign() {
               <div className="h-full bg-gradient-to-r from-cyan-400 to-blue-600" style={{ width: `${pct}%` }} />
             </div>
           </div>
+          {PRELAUNCH_MODE && <p className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[10px] leading-relaxed text-amber-900">{PRELAUNCH_PAYMENT_NOTICE}</p>}
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-stone-400">{campaign.donor_count || 0} supporters</span>
             <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-cyan-400 to-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-xl">
-              <Heart className="w-3.5 h-3.5" /> Donate
+              <Heart className="w-3.5 h-3.5" /> {PRELAUNCH_MODE ? "Preview" : "Donate"}
             </span>
           </div>
         </div>
