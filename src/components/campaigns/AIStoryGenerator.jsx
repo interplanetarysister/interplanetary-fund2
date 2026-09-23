@@ -22,7 +22,7 @@ import { wrapUntrustedData } from "@/lib/promptSecurity";
 // regeneration, version history, and draft preservation. Never invents facts.
 export default function AIStoryGenerator({ form, aiProfile, versions = [], onApply, onSaveVersion, onRestoreVersion }) {
   const [style, setStyle] = useState("emotional");
-  const [audience, setAudience] = useState("general");
+  const [audience, setAudience] = useState("auto");
   const [seo, setSeo] = useState(true);
   const [accessibility, setAccessibility] = useState(true);
   const [draft, setDraft] = useState("");
@@ -48,7 +48,7 @@ ${wrapUntrustedData("campaign_context", context)}
 
 Writing requirements:
 - Writing style: ${styleLabel(style)}.
-- Target audience: ${audienceLabel(audience)} — tailor framing and emphasis to them.
+- Audience approach: ${audience === "auto" ? "Use the campaign facts and AI profile to infer the most plausible supporter audience for this story. Treat any creator-suggested ideal donors as hypotheses, not hard targeting constraints." : `${audienceLabel(audience)} — tailor framing and emphasis to them.`}
 - ${seo ? "Optimize for search: include a natural, descriptive opening sentence and relevant keywords from the context; avoid keyword stuffing." : "No SEO optimization needed."}
 - ${accessibility ? "Optimize for accessibility: short paragraphs, plain language, descriptive but simple sentences, readable by screen readers, no jargon." : "Standard formatting."}
 - 2–4 paragraphs, plain text, no markdown, no headings, no emoji.
@@ -105,6 +105,7 @@ Writing requirements:
           <Select value={audience} onValueChange={setAudience}>
             <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="auto">Let AI choose from campaign context</SelectItem>
               {AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -155,7 +156,7 @@ Writing requirements:
             <div key={i} className="rounded-xl border border-stone-200 bg-white p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs text-stone-500">
-                  {styleLabel(ver.style)} · {audienceLabel(ver.audience)}
+                  {styleLabel(ver.style)} · {ver.audience === "auto" ? "AI-chosen audience" : audienceLabel(ver.audience)}
                 </p>
                 <button onClick={() => onRestoreVersion?.(ver)} className="text-xs text-primary font-medium hover:text-primary/80">
                   Restore
