@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +21,8 @@ const steps = ["Your Details", "Basics", "Campaign Story", "Launch"];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftId = searchParams.get("draft");
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -33,7 +35,29 @@ export default function CreateCampaign() {
     ai_profile: emptyAiProfile, story_versions: [],
   });
   const [locating, setLocating] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(!!draftId);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  React.useEffect(() => {
+    if (!draftId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await base44.entities.Campaign.filter({ id: draftId });
+        const draft = rows?.[0];
+        if (!draft || draft.status !== "draft") throw new Error("Draft unavailable");
+        if (!cancelled) setForm({
+          title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount || "", end_date: draft.end_date || "",
+          summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "",
+          location: draft.location || "", location_lat: draft.location_lat ?? null, location_lng: draft.location_lng ?? null,
+          ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [],
+        });
+      } catch {
+        if (!cancelled) toast({ title: "Couldn't reopen that draft", description: "It may have been removed or you may not have access.", variant: "destructive" });
+      } finally { if (!cancelled) setLoadingDraft(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [draftId]);
 
   const locate = async () => {
     if (!form.location) return;
@@ -91,7 +115,7 @@ export default function CreateCampaign() {
     }
     setSaving(true);
     try {
-      const campaign = await base44.entities.Campaign.create({
+      const payload = {
         ...form,
         // Summary is optional. If the creator leaves it blank, derive the public
         // short summary from the authoritative story instead of blocking launch.
@@ -102,8 +126,11 @@ export default function CreateCampaign() {
         location_lat: form.location_lat || undefined,
         location_lng: form.location_lng || undefined,
         status,
-      });
-      base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
+      };
+      const campaign = draftId
+        ? await base44.entities.Campaign.update(draftId, payload)
+        : await base44.entities.Campaign.create(payload);
+      if (!draftId) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch {
       toast({ title: "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
@@ -112,6 +139,8 @@ export default function CreateCampaign() {
   };
 
   const canNext = step === 0 ? true : step === 1 ? form.title && parseFloat(form.goal_amount) > 0 : true;
+
+  if (loadingDraft) return <div className="campaign-quest deep-space max-w-3xl mx-auto my-6 min-h-64 rounded-[2rem] flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-cyan-300" /></div>;
 
   return (
     <div className="campaign-quest deep-space max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12 overflow-x-hidden rounded-[2rem] sm:my-6">
