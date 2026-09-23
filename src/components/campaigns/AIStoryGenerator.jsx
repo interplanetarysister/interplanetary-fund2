@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Sparkles, Loader2, Wand2, History, RotateCcw, Check } from "lucide-react";
 import {
   COMPLIANCE_RULES,
@@ -24,8 +23,8 @@ import { wrapUntrustedData } from "@/lib/promptSecurity";
 export default function AIStoryGenerator({ form, aiProfile, versions = [], onApply, onSaveVersion, onRestoreVersion }) {
   const [style, setStyle] = useState("emotional");
   const [audience, setAudience] = useState("auto");
-  const [seo, setSeo] = useState(true);
-  const [accessibility, setAccessibility] = useState(true);
+  const [seo] = useState(true);
+  const [accessibility] = useState(true);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,75 +78,52 @@ Writing requirements:
   };
 
   return (
-    <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:p-5 space-y-4">
+    <div className="rounded-[1.5rem] border border-cyan-300/25 bg-gradient-to-br from-cyan-400/10 to-violet-500/10 p-4 sm:p-5 space-y-4 shadow-[0_0_30px_rgba(34,211,238,.08)]">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <h3 className="font-display text-lg text-stone-900">AI Story Generator</h3>
+          <span className="quest-icon !w-8 !h-8"><Sparkles className="w-4 h-4" /></span>
+          <div><h3 className="text-lg font-bold text-white">Story forge</h3><p className="text-xs text-slate-300">Pick a vibe. AI handles the writing mechanics.</p></div>
         </div>
         {versions.length > 0 && (
-          <button onClick={() => setShowHistory((s) => !s)} className="flex items-center gap-1 text-xs text-primary font-medium hover:text-primary/80">
+          <button onClick={() => setShowHistory((s) => !s)} className="flex items-center gap-1 text-xs text-cyan-300 font-medium hover:text-cyan-100">
             <History className="w-3.5 h-3.5" /> History ({versions.length})
           </button>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label className="text-xs">How should the story feel?</Label>
+        <Label className="quest-label">Choose your story vibe</Label>
         <div className="grid sm:grid-cols-2 gap-2">
           {STORY_STYLES.map((s) => (
             <button key={s.value} type="button" onClick={() => setStyle(s.value)} aria-pressed={style === s.value}
-              className={`text-left rounded-xl border p-3 transition-colors ${style === s.value ? "border-primary bg-primary/10 ring-1 ring-primary/20" : "border-stone-200 bg-white hover:border-stone-300"}`}>
-              <span className="block text-sm font-medium text-stone-900">{s.label}</span>
-              <span className="block text-xs text-stone-500 mt-0.5">{s.description}</span>
+              className={`text-left rounded-2xl border p-3 transition-all ${style === s.value ? "border-cyan-300 bg-cyan-400/20 ring-1 ring-cyan-300/30 shadow-[0_0_20px_rgba(34,211,238,.12)]" : "border-white/10 bg-slate-950/45 hover:border-violet-300/40 hover:bg-violet-500/10"}`}>
+              <span className="block text-sm font-semibold text-cyan-50">{s.label}</span>
+              <span className="block text-xs text-slate-300 mt-0.5">{s.description}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3">
-        <div className="space-y-1.5">
-          <Label className="text-xs">Supporter audience</Label>
-          <p className="text-[11px] text-stone-500">Optional. Let AI infer likely supporters, or choose a broad audience yourself.</p>
-        </div>
-        <div className="space-y-1.5 sm:col-start-2">
-          <Select value={audience} onValueChange={setAudience}>
-            <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="auto">Let AI choose from campaign context</SelectItem>
-              {AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-4">
-        <label className="flex items-center gap-2 text-sm text-stone-700">
-          <Switch checked={seo} onCheckedChange={setSeo} /> SEO optimization
-        </label>
-        <label className="flex items-center gap-2 text-sm text-stone-700">
-          <Switch checked={accessibility} onCheckedChange={setAccessibility} /> Accessibility optimization
-        </label>
-      </div>
+      <details className="rounded-2xl border border-violet-400/20 bg-slate-950/35 overflow-hidden"><summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-violet-100">Want to steer the audience? <span className="text-slate-400 font-normal">Optional</span></summary><div className="p-4 pt-1"><Select value={audience} onValueChange={setAudience}><SelectTrigger className="quest-input"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Let AI find the crowd</SelectItem>{AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent></Select></div></details>
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => generate(false)} disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
+        <Button onClick={() => generate(false)} disabled={loading} className="rounded-2xl bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90 shadow-[0_0_24px_rgba(34,211,238,.2)]">
           {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
           {form.story ? "Generate new" : "Generate story"}
         </Button>
         {form.story && (
-          <Button variant="outline" onClick={() => generate(true)} disabled={loading} className="rounded-xl">
+          <Button variant="outline" onClick={() => generate(true)} disabled={loading} className="quest-button">
             <RotateCcw className="w-4 h-4 mr-2" /> Refine current
           </Button>
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-rose-300">{error}</p>
 
       {draft && (
         <div className="space-y-2">
-          <Label className="text-xs">AI draft — review, then apply to your story</Label>
-          <Textarea rows={8} value={draft} onChange={(e) => setDraft(e.target.value)} className="bg-white" />
+          <Label className="quest-label">AI draft — remix anything you want</Label>
+          <Textarea rows={8} value={draft} onChange={(e) => setDraft(e.target.value)} className="quest-input min-h-52" />
           <div className="flex gap-2">
             <Button onClick={apply} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">
               <Check className="w-4 h-4 mr-2" /> Apply to story
@@ -162,21 +138,21 @@ Writing requirements:
       {showHistory && versions.length > 0 && (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {versions.map((ver, i) => (
-            <div key={i} className="rounded-xl border border-stone-200 bg-white p-3">
+            <div key={i} className="rounded-xl border border-white/10 bg-slate-950/55 p-3">
               <div className="flex items-center justify-between mb-1">
-                <p className="text-xs text-stone-500">
+                <p className="text-xs text-slate-400">
                   {styleLabel(ver.style)} · {ver.audience === "auto" ? "AI-chosen audience" : audienceLabel(ver.audience)}
                 </p>
-                <button onClick={() => onRestoreVersion?.(ver)} className="text-xs text-primary font-medium hover:text-primary/80">
+                <button onClick={() => onRestoreVersion?.(ver)} className="text-xs text-cyan-300 font-medium hover:text-cyan-100">
                   Restore
                 </button>
               </div>
-              <p className="text-xs text-stone-600 line-clamp-3 whitespace-pre-wrap">{ver.text}</p>
+              <p className="text-xs text-slate-300 line-clamp-3 whitespace-pre-wrap">{ver.text}</p>
             </div>
           ))}
         </div>
       )}
-      <p className="text-[11px] text-stone-400">
+      <p className="text-[11px] text-slate-400">
         The AI uses your full campaign profile and never invents facts. You can edit anything before publishing.
       </p>
     </div>
