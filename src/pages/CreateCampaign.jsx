@@ -17,7 +17,7 @@ import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 
-const steps = ["AI Setup", "Basics", "Story", "Launch"];
+const steps = ["Your Details", "Basics", "Campaign Story", "Launch"];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -126,7 +126,7 @@ export default function CreateCampaign() {
       </div>
 
       <h1 className="font-display text-3xl text-stone-900 mb-6 break-words">
-        {step === 0 && "Set up your AI"}{step === 1 && "Let's set the basics"}{step === 2 && "Tell your story"}{step === 3 && "Review & launch"}
+        {step === 0 && "Tell us what matters"}{step === 1 && "Set the campaign basics"}{step === 2 && "Choose how your story is told"}{step === 3 && "Review & launch"}
       </h1>
 
       <div className="bg-white rounded-2xl border border-stone-200/70 p-4 sm:p-6 shadow-sm space-y-5 min-w-0">
@@ -143,9 +143,9 @@ export default function CreateCampaign() {
         </>)}
 
         {step === 2 && (<>
-          <div className="space-y-1.5"><Label>Short summary</Label><Input placeholder="One sentence that captures your cause" value={form.summary} onChange={(e) => set("summary", e.target.value)} /></div>
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 space-y-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Your Details</p><Label className="text-base">One-sentence campaign summary</Label></div><Input placeholder="In one sentence, what is this campaign trying to accomplish?" value={form.summary} onChange={(e) => set("summary", e.target.value)} /><p className="text-xs text-stone-500">This is a factual campaign detail. AI uses it as source material but does not replace it.</p></div>
           <AIStoryGenerator form={form} aiProfile={form.ai_profile} versions={form.story_versions} onApply={(text) => set("story", text)} onSaveVersion={(ver) => setForm((f) => ({ ...f, story_versions: [...(f.story_versions || []), ver] }))} onRestoreVersion={(ver) => set("story", ver.text)} />
-          <div className="space-y-1.5"><Label>Your story</Label><Textarea rows={8} className="min-h-40 resize-y whitespace-pre-wrap break-words" placeholder="Share the background, why help is needed, and how funds will be used…" value={form.story} onChange={(e) => set("story", e.target.value)} /><p className="text-xs text-stone-400">Detailed, authentic stories build donor trust.</p></div>
+          <div className="rounded-2xl border border-primary/20 bg-white p-4 sm:p-5 space-y-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">Campaign Story</p><Label className="text-base">Your final story</Label></div><Textarea rows={10} className="min-h-56 resize-y whitespace-pre-wrap break-words" placeholder="Write here yourself, or use the AI Story Generator above and then edit the result." value={form.story} onChange={(e) => set("story", e.target.value)} /><p className="text-xs text-stone-500">This is the single story used for preview and publishing. You remain in control of every edit.</p></div>
           <div className="space-y-2">
             <Label>Cover image</Label>
             <Image src={form.cover_image_url || FALLBACK_IMAGE} alt={form.cover_image_url ? "Campaign cover preview" : "Default campaign cover"} className="w-full h-44 rounded-xl object-cover" />
