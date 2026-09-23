@@ -13,12 +13,16 @@ export const COMPLIANCE_RULES = `Compliance and safety requirements (non-negotia
 - Do not change any detail the creator marked as "never change".`;
 
 export const STORY_STYLES = [
-  { value: "emotional", label: "Emotional storytelling" },
-  { value: "factual", label: "Factual presentation" },
-  { value: "urgent", label: "Urgency" },
-  { value: "professional", label: "Professional" },
-  { value: "community", label: "Community involvement" },
+  { value: "emotional", label: "Emotional storytelling", description: "Human-centered and empathetic", guidance: "Open with the human stakes, use warm concrete language, connect the need to its real-life impact, and end with a hopeful specific invitation to help. Do not exaggerate emotion or invent hardship." },
+  { value: "factual", label: "Factual presentation", description: "Clear, specific, and transparent", guidance: "Lead with the need and purpose, organize verified facts logically, explain how funds will be used, minimize emotional adjectives, and end with a direct evidence-grounded call to action." },
+  { value: "urgent", label: "Urgency", description: "Time-aware without pressure", guidance: "Lead with any real deadline or time-sensitive need present in the facts, use concise active sentences, explain what timely support changes, and end with an immediate but non-coercive action. Never manufacture urgency." },
+  { value: "professional", label: "Professional", description: "Credible and organized", guidance: "Use composed language, a clear problem-plan-impact structure, transparent funding purpose, restrained emotion, and a confident professional invitation suitable for institutions or formal supporters." },
+  { value: "community", label: "Community involvement", description: "Collective and participatory", guidance: "Frame the campaign around shared impact and participation, show how individuals and groups can contribute, use inclusive language without assuming identity or affiliation, and end with donation, sharing, or connection options." },
 ];
+
+export function styleGuidance(value) {
+  return STORY_STYLES.find((s) => s.value === value)?.guidance || STORY_STYLES[0].guidance;
+}
 
 export const AUDIENCES = [
   { value: "general", label: "General public" },
@@ -70,6 +74,10 @@ export function buildCampaignContext(campaign, aiProfile = {}) {
 
 export function styleLabel(value) {
   return STORY_STYLES.find((s) => s.value === value)?.label || value;
+}
+
+export function styleDescription(value) {
+  return STORY_STYLES.find((s) => s.value === value)?.description || "";
 }
 
 export function audienceLabel(value) {
