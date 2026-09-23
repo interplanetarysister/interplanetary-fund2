@@ -26,6 +26,8 @@ export default async function(req) {
             target_type: 'platform_owned_account',
             target_id: platform,
             payload_summary: `Suggested profile description: ${PROFILE}`,
+            category: 'account_access',
+            credential_status: 'requested',
             status: 'pending',
             requested_at: now.toISOString(),
             risk_level: 'medium',
@@ -47,6 +49,7 @@ export default async function(req) {
             title: `Finish connecting ${account.display_name || platform}`,
             description: 'This official account needs a working connection before Interplanetary Fund can keep it active and post weekly updates.',
             requested_by_agent: 'outreach', target_type: 'platform_owned_account', target_id: account.id,
+            category: 'account_access', credential_status: 'requested',
             status: 'pending', requested_at: now.toISOString(), risk_level: 'medium',
           });
           report.approvals_created++;
