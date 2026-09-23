@@ -92,7 +92,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setConfirmed(false); newIntent(); } }}>
-      {!hideTrigger && <DialogTrigger asChild><Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"><Heart className="w-4 h-4 mr-2" /> Donate</Button></DialogTrigger>}
+      {!hideTrigger && <div className="space-y-2"><DialogTrigger asChild><Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"><Heart className="w-4 h-4 mr-2" /> {PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Donate"}</Button></DialogTrigger>{PRELAUNCH_MODE && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center"><p className="text-xs font-semibold text-amber-900">Donate to the platform, not this campaign</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">This prelaunch payment supports Interplanetary Fund development and operations and is not credited to the campaign shown.</p></div>}</div>}
       <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle className="font-display text-xl">{PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Support this campaign"}</DialogTitle></DialogHeader>
         {PRELAUNCH_MODE ? (
