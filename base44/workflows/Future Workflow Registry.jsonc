@@ -1,13 +1,12 @@
 {
   "name": "Future Workflow Registry",
-  "description": "Event-driven scaffold for future feature implementation. When a FeatureDiscovery record is created or updated, the existing feature processor evaluates it. This defines a Base44 workflow path without inventing unsupported feature execution.",
+  "description": "Pre-built future-feature workflow scaffold. Campaign updates enter the existing feature-discovery engine, which can surface newly implemented capabilities without creating a parallel scheduler or unsupported execution path.",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "entity",
-      "entity_name": "FeatureDiscovery",
+      "entity_name": "Campaign",
       "events": [
-        "create",
         "update"
       ]
     }
@@ -21,18 +20,18 @@
     },
     "do": [
       {
-        "process_feature_discovery": {
+        "discover_future_features": {
           "call": "invoke_backend_function",
           "with": {
-            "function_name": "processFeatureDiscovery",
+            "function_name": "discoverFeatures",
             "args": {
-              "feature_discovery_id": "${ .trigger.data.id }"
+              "user_id": "${ .trigger.data.created_by_id }"
             }
           },
           "then": "end",
           "x-base44": {
-            "title": "Process future feature",
-            "description": "Route future feature work through the existing feature-discovery processor"
+            "title": "Refresh feature discovery",
+            "description": "Evaluate the campaign owner for newly available platform features"
           }
         }
       }
