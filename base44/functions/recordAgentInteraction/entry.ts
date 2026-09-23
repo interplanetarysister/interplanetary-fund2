@@ -11,10 +11,14 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
+    const requestedAgent = String(body.canonicalAgentId || body.agentName || '');
+    if (requestedAgent === 'builder_agent' && user.role !== 'admin') {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const payload = {
       path: 'agentBridge:recordInteraction',
       args: {
-        canonicalAgentId: String(body.canonicalAgentId || ''),
+        canonicalAgentId: requestedAgent,
         source: String(body.source || 'base44_agent_chat'),
         action: String(body.action || 'conversation'),
         summary: String(body.summary || '').slice(0, 2000),
