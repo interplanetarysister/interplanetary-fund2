@@ -151,7 +151,7 @@ export default function CampaignDetail() {
         className="lg:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 h-14 px-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:scale-95 transition-transform"
         aria-label={PRELAUNCH_MODE ? "Support Interplanetary Fund during prelaunch" : "Donate"}
       >
-        <Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? "Support IF" : "Donate"}
+        <span className="flex flex-col items-center leading-tight"><span className="flex items-center gap-2"><Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? "Support IF" : "Donate"}</span>{PRELAUNCH_MODE && <span className="text-[10px] font-medium opacity-90">Platform, not campaign</span>}</span>
       </button>
       )}
       <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} />
