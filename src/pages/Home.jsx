@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
+import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 
@@ -35,6 +37,11 @@ export default function Home() {
 
   return (
     <div className="min-h-dvh bg-background">
+      {PRELAUNCH_MODE && (
+        <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-4">
+          <PrelaunchNotice />
+        </div>
+      )}
       {/* Hero */}
       <section className="relative overflow-hidden deep-space">
         <Image src={HERO_IMAGE} alt="A glowing planet arc surrounded by stars and soft nebula light" className="absolute inset-0 w-full h-full opacity-60" fittingType="fill" focalPointX={0.7} focalPointY={0.6} />
