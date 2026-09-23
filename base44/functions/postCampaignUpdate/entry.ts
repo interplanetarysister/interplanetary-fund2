@@ -91,6 +91,9 @@ export default async function(req) {
       const targets = aiConsentGranted
         ? connections.filter((c) =>
             c.automation_mode !== 'manual' &&
+            c.obo_consent?.granted === true &&
+            c.agent_access?.shared_with_agents === true &&
+            (c.automation_mode !== 'auto' || c.agent_access?.automation_enabled === true) &&
             c.created_by_id === campaign.created_by_id &&
             (!c.campaign_id || c.campaign_id === campaign.id)
           )
@@ -140,7 +143,7 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
-          if (conn.automation_mode === 'auto' && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
+          if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({
@@ -151,7 +154,6 @@ Return JSON only.`;
               await base44.entities.PlatformConnection.update(conn.id, {
                 status: 'connected',
                 verification_status: 'verified',
-                external_data_source: 'provider_verified',
                 last_synced: new Date().toISOString(),
                 last_error: '',
               });

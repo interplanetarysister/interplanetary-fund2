@@ -19,20 +19,44 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
   const verified =
     connection.status === "connected" &&
-    connection.verification_status === "verified" &&
-    connection.external_data_source === "provider_verified";
+    connection.verification_status === "verified";
+  const providerVerifiedFinancialData = verified && connection.external_data_source === "provider_verified";
   const failed = connection.status === "error";
   const currency = connection.external_currency || "UNSPECIFIED";
 
   const disconnect = async () => {
     setBusy(true);
-    await base44.entities.PlatformConnection.delete(connection.id);
-    onRemoved(connection.id);
+    try {
+      // Revoke local authority before removal so any concurrently queued action
+      // that re-checks the connection sees consent disabled.
+      await base44.entities.PlatformConnection.update(connection.id, {
+        status: "disconnected",
+        verification_status: "unverified",
+        obo_consent: {
+          ...(connection.obo_consent || {}),
+          granted: false,
+          granted_capabilities: [],
+          provider_capabilities: [],
+        },
+        agent_access: {
+          ...(connection.agent_access || {}),
+          shared_with_agents: false,
+          automation_enabled: false,
+        },
+        automation_mode: "manual",
+        last_error: "",
+      });
+      await base44.entities.PlatformConnection.delete(connection.id);
+      onRemoved(connection.id);
+    } catch (e) {
+      console.error("Disconnect failed", e);
+      setBusy(false);
+    }
   };
 
   // Data-source label used in the UI to distinguish provenance.
   // Contract requires both "Provider verified" and "owner reported" strings.
-  const provenanceLabel = verified ? "Provider verified" : "owner reported";
+  const provenanceLabel = providerVerifiedFinancialData ? "Provider verified" : "owner reported";
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
@@ -41,7 +65,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
           <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
             <span className="shrink-0" title={failed ? "Needs attention" : verified ? "On and working" : "On"}>
               {verified ? (
-                <Globe2 className="w-4 h-4 text-emerald-500" />
+                <span className="inline-flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" aria-label="Connected" /><Globe2 className="w-4 h-4 text-emerald-500" /></span>
               ) : (
                 <Rocket className={`w-4 h-4 ${failed ? "text-red-500" : "text-stone-400"}`} />
               )}

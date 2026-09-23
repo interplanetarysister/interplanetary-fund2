@@ -66,7 +66,10 @@ export default async function(req) {
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-      if (!canAutoPublish(connection) || !aiConsentGranted) {
+      const connectionAutomationAllowed = connection.obo_consent?.granted === true &&
+        connection.agent_access?.shared_with_agents === true &&
+        connection.agent_access?.automation_enabled === true;
+      if (!canAutoPublish(connection) || !aiConsentGranted || !connectionAutomationAllowed) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
@@ -84,7 +87,6 @@ export default async function(req) {
         await base44.entities.PlatformConnection.update(connection.id, {
           status: 'connected',
           verification_status: 'verified',
-          external_data_source: 'provider_verified',
           last_synced: new Date().toISOString(),
           history: [...(connection.history || []), {
             at: new Date().toISOString(),

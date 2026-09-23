@@ -41,8 +41,8 @@ export default function Connections() {
       const pendingOAuthPlatform = sessionStorage.getItem("ifund_pending_oauth_platform");
       if (pendingOAuthPlatform) {
         try {
-          const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", { platform: pendingOAuthPlatform });
-          if (data?.connected) sessionStorage.removeItem("ifund_pending_oauth_platform");
+          const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", { platform: pendingOAuthPlatform, shared_agent_consent: sessionStorage.getItem("ifund_pending_oauth_shared_agent_consent") === "true" });
+          if (data?.connected) { sessionStorage.removeItem("ifund_pending_oauth_platform"); sessionStorage.removeItem("ifund_pending_oauth_shared_agent_consent"); }
         } catch (oauthError) {
           console.error("OAuth connection finalization failed:", oauthError);
         }
