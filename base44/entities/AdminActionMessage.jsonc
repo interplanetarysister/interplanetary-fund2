@@ -1,0 +1,75 @@
+{
+  "name": "AdminActionMessage",
+  "type": "object",
+  "properties": {
+    "approval_id": {
+      "type": "string"
+    },
+    "sender_type": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "agent",
+        "system"
+      ]
+    },
+    "sender_user_id": {
+      "type": "string"
+    },
+    "sender_agent": {
+      "type": "string"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "message",
+        "request_more_information",
+        "credentials_submitted",
+        "investigation_note",
+        "status_update"
+      ],
+      "default": "message"
+    },
+    "content": {
+      "type": "string"
+    },
+    "credential_username": {
+      "type": "string"
+    },
+    "credential_secret": {
+      "type": "string",
+      "description": "Sensitive credential supplied by an admin for a requested account action. Admin-only; never include in logs, notifications, summaries, or agent-visible prose."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "approval_id",
+    "sender_type",
+    "message_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

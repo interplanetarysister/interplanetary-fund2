@@ -30,8 +30,10 @@
       "type": "string",
       "enum": [
         "pending",
+        "needs_information",
         "approved",
         "denied",
+        "investigating",
         "executed",
         "cancelled"
       ],
@@ -59,6 +61,36 @@
         "high"
       ],
       "default": "medium"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "action",
+        "account_access",
+        "complaint",
+        "security",
+        "financial",
+        "content",
+        "other"
+      ],
+      "default": "action"
+    },
+    "admin_question": {
+      "type": "string"
+    },
+    "investigation_notes": {
+      "type": "string"
+    },
+    "credential_status": {
+      "type": "string",
+      "enum": [
+        "not_needed",
+        "requested",
+        "received",
+        "used",
+        "invalid"
+      ],
+      "default": "not_needed"
     }
   },
   "required": [
