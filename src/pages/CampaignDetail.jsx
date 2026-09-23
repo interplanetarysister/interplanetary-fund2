@@ -19,6 +19,8 @@ import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { Loader2, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
+import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
+import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
@@ -65,9 +67,10 @@ export default function CampaignDetail() {
     <PullToRefresh onRefresh={load} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {justDonated && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
-          Thank you for your donation! It may take a moment to appear on the campaign.
+          {PRELAUNCH_MODE ? "Thank you for supporting Interplanetary Fund during prelaunch. This payment is not credited to the displayed campaign." : "Thank you for your donation! It may take a moment to appear on the campaign."}
         </div>
       )}
+      {PRELAUNCH_MODE && <PrelaunchNotice className="mb-6" />}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
@@ -146,9 +149,9 @@ export default function CampaignDetail() {
       <button
         onClick={() => setDonateOpen(true)}
         className="lg:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 h-14 px-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:scale-95 transition-transform"
-        aria-label="Donate"
+        aria-label={PRELAUNCH_MODE ? "Support Interplanetary Fund during prelaunch" : "Donate"}
       >
-        <Heart className="w-5 h-5" /> Donate
+        <Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? "Support IF" : "Donate"}
       </button>
       )}
       <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} />
