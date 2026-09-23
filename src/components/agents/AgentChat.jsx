@@ -50,16 +50,24 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     setSending(true);
     try {
       await base44.agents.addMessage(convRef.current, { role: "user", content });
-      await recordAgentInteraction({
-        agentName,
-        summary: content,
-        outcome: "conversation",
-      });
+      try {
+        await recordAgentInteraction({
+          agentName,
+          summary: content,
+          outcome: "conversation",
+        });
+      } catch (recordError) {
+        // Interaction logging is best-effort and must never make a successfully
+        // delivered chat message appear to have failed.
+        console.error("Agent interaction logging failed", recordError);
+      }
     } catch (e) {
       console.error("Agent message send failed", e);
+      setInput((current) => current || content);
       setMessages((m) => [...m, { role: "assistant", content: "I couldn't send that message. Please try again." }]);
+    } finally {
+      setSending(false);
     }
-    setSending(false);
   };
 
   return (
