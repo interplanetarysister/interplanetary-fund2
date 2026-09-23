@@ -12,6 +12,7 @@ import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
+import { base44 } from "@/api/base44Client";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -94,6 +95,10 @@ const bottomNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    base44.auth.me().then((u) => setIsAdmin(u?.role === "admin")).catch(() => setIsAdmin(false));
+  }, []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const TAB_ROOTS = ["/", "/dashboard", "/discover", "/mission", "/notifications", "/profile"];
@@ -158,7 +163,7 @@ export default function Layout() {
         <div key={section.label}>
           <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
           <div className="flex flex-col gap-0.5">
-            {section.items.map(({ to, label, icon: Icon }) => (
+            {section.items.filter(({ to }) => isAdmin || !to.startsWith("/admin/")).map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
