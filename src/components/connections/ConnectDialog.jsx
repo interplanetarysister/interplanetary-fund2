@@ -61,6 +61,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         return;
       }
       sessionStorage.setItem("ifund_pending_oauth_platform", platform.id);
+      sessionStorage.setItem("ifund_pending_oauth_shared_agent_consent", permissionAccepted ? "true" : "false");
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
       window.location.href = redirectUrl;
     } catch (e) {
