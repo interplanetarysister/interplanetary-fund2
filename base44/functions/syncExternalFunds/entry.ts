@@ -14,7 +14,7 @@ import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../
 // external money may enter the canonical IF ledger.
 //
 // Guarantees:
-// - Convex transaction identity is the authoritative dedupe boundary.
+// - Base44 FinancialOperation identity is the authoritative dedupe boundary.
 // - retries repair absolute observed totals; no Base44 financial $inc.
 // - currencies are never combined without an explicit conversion.
 // - per-provider failures remain isolated and auditable.
