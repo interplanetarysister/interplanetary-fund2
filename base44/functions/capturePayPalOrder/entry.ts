@@ -10,7 +10,7 @@ import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
 // Captures a PayPal/Google Pay order and applies the resulting donation through
-// Convex's transactional financial boundary. Provider capture idempotency + the
+// Base44's canonical transactional financial boundary. Provider capture idempotency + the
 // canonical operation key guarantees concurrent/retried handlers cannot create
 // multiple financial donations or increment campaign totals more than once.
 export default async function (req) {
