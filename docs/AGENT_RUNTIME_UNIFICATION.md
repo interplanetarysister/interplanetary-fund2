@@ -36,7 +36,7 @@ The chat UI may create a new conversation session when the selected specialist c
 
 All seven user-facing agents have cross-conversation context enabled. Specialists may use relevant context from other agent conversations, but should remain focused on their own role. Chief of Staff has the broadest coordination responsibility and should use available cross-agent context to avoid making the user repeat known instructions or decisions.
 
-Structured delegation/task tracking remains separate from conversational memory. Conversation memory can preserve context, but a consequential delegated action should still have explicit status and verification rather than being inferred from remembered chat text.
+Structured delegation/task tracking remains separate from conversational memory. `AgentDelegation` is the authoritative Base44 record for substantive cross-agent assignments, including source/destination agent, objective, campaign context, real status, result, and verification. Chief of Staff can create/read/update these records. Conversation memory preserves context; delegation records preserve operational state.
 
 ## Safety
 
