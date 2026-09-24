@@ -19,6 +19,14 @@ function withTimeout(promise) {
   ]);
 }
 
+function invokeWithLock(lock, operation) {
+  if (lock.current) return null;
+  lock.current = true;
+  const pending = Promise.resolve().then(operation);
+  pending.then(() => { lock.current = false; }, () => { lock.current = false; });
+  return withTimeout(pending);
+}
+
 function isAdminUser(value) {
   return Boolean(value && typeof value === "object" && value.role === "admin");
 }
@@ -97,12 +105,12 @@ export default function IntegrationsAdmin() {
   }, [entries, selected?.id]);
 
   const runHealthCheck = async () => {
-    if (healthLock.current) return;
-    healthLock.current = true;
+    const request = invokeWithLock(healthLock, () => base44.functions.invoke("validateIntegrationHealth", {}));
+    if (!request) return;
     setChecking(true);
     setHealthError(null);
     try {
-      const response = await withTimeout(base44.functions.invoke("validateIntegrationHealth", {}));
+      const response = await request;
       if (!isHealthResponse(response)) throw new Error("Malformed health response");
       reload();
     } catch (e) {
@@ -110,16 +118,15 @@ export default function IntegrationsAdmin() {
       if (mounted.current) setHealthError(SAFE_HEALTH_ERROR);
     } finally {
       if (mounted.current) setChecking(false);
-      healthLock.current = false;
     }
   };
 
   const verifyGitHubConnection = async () => {
-    if (githubLock.current) return;
-    githubLock.current = true;
+    const request = invokeWithLock(githubLock, () => base44.functions.invoke("syncGitHub", { direction: "both" }));
+    if (!request) return;
     setVerifyingGitHub(true);
     try {
-      const res = await withTimeout(base44.functions.invoke("syncGitHub", { direction: "both" }));
+      const res = await request;
       if (!isGitHubResponse(res)) throw new Error("Malformed GitHub response");
       const data = res?.data || res;
       if (data?.ok) {
@@ -136,7 +143,6 @@ export default function IntegrationsAdmin() {
       toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
     }
     if (mounted.current) setVerifyingGitHub(false);
-    githubLock.current = false;
   };
 
   if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
