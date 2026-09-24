@@ -23,21 +23,41 @@ const REPO = 'interplanetarysister/interplanetary-fund2';
 const BRANCH = 'main';
 const GITHUB_API = 'https://api.github.com';
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function githubRequest(token, method, path, body = null) {
-  const res = await fetch(`${GITHUB_API}${path}`, {
-    method,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'Content-Type': 'application/json',
-      'User-Agent': 'interplanetary-fund-base44-sync/1.0',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`GitHub API ${path} returned ${res.status}: ${json.message || JSON.stringify(json)}`);
-  return json;
+  const retryable = new Set([429, 500, 502, 503, 504]);
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(`${GITHUB_API}${path}`, {
+        method, signal: controller.signal,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+          'User-Agent': 'interplanetary-fund-base44-sync/1.0',
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      }).finally(() => clearTimeout(timeout));
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) return json;
+      const message = json.message || `HTTP ${res.status}`;
+      lastError = new Error(`GitHub temporarily returned ${res.status}: ${message}`);
+      if (!retryable.has(res.status) || attempt === 3) throw lastError;
+      const retryAfter = Number(res.headers.get('retry-after'));
+      await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 600 * (2 ** attempt));
+    } catch (error) {
+      lastError = error;
+      const transient = error?.name === 'AbortError' || /fetch|network|temporar|429|50[0234]/i.test(String(error?.message || ''));
+      if (!transient || attempt === 3) throw error;
+      await sleep(600 * (2 ** attempt));
+    }
+  }
+  throw lastError || new Error('GitHub request failed.');
 }
 
 async function getGitHubToken(base44) {
