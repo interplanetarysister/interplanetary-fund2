@@ -10,6 +10,12 @@ import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 // 3. Flags stale connections (>7 days without a sync) for health monitoring.
 const MAX_RETRIES = 3;
 
+function connectionAutomationAllowed(connection) {
+  return connection?.obo_consent?.granted === true &&
+    connection?.agent_access?.shared_with_agents === true &&
+    connection?.agent_access?.automation_enabled === true;
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -52,7 +58,7 @@ export default async function(req) {
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
       const consentGranted = hasAiPublishingConsent(owner);
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && ownerChainMatches && consentGranted && access.ok) {
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed(connection) && ownerChainMatches && consentGranted && access.ok) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -61,7 +67,6 @@ export default async function(req) {
           await sr.entities.PlatformConnection.update(connection.id, {
             status: 'connected',
             verification_status: 'verified',
-            external_data_source: 'provider_verified',
             last_synced: now.toISOString(),
             last_error: '',
           });
@@ -89,7 +94,9 @@ export default async function(req) {
         // hand back to the owner instead of allowing an automated external side effect.
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
-          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
+          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !connectionAutomationAllowed(connection)
+            ? { error: 'Automatic publishing blocked: this connection is not authorized for shared agent automation.' }
+            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
             ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }
             : connection.automation_mode === 'auto' && canAutoPublish(connection) && !consentGranted
               ? { error: 'Automatic publishing blocked: AI publishing authorization is not active.' }
