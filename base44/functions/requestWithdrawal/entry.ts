@@ -347,7 +347,7 @@ export default async function(req) {
     await sr.entities.Withdrawal.update(withdrawal.id, { canonical_operation_key: operationKey });
 
     // Local mirror reservation gives the UI an exact set of covered donations;
-    // the Convex transaction below is the authoritative double-spend boundary.
+    // the canonical Base44 reservation below is the authoritative double-spend boundary.
     await sr.entities.Donation.updateMany(
       { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ''] } },
       { $set: { withdrawal_id: withdrawal.id } }
