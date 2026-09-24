@@ -14,7 +14,7 @@ import CredentialFields from "./CredentialFields";
 // AI automation permission for that destination.
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
-  const usesProviderOAuth = !isCrowd && ["linkedin", "facebook", "instagram", "discord", "tiktok"].includes(platform.id);
+  const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
@@ -65,8 +65,12 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     setError("");
     try {
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
+      if (!data?.supported) {
+        setError("This platform does not support secure provider sign-in yet.");
+        return;
+      }
       if (!data?.configured || !data?.connector_id) {
-        setError("Secure provider sign-in is not configured for this platform yet.");
+        setError("Secure provider sign-in still needs its platform connector configured by Interplanetary Fund.");
         return;
       }
       // The IF consent and provider grant are one continuous connection event.
