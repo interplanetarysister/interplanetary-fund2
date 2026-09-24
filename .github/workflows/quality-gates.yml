@@ -73,6 +73,9 @@ jobs:
       - name: Agent reasoning coherence
         run: npm run verify:agent-reasoning-coherence
 
+      - name: Payment and financial-integrity contracts
+        run: npm run test:payments
+
       - name: Production build
         run: npm run build
 
