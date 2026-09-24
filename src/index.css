@@ -146,6 +146,36 @@
     max-width: 100%;
   }
 
+  /* Platform-wide responsive invariant: flex/grid children may shrink to the
+     viewport, while readable text wraps by words rather than by characters. */
+  main,
+  main > *,
+  section,
+  article,
+  form,
+  [role="dialog"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  main .flex > *,
+  main .grid > * {
+    min-width: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6,
+  p, li, label, button, a, span {
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  @media (max-width: 767px) {
+    body { font-size: 16px; }
+    main table { font-size: 0.875rem; }
+    main [class*="max-w-"] { max-width: 100%; }
+    input, textarea, select { font-size: 16px; }
+  }
+
   p,
   li,
   blockquote {
