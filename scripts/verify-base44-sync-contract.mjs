@@ -12,8 +12,8 @@ const quality = read('.github/workflows/quality-gates.yml');
 assert.equal(nodeVersion, '20', '.node-version must preserve the Base44 Node 20 compatibility baseline');
 assert.equal(nvmrc, '20', '.nvmrc must preserve the Base44 Node 20 compatibility baseline');
 assert.equal(pkg.engines?.node, '>=20 <23', 'package engine must preserve Node 20 and Node 22 compatibility');
-assert.doesNotMatch(quality, /node-version:\s*20(?:\.x)?\b/, 'production gates must not reintroduce Node 20');
-assert.match(quality, /node-version:\s*22\b/, 'production gates must execute on Node 22');
+assert.match(quality, /node-version:\s*20\b/, 'quality gates must retain the Base44 Node 20 compatibility lane');
+assert.match(quality, /node-version:\s*22\b/, 'quality gates must retain the Node 22 release lane');
 
 assert.match(workflow, /"name":\s*"GitHub Sync"/);
 assert.match(workflow, /"trigger_type":\s*"scheduled"/);
