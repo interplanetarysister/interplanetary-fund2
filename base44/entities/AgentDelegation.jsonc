@@ -1,0 +1,30 @@
+{
+  "name": "AgentDelegation",
+  "type": "object",
+  "properties": {
+    "owner_user_id": { "type": "string", "description": "User who owns this delegated work." },
+    "campaign_id": { "type": "string", "description": "Optional campaign context." },
+    "source_agent": { "type": "string", "description": "Agent that delegated or originated the work." },
+    "destination_agent": { "type": "string", "description": "Agent responsible for the delegated work." },
+    "objective": { "type": "string", "description": "Concise user objective for this delegation." },
+    "context_summary": { "type": "string", "description": "Relevant context only; never secrets or credentials." },
+    "status": {
+      "type": "string",
+      "enum": ["requested","assigned","in_progress","waiting_user","waiting_external","needs_review","completed","failed","cancelled"],
+      "default": "requested"
+    },
+    "result_summary": { "type": "string" },
+    "verification": { "type": "string", "description": "Evidence or authoritative result used to verify completion." },
+    "parent_delegation_id": { "type": "string", "description": "Optional parent delegation for multi-agent work." },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" }
+  },
+  "required": ["owner_user_id","source_agent","destination_agent","objective","status"],
+  "rls": {
+    "read": { "$or": [ { "data.owner_user_id": "{{user.id}}" }, { "user_condition": { "role": "admin" } } ] },
+    "create": { "data.owner_user_id": "{{user.id}}" },
+    "update": { "$or": [ { "data.owner_user_id": "{{user.id}}" }, { "user_condition": { "role": "admin" } } ] },
+    "delete": { "$or": [ { "data.owner_user_id": "{{user.id}}" }, { "user_condition": { "role": "admin" } } ] }
+  }
+}
