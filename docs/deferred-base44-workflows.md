@@ -1,6 +1,6 @@
 # Deferred Base44 Workflows
 
-This document records workflow capabilities that are designed and partially implemented but not yet activated as scheduled Base44 workflows. Each entry explains what the capability does, why it is deferred, and what is required before activation.
+This document records workflow history and remaining safety constraints. The GitHub Sync and External Fund Sync workflow definitions are present in the authoritative Base44 source; this document must not be used to disable them.
 
 ---
 
@@ -21,7 +21,7 @@ This document records workflow capabilities that are designed and partially impl
 
 ### What is deferred
 
-- **Scheduled workflow:** A `GitHub Sync.jsonc` workflow is not activated. Automated sync should not run on a cron schedule until a trusted workflow identity is established (see below).
+- **Scheduled workflow:** `base44/workflows/GitHub Sync.jsonc` is active in source and invokes the guarded synchronization function every 15 minutes. It must fail closed when GitHub authorization or conflict safety is unavailable.
 - **Destructive file-level push:** Writing files directly to GitHub requires careful merge and conflict resolution. This is deferred until the workflow runs under a controlled, auditable identity with explicit commit attribution.
 - **Full file-level pull:** Pulling and applying file changes from GitHub into the Base44 sandbox automatically is deferred for the same reason.
 
@@ -39,7 +39,7 @@ Before activating the scheduled workflow or destructive file operations:
 1. Establish a GitHub App or machine account with `contents: write` and `workflows: write` permissions on the repository.
 2. Store its credentials in the `GITHUB_APP_TOKEN` secret reference.
 3. Update the `github` Platform Access Registry entry with `secret_refs: ['GITHUB_APP_TOKEN']` and set `status: ACTIVE`.
-4. Create `base44/workflows/GitHub Sync.jsonc` with the `syncGitHub` function, direction `both`, on a 15-minute cron.
+4. Keep `base44/workflows/GitHub Sync.jsonc` enabled with direction `both` on its 15-minute schedule.
 5. Run the integration health check to verify the credential is valid.
 6. Monitor the first several sync runs via the Ops Center audit log before enabling auto-activation.
 
@@ -49,7 +49,7 @@ Before activating the scheduled workflow or destructive file operations:
 
 **Capability:** Automated synchronization of external crowdfunding platform totals into Base44 on a recurring schedule.
 
-**Function:** `syncExternalFunds` is already invoked manually and via the "External Fund Sync" workflow. This entry documents the `External Fund Sync.jsonc` workflow file that previously existed and was removed to keep the workflow registry clean while the scheduled trigger is under review.
+**Function:** `syncExternalFunds` is already invoked manually and via the "External Fund Sync" workflow. `base44/workflows/External Fund Sync.jsonc` is present in the authoritative source. Provider adapters must still fail closed when required authorization or rate-limit safety is unavailable.
 
 ### Status
 
