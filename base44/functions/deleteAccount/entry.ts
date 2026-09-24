@@ -100,6 +100,7 @@ export default async function(req) {
         await sr.entities.Donation.deleteMany({ campaign_id: c.id });
         await sr.entities.DistributedPost.deleteMany({ campaign_id: c.id });
         await sr.entities.AgentActivity.deleteMany({ campaign_id: c.id });
+        await sr.entities.AgentDelegation.deleteMany({ owner_user_id: user.id, campaign_id: c.id });
       }
       await sr.entities.Campaign.deleteMany({ created_by_id: user.id });
     });
