@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Node 22 Base44 build
+    name: Node 20 Base44 compatibility build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,7 +28,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
 
       - name: Install locked dependencies
