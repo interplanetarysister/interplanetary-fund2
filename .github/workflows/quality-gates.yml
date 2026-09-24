@@ -46,8 +46,11 @@ jobs:
       - name: Test runtime baseline reconciliation failure cases
         run: npm run test:runtime-baseline-reconciliation
 
-      - name: Verify shared text contrast contract
+      - name: Verify shared text contrast and one-finger scroll contract
         run: node scripts/verify-text-contrast-contract.mjs
+
+      - name: Verify Base44 sync contract
+        run: node scripts/verify-base44-sync-contract.mjs
 
       - name: Lint
         run: npm run lint
