@@ -15,6 +15,7 @@ import CredentialFields from "./CredentialFields";
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
   const usesProviderOAuth = platform.setupKind === "oauth";
+  const canUseUnifiedProviderFlow = usesProviderOAuth;
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
@@ -64,6 +65,10 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     setConnecting(true);
     setError("");
     try {
+      if (!permissionAccepted) {
+        setError("Approve the connection first.");
+        return;
+      }
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
         setError("This platform does not support secure provider sign-in yet.");
