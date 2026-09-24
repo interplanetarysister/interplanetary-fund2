@@ -42,16 +42,16 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
         const details = Object.entries(data.results || {})
           .map(([k, v]) => `${k}: ${v.detail}`)
           .join(" · ");
-        toast({ title: "GitHub sync complete", description: details || "Sync completed successfully." });
+        toast({ title: "GitHub status verified", description: details || "GitHub connection verified." });
       } else {
         const reason =
           data?.reason ||
           Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
           "Sync failed.";
-        toast({ title: "GitHub sync issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "GitHub sync failed", description: e.message, variant: "destructive" });
+      const reason = e?.response?.data?.reason || e?.response?.data?.error || e?.data?.reason || e?.data?.error || e?.message || "GitHub verification failed.";\n      toast({ title: "GitHub verification failed", description: reason, variant: "destructive" });
     }
     setBusy(null);
   };
@@ -83,10 +83,10 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           {entry.reauth_instructions ? <Row label="Reauth steps">{entry.reauth_instructions}</Row> : null}
         </div>
 
-        {/* GitHub-specific two-way sync controls */}
+        {/* GitHub source-connection controls. Actual source application is handled by Base44’s native GitHub sync, not by deployed app code. */}
         {entry.platform === "github" && (
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 mt-1">
-            <p className="text-xs font-medium text-blue-700 mb-2">Two-way sync</p>
+            <p className="text-xs font-medium text-blue-700 mb-2">GitHub source connection</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -100,7 +100,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <GitFork className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Pull from GitHub
+                Check GitHub → Base44
               </Button>
               <Button
                 size="sm"
@@ -114,7 +114,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />
                 )}
-                Push to GitHub
+                Check Base44 → GitHub
               </Button>
               <Button
                 size="sm"
@@ -127,7 +127,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Sync now (both)
+                Verify both directions
               </Button>
             </div>
             <p className="text-xs text-blue-500 mt-2">
