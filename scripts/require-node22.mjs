@@ -13,14 +13,12 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-// Node 22 remains the preferred CI/release toolchain, while Base44 and other
-// managed sandboxes that currently provide Node 20 are fully supported.
-const SUPPORTED = [20, 22];
+// Interplanetary Fund uses one runtime contract everywhere to prevent Base44/GitHub drift.\nconst SUPPORTED = [22];
 
 if (!SUPPORTED.includes(nodeMajor)) {
   console.error(
     `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Supported runtimes: Node ${SUPPORTED.join(' or ')}. ` +
+    `Required runtime: Node ${SUPPORTED[0]}. ` +
     'Select a supported runtime before install, build, typecheck, lint, or verification.',
   );
   process.exit(1);
