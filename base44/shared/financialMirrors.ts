@@ -1,4 +1,4 @@
-// Application-layer financial mirrors. Convex is the financial authority;
+// Application-layer financial mirrors. Base44 FinancialOperation is the financial authority;
 // Base44 rows exist so current UI surfaces keep working. Every financial or
 // external-observation mirror is keyed by canonical_operation_id and converges
 // to exactly one row, allowing replay to repair side effects after a crash.
