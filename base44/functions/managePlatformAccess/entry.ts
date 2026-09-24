@@ -44,7 +44,7 @@ export default async function(req) {
       };
       let saved;
       if (entry) { saved = await sr.entities.PlatformAccessRegistry.update(entry.id, data); }
-      else { saved = await sr.entities.PlatformAccessRegistry.create({ ...data, status: 'ACTIVE' }); }
+      else { saved = await sr.entities.PlatformAccessRegistry.create({ ...data, status: 'DISCONNECTED' }); }
       await audit({ action: 'integration_upserted', detail: `upserted ${platform}`, metadata: { platform, auth_type: data.auth_type } });
       return Response.json({ ok: true, entry: saved });
     }
@@ -60,9 +60,9 @@ export default async function(req) {
     }
 
     if (action === 'reauthorize') {
-      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, { status: 'ACTIVE', last_failure: '', auth_failures: 0 });
-      await audit({ action: 'reauthorization', detail: `reauthorized ${platform}`, metadata: { platform } });
-      return Response.json({ ok: true, status: 'ACTIVE' });
+      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, { status: 'REAUTH_REQUIRED', last_failure: 'Provider verification required before activation.' });
+      await audit({ action: 'reauthorization_requested', detail: `reauthorization requested for ${platform}`, metadata: { platform } });
+      return Response.json({ ok: true, status: saved.status, verification_required: true });
     }
 
     if (action === 'revoke') {
