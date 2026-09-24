@@ -3,15 +3,15 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 
-const SUPPORTED_MAJORS = new Set([20, 22]);
-const BASE44_BASELINE = '20';
+const SUPPORTED_MAJORS = new Set([22]);
+const BASE44_BASELINE = '22';
 
 export function verifyReleaseContract(root = process.cwd()) {
   const errors = [];
 
   const executingMajor = Number(process.versions.node.split('.')[0]);
   if (!SUPPORTED_MAJORS.has(executingMajor)) {
-    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 20.x or 22.x is required`);
+    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 22.x is required`);
   }
 
   function readRequired(path) {
@@ -42,9 +42,9 @@ export function verifyReleaseContract(root = process.cwd()) {
   }
 
   const pkg = parseRequiredJson('package.json');
-  if (pkg && pkg.engines?.node !== '>=20 <23') errors.push('package.json engines.node must be >=20 <23');
-  if (readRequired('.node-version')?.trim() !== BASE44_BASELINE) errors.push('.node-version must use the Node 20 Base44 baseline');
-  if (readRequired('.nvmrc')?.trim() !== BASE44_BASELINE) errors.push('.nvmrc must use the Node 20 Base44 baseline');
+  if (pkg && pkg.engines?.node !== '>=22 <23') errors.push('package.json engines.node must be >=22 <23');
+  if (readRequired('.node-version')?.trim() !== BASE44_BASELINE) errors.push('.node-version must use the Node 22 Base44 baseline');
+  if (readRequired('.nvmrc')?.trim() !== BASE44_BASELINE) errors.push('.nvmrc must use the Node 22 Base44 baseline');
 
   const workflowsDir = join(root, '.github', 'workflows');
   let workflowFiles = [];
@@ -57,8 +57,7 @@ export function verifyReleaseContract(root = process.cwd()) {
   if (!workflowFiles.length) errors.push('workflow inventory must contain at least one YAML file');
 
   let setupNodeDeclarations = 0;
-  let node20Declarations = 0;
-  let node22Declarations = 0;
+    let node22Declarations = 0;
   for (const file of workflowFiles) {
     const path = join('.github', 'workflows', file);
     const text = readRequired(path);
@@ -88,10 +87,9 @@ export function verifyReleaseContract(root = process.cwd()) {
         const version = typeof declared === 'string' || typeof declared === 'number'
           ? String(declared).trim()
           : '';
-        if (version === '20' || version === '20.x') node20Declarations += 1;
         if (version === '22' || version === '22.x') node22Declarations += 1;
-        if (!['20', '20.x', '22', '22.x'].includes(version)) {
-          errors.push(`${path} setup-node pins ${version || '<missing>'}; expected Node 20 or Node 22`);
+        if (!['22', '22.x'].includes(version)) {
+          errors.push(`${path} setup-node pins ${version || '<missing>'}; expected Node 22`);
         }
       }
     }
@@ -100,16 +98,13 @@ export function verifyReleaseContract(root = process.cwd()) {
   if (workflowFiles.length && !setupNodeDeclarations) {
     errors.push('workflow inventory must contain an active actions/setup-node declaration');
   }
-  if (setupNodeDeclarations && !node20Declarations) {
-    errors.push('workflow inventory must retain at least one Node 20 Base44 compatibility check; do not revert to Node-22-only');
-  }
   if (setupNodeDeclarations && !node22Declarations) {
     errors.push('workflow inventory must retain at least one Node 22 compatibility check; do not remove the Node 22 release lane');
   }
 
   const lock = parseRequiredJson('package-lock.json');
   if (lock) {
-    if (lock.packages?.['']?.engines?.node !== '>=20 <23') errors.push('package-lock.json root engine must be >=20 <23');
+    if (lock.packages?.['']?.engines?.node !== '>=22 <23') errors.push('package-lock.json root engine must be >=22 <23');
   }
 
   return errors;
@@ -123,7 +118,7 @@ function run() {
     process.exitCode = 1;
     return;
   }
-  console.log('Runtime contract passed: Base44 Node 20 baseline retained; Node 20 and Node 22 execution are supported.');
+  console.log('Runtime contract passed: Base44 and GitHub are pinned to Node 22.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) run();
