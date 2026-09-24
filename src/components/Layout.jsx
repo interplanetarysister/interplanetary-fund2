@@ -158,7 +158,7 @@ export default function Layout() {
   }, [open]);
 
   const nav = (
-    <nav className="flex flex-col gap-3 px-3 overflow-y-auto scrollbar-hide pb-4">
+    <nav className="flex min-h-0 flex-1 flex-col gap-3 px-3 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {navSections.map((section) => (
         <div key={section.label}>
           <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
@@ -225,7 +225,7 @@ export default function Layout() {
       {open && (
         <>
           <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
+          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 deep-space pt-2 shadow-xl flex flex-col overflow-hidden">{nav}</div>
         </>
       )}
 
