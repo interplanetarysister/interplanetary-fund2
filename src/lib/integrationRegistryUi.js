@@ -1,6 +1,6 @@
 // UI-only constants for the integration registry. Mirrors the server-side
 // labels in base44/shared/integrationRegistry.ts so the admin dashboard doesn't
-// import backend modules. Kept in src/lib so only the admin components use it.
+// import backend modules.
 export const UNKNOWN_STATUS_BADGE = { label: "Unknown", className: "bg-stone-200 text-stone-700" };
 
 export const STATUS_BADGE = {
@@ -11,6 +11,8 @@ export const STATUS_BADGE = {
   REVOKED: { label: "Revoked", className: "bg-red-100 text-red-700" },
   MISCONFIGURED: { label: "Misconfigured", className: "bg-red-100 text-red-700" },
 };
+
+export const normalizeIntegrationStatus = (value) => Object.prototype.hasOwnProperty.call(STATUS_BADGE, value) ? value : "UNKNOWN";
 
 export const AUTH_TYPE_LABEL = {
   oauth: "OAuth",
