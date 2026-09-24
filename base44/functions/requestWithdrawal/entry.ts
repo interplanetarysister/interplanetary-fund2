@@ -205,7 +205,7 @@ async function handleProviderFailure(base44, sr, withdrawal, err, actorId) {
     await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: GENERIC_PAYOUT_REVIEW_NOTE });
     return { ambiguous: false, released: true };
   } catch (cancelErr) {
-    // Fail closed: local donation locks stay in place if Convex release fails.
+    // Fail closed: local donation locks stay in place if canonical Base44 release fails.
     await sr.entities.Withdrawal.update(withdrawal.id, {
       status: 'reservation_release_pending',
       review_note: 'Provider rejected payout, but canonical reservation release requires reconciliation.',
