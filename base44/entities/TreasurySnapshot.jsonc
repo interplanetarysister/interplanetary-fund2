@@ -18,7 +18,7 @@
     },
     "campaign_totals": {
       "type": "array",
-      "description": "Per-campaign balances from the Convex treasury aggregate.",
+      "description": "Per-campaign balances from the Base44 treasury ledger.",
       "items": {
         "type": "object",
         "properties": {

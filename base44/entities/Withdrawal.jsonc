@@ -36,7 +36,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Base44 mirror donation records reserved by this withdrawal. The canonical Convex reservation is the authoritative double-spend lock."
+      "description": "Base44 donation records reserved by this withdrawal. The canonical Base44 FinancialOperation reservation is the authoritative double-spend lock."
     },
     "status": {
       "type": "string",
@@ -56,15 +56,15 @@
     },
     "canonical_operation_key": {
       "type": "string",
-      "description": "Stable Base44-to-Convex withdrawal idempotency key."
+      "description": "Stable Base44 withdrawal idempotency key."
     },
     "canonical_reservation_id": {
       "type": "string",
-      "description": "Canonical Convex payout reservation id."
+      "description": "Canonical Base44 payout reservation id."
     },
     "canonical_ledger_entry_id": {
       "type": "string",
-      "description": "Canonical Convex pending/completed payout ledger entry."
+      "description": "Canonical Base44 pending/completed payout ledger entry."
     },
     "payout_batch_id": {
       "type": "string",

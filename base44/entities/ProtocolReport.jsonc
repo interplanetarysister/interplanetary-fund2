@@ -20,7 +20,7 @@
     },
     "results": {
       "type": "array",
-      "description": "Per-campaign protocol check results as reported by Convex.",
+      "description": "Per-campaign protocol check results stored by Base44.",
       "items": {
         "type": "object",
         "properties": {

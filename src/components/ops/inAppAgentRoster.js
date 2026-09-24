@@ -1,5 +1,5 @@
 // The platform's always-on in-app agent team. Used as a display fallback for
-// the Ops Center when the external Convex mission backend returns no agents,
+// the Ops Center when the legacy external mission backend returns no agents,
 // so the dashboard is never blank.
 export const IN_APP_AGENTS = [
   { name: "Chief of Staff", role: "coordinator", status: "active", trust_score: 98, description: "Coordinates the full AI team and surfaces any campaign's status, finances, and outreach." },

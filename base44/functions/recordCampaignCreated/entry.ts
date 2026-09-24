@@ -29,7 +29,7 @@ export default async function(req) {
 
     // Do not silently publish an active campaign that cannot participate in
     // canonical financial accounting. This upsert never trusts the application
-    // for raised/donor totals; Convex preserves its own financial values.
+    // for raised/donor totals; Base44 preserves canonical financial values.
     await ensureCanonicalCampaign(sr, campaign);
 
     const creator = await sr.entities.User.get(campaign.created_by_id).catch(() => null);

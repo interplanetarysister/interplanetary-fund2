@@ -14,7 +14,7 @@
     "campaign_title": { "type": "string" },
     "canonical_operation_id": {
       "type": "string",
-      "description": "Canonical Convex financial/external-observation id used to repair webhook side effects without duplicating this inbox row."
+      "description": "Canonical Base44 financial/external-observation id used to repair webhook side effects without duplicating this inbox row."
     },
     "type": {
       "type": "string",

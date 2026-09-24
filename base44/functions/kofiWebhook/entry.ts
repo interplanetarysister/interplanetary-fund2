@@ -49,7 +49,7 @@ async function recoveryRecord(sr, eventKey, eventType) {
     });
   }
 
-  // Base44 recovery rows are diagnostic only. Convex owns idempotency; collapse
+  // Base44 recovery rows are diagnostic only. FinancialOperation owns idempotency; collapse
   // any duplicate local rows deterministically so all retries use one state row.
   rows = await sr.entities.WebhookEvent.filter({ source: 'kofi', event_key: eventKey }).catch(() => []);
   const ordered = stableOrder(rows);
@@ -213,7 +213,7 @@ export default async function(req) {
     if (base44 && recovery) {
       await markRecovery(base44.asServiceRole, recovery, { state: 'failed', last_error: message.slice(0, 500) });
     }
-    // Ko-fi retries non-2xx deliveries with the same message_id, while Convex
+    // Ko-fi retries non-2xx deliveries with the same message_id, while Base44 FinancialOperation
     // idempotency guarantees any already-recorded observation is not duplicated.
     return Response.json({ error: 'Unable to process Ko-fi webhook' }, { status: 500 });
   }

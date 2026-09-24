@@ -8,7 +8,7 @@
     },
     "event_key": {
       "type": "string",
-      "description": "Deterministic provider event identity. This row tracks application-side recovery; canonical financial idempotency lives in Convex."
+      "description": "Deterministic provider event identity. This row tracks application-side recovery; canonical financial idempotency lives in Base44 FinancialOperation."
     },
     "event_type": {
       "type": "string"

@@ -344,7 +344,7 @@ export default async function(req) {
       });
     }
     // Keep durable recovery state and return 500 so Stripe retries. Financial
-    // replay is safe because the canonical Convex mutation owns idempotency.
+    // replay is safe because the canonical Base44 FinancialOperation owns idempotency.
     return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });
   }
 }
