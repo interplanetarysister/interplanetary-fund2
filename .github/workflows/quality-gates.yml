@@ -52,6 +52,9 @@ jobs:
       - name: Verify Base44 sync contract
         run: node scripts/verify-base44-sync-contract.mjs
 
+      - name: Verify Procon Job connection contract
+        run: node scripts/verify-procon-job.mjs
+
       - name: Lint
         run: npm run lint
 
