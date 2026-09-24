@@ -54,7 +54,9 @@
     "verify:builder-agent-boundary": "node scripts/verify-builder-agent-boundary.mjs",
     "verify:agent-chat-resilience": "node scripts/verify-agent-chat-resilience.mjs",
     "verify:agent-training-expansion": "node scripts/verify-agent-training-expansion.mjs",
-    "verify:agent-reasoning-coherence": "node scripts/verify-agent-reasoning-coherence.mjs"
+    "verify:agent-reasoning-coherence": "node scripts/verify-agent-reasoning-coherence.mjs",
+    "verify:base44-sync": "node scripts/verify-base44-sync-contract.mjs",
+    "verify:ui-regressions": "node scripts/verify-text-contrast-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.50",
