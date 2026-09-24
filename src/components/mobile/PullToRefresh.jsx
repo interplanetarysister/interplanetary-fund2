@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 
-// Native-style pull-to-refresh. Works with window scroll: a pull gesture
-// starting at the top of the page translates into a spinner that, past the
-// threshold, triggers onRefresh(). Uses non-passive native touch listeners
-// so the pull doesn't fight the browser's own scroll.
+// Native-style pull-to-refresh that preserves ordinary one-finger scrolling.
+// We never cancel touchmove: native vertical panning always wins. The refresh
+// indicator simply observes a downward pull at scrollTop 0 and refreshes after
+// release when the threshold is reached.
 export default function PullToRefresh({ onRefresh, children, className = "" }) {
   const wrapRef = useRef(null);
   const startYRef = useRef(null);
@@ -31,8 +31,7 @@ export default function PullToRefresh({ onRefresh, children, className = "" }) {
       const dy = e.touches[0].clientY - startYRef.current;
       const dx = e.touches[0].clientX - (startXRef.current || 0);
       if (dy > 0 && Math.abs(dy) > Math.abs(dx)) {
-        e.preventDefault();
-        const p = Math.min(dy * 0.5, 90);
+        const p = Math.min(dy * 0.35, 90);
         pullRef.current = p;
         setPull(p);
       }
@@ -59,7 +58,7 @@ export default function PullToRefresh({ onRefresh, children, className = "" }) {
     };
 
     el.addEventListener("touchstart", onStart, { passive: true });
-    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchmove", onMove, { passive: true });
     el.addEventListener("touchend", onEnd);
     return () => {
       el.removeEventListener("touchstart", onStart);
@@ -69,7 +68,7 @@ export default function PullToRefresh({ onRefresh, children, className = "" }) {
   }, [onRefresh]);
 
   return (
-    <div ref={wrapRef} className={className} style={{ overscrollBehaviorY: "contain" }}>
+    <div ref={wrapRef} className={className} style={{ touchAction: "pan-y pinch-zoom" }}>
       <div
         className="flex items-center justify-center overflow-hidden"
         style={{ height: refreshing ? THRESHOLD : pull, transition: refreshing ? "none" : "height 0.18s ease" }}
