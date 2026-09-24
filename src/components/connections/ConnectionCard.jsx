@@ -27,26 +27,12 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
   const disconnect = async () => {
     setBusy(true);
     try {
-      // Revoke local authority before removal so any concurrently queued action
-      // that re-checks the connection sees consent disabled.
-      await base44.entities.PlatformConnection.update(connection.id, {
-        status: "disconnected",
-        verification_status: "unverified",
-        obo_consent: {
-          ...(connection.obo_consent || {}),
-          granted: false,
-          granted_capabilities: [],
-          provider_capabilities: [],
-        },
-        agent_access: {
-          ...(connection.agent_access || {}),
-          shared_with_agents: false,
-          automation_enabled: false,
-        },
-        automation_mode: "manual",
-        last_error: "",
+      // Central revocation removes agent/OBO authority first and then asks the
+      // provider connector to revoke its app-user connection when supported.
+      await base44.functions.invoke("disconnectPlatformConnection", {
+        connection_id: connection.id,
+        platform: connection.platform,
       });
-      await base44.entities.PlatformConnection.delete(connection.id);
       onRemoved(connection.id);
     } catch (e) {
       console.error("Disconnect failed", e);
