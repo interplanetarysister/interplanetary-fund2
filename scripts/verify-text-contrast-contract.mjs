@@ -334,4 +334,37 @@ assert.equal(
   'a body rule missing its foreground role must fail'
 );
 
+
+assert.ok(
+  ruleHasDeclaration(css, 'html', 'touch-action', 'pan-y pinch-zoom') ||
+    ruleHasDeclaration(css, 'body', 'touch-action', 'pan-y pinch-zoom'),
+  'page must permit ordinary one-finger vertical panning'
+);
+assert.ok(
+  ruleHasDeclaration(css, 'input', '-webkit-text-fill-color', 'hsl(var(--foreground))') ||
+    css.includes('-webkit-text-fill-color: hsl(var(--foreground));'),
+  'editable controls must preserve readable entered text'
+);
+
+const unsafeTextPairs = [
+  /bg-slate-(?:900|950)[^"'\n]*text-(?:slate|gray|zinc|neutral)-(?:700|800|900)/g,
+  /bg-(?:white|slate-50|gray-50)[^"'\n]*text-(?:white|slate-50|gray-50)/g,
+];
+const srcRoot = new URL('../src/', import.meta.url);
+import { readdirSync, statSync } from 'node:fs';
+function walk(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+    return entry.isDirectory() ? walk(url) : /\.(?:jsx|tsx|js|ts)$/.test(entry.name) ? [url] : [];
+  });
+}
+const contrastViolations = [];
+for (const file of walk(srcRoot)) {
+  const source = stripComments(readFileSync(file, 'utf8'));
+  for (const pattern of unsafeTextPairs) {
+    for (const match of source.matchAll(pattern)) contrastViolations.push(file.pathname + ': ' + match[0]);
+  }
+}
+assert.deepEqual(contrastViolations, [], 'obvious same-tone foreground/background combinations are forbidden:\n' + contrastViolations.join('\n'));
+
 console.log('Shared text contrast contract passed.');
