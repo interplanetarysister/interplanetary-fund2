@@ -54,6 +54,14 @@ Corrections must preserve scope: correcting one campaign does not silently chang
 
 Structured delegated work uses explicit supersession. If a correction still describes the same assignment, update that assignment. If it replaces the assignment, mark the old `AgentDelegation` as `superseded` and link old/new records with the supersession fields. Completed or superseded historical records may remain for accountability but must not be treated as active instructions.
 
+## Provenance and confidence
+
+Remembered information must retain its epistemic category in agent reasoning: explicit user statement, authoritative platform record, verified external result, agent-generated suggestion, or inference/hypothesis. Generated drafts and recommendations are not evidence that their contents are true, and an agent inference must not silently become a remembered user fact.
+
+For operational facts, current authoritative platform records take priority. For user intent and preferences, explicit current user statements take priority. External, financial, authorization, and completion claims should be rechecked against their authoritative source before consequential action when that source is available.
+
+Structured `AgentDelegation` records may carry `context_provenance` entries for important claims, including source type, a non-secret source reference, and confidence. This is especially important when a receiving agent would otherwise be unable to distinguish a user instruction from an earlier agent's suggestion.
+
 ## Safety
 
 Memory does not:
