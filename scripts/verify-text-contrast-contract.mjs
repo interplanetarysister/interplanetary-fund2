@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
 const layout = readFileSync(new URL('../src/components/Layout.jsx', import.meta.url), 'utf8');
+const pullToRefresh = readFileSync(new URL('../src/components/mobile/PullToRefresh.jsx', import.meta.url), 'utf8');
 
 function stripComments(source) {
   let output = '';
@@ -339,6 +340,16 @@ assert.ok(
   ruleHasDeclaration(css, 'html', 'touch-action', 'pan-y pinch-zoom') ||
     ruleHasDeclaration(css, 'body', 'touch-action', 'pan-y pinch-zoom'),
   'page must permit ordinary one-finger vertical panning'
+);
+assert.doesNotMatch(
+  pullToRefresh,
+  /touchmove[\s\S]{0,1200}preventDefault\s*\(/,
+  'pull-to-refresh must never cancel one-finger touchmove scrolling'
+);
+assert.match(
+  pullToRefresh,
+  /touchmove[\s\S]{0,1200}passive:\s*true/,
+  'pull-to-refresh touchmove observation must remain passive'
 );
 assert.ok(
   ruleHasDeclaration(css, 'input', '-webkit-text-fill-color', 'hsl(var(--foreground))') ||
