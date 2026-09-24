@@ -47,11 +47,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           .join(" · ");
         toast({ title: "GitHub status verified", description: details || "GitHub connection verified." });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Sync failed.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
       }
     } catch {
       toast({ title: "GitHub verification failed", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
@@ -82,7 +78,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           <Row label="Admin owner">{entry.admin_owner || "unassigned"}</Row>
           <Row label="Last verified">{entry.last_verified ? new Date(entry.last_verified).toLocaleString() : "never"}</Row>
           <Row label="Last success">{entry.last_successful_verification ? new Date(entry.last_successful_verification).toLocaleString() : "—"}</Row>
-          {entry.last_failure ? <Row label="Last failure"><span className="text-red-600">{entry.last_failure}</span></Row> : null}
+          {entry.last_failure ? <Row label="Last failure"><span className="text-red-600">{SAFE_INTEGRATION_ERROR}</span></Row> : null}
           {(entry.cleanup_flags || []).length ? <Row label="Flags">{entry.cleanup_flags.join(", ")}</Row> : null}
           {entry.reauth_instructions ? <Row label="Reauth steps">{entry.reauth_instructions}</Row> : null}
         </div>
@@ -146,7 +142,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
             {busy === "reauthorize" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}Mark reauthorized
           </Button>
           <Button size="sm" variant="outline" onClick={() => run("revoke")} disabled={!!busy} className="rounded-lg text-red-600 hover:text-red-700">
-            {busy === "revoke" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5 mr-1.5 animate-none" />}Revoke access
+            {busy === "revoke" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5 mr-1.5" />}Revoke access
           </Button>
           {entry.status === "REVOKED" && (
             <Button size="sm" onClick={() => run("reauthorize")} disabled={!!busy} className="rounded-lg">
