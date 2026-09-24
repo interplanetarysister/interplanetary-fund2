@@ -8,7 +8,20 @@
     "source_agent": { "type": "string", "description": "Agent that delegated or originated the work." },
     "destination_agent": { "type": "string", "description": "Agent responsible for the delegated work." },
     "objective": { "type": "string", "description": "Concise user objective for this delegation." },
-    "context_summary": { "type": "string", "description": "Relevant context only; never secrets or credentials." },
+    "context_summary": { "type": "string", "description": "Relevant context only; never secrets or credentials. Do not present inference as fact." },
+    "context_provenance": {
+      "type": "array",
+      "description": "Optional provenance for important facts carried into the delegation.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim": { "type": "string" },
+          "source_type": { "type": "string", "enum": ["user_statement","platform_record","verified_external","agent_suggestion","inference"] },
+          "source_reference": { "type": "string", "description": "Non-secret identifier or concise source reference when available." },
+          "confidence": { "type": "string", "enum": ["verified","high","medium","low","unknown"], "default": "unknown" }
+        }
+      }
+    },
     "status": {
       "type": "string",
       "enum": ["requested","assigned","in_progress","waiting_user","waiting_external","needs_review","completed","failed","cancelled","superseded"],
