@@ -177,9 +177,9 @@ export default async function (req) {
       } catch (_) { /* non-fatal */ }
     }
 
-    return Response.json({ ok: !anyFailed, overall: finalStatus, direction, synced_at: now, results });
+    return Response.json({ ok: !anyFailed, overall: finalStatus, direction, checked_at: now, results });
   } catch (error) {
-    console.error('syncGitHub error:', error.message);
-    return Response.json({ error: 'GitHub sync could not complete.' }, { status: 500 });
+    console.error('syncGitHub verification error:', error.message);
+    return Response.json({ error: 'GitHub connection verification could not complete.' }, { status: 500 });
   }
 }

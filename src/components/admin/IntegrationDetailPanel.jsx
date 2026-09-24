@@ -47,7 +47,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
         const reason =
           data?.reason ||
           Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Sync failed.";
+          "GitHub connection verification failed.";
         toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
       }
     } catch (e) {

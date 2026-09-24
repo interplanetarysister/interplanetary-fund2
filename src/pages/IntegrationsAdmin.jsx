@@ -32,7 +32,7 @@ export default function IntegrationsAdmin() {
   const [healthError, setHealthError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [verifyingGitHub, setVerifyingGitHub] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
@@ -86,8 +86,8 @@ export default function IntegrationsAdmin() {
     }
   };
 
-  const runGitHubSync = async () => {
-    setSyncing(true);
+  const verifyGitHubConnection = async () => {
+    setVerifyingGitHub(true);
     try {
       const res = await base44.functions.invoke("syncGitHub", { direction: "both" });
       const data = res?.data || res;
@@ -95,20 +95,20 @@ export default function IntegrationsAdmin() {
         const details = Object.entries(data.results || {})
           .map(([k, v]) => `${k}: ${v.detail}`)
           .join(" · ");
-        toast({ title: "GitHub sync complete", description: details || "Sync completed successfully." });
+        toast({ title: "GitHub verification completed", description: details || "Connection verification completed." });
       } else if (data?.skipped) {
-        toast({ title: "GitHub sync skipped", description: data.reason || "GitHub integration not active.", variant: "destructive" });
+        toast({ title: "GitHub verification unavailable", description: data.reason || "GitHub integration is not active.", variant: "destructive" });
       } else {
         const reason =
           data?.reason ||
           Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Sync encountered an issue.";
-        toast({ title: "GitHub sync issue", description: reason, variant: "destructive" });
+          "Connection verification encountered an issue.";
+        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "GitHub sync failed", description: e.message || "Could not reach the sync function.", variant: "destructive" });
+      toast({ title: "GitHub verification failed", description: e.message || "Could not verify the GitHub connection.", variant: "destructive" });
     }
-    setSyncing(false);
+    setVerifyingGitHub(false);
   };
 
   if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
@@ -144,16 +144,16 @@ export default function IntegrationsAdmin() {
         <div className="flex flex-wrap gap-2">
           {githubEntry && (
             <Button
-              onClick={runGitHubSync}
-              disabled={syncing || checking}
+              onClick={verifyGitHubConnection}
+              disabled={verifyingGitHub || checking}
               variant="outline"
               className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
             >
-              {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
-              Sync GitHub
+              {verifyingGitHub ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
+              Verify GitHub connection
             </Button>
           )}
-          <Button onClick={runHealthCheck} disabled={checking || syncing} className="rounded-xl" aria-busy={checking}>
+          <Button onClick={runHealthCheck} disabled={checking || verifyingGitHub} className="rounded-xl" aria-busy={checking}>
             {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
             {checking ? "Checking…" : "Run health check"}
           </Button>
