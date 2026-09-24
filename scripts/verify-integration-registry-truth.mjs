@@ -17,8 +17,13 @@ const rejectText = (source, text, label) => {
 requireText(manage, "status: 'DISCONNECTED'", "new registry rows fail closed");
 requireText(manage, "status: 'REAUTH_REQUIRED'", "reauthorization requires verification");
 rejectText(manage, "status: 'ACTIVE', last_failure: ''", "manual action cannot activate");
+requireText(health, "const SUPPORTED_STATUSES = new Set", "supported status allowlist exists");
+requireText(health, "normalizeStoredStatus", "legacy statuses normalize before persistence");
+requireText(health, "status = normalizeStoredStatus(e.status)", "malformed legacy status fails closed");
 requireText(health, "providerVerified = false", "verification evidence tracked");
 requireText(health, "result.status === 'ACTIVE' && result.providerVerified", "success timestamp requires provider evidence");
+requireText(page, "normalizeRegistryEntries", "registry rows normalize before render");
+requireText(page, "normalizeIntegrationStatus(entry.status)", "malformed UI status maps to Unknown");
 requireText(page, "withTimeout(", "admin requests are bounded");
 requireText(page, "healthLock.current", "health duplicate action lock");
 requireText(page, "githubLock.current", "GitHub duplicate action lock");
@@ -27,6 +32,7 @@ requireText(page, "isGitHubResponse", "GitHub response validated");
 requireText(panel, "UNKNOWN_STATUS_BADGE", "detail status fails closed");
 requireText(panel, "operationLock.current", "detail actions use synchronous lock");
 rejectText(panel, "description: e.message", "raw errors are not rendered");
+requireText(ui, "normalizeIntegrationStatus", "shared status normalization helper exists");
 requireText(ui, "UNKNOWN_STATUS_BADGE", "unknown status has explicit neutral badge");
 
 console.log("Integration registry truth contract verified.");
