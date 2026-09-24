@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Node 20 Base44 build
+    name: Node 22 Base44 build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,13 +28,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
 
-      - name: Verify Node 20/22 runtime contract
+      - name: Verify Node 22 runtime contract
         run: npm run verify:node22-release-contract
 
       - name: Test runtime contract failure cases
@@ -91,7 +91,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install locked dependencies
