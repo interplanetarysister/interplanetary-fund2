@@ -1,31 +1,63 @@
-# Agent Runtime Unification
+# Agent Runtime and Memory Architecture
 
 ## Canonical architecture
 
-- Convex is the authoritative agent state, memory, outcomes, and operational identity layer.
-- Base44 remains the user-facing application and conversational interface.
-- `syncFromConvex` mirrors authoritative Convex state into Base44 display entities.
-- Base44 agent conversations are bridged back to Convex through `recordAgentInteraction`.
-- Existing Base44 agent names are mapped to canonical operational identities; existing records are not deleted or renamed by this change.
+- Base44 is the authoritative application, agent runtime, and user-facing conversational environment for Interplanetary Fund.
+- Base44 native agent memory is the authoritative memory mechanism for the in-app agent team.
+- GitHub main contains the authoritative application configuration synchronized with the Base44 app.
+- Do not introduce Convex or Vercel as a second agent-memory runtime for ifund2.
 
-## Identity mapping
+## Agent memory configuration
 
-| Base44 agent | Canonical Convex identity |
-| --- | --- |
-| Chief of Staff | Solene |
-| Outreach Agent | Atlas |
-| Strategy Agent | Post Production Agent |
-| Story Agent | Donor Relations Agent |
-| Growth Agent | Scout Agent |
-| Communications Agent | Platform Coordinator Agent |
-| Finance Agent | Finance Agent |
+Every normal user-facing specialist agent must have:
 
-## Memory flow
+- `memory_config.enabled: true`
+- `memory_config.scope: "both"`
+- `memory_config.include_other_conversation_context: true`
 
-`User -> Base44 Agent Chat -> recordAgentInteraction -> Convex agentBridge:recordInteraction -> authoritative agent working/long-term memory`
+This allows each specialist to retain its own useful context while also receiving relevant context from the user's other conversations. Chief of Staff uses the same capability for cross-agent coordination.
 
-The bridge is deliberately best-effort from the UI side: a memory-sync failure is logged but does not break the user's conversation.
+Memory instructions must preserve these boundaries:
+
+- User/campaign-specific facts remain scoped to that user and campaign.
+- Generalized learning must not silently convert private user information into shared training.
+- Current verified campaign data overrides remembered patterns.
+- New explicit user instructions override conflicting remembered preferences.
+- Memory never expands permissions, approval scope, financial authority, or external-platform authorization.
+- Secrets and credentials must never be stored as agent memory.
+
+## Conversation flow
+
+`User -> Base44 Agent Chat -> Base44 conversation -> native Base44 agent memory -> relevant future agent conversations`
+
+The chat UI may create a new conversation session when the selected specialist changes. Continuity comes from the configured Base44 memory system rather than a separate Convex interaction-summary bridge.
+
+## Cross-agent continuity
+
+All seven user-facing agents have cross-conversation context enabled. Specialists may use relevant context from other agent conversations, but should remain focused on their own role. Chief of Staff has the broadest coordination responsibility and should use available cross-agent context to avoid making the user repeat known instructions or decisions.
+
+Structured delegation/task tracking remains separate from conversational memory. Conversation memory can preserve context, but a consequential delegated action should still have explicit status and verification rather than being inferred from remembered chat text.
 
 ## Safety
 
-The bridge records interaction summaries and outcomes. It does not grant new permissions, execute approvals, modify payments, or bypass the existing human-approval model.
+Memory does not:
+
+- grant new permissions;
+- approve external actions;
+- authorize payments or withdrawals;
+- bypass ownership or admin boundaries;
+- prove that a requested action was executed.
+
+Remembered claims about external or financial actions must be checked against authoritative current records when those facts matter.
+
+## Verification target
+
+Memory is considered correctly configured when:
+
+1. All seven user-facing agents have memory enabled.
+2. Cross-conversation context is enabled for all seven.
+3. Chief of Staff can use relevant context from specialist conversations.
+4. Switching agents does not require a Convex/Vercel memory bridge.
+5. User-specific memory remains separate from generalized training.
+6. Current authoritative data and permissions override remembered information.
+
