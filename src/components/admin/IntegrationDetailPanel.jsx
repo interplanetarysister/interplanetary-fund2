@@ -45,16 +45,9 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
       const res = await base44.functions.invoke("syncGitHub", { direction });
       const data = res?.data || res;
       if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub status verified", description: details || "GitHub connection verified." });
+        toast({ title: "GitHub status verified", description: "The authenticated GitHub connection check completed." });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "GitHub connection verification failed.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: "GitHub connection verification did not succeed.", variant: "destructive" });
       }
     } catch (e) {
       toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
