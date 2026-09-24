@@ -24,6 +24,7 @@ assert.match(sync, /const REPO = 'interplanetarysister\/interplanetary-fund2'/);
 assert.match(sync, /const BRANCH = 'main'/);
 assert.match(sync, /assertPlatformAccess\(sr, 'github'\)/);
 assert.match(sync, /GitHub OAuth connector not authorized/);
+assert.match(sync, /if \(!isWorkflow && !user\)/, 'scheduled workflow identity must not require an interactive user session');
 assert.doesNotMatch(sync, /Deno\.Command|child_process|execSync|spawnSync/, 'Base44 sync must use the provider API, not shell git');
 
 console.log('Base44 sync contract passed.');
