@@ -2,19 +2,18 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
-// GitHub source-connection verification used alongside Base44 native GitHub synchronization
+// GitHub connection verification used alongside Base44 native source synchronization
 // (GitHub REST API via the connected OAuth connector). No shell commands are used;
-// all git operations go through the GitHub API so credentials never touch the filesystem.
+// every provider request is read-only and credentials never touch the filesystem.
 //
-// Direction "pull": fetches the latest commit SHA on the default branch from GitHub
-//   and records it so operators can detect drift between Base44 and the repo.
-//   Full file-level pull is deferred until trusted workflow identity is established
-//   (see docs/deferred-base44-workflows.md).
+// Direction "pull": reads the latest commit SHA on the default branch and records
+//   the observation so operators can identify repository drift.
 //
-// Direction "push": uses the GitHub Trees and Commits API to push uncommitted
-//   Base44 sandbox changes to GitHub as a new commit on the default branch.
-//   Currently implemented as a status check + advisory; destructive writes are
-//   deferred until trusted workflow identity is established.
+// Direction "push": verifies that the configured GitHub destination and branch are
+//   reachable. It does not create commits or transfer Base44 source.
+//
+// Both directions are compatibility labels for an advisory health check. File-level
+// source application remains exclusively in Base44's native synchronization path.
 //
 // This function is callable only by authenticated admins on demand.
 // Scheduled execution remains deferred until Base44 exposes a verifiable,
@@ -69,7 +68,7 @@ async function getGitHubToken(base44) {
   return null;
 }
 
-// Pull: fetch the current HEAD SHA from GitHub and compare with Base44's known state.
+// Pull compatibility label: observe the current GitHub HEAD and record it.
 async function syncPull(token, sr) {
   const branch = await githubRequest(token, 'GET', `/repos/${REPO}/branches/${BRANCH}`);
   const remoteSha = branch?.commit?.sha;
@@ -84,18 +83,17 @@ async function syncPull(token, sr) {
     }).catch(() => {});
   }
 
-  return { ok: true, detail: `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH}. Base44 native source sync applies repository changes.` };
+  return { ok: true, detail: `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH}. Repository changes are applied only through Base44 native source synchronization.` };
 }
 
-// Push: verify the Base44 sandbox is in sync with GitHub.
-// Destructive writes are deferred; this direction currently performs an advisory check.
+// Push compatibility label: verify GitHub destination reachability only.
 async function syncPush(token) {
   const branch = await githubRequest(token, 'GET', `/repos/${REPO}/branches/${BRANCH}`);
   const remoteSha = branch?.commit?.sha;
   if (!remoteSha) return { ok: false, detail: 'Could not read branch HEAD from GitHub.' };
   return {
     ok: true,
-    detail: `GitHub destination is reachable at ${remoteSha.slice(0, 12)} on ${BRANCH}. Base44 native source sync owns source application.`,
+    detail: `GitHub destination is reachable at ${remoteSha.slice(0, 12)} on ${BRANCH}. Source application remains exclusively in Base44 native source synchronization.`,
   };
 }
 
@@ -168,8 +166,8 @@ export default async function (req) {
           const failedOps = Object.entries(results).filter(([, v]) => !v.ok).map(([k]) => k).join(', ');
           await sr.entities.Notification.create({
             user_id: admin.id,
-            title: '[GitHub Sync] One or more operations failed',
-            body: `GitHub sync failed for: ${failedOps}. ${Object.values(results).filter((r) => !r.ok).map((r) => r.detail).join('; ')}`,
+            title: '[GitHub Verification] One or more connection checks failed',
+            body: `GitHub connection verification failed for check(s): ${failedOps}. ${Object.values(results).filter((r) => !r.ok).map((r) => r.detail).join('; ')}`,
             type: 'system',
             link: '/admin/integrations',
           });
