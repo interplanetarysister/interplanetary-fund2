@@ -10,7 +10,6 @@ const PLATFORM_SECRETS = {
 
 const SUPPORTED_STATUSES = new Set(['ACTIVE', 'REAUTH_REQUIRED', 'EXPIRES_SOON', 'DISCONNECTED', 'REVOKED', 'MISCONFIGURED']);
 const normalizeStoredStatus = (value) => SUPPORTED_STATUSES.has(value) ? value : 'DISCONNECTED';
-const safeMessage = (value, fallback) => typeof value === 'string' && value.length <= 240 ? value : fallback;
 
 function checkSecrets(platform) {
   const names = PLATFORM_SECRETS[platform] || [];
@@ -48,8 +47,10 @@ async function validateEntry(sr, e) {
         const conn = await sr.connectors?.getConnection?.(p);
         if (conn && conn.accessToken) {
           checks.push({ check: 'oauth_authorized', ok: true, detail: 'provider connection verified' });
-          status = 'ACTIVE';
-          providerVerified = true;
+          if (status !== 'MISCONFIGURED' && status !== 'REVOKED') {
+            status = 'ACTIVE';
+            providerVerified = true;
+          }
         } else {
           checks.push({ check: 'oauth_authorized', ok: false, detail: 'no access token' });
           status = status === 'MISCONFIGURED' ? status : 'REAUTH_REQUIRED';
@@ -58,7 +59,7 @@ async function validateEntry(sr, e) {
       } catch (err) {
         checks.push({ check: 'oauth_authorized', ok: false, detail: 'connector check failed' });
         status = status === 'MISCONFIGURED' ? status : 'REAUTH_REQUIRED';
-        if (!lastFailure) lastFailure = safeMessage(err?.message, 'OAuth verification failed.');
+        if (!lastFailure) lastFailure = 'OAuth verification failed.';
       }
     }
   }
