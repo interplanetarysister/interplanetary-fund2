@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "owner_user_id": { "type": "string", "description": "User who owns this delegated work." },
-    "campaign_id": { "type": "string", "description": "Optional campaign context." },
+    "campaign_id": { "type": "string", "description": "Optional authoritative campaign ID. Campaign-specific context must not be reused for a different campaign." },
+    "campaign_title_snapshot": { "type": "string", "description": "Human-readable campaign title captured for display only; campaign_id remains authoritative." },
     "source_agent": { "type": "string", "description": "Agent that delegated or originated the work." },
     "destination_agent": { "type": "string", "description": "Agent responsible for the delegated work." },
     "objective": { "type": "string", "description": "Concise user objective for this delegation." },
