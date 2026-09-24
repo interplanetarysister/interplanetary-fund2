@@ -82,7 +82,6 @@ const navSections = [
   },
 ];
 
-// Flat list kept for backward-compatible lookups (e.g. mobile menu).
 const navItems = navSections.flatMap((s) => s.items);
 
 const bottomNavItems = [
@@ -190,7 +189,7 @@ export default function Layout() {
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
-            <Link to="/inbox" className="min-w-0 cursor-pointer" aria-label="Go to inbox">
+            <Link to="/profile" className="min-w-0 cursor-pointer" aria-label="Go to profile">
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
             <NotificationBell />
@@ -203,7 +202,7 @@ export default function Layout() {
 
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
         {isRoot ? (
-          <Link to="/inbox" className="min-w-0 cursor-pointer" aria-label="Go to inbox">
+          <Link to="/profile" className="min-w-0 cursor-pointer" aria-label="Go to profile">
             <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
           </Link>
         ) : (
