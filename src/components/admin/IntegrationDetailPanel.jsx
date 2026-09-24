@@ -6,6 +6,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
 import { Loader2, RefreshCw, ShieldOff, ShieldCheck, GitFork } from "lucide-react";
 
+const SAFE_INTEGRATION_ERROR = "The integration action could not be completed. Please retry or contact an administrator.";
+
 function Row({ label, children }) {
   return (
     <div className="flex gap-3 py-2 border-b border-stone-100 last:border-0">
@@ -27,10 +29,11 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
       await base44.functions.invoke("managePlatformAccess", { action, platform: entry.platform, ...payload });
       toast({ title: "Updated", description: `${entry.platform}: ${action}` });
       onUpdated?.();
-    } catch (e) {
-      toast({ title: "Couldn't update", description: e.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Couldn't update", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   const syncGitHub = async (direction) => {
@@ -44,17 +47,13 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           .join(" · ");
         toast({ title: "GitHub status verified", description: details || "GitHub connection verified." });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Sync failed.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
       }
-    } catch (e) {
-      const reason = e?.response?.data?.reason || e?.response?.data?.error || e?.data?.reason || e?.data?.error || e?.message || "GitHub verification failed.";
-      toast({ title: "GitHub verification failed", description: reason, variant: "destructive" });
+    } catch {
+      toast({ title: "GitHub verification failed", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   return (
@@ -79,7 +78,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           <Row label="Admin owner">{entry.admin_owner || "unassigned"}</Row>
           <Row label="Last verified">{entry.last_verified ? new Date(entry.last_verified).toLocaleString() : "never"}</Row>
           <Row label="Last success">{entry.last_successful_verification ? new Date(entry.last_successful_verification).toLocaleString() : "—"}</Row>
-          {entry.last_failure ? <Row label="Last failure"><span className="text-red-600">{entry.last_failure}</span></Row> : null}
+          {entry.last_failure ? <Row label="Last failure"><span className="text-red-600">{SAFE_INTEGRATION_ERROR}</span></Row> : null}
           {(entry.cleanup_flags || []).length ? <Row label="Flags">{entry.cleanup_flags.join(", ")}</Row> : null}
           {entry.reauth_instructions ? <Row label="Reauth steps">{entry.reauth_instructions}</Row> : null}
         </div>
