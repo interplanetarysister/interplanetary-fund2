@@ -130,10 +130,7 @@ export default function IntegrationsAdmin() {
       if (!isGitHubResponse(res)) throw new Error("Malformed GitHub response");
       const data = res?.data || res;
       if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub verification completed", description: details || "Connection verification completed." });
+        toast({ title: "GitHub verification completed", description: "The authenticated GitHub connection check completed." });
       } else if (data?.skipped) {
         toast({ title: "GitHub verification unavailable", description: "GitHub integration is not active.", variant: "destructive" });
       } else {
