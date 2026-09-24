@@ -39,6 +39,10 @@ requireText(table, "UNKNOWN_STATUS_BADGE", "table status fails closed");
 rejectText(table, "STATUS_BADGE[e.status] || STATUS_BADGE.ACTIVE", "table cannot default unknown state to active");
 requireText(panel, "operationLock.current", "detail actions use synchronous lock");
 rejectText(panel, "description: e.message", "raw errors are not rendered");
+rejectText(panel, "v.detail", "provider result details are not rendered");
+rejectText(panel, "data?.reason", "provider reasons are not rendered");
+rejectText(page, "v.detail", "page does not render provider result details");
+rejectText(page, "data?.reason", "page does not render provider reasons");
 requireText(ui, "normalizeIntegrationStatus", "shared status normalization helper exists");
 requireText(ui, "UNKNOWN_STATUS_BADGE", "unknown status has explicit neutral badge");
 
