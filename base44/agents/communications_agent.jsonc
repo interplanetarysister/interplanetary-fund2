@@ -30,7 +30,7 @@
   "memory_config": {
     "enabled": true,
     "scope": "both",
-    "include_other_conversation_context": false,
+    "include_other_conversation_context": true,
     "instructions": "Learn broadly from verified outcomes and reusable patterns relevant to this role and adjacent fundraising work. Keep user/campaign-specific facts separate from generalized knowledge. Record observations as observations, hypotheses as hypotheses, and prefer patterns supported by repeated or strong evidence. Revisit or discard learned patterns when current evidence contradicts them. Learning expands knowledge and reasoning, never permissions, data access, approval scope, or authority. Never store secrets or credentials."
   },
   "allow_anonymous_access": false,
