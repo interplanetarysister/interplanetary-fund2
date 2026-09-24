@@ -24,7 +24,7 @@ Memory instructions must preserve these boundaries:
 - Current verified campaign data overrides remembered patterns.
 - New explicit user instructions override conflicting remembered preferences.
 - Memory never expands permissions, approval scope, financial authority, or external-platform authorization.
-- Secrets and credentials must never be stored as agent memory.
+- Raw secrets and credentials must never be stored as agent conversational memory. Required integration secrets may be stored and used by the protected backend connection/secret-storage path for authorized platform functionality, while agents and ordinary user-facing reads receive only redacted metadata, connection state, capabilities, or action results.
 
 ## Conversation flow
 
@@ -61,6 +61,14 @@ Remembered information must retain its epistemic category in agent reasoning: ex
 For operational facts, current authoritative platform records take priority. For user intent and preferences, explicit current user statements take priority. External, financial, authorization, and completion claims should be rechecked against their authoritative source before consequential action when that source is available.
 
 Structured `AgentDelegation` records may carry `context_provenance` entries for important claims, including source type, a non-secret source reference, and confidence. This is especially important when a receiving agent would otherwise be unable to distinguish a user instruction from an earlier agent's suggestion.
+
+## Credential boundary
+
+Credentials are operational secrets, not conversational memory. When a provider requires a token, API credential, app password, webhook verification value, or similar secret, the platform may securely collect, persist, retrieve, refresh, and use that value through its protected backend connection path as needed for authorized functionality.
+
+Raw secret values must not be copied into agent memory, prompts, delegation records, logs, analytics, or ordinary frontend responses. Agent reasoning should normally receive only whether a credential is configured, connection/verification state, granted capabilities, expiry or reauthorization status when applicable, and the result of the requested provider operation.
+
+This preserves automated platform functionality without requiring users to repeatedly handle credentials and without turning the agent memory system into a credential store.
 
 ## Safety
 
