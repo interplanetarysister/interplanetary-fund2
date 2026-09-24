@@ -18,7 +18,7 @@ try {
 if (!SUPPORTED.includes(nodeMajor)) {
   console.error(
     `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Required runtime: Node ${SUPPORTED[0]}. ` +
+    `Supported runtimes: Node ${SUPPORTED.join(' or ')}. ` +
     'Select a supported runtime before install, build, typecheck, lint, or verification.',
   );
   process.exit(1);
