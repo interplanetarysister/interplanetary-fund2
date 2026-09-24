@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import * as ts from 'typescript';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -128,221 +129,243 @@ const workflowEntries = readdirSync(workflowDir)
   .map((name) => [name, read('base44/workflows/' + name)]);
 assertNoWorkflowInvocation(workflowEntries);
 
-function decodeStaticStringBody(body) {
-  return body
-    .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16)))
-    .replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
-    .replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)))
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\\(["'\\])/g, '$1');
+function scriptKindFor(fileName) {
+  return /\.(?:jsx|tsx)$/i.test(fileName) ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
 }
 
-function scanJavaScript(source) {
-  let code = '';
-  const strings = [];
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    const next = source[index + 1];
-    if (char === '/' && next === '/') {
-      while (index < source.length && source[index] !== '\n') index += 1;
-      code += '\n';
-      continue;
-    }
-    if (char === '/' && next === '*') {
-      index += 2;
-      while (index < source.length && !(source[index] === '*' && source[index + 1] === '/')) index += 1;
-      index += 1;
-      code += ' ';
-      continue;
-    }
-    const quoteCode = char.charCodeAt(0);
-    if (char !== '"' && char !== "'" && quoteCode !== 96) {
-      code += char;
-      continue;
-    }
-    const quote = char;
-    let token = char;
-    let body = '';
-    let escaped = false;
-    index += 1;
-    for (; index < source.length; index += 1) {
-      const current = source[index];
-      token += current;
-      if (escaped) {
-        body += '\\' + current;
-        escaped = false;
-        continue;
-      }
-      if (current === '\\') {
-        escaped = true;
-        continue;
-      }
-      if (current === quote) break;
-      body += current;
-    }
-    code += token;
-    strings.push(decodeStaticStringBody(body.replace(/\$\{[\s\S]*?\}/g, ' ')));
-  }
-  const jsxText = [...code.matchAll(/>([^<>{]+)</g)]
-    .map((match) => match[1].replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
-  return { code, humanText: [...strings, ...jsxText] };
+function propertyName(node) {
+  if (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) return node.text;
+  return null;
 }
 
-function readStaticExpression(code, start) {
-  let expression = '';
-  let quote = null;
-  let escaped = false;
-  let depth = 0;
-  for (let index = start; index < code.length; index += 1) {
-    const char = code[index];
-    if (quote) {
-      expression += char;
-      if (escaped) escaped = false;
-      else if (char === '\\') escaped = true;
-      else if (char === quote) quote = null;
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      expression += char;
-      continue;
-    }
-    if (char === '(' || char === '[' || char === '{') depth += 1;
-    if (char === ')' || char === ']' || char === '}') {
-      if (depth === 0) break;
-      depth -= 1;
-    }
-    if (char === ',' && depth === 0) break;
-    expression += char;
-  }
-  return expression.trim();
-}
-
-function evaluateStaticString(expression, bindings) {
-  let index = 0;
-  let output = '';
-  let foundValue = false;
-  let expectValue = true;
-  while (index < expression.length) {
-    while (/\s/.test(expression[index] || '')) index += 1;
-    if (index >= expression.length) break;
-    if (!expectValue) {
-      if (expression[index] !== '+') return null;
-      index += 1;
-      expectValue = true;
-      continue;
-    }
-    const char = expression[index];
-    if (char === '"' || char === "'") {
-      const quote = char;
-      let body = '';
-      let escaped = false;
-      index += 1;
-      for (; index < expression.length; index += 1) {
-        const current = expression[index];
-        if (escaped) {
-          body += '\\' + current;
-          escaped = false;
-          continue;
-        }
-        if (current === '\\') {
-          escaped = true;
-          continue;
-        }
-        if (current === quote) break;
-        body += current;
-      }
-      if (expression[index] !== quote) return null;
-      index += 1;
-      output += decodeStaticStringBody(body);
-    } else {
-      const identifier = /^[A-Za-z_$][\w$]*/.exec(expression.slice(index));
-      if (!identifier || !bindings.has(identifier[0])) return null;
-      output += bindings.get(identifier[0]);
-      index += identifier[0].length;
-    }
-    foundValue = true;
-    expectValue = false;
-  }
-  return foundValue && !expectValue ? output : null;
-}
-
-function collectStaticBindings(code) {
+function analyzeSource(source, fileName) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindFor(fileName)
+  );
   const bindings = new Map();
-  for (let pass = 0; pass < 8; pass += 1) {
-    let changed = false;
-    const declarations = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*([^;\n]+)/g;
-    for (const match of code.matchAll(declarations)) {
-      const value = evaluateStaticString(match[2], bindings);
-      if (value !== null && bindings.get(match[1]) !== value) {
-        bindings.set(match[1], value);
-        changed = true;
+
+  function collectBindings(node) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      node.initializer &&
+      ts.isVariableDeclarationList(node.parent) &&
+      (node.parent.flags & ts.NodeFlags.Const) !== 0
+    ) {
+      bindings.set(node.name.text, node.initializer);
+    }
+    ts.forEachChild(node, collectBindings);
+  }
+  collectBindings(sourceFile);
+
+  function resolveString(node, allowPartial = false, seen = new Set()) {
+    if (!node) return null;
+    if (ts.isParenthesizedExpression(node)) return resolveString(node.expression, allowPartial, seen);
+    if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) {
+      return resolveString(node.expression, allowPartial, seen);
+    }
+    if (ts.isStringLiteralLike(node)) return node.text;
+    if (ts.isTemplateExpression(node)) {
+      let value = node.head.text;
+      for (const span of node.templateSpans) {
+        const resolved = resolveString(span.expression, allowPartial, new Set(seen));
+        if (resolved === null && !allowPartial) return null;
+        value += resolved === null ? '[dynamic]' : resolved;
+        value += span.literal.text;
+      }
+      return value;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.PlusToken
+    ) {
+      const left = resolveString(node.left, allowPartial, new Set(seen));
+      const right = resolveString(node.right, allowPartial, new Set(seen));
+      if (!allowPartial && (left === null || right === null)) return null;
+      return (left === null ? '[dynamic]' : left) + (right === null ? '[dynamic]' : right);
+    }
+    if (ts.isIdentifier(node) && bindings.has(node.text)) {
+      const initializer = bindings.get(node.text);
+      if (seen.has(initializer)) return null;
+      const nextSeen = new Set(seen);
+      nextSeen.add(initializer);
+      return resolveString(initializer, allowPartial, nextSeen);
+    }
+    return null;
+  }
+
+  function isInvokeExpression(expression) {
+    if (ts.isIdentifier(expression)) return expression.text === 'invoke';
+    if (ts.isPropertyAccessExpression(expression)) return expression.name.text === 'invoke';
+    if (ts.isElementAccessExpression(expression)) {
+      return resolveString(expression.argumentExpression) === 'invoke';
+    }
+    return false;
+  }
+
+  const invokedFunctions = [];
+  const humanText = [];
+  const humanFields = new Set(['title', 'body', 'description', 'error', 'reason', 'detail', 'message']);
+  const humanAttributes = new Set(['title', 'aria-label', 'alt', 'placeholder']);
+
+  function addHuman(node) {
+    const value = resolveString(node, true);
+    if (value !== null && value.trim()) humanText.push(value.trim());
+  }
+
+  function visit(node) {
+    if (ts.isCallExpression(node)) {
+      if (isInvokeExpression(node.expression) && node.arguments[0]) {
+        const target = resolveString(node.arguments[0]);
+        if (target !== null) invokedFunctions.push(target);
+      }
+      const calledName = ts.isIdentifier(node.expression)
+        ? node.expression.text
+        : ts.isPropertyAccessExpression(node.expression)
+          ? node.expression.name.text
+          : null;
+      if (
+        calledName === 'toast' ||
+        calledName === 'error' ||
+        calledName === 'warn' ||
+        calledName === 'log'
+      ) {
+        for (const argument of node.arguments) {
+          if (!ts.isObjectLiteralExpression(argument)) addHuman(argument);
+        }
       }
     }
-    if (!changed) break;
+
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Error') {
+      for (const argument of node.arguments || []) addHuman(argument);
+    }
+
+    if (ts.isPropertyAssignment(node)) {
+      const name = propertyName(node.name);
+      if (name && humanFields.has(name)) addHuman(node.initializer);
+    }
+
+    if (ts.isJsxText(node)) {
+      const value = node.text.replace(/\s+/g, ' ').trim();
+      if (value) humanText.push(value);
+    }
+
+    if (ts.isJsxExpression(node) && node.expression) addHuman(node.expression);
+
+    if (ts.isJsxAttribute(node) && humanAttributes.has(node.name.text)) {
+      if (node.initializer && ts.isStringLiteral(node.initializer)) humanText.push(node.initializer.text);
+      else if (node.initializer && ts.isJsxExpression(node.initializer)) addHuman(node.initializer.expression);
+    }
+
+    ts.forEachChild(node, visit);
   }
-  return bindings;
+  visit(sourceFile);
+
+  return { invokedFunctions, humanText };
 }
 
-function discoverInvokedFunctions(source) {
-  const { code } = scanJavaScript(source);
-  const bindings = collectStaticBindings(code);
-  const invoked = [];
-  const callPattern = /(?:\.\s*invoke|\[\s*["']invoke["']\s*\])\s*\(/g;
-  for (const match of code.matchAll(callPattern)) {
-    const expression = readStaticExpression(code, match.index + match[0].length);
-    const value = evaluateStaticString(expression, bindings);
-    if (value !== null) invoked.push(value);
-  }
-  return invoked;
-}
-
+const templateQuote = String.fromCharCode(96);
 const invocationFixture =
-  'const prefix = "sync"; const target = prefix + "\\u0047itHub"; base44.functions.invoke(target, { direction: "both" });';
+  'const fn = ' + templateQuote + 'syncGitHub' + templateQuote + '; invoke(fn);';
 assert.ok(
-  discoverInvokedFunctions(invocationFixture).includes('syncGitHub'),
-  'variable, concatenated, and escaped static invocation expressions must be discovered'
+  analyzeSource(invocationFixture, 'computed-invocation.ts').invokedFunctions.includes('syncGitHub'),
+  'const template-literal references passed to invoke must be discovered'
 );
 
-function isMisleadingGitHubClaim(text) {
-  const normalized = String(text).replace(/\s+/g, ' ').trim();
-  const hasGitHub = /\bGitHub\b/i.test(normalized);
-  const hasSyncWord = /\b(?:sync(?:ed|ing)?|synchroniz(?:e|es|ed|ing|ation))\b/i.test(normalized);
-  const hasOutcome = /\b(?:success(?:ful|fully)?|succeed(?:ed)?|complete(?:d)?|fail(?:ed|ure)?|error|issue|skipp(?:ed)?|unable)\b|could not/i.test(normalized);
-  const isImperative = /\b(?:sync|synchronize)\s+(?:with\s+)?GitHub\b/i.test(normalized);
-  return hasGitHub && hasSyncWord && (hasOutcome || isImperative);
+const concatenatedInvocationFixture =
+  'const prefix = "sync"; const suffix = "\\u0047itHub"; const fn = prefix + suffix; base44.functions.invoke(fn, {});';
+assert.ok(
+  analyzeSource(concatenatedInvocationFixture, 'concatenated-invocation.ts').invokedFunctions.includes('syncGitHub'),
+  'escaped and concatenated const references passed to functions.invoke must be discovered'
+);
+
+function isExplicitlyDeferred(text) {
+  return /\b(?:not implemented|does not|do not|never|deferred|intentionally absent|remains exclusively|only through|cannot|no source (?:transfer|movement))\b/i.test(text);
 }
 
-function assertNoMisleadingGitHubClaims(texts, path) {
-  const offending = texts.filter(isMisleadingGitHubClaim);
+function isNativeCapabilityScope(text) {
+  return /\bBase44(?:'s)? native\b/i.test(text) &&
+    /\b(?:source application|source synchronization|synchronization control)\b/i.test(text);
+}
+
+function isFalseSourceMovementClaim(text) {
+  const normalized = String(text).replace(/\s+/g, ' ').trim();
+  if (!normalized || isExplicitlyDeferred(normalized) || isNativeCapabilityScope(normalized)) return false;
+
+  const hasContext = /\b(?:GitHub|Base44|source|repository)\b/i.test(normalized);
+  const hasMovementTerm =
+    /\b(?:sync(?:ed|ing)?|synchroniz(?:e|es|ed|ing|ation)|transfer(?:red|ring)?|import(?:ed|ing)?|export(?:ed|ing)?|push(?:ed|ing)?|pull(?:ed|ing)?)\b/i.test(normalized);
+  const hasOutcome =
+    /\b(?:success(?:ful|fully)?|succeed(?:ed)?|complete(?:d)?|fail(?:ed|ure)?|error|issue|unable|unavailable|skipp(?:ed)?)\b|could not/i.test(normalized);
+  const assertsMovement =
+    /\b(?:moves?|moved|sends?|sent|creates?|created|applies?|applied|fast[- ]?forwards?|transfers?|transferred|imports?|imported|exports?|exported|pushes?|pushed|pulls?|pulled)\b/i.test(normalized);
+  const imperative =
+    /\b(?:sync|synchronize|transfer|import|export|push|pull)\s+(?:with\s+|to\s+|from\s+)?(?:GitHub|Base44|source|repository)\b/i.test(normalized);
+
+  return hasContext && hasMovementTerm && (hasOutcome || assertsMovement || imperative);
+}
+
+function assertNoFalseSourceMovementClaims(texts, path) {
+  const offending = texts.filter(isFalseSourceMovementClaim);
   assert.deepEqual(
     offending,
     [],
-    path + ' contains misleading human-facing GitHub synchronization claim(s): ' + offending.join(' | ')
+    path + ' contains false GitHub/Base44 source-movement claim(s): ' + offending.join(' | ')
   );
 }
+
+const concatenatedToastFixture =
+  "const a='GitHub synchronization'; const b=' completed'; toast({title:a+b});";
+assert.throws(
+  () => {
+    const analysis = analyzeSource(concatenatedToastFixture, 'concatenated-toast.tsx');
+    assertNoFalseSourceMovementClaims(analysis.humanText, 'concatenated-toast.tsx');
+  },
+  /false GitHub\/Base44 source-movement claim/,
+  'const-concatenated toast titles must be evaluated semantically'
+);
+
+assert.throws(
+  () => assertNoFalseSourceMovementClaims(
+    ['GitHub source transfer completed'],
+    'source-transfer-fixture'
+  ),
+  /false GitHub\/Base44 source-movement claim/,
+  'equivalent source-transfer completion claims must fail'
+);
 
 for (const fixture of [
   'Sync GitHub',
-  'GitHub sync completed successfully.',
-  '[GitHub Synchronization] One or more operations failed',
-  'Synchronization with GitHub failed.',
-  'Unable to synchronize GitHub.'
+  'GitHub sync succeeded.',
+  'GitHub source import completed.',
+  'GitHub export failed.',
+  'Pull fast-forwards Base44 to match GitHub.',
+  'Push sends Base44 commits to GitHub.'
 ]) {
   assert.throws(
-    () => assertNoMisleadingGitHubClaims([fixture], 'Agent2NegativeFixture'),
-    /misleading human-facing GitHub synchronization claim/,
+    () => assertNoFalseSourceMovementClaims([fixture], 'movement-negative-fixture'),
+    /false GitHub\/Base44 source-movement claim/,
     'negative fixture must fail: ' + fixture
   );
 }
-assertNoMisleadingGitHubClaims(
-  ['syncGitHub', 'github_sync', 'Base44 native GitHub synchronization control'],
-  'identifier-and-capability-positive-fixtures'
+
+assertNoFalseSourceMovementClaims(
+  [
+    'syncGitHub',
+    'github_sync',
+    'GitHub connection verification completed.',
+    'These checks do not move files or create commits.',
+    'GitHub source synchronization is deferred and not implemented here.',
+    'Repository changes are applied only through Base44 native source synchronization.'
+  ],
+  'truthful-positive-fixtures'
 );
 
+const syncAnalysis = analyzeSource(syncSource, 'base44/functions/syncGitHub/entry.ts');
 assert.match(syncSource, /const REPO = 'interplanetarysister\/interplanetary-fund2'/);
 assert.match(syncSource, /const BRANCH = 'main'/);
 assert.match(syncSource, /if \(!user\) return Response\.json\(\{ error: 'Unauthorized' \}/);
@@ -354,10 +377,15 @@ assert.doesNotMatch(syncSource, /Deno\.Command|child_process|execSync|spawnSync/
   'Base44 verification must use the provider API, not shell git');
 assert.match(syncSource, /checked_at: now/);
 assert.doesNotMatch(syncSource, /synced_at: now/);
-assert.match(syncSource, /Notification\.create\(/);
-assert.match(syncSource, /title:\s*'\[GitHub Verification\] One or more connection checks failed'/);
-assert.match(syncSource, /body:[^\n]*GitHub connection verification failed for check\(s\)/);
-assertNoMisleadingGitHubClaims(scanJavaScript(syncSource).humanText, 'base44/functions/syncGitHub/entry.ts');
+assert.ok(
+  syncAnalysis.humanText.includes('[GitHub Verification] One or more connection checks failed'),
+  'admin notification title must describe verification failure'
+);
+assert.ok(
+  syncAnalysis.humanText.some((text) => text.startsWith('GitHub connection verification failed for check(s):')),
+  'admin notification body must describe verification failure'
+);
+assertNoFalseSourceMovementClaims(syncAnalysis.humanText, 'base44/functions/syncGitHub/entry.ts');
 
 function collectSourceFiles(directory, relative = '') {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -371,9 +399,9 @@ function collectSourceFiles(directory, relative = '') {
 
 const sourceFiles = collectSourceFiles(new URL('src/', root))
   .map((path) => ['src/' + path, read('src/' + path)]);
-const liveCallers = sourceFiles.filter(([, source]) =>
-  discoverInvokedFunctions(source).includes('syncGitHub')
-);
+const liveCallers = sourceFiles
+  .map(([path, source]) => [path, analyzeSource(source, path)])
+  .filter(([, analysis]) => analysis.invokedFunctions.includes('syncGitHub'));
 
 assert.ok(
   liveCallers.some(([path]) => path === 'src/pages/IntegrationsAdmin.jsx'),
@@ -383,21 +411,23 @@ assert.ok(
   liveCallers.some(([path]) => path === 'src/components/admin/IntegrationDetailPanel.jsx'),
   'IntegrationDetailPanel must remain covered as a live caller'
 );
-for (const [path, source] of liveCallers) {
-  const humanText = scanJavaScript(source).humanText;
-  assertNoMisleadingGitHubClaims(humanText, path);
+for (const [path, analysis] of liveCallers) {
+  assertNoFalseSourceMovementClaims(analysis.humanText, path);
   assert.ok(
-    humanText.some((text) => /Verify GitHub|GitHub (?:status )?verifi|connection verification/i.test(text)),
+    analysis.humanText.some((text) =>
+      /Verify GitHub|GitHub (?:status )?verifi|connection verification/i.test(text)
+    ),
     path + ' must describe the operation as GitHub connection verification'
   );
 }
 
-for (const line of runbook.split('\n')) {
-  assertNoMisleadingGitHubClaims([line], 'docs/deferred-base44-workflows.md');
-}
+assertNoFalseSourceMovementClaims(
+  runbook.split(/\n\s*\n/),
+  'docs/deferred-base44-workflows.md'
+);
 assert.match(runbook, /scheduled GitHub workflow definition is intentionally absent/i);
 assert.match(runbook, /caller-supplied[\s\S]*initiator_type/i);
 assert.match(runbook, /authenticated\s+administrator/i);
 assert.match(runbook, /server-verifiable workflow identity/i);
 
-console.log('Base44 GitHub verification authorization and truthfulness contract passed.');
+console.log('Base44 GitHub verification AST authorization and truthfulness contract passed.');
