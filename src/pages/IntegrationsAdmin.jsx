@@ -129,9 +129,10 @@ export default function IntegrationsAdmin() {
 
   if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
-  const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
-  const counts = entries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
-  const githubEntry = entries.find((e) => e.platform === "github");
+  const visibleEntries = entries.filter((e) => String(e.platform || "").toLowerCase() !== "convex");
+  const needsAttention = visibleEntries.filter((e) => e.status && e.status !== "ACTIVE");
+  const counts = visibleEntries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
+  const githubEntry = visibleEntries.find((e) => e.platform === "github");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -162,7 +163,7 @@ export default function IntegrationsAdmin() {
       {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-        <Stat label="Registered" value={entries.length} />
+        <Stat label="Registered" value={visibleEntries.length} />
         <Stat label="Active" value={counts.ACTIVE || 0} tone="emerald" />
         <Stat label="Need attention" value={needsAttention.length} tone={needsAttention.length ? "amber" : "stone"} />
         <Stat label="Misconfigured" value={counts.MISCONFIGURED || 0} tone={counts.MISCONFIGURED ? "red" : "stone"} />
@@ -187,7 +188,7 @@ export default function IntegrationsAdmin() {
       )}
 
       <div className="mt-6">
-        <IntegrationsTable entries={entries} onRowClick={setSelected} />
+        <IntegrationsTable entries={visibleEntries} onRowClick={setSelected} />
       </div>
 
       <IntegrationDetailPanel entry={selected} onClose={() => setSelected(null)} onUpdated={reload} />
