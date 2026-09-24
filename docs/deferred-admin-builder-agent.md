@@ -10,14 +10,14 @@ permissions, ownership, credentials, or production source directly.
 
 Current Base44 documentation exposes login-only conversation methods but no
 verified per-agent admin-role authorization gate. The repository therefore has
-no verified, non-bypassable way to restrict a named agent to the \`admin\` role.
+no verified, non-bypassable way to restrict a named agent to the admin role.
 A role check in the Platform page or chat component protects only that user
 interface. An authenticated non-admin could still call the named agent through
 the direct API.
 
-The \`builder_agent\` configuration, Platform-console panel, direct chat route,
+The `builder_agent` configuration, Platform-console panel, direct chat route,
 and runtime aliases are intentionally absent. Prompt text,
-\`allow_anonymous_access: false\`, client-side role checks, and a separate
+`allow_anonymous_access: false`, client-side role checks, and a separate
 interaction-log function are not server-side authorization for conversation or
 tool execution.
 
