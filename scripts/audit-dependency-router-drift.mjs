@@ -40,26 +40,15 @@ function stripJsComments(source) {
   for (let index = 0; index < source.length; index += 1) {
     const char = source[index];
     const next = source[index + 1];
-
     if (state === "line-comment") {
-      if (char === "\n") {
-        state = "code";
-        output += "\n";
-      }
+      if (char === "\n") { state = "code"; output += "\n"; }
       continue;
     }
-
     if (state === "block-comment") {
-      if (char === "*" && next === "/") {
-        state = "code";
-        index += 1;
-        output += " ";
-      } else if (char === "\n") {
-        output += "\n";
-      }
+      if (char === "*" && next === "/") { state = "code"; index += 1; output += " "; }
+      else if (char === "\n") output += "\n";
       continue;
     }
-
     if (state === "string") {
       output += char;
       if (escaped) escaped = false;
@@ -67,40 +56,20 @@ function stripJsComments(source) {
       else if (char === quote) state = "code";
       continue;
     }
-
     if (char === "'" || char === '"' || char === "`") {
-      state = "string";
-      quote = char;
-      escaped = false;
-      output += char;
-      continue;
+      state = "string"; quote = char; escaped = false; output += char; continue;
     }
-
-    if (char === "/" && next === "/") {
-      state = "line-comment";
-      index += 1;
-      continue;
-    }
-
-    if (char === "/" && next === "*") {
-      state = "block-comment";
-      index += 1;
-      continue;
-    }
-
+    if (char === "/" && next === "/") { state = "line-comment"; index += 1; continue; }
+    if (char === "/" && next === "*") { state = "block-comment"; index += 1; continue; }
     output += char;
   }
-
   return output;
 }
 
 function hasExecutableImport(source, packageName) {
   const normalized = stripJsComments(source);
   const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const staticImport = new RegExp(
-    `(?:^|\\n)\\s*(?:import|export)(?:[^;\\n]*?\\s+from\\s+|\\s*)[\\\"']${escaped}[\\\"']`,
-    "m",
-  );
+  const staticImport = new RegExp(`(?:^|\\n)\\s*(?:import|export)(?:[^;\\n]*?\\s+from\\s+|\\s*)[\\\"']${escaped}[\\\"']`, "m");
   const dynamicImport = new RegExp(`\\bimport\\s*\\(\\s*[\\\"']${escaped}[\\\"']\\s*\\)`);
   const requireImport = new RegExp(`\\brequire\\s*\\(\\s*[\\\"']${escaped}[\\\"']\\s*\\)`);
   return staticImport.test(normalized) || dynamicImport.test(normalized) || requireImport.test(normalized);
@@ -120,8 +89,11 @@ function routerUsesLegacyApi(source) {
 }
 
 function selectsRouterV7(version) {
-  const normalized = String(version).trim();
-  return /^7(?:\.|$)/.test(normalized);
+  const normalized = String(version ?? "").trim();
+  if (!/^\d+\.\d+\.\d+(?:[-+].*)?$/.test(normalized)) {
+    fail("LOCKFILE_RESOLVED_VERSION_INVALID", `react-router-dom=${normalized || "<empty>"}`);
+  }
+  return normalized.startsWith("7.");
 }
 
 const pkg = readJson(packagePath, "PACKAGE_JSON_UNREADABLE");
@@ -136,24 +108,22 @@ for (const name of ["fflate", "react-router-dom"]) {
 }
 
 const files = walk(srcRoot);
-const sources = files.map((file) => fs.readFileSync(file, "utf8"));
-const source = sources.join("\n");
+const entries = files.map((file) => ({ file, text: fs.readFileSync(file, "utf8") }));
+const fflateImport = entries.some(({ text }) => hasExecutableImport(text, "fflate"));
+const reactRouterImport = entries.some(({ text }) => hasExecutableImport(text, "react-router-dom"));
+const reactQuillImport = entries.some(({ text }) => hasExecutableImport(text, "react-quill"));
+const routerLegacyFiles = entries.filter(({ text }) => routerUsesLegacyApi(text)).map(({ file }) => path.relative(root, file));
 
-if (!sources.some((text) => hasExecutableImport(text, "fflate"))) {
-  fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "fflate");
-}
-if (!sources.some((text) => hasExecutableImport(text, "react-router-dom"))) {
-  fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "react-router-dom");
-}
+if (!fflateImport) fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "fflate");
+if (!reactRouterImport) fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "react-router-dom");
+if (reactQuillImport) fail("REMOVED_DEPENDENCY_STILL_IMPORTED", "react-quill");
 
-if (sources.some((text) => hasExecutableImport(text, "react-quill"))) {
-  fail("REMOVED_DEPENDENCY_STILL_IMPORTED", "react-quill");
-}
-
+const resolvedFflateVersion = lockRoot.dependencies.fflate.version;
 const resolvedRouterVersion = lockRoot.dependencies["react-router-dom"].version;
 const routerV7 = selectsRouterV7(resolvedRouterVersion);
-if (routerV7 && routerUsesLegacyApi(source)) {
-  fail("ROUTER_V7_LEGACY_API_USAGE", "Switch/useHistory imported from react-router-dom");
+const routerV7LegacyApi = routerLegacyFiles.length > 0;
+if (routerV7 && routerV7LegacyApi) {
+  fail("ROUTER_V7_LEGACY_API_USAGE", routerLegacyFiles.join(", "));
 }
 
 console.log(JSON.stringify({
@@ -164,14 +134,16 @@ console.log(JSON.stringify({
     reactQuill: dependencies["react-quill"] ?? null,
   },
   resolved: {
-    fflate: lockRoot.dependencies.fflate.version,
+    fflate: resolvedFflateVersion,
     reactRouterDom: resolvedRouterVersion,
   },
   evidence: {
     sourceFilesScanned: files.length,
-    fflateImport: true,
-    reactRouterImport: true,
-    reactQuillImport: false,
-    routerV7LegacyApi: false,
+    fflateImport,
+    reactRouterImport,
+    reactQuillImport,
+    routerV7,
+    routerV7LegacyApi,
+    routerLegacyFiles,
   },
 }, null, 2));
