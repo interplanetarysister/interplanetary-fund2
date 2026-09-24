@@ -16,8 +16,9 @@ import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 //   Currently implemented as a status check + advisory; destructive writes are
 //   deferred until trusted workflow identity is established.
 //
-// This function is callable by admins on demand and by the scheduled
-// "Connection Sync Engine" workflow when the GitHub registry entry is ACTIVE.
+// This function is callable only by authenticated admins on demand.
+// Scheduled execution remains deferred until Base44 exposes a verifiable,
+// non-user workflow identity that this function can authenticate server-side.
 
 const REPO = 'interplanetarysister/interplanetary-fund2';
 const BRANCH = 'main';
@@ -102,16 +103,13 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(() => null);
-    const body = await req.json().catch(() => ({}));
-
-    const isWorkflow = body.initiator_type === 'workflow' || body.initiator_type === 'scheduled';
-    // Scheduled Base44 workflows run service-scoped and may not carry an end-user
-    // session. Interactive calls still require an authenticated admin.
-    if (!isWorkflow && !user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!isWorkflow && user.role !== 'admin') {
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if (user.role !== 'admin') {
       return Response.json({ error: 'Forbidden — admin only.' }, { status: 403 });
     }
 
+    // Request fields describe the operation only and never establish identity.
+    const body = await req.json().catch(() => ({}));
     const sr = base44.asServiceRole;
 
     const access = await assertPlatformAccess(sr, 'github');
@@ -155,7 +153,7 @@ export default async function (req) {
 
     await logAudit(base44, {
       action: 'github_sync',
-      actor_user_id: user?.id ?? null,
+      actor_user_id: user.id,
       target_type: 'Repository',
       target_id: REPO,
       detail: `direction=${direction} overall=${finalStatus} ${Object.entries(results).map(([k, v]) => `${k}=${v.ok ? 'ok' : 'fail'}`).join(' ')}`,

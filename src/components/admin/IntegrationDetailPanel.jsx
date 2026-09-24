@@ -101,7 +101,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <GitFork className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Check GitHub → Base44
+                Verify GitHub source status
               </Button>
               <Button
                 size="sm"
@@ -115,7 +115,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />
                 )}
-                Check Base44 → GitHub
+                Verify GitHub destination status
               </Button>
               <Button
                 size="sm"
@@ -128,12 +128,12 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Verify both directions
+                Verify GitHub connection
               </Button>
             </div>
             <p className="text-xs text-blue-500 mt-2">
-              Pull fast-forwards Base44 to match GitHub. Push sends Base44 commits to GitHub.
-              Conflicts surface as notifications rather than silently overwriting code.
+              These authenticated admin checks confirm connected GitHub access and the current remote HEAD.
+              They do not move files, create commits, or replace Base44’s native source synchronization.
             </p>
           </div>
         )}

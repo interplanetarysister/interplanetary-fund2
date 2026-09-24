@@ -9,7 +9,6 @@ export default async function(req) {
     const body = await req.json();
     const requestedAgent = String(body.canonicalAgentId || body.agentName || '').trim();
     if (!requestedAgent) return Response.json({ error: 'Agent is required.' }, { status: 400 });
-    if (requestedAgent === 'builder_agent' && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
     const summary = String(body.summary || '').slice(0, 2000);
     const outcome = body.outcome ? String(body.outcome).slice(0, 2000) : '';
     const campaignId = body.campaignId ? String(body.campaignId) : '';

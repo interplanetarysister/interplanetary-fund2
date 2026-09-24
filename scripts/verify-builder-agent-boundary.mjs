@@ -1,21 +1,35 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-const read = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+
+const root = new URL("../", import.meta.url);
+const read = (path) => fs.readFileSync(new URL(path, root), "utf8");
+const exists = (path) => fs.existsSync(new URL(path, root));
+
 const platform = read("src/pages/Platform.jsx");
-const builder = JSON.parse(read("base44/agents/builder_agent.jsonc"));
-const panel = read("src/components/platform/BuilderAgentPanel.jsx");
 const chat = read("src/components/agents/AgentChat.jsx");
+const identity = read("src/lib/agentIdentity.js");
 const bridge = read("base44/functions/recordAgentInteraction/entry.ts");
-assert.match(platform, /user\.role !== ["']admin["']/,
-  "Platform console must remain admin-only");
-assert.match(platform, /BuilderAgentPanel/);
-assert.match(platform, /value=["']builder["']/);
-assert.equal(builder.allow_anonymous_access, false);
-assert.match(builder.instructions, /TRAINING EXPANSION:/);
-assert.match(builder.instructions, /operational permissions remain enforced separately/i);
-assert.match(panel, /administrator-only Platform console/i);
-assert.doesNotMatch(chat, /requiresAdmin|ADMIN_REQUIRED/,
-  "generic AgentChat must not pretend a client-side prop is a server authorization boundary");
-assert.match(bridge, /requestedAgent === 'builder_agent' && user\.role !== 'admin'/,
-  "builder interaction bridge must reject non-admin callers");
-console.log("Builder Agent layered authorization and training boundary passed");
+const runbook = read("docs/deferred-admin-builder-agent.md");
+
+assert.equal(exists("base44/agents/builder_agent.jsonc"), false,
+  "builder agent config must remain absent without a server-enforced per-agent admin gate");
+assert.equal(exists("src/components/platform/BuilderAgentPanel.jsx"), false,
+  "direct Builder chat UI must remain absent while authorization cannot be enforced");
+
+assert.doesNotMatch(platform, /BuilderAgentPanel|value=["']builder["']/,
+  "Platform must not expose a client-only Builder tab");
+assert.doesNotMatch(chat, /builder_agent|Admin Builder/,
+  "generic chat must not hardcode a route to the deferred Builder");
+assert.doesNotMatch(identity, /builder_agent|Admin Builder/,
+  "runtime aliases must not resolve the deferred Builder");
+assert.doesNotMatch(bridge, /builder_agent|Admin Builder/,
+  "interaction logging must not imply a callable Builder boundary");
+
+assert.match(runbook, /login-only/i);
+assert.match(runbook, /no verified, non-bypassable way to restrict a named agent to the admin role/i);
+assert.match(runbook, /authenticated non-admin[\s\S]*direct API/i);
+assert.match(runbook, /conversation\s+creation, message, subscription, and tool execution/i);
+assert.match(runbook, /metered or unverified proxy/i);
+assert.match(runbook, /intentionally absent/i);
+
+console.log("Deferred Builder Agent fail-closed boundary passed");

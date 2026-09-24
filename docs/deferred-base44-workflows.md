@@ -1,63 +1,73 @@
 # Deferred Base44 Workflows
 
-This document records workflow history and remaining safety constraints. The GitHub Sync and External Fund Sync workflow definitions are present in the authoritative Base44 source; this document must not be used to disable them.
+This document records workflow history, retained capabilities, and current safety
+constraints. Deferred automation must not be represented as active.
 
 ---
 
 ## GitHub Two-Way Sync
 
-**Capability:** Automated two-way synchronization between Base44 sandbox and the GitHub repository (`interplanetarysister/interplanetary-fund2`), using the native GitHub synchronization control (GitHub REST API, OAuth connector).
+**Capability to preserve:** Conflict-safe two-way synchronization between the
+Base44 sandbox and \`interplanetarysister/interplanetary-fund2\`, using Base44's
+native source synchronization and a controlled GitHub identity.
 
-**Function:** `syncGitHub` (`base44/functions/syncGitHub/entry.ts`)
+**Health function:** \`syncGitHub\`
+(\`base44/functions/syncGitHub/entry.ts\`)
 
 ### What is implemented
 
-- **Pull direction:** Reads the current HEAD commit SHA on the default branch from the GitHub API, records it in the Platform Access Registry so health checks can detect drift between Base44 and the repository.
-- **Push direction:** Advisory check that confirms remote HEAD; surfaces a reminder that destructive push is deferred.
-- **Auth gate:** Checks the `github` entry in the Platform Access Registry (fail-closed) before any operation. Uses the GitHub OAuth connector for all API calls — no shell commands, no hardcoded tokens.
-- **Audit log:** Every sync call is audit-logged with direction, result, and actor.
-- **Admin notifications:** Failures trigger admin notifications linking to the Integrations page.
-- **On-demand UI:** Admins can trigger push, pull, or both from the Integration Registry detail panel for the GitHub entry.
+- An authenticated administrator can run a manual GitHub connection health
+  check from the Integration Registry.
+- The check reads the current \`main\` HEAD through the connected GitHub OAuth
+  credential, records the observed SHA, and reports destination reachability.
+- The Platform Access Registry is checked fail-closed before any provider call.
+- Every completed check is audit-logged with the authenticated administrator as
+  actor.
+- No shell command, hardcoded token, source application, commit creation, or
+  conflict resolution is performed by the deployed function.
 
-### What is deferred
+### What is deferred and absent
 
-- **Scheduled workflow:** `base44/workflows/GitHub Sync.jsonc` is active in source and invokes the guarded synchronization function every 15 minutes. It must fail closed when GitHub authorization or conflict safety is unavailable.
-- **Destructive file-level push:** Writing files directly to GitHub requires careful merge and conflict resolution. This is deferred until the workflow runs under a controlled, auditable identity with explicit commit attribution.
-- **Full file-level pull:** Pulling and applying file changes from GitHub into the Base44 sandbox automatically is deferred for the same reason.
+- The scheduled GitHub workflow definition is intentionally absent.
+- Base44 currently provides no repository-verified, server-verifiable workflow
+  identity that \`syncGitHub\` can authenticate. A caller-supplied
+  \`initiator_type\` value is only request data and must never grant access.
+- Automated file-level push and pull remain deferred until conflict handling,
+  attribution, rollback, and a trusted workflow identity are implemented and
+  verified.
 
-### What "trusted workflow identity" means
+An unauthenticated invocation always receives \`401\`; an authenticated
+non-admin receives \`403\`. The manual health check remains available to an
+authenticated administrator. A scheduled call without a verifiable identity
+must fail closed.
 
-Before activating the scheduled workflow or destructive file operations:
+### Safe restoration contract
 
-1. The Base44 workflow must run under a named service identity (a GitHub app or machine account with appropriate permissions) rather than an expiring personal OAuth token.
-2. Conflict detection and resolution must be in place — divergent histories must surface as blocked operations, not silent overwrites.
-3. The Platform Access Registry entry for `github` must be `ACTIVE` with a verified, non-expiring credential.
-4. The workflow must be reviewed and approved by a repository administrator.
+Restore scheduled synchronization only after all of the following have direct
+hosted evidence:
 
-### How to activate
-
-1. Establish a GitHub App or machine account with `contents: write` and `workflows: write` permissions on the repository.
-2. Store its credentials in the `GITHUB_APP_TOKEN` secret reference.
-3. Update the `github` Platform Access Registry entry with `secret_refs: ['GITHUB_APP_TOKEN']` and set `status: ACTIVE`.
-4. Keep `base44/workflows/GitHub Sync.jsonc` enabled with direction `both` on its 15-minute schedule.
-5. Run the integration health check to verify the credential is valid.
-6. Monitor the first several sync runs via the Ops Center audit log before enabling auto-activation.
+1. Base44 supplies a server-verifiable workflow identity that cannot be forged
+   in JSON, headers, or query parameters by an application caller.
+2. \`syncGitHub\` validates that identity before using service-role access.
+3. Negative tests prove anonymous, authenticated non-admin, and spoofed
+   workflow-label requests are denied.
+4. Conflict detection blocks divergent histories instead of overwriting them.
+5. Commit attribution, audit records, rollback, and repository permissions are
+   reviewed by an administrator.
+6. Base44's native source synchronization remains the single source-application
+   mechanism unless a separately reviewed replacement is adopted.
 
 ---
 
-## External Fund Sync (Deferred Workflow)
+## External Fund Sync
 
-**Capability:** Automated synchronization of external crowdfunding platform totals into Base44 on a recurring schedule.
+**Capability:** Synchronize supported external fundraising evidence into
+Base44 without treating owner-entered totals as verified or withdrawable funds.
 
-**Function:** `syncExternalFunds` is already invoked manually and via the "External Fund Sync" workflow. `base44/workflows/External Fund Sync.jsonc` is present in the authoritative source. Provider adapters must still fail closed when required authorization or rate-limit safety is unavailable.
-
-### Status
-
-The `syncExternalFunds` function is production-ready and callable on demand. The scheduled workflow trigger may be re-added once the following conditions are met:
-
-1. Rate limit buckets are confirmed for all enabled external platforms.
-2. The workflow trigger has been reviewed against the zero-credit continuous work directive.
-3. A separate workflow for each platform adapter is preferred over a single all-platforms sweep.
+The existing External Fund Sync workflow and \`syncExternalFunds\` function are
+separate from the deferred GitHub workflow. Their provider adapters must remain
+fail-closed when authentication, provider evidence, ownership, or rate-limit
+safety is unavailable.
 
 ---
 

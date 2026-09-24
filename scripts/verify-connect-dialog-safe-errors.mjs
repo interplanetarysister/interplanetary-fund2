@@ -131,9 +131,13 @@ assert.match(broadcastPosts, /assertOboGrant/);
 
 assert.doesNotMatch(githubSync, /Deno\.Command/);
 assert.match(githubSync, /native GitHub synchronization control/);
-assert.match(githubSync, /if \(!isWorkflow && !user\) return Response\.json\(\{ error: 'Unauthorized' \}/);
+assert.match(githubSync, /if \(!user\) return Response\.json\(\{ error: 'Unauthorized' \}/);
+assert.match(githubSync, /user\.role !== 'admin'/);
+assert.doesNotMatch(githubSync, /initiator_type|isWorkflow/,
+  "caller-supplied workflow labels must never bypass GitHub sync authentication");
 assert.match(githubSync, /anySucceeded \? 'partial' : 'failed'/);
-assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/GitHub Sync.jsonc")), true);
+assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/GitHub Sync.jsonc")), false,
+  "scheduled GitHub sync must remain absent until workflow identity is server-verifiable");
 assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/External Fund Sync.jsonc")), true);
 assert.match(deferredWorkflowRunbook, /trusted workflow identity/);
 assert.match(deferredWorkflowRunbook, /native GitHub synchronization control/);
