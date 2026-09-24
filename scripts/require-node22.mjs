@@ -13,7 +13,9 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-// Interplanetary Fund uses one runtime contract everywhere to prevent Base44/GitHub drift.\nconst SUPPORTED = [22];
+// Base44 may execute on Node 20 while Node 22 is the preferred release/tooling runtime.
+// Both are intentionally supported; Node 24 is not.
+const SUPPORTED = [20, 22];
 
 if (!SUPPORTED.includes(nodeMajor)) {
   console.error(
