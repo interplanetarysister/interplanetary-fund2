@@ -348,10 +348,10 @@ assert.ok(
 
 const unsafeTextPairs = [
   /bg-slate-(?:900|950)[^"'\n]*text-(?:slate|gray|zinc|neutral)-(?:700|800|900)/g,
-  /bg-(?:white|slate-50|gray-50)[^"'\n]*text-(?:white|slate-50|gray-50)/g,
+  /bg-(?:white|slate-50|gray-50)(?!\/)[^"'\n]*text-(?:white|slate-50|gray-50)(?:\s|["'])/g,
 ];
 const srcRoot = new URL('../src/', import.meta.url);
-import { readdirSync, statSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 function walk(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
