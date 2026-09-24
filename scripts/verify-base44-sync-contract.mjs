@@ -9,9 +9,9 @@ const nodeVersion = read('.node-version').trim();
 const nvmrc = read('.nvmrc').trim();
 const quality = read('.github/workflows/quality-gates.yml');
 
-assert.equal(nodeVersion, '22', '.node-version must stay on Node 22');
-assert.equal(nvmrc, '22', '.nvmrc must stay on Node 22');
-assert.equal(pkg.engines?.node, '>=22 <23', 'package engine must stay on Node 22');
+assert.equal(nodeVersion, '20', '.node-version must preserve the Base44 Node 20 compatibility baseline');
+assert.equal(nvmrc, '20', '.nvmrc must preserve the Base44 Node 20 compatibility baseline');
+assert.equal(pkg.engines?.node, '>=20 <23', 'package engine must preserve Node 20 and Node 22 compatibility');
 assert.doesNotMatch(quality, /node-version:\s*20(?:\.x)?\b/, 'production gates must not reintroduce Node 20');
 assert.match(quality, /node-version:\s*22\b/, 'production gates must execute on Node 22');
 
