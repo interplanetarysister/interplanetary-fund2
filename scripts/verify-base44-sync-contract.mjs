@@ -198,6 +198,29 @@ function analyzeSource(source, fileName) {
     return null;
   }
 
+  function resolveStringOptions(node, seen = new Set()) {
+    if (!node) return [];
+    if (ts.isParenthesizedExpression(node)) return resolveStringOptions(node.expression, seen);
+    if (ts.isAsExpression(node) || ts.isTypeAssertionExpression(node)) {
+      return resolveStringOptions(node.expression, seen);
+    }
+    if (ts.isConditionalExpression(node)) {
+      return [
+        ...resolveStringOptions(node.whenTrue, new Set(seen)),
+        ...resolveStringOptions(node.whenFalse, new Set(seen)),
+      ];
+    }
+    if (ts.isIdentifier(node) && bindings.has(node.text)) {
+      const initializer = bindings.get(node.text);
+      if (seen.has(initializer)) return [];
+      const nextSeen = new Set(seen);
+      nextSeen.add(initializer);
+      return resolveStringOptions(initializer, nextSeen);
+    }
+    const value = resolveString(node, false, new Set(seen));
+    return value === null ? [] : [value];
+  }
+
   function isInvokeExpression(expression) {
     if (ts.isIdentifier(expression)) return expression.text === 'invoke';
     if (ts.isPropertyAccessExpression(expression)) return expression.name.text === 'invoke';
@@ -209,6 +232,7 @@ function analyzeSource(source, fileName) {
 
   const invokedFunctions = [];
   const humanText = [];
+  const auditActions = [];
   const humanFields = new Set(['title', 'body', 'description', 'error', 'reason', 'detail', 'message']);
   const humanAttributes = new Set(['title', 'aria-label', 'alt', 'placeholder']);
 
@@ -228,6 +252,13 @@ function analyzeSource(source, fileName) {
         : ts.isPropertyAccessExpression(node.expression)
           ? node.expression.name.text
           : null;
+      if (calledName === 'logAudit' && node.arguments[1] && ts.isObjectLiteralExpression(node.arguments[1])) {
+        for (const property of node.arguments[1].properties) {
+          if (ts.isPropertyAssignment(property) && propertyName(property.name) === 'action') {
+            auditActions.push(...resolveStringOptions(property.initializer));
+          }
+        }
+      }
       if (
         calledName === 'toast' ||
         calledName === 'error' ||
@@ -265,7 +296,7 @@ function analyzeSource(source, fileName) {
   }
   visit(sourceFile);
 
-  return { invokedFunctions, humanText };
+  return { invokedFunctions, humanText, auditActions };
 }
 
 const templateQuote = String.fromCharCode(96);
@@ -365,6 +396,43 @@ assertNoFalseSourceMovementClaims(
   'truthful-positive-fixtures'
 );
 
+
+function assertTruthfulAuditActions(actions, path) {
+  assert.ok(actions.length > 0, path + ' must expose a statically verifiable AuditLog action');
+  for (const action of actions) {
+    assert.ok(
+      action === 'github_connection_verified' ||
+      action === 'github_connection_verification_failed',
+      path + ' contains false or unknown GitHub audit action: ' + action
+    );
+  }
+}
+
+const falseAuditFixture =
+  "async function syncGitHub() { await logAudit(base44, { action: 'github_sync' }); }";
+assert.throws(
+  () => assertTruthfulAuditActions(
+    analyzeSource(falseAuditFixture, 'syncGitHub-audit-negative.ts').auditActions,
+    'syncGitHub-audit-negative.ts'
+  ),
+  /false or unknown GitHub audit action: github_sync/,
+  "AuditLog action 'github_sync' must fail even though the function identifier syncGitHub is allowed"
+);
+
+const identifierOnlyAnalysis = analyzeSource(
+  'export default function syncGitHub() { return "syncGitHub"; }',
+  'syncGitHub-identifier-positive.ts'
+);
+assert.deepEqual(
+  identifierOnlyAnalysis.auditActions,
+  [],
+  'the syncGitHub function/code identifier must not be misclassified as an audit action'
+);
+assertNoFalseSourceMovementClaims(
+  identifierOnlyAnalysis.humanText,
+  'syncGitHub-identifier-positive.ts'
+);
+
 const syncAnalysis = analyzeSource(syncSource, 'base44/functions/syncGitHub/entry.ts');
 assert.match(syncSource, /const REPO = 'interplanetarysister\/interplanetary-fund2'/);
 assert.match(syncSource, /const BRANCH = 'main'/);
@@ -386,6 +454,12 @@ assert.ok(
   'admin notification body must describe verification failure'
 );
 assertNoFalseSourceMovementClaims(syncAnalysis.humanText, 'base44/functions/syncGitHub/entry.ts');
+assertTruthfulAuditActions(syncAnalysis.auditActions, 'base44/functions/syncGitHub/entry.ts');
+assert.deepEqual(
+  new Set(syncAnalysis.auditActions),
+  new Set(['github_connection_verified', 'github_connection_verification_failed']),
+  'success and failure audit actions must both remain explicit and truthful'
+);
 
 function collectSourceFiles(directory, relative = '') {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

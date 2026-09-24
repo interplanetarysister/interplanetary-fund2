@@ -150,12 +150,12 @@ export default async function (req) {
     const finalStatus = Object.values(results).every((r) => r.ok) ? 'success' : anySucceeded ? 'partial' : 'failed';
 
     await logAudit(base44, {
-      action: 'github_sync',
+      action: anyFailed ? 'github_connection_verification_failed' : 'github_connection_verified',
       actor_user_id: user.id,
       target_type: 'Repository',
       target_id: REPO,
       detail: `direction=${direction} overall=${finalStatus} ${Object.entries(results).map(([k, v]) => `${k}=${v.ok ? 'ok' : 'fail'}`).join(' ')}`,
-      status: finalStatus === 'failed' ? 'failure' : 'success',
+      status: anyFailed ? 'failure' : 'success',
       metadata: { direction, results, overall: finalStatus },
     });
 
