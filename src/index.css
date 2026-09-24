@@ -121,6 +121,18 @@
   html,
   body {
     overflow-x: hidden;
+    overflow-y: auto;
+    height: auto;
+    min-height: 100%;
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #root {
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+    touch-action: pan-y pinch-zoom;
   }
 
   body {
@@ -148,7 +160,19 @@
   textarea,
   select {
     color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
     caret-color: #22d3ee;
+    -webkit-text-fill-color: hsl(var(--foreground));
+  }
+
+  input:focus,
+  input:active,
+  textarea:focus,
+  textarea:active,
+  select:focus,
+  select:active {
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
   }
 
   input::placeholder,
