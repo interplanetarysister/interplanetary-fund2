@@ -9,7 +9,7 @@ constraints. Deferred automation must not be represented as active.
 
 **Capability to preserve:** Conflict-safe two-way synchronization between the
 Base44 sandbox and \`interplanetarysister/interplanetary-fund2\`, using Base44's
-native source synchronization and a controlled GitHub identity.
+native GitHub synchronization control and a controlled GitHub identity.
 
 **Health function:** \`syncGitHub\`
 (\`base44/functions/syncGitHub/entry.ts\`)
