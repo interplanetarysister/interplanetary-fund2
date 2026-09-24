@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { recordAgentInteraction } from "@/lib/recordAgentInteraction";
 
-// Conversation UI for an in-app AI agent. Starts a new conversation when the
-// agent changes, streams assistant replies via the agents SDK subscription,
-// and persists a best-effort interaction summary to the authoritative agent runtime.
+// Conversation UI for an in-app AI agent. Base44 agent memory is authoritative.
+// New conversation sessions may be created when the selected specialist changes;
+// each agent is configured to retain and reuse the user's cross-conversation context.
 export default function AgentChat({ agentName, agentLabel, greeting }) {
   const convRef = useRef(null);
   const [messages, setMessages] = useState([]);
@@ -50,17 +49,6 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     setSending(true);
     try {
       await base44.agents.addMessage(convRef.current, { role: "user", content });
-      try {
-        await recordAgentInteraction({
-          agentName,
-          summary: content,
-          outcome: "conversation",
-        });
-      } catch (recordError) {
-        // Interaction logging is best-effort and must never make a successfully
-        // delivered chat message appear to have failed.
-        console.error("Agent interaction logging failed", recordError);
-      }
     } catch (e) {
       console.error("Agent message send failed", e);
       setInput((current) => current || content);
