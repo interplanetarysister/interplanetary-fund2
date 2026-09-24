@@ -11,10 +11,12 @@
     "context_summary": { "type": "string", "description": "Relevant context only; never secrets or credentials." },
     "status": {
       "type": "string",
-      "enum": ["requested","assigned","in_progress","waiting_user","waiting_external","needs_review","completed","failed","cancelled"],
+      "enum": ["requested","assigned","in_progress","waiting_user","waiting_external","needs_review","completed","failed","cancelled","superseded"],
       "default": "requested"
     },
     "result_summary": { "type": "string" },
+    "supersedes_delegation_id": { "type": "string", "description": "Optional older delegation replaced by this corrected or newer assignment." },
+    "superseded_by_delegation_id": { "type": "string", "description": "Optional newer delegation that makes this record no longer current." },
     "verification": { "type": "string", "description": "Evidence or authoritative result used to verify completion." },
     "parent_delegation_id": { "type": "string", "description": "Optional parent delegation for multi-agent work." },
     "created_at": { "type": "string", "format": "date-time" },
