@@ -460,6 +460,11 @@ assert.deepEqual(
   new Set(['github_connection_verified', 'github_connection_verification_failed']),
   'success and failure audit actions must both remain explicit and truthful'
 );
+assert.match(
+  syncSource,
+  /metadata:\s*\{\s*direction,\s*results,\s*overall:\s*finalStatus\s*\}/,
+  'AuditLog metadata must use the same truthful final status returned by the function'
+);
 
 function collectSourceFiles(directory, relative = '') {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {

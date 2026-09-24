@@ -145,7 +145,6 @@ export default async function (req) {
 
     const anySucceeded = Object.values(results).some((r) => r.ok);
     const anyFailed = Object.values(results).some((r) => !r.ok);
-    const overall = anyFailed && !anySucceeded ? 'failed' : anySucceeded ? 'partial' : 'failed';
     // Simplified: all ok → success; mix → partial; all failed → failed
     const finalStatus = Object.values(results).every((r) => r.ok) ? 'success' : anySucceeded ? 'partial' : 'failed';
 
