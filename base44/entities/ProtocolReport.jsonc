@@ -4,7 +4,7 @@
   "properties": {
     "report_id": {
       "type": "string",
-      "description": "Convex report id \u2014 the sync match key."
+      "description": "Canonical protocol report id \u2014 the sync match key."
     },
     "title": {
       "type": "string"

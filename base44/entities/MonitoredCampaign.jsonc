@@ -4,7 +4,7 @@
   "properties": {
     "if_campaign_id": {
       "type": "string",
-      "description": "Interplanetary Fund campaign id from the Convex backend \u2014 the sync match key."
+      "description": "Interplanetary Fund Base44 campaign id \u2014 the sync match key."
     },
     "title": {
       "type": "string"
