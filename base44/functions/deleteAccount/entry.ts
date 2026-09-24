@@ -72,6 +72,7 @@ export default async function(req) {
       await sr.entities.Recommendation.deleteMany({ created_by_id: user.id });
       await sr.entities.Recommendation.deleteMany({ owner_user_id: user.id });
       await sr.entities.AgentActivity.deleteMany({ owner_user_id: user.id });
+      await sr.entities.AgentDelegation.deleteMany({ owner_user_id: user.id });
       await sr.entities.Message.deleteMany({ created_by_id: user.id });
       await sr.entities.CommunityMember.deleteMany({ user_id: user.id });
       await sr.entities.VolunteerSignup.deleteMany({ user_id: user.id });
