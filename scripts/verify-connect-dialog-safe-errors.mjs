@@ -131,7 +131,7 @@ assert.match(broadcastPosts, /assertOboGrant/);
 
 assert.doesNotMatch(githubSync, /Deno\.Command/);
 assert.match(githubSync, /native GitHub synchronization control/);
-assert.match(githubSync, /if \(!user\) return Response\.json\(\{ error: 'Unauthorized' \}/);
+assert.match(githubSync, /if \(!isWorkflow && !user\) return Response\.json\(\{ error: 'Unauthorized' \}/);
 assert.match(githubSync, /anySucceeded \? 'partial' : 'failed'/);
 assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/GitHub Sync.jsonc")), true);
 assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/External Fund Sync.jsonc")), true);
