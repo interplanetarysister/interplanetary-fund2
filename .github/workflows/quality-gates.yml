@@ -31,8 +31,8 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install locked dependencies
-        run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - name: Install locked dependencies with lifecycle scripts
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Verify Node 22 runtime contract
         run: npm run verify:node22-release-contract
@@ -106,8 +106,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install locked dependencies
-        run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - name: Install locked dependencies with lifecycle scripts
+        run: npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Typecheck
         run: npm run typecheck
