@@ -6,6 +6,12 @@ const ENV_BY_PLATFORM: Record<string, string> = {
   instagram: 'APP_USER_CONNECTOR_INSTAGRAM_ID',
   discord: 'APP_USER_CONNECTOR_DISCORD_ID',
   tiktok: 'APP_USER_CONNECTOR_TIKTOK_ID',
+  threads: 'APP_USER_CONNECTOR_THREADS_ID',
+  x: 'APP_USER_CONNECTOR_X_ID',
+  pinterest: 'APP_USER_CONNECTOR_PINTEREST_ID',
+  reddit: 'APP_USER_CONNECTOR_REDDIT_ID',
+  youtube: 'APP_USER_CONNECTOR_YOUTUBE_ID',
+  patreon: 'APP_USER_CONNECTOR_PATREON_ID',
 };
 
 export default async function(req) {
