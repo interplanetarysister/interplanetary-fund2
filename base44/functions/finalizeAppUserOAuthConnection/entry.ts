@@ -18,6 +18,12 @@ const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities:
   instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
   discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
   tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  threads: { env: 'APP_USER_CONNECTOR_THREADS_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  x: { env: 'APP_USER_CONNECTOR_X_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  pinterest: { env: 'APP_USER_CONNECTOR_PINTEREST_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  reddit: { env: 'APP_USER_CONNECTOR_REDDIT_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  youtube: { env: 'APP_USER_CONNECTOR_YOUTUBE_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
 };
 
 function providerCapabilities(oauth: any): string[] {
