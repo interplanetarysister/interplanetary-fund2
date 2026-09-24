@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
-// Two-way sync between Base44 and GitHub using the native GitHub synchronization control
+// GitHub source-connection verification used alongside Base44 native GitHub synchronization
 // (GitHub REST API via the connected OAuth connector). No shell commands are used;
 // all git operations go through the GitHub API so credentials never touch the filesystem.
 //
@@ -83,7 +83,7 @@ async function syncPull(token, sr) {
     }).catch(() => {});
   }
 
-  return { ok: true, detail: `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH}. Full file-level sync is deferred pending trusted workflow identity (see docs/deferred-base44-workflows.md).` };
+  return { ok: true, detail: `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH}. Base44 native source sync applies repository changes.` };
 }
 
 // Push: verify the Base44 sandbox is in sync with GitHub.
@@ -94,7 +94,7 @@ async function syncPush(token) {
   if (!remoteSha) return { ok: false, detail: 'Could not read branch HEAD from GitHub.' };
   return {
     ok: true,
-    detail: `Push advisory: remote HEAD is ${remoteSha.slice(0, 12)}. Destructive push is deferred until trusted workflow identity is established (see docs/deferred-base44-workflows.md). Use git push from the sandbox CLI when ready.`,
+    detail: `GitHub destination is reachable at ${remoteSha.slice(0, 12)} on ${BRANCH}. Base44 native source sync owns source application.`,
   };
 }
 
