@@ -90,7 +90,7 @@ export default function TreasurySnapshotCard() {
           <SheetHeader className="text-left">
             <SheetTitle className="text-slate-100">Treasury breakdown</SheetTitle>
             <SheetDescription className="text-slate-400">
-              Per-campaign balances from the Convex mission backend.
+              Per-campaign balances from the platform treasury ledger.
             </SheetDescription>
           </SheetHeader>
           <div className="mt-4">
