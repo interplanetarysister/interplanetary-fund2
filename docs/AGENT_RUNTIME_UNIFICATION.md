@@ -38,6 +38,14 @@ All seven user-facing agents have cross-conversation context enabled. Specialist
 
 Structured delegation/task tracking remains separate from conversational memory. `AgentDelegation` is the authoritative Base44 record for substantive cross-agent assignments, including source/destination agent, objective, campaign context, real status, result, and verification. Chief of Staff can create/read/update these records. Conversation memory preserves context; delegation records preserve operational state.
 
+## Campaign context isolation
+
+Cross-conversation memory does not make campaign context interchangeable. Campaign-specific facts, drafts, outcomes, beneficiary details, financial information, and instructions must remain anchored to the applicable campaign ID. A campaign title may be retained for readability, but the campaign ID is authoritative.
+
+Before a consequential campaign-specific action, agents should use the current selected/delegated campaign context and current authoritative records. If remembered context belongs to another campaign, it must not be imported into the active campaign. General user-level preferences may carry across campaigns only when they are genuinely user-level.
+
+Structured `AgentDelegation` records therefore preserve `campaign_id` separately from their context summary. When no campaign applies, the field may remain empty rather than guessing.
+
 ## Safety
 
 Memory does not:
