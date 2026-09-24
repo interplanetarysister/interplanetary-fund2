@@ -148,10 +148,15 @@
 
   p,
   li,
-  blockquote,
+  blockquote {
+    overflow-wrap: break-word;
+    word-break: normal;
+  }
+
   td,
   th {
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   /* Keep entered text, placeholders, carets, and browser autofill readable on
