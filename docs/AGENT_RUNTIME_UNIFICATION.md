@@ -46,6 +46,14 @@ Before a consequential campaign-specific action, agents should use the current s
 
 Structured `AgentDelegation` records therefore preserve `campaign_id` separately from their context summary. When no campaign applies, the field may remain empty rather than guessing.
 
+## Correction and supersession
+
+Memory is not append-only truth. Within the same scope, a newer explicit user correction supersedes an older user-provided fact or preference, and current authoritative platform state supersedes remembered operational state. Repetition of stale information does not make it current.
+
+Corrections must preserve scope: correcting one campaign does not silently change another campaign, and correcting a campaign-specific instruction does not automatically rewrite a user-level preference.
+
+Structured delegated work uses explicit supersession. If a correction still describes the same assignment, update that assignment. If it replaces the assignment, mark the old `AgentDelegation` as `superseded` and link old/new records with the supersession fields. Completed or superseded historical records may remain for accountability but must not be treated as active instructions.
+
 ## Safety
 
 Memory does not:
