@@ -3,7 +3,7 @@ import { emitActivityEvent } from '../../shared/activityEvent.ts';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 
 // Publishes a campaign into the Community feed and registers its stable
-// application identity with the canonical Convex backend. Financial writes
+// application identity with the canonical Base44 financial store. Financial writes
 // fail closed unless this mapping exists, so registration happens before the
 // public campaign-created event.
 export default async function(req) {
