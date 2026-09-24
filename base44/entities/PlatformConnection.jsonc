@@ -68,6 +68,12 @@
       "default": "unverified",
       "description": "Whether the provider has independently verified this connection. Missing values on legacy records are treated as unverified."
     },
+    "capability_status": {
+      "type": "string",
+      "enum": ["confirmed", "unknown", "reauthorization_required"],
+      "default": "unknown",
+      "description": "Truth state for provider-reported capabilities. Unknown never behaves as granted."
+    },
     "external_data_source": {
       "type": "string",
       "enum": [
