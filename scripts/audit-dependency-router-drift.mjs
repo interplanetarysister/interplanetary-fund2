@@ -31,6 +31,35 @@ function walk(dir) {
   return files;
 }
 
+function hasExecutableImport(source, packageName) {
+  const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const staticImport = new RegExp(
+    `^\\s*import(?:[^;\\n]*?\\s+from\\s+|\\s*)[\\\"']${escaped}[\\\"']`,
+    "m",
+  );
+  const dynamicImport = new RegExp(`\\bimport\\s*\\(\\s*[\\\"']${escaped}[\\\"']\\s*\\)`);
+  const requireImport = new RegExp(`\\brequire\\s*\\(\\s*[\\\"']${escaped}[\\\"']\\s*\\)`);
+  return staticImport.test(source) || dynamicImport.test(source) || requireImport.test(source);
+}
+
+function routerUsesLegacyApi(source) {
+  const importFromRouter = /(^|\n)\s*import\s+([\s\S]*?)\s+from\s+["']react-router-dom["']/g;
+  for (const match of source.matchAll(importFromRouter)) {
+    const specifiers = match[2];
+    if (/\bSwitch\b|\buseHistory\b/.test(specifiers)) return true;
+  }
+  const requireFromRouter = /\b(?:const|let|var)\s*\{([^}]+)\}\s*=\s*require\(\s*["']react-router-dom["']\s*\)/g;
+  for (const match of source.matchAll(requireFromRouter)) {
+    if (/\bSwitch\b|\buseHistory\b/.test(match[1])) return true;
+  }
+  return false;
+}
+
+function selectsRouterV7(range) {
+  const normalized = String(range).trim();
+  return /(?:^|[ <>=~^|])7(?:\.|$)/.test(normalized) && !/\b(?:<|<=)\s*7(?:\.|$)/.test(normalized);
+}
+
 const pkg = readJson(packagePath, "PACKAGE_JSON_UNREADABLE");
 const lock = readJson(packageLockPath, "PACKAGE_LOCK_UNREADABLE");
 const dependencies = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
@@ -42,21 +71,23 @@ for (const name of ["fflate", "react-router-dom"]) {
 }
 
 const files = walk(srcRoot);
-const source = files.map((file) => fs.readFileSync(file, "utf8")).join("\n");
-const fflateImport = /(?:from\s+["']fflate["']|import\s*\(\s*["']fflate["']\s*\)|require\(\s*["']fflate["']\s*\))/;
-const routerImport = /(?:from\s+["']react-router-dom["']|import\s*\(\s*["']react-router-dom["']\s*\)|require\(\s*["']react-router-dom["']\s*\))/;
+const sources = files.map((file) => fs.readFileSync(file, "utf8"));
+const source = sources.join("\n");
 
-if (!fflateImport.test(source)) fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "fflate");
-if (!routerImport.test(source)) fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "react-router-dom");
+if (!sources.some((text) => hasExecutableImport(text, "fflate"))) {
+  fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "fflate");
+}
+if (!sources.some((text) => hasExecutableImport(text, "react-router-dom"))) {
+  fail("DECLARED_DEPENDENCY_NO_SOURCE_IMPORT", "react-router-dom");
+}
 
-const forbiddenLegacyImport = /(?:from\s+["']react-quill["']|import\s*\(\s*["']react-quill["']\s*\)|require\(\s*["']react-quill["']\s*\))/;
-if (forbiddenLegacyImport.test(source)) fail("REMOVED_DEPENDENCY_STILL_IMPORTED", "react-quill");
+if (sources.some((text) => hasExecutableImport(text, "react-quill"))) {
+  fail("REMOVED_DEPENDENCY_STILL_IMPORTED", "react-quill");
+}
 
-const routerV7 = String(dependencies["react-router-dom"]).startsWith("^7.");
-const legacySwitch = /\bSwitch\b/;
-const legacyHistory = /\buseHistory\b/;
-if (routerV7 && (legacySwitch.test(source) || legacyHistory.test(source))) {
-  fail("ROUTER_V7_LEGACY_API_USAGE", "Switch/useHistory");
+const routerV7 = selectsRouterV7(dependencies["react-router-dom"]);
+if (routerV7 && routerUsesLegacyApi(source)) {
+  fail("ROUTER_V7_LEGACY_API_USAGE", "Switch/useHistory imported from react-router-dom");
 }
 
 console.log(JSON.stringify({
