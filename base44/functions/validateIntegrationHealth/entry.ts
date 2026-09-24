@@ -24,7 +24,8 @@ function checkSecrets(platform) {
 async function validateEntry(sr, e, now) {
   const checks = [];
   const flags = [];
-  let status = 'ACTIVE';
+  let status = e.status === 'REVOKED' ? 'REVOKED' : 'DISCONNECTED';
+  let providerVerified = false;
   let lastFailure = '';
   const p = e.platform;
 
@@ -47,20 +48,22 @@ async function validateEntry(sr, e, now) {
     // Base44, not an app connector — skip the live connector check so it isn't
     // false-flagged as REAUTH_REQUIRED.
     if (String(e.account_identifier || '').toLowerCase().includes('platform-managed')) {
-      checks.push({ check: 'platform_managed', ok: true, detail: 'platform-managed login provider' });
+      checks.push({ check: 'platform_managed', ok: true, detail: 'provider-managed; no app-side verification performed' });
     } else {
       try {
         const conn = await sr.connectors?.getConnection?.(p);
         if (conn && conn.accessToken) {
-          checks.push({ check: 'oauth_authorized', ok: true, detail: 'access token present' });
+          checks.push({ check: 'oauth_authorized', ok: true, detail: 'provider connection verified' });
+          status = 'ACTIVE';
+          providerVerified = true;
         } else {
           checks.push({ check: 'oauth_authorized', ok: false, detail: 'no access token' });
-          status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
+          status = status === 'MISCONFIGURED' ? status : 'REAUTH_REQUIRED';
           if (!lastFailure) lastFailure = 'OAuth connector is not authorized.';
         }
       } catch (err) {
         checks.push({ check: 'oauth_authorized', ok: false, detail: err.message || 'connector check failed' });
-        status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
+        status = status === 'MISCONFIGURED' ? status : 'REAUTH_REQUIRED';
         if (!lastFailure) lastFailure = `OAuth check failed: ${err.message || 'unknown'}`;
       }
     }
@@ -76,8 +79,9 @@ async function validateEntry(sr, e, now) {
   // must not generate configuration warnings or block normal platform health.
   if (p === 'convex') {
     checks.push({ check: 'legacy_backend', ok: true, detail: 'legacy backend ignored by Base44 health gate' });
-    status = 'ACTIVE';
+    status = e.status || 'DISCONNECTED';
     lastFailure = '';
+    providerVerified = false;
   }
 
   if (e.dependencies && e.dependencies.length) {
@@ -86,7 +90,7 @@ async function validateEntry(sr, e, now) {
 
   const alertTitle = isUnhealthy(status) ? `[${p}] ${STATUS_LABEL[status] || status}` : '';
   const alertBody = lastFailure || `Integration "${p}" requires attention: ${status}.`;
-  return { status, flags, checks, lastFailure, alertTitle, alertBody };
+  return { status, flags, checks, lastFailure, alertTitle, alertBody, providerVerified };
 }
 
 export default async function(req) {
@@ -112,7 +116,7 @@ export default async function(req) {
         last_failure: result.lastFailure || '',
         auth_failures: result.status === 'ACTIVE' ? 0 : (e.auth_failures || 0),
       };
-      if (result.status === 'ACTIVE') update.last_successful_verification = now;
+      if (result.status === 'ACTIVE' && result.providerVerified) update.last_successful_verification = now;
       await sr.entities.PlatformAccessRegistry.update(e.id, update);
 
       if (before !== result.status) {
