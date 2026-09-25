@@ -25,7 +25,7 @@ assert.match(provider, /redirect: 'error'/);
 assert.match(provider, /host === 'localhost'/);
 assert.match(provider, /privateIpv4/);
 assert.match(provider, /host === '0\\.0\\.0\\.0'/);
-assert.match(provider, /replace\(\/\^\\\\\[\|\\\\\]\$\/g/);
+assert.ok(provider.includes("replace(/^\\[|\\]$/g, '')"));
 assert.match(sync, /reauthorization_required/);
 assert.match(sync, /Scheduled provider verification succeeded/);
 assert.match(health, /verification_status === "verified"/);
