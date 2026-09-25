@@ -21,15 +21,21 @@ function publicHttpsHost(value: unknown) {
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   const privateIpv4 = ipv4 && (
-    Number(ipv4[1]) === 10
+    Number(ipv4[1]) === 0
+    || Number(ipv4[1]) === 10
     || Number(ipv4[1]) === 127
+    || (Number(ipv4[1]) === 100 && Number(ipv4[2]) >= 64 && Number(ipv4[2]) <= 127)
     || (Number(ipv4[1]) === 169 && Number(ipv4[2]) === 254)
     || (Number(ipv4[1]) === 172 && Number(ipv4[2]) >= 16 && Number(ipv4[2]) <= 31)
     || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 168)
+    || (Number(ipv4[1]) === 198 && [18, 19].includes(Number(ipv4[2])))
+    || Number(ipv4[1]) >= 224
   );
+  // Reject every IPv6 literal. Without resolution-and-pinning support, accepting
+  // arbitrary literals would leave mapped-private and link-local SSRF paths.
+  const ipv6Literal = host.includes(':');
   if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
-      || host === '::1' || host.startsWith('fc') || host.startsWith('fd')
-      || host.startsWith('fe80:') || host === '0.0.0.0' || privateIpv4) {
+      || ipv6Literal || host === '0.0.0.0' || privateIpv4) {
     throw new Error('Mastodon instance must be a public HTTPS hostname.');
   }
   return host;
