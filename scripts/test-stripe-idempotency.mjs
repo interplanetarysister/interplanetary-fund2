@@ -1,5 +1,5 @@
 // Static release contract for the Stripe webhook financial boundary.
-// Live provider/Convex integration is verified separately; this test prevents
+// Live provider integration is verified separately; this test prevents
 // regressions back to Base44 read-check-create/$inc accounting.
 import { readFileSync } from 'node:fs';
 
@@ -11,7 +11,7 @@ const checks = [
   ['marks side effects complete only after reconciliation', source.includes("state: 'side_effects_complete'")],
   ['retains failed state for Stripe retry', source.includes("state: 'failed'")],
   ['does not delete webhook recovery record on failure', !/WebhookEvent\.delete\(claim\.id\)/.test(source)],
-  ['routes financial value through canonical Convex mutation helper', source.includes('recordCanonicalDonation')],
+  ['routes financial value through the canonical Base44 financial boundary', source.includes('recordCanonicalDonation')],
   ['sets Base44 campaign totals from canonical result', source.includes('mirrorCanonicalCampaignTotal')],
   ['repairs Donation mirror by canonical operation id', source.includes('reconcileDonationMirror')],
   ['repairs Notification mirror by canonical operation id', source.includes('reconcileNotificationMirror')],
