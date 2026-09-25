@@ -18,7 +18,7 @@ function publicHttpsHost(value: unknown) {
   if (url.protocol !== 'https:' || url.username || url.password || url.port) {
     throw new Error('Mastodon instance must be a public HTTPS hostname.');
   }
-  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   const privateIpv4 = ipv4 && (
     Number(ipv4[1]) === 10
@@ -29,7 +29,7 @@ function publicHttpsHost(value: unknown) {
   );
   if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
       || host === '::1' || host.startsWith('fc') || host.startsWith('fd')
-      || host.startsWith('fe80:') || privateIpv4) {
+      || host.startsWith('fe80:') || host === '0.0.0.0' || privateIpv4) {
     throw new Error('Mastodon instance must be a public HTTPS hostname.');
   }
   return host;
