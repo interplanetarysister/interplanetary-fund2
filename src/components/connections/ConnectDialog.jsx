@@ -186,9 +186,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {usesProviderOAuth && !existing ? (
+          {usesProviderOAuth && (!existing || existing?.capability_status === "reauthorization_required") ? (
             <Button onClick={connectWithProvider} disabled={connecting || !permissionAccepted} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : `Allow & connect ${platform.name}`}
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Allow & connect ${platform.name}`}
             </Button>
           ) : (
             <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
