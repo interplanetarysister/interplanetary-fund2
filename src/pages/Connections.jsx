@@ -84,7 +84,8 @@ export default function Connections() {
 
   const catalogSection = (title, Icon, items) => (
     <div className="mb-8">
-      <h2 className="flex items-center gap-2 font-display text-xl text-stone-900 mb-3"><Icon className="w-4 h-4 text-primary" /> {title}</h2>
+      <h2 className="flex items-center gap-2 font-display text-xl text-stone-900 mb-1"><Icon className="w-4 h-4 text-primary" /> {title}</h2>
+      <p className="text-sm text-stone-500 mb-3">Tap Connect to turn one on. Interplanetary Fund handles the technical setup behind the scenes.</p>
       <div className="grid sm:grid-cols-2 gap-3">
         {items.filter((p) => p.id === "custom" || !connectedIds.includes(p.id)).map((p) => (
           <div key={p.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-start justify-between gap-3">
@@ -102,14 +103,20 @@ export default function Connections() {
   );
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900 mb-1">
+    <div className="connections-hub max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="rounded-[2rem] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-5 sm:p-7 shadow-xl mb-7">
+      <h1 className="flex items-center gap-2.5 font-display text-3xl text-cyan-50 mb-1">
         <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
           <Link2 className="w-5 h-5 text-white" />
         </span>
         Connections
       </h1>
-      <p className="text-stone-500 mb-6">Create once. Connect once. Fund everywhere. Manage every fundraising and social destination from one place.</p>
+      <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
+      <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
+        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{connections.length} connected</span>
+        <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social in one place</span>
+      </div>
+      </div>
 
       {connectionNotice && (
         <div className={`mb-4 rounded-xl border p-3 text-sm ${connectionNotice.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
@@ -144,7 +151,8 @@ export default function Connections() {
 
       {connections.length > 0 && (
         <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-3">Connected</h2>
+          <h2 className="font-display text-xl text-stone-900 mb-1">On and working</h2>
+          <p className="text-sm text-stone-500 mb-3">These platforms are already linked.</p>
           <div className="space-y-3">
             {connections.map((c) => (
               <ConnectionCard
