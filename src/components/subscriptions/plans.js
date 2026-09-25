@@ -1,4 +1,4 @@
-// Subscription plan catalog for Crowdfund AI tiers.
+// Subscription plan catalog for Interplanetary Fund AI tiers.
 // Designed so new tiers can be appended here without touching checkout or UI
 // code. Each tier declares monthly + annual Stripe price IDs (filled in after
 // the prices are created) and the feature set used by the subscribe UI.
