@@ -152,7 +152,7 @@ export default function Connections() {
                 connection={c}
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
-                onRemoved={(id) => setConnections((prev) => prev.filter((x) => x.id !== id))}
+                onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
               />
             ))}
           </div>
