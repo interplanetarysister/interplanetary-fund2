@@ -20,6 +20,7 @@ export default async function(req) {
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count, credentials,
+      browser_read_consent,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
@@ -86,6 +87,18 @@ export default async function(req) {
       last_error: '',
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
+
+    if (effectiveKind === 'crowdfunding' && typeof browser_read_consent === 'boolean') {
+      data.obo_consent = browser_read_consent ? {
+        granted: true, granted_at: now, permission_version: '2026-09-browser-read-v1',
+        requested_capabilities: ['GET_METRICS'], granted_capabilities: ['GET_METRICS'],
+        provider_capabilities: [],
+      } : { granted: false, granted_capabilities: [], provider_capabilities: [] };
+      data.agent_access = {
+        shared_with_agents: browser_read_consent,
+        automation_enabled: browser_read_consent,
+      };
+    }
 
     let saved;
     if (existing) saved = await base44.entities.PlatformConnection.update(existing.id, data);
