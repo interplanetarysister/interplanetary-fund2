@@ -21,6 +21,7 @@ rejectText(manage, "status: 'ACTIVE', last_failure: ''", "manual action cannot a
 requireText(health, "const SUPPORTED_STATUSES = new Set", "supported status allowlist exists");
 requireText(health, "normalizeStoredStatus", "legacy statuses normalize before persistence");
 requireText(health, "status = normalizeStoredStatus(e.status)", "malformed legacy status fails closed");
+requireText(health, "status === 'MISCONFIGURED' ? status : normalizeStoredStatus(e.status)", "platform-managed status preserves safe stored truth");
 requireText(health, "providerVerified = false", "verification evidence tracked");
 requireText(health, "status !== 'MISCONFIGURED' && status !== 'REVOKED'", "provider success cannot override revoked or invalid state");
 rejectText(health, "err?.message", "provider errors are not persisted");
@@ -30,8 +31,8 @@ requireText(page, "normalizeIntegrationStatus(entry.status)", "malformed UI stat
 requireText(page, "withTimeout(", "admin requests are bounded");
 requireText(page, "invokeWithLock", "locks follow underlying request settlement");
 requireText(page, "pending.then(() => { lock.current = false; }, () => { lock.current = false; })", "timeout cannot release active mutation lock");
-requireText(page, "healthLock.current", "health duplicate action lock");
-requireText(page, "githubLock.current", "GitHub duplicate action lock");
+requireText(page, "invokeWithLock(healthLock", "health duplicate action lock");
+requireText(page, "invokeWithLock(githubLock", "GitHub duplicate action lock");
 requireText(page, "setSelected(fresh || null)", "selected row reconciles after refresh");
 requireText(page, "isGitHubResponse", "GitHub response validated");
 requireText(panel, "UNKNOWN_STATUS_BADGE", "detail status fails closed");
