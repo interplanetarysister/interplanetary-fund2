@@ -58,7 +58,8 @@
     "verify:base44-sync": "node scripts/verify-base44-sync-contract.mjs",
     "verify:ui-regressions": "node scripts/verify-text-contrast-contract.mjs",
     "verify:procon-job": "node scripts/verify-procon-job.mjs",
-    "verify:entitlements-connections": "node scripts/verify-entitlement-connection-contract.mjs"
+    "verify:entitlements-connections": "node scripts/verify-entitlement-connection-contract.mjs",
+    "verify:no-active-convex": "node scripts/verify-no-active-convex-runtime.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.51",
