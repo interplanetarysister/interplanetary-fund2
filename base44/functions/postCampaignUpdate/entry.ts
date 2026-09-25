@@ -82,12 +82,6 @@ export default async function(req) {
         : await sr.entities.User.get(campaign.created_by_id).catch(() => null);
       const aiConsentGranted = hasAiPublishingConsent(consentOwner);
       const platformAccess = await assertPlatformAccess(sr, 'social_publish');
-      const obo = await assertOboGrant(
-        sr,
-        'platform_outreach_agent',
-        campaign.created_by_id,
-        'social_publish',
-      );
       const targets = aiConsentGranted
         ? connections.filter((c) =>
             c.automation_mode !== 'manual' &&
@@ -143,6 +137,7 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
+          const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', conn);
           if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
