@@ -224,7 +224,8 @@ export default async function(req) {
       // non-financial application side effect for this particular integrity boundary.
       if (m.subscription_tier) {
         if (m.user_id) {
-          await sr.entities.User.update(m.user_id, {
+          const subscriptionUser = await sr.entities.User.get(m.user_id).catch(() => null);
+          if (subscriptionUser?.role !== 'admin') await sr.entities.User.update(m.user_id, {
             subscription_tier: m.subscription_tier,
             subscription_status: 'active',
             subscription_interval: m.subscription_interval || 'monthly',
@@ -287,7 +288,7 @@ export default async function(req) {
       if (invoice.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: invoice.customer });
         const u = users && users[0];
-        if (u) {
+        if (u && u.role !== 'admin') {
           const periodEnd = invoice.lines?.data?.[0]?.period?.end;
           await sr.entities.User.update(u.id, {
             subscription_status: 'active',
@@ -300,7 +301,7 @@ export default async function(req) {
       if (sub.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
         const u = users && users[0];
-        if (u) {
+        if (u && u.role !== 'admin') {
           const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
           await sr.entities.User.update(u.id, {
@@ -315,7 +316,7 @@ export default async function(req) {
       if (sub.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
         const u = users && users[0];
-        if (u) {
+        if (u && u.role !== 'admin') {
           await sr.entities.User.update(u.id, {
             subscription_status: 'canceled',
             subscription_tier: 'free',
