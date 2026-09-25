@@ -4,7 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 // posts about platform features, with signature-style AI imagery. Admin-only.
 // Each call generates one post; the admin can trigger it repeatedly.
 
-const SIGNATURE_STYLE = 'Interplanetary Fund signature art direction: cyberpunk, afropunk, interplanetary and celestial visual language, cinematic realism with subtle comic-book energy, sophisticated cool-toned lighting, human-centered and hopeful. No text, no watermark, no logos.';
+const SIGNATURE_STYLE = 'Interplanetary Fund signature art direction: cyberpunk, steampunk, afropunk/afrofuturist, interplanetary and celestial visual language, cinematic realism with subtle comic-book energy, retro-futurist mechanical detail, sophisticated cool-toned lighting, human-centered and hopeful. No text, no watermark, no logos.';
 
 const TOPICS = [
   {
