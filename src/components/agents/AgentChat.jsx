@@ -59,7 +59,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   };
 
   return (
-    <div className="flex flex-col h-[68vh]">
+    <div className="flex flex-col h-[min(64dvh,36rem)] sm:h-[min(68dvh,40rem)]">
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
         {starting ? (
           <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
@@ -89,17 +89,17 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
           </>
         )}
       </div>
-      <div className="mt-3 flex gap-2 items-end">
+      <div className="mt-2 flex gap-2 items-end">
         <Textarea
           value={input}
           disabled={starting || !convRef.current}
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Ask ${agentLabel}…`}
           rows={1}
-          className="flex-1 resize-none rounded-xl"
+          className="flex-1 resize-none rounded-xl min-h-[42px] max-h-28 py-2.5"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
         />
-        <Button onClick={send} disabled={sending || starting || !input.trim() || !convRef.current} className="rounded-xl"><Send className="w-4 h-4" /></Button>
+        <Button size="icon" aria-label="Send message" onClick={send} disabled={sending || starting || !input.trim() || !convRef.current} className="rounded-xl h-11 w-11 shrink-0"><Send className="w-4 h-4" /></Button>
       </div>
     </div>
   );
