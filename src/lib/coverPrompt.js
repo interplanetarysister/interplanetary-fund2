@@ -1,8 +1,9 @@
 // Builds intentionally diverse campaign-cover prompts while preserving the
-// recognizable Interplanetary Fund cyberpunk/interstellar/space-comic signature.
+// recognizable Interplanetary Fund cyberpunk/steampunk/interstellar/space-comic signature.
 const ART_DIRECTIONS=[
 "sleek neon cyberpunk realism: luminous transit lines, holographic atmosphere, layered megacity depth, reflective materials, cinematic practical light",
 "retro-futurist space comic: bold ink contours, halftone texture, dynamic panel-like framing, dramatic foreshortening, vivid cosmic color separation",
+"cosmic steampunk: brass and copper mechanisms, analog gauges, gears and pipes used with restraint, tactile Victorian-futurist engineering, luminous aether technology, orbital machinery, cinematic graphic-novel realism",
 "afrofuturist/afropunk space opera: expressive pattern language, futuristic jewelry/textiles, rebellious DIY technology, cosmic symbolism; treat afropunk as an art and design vocabulary rather than a requirement that every subject be Black",
 "interstellar editorial illustration: strange planetary light, elegant silhouettes, orbital architecture, painterly graphic-novel texture",
 "cassette-futurist spacecraft aesthetic: tactile switches, worn metal, analog sci-fi machinery, deep-space windows, grounded documentary composition",
@@ -30,7 +31,7 @@ const variation=Math.abs(Number(regenCount)||0);const safeTitle=escapePromptData
 return `Create a genuinely original campaign cover image for Interplanetary Fund.
 
 SIGNATURE, NOT A TEMPLATE:
-Interplanetary Fund's visual identity combines cyberpunk, interstellar science fiction, space-comic/graphic-novel art, and occasional afropunk/afrofuturist influence. Preserve that recognizable family while deliberately changing visual grammar between generations. Do not make every cover a neon portrait. Creativity and campaign relevance are core requirements.
+Interplanetary Fund's visual identity combines cyberpunk, steampunk, interstellar science fiction, space-comic/graphic-novel art, and occasional afropunk/afrofuturist influence. Preserve that recognizable family while deliberately changing visual grammar between generations. Do not make every cover a neon portrait. Creativity and campaign relevance are core requirements.
 
 THIS GENERATION'S ART DIRECTION:
 - Art language: ${pick(ART_DIRECTIONS,variation,3)}.
@@ -41,7 +42,7 @@ THIS GENERATION'S ART DIRECTION:
 - Generation variation index: ${variation+1}. Treat regeneration as a request for a meaningfully different concept, not a minor pose/color change.
 
 CREATIVE RANGE:
-Vary camera distance, perspective, setting, sci-fi design era, materials, fashion, technology, celestial phenomena, panel composition, texture, lighting, density, and whether people appear. Cyberpunk can be quiet, bright, rural, intimate, industrial, elegant, gritty, or surreal. Interstellar language can come from scale, orbital design, strange light, planetary geography, spacecraft, astronomy, or cosmic abstraction. Space-comic language can use inks, halftones, panel energy, graphic shadows, painted sequential art, retro pulp, manga-influenced dynamism, or modern graphic-novel realism. Afropunk/afrofuturist influence can appear through fashion, hair, pattern, music-poster energy, craft, jewelry, color, rebellious DIY technology, cultural futurism, and design motifs without forcing the race of every depicted person.
+Vary camera distance, perspective, setting, sci-fi design era, materials, fashion, technology, celestial phenomena, panel composition, texture, lighting, density, and whether people appear. Cyberpunk can be quiet, bright, rural, intimate, industrial, elegant, gritty, or surreal. Steampunk can contribute brass/copper machinery, analog instruments, gears, pipes, airship/orbital engineering, Victorian-futurist craft, and tactile mechanical detail without overwhelming the subject. Interstellar language can come from scale, orbital design, strange light, planetary geography, spacecraft, astronomy, or cosmic abstraction. Space-comic language can use inks, halftones, panel energy, graphic shadows, painted sequential art, retro pulp, manga-influenced dynamism, or modern graphic-novel realism. Afropunk/afrofuturist influence can appear through fashion, hair, pattern, music-poster energy, craft, jewelry, color, rebellious DIY technology, cultural futurism, and design motifs without forcing the race of every depicted person.
 
 REPRESENTATION:
 When campaign facts do not identify a real person's appearance, do not repeatedly default to African American subjects or any other single race. Across generations represent the full range of humanity naturally and respectfully. Never infer race from campaign category, financial need, location, or unrelated facts. If campaign facts identify a person or provide appearance-relevant information, stay grounded in those facts.
