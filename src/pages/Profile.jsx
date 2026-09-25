@@ -110,7 +110,7 @@ export default function Profile() {
           <Link2 className="w-3.5 h-3.5" /> Connected Platforms
         </p>
         <div className="mb-3">
-          <Link to="/connections"><Button size="sm" className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">Open Connections Center</Button></Link>
+          <Link to="/connections"><Button size="sm" className="rounded-xl bg-blue-700 hover:bg-blue-800 text-white">Open Connections Center</Button></Link>
         </div>
         {selectedPlatforms.length === 0 ? (
           <p className="text-sm text-stone-500">No platforms selected yet — connect crowdfunding platforms and social accounts in the Connections Center.</p>
@@ -135,8 +135,8 @@ export default function Profile() {
       </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Link to="/onboarding"><Button variant="outline" className="rounded-xl">Revisit setup</Button></Link>
-        <Button variant="outline" onClick={signOut} disabled={signingOut} className="rounded-xl text-red-600">
+        <Link to="/onboarding"><Button variant="outline" className="rounded-xl bg-white text-slate-900 border-slate-300 hover:bg-slate-100 hover:text-slate-950">Revisit setup</Button></Link>
+        <Button variant="outline" onClick={signOut} disabled={signingOut} className="rounded-xl bg-white text-red-700 border-red-300 hover:bg-red-50 hover:text-red-800">
           {signingOut ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogOut className="w-4 h-4 mr-2" />}
           Sign out
         </Button>

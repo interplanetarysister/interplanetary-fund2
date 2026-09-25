@@ -78,7 +78,7 @@ export default function CreateCampaign() {
   const generateCover = async () => {
     setGeneratingImage(true);
     // AI image production agent: every generated cover uses the Interplanetary
-    // Fund signature style (cyberpunk, afropunk, interstellar, comic) grounded
+    // Fund signature style (cyberpunk, steampunk, afropunk, interstellar, comic) grounded
     // in the campaign's purpose. Falls back to the credit-free SVG if the AI
     // image service is unavailable so creation never blocks.
     try {
