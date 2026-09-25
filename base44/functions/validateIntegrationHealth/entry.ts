@@ -41,7 +41,9 @@ async function validateEntry(sr, e) {
 
   if (e.auth_type === 'oauth') {
     if (String(e.account_identifier || '').toLowerCase().includes('platform-managed')) {
-      checks.push({ check: 'platform_managed', ok: true, detail: 'provider-managed; no app-side verification performed' });
+      checks.push({ check: 'platform_managed', ok: true, detail: 'provider-managed; stored state preserved without app-side verification' });
+      status = status === 'MISCONFIGURED' ? status : normalizeStoredStatus(e.status);
+      providerVerified = false;
     } else {
       try {
         const conn = await sr.connectors?.getConnection?.(p);
