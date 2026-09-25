@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Loader2, ShieldAlert, CheckCircle2, XCircle, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const SAFE_FRAUD_ERROR = "We couldn't complete that fraud-control action. Please try again.";
 const money = (n) => `$${(n || 0).toFixed(2)}`;
 
 // Fraud Control Panel — admin only
@@ -17,15 +18,21 @@ export default function FraudControlPanel() {
   const [denyReason, setDenyReason] = useState("");
   const [freezeTarget, setFreezeTarget] = useState(null);
   const [freezeReason, setFreezeReason] = useState("");
+  const actionBusyRef = useRef(new Set());
 
   const load = async () => {
-    const [w, c] = await Promise.all([
-      base44.entities.Withdrawal.filter({ status: "under_review" }),
-      base44.entities.Campaign.filter({ status: "paused" }),
-    ]);
-    setWithdrawals(w || []);
-    setCampaigns(c || []);
-    setLoading(false);
+    try {
+      const [w, c] = await Promise.all([
+        base44.entities.Withdrawal.filter({ status: "under_review" }),
+        base44.entities.Campaign.filter({ status: "paused" }),
+      ]);
+      setWithdrawals(Array.isArray(w) ? w : []);
+      setCampaigns(Array.isArray(c) ? c : []);
+    } catch {
+      msg(false, SAFE_FRAUD_ERROR);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -35,42 +42,54 @@ export default function FraudControlPanel() {
     else { setError(text); setSuccess(""); }
   };
 
-  const approve = async (w) => {
+  const runAction = async (key, action, fallback) => {
+    if (actionBusyRef.current.has(key)) return;
+    actionBusyRef.current.add(key);
     try {
+      await action();
+    } catch {
+      msg(false, fallback);
+    } finally {
+      actionBusyRef.current.delete(key);
+    }
+  };
+
+  const approve = async (w) => {
+    await runAction(`approve:${w.id}`, async () => {
       await base44.entities.Withdrawal.update(w.id, { status: "paid" });
       msg(true, `Approved — ${money(w.net_amount)} payout marked paid.`);
-      load();
-    } catch (e) { msg(false, e.message || "Approval failed."); }
+      await load();
+    }, SAFE_FRAUD_ERROR);
   };
 
   const deny = async (w) => {
     if (!denyReason) { msg(false, "Reason required to deny payout."); return; }
-    try {
+    await runAction(`deny:${w.id}`, async () => {
       await base44.entities.Withdrawal.update(w.id, { status: "failed", review_note: denyReason });
       msg(true, "Payout denied. Funds returned to holding account.");
       setDenyTarget(null);
       setDenyReason("");
-      load();
-    } catch (e) { msg(false, e.message || "Denial failed."); }
+      await load();
+    }, SAFE_FRAUD_ERROR);
   };
 
   const unfreeze = async (c) => {
-    try {
+    await runAction(`unfreeze:${c.id}`, async () => {
       await base44.entities.Campaign.update(c.id, { status: "active" });
       msg(true, `Campaign "${c.title}" restored to active.`);
-      load();
-    } catch (e) { msg(false, e.message || "Unfreeze failed."); }
+      await load();
+    }, SAFE_FRAUD_ERROR);
   };
 
   const freeze = async (campaignId, title) => {
     if (!freezeReason) { msg(false, "Reason required to pause campaign."); return; }
-    try {
+    await runAction(`freeze:${campaignId}`, async () => {
       await base44.entities.Campaign.update(campaignId, { status: "paused" });
       msg(true, `Campaign "${title}" paused.`);
       setFreezeTarget(null);
       setFreezeReason("");
-      load();
-    } catch (e) { msg(false, e.message || "Pause failed."); }
+      await load();
+    }, SAFE_FRAUD_ERROR);
   };
 
   if (loading) {
