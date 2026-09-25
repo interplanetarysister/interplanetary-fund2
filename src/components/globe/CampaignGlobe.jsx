@@ -67,19 +67,6 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
       () => { /* keep styled ocean */ }
     );
 
-    // Graticule
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x2fd3ee, transparent: true, opacity: 0.16 });
-    for (let lat = -80; lat <= 80; lat += 20) {
-      const pts = [];
-      for (let lng = 0; lng <= 360; lng += 6) pts.push(latLngToVector3(lat, lng, RADIUS * 1.001));
-      globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
-    }
-    for (let lng = 0; lng < 360; lng += 20) {
-      const pts = [];
-      for (let lat = -90; lat <= 90; lat += 6) pts.push(latLngToVector3(lat, lng, RADIUS * 1.001));
-      globeGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat));
-    }
-
     // Atmosphere glow
     scene.add(new THREE.Mesh(
       new THREE.SphereGeometry(RADIUS * 1.12, 48, 48),
