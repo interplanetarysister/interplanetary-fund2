@@ -203,7 +203,7 @@ export default function Layout() {
 
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
         {isRoot ? (
-          <Link to="/inbox" className="min-w-0 cursor-pointer" aria-label="Go to inbox">
+          <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
             <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
           </Link>
         ) : (
