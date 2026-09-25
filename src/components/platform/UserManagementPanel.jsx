@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Loader2, Users, ShieldCheck, UserX, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { effectiveSubscription } from "@/components/subscriptions/plans";
 
 const TIER_LABELS = {
   free: "Free",
@@ -102,8 +103,9 @@ export default function UserManagementPanel() {
 
 function UserRow({ u, isSelf, onToggle }) {
   const isAdmin = u.role === "admin";
-  const tier = TIER_LABELS[u.subscription_tier] || u.subscription_tier || "Free";
-  const subActive = u.subscription_status === "active" || u.subscription_status === "trialing";
+  const subscription = effectiveSubscription(u);
+  const tier = subscription.adminGranted ? subscription.plan.name : (TIER_LABELS[u.subscription_tier] || u.subscription_tier || "Free");
+  const subActive = subscription.active;
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-3 flex items-center gap-3">
@@ -116,7 +118,8 @@ function UserRow({ u, isSelf, onToggle }) {
         <p className="text-xs text-stone-400 truncate mt-0.5">{u.email}</p>
         <p className="text-[10px] text-stone-400 mt-0.5">
           {tier} {subActive ? <span className="text-emerald-600">· Active</span> : ""}
-          {u.subscription_status === "past_due" ? <span className="text-amber-600"> · Past Due</span> : ""}
+          {!subscription.adminGranted && u.subscription_status === "past_due" ? <span className="text-amber-600"> · Past Due</span> : ""}
+          {subscription.adminGranted ? <span className="text-cyan-600"> · Permanent admin access</span> : ""}
         </p>
       </div>
       {!isSelf && (
