@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Unplug, Globe2, Rocket } from "lucide-react";
+import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth } from "@/lib/connectionHealth";
 
@@ -23,6 +23,18 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
   const providerVerifiedFinancialData = verified && connection.external_data_source === "provider_verified";
   const failed = health.needsAttention;
   const currency = connection.external_currency || "UNSPECIFIED";
+
+  const checkConnection = async () => {
+    setBusy(true);
+    try {
+      const { data } = await base44.functions.invoke("verifyPlatformConnection", { connection_id: connection.id });
+      if (data?.connection) onRemoved?.(connection.id, data.connection);
+    } catch (e) {
+      console.error("Connection check failed", e);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const disconnect = async () => {
     setBusy(true);
@@ -89,6 +101,9 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
       <div className="flex flex-wrap gap-2 mt-3">
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {failed ? "Fix Connection" : "Manage"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
+          <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />Check
         </Button>
         {connection.external_url && (
           <a href={connection.external_url} target="_blank" rel="noopener noreferrer">
