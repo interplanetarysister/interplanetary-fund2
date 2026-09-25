@@ -7,6 +7,7 @@
   "background_color": "#0a0e1f",
   "theme_color": "#0a0e1f",
   "icons": [
-    { "src": "/icon-192.jpg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any" },\n    { "src": "/icon-512.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" }
+    { "src": "/icon-192.jpg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any" },
+    { "src": "/icon-512.jpg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" }
   ]
 }
