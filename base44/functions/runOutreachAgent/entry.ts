@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
+import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
 
 // Autonomous AI Outreach Agent runner. Invoked on a schedule (no user context),
 // so all work is service-scoped. For each campaign opted into the agent whose
@@ -13,8 +14,6 @@ const COMPLIANCE = `Compliance and safety (non-negotiable):
 - Never create false urgency, promise outcomes, or misrepresent facts.
 - Never recommend spamming, harassment, or circumventing platform policies.
 - Respect privacy, anti-spam rules, and platform terms.`;
-
-const TIER_LEVEL = { outreach: 2, professional: 3, enterprise: 4, nonprofit: 2 };
 
 function buildContext(campaign, donationsCount, updatesCount) {
   const p = campaign.ai_profile || {};
@@ -55,12 +54,8 @@ export default async function(req) {
         processed.push({ id: campaign.id, skipped: 'owner account unavailable' });
         continue;
       }
-      if (owner.subscription_status !== 'active' && owner.subscription_status !== 'trialing') {
-        processed.push({ id: campaign.id, skipped: 'no active subscription' });
-        continue;
-      }
-      if ((TIER_LEVEL[owner.subscription_tier] || 0) < 2) {
-        processed.push({ id: campaign.id, skipped: 'tier below outreach' });
+      if (!hasSubscriptionLevel(owner, 2)) {
+        processed.push({ id: campaign.id, skipped: 'outreach entitlement unavailable' });
         continue;
       }
 
