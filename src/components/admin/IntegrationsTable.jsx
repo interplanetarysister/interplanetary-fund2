@@ -16,7 +16,7 @@ export default function IntegrationsTable({ entries, onRowClick }) {
     <>
       <div className="md:hidden space-y-3">
         {entries.map((e) => {
-          const badge = STATUS_BADGE[e.status] || STATUS_BADGE.ACTIVE;
+          const badge = STATUS_BADGE[e.status] || STATUS_BADGE.UNKNOWN;
           const verified = e.last_verified ? new Date(e.last_verified).toLocaleString() : "never";
           return (
             <button key={e.id} type="button" onClick={() => onRowClick(e)}
