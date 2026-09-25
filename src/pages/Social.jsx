@@ -10,6 +10,7 @@ import ShareToProfileDialog from "@/components/social/ShareToProfileDialog";
 import AdminContentPanel from "@/components/social/AdminContentPanel";
 import ActivityFeed from "@/components/community/ActivityFeed";
 import PageError from "@/components/PageError";
+import { isUsableConnection } from "@/lib/connectionHealth";
 
 export default function Social() {
   const [user, setUser] = useState(null);
@@ -65,7 +66,7 @@ export default function Social() {
   // Users see only their own connections; admins see all (RLS enforces this).
   // For the sidebar, show only the user's own to keep the view clean.
   const userConnections = connections.filter((c) => c.created_by_id === user?.id);
-  const connectedPlatforms = userConnections.filter((c) => c.status === "connected");
+  const connectedPlatforms = userConnections.filter(isUsableConnection);
 
   return (
     <div className="min-h-dvh w-full min-w-0 max-w-full overflow-x-hidden deep-space pb-24">
