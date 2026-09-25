@@ -88,9 +88,7 @@ const navItems = navSections.flatMap((s) => s.items);
 const bottomNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
-  { to: "/mission", label: "AI Assistant", icon: Sparkles },
-  { to: "/notifications", label: "Alerts", icon: Bell },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/social", label: "Social Media", icon: Radio },
 ];
 
 export default function Layout() {
@@ -101,7 +99,7 @@ export default function Layout() {
   }, []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/mission", "/notifications", "/profile"];
+  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/social"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
@@ -109,9 +107,7 @@ export default function Layout() {
   const TAB_SECTIONS = {
     "/dashboard": ["/dashboard"],
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
-    "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
-    "/notifications": ["/notifications", "/inbox", "/communications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/connect", "/admin/external-accounts", "/admin/integrations"],
+    "/social": ["/social"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";
