@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, Sparkles, ShieldCheck } from "lucide-react";
-import { PLANS, effectiveSubscription } from "@/components/subscriptions/plans";
+import { PLANS } from "@/components/subscriptions/plans";
+import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
 
 export default function Subscriptions() {
   const [user, setUser] = useState(null);
