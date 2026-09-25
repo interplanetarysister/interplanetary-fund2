@@ -4,9 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Check } from "lucide-react";
-import { AUTOMATION_MODES } from "./platformCatalog";
 import CredentialFields from "./CredentialFields";
 
 // Connect (or edit) one destination. Crowdfunding connections link an external
@@ -30,7 +28,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
       campaign_id: existing?.campaign_id || "",
-      automation_mode: existing?.automation_mode || "manual",
+      automation_mode: existing?.automation_mode || (aiAuthorized ? "auto" : "manual"),
       external_total: existing?.external_total ?? "",
       external_currency: existing ? (existing.external_currency || "") : "USD",
       external_donor_count: existing?.external_donor_count ?? "",
@@ -169,21 +167,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
               </div>
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label>AI automation for this destination</Label>
-            <Select value={form.automation_mode} onValueChange={(v) => set("automation_mode", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {AUTOMATION_MODES.map((m) => (
-                  <SelectItem key={m.value} value={m.value} disabled={m.value !== "manual" && !aiAuthorized}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-stone-400">
-              {aiAuthorized
-                ? AUTOMATION_MODES.find((m) => m.value === form.automation_mode)?.desc
-                : "Accept the AI Publishing Authorization above to enable automation options."}
-            </p>
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
+            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "Your Interplanetary Fund agents can use this connection for supported work you authorized." : "Turn on AI Publishing Authorization on the Connections page if you want your agents to use connected platforms."}</p>
           </div>
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
