@@ -70,6 +70,9 @@ jobs:
       - name: Subscription entitlement and canonical connection-health contract
         run: npm run verify:entitlements-connections
 
+      - name: No active legacy Convex runtime
+        run: npm run verify:no-active-convex
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
