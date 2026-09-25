@@ -36,7 +36,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
-    setBrowserReadConsent(existing?.obo_consent?.permission_version === "2026-09-browser-read-v1" && existing?.obo_consent?.granted === true);
+    setBrowserReadConsent(existing?.obo_consent?.granted === true &&
+      existing?.obo_consent?.granted_capabilities?.includes("GET_METRICS") === true);
     const resumingThisPlatform =
       sessionStorage.getItem("ifund_pending_oauth_platform") === platform.id &&
       sessionStorage.getItem("ifund_pending_oauth_shared_agent_consent") === "true";
