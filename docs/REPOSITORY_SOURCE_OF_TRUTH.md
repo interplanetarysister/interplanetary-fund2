@@ -54,7 +54,7 @@ The internal-agent reference index is:
 
 Base44 is the current application runtime for agent identity/configuration, application memory behavior, permissions, outcomes, and backend behavior implemented in this repository. Do not add or restore a Convex agent-memory/runtime bridge without direct evidence that the live application still requires it.
 
-See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44↔Convex bridge and identity mapping.
+See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44 agent-runtime model and historical bridge context; any Convex bridge described there is non-authoritative unless directly verified as live.
 
 ## Role-specific workflow rule
 
