@@ -12,6 +12,29 @@ export const OAUTH_ENV: Record<string, string> = {
   patreon: 'APP_USER_CONNECTOR_PATREON_ID',
 };
 
+function publicHttpsHost(value: unknown) {
+  const raw = String(value || '').trim();
+  const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+  if (url.protocol !== 'https:' || url.username || url.password || url.port) {
+    throw new Error('Mastodon instance must be a public HTTPS hostname.');
+  }
+  const host = url.hostname.toLowerCase().replace(/\.$/, '');
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  const privateIpv4 = ipv4 && (
+    Number(ipv4[1]) === 10
+    || Number(ipv4[1]) === 127
+    || (Number(ipv4[1]) === 169 && Number(ipv4[2]) === 254)
+    || (Number(ipv4[1]) === 172 && Number(ipv4[2]) >= 16 && Number(ipv4[2]) <= 31)
+    || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 168)
+  );
+  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
+      || host === '::1' || host.startsWith('fc') || host.startsWith('fd')
+      || host.startsWith('fe80:') || privateIpv4) {
+    throw new Error('Mastodon instance must be a public HTTPS hostname.');
+  }
+  return host;
+}
+
 export async function verifyManualConnection(connection: any) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') {
@@ -24,10 +47,11 @@ export async function verifyManualConnection(connection: any) {
     return;
   }
   if (connection.platform === 'mastodon') {
-    const host = String(c.mastodon_instance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (!host || !c.mastodon_access_token) throw new Error('Connection details are incomplete.');
+    if (!c.mastodon_access_token) throw new Error('Connection details are incomplete.');
+    const host = publicHttpsHost(c.mastodon_instance);
     const res = await fetch(`https://${host}/api/v1/accounts/verify_credentials`, {
       headers: { Authorization: `Bearer ${c.mastodon_access_token}` },
+      redirect: 'error',
     });
     if (!res.ok) throw new Error('Mastodon could not verify this connection.');
     return;
