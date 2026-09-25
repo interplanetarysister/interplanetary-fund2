@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Sparkles, Loader2, Pause, Play, Bot, Check, X } from "lucide-react";
-import { effectiveSubscription } from "@/components/subscriptions/plans";
+import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
 
 // Owner-only panel: activate/pause the autonomous AI Outreach Agent and
 // review its activity log. Every action stays pending until the owner approves
