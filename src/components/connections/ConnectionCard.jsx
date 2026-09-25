@@ -22,6 +22,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
   const verified = health.usable;
   const providerVerifiedFinancialData = verified && connection.external_data_source === "provider_verified";
   const failed = health.needsAttention;
+  const needsReauthorization = connection.capability_status === "reauthorization_required";
   const currency = connection.external_currency || "UNSPECIFIED";
 
   const checkConnection = async () => {
@@ -100,7 +101,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
       <div className="flex flex-wrap gap-2 mt-3">
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
-          {failed ? "Fix Connection" : "Manage"}
+          {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
         <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
           <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />Check
