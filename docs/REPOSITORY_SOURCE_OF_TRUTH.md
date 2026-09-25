@@ -7,7 +7,7 @@ This document tells application agents what belongs in this repository and where
 ## Repository ownership
 
 - **This repository (`interplanetarysister/interplanetary-fund2`, aka ifund2)**: authoritative consolidation destination for the user-facing Interplanetary Fund Base44 / React+Vite application, frontend, application entities/configuration, application-layer functions/agents, onboarding, Mission Control, Agent Chat, campaign/user UX, integrations presented to users, and application-specific behavior.
-- **`interplanetarysister/InterplanetaryFund`**: authoritative Convex backend and internal-agent runtime, including persistent agent identity, permissions, memory, outcomes, orchestration, scheduled intelligence, treasury/payments backend, and backend protocol.
+- **`interplanetarysister/InterplanetaryFund`**: historical/reference source for Convex-era backend and internal-agent behavior. It is not an active dependency of the Base44 application unless a specific runtime bridge is directly verified.
 - **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly reassigned by the owner; do not add new production backend architecture there by default.
 - Other historical, Vercel-only, duplicate, preview, or migration repositories are not alternate application targets. Treat them as evidence/migration sources unless explicitly reassigned.
 
@@ -22,7 +22,7 @@ For every candidate update:
 2. Verify the current ifund2 implementation first.
 3. Classify the difference as already consolidated, application migration candidate, backend-owned dependency, historical-only, or UNKNOWN.
 4. Merge only verified application-owned behavior into the existing ifund2 implementation, preserving stable IDs/interfaces and valid current behavior.
-5. Keep backend/runtime logic in `InterplanetaryFund` and expose it to ifund2 through explicit interfaces/bridges.
+5. Keep live application behavior in the current Base44 implementation unless a still-active external backend dependency is directly verified; do not recreate legacy bridges by assumption.
 6. Verify authentication, authorization, payment/provider configuration, data ownership, and end-to-end runtime behavior before declaring consolidation complete.
 7. Do not delete/archive a source implementation until equivalence and dependency removal are verified.
 
@@ -34,7 +34,7 @@ The original Issue #1 request to “bring all backend features repository improv
 
 - expose relevant backend capabilities in this application through explicit functions/APIs/bridges;
 - implement application-facing behavior here;
-- keep authoritative backend/runtime implementation in `InterplanetaryFund`;
+- treat legacy backend/runtime implementation in `InterplanetaryFund` as evidence unless a live dependency is verified;
 - compare legacy backend capabilities before migrating them;
 - never copy a backend merely to satisfy the historical wording or create a second source of truth.
 
@@ -52,7 +52,7 @@ The internal-agent reference index is:
 
 ## Agent runtime boundary
 
-Convex is authoritative for persistent agent identity, working/long-term memory, outcomes, permissions, and backend behavior. This application may display/mirror selected state and bridge user interactions to Convex, but it must not establish a competing production agent-memory or backend source of truth.
+Base44 is the current application runtime for agent identity/configuration, application memory behavior, permissions, outcomes, and backend behavior implemented in this repository. Do not add or restore a Convex agent-memory/runtime bridge without direct evidence that the live application still requires it.
 
 See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44↔Convex bridge and identity mapping.
 
