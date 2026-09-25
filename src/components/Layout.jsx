@@ -246,7 +246,7 @@ export default function Layout() {
         })}
       </nav>
 
-      <main className="w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden bg-background text-foreground">
+      <main className="ifund-experience w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden bg-background text-foreground">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
