@@ -57,7 +57,7 @@ export default async function(req) {
         status: 'error',
         verification_status: 'unverified',
         last_error: message,
-        capability_status: reauth ? 'reauthorization_required' : 'verification_unavailable',
+        capability_status: reauth ? 'reauthorization_required' : 'unknown',
         history: [...(connection.history || []), { at: now, event: 'health_check_failed', detail: message }].slice(-30),
       });
       return Response.json({ working: false, provider_verified: false, connection: updated, error: message });
