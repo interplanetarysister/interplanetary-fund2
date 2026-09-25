@@ -202,18 +202,17 @@ export default function Layout() {
       </aside>
 
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
-        {isRoot ? (
-          <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
-            <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
-          </Link>
-        ) : (
-          <div className="flex items-center gap-1 min-w-0">
+        <div className="flex items-center gap-1 min-w-0">
+          {!isRoot && (
             <button onClick={goBack} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>
-          </div>
-        )}
+          )}
+          <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
+            <BrandLogo size="sm" showName={isRoot} nameClassName="text-slate-100 text-[15px] truncate" />
+          </Link>
+          {!isRoot && <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>}
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           <NotificationBell />
           <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
