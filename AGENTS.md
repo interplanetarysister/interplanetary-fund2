@@ -7,7 +7,7 @@ This is the **authoritative user-facing Interplanetary Fund application implemen
 ### Current repository ownership
 
 - **Application implementation target:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Existing backend/runtime authority:** `InterplanetaryFund` remains the authoritative Convex backend/runtime for already-deployed payment, deduplication, agent-memory, and related bridges until an explicitly reviewed replacement is verified. Treat it as current backend ownership/evidence, not as disposable historical code.
+- **Current application/backend authority:** the Base44 `interplanetary-fund2` implementation is authoritative for the live application-layer financial boundary, application agents, workflows, and persistence implemented under `base44/`. Historical Convex implementations are read-only evidence unless a specific still-live external dependency is directly verified.
 - **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior when they are not the current owner. Do not copy obsolete hosting/runtime dependencies or create competing state in Base44.
 - **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
 
@@ -18,7 +18,7 @@ A PR must target the repository that owns the current change. Never merge a PR f
 Before substantial work, read:
 
 1. `docs/ZERO_CREDIT_CONTINUOUS_WORK.md` — mandatory zero-credit/resumable work policy.
-2. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — use current applicable ownership information; preserve the authoritative Convex backend boundary unless a newer reviewed decision explicitly changes it.
+2. `docs/REPOSITORY_SOURCE_OF_TRUTH.md` — use current applicable ownership information; do not restore a legacy Convex runtime dependency merely because older documentation names it.
 3. `docs/IF_FEATURE_RECONCILIATION_2026-08-21.md` — evidence-based feature baseline when feature work is involved; historical infrastructure statements are evidence, not automatic permission to duplicate runtime.
 4. The current issue/PR, branch/head, existing handoffs, and recent findings.
 
@@ -45,7 +45,7 @@ Never assume runtime configuration, payment availability, deployment state, envi
 
 ## Base44 application boundary
 
-Use the existing Base44 application architecture in this repository for product work that it owns. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not duplicate Convex runtime/backend implementation. Preserve existing Convex-owned payment, deduplication, and agent-memory bridges until a reviewed migration replaces them. Older implementations may be inspected as read-only evidence for application behavior that is still needed.
+Use the existing Base44 application architecture in this repository for product work that it owns. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not introduce an active Convex runtime dependency into `src/` or `base44/`. The current Base44 financial and agent implementations own their live application behavior. Older Convex/Vercel implementations may be inspected only as read-only evidence for behavior that is still needed.
 
 ## Key Files
 
