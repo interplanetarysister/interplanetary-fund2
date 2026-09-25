@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { base44 } from "@/api/base44Client";
 import { Search } from "lucide-react";
@@ -9,17 +9,63 @@ import { CampaignGridSkeleton } from "@/components/mobile/Skeletons";
 import PageError from "@/components/PageError";
 import PageTips from "@/components/coach/PageTips";
 
+const SAFE_DISCOVER_ERROR = "We couldn't load campaigns. Please try again.";
+const MAX_CAMPAIGNS = 100;
+
+function isValidCampaignRow(row) {
+  if (!row || typeof row !== "object") return false;
+  if (typeof row.id !== "string" || row.id.length === 0 || row.id.length > 160) return false;
+  if (typeof row.title !== "string" || row.title.length === 0 || row.title.length > 240) return false;
+  if (typeof row.category !== "string" || !(row.category in categoryLabels)) return false;
+  if (row.status !== "active") return false;
+  if (row.summary != null && (typeof row.summary !== "string" || row.summary.length > 2000)) return false;
+  return true;
+}
+
+function normalizeCampaignRows(value) {
+  if (!Array.isArray(value) || value.length > MAX_CAMPAIGNS) return null;
+  const ids = new Set();
+  const rows = [];
+  for (const row of value) {
+    if (!isValidCampaignRow(row) || ids.has(row.id)) return null;
+    ids.add(row.id);
+    rows.push(row);
+  }
+  return rows;
+}
+
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
+  const requestGeneration = useRef(0);
 
   useEffect(() => {
-    base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
-      .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load campaigns."));
+    let mounted = true;
+    const generation = ++requestGeneration.current;
+    setError(null);
+    setCampaigns(null);
+
+    base44.entities.Campaign.filter({ status: "active" }, "-created_date", MAX_CAMPAIGNS)
+      .then((value) => {
+        if (!mounted || generation !== requestGeneration.current) return;
+        const normalized = normalizeCampaignRows(value);
+        if (!normalized) {
+          setError(SAFE_DISCOVER_ERROR);
+          return;
+        }
+        setCampaigns(normalized);
+      })
+      .catch(() => {
+        if (!mounted || generation !== requestGeneration.current) return;
+        setError(SAFE_DISCOVER_ERROR);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, [refreshKey]);
 
   if (error) {
