@@ -8,6 +8,7 @@ export const STATUS_BADGE = {
   DISCONNECTED: { label: "Disconnected", className: "bg-stone-200 text-stone-600" },
   REVOKED: { label: "Revoked", className: "bg-red-100 text-red-700" },
   MISCONFIGURED: { label: "Misconfigured", className: "bg-red-100 text-red-700" },
+  UNKNOWN: { label: "Unknown", className: "bg-stone-200 text-stone-600" },
 };
 
 export const AUTH_TYPE_LABEL = {
