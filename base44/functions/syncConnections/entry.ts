@@ -120,6 +120,8 @@ export default async function(req) {
       const stale = !c.last_synced || new Date(c.last_synced) < staleCutoff;
       if (stale && c.last_error !== 'No synchronization in over 7 days') {
         await sr.entities.PlatformConnection.update(c.id, {
+          status: 'error',
+          verification_status: 'unverified',
           last_error: 'No synchronization in over 7 days',
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Connection is stale — no sync in over 7 days' }].slice(-30),
         });
