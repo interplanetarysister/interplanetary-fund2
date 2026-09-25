@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Sparkles, Loader2, Pause, Play, Bot, Check, X } from "lucide-react";
+import { effectiveSubscription } from "@/components/subscriptions/plans";
 
 // Owner-only panel: activate/pause the autonomous AI Outreach Agent and
 // review its activity log. Every action stays pending until the owner approves
@@ -23,8 +24,8 @@ export default function OutreachAgentPanel({ campaign }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const hasOutreach = user && ["outreach", "professional", "enterprise", "nonprofit"].includes(user.subscription_tier) &&
-    (user.subscription_status === "active" || user.subscription_status === "trialing");
+  const subscription = effectiveSubscription(user);
+  const hasOutreach = subscription.active && subscription.plan.level >= 2;
 
   const toggleEnabled = async () => {
     setEnabling(true);
