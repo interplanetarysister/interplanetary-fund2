@@ -27,8 +27,12 @@ function publicHttpsHost(value: unknown) {
     || (Number(ipv4[1]) === 100 && Number(ipv4[2]) >= 64 && Number(ipv4[2]) <= 127)
     || (Number(ipv4[1]) === 169 && Number(ipv4[2]) === 254)
     || (Number(ipv4[1]) === 172 && Number(ipv4[2]) >= 16 && Number(ipv4[2]) <= 31)
+    || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 0 && [0, 2].includes(Number(ipv4[3])))
+    || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 88 && Number(ipv4[3]) === 99)
     || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 168)
     || (Number(ipv4[1]) === 198 && [18, 19].includes(Number(ipv4[2])))
+    || (Number(ipv4[1]) === 198 && Number(ipv4[2]) === 51 && Number(ipv4[3]) === 100)
+    || (Number(ipv4[1]) === 203 && Number(ipv4[2]) === 0 && Number(ipv4[3]) === 113)
     || Number(ipv4[1]) >= 224
   );
   // Reject every IPv6 literal. Without resolution-and-pinning support, accepting
