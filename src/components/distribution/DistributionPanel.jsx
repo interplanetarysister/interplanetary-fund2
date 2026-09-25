@@ -7,14 +7,15 @@ import { Loader2, Megaphone, Sparkles, Rocket, CheckCircle2, Clipboard } from "l
 import { Link } from "react-router-dom";
 import DistributedPostCard from "./DistributedPostCard";
 import { platformName } from "@/components/connections/platformCatalog";
+import { isUsableConnection } from "@/lib/connectionHealth";
 
 const directReady = (c) => {
   const cr = c.credentials || {};
   return (c.platform === "bluesky" && cr.bluesky_handle && cr.bluesky_app_password) ||
     (c.platform === "mastodon" && cr.mastodon_instance && cr.mastodon_access_token);
 };
-const aiReady = (c) => c.status === "connected" && c.obo_consent?.granted === true && c.agent_access?.shared_with_agents === true && c.automation_mode !== "manual";
-const approvedReady = (c) => c.status === "connected" && c.obo_consent?.granted === true && directReady(c);
+const aiReady = (c) => isUsableConnection(c) && c.obo_consent?.granted === true && c.agent_access?.shared_with_agents === true && c.automation_mode !== "manual";
+const approvedReady = (c) => isUsableConnection(c) && c.obo_consent?.granted === true && directReady(c);
 
 function DestinationGroup({ title, hint, icon: Icon, connections, selected, setSelected }) {
   if (!connections.length) return null;
