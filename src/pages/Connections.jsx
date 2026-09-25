@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Link2, RefreshCw, Search, ChevronDown } from "lucide-react";
-import { CROWDFUNDING_PLATFORMS, SOCIAL_PLATFORMS, ALL_PLATFORMS } from "@/components/connections/platformCatalog";
+import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
