@@ -2,6 +2,16 @@
 // feed-emitting backend function writes events consistently. Best-effort:
 // never throws to the caller — a failed feed event must not break the
 // donation, update, or campaign-creation flow it accompanies.
+
+function classifyActivityEventFailure(error) {
+  if (error instanceof Error) return 'error';
+  if (error === null || error === undefined) return 'nullish';
+  const kind = typeof error;
+  return kind === 'string' || kind === 'number' || kind === 'boolean' || kind === 'bigint' || kind === 'symbol'
+    ? kind
+    : 'object';
+}
+
 export async function emitActivityEvent(base44, event) {
   try {
     const sr = base44.asServiceRole;
@@ -19,7 +29,9 @@ export async function emitActivityEvent(base44, event) {
       visibility: event.visibility || 'public',
       metadata: event.metadata || undefined,
     });
-  } catch (e) {
-    console.error('emitActivityEvent failed:', e && e.message ? e.message : e);
+  } catch (error) {
+    console.error('emitActivityEvent failed', {
+      failure_type: classifyActivityEventFailure(error),
+    });
   }
 }
