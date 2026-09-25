@@ -7,11 +7,12 @@ This module runs in a Python worker; Base44's Deno functions cannot import it.
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import os
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Error as PlaywrightError, Page, sync_playwright
 
 
 @dataclass(frozen=True)
@@ -24,6 +25,7 @@ class BrowserAction:
     authorized_owner_id: str
     granted_actions: frozenset[str]
     session_file: Path
+    allow_hosted_fallback: bool = False
 
 
 @dataclass(frozen=True)
@@ -33,8 +35,12 @@ class SiteHandler:
 
 
 class BrowserConnectionTool:
-    def __init__(self, handlers: dict[str, SiteHandler]):
+    def __init__(self, handlers: dict[str, SiteHandler],
+                 context_for_owner: Callable[[str, str], str | None] | None = None):
         self.handlers = handlers
+        # Resolve the Browserbase context server-side. Never accept a context ID
+        # from an agent instruction or untrusted browser-action request.
+        self.context_for_owner = context_for_owner
         self.cache: dict[tuple[str, str, str, str], tuple[datetime, dict[str, Any]]] = {}
 
     def execute(self, request: BrowserAction, *, max_age: timedelta | None = None) -> dict[str, Any]:
@@ -50,7 +56,8 @@ class BrowserConnectionTool:
         allowed_host = handler.hostname.lower()
         if parsed.scheme != "https" or (host != allowed_host and not host.endswith("." + allowed_host)):
             raise ValueError("The destination does not match the registered platform")
-        if not request.session_file.is_file():
+        local_session = request.session_file.is_file()
+        if not local_session and not request.allow_hosted_fallback:
             raise FileNotFoundError("An authorized browser session is required")
 
         key = (request.owner_id, request.platform, request.resource_id, request.action)
@@ -61,9 +68,31 @@ class BrowserConnectionTool:
                 return {**cached[1], "cached": True}
 
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
+            browser = None
+            hosted = False
             try:
-                context = browser.new_context(storage_state=str(request.session_file))
+                if local_session:
+                    try:
+                        browser = playwright.chromium.launch(headless=True)
+                    except PlaywrightError:
+                        if not request.allow_hosted_fallback:
+                            raise
+                if browser is None:
+                    if not request.allow_hosted_fallback or self.context_for_owner is None:
+                        raise RuntimeError("No authorized browser transport is available")
+                    context_id = self.context_for_owner(request.owner_id, request.platform)
+                    api_key = os.environ.get("BROWSERBASE_API_KEY")
+                    if not context_id or not api_key:
+                        raise RuntimeError("An authorized hosted browser context is not configured")
+                    from browserbase import Browserbase
+                    session = Browserbase(api_key=api_key).sessions.create(
+                        browser_settings={"context": {"id": context_id, "persist": True}}
+                    )
+                    browser = playwright.chromium.connect_over_cdp(session.connect_url)
+                    context = browser.contexts[0]
+                    hosted = True
+                else:
+                    context = browser.new_context(storage_state=str(request.session_file))
                 try:
                     page = context.new_page()
                     page.goto(request.url, wait_until="domcontentloaded")
@@ -75,9 +104,11 @@ class BrowserConnectionTool:
                     if not isinstance(data, dict):
                         raise TypeError("A browser handler must return an observation dictionary")
                 finally:
-                    context.close()
+                    if not hosted:
+                        context.close()
             finally:
-                browser.close()
+                if browser is not None:
+                    browser.close()
 
         result = {
             "status": "observed",
