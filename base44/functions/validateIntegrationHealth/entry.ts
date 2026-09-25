@@ -2,14 +2,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { logAudit } from '../../shared/auditLog.ts';
 import { emitIntegrationAlert, isUnhealthy, STATUS_LABEL } from '../../shared/integrationRegistry.ts';
+import { mergeIntegrationStatus, normalizeIntegrationStatus } from '../../shared/integrationStatusPolicy.js';
 
 const PLATFORM_SECRETS = {
   stripe: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
   paypal: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MODE'],
 };
 
-const SUPPORTED_STATUSES = new Set(['ACTIVE', 'REAUTH_REQUIRED', 'EXPIRES_SOON', 'DISCONNECTED', 'REVOKED', 'MISCONFIGURED']);
-const normalizeStoredStatus = (value) => SUPPORTED_STATUSES.has(value) ? value : 'DISCONNECTED';
 
 function checkSecrets(platform) {
   const names = PLATFORM_SECRETS[platform] || [];
@@ -28,12 +27,12 @@ async function validateEntry(sr, e) {
   if (PLATFORM_SECRETS[p]) {
     const { names, missing } = checkSecrets(p);
     checks.push({ check: 'secret_refs_present', ok: missing.length === 0, detail: missing.length ? `missing ${missing.join(', ')}` : `${names.length} reference(s) present` });
-    if (missing.length) { status = 'MISCONFIGURED'; lastFailure = 'Required provider configuration is missing.'; }
+    if (missing.length) { status = mergeIntegrationStatus(status, 'MISCONFIGURED'); lastFailure = 'Required provider configuration is missing.'; }
     if (p === 'paypal') {
       const mode = (secrets.get('PAYPAL_MODE') || '').toLowerCase();
       if (mode.includes('sandbox') && e.environment === 'production') {
         flags.push('dev_creds_in_prod');
-        status = 'MISCONFIGURED';
+        status = mergeIntegrationStatus(status, 'MISCONFIGURED');
         if (!lastFailure) lastFailure = 'Sandbox credentials referenced by a production registry entry.';
       }
     }
@@ -42,25 +41,24 @@ async function validateEntry(sr, e) {
   if (e.auth_type === 'oauth') {
     if (String(e.account_identifier || '').toLowerCase().includes('platform-managed')) {
       checks.push({ check: 'platform_managed', ok: true, detail: 'provider-managed; stored state preserved without app-side verification' });
-      status = status === 'MISCONFIGURED' ? status : normalizeStoredStatus(e.status);
+      status = mergeIntegrationStatus(status, normalizeIntegrationStatus(e.status));
       providerVerified = false;
     } else {
       try {
         const conn = await sr.connectors?.getConnection?.(p);
         if (conn && conn.accessToken) {
           checks.push({ check: 'oauth_authorized', ok: true, detail: 'provider connection verified' });
-          if (status !== 'MISCONFIGURED' && status !== 'REVOKED') {
-            status = 'ACTIVE';
-            providerVerified = true;
-          }
+          const nextStatus = mergeIntegrationStatus(status, 'ACTIVE');
+          providerVerified = nextStatus === 'ACTIVE';
+          status = nextStatus;
         } else {
           checks.push({ check: 'oauth_authorized', ok: false, detail: 'no access token' });
-          status = status === 'MISCONFIGURED' ? status : 'REAUTH_REQUIRED';
+          status = mergeIntegrationStatus(status, 'REAUTH_REQUIRED');
           if (!lastFailure) lastFailure = 'OAuth connector is not authorized.';
         }
       } catch (err) {
         checks.push({ check: 'oauth_authorized', ok: false, detail: 'connector check failed' });
-        status = status === 'MISCONFIGURED' ? status : 'REAUTH_REQUIRED';
+        status = mergeIntegrationStatus(status, 'REAUTH_REQUIRED');
         if (!lastFailure) lastFailure = 'OAuth verification failed.';
       }
     }
@@ -73,7 +71,7 @@ async function validateEntry(sr, e) {
 
   if (p === 'convex') {
     checks.push({ check: 'legacy_backend', ok: true, detail: 'legacy backend ignored by Base44 health gate' });
-    status = normalizeStoredStatus(e.status);
+    status = normalizeIntegrationStatus(e.status);
     lastFailure = '';
     providerVerified = false;
   }
