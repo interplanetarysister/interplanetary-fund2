@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Unplug, Globe2, Rocket } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { connectionHealth } from "@/lib/connectionHealth";
 
 // One connected destination: status, health, last sync, granted automation,
 // totals, provenance, and the manage / disconnect / history controls.
@@ -17,11 +18,10 @@ import { formatDistanceToNow } from "date-fns";
 export default function ConnectionCard({ connection, platform, onManage, onRemoved }) {
   const [busy, setBusy] = useState(false);
 
-  const verified =
-    connection.status === "connected" &&
-    connection.verification_status === "verified";
+  const health = connectionHealth(connection);
+  const verified = health.usable;
   const providerVerifiedFinancialData = verified && connection.external_data_source === "provider_verified";
-  const failed = connection.status === "error";
+  const failed = health.needsAttention;
   const currency = connection.external_currency || "UNSPECIFIED";
 
   const disconnect = async () => {
@@ -62,14 +62,14 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
             )}
           </p>
           <p className="text-xs text-stone-400 mt-1">
-            {verified ? "On · Working" : failed ? "Needs attention" : "On · Checking connection"}
+            {verified ? "Connected · Working" : failed ? "Needs attention" : "Disconnected"}
             {connection.last_synced && (
               <> · checked {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>
             )}
           </p>
         </div>
         <span className={`text-sm font-semibold shrink-0 ${failed ? "text-red-600" : "text-emerald-600"}`}>
-          {failed ? "Needs attention" : "On"}
+          {health.label}
         </span>
       </div>
 
