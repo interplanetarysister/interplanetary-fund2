@@ -8,14 +8,14 @@ import BrandLogo from "@/components/brand/BrandLogo";
 const SESSION_KEY = "if_permissions_session_v1";
 
 const PERMISSIONS = [
-  { label: "Account & Profile", detail: "Create your account, set a username, and manage your identity." },
-  { label: "Campaigns & Donations", detail: "Create fundraisers, receive donations, and process payments." },
-  { label: "Social Publishing", detail: "Post to the Interplanetary Fund feed and connected social platforms." },
-  { label: "Platform Connections", detail: "Connect external accounts (Google, Apple, Facebook, Instagram, TikTok) for cross-posting." },
-  { label: "AI Agents & Automation", detail: "Authorize agents to draft content, schedule posts, and suggest outreach." },
-  { label: "Notifications", detail: "Receive email and in-app updates about campaigns and activity." },
-  { label: "Analytics & Insights", detail: "Track campaign performance, donor activity, and engagement metrics." },
-];
+{ label: "Account & Profile", detail: "Create your account, set a username, and manage your identity." },
+{ label: "Campaigns & Donations", detail: "Create fundraisers, receive donations, and process payments." },
+{ label: "Social Publishing", detail: "Post to the Interplanetary Fund feed and connected social platforms." },
+{ label: "Platform Connections", detail: "Connect external accounts (Google, Apple, Facebook, Instagram, TikTok) for cross-posting." },
+{ label: "AI Agents & Automation", detail: "Authorize agents to draft content, schedule posts, and suggest outreach." },
+{ label: "Notifications", detail: "Receive email and in-app updates about campaigns and activity." },
+{ label: "Analytics & Insights", detail: "Track campaign performance, donor activity, and engagement metrics." }];
+
 
 export default function TermsAcceptance({ children }) {
   const [accepted, setAccepted] = useState(false);
@@ -35,9 +35,9 @@ export default function TermsAcceptance({ children }) {
     try {
       sessionStorage.setItem(SESSION_KEY, "true");
     } catch {
+
       // Storage failure must not block an explicit acceptance.
-    }
-    setAccepted(true);
+    }setAccepted(true);
   };
 
   // Embed routes and public iframe content bypass the per-session gate so
@@ -56,8 +56,8 @@ export default function TermsAcceptance({ children }) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="perm-title"
-          className="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl"
-        >
+          className="glass-panel sm:p-8 shadow-2xl opacity-100 rounded-3xl pt-6 pr-6 pb-6 pl-6">
+          
           <div className="text-center mb-6">
             <h2 id="perm-title" className="font-display text-2xl text-white">
               Permissions & Agreement
@@ -69,11 +69,11 @@ export default function TermsAcceptance({ children }) {
           </div>
 
           <div className="space-y-2 mb-6 max-h-[340px] overflow-y-auto pr-1 scrollbar-hide">
-            {PERMISSIONS.map((p) => (
-              <div
-                key={p.label}
-                className="flex gap-3 rounded-xl bg-white/5 border border-white/10 p-3"
-              >
+            {PERMISSIONS.map((p) =>
+            <div
+              key={p.label}
+              className="flex gap-3 rounded-xl bg-white/5 border border-white/10 p-3">
+              
                 <div className="mt-0.5 w-5 h-5 rounded-full bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shrink-0">
                   <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3">
                     <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -84,7 +84,7 @@ export default function TermsAcceptance({ children }) {
                   <p className="text-xs text-slate-400 mt-0.5">{p.detail}</p>
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
           <p className="text-slate-500 text-xs mb-5 leading-relaxed">
@@ -97,12 +97,12 @@ export default function TermsAcceptance({ children }) {
           <button
             type="button"
             onClick={accept}
-            className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-opacity glow-primary"
-          >
+            className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-opacity glow-primary">
+            
             I Agree — Continue
           </button>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
