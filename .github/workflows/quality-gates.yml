@@ -73,6 +73,9 @@ jobs:
       - name: No active legacy Convex runtime
         run: npm run verify:no-active-convex
 
+      - name: Server entitlement and connection OBO contract
+        run: npm run verify:entitlement-obo
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
