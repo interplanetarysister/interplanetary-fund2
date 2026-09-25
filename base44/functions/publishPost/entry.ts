@@ -59,7 +59,7 @@ export default async function(req) {
       // Centralized access gate: if social publishing is revoked/disabled at the
       // registry level, fall back to a manual handoff instead of auto-posting.
       const access = await assertPlatformAccess(sr, 'social_publish');
-      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish');
+      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
       if (!access.ok || !obo.ok) {
         const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
         const reason = !access.ok ? access.reason : obo.reason;
