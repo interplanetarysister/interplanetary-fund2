@@ -12,6 +12,7 @@ import {
   cancelCanonicalWithdrawal,
 } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
+import { effectiveSubscription } from '../../shared/subscriptionEntitlements.ts';
 
 const CLEARING_DAYS = 7;
 const REVIEW_THRESHOLD = 1000;
@@ -300,8 +301,7 @@ export default async function(req) {
     // Active subscribers are exempt from the once-per-day withdrawal limit.
     // Subscription state is provider-backed through the Stripe webhook; never infer
     // entitlement from the selected tier alone.
-    const hasWithdrawalSubscription =
-      user.subscription_status === 'active' || user.subscription_status === 'trialing';
+    const hasWithdrawalSubscription = effectiveSubscription(user).active;
     if (!hasWithdrawalSubscription) {
       const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
       const recent = await sr.entities.Withdrawal.filter({ owner_user_id: user.id });
