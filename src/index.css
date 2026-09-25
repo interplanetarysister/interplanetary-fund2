@@ -423,6 +423,40 @@
   }
 }
 
+/* Platform-wide UX contract. Campaign creation established the visual language;
+   every routed page now inherits the same softer geometry, spacing, controls,
+   and subtle interstellar depth instead of each page inventing its own UI. */
+.ifund-experience {
+  min-height: 100dvh;
+  background-image:
+    radial-gradient(70rem 34rem at 100% -10%, rgb(99 102 241 / .08), transparent 62%),
+    radial-gradient(54rem 28rem at -10% 30%, rgb(34 211 238 / .06), transparent 60%);
+}
+.ifund-experience :where(input, textarea, select, [role="combobox"]) {
+  border-radius: 1rem;
+  min-height: 2.75rem;
+}
+.ifund-experience :where(button, [role="button"]) {
+  border-radius: .9rem;
+}
+.ifund-experience :where(.rounded-lg) { border-radius: .9rem; }
+.ifund-experience :where(.rounded-xl) { border-radius: 1rem; }
+.ifund-experience :where(.rounded-2xl) { border-radius: 1.25rem; }
+.ifund-experience :where(.bg-white) {
+  box-shadow: 0 10px 30px rgb(15 23 42 / .045);
+}
+.ifund-experience :where(h1, h2, h3) {
+  text-wrap: balance;
+}
+.connections-hub .bg-white {
+  border-color: rgb(165 180 252 / .28);
+  box-shadow: 0 12px 32px rgb(49 46 129 / .08);
+}
+@media (max-width: 640px) {
+  .ifund-experience :where(.px-6) { padding-left: 1rem; padding-right: 1rem; }
+  .ifund-experience :where(.py-10) { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+}
+
 @layer utilities {
   /* Device safe areas — status bar, Dynamic Island, home indicator, rounded corners. */
   .pt-safe { padding-top: env(safe-area-inset-top); }
