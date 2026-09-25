@@ -76,6 +76,9 @@ jobs:
       - name: Server entitlement and connection OBO contract
         run: npm run verify:entitlement-obo
 
+      - name: Connection lifecycle and operational health contract
+        run: npm run verify:connection-lifecycle
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
