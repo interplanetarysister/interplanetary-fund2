@@ -57,7 +57,8 @@
     "verify:agent-reasoning-coherence": "node scripts/verify-agent-reasoning-coherence.mjs",
     "verify:base44-sync": "node scripts/verify-base44-sync-contract.mjs",
     "verify:ui-regressions": "node scripts/verify-text-contrast-contract.mjs",
-    "verify:procon-job": "node scripts/verify-procon-job.mjs"
+    "verify:procon-job": "node scripts/verify-procon-job.mjs",
+    "verify:entitlements-connections": "node scripts/verify-entitlement-connection-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.51",
