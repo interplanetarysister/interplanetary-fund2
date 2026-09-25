@@ -6,6 +6,7 @@ import { Sparkles, Send, Loader2, Check, Link2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { getTierFromScore } from "@/components/social/ProfileBanner";
+import { isUsableConnection } from "@/lib/connectionHealth";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok",
@@ -39,7 +40,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
       .finally(() => setLoading(false));
   }, [open, sourceType, sourceId]);
 
-  const connectedSocial = (connections || []).filter((c) => c.status === "connected" && c.kind === "social");
+  const connectedSocial = (connections || []).filter((c) => isUsableConnection(c) && c.kind === "social");
   const campaignId = sourceType === "campaign" ? sourceId : undefined;
 
   const handleShare = async () => {
