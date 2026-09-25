@@ -89,6 +89,8 @@ const bottomNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
   { to: "/social", label: "Social Media", icon: Radio },
+  { to: "/inbox", label: "Inbox", icon: MailOpen },
+  { to: "/profile", label: "Profile", icon: User },
 ];
 
 export default function Layout() {
@@ -99,7 +101,7 @@ export default function Layout() {
   }, []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/social"];
+  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/social", "/inbox", "/profile"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
@@ -108,6 +110,8 @@ export default function Layout() {
     "/dashboard": ["/dashboard"],
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
     "/social": ["/social"],
+    "/inbox": ["/inbox", "/communications", "/notifications"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";
@@ -186,7 +190,7 @@ export default function Layout() {
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
-            <Link to="/inbox" className="min-w-0 cursor-pointer" aria-label="Go to inbox">
+            <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
             <NotificationBell />
