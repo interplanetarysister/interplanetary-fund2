@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
-import { OAUTH_ENV, verifyManual } from '../verifyPlatformConnection/entry.ts';
+import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -126,7 +126,7 @@ export default async function(req) {
           const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
           if (!oauth?.accessToken) throw new Error('Provider authorization needs to be renewed.');
         } else if (['bluesky', 'mastodon'].includes(c.platform)) {
-          await verifyManual(c);
+          await verifyManualConnection(c);
         } else {
           // Ko-fi is verified by its webhook. Link-only platforms remain
           // owner-reported and are not downgraded simply because no read API exists.
