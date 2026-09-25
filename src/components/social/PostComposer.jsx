@@ -4,6 +4,7 @@ import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { getTierFromScore } from "@/components/social/ProfileBanner";
 import { useToast } from "@/components/ui/use-toast";
+import { isUsableConnection } from "@/lib/connectionHealth";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok",
@@ -87,7 +88,7 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
       // Cross-post to linked external platforms where a campaign is linked.
       if (campaign && crossPost.length > 0) {
         for (const platform of crossPost) {
-          const conn = connections?.find((c) => c.platform === platform && c.status === "connected");
+          const conn = connections?.find((c) => c.platform === platform && isUsableConnection(c));
           if (!conn) continue;
           try {
             const dp = await base44.entities.DistributedPost.create({
@@ -159,7 +160,7 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
       {connections?.length > 0 && (
         <div className="flex items-center gap-2 mb-3 flex-wrap">
           <span className="text-slate-500 text-xs">Cross-post:</span>
-          {connections.filter((c) => c.status === "connected").map((c) => (
+          {connections.filter(isUsableConnection).map((c) => (
             <button
               key={c.id}
               type="button"
