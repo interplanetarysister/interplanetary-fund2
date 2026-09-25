@@ -38,8 +38,9 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
     let height = container.clientHeight || 420;
 
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x010207);
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 6);
+    camera.position.set(0, 0, 5.35);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
