@@ -358,7 +358,17 @@
   .campaign-quest input.quest-input,
   .campaign-quest textarea.quest-input {
     @apply min-h-12 rounded-2xl border-cyan-300/30 bg-slate-950/70 text-cyan-50 shadow-inner placeholder:text-slate-400;
+    color: #ecfeff !important;
+    -webkit-text-fill-color: #ecfeff !important;
+    caret-color: #67e8f9 !important;
     box-shadow: inset 0 0 18px hsl(217 91% 12% / .55), 0 0 0 1px hsl(189 94% 48% / .05);
+  }
+
+  .campaign-quest .quest-input::placeholder,
+  .campaign-quest input.quest-input::placeholder,
+  .campaign-quest textarea.quest-input::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
   }
 
   .campaign-quest .quest-input:hover {
