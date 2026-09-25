@@ -16,7 +16,7 @@ export const POSITIONING_LINES = [
 
 // The official Interplanetary Fund logo. Shown whenever a campaign, profile,
 // or update has no photo, video, or generated image of its own.
-export const FALLBACK_IMAGE = "/interplanetary-planet.svg";
+export const FALLBACK_IMAGE = "/icon-512.jpg";
 
 // Each person's account is their own "Interplanetary Fund" — the place where
 // all of their support arrives.
