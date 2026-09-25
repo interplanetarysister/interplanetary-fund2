@@ -10,6 +10,11 @@ export default async function(req) {
     const guard = await assertActiveAccount(base44);
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
+    // Admin subscription access is role-derived and permanent. Never create a
+    // paid Stripe subscription for an administrator.
+    if (user.role === 'admin') {
+      return Response.json({ error: 'Administrators already have permanent top-tier access.', admin_entitlement: true }, { status: 409 });
+    }
 
     const { tier, interval, price_id, origin, trial_days } = await req.json();
     if (!tier || !price_id || !origin) {
