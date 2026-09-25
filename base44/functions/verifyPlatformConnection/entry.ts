@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const OAUTH_ENV: Record<string, string> = {
+export const OAUTH_ENV: Record<string, string> = {
   linkedin: 'APP_USER_CONNECTOR_LINKEDIN_ID',
   facebook: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID',
   instagram: 'APP_USER_CONNECTOR_INSTAGRAM_ID',
@@ -14,7 +14,7 @@ const OAUTH_ENV: Record<string, string> = {
   patreon: 'APP_USER_CONNECTOR_PATREON_ID',
 };
 
-async function verifyManual(connection: any) {
+export async function verifyManual(connection: any) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') {
     if (!c.bluesky_handle || !c.bluesky_app_password) throw new Error('Connection details are incomplete.');
