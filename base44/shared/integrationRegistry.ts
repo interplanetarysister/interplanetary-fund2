@@ -116,11 +116,18 @@ export async function assertPlatformAccess(sr, platform) {
 }
 
 // OBO (On-Behalf-Of) authorization. A saved platform credential is NOT
-// authorization to act — an explicit, active AuthorizationGrant must exist for
-// (agent, user, platform). Integrates with the existing gatekeeper
-// (verifyAgentPlatformAccess) rather than defining a parallel auth system.
-// Returns { ok, reason, grant? }.
-export async function assertOboGrant(sr, agentName, userId, platform) {
+// authorization to act. The user's plain-language connection consent is the
+// primary per-connection grant; legacy AuthorizationGrant rows remain supported
+// for non-connection capabilities and older flows.
+export async function assertOboGrant(sr, agentName, userId, platform, connection = null) {
+  if (connection) {
+    const sameOwner = connection.created_by_id === userId;
+    const activeConnection = connection.status === 'connected' && connection.verification_status === 'verified';
+    const shared = connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
+    if (sameOwner && activeConnection && shared) return { ok: true, connectionGrant: true };
+    return { ok: false, reason: 'connection OBO authorization is not active' };
+  }
+
   let grants;
   try {
     grants = await sr.entities.AuthorizationGrant.filter({ agent_name: agentName, user_id: userId, platform });
