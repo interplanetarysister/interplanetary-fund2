@@ -146,7 +146,7 @@ export default async function(req) {
         const message = reauth ? 'Provider authorization needs attention.' : 'Live provider verification is unavailable.';
         await sr.entities.PlatformConnection.update(c.id, {
           status: 'error', verification_status: 'unverified', last_error: message,
-          capability_status: reauth ? 'reauthorization_required' : 'verification_unavailable',
+          capability_status: reauth ? 'reauthorization_required' : 'unknown',
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
         });
         report.needs_attention++;
