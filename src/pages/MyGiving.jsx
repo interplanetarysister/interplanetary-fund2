@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import StatCard from "@/components/dashboard/StatCard";
 import RecurringPlanCard from "@/components/giving/RecurringPlanCard";
@@ -6,24 +6,66 @@ import DonationRow from "@/components/giving/DonationRow";
 import { DollarSign, Repeat, Flame, Loader2 } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_MY_GIVING_ERROR = "We couldn't load your giving history. Please try again.";
+const MAX_DONATIONS = 500;
+
+function isSafeDonation(value) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      typeof value.id === "string" &&
+      value.id.length > 0 &&
+      value.id.length <= 128 &&
+      typeof value.amount === "number" &&
+      Number.isFinite(value.amount) &&
+      value.amount >= 0 &&
+      value.amount <= 100000000 &&
+      typeof value.campaign_id === "string" &&
+      value.campaign_id.length > 0 &&
+      value.campaign_id.length <= 128
+  );
+}
+
+function parseDonations(data) {
+  if (!data || !Array.isArray(data.donations) || data.donations.length > MAX_DONATIONS) {
+    return null;
+  }
+  const donations = data.donations.filter(isSafeDonation);
+  return donations.length === data.donations.length && new Set(donations.map((d) => d.id)).size === donations.length
+    ? donations
+    : null;
+}
+
 export default function MyGiving() {
   const [donations, setDonations] = useState(null);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(false);
+  const requestRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestId = ++requestRef.current;
     try {
       setError(null);
-      // Financial truth boundary: only provider-verified gifts count as giving.
-      // getMyGiving returns verified donations server-side; manual PayPal/Cash
-      // App reports remain pending until separately verified.
       const { data } = await base44.functions.invoke("getMyGiving", {});
-      setDonations(data?.donations || []);
-    } catch (e) {
-      setError(e.message || "We couldn't load your giving history.");
+      const parsed = parseDonations(data);
+      if (!mountedRef.current || requestId !== requestRef.current) return;
+      if (!parsed) throw new Error("invalid_response");
+      setDonations(parsed);
+    } catch {
+      if (!mountedRef.current || requestId !== requestRef.current) return;
+      setDonations(null);
+      setError(SAFE_MY_GIVING_ERROR);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => {
+      mountedRef.current = false;
+      requestRef.current += 1;
+    };
+  }, [load]);
 
   if (error) {
     return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setDonations(null); load(); }} /></div>;
