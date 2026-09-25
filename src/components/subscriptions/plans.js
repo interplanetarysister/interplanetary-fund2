@@ -88,19 +88,6 @@ export function getPlan(id) {
   return PLANS.find((p) => p.id === id) || FREE_TIER;
 }
 
-export const TOP_PLAN = PLANS.reduce((top, plan) => plan.level > top.level ? plan : top, FREE_TIER);
-
-// Admin access is role-derived, permanent, and independent of billing state.
-// Never require an admin to purchase, renew, or retain a Stripe subscription.
-export function effectiveSubscription(user) {
-  if (user?.role === "admin") {
-    return { plan: TOP_PLAN, tier: TOP_PLAN.id, status: "active", active: true, adminGranted: true };
-  }
-  const plan = getPlan(user?.subscription_tier);
-  const active = user?.subscription_status === "active" || user?.subscription_status === "trialing";
-  return { plan, tier: plan.id, status: user?.subscription_status || "inactive", active, adminGranted: false };
-}
-
 export function planAllowsOutreach(tierId) {
   return getPlan(tierId).level >= 2;
 }
