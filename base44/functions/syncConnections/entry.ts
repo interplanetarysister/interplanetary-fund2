@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { OAUTH_ENV, verifyManual } from '../verifyPlatformConnection/entry.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -21,7 +22,7 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
     const now = new Date();
-    const report = { published: 0, awaiting_approval: 0, retried: 0, failed: 0, stale_flagged: 0 };
+    const report = { published: 0, awaiting_approval: 0, retried: 0, failed: 0, verified: 0, needs_attention: 0 };
     // Centralized access gate: auto-publish only when social publishing is
     // healthy at the registry level. When disabled, due posts fall back to
     // pending_approval (the existing non-auto path) instead of auto-posting.
@@ -113,19 +114,37 @@ export default async function(req) {
       }
     }
 
-    // --- Connection health: flag stale connections ---
-    const connections = await sr.entities.PlatformConnection.filter({ status: 'connected' }, '-updated_date', 200);
-    const staleCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // --- Connection health: actively verify every connection we can prove. ---
+    // A green dot is refreshed by a provider check, not by the passage of time.
+    const connections = await sr.entities.PlatformConnection.filter({}, '-updated_date', 200);
     for (const c of connections) {
-      const stale = !c.last_synced || new Date(c.last_synced) < staleCutoff;
-      if (stale && c.last_error !== 'No synchronization in over 7 days') {
+      try {
+        const envName = OAUTH_ENV[c.platform];
+        if (envName) {
+          const connectorId = Deno.env.get(envName) || '';
+          if (!connectorId) throw new Error('Provider sign-in is not configured yet.');
+          const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
+          if (!oauth?.accessToken) throw new Error('Provider authorization needs to be renewed.');
+        } else if (['bluesky', 'mastodon'].includes(c.platform)) {
+          await verifyManual(c);
+        } else {
+          // Ko-fi is verified by its webhook. Link-only platforms remain
+          // owner-reported and are not downgraded simply because no read API exists.
+          continue;
+        }
         await sr.entities.PlatformConnection.update(c.id, {
-          status: 'error',
-          verification_status: 'unverified',
-          last_error: 'No synchronization in over 7 days',
-          history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Connection is stale — no sync in over 7 days' }].slice(-30),
+          status: 'connected', verification_status: 'verified', last_synced: now.toISOString(), last_error: '',
+          history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Scheduled provider verification succeeded' }].slice(-30),
         });
-        report.stale_flagged++;
+        report.verified++;
+      } catch (e) {
+        const message = String(e?.message || 'Provider authorization needs attention').slice(0, 300);
+        await sr.entities.PlatformConnection.update(c.id, {
+          status: 'error', verification_status: 'unverified', last_error: message,
+          capability_status: OAUTH_ENV[c.platform] ? 'reauthorization_required' : (c.capability_status || 'unknown'),
+          history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
+        });
+        report.needs_attention++;
       }
     }
 
