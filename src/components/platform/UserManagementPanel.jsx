@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Loader2, Users, ShieldCheck, UserX, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { effectiveSubscription } from "@/components/subscriptions/plans";
+import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
 
 const TIER_LABELS = {
   free: "Free",
