@@ -15,5 +15,5 @@ assert.match(health, /verification_status === "verified"/);
 assert.match(disconnect, /shared_with_agents: false/);
 assert.match(disconnect, /automation_enabled: false/);
 assert.match(card, /verifyPlatformConnection/);
-assert.match(card, />Check</);
+assert.match(card, /\/>Check/);
 console.log('Connection lifecycle and operational health contract verified.');
