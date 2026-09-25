@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, Sparkles, ShieldCheck } from "lucide-react";
-import { PLANS, getPlan } from "@/components/subscriptions/plans";
+import { PLANS, effectiveSubscription } from "@/components/subscriptions/plans";
 
 export default function Subscriptions() {
   const [user, setUser] = useState(null);
@@ -39,8 +39,9 @@ export default function Subscriptions() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const current = getPlan(user.subscription_tier);
-  const active = user.subscription_status === "active" || user.subscription_status === "trialing";
+  const subscription = effectiveSubscription(user);
+  const current = subscription.plan;
+  const active = subscription.active;
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -67,7 +68,7 @@ export default function Subscriptions() {
             <p className="text-sm text-stone-500">Your current plan</p>
             <p className="font-display text-lg text-stone-900">{current.name}</p>
           </div>
-          <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-white">{user.subscription_status}</Badge>
+          <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-white">{subscription.adminGranted ? "Admin · permanent" : subscription.status}</Badge>
         </div>
       )}
 
@@ -83,7 +84,7 @@ export default function Subscriptions() {
         {PLANS.map((plan) => {
           const price = annual ? plan.annual : plan.monthly;
           const available = !!price?.stripe_price_id;
-          const isCurrent = active && user.subscription_tier === plan.id;
+          const isCurrent = active && subscription.tier === plan.id;
           return (
             <div key={plan.id} className={`rounded-2xl border p-6 bg-white flex flex-col ${plan.featured ? "border-primary shadow-lg ring-1 ring-primary/20" : "border-stone-200"}`}>
               <div className="flex items-center justify-between mb-1">
@@ -108,7 +109,9 @@ export default function Subscriptions() {
                   </li>
                 ))}
               </ul>
-              {isCurrent ? (
+              {subscription.adminGranted ? (
+                <Button disabled className="rounded-xl bg-stone-100 text-stone-500">{isCurrent ? "Admin plan · included" : "Included with admin"}</Button>
+              ) : isCurrent ? (
                 <Button disabled className="rounded-xl bg-stone-100 text-stone-500">Current plan</Button>
               ) : available ? (
                 <Button onClick={() => subscribe(plan)} disabled={subscribing === plan.id} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">
