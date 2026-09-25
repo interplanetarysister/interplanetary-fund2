@@ -79,6 +79,24 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Verify built app can render
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/ifund-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill $PREVIEW_PID 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/ -o /tmp/ifund-render.html; then
+              break
+            fi
+            if ! kill -0 $PREVIEW_PID 2>/dev/null; then
+              cat /tmp/ifund-preview.log
+              exit 1
+            fi
+            sleep 1
+          done
+          test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
+          grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
+
   node22-compatibility:
     name: Node 22 compatibility build
     runs-on: ubuntu-latest
