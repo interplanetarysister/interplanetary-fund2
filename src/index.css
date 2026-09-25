@@ -273,8 +273,21 @@
   /* Android WebView readiness: kill default rubber-band / scroll-chaining on
      the page and main scroll areas. PullToRefresh sets its own overscroll
      inline on its container, so it keeps working. */
-  html, body {
+  html, body, #root {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
     overscroll-behavior-y: none;
+    touch-action: pan-y pinch-zoom;
+  }
+
+  /* A single vertical finger is the canonical page gesture on web and the
+     installed app. Nested scroll surfaces may scroll vertically too, but no
+     page-level rule may require a second finger or horizontal pan. */
+  main, main > div, [data-page-scroll] {
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Android WebView: keep taps instant and never let a tap-highlight box
@@ -287,6 +300,21 @@
 
   button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="menuitem"]:not([aria-disabled="true"]), [role="option"]:not([aria-disabled="true"]) {
     cursor: pointer;
+  }
+
+  /* Buttons must remain legible even when page-specific utility classes drift.
+     Keep semantic variants authoritative for text/background contrast. */
+  button.bg-primary, [role="button"].bg-primary {
+    color: hsl(var(--primary-foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--primary-foreground)) !important;
+  }
+  button.border-input.bg-transparent, [role="button"].border-input.bg-transparent {
+    color: hsl(var(--foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  }
+  button.bg-secondary, [role="button"].bg-secondary {
+    color: hsl(var(--secondary-foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--secondary-foreground)) !important;
   }
 
   button:focus-visible, [role="button"]:focus-visible, [role="menuitem"]:focus-visible, [role="option"]:focus-visible {
