@@ -7,7 +7,6 @@
   "background_color": "#0a0e1f",
   "theme_color": "#0a0e1f",
   "icons": [
-    { "src": "/icon-192.jpg", "sizes": "any", "type": "image/jpeg", "purpose": "any" },
-    { "src": "/icon-512.jpg", "sizes": "any", "type": "image/jpeg", "purpose": "any" }
+    { "src": "/interplanetary-planet.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }
