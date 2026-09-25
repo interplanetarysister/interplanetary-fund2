@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Link2, Rocket, Share2, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Loader2, Link2, RefreshCw, Search, ChevronDown } from "lucide-react";
 import { CROWDFUNDING_PLATFORMS, SOCIAL_PLATFORMS, ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
@@ -19,6 +20,8 @@ export default function Connections() {
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [connectionNotice, setConnectionNotice] = useState(null);
+  const [platformSearch, setPlatformSearch] = useState("");
+  const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -80,27 +83,16 @@ export default function Connections() {
   const discoveredSummary = discoveredTotals
     .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
     .join(", ");
-  const kinds = { crowdfunding: CROWDFUNDING_PLATFORMS, social: SOCIAL_PLATFORMS };
-
-  const catalogSection = (title, Icon, items) => (
-    <div className="mb-8">
-      <h2 className="flex items-center gap-2 font-display text-xl text-stone-900 mb-1"><Icon className="w-4 h-4 text-primary" /> {title}</h2>
-      <p className="text-sm text-stone-500 mb-3">Tap Connect to turn one on. Interplanetary Fund handles the technical setup behind the scenes.</p>
-      <div className="grid sm:grid-cols-2 gap-3">
-        {items.filter((p) => p.id === "custom" || !connectedIds.includes(p.id)).map((p) => (
-          <div key={p.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-semibold text-stone-900">{p.name}</p>
-              <p className="text-xs text-stone-400 mt-0.5">Off</p>
-            </div>
-            <Button size="sm" onClick={() => setDialog({ platform: { ...p, kind: items === CROWDFUNDING_PLATFORMS ? "crowdfunding" : "social" } })} className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">
-              Connect
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
+  const availablePlatforms = ALL_PLATFORMS.filter((p) =>
+    (p.id === "custom" || !connectedIds.includes(p.id)) &&
+    (`${p.name} ${p.kind || ""}`.toLowerCase().includes(platformSearch.trim().toLowerCase()))
   );
+
+  const choosePlatform = (platform) => {
+    setDialog({ platform });
+    setPlatformSearch("");
+    setPlatformMenuOpen(false);
+  };
 
   return (
     <div className="connections-hub max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -167,8 +159,63 @@ export default function Connections() {
         </div>
       )}
 
-      {catalogSection("Crowdfunding platforms", Rocket, kinds.crowdfunding)}
-      {catalogSection("Social networks", Share2, kinds.social)}
+      <div className="mb-8">
+        <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
+        <p className="text-sm text-stone-500 mb-3">Search for the platform you want to connect. Interplanetary Fund handles the available connection method behind the scenes.</p>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setPlatformMenuOpen((open) => !open)}
+            className="w-full min-h-14 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 px-4 py-3 text-left shadow-lg flex items-center justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
+            aria-expanded={platformMenuOpen}
+          >
+            <span className="flex items-center gap-3 min-w-0">
+              <span className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0"><Search className="w-4 h-4 text-cyan-200" /></span>
+              <span>
+                <span className="block font-semibold text-cyan-50">Choose a platform</span>
+                <span className="block text-xs text-slate-400">Fundraising and social platforms</span>
+              </span>
+            </span>
+            <ChevronDown className={`w-5 h-5 text-cyan-200 transition-transform ${platformMenuOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {platformMenuOpen && (
+            <div className="mt-2 rounded-2xl border border-cyan-300/20 bg-slate-950 shadow-2xl overflow-hidden">
+              <div className="p-3 border-b border-white/10">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  <Input
+                    autoFocus
+                    value={platformSearch}
+                    onChange={(e) => setPlatformSearch(e.target.value)}
+                    placeholder="Search platforms…"
+                    className="pl-9 h-11 rounded-xl border-cyan-300/20 bg-slate-900 text-cyan-50 placeholder:text-slate-500 focus-visible:ring-cyan-400/50"
+                  />
+                </div>
+              </div>
+              <div className="max-h-72 overflow-y-auto p-2">
+                {availablePlatforms.length ? availablePlatforms.map((p) => (
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() => choosePlatform(p)}
+                    className="w-full rounded-xl px-3 py-3 flex items-center gap-3 text-left hover:bg-cyan-400/10 focus:bg-cyan-400/10 focus:outline-none transition-colors"
+                  >
+                    <span className="text-xl w-8 text-center shrink-0" aria-hidden="true">{p.icon || "✦"}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
+                      <span className="block text-xs text-slate-400 capitalize">{p.kind === "crowdfunding" ? "Fundraising" : "Social"}</span>
+                    </span>
+                    <span className="text-xs font-semibold text-cyan-200">Connect</span>
+                  </button>
+                )) : (
+                  <p className="px-3 py-6 text-center text-sm text-slate-400">No matching platforms.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {dialog && (
         <ConnectDialog
