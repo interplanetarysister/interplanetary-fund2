@@ -5,11 +5,27 @@ import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
-import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
+import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, normalizeIntegrationStatus } from "@/lib/integrationRegistryUi";
 import { useToast } from "@/components/ui/use-toast";
 
 const SAFE_REGISTRY_ERROR = "We couldn\'t load the integration registry. Please try again.";
 const SAFE_HEALTH_ERROR = "We couldn\'t complete the integration health check. Please try again.";
+const REQUEST_TIMEOUT_MS = 15000;
+
+function withTimeout(promise) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), REQUEST_TIMEOUT_MS)),
+  ]);
+}
+
+function invokeWithLock(lock, operation) {
+  if (lock.current) return null;
+  lock.current = true;
+  const pending = Promise.resolve().then(operation);
+  pending.then(() => { lock.current = false; }, () => { lock.current = false; });
+  return withTimeout(pending);
+}
 
 function isAdminUser(value) {
   return Boolean(value && typeof value === "object" && value.role === "admin");
@@ -19,8 +35,18 @@ function isRegistryResponse(value) {
   return Array.isArray(value) && value.every((entry) => entry && typeof entry === "object");
 }
 
+function normalizeRegistryEntries(value) {
+  return value.map((entry) => ({ ...entry, status: normalizeIntegrationStatus(entry.status) }));
+}
+
 function isHealthResponse(value) {
-  return Boolean(value && typeof value === "object" && value.data && typeof value.data === "object" && !Array.isArray(value.data));
+  const data = value?.data || value;
+  return Boolean(data && typeof data === "object" && data.ok === true && Number.isInteger(data.checked) && Array.isArray(data.report));
+}
+
+function isGitHubResponse(value) {
+  const data = value?.data || value;
+  return Boolean(data && typeof data === "object" && typeof data.ok === "boolean" && (!data.results || typeof data.results === "object"));
 }
 
 export default function IntegrationsAdmin() {
@@ -36,20 +62,22 @@ export default function IntegrationsAdmin() {
   const [refreshKey, setRefreshKey] = useState(0);
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
+  const healthLock = useRef(false);
+  const githubLock = useRef(false);
 
   const loadRegistry = useCallback(async () => {
     const generation = ++requestGeneration.current;
     try {
-      const me = await base44.auth.me();
+      const me = await withTimeout(base44.auth.me());
       if (!mounted.current || generation !== requestGeneration.current) return;
       if (!me || typeof me !== "object" || typeof me.role !== "string") throw new Error("Malformed auth response");
       setUser(me);
       setAuthReady(true);
       if (!isAdminUser(me)) return;
-      const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
+      const list = await withTimeout(base44.entities.PlatformAccessRegistry.list("-platform", 200));
       if (!isRegistryResponse(list)) throw new Error("Malformed registry response");
       if (!mounted.current || generation !== requestGeneration.current) return;
-      setEntries(list);
+      setEntries(normalizeRegistryEntries(list));
       setRegistryError(null);
     } catch (e) {
       console.error("IntegrationsAdmin registry load failed:", e?.name || "UnknownError");
@@ -70,12 +98,19 @@ export default function IntegrationsAdmin() {
 
   const reload = () => setRefreshKey((k) => k + 1);
 
+  useEffect(() => {
+    if (!selected || !entries) return;
+    const fresh = entries.find((entry) => entry.id === selected.id);
+    setSelected(fresh || null);
+  }, [entries, selected?.id]);
+
   const runHealthCheck = async () => {
-    if (checking) return;
+    const request = invokeWithLock(healthLock, () => base44.functions.invoke("validateIntegrationHealth", {}));
+    if (!request) return;
     setChecking(true);
     setHealthError(null);
     try {
-      const response = await base44.functions.invoke("validateIntegrationHealth", {});
+      const response = await request;
       if (!isHealthResponse(response)) throw new Error("Malformed health response");
       reload();
     } catch (e) {
@@ -87,28 +122,24 @@ export default function IntegrationsAdmin() {
   };
 
   const verifyGitHubConnection = async () => {
+    const request = invokeWithLock(githubLock, () => base44.functions.invoke("syncGitHub", { direction: "both" }));
+    if (!request) return;
     setVerifyingGitHub(true);
     try {
-      const res = await base44.functions.invoke("syncGitHub", { direction: "both" });
+      const res = await request;
+      if (!isGitHubResponse(res)) throw new Error("Malformed GitHub response");
       const data = res?.data || res;
       if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub verification completed", description: details || "Connection verification completed." });
+        toast({ title: "GitHub verification completed", description: "The authenticated GitHub connection check completed." });
       } else if (data?.skipped) {
-        toast({ title: "GitHub verification unavailable", description: data.reason || "GitHub integration is not active.", variant: "destructive" });
+        toast({ title: "GitHub verification unavailable", description: "GitHub integration is not active.", variant: "destructive" });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Connection verification encountered an issue.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: "Connection verification encountered an issue.", variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "GitHub verification failed", description: e.message || "Could not verify the GitHub connection.", variant: "destructive" });
+      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
     }
-    setVerifyingGitHub(false);
+    if (mounted.current) setVerifyingGitHub(false);
   };
 
   if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
@@ -143,12 +174,7 @@ export default function IntegrationsAdmin() {
         </div>
         <div className="flex flex-wrap gap-2">
           {githubEntry && (
-            <Button
-              onClick={verifyGitHubConnection}
-              disabled={verifyingGitHub || checking}
-              variant="outline"
-              className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
+            <Button onClick={verifyGitHubConnection} disabled={verifyingGitHub || checking} variant="outline" className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50">
               {verifyingGitHub ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
               Verify GitHub connection
             </Button>
@@ -171,26 +197,16 @@ export default function IntegrationsAdmin() {
 
       {needsAttention.length > 0 && (
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-2 text-amber-800 font-medium text-sm">
-            <ShieldAlert className="w-4 h-4" />{needsAttention.length} integration(s) need attention
-          </div>
+          <div className="flex items-center gap-2 text-amber-800 font-medium text-sm"><ShieldAlert className="w-4 h-4" />{needsAttention.length} integration(s) need attention</div>
           <ul className="mt-2 space-y-1 text-sm text-amber-700">
             {needsAttention.map((e) => (
-              <li key={e.id}>
-                <button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">
-                  {e.platform}
-                </button>
-                {" — "}{(STATUS_BADGE[e.status] || {}).label || e.status}{e.last_failure ? `: ${e.last_failure}` : ""}
-              </li>
+              <li key={e.id}><button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">{e.platform}</button>{" — "}{(STATUS_BADGE[e.status] || UNKNOWN_STATUS_BADGE).label}{e.last_failure ? `: ${e.last_failure}` : ""}</li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="mt-6">
-        <IntegrationsTable entries={visibleEntries} onRowClick={setSelected} />
-      </div>
-
+      <div className="mt-6"><IntegrationsTable entries={visibleEntries} onRowClick={setSelected} /></div>
       <IntegrationDetailPanel entry={selected} onClose={() => setSelected(null)} onUpdated={reload} />
     </div>
   );
@@ -203,12 +219,5 @@ function Stat({ label, value, tone = "stone" }) {
     amber: "bg-amber-50 border-amber-200 text-amber-700",
     red: "bg-red-50 border-red-200 text-red-700",
   };
-  return (
-    <div className={`rounded-2xl border p-4 ${tones[tone]}`}>
-      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide opacity-70">
-        {tone === "emerald" && <ShieldCheck className="w-3.5 h-3.5" />}{label}
-      </div>
-      <div className="font-display text-2xl mt-1">{value}</div>
-    </div>
-  );
+  return <div className={`rounded-2xl border p-4 ${tones[tone]}`}><div className="flex items-center gap-1.5 text-xs uppercase tracking-wide opacity-70">{tone === "emerald" && <ShieldCheck className="w-3.5 h-3.5" />}{label}</div><div className="font-display text-2xl mt-1">{value}</div></div>;
 }
