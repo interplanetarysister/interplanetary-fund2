@@ -25,7 +25,7 @@ export const templates = [
     name: "Campaign Progress Update",
     comm_type: "update",
     subject: "An update on our campaign",
-    content: "Hello!\n\nWe wanted to share the latest progress on our campaign. Here's what's happened recently:\n\n- [Share a recent highlight]\n- [Share what's coming next]\n\nThank you for standing with us.\n\n{{your_name}}",
+    content: "Hello!\n\nWe wanted to share a quick update on our campaign. We’re continuing to work toward our goal, and your support and sharing continue to make a difference. We’ll share specific progress as it is confirmed.\n\nThank you for standing with us.\n\n{{your_name}}",
   },
   {
     id: "follow_up",
@@ -39,6 +39,6 @@ export const templates = [
     name: "Emergency Update",
     comm_type: "announcement",
     subject: "Important update about our campaign",
-    content: "Dear supporters,\n\nWe have an important update to share with you regarding our campaign:\n\n[Describe the situation and what it means for supporters]\n\nWe'll continue to keep you informed. Thank you for your understanding and support.\n\n{{your_name}}",
+    content: "Dear supporters,\n\nWe have an important campaign update. Please add the latest confirmed campaign details before sending this message so supporters receive accurate information.\n\nWe’ll continue to keep you informed as verified information becomes available. Thank you for your understanding and support.\n\n{{your_name}}",
   },
 ];
