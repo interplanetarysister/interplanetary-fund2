@@ -1,5 +1,6 @@
 requests
 selenium
 playwright
+browserbase
 pydantic
 python-dotenv
