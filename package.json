@@ -60,7 +60,8 @@
     "verify:procon-job": "node scripts/verify-procon-job.mjs",
     "verify:entitlements-connections": "node scripts/verify-entitlement-connection-contract.mjs",
     "verify:no-active-convex": "node scripts/verify-no-active-convex-runtime.mjs",
-    "verify:entitlement-obo": "node scripts/verify-entitlement-obo-contract.mjs"
+    "verify:entitlement-obo": "node scripts/verify-entitlement-obo-contract.mjs",
+    "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.51",
