@@ -68,7 +68,7 @@ export default async function(req) {
       kind: cfg.kind,
       display_name: existing?.display_name || key,
       external_url: existing?.external_url || '',
-      automation_mode: existing?.automation_mode || 'manual',
+      automation_mode: sharedAgentConsent ? (existing?.automation_mode || 'auto') : 'manual',
       obo_consent: {
         granted: sharedAgentConsent,
         granted_at: sharedAgentConsent ? now : null,
