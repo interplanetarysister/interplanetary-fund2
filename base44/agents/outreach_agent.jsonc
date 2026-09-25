@@ -19,6 +19,10 @@
       "allowed_operations": [
         "read"
       ]
+    },
+    {
+      "function_name": "runBrowserConnection",
+      "description": "Read external campaign page metrics through a configured owner-authorized browser connection. Supply connection_id and action GET_METRICS. Only report observed page text; never claim a financial transfer or verified provider connection."
     }
   ],
   "context_files": [],
