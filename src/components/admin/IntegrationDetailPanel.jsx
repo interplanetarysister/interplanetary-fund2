@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
+import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
 import { Loader2, RefreshCw, ShieldOff, ShieldCheck, GitFork } from "lucide-react";
 
 function Row({ label, children }) {
@@ -18,43 +18,42 @@ function Row({ label, children }) {
 export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(null);
+  const operationLock = useRef(false);
   if (!entry) return null;
-  const badge = STATUS_BADGE[entry.status] || STATUS_BADGE.ACTIVE;
+  const badge = STATUS_BADGE[entry.status] || UNKNOWN_STATUS_BADGE;
 
   const run = async (action, payload = {}) => {
+    if (operationLock.current) return;
+    operationLock.current = true;
     setBusy(action);
     try {
       await base44.functions.invoke("managePlatformAccess", { action, platform: entry.platform, ...payload });
       toast({ title: "Updated", description: `${entry.platform}: ${action}` });
       onUpdated?.();
     } catch (e) {
-      toast({ title: "Couldn't update", description: e.message, variant: "destructive" });
+      toast({ title: "Couldn't update", description: "The integration update could not be completed.", variant: "destructive" });
     }
     setBusy(null);
+    operationLock.current = false;
   };
 
   const syncGitHub = async (direction) => {
+    if (operationLock.current) return;
+    operationLock.current = true;
     setBusy(`github-sync-${direction}`);
     try {
       const res = await base44.functions.invoke("syncGitHub", { direction });
       const data = res?.data || res;
       if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub status verified", description: details || "GitHub connection verified." });
+        toast({ title: "GitHub status verified", description: "The authenticated GitHub connection check completed." });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "GitHub connection verification failed.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: "GitHub connection verification did not succeed.", variant: "destructive" });
       }
     } catch (e) {
-      const reason = e?.response?.data?.reason || e?.response?.data?.error || e?.data?.reason || e?.data?.error || e?.message || "GitHub verification failed.";
-      toast({ title: "GitHub verification failed", description: reason, variant: "destructive" });
+      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
     }
     setBusy(null);
+    operationLock.current = false;
   };
 
   return (
@@ -140,7 +139,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
 
         <div className="flex flex-wrap gap-2 pt-2">
           <Button size="sm" variant="outline" onClick={() => run("reauthorize")} disabled={!!busy} className="rounded-lg">
-            {busy === "reauthorize" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}Mark reauthorized
+            {busy === "reauthorize" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}Request reauthorization
           </Button>
           <Button size="sm" variant="outline" onClick={() => run("revoke")} disabled={!!busy} className="rounded-lg text-red-600 hover:text-red-700">
             {busy === "revoke" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5 mr-1.5" />}Revoke access
