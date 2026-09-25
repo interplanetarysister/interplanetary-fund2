@@ -20,6 +20,7 @@ export default async function(req) {
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count, credentials,
+      browser_read_consent,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
@@ -42,6 +43,9 @@ export default async function(req) {
     }
 
     const effectiveKind = kind || existing?.kind || 'crowdfunding';
+    if (typeof browser_read_consent === 'boolean' && existing && existing.created_by_id !== user.id) {
+      return Response.json({ error: 'Only the connection owner can change browser access consent.' }, { status: 403 });
+    }
     const effectiveCurrency = effectiveKind === 'crowdfunding'
       ? String(external_currency || existing?.external_currency || '').trim().toUpperCase()
       : undefined;
@@ -69,7 +73,7 @@ export default async function(req) {
 
     const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
     const now = new Date().toISOString();
-    const data = {
+    const data: any = {
       platform,
       kind: effectiveKind,
       display_name: display_name ?? existing?.display_name ?? '',
@@ -86,6 +90,27 @@ export default async function(req) {
       last_error: '',
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
+
+    if (effectiveKind === 'crowdfunding' && typeof browser_read_consent === 'boolean') {
+      const currentConsent = existing?.obo_consent || {};
+      const previous = (currentConsent.granted_capabilities || []).filter((item) => item !== 'GET_METRICS');
+      const grantedCapabilities = browser_read_consent ? [...previous, 'GET_METRICS'] : previous;
+      data.obo_consent = {
+        ...currentConsent,
+        granted: browser_read_consent || (currentConsent.granted === true && previous.length > 0),
+        granted_at: browser_read_consent ? now : currentConsent.granted_at,
+        permission_version: browser_read_consent ? '2026-09-browser-read-v1' : currentConsent.permission_version,
+        granted_capabilities: grantedCapabilities,
+        requested_capabilities: browser_read_consent
+          ? [...new Set([...(currentConsent.requested_capabilities || []), 'GET_METRICS'])]
+          : (currentConsent.requested_capabilities || []).filter((item) => item !== 'GET_METRICS'),
+      };
+      data.agent_access = {
+        ...(existing?.agent_access || {}),
+        shared_with_agents: browser_read_consent || (existing?.agent_access?.shared_with_agents === true && previous.length > 0),
+        automation_enabled: browser_read_consent || (existing?.agent_access?.automation_enabled === true && previous.length > 0),
+      };
+    }
 
     let saved;
     if (existing) saved = await base44.entities.PlatformConnection.update(existing.id, data);
