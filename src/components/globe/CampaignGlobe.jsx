@@ -39,6 +39,18 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x010207);
+
+    const starPoints = new Float32Array(7200);
+    for (let i = 0; i < starPoints.length; i += 3) {
+      const n = i / 3 + 1;
+      starPoints[i] = ((n * 47) % 211) / 211 * 26 - 13;
+      starPoints[i + 1] = ((n * 83) % 197) / 197 * 16 - 8;
+      starPoints[i + 2] = -4 - ((n * 61) % 173) / 173 * 16;
+    }
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute("position", new THREE.BufferAttribute(starPoints, 3));
+    scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.018, transparent: true, opacity: 0.9 })));
+
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(0, 0, 5.35);
 
