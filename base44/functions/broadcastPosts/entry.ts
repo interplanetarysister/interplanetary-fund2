@@ -31,10 +31,8 @@ export default async function(req) {
       return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
     }
     const access = await assertPlatformAccess(sr, 'social_publish');
-    const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish');
-    if (!access.ok || !obo.ok) {
-      const reason = !access.ok ? access.reason : obo.reason;
-      return Response.json({ error: `Social publishing is currently disabled: ${reason}` }, { status: 403 });
+    if (!access.ok) {
+      return Response.json({ error: `Social publishing is currently disabled: ${access.reason}` }, { status: 403 });
     }
     const posts = await base44.entities.DistributedPost.filter({ campaign_id }, '-created_date', 100);
     const pending = posts.filter((p) =>
@@ -66,9 +64,8 @@ export default async function(req) {
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-      const connectionAutomationAllowed = connection.obo_consent?.granted === true &&
-        connection.agent_access?.shared_with_agents === true &&
-        connection.agent_access?.automation_enabled === true;
+      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
+      const connectionAutomationAllowed = obo.ok && connection.agent_access?.automation_enabled === true;
       if (!canAutoPublish(connection) || !aiConsentGranted || !connectionAutomationAllowed) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
