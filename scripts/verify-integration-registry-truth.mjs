@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { mergeIntegrationStatus, normalizeIntegrationStatus } from "../base44/shared/integrationStatusPolicy.js";
 
 const read = (path) => fs.readFileSync(path, "utf8");
 const manage = read("base44/functions/managePlatformAccess/entry.ts");
@@ -18,12 +19,19 @@ const rejectText = (source, text, label) => {
 requireText(manage, "status: 'DISCONNECTED'", "new registry rows fail closed");
 requireText(manage, "status: 'REAUTH_REQUIRED'", "reauthorization requires verification");
 rejectText(manage, "status: 'ACTIVE', last_failure: ''", "manual action cannot activate");
-requireText(health, "const SUPPORTED_STATUSES = new Set", "supported status allowlist exists");
-requireText(health, "normalizeStoredStatus", "legacy statuses normalize before persistence");
-requireText(health, "status = normalizeStoredStatus(e.status)", "malformed legacy status fails closed");
-requireText(health, "status === 'MISCONFIGURED' ? status : normalizeStoredStatus(e.status)", "platform-managed status preserves safe stored truth");
+requireText(health, "mergeIntegrationStatus", "shared status precedence is used");
+if (normalizeIntegrationStatus("PENDING") !== "DISCONNECTED") throw new Error("Malformed status did not fail closed");
+for (const candidate of ["MISCONFIGURED", "REAUTH_REQUIRED", "ACTIVE", "DISCONNECTED"]) {
+  if (mergeIntegrationStatus("REVOKED", candidate) !== "REVOKED") {
+    throw new Error(`Revoked status was lost for candidate ${candidate}`);
+  }
+}
+if (mergeIntegrationStatus("MISCONFIGURED", "ACTIVE") !== "MISCONFIGURED") {
+  throw new Error("Provider success overrode misconfiguration");
+}
+requireText(health, "mergeIntegrationStatus(status, normalizeIntegrationStatus(e.status))", "platform-managed status preserves safe stored truth");
 requireText(health, "providerVerified = false", "verification evidence tracked");
-requireText(health, "status !== 'MISCONFIGURED' && status !== 'REVOKED'", "provider success cannot override revoked or invalid state");
+requireText(health, "mergeIntegrationStatus(status, 'ACTIVE')", "provider success uses precedence policy");
 rejectText(health, "err?.message", "provider errors are not persisted");
 requireText(health, "result.status === 'ACTIVE' && result.providerVerified", "success timestamp requires provider evidence");
 requireText(page, "normalizeRegistryEntries", "registry rows normalize before render");
