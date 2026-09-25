@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { effectiveSubscription } from '../../shared/subscriptionEntitlements.ts';
 
 // Scans a user's account for Interplanetary Fund features they haven't used yet
 // and creates one open Recommendation per unused feature (deduped — won't
@@ -39,7 +40,7 @@ export default async function(req) {
       "join-a-community": communityMemberships.length > 0,
       "invite-an-institution": institutions.length > 0 || applications.length > 0,
       "volunteer": volunteerSignups.length > 0,
-      "upgrade-plan": !!(user.subscription_tier && user.subscription_tier !== "free"),
+      "upgrade-plan": effectiveSubscription(user).active,
       "set-cashapp": hasCashApp,
     };
 
