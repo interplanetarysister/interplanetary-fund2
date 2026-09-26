@@ -59,8 +59,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     "Read and respond to comments, replies, mentions, messages, and other campaign interactions",
     "Support outreach, discovery, follows, joins, communities, and engagement where the platform permits",
     "Read available analytics, engagement, campaign, donation, payment, transaction, and balance information",
-    "Use available event/webhook, reconciliation, settlement, payout, or transfer capabilities when separately supported by the platform",
-    "Reuse this one authorized connection across your Interplanetary Fund agents and workflows within your settings",
+    "Check available money activity and help with supported money-moving steps only when you separately allow them",
+    "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
   ] : [];
 
   const connectWithProvider = async () => {
@@ -73,11 +73,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       }
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
-        setError("This platform does not support secure provider sign-in yet.");
+        setError("This platform can’t be connected this way yet.");
         return;
       }
       if (!data?.configured || !data?.connector_id) {
-        setError("Secure provider sign-in still needs its platform connector configured by Interplanetary Fund.");
+        setError("This connection is not ready yet. Please try again later.");
         return;
       }
       // The IF consent and provider grant are one continuous connection event.
@@ -91,7 +91,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       window.location.href = redirectUrl;
     } catch (e) {
       console.error("Provider OAuth start failed:", e);
-      setError("Couldn't open the provider sign-in. Please try again.");
+      setError("We couldn’t open sign-in. Please try again.");
     } finally {
       setConnecting(false);
     }
@@ -133,7 +133,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in with the provider. Interplanetary Fund never asks you to paste OAuth tokens." : "Save your link. Browser checks require an authorized session before they can confirm access."}</p>
+        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform to connect it." : "Add your link and follow the steps shown."}</p>
         <div className="space-y-4">
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
@@ -155,7 +155,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           </div>
           {isCrowd && (
             <div className="space-y-2">
-              <p className="text-xs text-stone-500">Enter owner-reported external figures. They remain informational until the provider verifies them.</p>
+              <p className="text-xs text-stone-500">Enter the numbers shown on the other fundraiser. We’ll label them as confirmed only after we can check them.</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <Label>Reported total</Label>
@@ -180,7 +180,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           )}
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
-            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "Your Interplanetary Fund agents can use this connection for supported work you authorized." : "Turn on AI Publishing Authorization on the Connections page if you want your agents to use connected platforms."}</p>
+            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "Your Interplanetary Fund helpers can use this connection for the things you allowed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to help with connected platforms."}</p>
           </div>
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
@@ -191,7 +191,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
               </div>
               <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
                 <input type="checkbox" checked={permissionAccepted} onChange={(e) => setPermissionAccepted(e.target.checked)} className="mt-0.5" />
-                <span>I approve this platform connection for the supported Interplanetary Fund uses above. This one connection may be reused by my IF agents and workflows within my settings.</span>
+                <span>I approve this connection and the choices above. My Interplanetary Fund helpers may reuse it only within my settings.</span>
               </label>
             </div>
           )}
