@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Loader2, Wallet, ShieldCheck, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,31 @@ import { useSearchParams } from "react-router-dom";
 import PageError from "@/components/PageError";
 
 const CLEARING_DAYS = 7;
-const money = (n) => (n || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
+const PLATFORM_FEE_RATE = 0.07;
+const SAFE_WITHDRAWALS_ERROR = "We couldn't load your withdrawals. Please try again.";
+const SAFE_APPROVAL_ERROR = "Approval could not be completed. Please try again.";
+const money = (n) => (Number.isFinite(Number(n)) ? Number(n) : 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
 const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+const isValidRow = (value) => isRecord(value) && isNonEmptyString(value.id);
+const classifyThrown = (value) => {
+  if (value instanceof Error) return "error";
+  if (value === null || value === undefined) return "nullish";
+  if (typeof value === "string") return "string";
+  if (typeof value === "object") return "object";
+  return "primitive";
+};
+const safeFailure = (value, fallback) => {
+  classifyThrown(value);
+  return fallback;
+};
+const validArray = (value) => Array.isArray(value) && value.every(isValidRow);
+const readFunctionPayload = (response) => isRecord(response) && isRecord(response.data) ? response.data : null;
+const readDonationRows = (response) => {
+  const payload = readFunctionPayload(response);
+  return payload && Array.isArray(payload.donations) ? payload.donations.filter(isRecord) : null;
+};
 
 const STATUS_STYLE = {
   paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -30,10 +53,11 @@ export default function Withdrawals() {
   const [reviewQueue, setReviewQueue] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
-  // Android back button dismisses it rather than leaving the page.
   const [searchParams, setSearchParams] = useSearchParams();
   const activeId = searchParams.get("withdraw");
+  const loadGeneration = useRef(0);
+  const mountedRef = useRef(false);
+  const approvingRef = useRef(new Set());
   const setActive = (campaign) => {
     const params = new URLSearchParams(searchParams);
     if (campaign) { params.set("withdraw", campaign.id); setSearchParams(params); }
@@ -41,47 +65,67 @@ export default function Withdrawals() {
   };
 
   const load = async () => {
+    const generation = ++loadGeneration.current;
+    setError(null);
     try {
       const me = await base44.auth.me();
+      if (!mountedRef.current || generation !== loadGeneration.current) return;
+      if (!isRecord(me) || !isNonEmptyString(me.id)) throw new Error("invalid-user");
       setUser(me);
       const all = await base44.entities.Campaign.filter({});
-      const owned = (all || []).filter((c) => c.created_by_id === me.id);
+      if (!validArray(all)) throw new Error("invalid-campaigns");
+      const owned = all.filter((c) => c.created_by_id === me.id);
       const cutoff = Date.now() - CLEARING_DAYS * 86400000;
       const enriched = [];
       for (const c of owned) {
         const dRes = await base44.functions.invoke("getCampaignDonations", { campaign_id: c.id });
-      const donations = (dRes.data && dRes.data.donations) || [];
-        const avail = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() <= cutoff).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        const clearing = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() > cutoff).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        const withdrawn = donations.filter((d) => d.withdrawal_id).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        enriched.push({ ...c, available: Math.round(avail * 100) / 100, inClearing: Math.round(clearing * 100) / 100, withdrawn: Math.round(withdrawn * 100) / 100 });
+        const donations = readDonationRows(dRes);
+        if (!donations) throw new Error("invalid-donations");
+        const eligible = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() <= cutoff);
+        const clearingRows = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() > cutoff);
+        const withdrawnRows = donations.filter((d) => d.withdrawal_id);
+        const net = (d) => Number(d.amount) - Number(d.platform_contribution || 0);
+        enriched.push({ ...c, available: Math.round(eligible.reduce((s, d) => s + net(d), 0) * 100) / 100, inClearing: Math.round(clearingRows.reduce((s, d) => s + net(d), 0) * 100) / 100, withdrawn: Math.round(withdrawnRows.reduce((s, d) => s + net(d), 0) * 100) / 100 });
       }
-      setCampaigns(enriched);
-
       const w = await base44.entities.Withdrawal.filter({ owner_user_id: me.id });
-      setHistory((w || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
-
+      if (!validArray(w)) throw new Error("invalid-history");
+      let rq = [];
       if (me.role === "admin") {
-        const rq = await base44.entities.Withdrawal.filter({ status: "under_review" });
-        setReviewQueue(rq || []);
+        const rawQueue = await base44.entities.Withdrawal.filter({ status: "under_review" });
+        if (!validArray(rawQueue)) throw new Error("invalid-review-queue");
+        rq = rawQueue;
       }
+      if (!mountedRef.current || generation !== loadGeneration.current) return;
+      setCampaigns(enriched);
+      setHistory([...w].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+      setReviewQueue(rq);
     } catch (e) {
-      setError(e.message || "We couldn't load your withdrawals.");
+      if (!mountedRef.current || generation !== loadGeneration.current) return;
+      setError(safeFailure(e, SAFE_WITHDRAWALS_ERROR));
     } finally {
-      setLoading(false);
+      if (mountedRef.current && generation === loadGeneration.current) setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => { mountedRef.current = false; loadGeneration.current += 1; };
+  }, []);
 
   const approve = async (id) => {
+    if (!isNonEmptyString(id) || approvingRef.current.has(id)) return;
+    approvingRef.current.add(id);
     try {
       const res = await base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: id });
-      if (res.data?.error) throw new Error(res.data.error);
+      const payload = readFunctionPayload(res);
+      if (!payload || payload.error || payload.success !== true) throw new Error("approval-not-confirmed");
       toast({ title: "Withdrawal approved & paid out" });
-      load();
+      await load();
     } catch (e) {
-      toast({ title: "Approval failed", description: e.message, variant: "destructive" });
+      toast({ title: "Approval failed", description: safeFailure(e, SAFE_APPROVAL_ERROR), variant: "destructive" });
+    } finally {
+      approvingRef.current.delete(id);
     }
   };
 
@@ -100,127 +144,19 @@ export default function Withdrawals() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
       <header className="space-y-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl text-stone-900">Withdrawals</h1>
-            <p className="text-sm text-stone-500">Cash out cleared funds from your campaigns to your PayPal account.</p>
-          </div>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center"><Wallet className="w-5 h-5 text-white" /></div>
+          <div><h1 className="font-display text-2xl text-stone-900">Withdrawals</h1><p className="text-sm text-stone-500">Cash out cleared funds from your campaigns to your PayPal account.</p></div>
         </div>
-
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
-            <p className="text-xs text-stone-500 uppercase tracking-wide">Available now</p>
-            <p className="font-display text-2xl text-emerald-600">{money(totalAvailable)}</p>
-          </div>
-          <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
-            <p className="text-xs text-stone-500 uppercase tracking-wide">In clearing (7-day hold)</p>
-            <p className="font-display text-2xl text-amber-600">{money(totalClearing)}</p>
-          </div>
+          <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4"><p className="text-xs text-stone-500 uppercase tracking-wide">Available now</p><p className="font-display text-2xl text-emerald-600">{money(totalAvailable)}</p></div>
+          <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4"><p className="text-xs text-stone-500 uppercase tracking-wide">In clearing (7-day hold)</p><p className="font-display text-2xl text-amber-600">{money(totalClearing)}</p></div>
         </div>
-
-        <div className="flex items-start gap-2 text-xs text-stone-600 bg-white rounded-xl border border-stone-200/70 p-3">
-          <ShieldCheck className="w-4 h-4 mt-0.5 text-cyan-600 shrink-0" />
-          <p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p>
-        </div>
+        <div className="flex items-start gap-2 text-xs text-stone-600 bg-white rounded-xl border border-stone-200/70 p-3"><ShieldCheck className="w-4 h-4 mt-0.5 text-cyan-600 shrink-0" /><p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and a {Math.round(PLATFORM_FEE_RATE * 100)}% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p></div>
       </header>
-
-      {/* Campaign balances */}
-      <section className="space-y-3">
-        <h2 className="font-display text-xl text-stone-900">Your campaigns</h2>
-        {campaigns.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">
-            You don't have any campaigns yet. Once supporters start giving, cleared funds will show up here.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {campaigns.map((c) => (
-              <div key={c.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-                <Image src={c.cover_image_url || FALLBACK_IMAGE} alt={c.title} className="w-full sm:w-24 h-24 rounded-xl object-cover shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-stone-900 truncate">{c.title}</h3>
-                  <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <p className="text-stone-400">Available</p>
-                      <p className="text-emerald-600 font-semibold">{money(c.available)}</p>
-                    </div>
-                    <div>
-                      <p className="text-stone-400">In clearing</p>
-                      <p className="text-amber-600 font-semibold">{money(c.inClearing)}</p>
-                    </div>
-                    <div>
-                      <p className="text-stone-400">Withdrawn</p>
-                      <p className="text-stone-700 font-semibold">{money(c.withdrawn)}</p>
-                    </div>
-                  </div>
-                </div>
-                <Button
-                  disabled={c.available <= 0}
-                  onClick={() => setActive(c)}
-                  className="rounded-xl sm:self-center bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0"
-                >
-                  {c.available > 0 ? `Withdraw ${money(c.available)}` : "Nothing to withdraw"}
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Admin review queue */}
-      {user?.role === "admin" && reviewQueue.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-primary" />
-            <h2 className="font-display text-xl text-stone-900">Review queue</h2>
-          </div>
-          <div className="space-y-2">
-            {reviewQueue.map((w) => (
-              <div key={w.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-medium text-stone-900">{money(w.net_amount)} → {w.paypal_email}</p>
-                  <p className="text-xs text-stone-500">{w.campaign_title} · {fmtDate(w.created_date)}</p>
-                  {w.review_note && <p className="text-xs text-amber-600 mt-1">{w.review_note}</p>}
-                </div>
-                <Button size="sm" onClick={() => approve(w.id)} className="rounded-xl">Approve & pay</Button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* History */}
-      <section className="space-y-3">
-        <h2 className="font-display text-xl text-stone-900">Withdrawal history</h2>
-        {history.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">No withdrawals yet.</div>
-        ) : (
-          <div className="space-y-2">
-            {history.map((w) => (
-              <div key={w.id} className="bg-white rounded-xl border border-stone-200/70 p-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm text-stone-900 truncate">{w.campaign_title}</p>
-                  <p className="text-xs text-stone-500">{fmtDate(w.created_date)} · {w.paypal_email}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm text-emerald-600 font-medium">{money(w.net_amount)}</p>
-                  <Badge variant="outline" className={`text-[10px] ${STATUS_STYLE[w.status]}`}>{w.status.replace("_", " ")}</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {active && (
-        <WithdrawalDialog
-          campaign={active}
-          open={!!active}
-          onOpenChange={(o) => !o && setActive(null)}
-          onDone={load}
-        />
-      )}
+      <section className="space-y-3"><h2 className="font-display text-xl text-stone-900">Your campaigns</h2>{campaigns.length === 0 ? <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">You don't have any campaigns yet. Once supporters start giving, cleared funds will show up here.</div> : <div className="space-y-3">{campaigns.map((c) => <div key={c.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center gap-4"><Image src={c.cover_image_url || FALLBACK_IMAGE} alt={c.title} className="w-full sm:w-24 h-24 rounded-xl object-cover shrink-0" /><div className="flex-1 min-w-0"><h3 className="font-medium text-stone-900 truncate">{c.title}</h3><div className="mt-2 grid grid-cols-3 gap-2 text-xs"><div><p className="text-stone-400">Available</p><p className="text-emerald-600 font-semibold">{money(c.available)}</p></div><div><p className="text-stone-400">In clearing</p><p className="text-amber-600 font-semibold">{money(c.inClearing)}</p></div><div><p className="text-stone-400">Withdrawn</p><p className="text-stone-700 font-semibold">{money(c.withdrawn)}</p></div></div></div><Button disabled={c.available <= 0} onClick={() => setActive(c)} className="rounded-xl sm:self-center bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">{c.available > 0 ? `Withdraw ${money(c.available)}` : "Nothing to withdraw"}</Button></div>)}</div>}</section>
+      {user?.role === "admin" && reviewQueue.length > 0 && <section className="space-y-3"><div className="flex items-center gap-2"><Building2 className="w-4 h-4 text-primary" /><h2 className="font-display text-xl text-stone-900">Review queue</h2></div><div className="space-y-2">{reviewQueue.map((w) => <div key={w.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-center justify-between gap-3"><div><p className="font-medium text-stone-900">{money(w.net_amount)} → {w.paypal_email}</p><p className="text-xs text-stone-500">{w.campaign_title} · {fmtDate(w.created_date)}</p>{w.review_note && <p className="text-xs text-amber-600 mt-1">{w.review_note}</p>}</div><Button size="sm" disabled={approvingRef.current.has(w.id)} onClick={() => approve(w.id)} className="rounded-xl">{approvingRef.current.has(w.id) ? "Approving…" : "Approve & pay"}</Button></div>)}</div></section>}
+      <section className="space-y-3"><h2 className="font-display text-xl text-stone-900">Withdrawal history</h2>{history.length === 0 ? <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-8 text-center text-stone-500">No withdrawals yet.</div> : <div className="space-y-2">{history.map((w) => <div key={w.id} className="bg-white rounded-xl border border-stone-200/70 p-3 flex items-center justify-between gap-3"><div className="min-w-0"><p className="text-sm text-stone-900 truncate">{w.campaign_title}</p><p className="text-xs text-stone-500">{fmtDate(w.created_date)} · {w.paypal_email}</p></div><div className="text-right shrink-0"><p className="text-sm text-emerald-600 font-medium">{money(w.net_amount)}</p><Badge variant="outline" className={`text-[10px] ${STATUS_STYLE[w.status]}`}>{w.status.replace("_", " ")}</Badge></div></div>)}</div>}</section>
+      {active && <WithdrawalDialog campaign={active} open={!!active} onOpenChange={(o) => !o && setActive(null)} onDone={load} />}
     </div>
   );
 }
