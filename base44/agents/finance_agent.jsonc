@@ -37,11 +37,5 @@
     "6ab236a20f89e75829fa0eec"
   ],
   "model": "automatic",
-  "context_files": [],
-  "app_user_connector_configs": [],
-  "whatsapp_greeting": "",
-  "telegram_greeting": "",
-  "line_greeting": "",
-  "allow_anonymous_access": false,
   "name": "finance_agent"
 }
