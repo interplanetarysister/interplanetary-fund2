@@ -12,7 +12,12 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const list = await base44.entities.PlatformConnection.list('-updated_date', 300);
+    const { scope } = await req.json().catch(() => ({}));
+    // Admins can inspect every account only from the dedicated admin view.
+    // The personal Connections page always sees the caller's own records.
+    const list = scope === 'all' && user.role === 'admin'
+      ? await base44.asServiceRole.entities.PlatformConnection.list('-updated_date', 300)
+      : await base44.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 300);
     const connections = list.map((c) => {
       const { credentials, credentials_meta } = redactCredentials(c.credentials);
       return { ...c, credentials, credentials_meta };
