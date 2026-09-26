@@ -17,15 +17,15 @@ export default function CredentialFields({ platformId, credentials, credentialsM
   if (platformId === "kofi") {
     return (
       <div className="space-y-1.5">
-        <Label>Ko-fi verification token</Label>
+        <Label>Ko-fi connection code</Label>
         <Input
           value={credentials.kofi_verification_token || ""}
           onChange={(e) => set("kofi_verification_token", e.target.value)}
-          placeholder={isSet("kofi_verification_token") ? "Enter new token to replace" : "From Ko-fi → Settings → API/Webhooks"}
+          placeholder={isSet("kofi_verification_token") ? "Enter a new code to replace it" : "Find the connection code in Ko-fi settings"}
         />
         {isSet("kofi_verification_token") && <p className="text-xs text-emerald-600">{SECRET_NOTE}</p>}
         <p className="text-xs text-stone-400">
-          Then set your Ko-fi webhook URL to <code className="bg-stone-100 px-1 rounded">{window.location.origin}/functions/kofiWebhook</code> — donations will sync live into your totals and inbox.
+          Then tell Ko-fi to send updates here: <code className="bg-stone-100 px-1 rounded">{window.location.origin}/functions/kofiWebhook</code> — new support can then appear in your totals and inbox.
         </p>
       </div>
     );
@@ -59,12 +59,12 @@ export default function CredentialFields({ platformId, credentials, credentialsM
           <Input value={credentials.mastodon_instance || ""} onChange={(e) => set("mastodon_instance", e.target.value)} placeholder="mastodon.social" />
         </div>
         <div className="space-y-1.5">
-          <Label>Access token</Label>
+          <Label>Connection code</Label>
           <Input
             type="password"
             value={credentials.mastodon_access_token || ""}
             onChange={(e) => set("mastodon_access_token", e.target.value)}
-            placeholder={isSet("mastodon_access_token") ? "Enter new token to replace" : "From your instance → Development → New application"}
+            placeholder={isSet("mastodon_access_token") ? "Enter a new code to replace it" : "Find the connection code in your Mastodon settings"}
           />
           {isSet("mastodon_access_token") && <p className="text-xs text-emerald-600">{SECRET_NOTE}</p>}
           <p className="text-xs text-stone-400">Enables direct publishing from the Distribution Engine. Stored privately on your account only.</p>
