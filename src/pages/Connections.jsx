@@ -8,6 +8,7 @@ import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import PageError from "@/components/PageError";
+import { connectionHealth } from "@/lib/connectionHealth";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -84,6 +85,7 @@ export default function Connections() {
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
   const connectedIds = connections.map((c) => c.platform);
+  const workingCount = connections.filter((connection) => connectionHealth(connection).usable).length;
   const discoveredTotals = syncResult?.discovered_totals ||
     (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
   const discoveredSummary = discoveredTotals
@@ -111,7 +113,7 @@ export default function Connections() {
       </h1>
       <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
       <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{connections.length} connected</span>
+        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} working · {connections.length} saved</span>
         <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social in one place</span>
       </div>
       </div>
@@ -149,8 +151,8 @@ export default function Connections() {
 
       {connections.length > 0 && (
         <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-1">On and working</h2>
-          <p className="text-sm text-stone-500 mb-3">These platforms are already linked.</p>
+          <h2 className="font-display text-xl text-stone-900 mb-1">Your platforms</h2>
+          <p className="text-sm text-stone-500 mb-3">A saved link needs a successful check before it can show as working.</p>
           <div className="space-y-3">
             {connections.map((c) => (
               <ConnectionCard
