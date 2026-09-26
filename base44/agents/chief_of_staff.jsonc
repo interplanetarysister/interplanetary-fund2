@@ -65,7 +65,8 @@
   "context_files": [],
   "app_user_connector_configs": [],
   "selected_skill_names": [
-    "adminagent"
+    "adminagent",
+    "connections-webproxy"
   ],
   "selected_workspace_skill_ids": [
     "6ab4798715c82e0e88c70efe",
