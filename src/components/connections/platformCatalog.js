@@ -26,10 +26,10 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your GoFundMe URL",        hint: "Open your GoFundMe campaign and copy the link from the address bar." },
-      { id: "totals", label: "Enter your current totals",      hint: "These are owner-reported for now. We'll verify them when a read API becomes available." },
+      { id: "totals", label: "Enter your current totals",      hint: "Enter the amount shown on your fundraiser. We’ll keep it updated when we can." },
       { id: "link",   label: "Link to a campaign (optional)",  hint: "Pick which Interplanetary Fund campaign these figures should roll up into." },
     ],
-    api: "No public API — link your campaign; totals sync is owner-reported.",
+    api: "Link your fundraiser and keep its total here.",
   },
   {
     id: "kickstarter",
@@ -41,10 +41,10 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your Kickstarter project URL", hint: "Copy the link from your Kickstarter project page." },
-      { id: "totals", label: "Enter your current totals",          hint: "Owner-reported totals — updated manually or when Kickstarter opens its API." },
+      { id: "totals", label: "Enter your current totals",          hint: "Enter the amount shown on your project. We’ll update it automatically when possible." },
       { id: "link",   label: "Link to a campaign (optional)",      hint: "Connect these figures to one of your IF campaigns." },
     ],
-    api: "No public write API — link your project; totals sync is owner-reported.",
+    api: "Link your project and keep its progress here.",
   },
   {
     id: "indiegogo",
@@ -52,14 +52,14 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#eb1478",
     icon: "🎯",
-    tagline: "Link your Indiegogo campaign — live sync activates when partner API is approved.",
+    tagline: "Link your Indiegogo campaign and keep its progress here.",
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your Indiegogo campaign URL", hint: "Copy the URL from your Indiegogo campaign page." },
-      { id: "totals", label: "Enter your current totals",         hint: "We'll upgrade to live sync once the Indiegogo partner API is available." },
+      { id: "totals", label: "Enter your current totals",         hint: "Enter the amount shown on your campaign. We’ll update it automatically when possible." },
       { id: "link",   label: "Link to a campaign (optional)",     hint: "Connect these figures to one of your IF campaigns." },
     ],
-    api: "Partner API requires approval — link now, live sync activates when approved.",
+    api: "Link your campaign now. We’ll use the best available way to keep it updated.",
   },
   {
     id: "fundrazr",
@@ -71,10 +71,10 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your FundRazr campaign URL", hint: "Copy the URL from your FundRazr campaign." },
-      { id: "totals", label: "Enter your current totals",        hint: "We'll upgrade to live sync when the FundRazr API is available." },
+      { id: "totals", label: "Enter your current totals",        hint: "Enter the amount shown on your campaign. We’ll update it automatically when possible." },
       { id: "link",   label: "Link to a campaign (optional)",    hint: "Connect these figures to one of your IF campaigns." },
     ],
-    api: "API access requires approval — link now, live sync activates when approved.",
+    api: "Link your campaign now. We’ll use the best available way to keep it updated.",
   },
   {
     id: "givesendgo",
@@ -86,10 +86,10 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your GiveSendGo URL", hint: "Copy the link from your GiveSendGo campaign page." },
-      { id: "totals", label: "Enter your current totals", hint: "Owner-reported — updated manually." },
+      { id: "totals", label: "Enter your current totals", hint: "Enter the amount shown on your fundraiser." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Connect these figures to one of your IF campaigns." },
     ],
-    api: "No public API — link your campaign; totals sync is owner-reported.",
+    api: "Link your fundraiser and keep its total here.",
   },
   {
     id: "kofi",
@@ -97,14 +97,14 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ff5e5b",
     icon: "☕",
-    tagline: "Live donation sync via webhook — every Ko-fi donation appears instantly.",
+    tagline: "Connect Ko-fi so new support can appear here automatically.",
     setupKind: "token",
     steps: [
-      { id: "token",  label: "Paste your Ko-fi verification token", hint: "In Ko-fi → Settings → API → copy your Verification Token." },
-      { id: "webhook",label: "Set your Ko-fi webhook URL",          hint: null }, // hint injected dynamically with the actual URL
+      { id: "token",  label: "Enter your Ko-fi connection code", hint: "In Ko-fi settings, copy the connection code shown for outside apps." },
+      { id: "webhook",label: "Finish Ko-fi setup",          hint: null }, // hint injected dynamically with the actual URL
       { id: "link",   label: "Link to a campaign (optional)",       hint: "Ko-fi donations will count toward this campaign's total." },
     ],
-    api: "Live donation sync — paste your Ko-fi verification token and set the webhook URL shown when connecting.",
+    api: "Follow the short setup steps to keep Ko-fi support updated automatically.",
   },
   {
     id: "buymeacoffee",
@@ -112,13 +112,13 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ffdd00",
     icon: "☕",
-    tagline: "Connect your Buy Me a Coffee with your access token for live sync.",
+    tagline: "Connect Buy Me a Coffee so support can update here automatically.",
     setupKind: "token",
     steps: [
-      { id: "token",  label: "Paste your access token", hint: "From Buy Me a Coffee → Settings → Extras → API." },
+      { id: "token",  label: "Enter your connection code", hint: "Find the connection code in your Buy Me a Coffee settings." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Donations will roll up into this campaign." },
     ],
-    api: "API supported — live sync activates with your access token.",
+    api: "Connect your account to keep support updated automatically.",
   },
   {
     id: "patreon",
@@ -126,13 +126,13 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ff424d",
     icon: "🎨",
-    tagline: "OAuth-connected Patreon sync — live pledge data when approved.",
+    tagline: "Connect Patreon to keep your supporter totals together.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth",  label: "Sign in with Patreon", hint: "You'll be sent to Patreon to authorize. We never see your password." },
+      { id: "oauth",  label: "Sign in with Patreon", hint: "Patreon will ask you to sign in and approve the connection. We never see your password." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Pledge totals will roll up into this campaign." },
     ],
-    api: "OAuth API supported — live sync activates when OAuth credentials are approved.",
+    api: "Sign in to Patreon and approve the connection.",
   },
   {
     id: "spotfund",
@@ -144,10 +144,10 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your Spotfund campaign URL", hint: "Copy the URL from your Spotfund campaign." },
-      { id: "totals", label: "Enter your current totals",        hint: "Owner-reported — updated manually." },
+      { id: "totals", label: "Enter your current totals",        hint: "Enter the amount shown on your fundraiser." },
       { id: "link",   label: "Link to a campaign (optional)",    hint: "Connect these figures to one of your IF campaigns." },
     ],
-    api: "No public API — link your campaign; totals sync is owner-reported.",
+    api: "Link your fundraiser and keep its total here.",
   },
   {
     id: "custom",
@@ -160,7 +160,7 @@ export const CROWDFUNDING_PLATFORMS = [
     steps: [
       { id: "name",   label: "Name this connection",      hint: "e.g. 'Our fundraiser on Example Site'" },
       { id: "url",    label: "Paste the campaign URL",    hint: "Any external fundraising page." },
-      { id: "totals", label: "Enter your current totals", hint: "Owner-reported — you update these manually." },
+      { id: "totals", label: "Enter your current totals", hint: "Enter the amount shown on the fundraiser." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Connect these figures to one of your IF campaigns." },
     ],
     api: "Link any external campaign page and track its totals here.",
@@ -174,14 +174,14 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#0085ff",
     icon: "🦋",
-    tagline: "Publish campaign updates directly to Bluesky with your app password.",
+    tagline: "Connect Bluesky to share campaign updates.",
     setupKind: "multi",
     steps: [
       { id: "handle",   label: "Enter your Bluesky handle", hint: "e.g. you.bsky.social" },
-      { id: "password", label: "Create a Bluesky app password", hint: "In Bluesky → Settings → App Passwords → New app password. Never your main password." },
+      { id: "password", label: "Get a Bluesky connection password", hint: "In Bluesky settings, create an App Password for Interplanetary Fund. Never use your main password." },
       { id: "auto",     label: "Set AI automation level",   hint: "Choose how much the AI does automatically." },
     ],
-    api: "Direct publishing supported — connect with your handle and an app password.",
+    api: "Connect Bluesky to share updates from Interplanetary Fund.",
   },
   {
     id: "mastodon",
@@ -189,14 +189,14 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#6364ff",
     icon: "🐘",
-    tagline: "Post campaign updates to any Mastodon instance with your access token.",
+    tagline: "Connect Mastodon to share campaign updates.",
     setupKind: "multi",
     steps: [
-      { id: "instance", label: "Enter your Mastodon instance",    hint: "e.g. mastodon.social or your own server." },
-      { id: "token",    label: "Create a Mastodon access token",  hint: "In your instance → Preferences → Development → New Application → copy the access token." },
+      { id: "instance", label: "Enter your Mastodon site",    hint: "For example: mastodon.social" },
+      { id: "token",    label: "Get a Mastodon connection code",  hint: "In your Mastodon settings, create a connection for Interplanetary Fund and copy the code it gives you." },
       { id: "auto",     label: "Set AI automation level",         hint: "Choose how much the AI does automatically." },
     ],
-    api: "Direct publishing supported — connect with your instance and an access token.",
+    api: "Connect Mastodon to share updates from Interplanetary Fund.",
   },
   {
     id: "facebook",
@@ -207,10 +207,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Sign in with Facebook to publish campaign updates to your page.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Facebook", hint: "You'll be taken to Facebook to authorize. We never see your password." },
+      { id: "oauth", label: "Sign in with Facebook", hint: "Facebook will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "instagram",
@@ -221,10 +221,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Sign in with Instagram to share campaign updates and stories.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Instagram", hint: "You'll be taken to Instagram to authorize. We never see your password." },
+      { id: "oauth", label: "Sign in with Instagram", hint: "Instagram will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "threads",
@@ -235,10 +235,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Share campaign updates on Threads via your Instagram account.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Threads", hint: "Uses your Instagram login. You'll authorize on Meta's site." },
+      { id: "oauth", label: "Sign in with Threads", hint: "Threads will ask you to sign in and approve the connection." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "x",
@@ -249,10 +249,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Post campaign updates to X — reach your followers with every update.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with X", hint: "You'll be taken to X to authorize. We never see your password." },
+      { id: "oauth", label: "Sign in with X", hint: "X will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "linkedin",
@@ -263,10 +263,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Share campaign updates on LinkedIn to reach professional networks.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with LinkedIn", hint: "You'll be taken to LinkedIn to authorize. We never see your password." },
+      { id: "oauth", label: "Sign in with LinkedIn", hint: "LinkedIn will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "tiktok",
@@ -277,10 +277,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Sign in with TikTok to post campaign content to your audience.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with TikTok", hint: "You'll be taken to TikTok to authorize. We never see your password." },
+      { id: "oauth", label: "Sign in with TikTok", hint: "TikTok will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "pinterest",
@@ -291,10 +291,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Pin campaign updates to your Pinterest boards.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Pinterest", hint: "You'll be taken to Pinterest to authorize." },
+      { id: "oauth", label: "Sign in with Pinterest", hint: "Pinterest will ask you to sign in and approve the connection." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "reddit",
@@ -305,10 +305,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Share campaign posts to relevant subreddits.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Reddit", hint: "You'll be taken to Reddit to authorize." },
+      { id: "oauth", label: "Sign in with Reddit", hint: "Reddit will ask you to sign in and approve the connection." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "youtube",
@@ -319,10 +319,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Post campaign updates to your YouTube Community tab.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Google / YouTube", hint: "You'll be taken to Google to authorize your YouTube account." },
+      { id: "oauth", label: "Sign in with Google / YouTube", hint: "Google will ask you to sign in and approve the YouTube connection." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
   {
     id: "discord",
@@ -333,10 +333,10 @@ export const SOCIAL_PLATFORMS = [
     tagline: "Sign in with Discord to announce campaign updates in your server.",
     setupKind: "oauth",
     steps: [
-      { id: "oauth", label: "Sign in with Discord", hint: "You'll be taken to Discord to authorize. We never see your password." },
+      { id: "oauth", label: "Sign in with Discord", hint: "Discord will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Set AI automation level", hint: "Choose how much the AI does automatically." },
     ],
-    api: "OAuth posting pending platform approval.",
+    api: "Connect your account to share updates where available.",
   },
 ];
 
