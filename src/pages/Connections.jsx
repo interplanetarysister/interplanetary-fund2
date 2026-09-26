@@ -8,7 +8,6 @@ import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import PageError from "@/components/PageError";
-import { connectionHealth } from "@/lib/connectionHealth";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -84,15 +83,21 @@ export default function Connections() {
   }
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
-  const connectedIds = connections.map((c) => c.platform);
-  const workingCount = connections.filter((connection) => connectionHealth(connection).usable).length;
+  const savedIds = connections.map((c) => c.platform);
+  const verifiedConnections = connections.filter((connection) =>
+    connection.status === "connected" && connection.verification_status === "verified"
+  );
+  const attentionConnections = connections.filter((connection) =>
+    connection.status !== "connected" || connection.verification_status !== "verified"
+  );
+  const workingCount = verifiedConnections.length;
   const discoveredTotals = syncResult?.discovered_totals ||
     (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
   const discoveredSummary = discoveredTotals
     .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
-    (p.id === "custom" || !connectedIds.includes(p.id)) &&
+    (p.id === "custom" || !savedIds.includes(p.id)) &&
     (`${p.name} ${p.kind || ""}`.toLowerCase().includes(platformSearch.trim().toLowerCase()))
   );
 
@@ -113,7 +118,7 @@ export default function Connections() {
       </h1>
       <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
       <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} working · {connections.length} saved</span>
+        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} connected · {attentionConnections.length} need attention</span>
         <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social + apps in one place</span>
       </div>
       </div>
@@ -149,12 +154,30 @@ export default function Connections() {
         <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />
       </div>
 
-      {connections.length > 0 && (
+      {verifiedConnections.length > 0 && (
         <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-1">Your platforms</h2>
-          <p className="text-sm text-stone-500 mb-3">A saved link needs a successful check before it can show as working.</p>
+          <h2 className="font-display text-xl text-stone-900 mb-1">Connected platforms</h2>
+          <p className="text-sm text-stone-500 mb-3">Only provider-verified connections appear here.</p>
           <div className="space-y-3">
-            {connections.map((c) => (
+            {verifiedConnections.map((c) => (
+              <ConnectionCard
+                key={c.id}
+                connection={c}
+                platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
+                onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
+                onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {attentionConnections.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display text-xl text-stone-900 mb-1">Needs attention</h2>
+          <p className="text-sm text-stone-500 mb-3">Saved links stay here until a real provider check succeeds.</p>
+          <div className="space-y-3">
+            {attentionConnections.map((c) => (
               <ConnectionCard
                 key={c.id}
                 connection={c}

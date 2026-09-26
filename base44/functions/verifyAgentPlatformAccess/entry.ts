@@ -1,28 +1,34 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertOboGrant } from '../../shared/integrationRegistry.ts';
+import { normalizeIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
 // agent's behalf) uses an external platform, it calls this to: locate the
 // registry entry, verify the environment, confirm the agent is authorized, and
 // confirm the integration is healthy. On success it returns the secret
 // REFERENCE NAMES (never values) the caller must then load through the
-// protected secret mechanism. Every call is audit-logged. Works whether invoked
-// by an authenticated app user (agent) or by another service-scoped function.
+// protected secret mechanism. Every call is audit-logged. Caller-controlled
+// service-role assertions are not accepted; absent a Base44 user identity, the
+// request fails closed.
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    let user = null;
-    try { user = await base44.auth.me(); } catch (_) { /* service-to-service call: no user context */ }
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) return Response.json({ authorized: false, reason: 'authentication required' }, { status: 401 });
 
-    const body = await req.json().catch(() => ({}));
-    const agentName = body.agent_name;
-    const platform = body.platform;
-    const task = body.task || 'access';
-    if (!agentName || !platform) {
+    const body = await req.json().catch(() => null);
+    const agentName = typeof body?.agent_name === 'string' ? body.agent_name.trim().slice(0, 128) : '';
+    const platform = safeIntegrationPlatform(body?.platform);
+    const task = typeof body?.task === 'string' ? body.task.trim().slice(0, 128) : 'access';
+    const oboUserId = typeof body?.obo_user_id === 'string' ? body.obo_user_id.trim().slice(0, 128) : '';
+    if (!agentName || platform === 'unknown') {
       return Response.json({ error: 'agent_name and platform are required' }, { status: 400 });
+    }
+    if (user.role !== 'admin' && (!oboUserId || oboUserId !== user.id)) {
+      return Response.json({ authorized: false, reason: 'owner authorization required' }, { status: 403 });
     }
 
     const entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
@@ -32,8 +38,8 @@ export default async function(req) {
     let reason = 'no registry entry for platform';
 
     if (entry) {
-      const authorizedAgents = entry.authorized_agents || [];
-      const status = entry.status || 'ACTIVE';
+      const authorizedAgents = Array.isArray(entry.authorized_agents) ? entry.authorized_agents : [];
+      const status = normalizeIntegrationStatus(entry.status);
       if (!authorizedAgents.includes(agentName)) {
         reason = `agent "${agentName}" is not authorized for "${platform}"`;
       } else if (status !== 'ACTIVE') {
@@ -52,8 +58,8 @@ export default async function(req) {
     // When the caller specifies an on-behalf-of user, require an explicit, active
     // AuthorizationGrant for (agent, user, platform) — integrated with the
     // existing registry/gatekeeper, not a parallel auth system.
-    if (authorized && body.obo_user_id) {
-      const grant = await assertOboGrant(sr, agentName, body.obo_user_id, platform);
+    if (authorized && oboUserId) {
+      const grant = await assertOboGrant(sr, agentName, oboUserId, platform);
       if (!grant.ok) {
         authorized = false;
         reason = grant.reason;
@@ -62,7 +68,7 @@ export default async function(req) {
 
     await logAudit(base44, {
       action: 'agent_integration_access',
-      actor_user_id: (user && user.id) || agentName,
+      actor_user_id: user.id,
       target_type: 'PlatformAccessRegistry',
       target_id: entry ? entry.id : '',
       detail: `agent=${agentName} platform=${platform} task=${task} authorized=${authorized} (${reason})`,
@@ -74,13 +80,13 @@ export default async function(req) {
     // load through the protected secret mechanism, and only when authorized.
     return Response.json({
       authorized,
-      status: entry ? entry.status : null,
+      status: entry ? normalizeIntegrationStatus(entry.status) : null,
       environment: entry ? entry.environment : null,
       secret_refs: authorized ? (entry.secret_refs || []) : [],
       reason,
     });
   } catch (error) {
-    console.error('verifyAgentPlatformAccess error:', error.message);
-    return Response.json({ authorized: false, reason: 'verification failed', error: error.message }, { status: 500 });
+    console.error('verifyAgentPlatformAccess error:', error?.name || 'UnknownError');
+    return Response.json({ authorized: false, reason: 'verification failed' }, { status: 500 });
   }
 }

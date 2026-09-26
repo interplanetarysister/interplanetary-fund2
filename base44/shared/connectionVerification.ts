@@ -30,6 +30,39 @@ export const OAUTH_ENV: Record<string, string> = {
   patreon: 'APP_USER_CONNECTOR_PATREON_ID',
 };
 
+function publicHttpsHost(value: unknown) {
+  const raw = String(value || '').trim();
+  const url = new URL(raw.includes('://') ? raw : `https://${raw}`);
+  if (url.protocol !== 'https:' || url.username || url.password || url.port) {
+    throw new Error('Mastodon instance must be a public HTTPS hostname.');
+  }
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  const privateIpv4 = ipv4 && (
+    Number(ipv4[1]) === 0
+    || Number(ipv4[1]) === 10
+    || Number(ipv4[1]) === 127
+    || (Number(ipv4[1]) === 100 && Number(ipv4[2]) >= 64 && Number(ipv4[2]) <= 127)
+    || (Number(ipv4[1]) === 169 && Number(ipv4[2]) === 254)
+    || (Number(ipv4[1]) === 172 && Number(ipv4[2]) >= 16 && Number(ipv4[2]) <= 31)
+    || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 0 && [0, 2].includes(Number(ipv4[3])))
+    || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 88 && Number(ipv4[3]) === 99)
+    || (Number(ipv4[1]) === 192 && Number(ipv4[2]) === 168)
+    || (Number(ipv4[1]) === 198 && [18, 19].includes(Number(ipv4[2])))
+    || (Number(ipv4[1]) === 198 && Number(ipv4[2]) === 51 && Number(ipv4[3]) === 100)
+    || (Number(ipv4[1]) === 203 && Number(ipv4[2]) === 0 && Number(ipv4[3]) === 113)
+    || Number(ipv4[1]) >= 224
+  );
+  // Reject every IPv6 literal. Without resolution-and-pinning support, accepting
+  // arbitrary literals would leave mapped-private and link-local SSRF paths.
+  const ipv6Literal = host.includes(':');
+  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')
+      || ipv6Literal || host === '0.0.0.0' || privateIpv4) {
+    throw new Error('Mastodon instance must be a public HTTPS hostname.');
+  }
+  return host;
+}
+
 export async function verifyManualConnection(connection: any) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') {
@@ -42,13 +75,15 @@ export async function verifyManualConnection(connection: any) {
     return;
   }
   if (connection.platform === 'mastodon') {
-    const host = String(c.mastodon_instance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (!host || !c.mastodon_access_token) throw new Error('Connection details are incomplete.');
+    if (!c.mastodon_access_token) throw new Error('Connection details are incomplete.');
+    const host = publicHttpsHost(c.mastodon_instance);
     const res = await fetch(`https://${host}/api/v1/accounts/verify_credentials`, {
       headers: { Authorization: `Bearer ${c.mastodon_access_token}` },
+      redirect: 'error',
     });
     if (!res.ok) throw new Error('Mastodon could not verify this connection.');
     return;
   }
   throw new Error('This connection cannot be provider-verified by direct credentials.');
 }
+

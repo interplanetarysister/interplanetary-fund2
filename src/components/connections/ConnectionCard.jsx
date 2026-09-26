@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw } from "lucide-react";
@@ -17,6 +17,7 @@ import { connectionHealth } from "@/lib/connectionHealth";
 
 export default function ConnectionCard({ connection, platform, onManage, onRemoved }) {
   const [busy, setBusy] = useState(false);
+  const actionLock = useRef(false);
 
   const health = connectionHealth(connection);
   const verified = health.usable;
@@ -26,18 +27,23 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
   const currency = connection.external_currency || "UNSPECIFIED";
 
   const checkConnection = async () => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     try {
       const { data } = await base44.functions.invoke("verifyPlatformConnection", { connection_id: connection.id });
       if (data?.connection) onRemoved?.(connection.id, data.connection);
     } catch (e) {
-      console.error("Connection check failed", e);
+      console.error("Connection check failed", e?.name || "UnknownError");
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   };
 
   const disconnect = async () => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     try {
       // Central revocation removes agent/OBO authority first and then asks the
@@ -48,7 +54,9 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
       });
       onRemoved(connection.id);
     } catch (e) {
-      console.error("Disconnect failed", e);
+      console.error("Disconnect failed", e?.name || "UnknownError");
+    } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   };
@@ -126,3 +134,4 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
     </div>
   );
 }
+

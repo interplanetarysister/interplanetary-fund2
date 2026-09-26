@@ -67,6 +67,9 @@ jobs:
       - name: Connection authorization and data-truth contract
         run: node scripts/verify-connect-dialog-safe-errors.mjs
 
+      - name: Integration registry truth transitions
+        run: npm run verify:integration-registry-truth
+
       - name: Subscription entitlement and canonical connection-health contract
         run: npm run verify:entitlements-connections
 
@@ -141,3 +144,4 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
