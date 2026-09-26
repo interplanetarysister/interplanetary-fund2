@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import StatCard from "@/components/dashboard/StatCard";
 import RecurringPlanCard from "@/components/giving/RecurringPlanCard";
@@ -6,27 +6,47 @@ import DonationRow from "@/components/giving/DonationRow";
 import { DollarSign, Repeat, Flame, Loader2 } from "lucide-react";
 import PageError from "@/components/PageError";
 
+const SAFE_MY_GIVING_ERROR = "We couldn't load your giving history. Please try again.";
+const SAFE_MY_GIVING_DATA_ERROR = "Your giving history is temporarily unavailable. Please try again.";
+
 export default function MyGiving() {
   const [donations, setDonations] = useState(null);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(false);
+  const requestGenerationRef = useRef(0);
 
   const load = useCallback(async () => {
+    const generation = ++requestGenerationRef.current;
     try {
       setError(null);
+      setDonations(null);
       // Financial truth boundary: only provider-verified gifts count as giving.
       // getMyGiving returns verified donations server-side; manual PayPal/Cash
       // App reports remain pending until separately verified.
       const { data } = await base44.functions.invoke("getMyGiving", {});
-      setDonations(data?.donations || []);
-    } catch (e) {
-      setError(e.message || "We couldn't load your giving history.");
+      if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+      if (!Array.isArray(data?.donations)) {
+        setError(SAFE_MY_GIVING_DATA_ERROR);
+        return;
+      }
+      setDonations(data.donations);
+    } catch {
+      if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+      setError(SAFE_MY_GIVING_ERROR);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mountedRef.current = true;
+    void load();
+    return () => {
+      mountedRef.current = false;
+      requestGenerationRef.current += 1;
+    };
+  }, [load]);
 
   if (error) {
-    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setDonations(null); load(); }} /></div>;
+    return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setDonations(null); void load(); }} /></div>;
   }
   if (!donations) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
