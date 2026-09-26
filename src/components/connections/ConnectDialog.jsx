@@ -38,14 +38,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
     setCredentials(existing?.credentials || {});
     setBrowserReadConsent(existing?.obo_consent?.granted === true &&
       existing?.obo_consent?.granted_capabilities?.includes("GET_METRICS") === true);
-    const resumingThisPlatform =
-      sessionStorage.getItem("ifund_pending_oauth_platform") === platform.id &&
-      sessionStorage.getItem("ifund_pending_oauth_shared_agent_consent") === "true";
-    setPermissionAccepted(!!existing || resumingThisPlatform);
-    (async () => {
-      const me = await base44.auth.me();
-      setCampaigns(await base44.entities.Campaign.filter({ created_by_id: me.id }));
-    })();
+    let pending = null;
+    try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* An invalid resume record is ignored. */ }
+    setPermissionAccepted(!!existing || (pending?.platform === platform.id && pending?.sharedAgentConsent === true));
+    base44.auth.me()
+      .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
+      .then(setCampaigns)
+      .catch(() => setCampaigns([]));
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -83,12 +82,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       // The IF consent and provider grant are one continuous connection event.
       // Persist only non-secret resume context; the connector owns OAuth state
       // and credentials. Provider authorization starts immediately after consent.
-      sessionStorage.setItem("ifund_pending_oauth_platform", platform.id);
-      sessionStorage.setItem("ifund_pending_oauth_shared_agent_consent", permissionAccepted ? "true" : "false");
-      sessionStorage.setItem("ifund_pending_oauth_started_at", new Date().toISOString());
-      sessionStorage.setItem("ifund_pending_oauth_permission_version", "2026-09-comprehensive-platform-v1");
+      const me = await base44.auth.me();
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
-      window.location.href = redirectUrl;
+      if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
+      // localStorage survives a provider redirect that returns in another web tab.
+      // Only the same signed-in owner can resume; no provider tokens are stored here.
+      localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
+        platform: platform.id, userId: me.id, sharedAgentConsent: permissionAccepted, startedAt: Date.now(),
+      }));
+      window.location.assign(redirectUrl);
     } catch (e) {
       console.error("Provider OAuth start failed:", e);
       setError("We couldn’t open sign-in. Please try again.");
