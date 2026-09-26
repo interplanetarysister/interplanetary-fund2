@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import TermsAcceptance from "@/components/TermsAcceptance";
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -15,6 +15,20 @@ import BrandLogo from "@/components/brand/BrandLogo";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const checkedReturn = useRef(false);
+  useEffect(() => {
+    if (isLoadingAuth || isLoadingPublicSettings || authError || checkedReturn.current) return;
+    checkedReturn.current = true;
+    if (pathname === "/connections") return;
+    let pending = null;
+    try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* Invalid resume data is ignored. */ }
+    if (!pending || Date.now() - pending.startedAt >= 20 * 60 * 1000) return;
+    import("@/api/base44Client").then(({ base44 }) => base44.auth.me())
+      .then((me) => { if (me?.id === pending.userId) navigate("/connections", { replace: true }); })
+      .catch(() => {});
+  }, [isLoadingAuth, isLoadingPublicSettings, authError, pathname, navigate]);
   if (isLoadingPublicSettings || isLoadingAuth) return <div className="fixed inset-0 flex items-center justify-center bg-background"><BrandLogo size="lg" showName={false} className="animate-pulse" /></div>;
   if (authError) { if (authError.type === 'user_not_registered') return <UserNotRegisteredError />; if (authError.type === 'auth_required') { navigateToLogin(); return null; } }
   return <Routes>
