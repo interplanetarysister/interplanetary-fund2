@@ -49,7 +49,7 @@ export default function CrossPlatformTotals({ campaign }) {
         </li>
         {connections.map((c) => (
           <li key={c.id} className="flex justify-between text-stone-700">
-            <span>{platformName(c.platform)} <span className="text-xs text-stone-400">({c.external_data_source === "provider_verified" ? "provider verified" : "owner reported"})</span></span>
+            <span>{platformName(c.platform)} <span className="text-xs text-stone-400">({c.external_data_source === "provider_verified" ? "checked" : "owner reported"})</span></span>
             <span className="font-semibold">{formatExternal(c)}</span>
           </li>
         ))}
