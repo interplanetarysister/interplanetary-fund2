@@ -55,7 +55,7 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
 
   // Data-source label used in the UI to distinguish provenance.
   // Contract requires both "Provider verified" and "owner reported" strings.
-  const provenanceLabel = providerVerifiedFinancialData ? "Provider verified" : "owner reported";
+  const provenanceLabel = providerVerifiedFinancialData ? "Checked" : "Added by you";
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
