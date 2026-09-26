@@ -42,7 +42,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
       if (data?.error) setNotice(data.error);
       else if (data?.manual) {
         onChanged(data.post);
-        setNotice("This platform has no publishing API — the post is approved. Copy it and post it on your account.");
+        setNotice("We can’t post this one for you yet. It’s ready to copy and post on your account.");
       } else onChanged(data.post);
     } catch (e) {
       setNotice(e.response?.data?.error || "Publishing failed.");
