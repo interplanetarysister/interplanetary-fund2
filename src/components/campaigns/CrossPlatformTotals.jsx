@@ -40,7 +40,7 @@ export default function CrossPlatformTotals({ campaign }) {
       </h3>
       <p className="font-display text-3xl text-stone-900">USD {(ifRaised + externalRaised).toLocaleString()}</p>
       <p className="text-xs text-stone-500">Reported USD total · {totalDonors} reported donors across every destination</p>
-      <p className="text-xs text-amber-700 mb-3">External figures may be owner reported, remain informational, and are not Interplanetary Fund-withdrawable until independently verified and transferred.</p>
+      <p className="text-xs text-amber-700 mb-3">External figures may be added by you, remain informational, and are not Interplanetary Fund-withdrawable until independently verified and transferred.</p>
       {excludedCurrencies.length > 0 && <p className="text-xs text-stone-500 mb-3">Excluded from the USD total to avoid false conversion: {excludedCurrencies.join(", ")}.</p>}
       <ul className="space-y-2 text-sm">
         <li className="flex justify-between text-stone-700">
@@ -49,7 +49,7 @@ export default function CrossPlatformTotals({ campaign }) {
         </li>
         {connections.map((c) => (
           <li key={c.id} className="flex justify-between text-stone-700">
-            <span>{platformName(c.platform)} <span className="text-xs text-stone-400">({c.external_data_source === "provider_verified" ? "checked" : "owner reported"})</span></span>
+            <span>{platformName(c.platform)} <span className="text-xs text-stone-400">({c.external_data_source === "provider_verified" ? "checked" : "added by you"})</span></span>
             <span className="font-semibold">{formatExternal(c)}</span>
           </li>
         ))}
