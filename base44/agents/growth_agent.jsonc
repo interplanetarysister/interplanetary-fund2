@@ -27,7 +27,10 @@
     "adminagent",
     "connections-webproxy"
   ],
-  "selected_workspace_skill_ids": [],
+  "selected_workspace_skill_ids": [
+    "6ab4798715c82e0e88c70efe",
+    "6ab46f2180895ff2754f1d03"
+  ],
   "model": "automatic",
   "whatsapp_greeting": "",
   "telegram_greeting": "",
