@@ -64,6 +64,20 @@
         }
       }
     },
+    "ai_connection_consent": {
+      "type": "object",
+      "description": "Revocable owner authorization for AI-assisted platform connection setup. Does not grant provider permissions or payment authority.",
+      "properties": {
+        "granted": {
+          "type": "boolean",
+          "default": false
+        },
+        "decided_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "ai_publishing_consent": {
       "type": "object",
       "description": "Explicit, revocable authorization for AI-assisted external publishing. Automatic publishing must fail closed unless granted is true.",
