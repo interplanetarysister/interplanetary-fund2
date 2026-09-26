@@ -18,7 +18,7 @@ export const ENGINE_CAPABILITIES = [
     id: "automation",
     icon: "Zap",
     title: "Fundraising Automation",
-    description: "Automates cross-platform publishing and synchronized campaign updates where supported.",
+    description: "Helps share campaign updates to the places you connect.",
   },
   {
     id: "support",
