@@ -50,11 +50,11 @@ export default function Connections() {
             ["ifund_pending_oauth_platform", "ifund_pending_oauth_shared_agent_consent", "ifund_pending_oauth_started_at", "ifund_pending_oauth_permission_version"].forEach((key) => sessionStorage.removeItem(key));
             setConnectionNotice({ ok: true, text: `${pendingOAuthPlatform} is connected. Your approved connection is ready for supported Interplanetary Fund features.` });
           } else {
-            setConnectionNotice({ ok: false, text: `Finish connecting ${pendingOAuthPlatform}. Your Interplanetary Fund consent is saved for this connection attempt, so you can resume the provider step without starting over.` });
+            setConnectionNotice({ ok: false, text: `Finish connecting ${pendingOAuthPlatform}. Your choices are saved, so you can continue where you left off.` });
           }
         } catch (oauthError) {
           console.error("OAuth connection finalization failed:", oauthError);
-          setConnectionNotice({ ok: false, text: `We couldn't finish the provider connection. Your Interplanetary Fund consent is still saved for this connection attempt; resume the provider step instead of approving IF again.` });
+          setConnectionNotice({ ok: false, text: `We couldn’t finish the connection. Your choices are saved, so try again without starting over.` });
         }
       }
       const [me, connRes] = await Promise.all([
