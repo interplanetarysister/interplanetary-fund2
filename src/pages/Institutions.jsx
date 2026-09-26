@@ -8,6 +8,8 @@ import { Search, Loader2 } from "lucide-react";
 import { institutionTypes } from "@/components/institutions/institutionTypes";
 import PageError from "@/components/PageError";
 
+const SAFE_INSTITUTIONS_ERROR = "We couldn't load institutions. Please try again.";
+
 const programFilters = [
   { value: "all", label: "All" },
   { value: "offers_grants", label: "Grants" },
@@ -25,7 +27,7 @@ export default function Institutions() {
   useEffect(() => {
     base44.entities.Institution.list("-created_date", 100)
       .then(setInstitutions)
-      .catch((e) => setError(e.message || "We couldn't load institutions."));
+      .catch(() => setError(SAFE_INSTITUTIONS_ERROR));
   }, []);
 
   if (error) {
