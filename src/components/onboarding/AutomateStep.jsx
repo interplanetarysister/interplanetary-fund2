@@ -4,18 +4,18 @@ import { Switch } from "@/components/ui/switch";
 const TOGGLES = [
   {
     id: "cross_publish",
-    title: "Cross-platform campaign publishing",
-    description: "Publish a campaign once and let Crowdfund push it to connected platforms where supported.",
+    title: "Share campaign updates",
+    description: "Write an update once and share it to the places you connected.",
   },
   {
     id: "sync_updates",
-    title: "Synchronized campaign updates",
-    description: "Campaign updates posted in Crowdfund mirror to connected social channels automatically.",
+    title: "Keep updates together",
+    description: "Let Interplanetary Fund keep your connected pages up to date.",
   },
   {
     id: "unified_monitoring",
-    title: "Unified campaign monitoring",
-    description: "Track every fundraising effort — native and connected — from a single dashboard.",
+    title: "See everything together",
+    description: "See your Interplanetary Fund and connected fundraisers in one place.",
   },
 ];
 
@@ -25,9 +25,9 @@ export default function AutomateStep({ data, onChange }) {
 
   return (
     <div className="max-w-lg mx-auto">
-      <h2 className="font-display text-2xl text-stone-900 mb-2">Automate & monitor</h2>
+      <h2 className="font-display text-2xl text-stone-900 mb-2">Choose what gets help</h2>
       <p className="text-stone-600 mb-6">
-        Choose what Crowdfund handles for you. You can change these anytime in Mission Control.
+        Choose what Interplanetary Fund may help with. You can change this anytime.
       </p>
       <div className="space-y-3">
         {TOGGLES.map((t) => (
