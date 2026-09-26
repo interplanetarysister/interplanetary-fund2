@@ -17,6 +17,7 @@ export default function Connections() {
   const [user, setUser] = useState(null);
   const [dialog, setDialog] = useState(null); // { platform, existing }
   const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
   const [connectionNotice, setConnectionNotice] = useState(null);
@@ -31,7 +32,7 @@ export default function Connections() {
     try {
       const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
       setSyncResult(data);
-      const r = await base44.functions.invoke("listConnections", {});
+      const r = await base44.functions.invoke("listConnections", { scope: "mine" });
       setConnections(r.data.connections);
     } catch (e) {
       setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
@@ -42,35 +43,40 @@ export default function Connections() {
   useEffect(() => {
     (async () => {
      try {
-      const pendingOAuthPlatform = sessionStorage.getItem("ifund_pending_oauth_platform");
-      if (pendingOAuthPlatform) {
+      const me = await base44.auth.me();
+      let pending = null;
+      try {
+        pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null");
+      } catch { localStorage.removeItem("ifund_pending_platform_connection"); }
+      const fresh = pending && pending.userId === me.id && Date.now() - pending.startedAt < 20 * 60 * 1000;
+      if (pending && !fresh) localStorage.removeItem("ifund_pending_platform_connection");
+      if (fresh) {
         try {
-          const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", { platform: pendingOAuthPlatform, shared_agent_consent: sessionStorage.getItem("ifund_pending_oauth_shared_agent_consent") === "true" });
+          const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
+            platform: pending.platform, shared_agent_consent: pending.sharedAgentConsent === true,
+          });
           if (data?.connected) {
-            ["ifund_pending_oauth_platform", "ifund_pending_oauth_shared_agent_consent", "ifund_pending_oauth_started_at", "ifund_pending_oauth_permission_version"].forEach((key) => sessionStorage.removeItem(key));
-            setConnectionNotice({ ok: true, text: `${pendingOAuthPlatform} is connected. Your approved connection is ready for supported Interplanetary Fund features.` });
+            localStorage.removeItem("ifund_pending_platform_connection");
+            setConnectionNotice({ ok: true, text: `${pending.platform} is connected.` });
           } else {
-            setConnectionNotice({ ok: false, text: `Finish connecting ${pendingOAuthPlatform}. Your choices are saved, so you can continue where you left off.` });
+            setConnectionNotice({ ok: false, text: `Finish connecting ${pending.platform}, then return here. If sign-in was cancelled, try again.` });
           }
         } catch (oauthError) {
           console.error("OAuth connection finalization failed:", oauthError);
-          setConnectionNotice({ ok: false, text: `We couldn’t finish the connection. Your choices are saved, so try again without starting over.` });
+          setConnectionNotice({ ok: false, text: "We couldn’t finish the connection. Try again." });
         }
       }
-      const [me, connRes] = await Promise.all([
-        base44.auth.me(),
-        base44.functions.invoke("listConnections", {}),
-      ]);
+      const connRes = await base44.functions.invoke("listConnections", { scope: "mine" });
       setUser(me);
       setConnections(connRes.data.connections);
      } catch (e) {
        setError(e.message || "We couldn't load your connections.");
      }
     })();
-  }, []);
+  }, [reloadKey]);
 
   if (error) {
-    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); }} /></div>;
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); setReloadKey((key) => key + 1); }} /></div>;
   }
   if (!connections) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
