@@ -10,6 +10,13 @@ This contract captures the immediate implementation requirements for connected p
 - The connection persists until the user disconnects it, except when the provider expires/revokes authorization or requires reauthorization.
 - Never mark an unsupported capability as granted. Provider capability discovery and actual authorization are authoritative.
 
+## Failed connection recovery and failure logging
+When an external platform connection fails, connection-capable or connection-assisting agents must preserve the last known-good `PlatformConnection` and reusable connection recipe rather than creating unnecessary duplicates. Identify the failed step, retry transient failures safely, and verify authorization, connector health, provider permissions, endpoints, tokens/sessions, and provider availability. If the current transport is unusable, resolve the next legitimately supported transport in priority order: OAuth → API → webhook → token → authenticated browser → public browser → manual. Save a verified successful recovery path for reuse when appropriate. Never mark a connection verified without provider/transport confirmation, and never invent synchronized data, donations, balances, capabilities, or successful actions. Require user interaction only when the provider genuinely requires user-controlled authentication, authorization, or another action that cannot be completed through the existing grant.
+
+Every failed connection attempt and recovery attempt must create an auditable failure/recovery record containing, when available: platform, PlatformConnection ID, timestamp, requested operation, transport, failure stage, sanitized error category/detail, retry/attempt count, acting agent or worker, recovery path attempted, final outcome, and correlation/operation ID. Never log passwords, access/refresh tokens, session secrets/cookies, authorization codes, raw credentials, or unnecessary sensitive financial/personal data. Consequential retries must remain idempotent and must not duplicate posts, messages, donations, transfers, or other external actions.
+
+After recovery, re-verify connection health, persistence, provider-confirmed capabilities, OBO authorization, synchronization behavior, and the requested operation before recording recovery as successful. The same recovery contract applies to the shared live platform capability layer used by both web and installed/app experiences.
+
 ## Shared agent access
 A verified OBO connection is available to all of the user's agents. Role purpose determines how it is used:
 - Communications: campaign-related comments, messages, mentions, replies and updates.
