@@ -10,6 +10,24 @@ const COMMON_IF_CAPABILITIES = [
 ];
 
 const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities: string[] }> = {
+  gmail: { env: 'APP_USER_CONNECTOR_GMAIL_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  googledrive: { env: 'APP_USER_CONNECTOR_GOOGLEDRIVE_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  googlecalendar: { env: 'APP_USER_CONNECTOR_GOOGLECALENDAR_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  google_contacts: { env: 'APP_USER_CONNECTOR_GOOGLE_CONTACTS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  google_photos: { env: 'APP_USER_CONNECTOR_GOOGLE_PHOTOS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  googlesheets: { env: 'APP_USER_CONNECTOR_GOOGLESHEETS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  googledocs: { env: 'APP_USER_CONNECTOR_GOOGLEDOCS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  googleforms: { env: 'APP_USER_CONNECTOR_GOOGLEFORMS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  googletasks: { env: 'APP_USER_CONNECTOR_GOOGLETASKS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  slack: { env: 'APP_USER_CONNECTOR_SLACK_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  notion: { env: 'APP_USER_CONNECTOR_NOTION_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  outlook: { env: 'APP_USER_CONNECTOR_OUTLOOK_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  microsoft_teams: { env: 'APP_USER_CONNECTOR_MICROSOFT_TEAMS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  one_drive: { env: 'APP_USER_CONNECTOR_ONE_DRIVE_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  dropbox: { env: 'APP_USER_CONNECTOR_DROPBOX_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  github: { env: 'APP_USER_CONNECTOR_GITHUB_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  gitlab: { env: 'APP_USER_CONNECTOR_GITLAB_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+
   // Request the complete foreseeable IF capability envelope once. These are
   // desired capabilities only; provider-reported scopes remain the sole source
   // for what is actually granted and usable.

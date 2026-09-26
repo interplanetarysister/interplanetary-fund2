@@ -340,7 +340,28 @@ export const SOCIAL_PLATFORMS = [
   },
 ];
 
-export const ALL_PLATFORMS = [...CROWDFUNDING_PLATFORMS, ...SOCIAL_PLATFORMS];
+
+export const APP_PLATFORMS = [
+  { id: "gmail", name: "Gmail", kind: "app", icon: "✉️", tagline: "Connect Gmail to work with your email.", setupKind: "oauth", integrationType: "gmail" },
+  { id: "googledrive", name: "Google Drive", kind: "app", icon: "📁", tagline: "Connect Google Drive to work with your files.", setupKind: "oauth", integrationType: "googledrive" },
+  { id: "googlecalendar", name: "Google Calendar", kind: "app", icon: "📅", tagline: "Connect Google Calendar to work with events.", setupKind: "oauth", integrationType: "googlecalendar" },
+  { id: "google_contacts", name: "Google Contacts", kind: "app", icon: "👥", tagline: "Connect Google Contacts.", setupKind: "oauth", integrationType: "google_contacts" },
+  { id: "google_photos", name: "Google Photos", kind: "app", icon: "🖼️", tagline: "Connect Google Photos.", setupKind: "oauth", integrationType: "google_photos" },
+  { id: "googlesheets", name: "Google Sheets", kind: "app", icon: "📊", tagline: "Connect Google Sheets.", setupKind: "oauth", integrationType: "googlesheets" },
+  { id: "googledocs", name: "Google Docs", kind: "app", icon: "📄", tagline: "Connect Google Docs.", setupKind: "oauth", integrationType: "googledocs" },
+  { id: "googleforms", name: "Google Forms", kind: "app", icon: "📝", tagline: "Connect Google Forms.", setupKind: "oauth", integrationType: "googleforms" },
+  { id: "googletasks", name: "Google Tasks", kind: "app", icon: "☑️", tagline: "Connect Google Tasks.", setupKind: "oauth", integrationType: "googletasks" },
+  { id: "slack", name: "Slack", kind: "app", icon: "💬", tagline: "Connect Slack.", setupKind: "oauth", integrationType: "slack" },
+  { id: "notion", name: "Notion", kind: "app", icon: "N", tagline: "Connect Notion.", setupKind: "oauth", integrationType: "notion" },
+  { id: "outlook", name: "Outlook", kind: "app", icon: "📧", tagline: "Connect Outlook and Microsoft 365 mail.", setupKind: "oauth", integrationType: "outlook" },
+  { id: "microsoft_teams", name: "Microsoft Teams", kind: "app", icon: "👤", tagline: "Connect Microsoft Teams.", setupKind: "oauth", integrationType: "microsoft_teams" },
+  { id: "one_drive", name: "OneDrive", kind: "app", icon: "☁️", tagline: "Connect OneDrive.", setupKind: "oauth", integrationType: "one_drive" },
+  { id: "dropbox", name: "Dropbox", kind: "app", icon: "📦", tagline: "Connect Dropbox.", setupKind: "oauth", integrationType: "dropbox" },
+  { id: "github", name: "GitHub", kind: "app", icon: "⌘", tagline: "Connect GitHub.", setupKind: "oauth", integrationType: "github" },
+  { id: "gitlab", name: "GitLab", kind: "app", icon: "🦊", tagline: "Connect GitLab.", setupKind: "oauth", integrationType: "gitlab" },
+];
+
+export const ALL_PLATFORMS = [...CROWDFUNDING_PLATFORMS, ...SOCIAL_PLATFORMS, ...APP_PLATFORMS];
 export const platformName = (id) => ALL_PLATFORMS.find((p) => p.id === id)?.name || id;
 export const platformById = (id) => ALL_PLATFORMS.find((p) => p.id === id) || null;
 

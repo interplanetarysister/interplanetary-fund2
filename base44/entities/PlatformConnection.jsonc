@@ -26,14 +26,32 @@
         "youtube",
         "discord",
         "bluesky",
-        "mastodon"
+        "mastodon",
+        "gmail",
+        "googledrive",
+        "googlecalendar",
+        "google_contacts",
+        "google_photos",
+        "googlesheets",
+        "googledocs",
+        "googleforms",
+        "googletasks",
+        "slack",
+        "notion",
+        "outlook",
+        "microsoft_teams",
+        "one_drive",
+        "dropbox",
+        "github",
+        "gitlab"
       ]
     },
     "kind": {
       "type": "string",
       "enum": [
         "crowdfunding",
-        "social"
+        "social",
+        "app"
       ],
       "default": "crowdfunding"
     },

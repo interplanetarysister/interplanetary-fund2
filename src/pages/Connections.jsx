@@ -114,7 +114,7 @@ export default function Connections() {
       <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
       <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
         <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} working · {connections.length} saved</span>
-        <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social in one place</span>
+        <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social + apps in one place</span>
       </div>
       </div>
 
@@ -181,7 +181,7 @@ export default function Connections() {
               <span className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0"><Search className="w-4 h-4 text-cyan-200" /></span>
               <span>
                 <span className="block font-semibold text-cyan-50">Choose a platform</span>
-                <span className="block text-xs text-slate-400">Fundraising and social platforms</span>
+                <span className="block text-xs text-slate-400">Fundraising, social, and apps</span>
               </span>
             </span>
             <ChevronDown className={`w-5 h-5 text-cyan-200 transition-transform ${platformMenuOpen ? "rotate-180" : ""}`} />
@@ -212,7 +212,7 @@ export default function Connections() {
                     <span className="text-xl w-8 text-center shrink-0" aria-hidden="true">{p.icon || "✦"}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
-                      <span className="block text-xs text-slate-400 capitalize">{p.kind === "crowdfunding" ? "Fundraising" : "Social"}</span>
+                      <span className="block text-xs text-slate-400 capitalize">{p.kind === "crowdfunding" ? "Fundraising" : p.kind === "app" ? "App" : "Social"}</span>
                     </span>
                     <span className="text-xs font-semibold text-cyan-200">Connect</span>
                   </button>
