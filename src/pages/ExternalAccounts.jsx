@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, ShieldAlert } from "lucide-react";
@@ -10,6 +10,40 @@ import ActionQueuePanel from "@/components/admin/ActionQueuePanel";
 import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
 import PageError from "@/components/PageError";
 
+const SAFE_EXTERNAL_ACCOUNTS_ERROR = "Couldn't load external accounts.";
+
+function isRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function readArray(value, label) {
+  if (!Array.isArray(value)) throw new Error(`${label} response shape invalid`);
+  return value;
+}
+
+function readConnections(response) {
+  if (!isRecord(response) || !isRecord(response.data)) throw new Error("connections response shape invalid");
+  return readArray(response.data.connections, "connections").filter((item) => isRecord(item) && typeof item.id === "string" && item.id.length > 0);
+}
+
+function readRows(value, label) {
+  return readArray(value, label).filter((item) => isRecord(item) && typeof item.id === "string" && item.id.length > 0);
+}
+
+function readUniqueRows(value, label) {
+  const rows = readRows(value, label);
+  const ids = new Set();
+  for (const row of rows) {
+    if (ids.has(row.id)) throw new Error(`${label} response contains duplicate ids`);
+    ids.add(row.id);
+  }
+  return rows;
+}
+
+function safeErrorMessage() {
+  return SAFE_EXTERNAL_ACCOUNTS_ERROR;
+}
+
 export default function ExternalAccounts() {
   const [user, setUser] = useState(null);
   const [connections, setConnections] = useState(null);
@@ -19,27 +53,44 @@ export default function ExternalAccounts() {
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const generationRef = useRef(0);
+  const mountedRef = useRef(false);
 
   useEffect(() => {
+    mountedRef.current = true;
+    const generation = generationRef.current + 1;
+    generationRef.current = generation;
+    const isCurrent = () => mountedRef.current && generationRef.current === generation;
+
     (async () => {
       try {
         const me = await base44.auth.me();
+        if (!isCurrent()) return;
         setUser(me);
         if (me.role !== "admin") return;
-        const [cs, ps, ags, camps] = await Promise.all([
-          base44.functions.invoke("listConnections", {}).then((r) => r.data.connections),
+        const [csResponse, psRaw, agsRaw, campsRaw] = await Promise.all([
+          base44.functions.invoke("listConnections", {}),
           base44.entities.DistributedPost.list("-created_date", 300),
           base44.entities.Agent.list().catch(() => []),
           base44.entities.Campaign.list("-created_date", 200),
         ]);
-        setConnections(cs);
-        setPosts(ps);
-        setAgents(ags);
-        setCampaigns(Object.fromEntries(camps.map((c) => [c.id, c])));
-      } catch (e) {
-        setError(e.message || "Couldn't load external accounts.");
+        const nextConnections = readConnections(csResponse);
+        const nextPosts = readUniqueRows(psRaw, "posts");
+        const nextAgents = readUniqueRows(agsRaw, "agents");
+        const nextCampaigns = readUniqueRows(campsRaw, "campaigns");
+        if (!isCurrent()) return;
+        setConnections(nextConnections);
+        setPosts(nextPosts);
+        setAgents(nextAgents);
+        setCampaigns(Object.fromEntries(nextCampaigns.map((campaign) => [campaign.id, campaign])));
+      } catch {
+        if (isCurrent()) setError(safeErrorMessage());
       }
     })();
+
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshKey]);
 
   if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -54,7 +105,7 @@ export default function ExternalAccounts() {
     );
   }
 
-  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); setPosts(null); setRefreshKey((k) => k + 1); }} /></div>;
+  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); setRefreshKey((k) => k + 1); }} /></div>;
   if (!connections || !posts) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const reload = () => setRefreshKey((k) => k + 1);
