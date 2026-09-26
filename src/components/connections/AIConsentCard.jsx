@@ -21,12 +21,12 @@ export default function AIConsentCard({ user, onChanged }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5">
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
-        <Sparkles className="w-3.5 h-3.5" /> AI Publishing Authorization
+        <Sparkles className="w-3.5 h-3.5" /> AI help
       </p>
       <p className="text-sm text-stone-600">
         Grant Interplanetary Fund's AI a license to prepare and publish content to the campaigns
         and social accounts you connect. AI never posts anywhere without your permission, follows
-        the automation setting you choose for each platform, and you can revoke this at any time.
+        the choice you make for each platform. You can turn this off anytime.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {consent?.granted ? (
@@ -34,7 +34,7 @@ export default function AIConsentCard({ user, onChanged }) {
             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600">
               <ShieldCheck className="w-4 h-4" /> Authorized {consent.decided_at ? `· ${new Date(consent.decided_at).toLocaleDateString()}` : ""}
             </span>
-            <Button size="sm" variant="outline" disabled={saving} onClick={() => decide(false)} className="rounded-xl">Revoke authorization</Button>
+            <Button size="sm" variant="outline" disabled={saving} onClick={() => decide(false)} className="rounded-xl">Turn off</Button>
           </>
         ) : (
           <>
