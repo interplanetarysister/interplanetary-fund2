@@ -3,6 +3,32 @@ import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
 import { computeChargeTotal } from "../../../base44/shared/fees.js";
 
+const SAFE_PAYMENT_ERROR = "Payment failed. Please try again.";
+
+function isPlainObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isValidConfig(value) {
+  return isPlainObject(value)
+    && isNonEmptyString(value.client_id)
+    && (value.mode === undefined || value.mode === "live" || value.mode === "sandbox" || value.mode === "test");
+}
+
+function isValidOrder(value) {
+  return isPlainObject(value) && isNonEmptyString(value.id) && !value.error;
+}
+
+function isSuccessfulCapture(value) {
+  return isPlainObject(value) && !value.error && (value.status === undefined || value.status === "COMPLETED") && isNonEmptyString(value.id || value.order_id || value.capture_id);
+}
+
 // Google Pay donations processed through the platform's PayPal business
 // account (PayPal JS SDK v6 + Google Pay). Flow: create a PayPal order,
 // confirm it with the buyer's Google Pay payment data, then capture and
@@ -30,8 +56,9 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
       let config;
       try {
         const { data } = await base44.functions.invoke("getPayPalConfig", {});
+        if (!isValidConfig(data)) throw new Error("invalid payment configuration");
         config = data;
-      } catch (e) {
+      } catch {
         if (!cancelled) { setState("error"); setError("Payment setup failed."); }
         return;
       }
@@ -40,7 +67,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
 
       try {
         await Promise.all([loadPayPalSdk(config.client_id), loadGooglePayScript()]);
-      } catch (e) {
+      } catch {
         if (!cancelled) { setState("error"); setError("Couldn't load payment."); }
         return;
       }
@@ -57,11 +84,11 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
           components: ["googlepay-payments"],
           pageType: "checkout",
         });
-      } catch (e) { if (!cancelled) setState("unavailable"); return; }
+      } catch { if (!cancelled) setState("unavailable"); return; }
 
       let methods;
       try { methods = await instance.findEligibleMethods({ currencyCode: "USD" }); }
-      catch (e) { if (!cancelled) setState("unavailable"); return; }
+      catch { if (!cancelled) setState("unavailable"); return; }
       if (!methods?.isEligible || !methods.isEligible("googlepay")) { setState("unavailable"); return; }
       if (cancelled) return;
 
@@ -76,15 +103,12 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
           onPaymentAuthorized: async (paymentData) => {
             try {
               const p = propsRef.current;
-              // The optional platform-contribution choice is bound into the
-              // PayPal order's server-generated custom_id here. Capture does
-              // not trust a post-payment client value for financial allocation.
               const { data: order } = await base44.functions.invoke("createPayPalOrder", {
                 campaign_id: campaign.id,
                 amount: value,
                 platform_contribution: !!p.platformContribution,
               });
-              if (order?.error) return { transactionState: "ERROR", error: { message: order.error } };
+              if (!isValidOrder(order)) return { transactionState: "ERROR", error: { message: SAFE_PAYMENT_ERROR } };
 
               const { status } = await session.confirmOrder({
                 orderId: order.id,
@@ -99,12 +123,12 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   message: p.message,
                   is_recurring: !!p.recurring,
                 });
-                if (cap?.error) return { transactionState: "ERROR", error: { message: cap.error } };
+                if (!isSuccessfulCapture(cap)) return { transactionState: "ERROR", error: { message: SAFE_PAYMENT_ERROR } };
                 if (!cancelled) p.onPaid?.(cap);
               }
               return { transactionState: "SUCCESS" };
-            } catch (err) {
-              return { transactionState: "ERROR", error: { message: err.message || "Payment failed" } };
+            } catch {
+              return { transactionState: "ERROR", error: { message: SAFE_PAYMENT_ERROR } };
             }
           },
         },
