@@ -6,16 +6,38 @@ import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
 // The AI Authorization agreement. AI never publishes to a connected campaign or
 // social account without this explicit, revocable license — and even with it,
 // per-platform automation settings still govern every destination.
-export default function AIConsentCard({ user, onChanged }) {
+export default function AIConsentCard({ user, onChanged, onConnectionChanged }) {
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const consent = user?.ai_publishing_consent;
+  const connectionConsent = user?.ai_connection_consent;
 
   const decide = async (granted) => {
     setSaving(true);
     const value = { granted, decided_at: new Date().toISOString() };
-    await base44.auth.updateMe({ ai_publishing_consent: value });
-    onChanged(value);
-    setSaving(false);
+    try {
+      await base44.auth.updateMe({ ai_publishing_consent: value });
+      onChanged(value);
+      setError("");
+    } catch {
+      setError("Couldn't save your choice. Try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const decideConnection = async (granted) => {
+    setSaving(true);
+    try {
+      const value = { granted, decided_at: new Date().toISOString() };
+      await base44.auth.updateMe({ ai_connection_consent: value });
+      onConnectionChanged(value);
+      setError("");
+    } catch {
+      setError("Couldn't save your choice. Try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -50,6 +72,14 @@ export default function AIConsentCard({ user, onChanged }) {
           </>
         )}
       </div>
+      <div className="mt-5 pt-4 border-t border-stone-200">
+        <p className="text-sm font-semibold text-stone-900">Let AI help connect platforms</p>
+        <p className="text-xs text-stone-600 mt-1">When you ask in chat, your agent can prepare a new connection and open provider sign-in. You can turn this off anytime. Payments and withdrawals are separate.</p>
+        <Button size="sm" variant={connectionConsent?.granted ? "outline" : "default"} disabled={saving} onClick={() => decideConnection(!connectionConsent?.granted)} className="mt-3 rounded-xl">
+          {connectionConsent?.granted ? "On · Turn off" : "Turn on"}
+        </Button>
+      </div>
+      {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     </div>
   );
 }
