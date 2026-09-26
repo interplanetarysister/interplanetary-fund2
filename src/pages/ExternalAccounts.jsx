@@ -27,7 +27,7 @@ export default function ExternalAccounts() {
         setUser(me);
         if (me.role !== "admin") return;
         const [cs, ps, ags, camps] = await Promise.all([
-          base44.functions.invoke("listConnections", {}).then((r) => r.data.connections),
+          base44.functions.invoke("listConnections", { scope: "all" }).then((r) => r.data.connections),
           base44.entities.DistributedPost.list("-created_date", 300),
           base44.entities.Agent.list().catch(() => []),
           base44.entities.Campaign.list("-created_date", 200),
