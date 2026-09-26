@@ -29,7 +29,7 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
     try {
       const res = await base44.integrations.Core.InvokeLLM({
         prompt:
-          "Generate a short, inspiring social media post (under 280 characters) for the Interplanetary Fund — a universal fundraising operating system where one campaign reaches all platforms. Be cosmic, empowering, and community-focused. No hashtags, no emojis beyond one.",
+          "Generate a short, inspiring social media post (under 280 characters) for the Interplanetary Fund — a fundraising home that helps one campaign reach many places. Be cosmic, empowering, and community-focused. No hashtags, no emojis beyond one.",
         response_json_schema: { type: "object", properties: { post_text: { type: "string" } } },
       });
       if (res?.post_text) {
