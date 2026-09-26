@@ -124,7 +124,10 @@ export default async function(req) {
           const connectorId = Deno.env.get(envName) || '';
           if (!connectorId) throw new Error('Provider sign-in is not configured yet.');
           const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
-          if (!oauth?.accessToken) throw new Error('Provider authorization needs to be renewed.');
+          if (!oauth?.accessToken) throw new Error('oauth_reauthorization_required');
+          // Token presence proves configuration only. This scheduled path has
+          // no supported live provider probe and must remain fail closed.
+          throw new Error('oauth_live_probe_unavailable');
         } else if (['bluesky', 'mastodon'].includes(c.platform)) {
           await verifyManualConnection(c);
         } else {
@@ -138,10 +141,12 @@ export default async function(req) {
         });
         report.verified++;
       } catch (e) {
-        const message = String(e?.message || 'Provider authorization needs attention').slice(0, 300);
+        const reason = String(e?.message || '');
+        const reauth = reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
+        const message = reauth ? 'Provider authorization needs attention.' : 'Live provider verification is unavailable.';
         await sr.entities.PlatformConnection.update(c.id, {
           status: 'error', verification_status: 'unverified', last_error: message,
-          capability_status: OAUTH_ENV[c.platform] ? 'reauthorization_required' : (c.capability_status || 'unknown'),
+          capability_status: reauth ? 'reauthorization_required' : 'unknown',
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
         });
         report.needs_attention++;
