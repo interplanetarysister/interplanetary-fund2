@@ -9,14 +9,19 @@ export default function NotificationBell() {
 
   const load = useCallback(async (uid) => {
     const items = await base44.entities.Notification.filter({ user_id: uid }, "-created_date", 20);
-    setNotifications(items);
+    setNotifications(Array.isArray(items) ? items : []);
   }, []);
 
   useEffect(() => {
+    let mounted = true;
     base44.auth.me().then((me) => {
+      if (!mounted || !me?.id) return;
       setUserId(me.id);
-      load(me.id);
-    }).catch(() => {});
+      return load(me.id);
+    }).catch(() => {
+      if (mounted) setNotifications([]);
+    });
+    return () => { mounted = false; };
   }, [load]);
 
   useEffect(() => {
@@ -29,13 +34,13 @@ export default function NotificationBell() {
     return unsubscribe;
   }, [userId]);
 
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = notifications.filter((n) => n && !n.read).length;
 
   return (
     <Link
-      to="/inbox"
+      to="/notifications"
       className="relative p-2 text-stone-400 hover:text-stone-100 transition-colors cursor-pointer"
-      aria-label={`Inbox${unread > 0 ? ` (${unread} unread)` : ""}`}
+      aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
     >
       <Bell className="w-5 h-5" strokeWidth={1.75} />
       {unread > 0 && (
