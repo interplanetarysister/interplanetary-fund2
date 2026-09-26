@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { Link } from "react-router-dom";
 
 // Conversation UI for an in-app AI agent. Base44 agent memory is authoritative.
 // New conversation sessions may be created when the selected specialist changes;
@@ -88,6 +89,10 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
             )}
           </>
         )}
+      </div>
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span>Connections work here on the web too.</span>
+        <Link to="/connections" className="font-semibold text-primary hover:underline shrink-0">Connect a platform</Link>
       </div>
       <div className="mt-2 flex gap-2 items-end">
         <Textarea
