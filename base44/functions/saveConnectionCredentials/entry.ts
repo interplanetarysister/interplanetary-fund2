@@ -94,7 +94,7 @@ export default async function(req) {
     if (effectiveKind === 'crowdfunding' && typeof browser_read_consent === 'boolean') {
       const currentConsent = existing?.obo_consent || {};
       const previous = (currentConsent.granted_capabilities || []).filter((item) => item !== 'GET_METRICS');
-      const grantedCapabilities = browser_read_consent ? [...previous, 'GET_METRICS'] : previous;
+      const grantedCapabilities = browser_read_consent ? [...new Set([...previous, 'GET_METRICS'])] : previous;
       data.obo_consent = {
         ...currentConsent,
         granted: browser_read_consent || (currentConsent.granted === true && previous.length > 0),
@@ -108,7 +108,9 @@ export default async function(req) {
       data.agent_access = {
         ...(existing?.agent_access || {}),
         shared_with_agents: browser_read_consent || (existing?.agent_access?.shared_with_agents === true && previous.length > 0),
-        automation_enabled: browser_read_consent || (existing?.agent_access?.automation_enabled === true && previous.length > 0),
+        // Browser-read consent is a narrow read grant. It must never enable
+        // unrelated background automation or publishing authority.
+        automation_enabled: existing?.agent_access?.automation_enabled === true,
       };
     }
 
@@ -130,7 +132,7 @@ export default async function(req) {
     const { credentials: redactedCreds, credentials_meta } = redactCredentials(saved.credentials);
     return Response.json({ connection: { ...saved, credentials: redactedCreds, credentials_meta } });
   } catch (error) {
-    console.error('saveConnectionCredentials error:', error.message);
+    console.error('saveConnectionCredentials error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not save connection.' }, { status: 500 });
   }
 }

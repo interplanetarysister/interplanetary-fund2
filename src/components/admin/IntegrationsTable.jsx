@@ -1,5 +1,5 @@
 import React from "react";
-import { STATUS_BADGE, ENV_LABEL } from "@/lib/integrationRegistryUi";
+import { STATUS_BADGE, ENV_LABEL, normalizeIntegrationStatus } from "@/lib/integrationRegistryUi";
 import { ShieldAlert, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 const FLAG_LABEL = {
@@ -16,7 +16,7 @@ export default function IntegrationsTable({ entries, onRowClick }) {
     <>
       <div className="md:hidden space-y-3">
         {entries.map((e) => {
-          const badge = STATUS_BADGE[e.status] || STATUS_BADGE.ACTIVE;
+          const badge = STATUS_BADGE[normalizeIntegrationStatus(e.status)];
           const verified = e.last_verified ? new Date(e.last_verified).toLocaleString() : "never";
           return (
             <button key={e.id} type="button" onClick={() => onRowClick(e)}
@@ -53,7 +53,7 @@ export default function IntegrationsTable({ entries, onRowClick }) {
         </thead>
         <tbody>
           {entries.map((e) => {
-            const badge = STATUS_BADGE[e.status] || STATUS_BADGE.ACTIVE;
+            const badge = STATUS_BADGE[normalizeIntegrationStatus(e.status)];
             const verified = e.last_verified ? new Date(e.last_verified).toLocaleString() : "never";
             return (
               <tr key={e.id} onClick={() => onRowClick(e)} className="border-b border-stone-100 hover:bg-stone-50 cursor-pointer align-top">

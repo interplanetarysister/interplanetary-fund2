@@ -1,6 +1,7 @@
 // Shared helpers for the Platform Access Registry. Reused by the health
 // validator, the agent-access gatekeeper, and the admin management function.
 // Never imports or handles secret values — only reference names and metadata.
+import { normalizeIntegrationStatus } from './integrationStatusPolicy.js';
 
 export const STATUS_LABEL = {
   ACTIVE: "Active",
@@ -9,6 +10,7 @@ export const STATUS_LABEL = {
   DISCONNECTED: "Disconnected",
   REVOKED: "Revoked",
   MISCONFIGURED: "Misconfigured",
+  UNKNOWN: "Unknown",
 };
 
 export const STATUS_BADGE = {
@@ -18,6 +20,7 @@ export const STATUS_BADGE = {
   DISCONNECTED: { label: "Disconnected", className: "bg-stone-200 text-stone-600" },
   REVOKED: { label: "Revoked", className: "bg-red-100 text-red-700" },
   MISCONFIGURED: { label: "Misconfigured", className: "bg-red-100 text-red-700" },
+  UNKNOWN: { label: "Unknown", className: "bg-stone-200 text-stone-700" },
 };
 
 export const AUTH_TYPE_LABEL = {
@@ -31,10 +34,10 @@ export const AUTH_TYPE_LABEL = {
 
 export const ENV_LABEL = { production: "Production", development: "Development", sandbox: "Sandbox" };
 
-export const UNHEALTHY = new Set(["REAUTH_REQUIRED", "EXPIRES_SOON", "DISCONNECTED", "REVOKED", "MISCONFIGURED"]);
+export const UNHEALTHY = new Set(["REAUTH_REQUIRED", "EXPIRES_SOON", "DISCONNECTED", "REVOKED", "MISCONFIGURED", "UNKNOWN"]);
 
 export function isUnhealthy(status) {
-  return UNHEALTHY.has(status);
+  return UNHEALTHY.has(normalizeIntegrationStatus(status));
 }
 
 // Emit a deduplicated admin alert for an unhealthy integration. Skips creating
@@ -58,7 +61,7 @@ export async function emitIntegrationAlert(sr, entry, title, body) {
       });
     }
   } catch (e) {
-    console.error("emitIntegrationAlert failed:", e && e.message ? e.message : e);
+    console.error("emitIntegrationAlert failed:", e?.name || "UnknownError");
   }
 }
 
@@ -106,13 +109,14 @@ export async function assertPlatformAccess(sr, platform) {
   try {
     entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
   } catch (e) {
-    console.warn("assertPlatformAccess registry read failed:", e && e.message ? e.message : e);
+    console.warn("assertPlatformAccess registry read failed:", e?.name || "UnknownError");
     return { ok: false, status: null, reason: "registry unavailable (fail-closed)" };
   }
   const entry = entries && entries[0];
   if (!entry) return { ok: false, status: null, reason: `no registry entry for ${platform}` };
-  const ok = entry.status === "ACTIVE" || entry.status === "EXPIRES_SOON";
-  return { ok, status: entry.status, reason: ok ? "ok" : `status ${entry.status}` };
+  const status = normalizeIntegrationStatus(entry.status);
+  const ok = status === "ACTIVE" || status === "EXPIRES_SOON";
+  return { ok, status, reason: ok ? "ok" : `status ${status}` };
 }
 
 // OBO (On-Behalf-Of) authorization. A saved platform credential is NOT
@@ -132,7 +136,7 @@ export async function assertOboGrant(sr, agentName, userId, platform, connection
   try {
     grants = await sr.entities.AuthorizationGrant.filter({ agent_name: agentName, user_id: userId, platform });
   } catch (e) {
-    console.warn("assertOboGrant read failed:", e && e.message ? e.message : e);
+    console.warn("assertOboGrant read failed:", e?.name || "UnknownError");
     return { ok: false, reason: "grant registry unavailable" };
   }
   const now = Date.now();

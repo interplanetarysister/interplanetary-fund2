@@ -69,9 +69,10 @@
         "EXPIRES_SOON",
         "DISCONNECTED",
         "REVOKED",
-        "MISCONFIGURED"
+        "MISCONFIGURED",
+        "UNKNOWN"
       ],
-      "default": "ACTIVE"
+      "default": "DISCONNECTED"
     },
     "last_verified": {
       "type": "string",

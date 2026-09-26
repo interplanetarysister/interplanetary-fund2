@@ -5,22 +5,20 @@ import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
-import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
+import { STATUS_BADGE, UNKNOWN_STATUS_BADGE } from "@/lib/integrationRegistryUi";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  boundedWait,
+  createSettlementLock,
+  parseGitHubResponse,
+  parseHealthResponse,
+  parseRegistryResponse,
+} from "@/lib/integrationRegistryContracts";
 
 const SAFE_REGISTRY_ERROR = "We couldn\'t load the integration registry. Please try again.";
 const SAFE_HEALTH_ERROR = "We couldn\'t complete the integration health check. Please try again.";
-
 function isAdminUser(value) {
-  return Boolean(value && typeof value === "object" && value.role === "admin");
-}
-
-function isRegistryResponse(value) {
-  return Array.isArray(value) && value.every((entry) => entry && typeof entry === "object");
-}
-
-function isHealthResponse(value) {
-  return Boolean(value && typeof value === "object" && value.data && typeof value.data === "object" && !Array.isArray(value.data));
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && value.role === "admin");
 }
 
 export default function IntegrationsAdmin() {
@@ -36,18 +34,20 @@ export default function IntegrationsAdmin() {
   const [refreshKey, setRefreshKey] = useState(0);
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
+  const healthLock = useRef(createSettlementLock());
+  const githubLock = useRef(createSettlementLock());
 
   const loadRegistry = useCallback(async () => {
     const generation = ++requestGeneration.current;
     try {
-      const me = await base44.auth.me();
+      const me = await boundedWait(base44.auth.me());
       if (!mounted.current || generation !== requestGeneration.current) return;
       if (!me || typeof me !== "object" || typeof me.role !== "string") throw new Error("Malformed auth response");
       setUser(me);
       setAuthReady(true);
       if (!isAdminUser(me)) return;
-      const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-      if (!isRegistryResponse(list)) throw new Error("Malformed registry response");
+      const list = parseRegistryResponse(await boundedWait(base44.entities.PlatformAccessRegistry.list("-platform", 200)));
+      if (!list) throw new Error("Malformed registry response");
       if (!mounted.current || generation !== requestGeneration.current) return;
       setEntries(list);
       setRegistryError(null);
@@ -61,54 +61,75 @@ export default function IntegrationsAdmin() {
 
   useEffect(() => {
     mounted.current = true;
-    loadRegistry();
+    healthLock.current.activate();
+    githubLock.current.activate();
     return () => {
       mounted.current = false;
+      requestGeneration.current += 1;
+      healthLock.current.invalidate();
+      githubLock.current.invalidate();
+    };
+  }, []);
+
+  useEffect(() => {
+    loadRegistry();
+    return () => {
       requestGeneration.current += 1;
     };
   }, [loadRegistry, refreshKey]);
 
   const reload = () => setRefreshKey((k) => k + 1);
 
+  useEffect(() => {
+    if (!selected || !entries) return;
+    const fresh = entries.find((entry) => entry.id === selected.id);
+    setSelected(fresh || null);
+  }, [entries, selected?.id]);
+
   const runHealthCheck = async () => {
-    if (checking) return;
+    const request = healthLock.current.start(() => base44.functions.invoke("validateIntegrationHealth", {}));
+    if (!request) return;
     setChecking(true);
     setHealthError(null);
     try {
-      const response = await base44.functions.invoke("validateIntegrationHealth", {});
-      if (!isHealthResponse(response)) throw new Error("Malformed health response");
+      const response = parseHealthResponse(await request.visible);
+      if (!response) throw new Error("Malformed health response");
+      if (!request.isCurrent()) return;
       reload();
     } catch (e) {
       console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
-      if (mounted.current) setHealthError(SAFE_HEALTH_ERROR);
+      if (request.isCurrent()) setHealthError(SAFE_HEALTH_ERROR);
     } finally {
-      if (mounted.current) setChecking(false);
+      const releaseUi = () => {
+        if (request.isCurrent()) setChecking(false);
+      };
+      request.settled.then(releaseUi, releaseUi);
     }
   };
 
   const verifyGitHubConnection = async () => {
+    const request = githubLock.current.start(() => base44.functions.invoke("syncGitHub", { direction: "both" }));
+    if (!request) return;
     setVerifyingGitHub(true);
     try {
-      const res = await base44.functions.invoke("syncGitHub", { direction: "both" });
-      const data = res?.data || res;
+      const data = parseGitHubResponse(await request.visible);
+      if (!data) throw new Error("Malformed GitHub response");
+      if (!request.isCurrent()) return;
       if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub verification completed", description: details || "Connection verification completed." });
+        toast({ title: "GitHub verification completed", description: "The authenticated GitHub connection check completed." });
       } else if (data?.skipped) {
-        toast({ title: "GitHub verification unavailable", description: data.reason || "GitHub integration is not active.", variant: "destructive" });
+        toast({ title: "GitHub verification unavailable", description: "GitHub integration is not active.", variant: "destructive" });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Connection verification encountered an issue.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: "Connection verification encountered an issue.", variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "GitHub verification failed", description: e.message || "Could not verify the GitHub connection.", variant: "destructive" });
+      if (request.isCurrent()) toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
+    } finally {
+      const releaseUi = () => {
+        if (request.isCurrent()) setVerifyingGitHub(false);
+      };
+      request.settled.then(releaseUi, releaseUi);
     }
-    setVerifyingGitHub(false);
   };
 
   if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
@@ -143,12 +164,7 @@ export default function IntegrationsAdmin() {
         </div>
         <div className="flex flex-wrap gap-2">
           {githubEntry && (
-            <Button
-              onClick={verifyGitHubConnection}
-              disabled={verifyingGitHub || checking}
-              variant="outline"
-              className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
+            <Button onClick={verifyGitHubConnection} disabled={verifyingGitHub || checking} variant="outline" className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50">
               {verifyingGitHub ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
               Verify GitHub connection
             </Button>
@@ -171,26 +187,16 @@ export default function IntegrationsAdmin() {
 
       {needsAttention.length > 0 && (
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-2 text-amber-800 font-medium text-sm">
-            <ShieldAlert className="w-4 h-4" />{needsAttention.length} integration(s) need attention
-          </div>
+          <div className="flex items-center gap-2 text-amber-800 font-medium text-sm"><ShieldAlert className="w-4 h-4" />{needsAttention.length} integration(s) need attention</div>
           <ul className="mt-2 space-y-1 text-sm text-amber-700">
             {needsAttention.map((e) => (
-              <li key={e.id}>
-                <button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">
-                  {e.platform}
-                </button>
-                {" — "}{(STATUS_BADGE[e.status] || {}).label || e.status}{e.last_failure ? `: ${e.last_failure}` : ""}
-              </li>
+              <li key={e.id}><button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">{e.platform}</button>{" — "}{(STATUS_BADGE[e.status] || UNKNOWN_STATUS_BADGE).label}{e.last_failure ? `: ${e.last_failure}` : ""}</li>
             ))}
           </ul>
         </div>
       )}
 
-      <div className="mt-6">
-        <IntegrationsTable entries={visibleEntries} onRowClick={setSelected} />
-      </div>
-
+      <div className="mt-6"><IntegrationsTable entries={visibleEntries} onRowClick={setSelected} /></div>
       <IntegrationDetailPanel entry={selected} onClose={() => setSelected(null)} onUpdated={reload} />
     </div>
   );
@@ -203,12 +209,5 @@ function Stat({ label, value, tone = "stone" }) {
     amber: "bg-amber-50 border-amber-200 text-amber-700",
     red: "bg-red-50 border-red-200 text-red-700",
   };
-  return (
-    <div className={`rounded-2xl border p-4 ${tones[tone]}`}>
-      <div className="flex items-center gap-1.5 text-xs uppercase tracking-wide opacity-70">
-        {tone === "emerald" && <ShieldCheck className="w-3.5 h-3.5" />}{label}
-      </div>
-      <div className="font-display text-2xl mt-1">{value}</div>
-    </div>
-  );
+  return <div className={`rounded-2xl border p-4 ${tones[tone]}`}><div className="flex items-center gap-1.5 text-xs uppercase tracking-wide opacity-70">{tone === "emerald" && <ShieldCheck className="w-3.5 h-3.5" />}{label}</div><div className="font-display text-2xl mt-1">{value}</div></div>;
 }

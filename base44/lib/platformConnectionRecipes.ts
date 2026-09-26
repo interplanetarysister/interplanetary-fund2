@@ -24,12 +24,6 @@ export const STATIC_CONNECTION_RECIPES = {
   buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },
   bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },
   mastodon: { connect: { preferred_transport: 'token', worker_key: 'mastodonDirect' } },
-  gofundme: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  kickstarter: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  indiegogo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  givesendgo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  spotfund: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
 };
 
 export function staticRecipe(platform, operation = 'connect') {
@@ -39,5 +33,8 @@ export function staticRecipe(platform, operation = 'connect') {
 export function orderedTransports(recipe) {
   const preferred = recipe?.preferred_transport;
   const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  return [...new Set([preferred, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))];
+  // Never manufacture a fallback order. Only explicitly stored, currently
+  // verified methods may be attempted by a caller.
+  if (recipe?.status !== 'proven') return [];
+  return [...new Set([preferred, ...fallbacks].filter((item) => TRANSPORT_PRIORITY.includes(item)))];
 }
