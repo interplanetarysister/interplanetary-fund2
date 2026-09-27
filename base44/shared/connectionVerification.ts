@@ -27,7 +27,6 @@ export const OAUTH_ENV: Record<string, string> = {
   pinterest: 'APP_USER_CONNECTOR_PINTEREST_ID',
   reddit: 'APP_USER_CONNECTOR_REDDIT_ID',
   youtube: 'APP_USER_CONNECTOR_YOUTUBE_ID',
-  patreon: 'APP_USER_CONNECTOR_PATREON_ID',
 };
 
 export async function verifyManualConnection(connection: any) {
