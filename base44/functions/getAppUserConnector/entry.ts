@@ -29,7 +29,6 @@ const ENV_BY_PLATFORM: Record<string, string> = {
   pinterest: 'APP_USER_CONNECTOR_PINTEREST_ID',
   reddit: 'APP_USER_CONNECTOR_REDDIT_ID',
   youtube: 'APP_USER_CONNECTOR_YOUTUBE_ID',
-  patreon: 'APP_USER_CONNECTOR_PATREON_ID',
 };
 
 export default async function(req) {
