@@ -61,7 +61,8 @@
     "verify:entitlements-connections": "node scripts/verify-entitlement-connection-contract.mjs",
     "verify:no-active-convex": "node scripts/verify-no-active-convex-runtime.mjs",
     "verify:entitlement-obo": "node scripts/verify-entitlement-obo-contract.mjs",
-    "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs"
+    "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs",
+    "verify:native-connector-truth": "node scripts/verify-native-connector-truth.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.51",
