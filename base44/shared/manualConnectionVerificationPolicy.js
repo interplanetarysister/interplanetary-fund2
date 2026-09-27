@@ -39,3 +39,9 @@ export function directVerificationRequest(platform, credentials = {}) {
 export const DIRECT_VERIFICATION_ENDPOINTS = Object.freeze({
   bluesky: BLUESKY_SESSION_URL,
 });
+
+export async function verifyDirectConnection(platform, credentials = {}, fetchImpl = globalThis.fetch) {
+  const request = directVerificationRequest(platform, credentials);
+  const response = await fetchImpl(request.url, request.init);
+  if (!response?.ok) throw new Error(request.failureMessage);
+}

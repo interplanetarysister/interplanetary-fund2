@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import {
   DIRECT_VERIFICATION_ENDPOINTS,
   directVerificationRequest,
+  verifyDirectConnection,
 } from '../base44/shared/manualConnectionVerificationPolicy.js';
 
 const verify = fs.readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
@@ -13,7 +14,7 @@ const disconnect = fs.readFileSync('base44/functions/disconnectPlatformConnectio
 const card = fs.readFileSync('src/components/connections/ConnectionCard.jsx', 'utf8');
 
 assert.match(verify, /getCurrentAppUserConnection/);
-assert.match(provider, /directVerificationRequest/);
+assert.match(provider, /verifyDirectConnection/);
 assert.match(verify, /providerVerified = false/);
 assert.match(verify, /Token presence proves configuration only/);
 assert.match(verify, /if \(!providerVerified\) throw/);
@@ -47,14 +48,19 @@ for (const hostname of [
   'public-looking-rebind.example',
   'mastodon.social',
 ]) {
-  assert.throws(
-    () => directVerificationRequest('mastodon', {
+  let fetchCalls = 0;
+  await assert.rejects(
+    verifyDirectConnection('mastodon', {
       mastodon_instance: hostname,
       mastodon_access_token: 'must-not-be-used',
+    }, async () => {
+      fetchCalls += 1;
+      return { ok: true };
     }),
     /unavailable until private-network egress can be denied safely/i,
     `unsafe Mastodon hostname reached a request path: ${hostname}`,
   );
+  assert.equal(fetchCalls, 0, `fetch was called for unsafe Mastodon hostname: ${hostname}`);
 }
 assert.match(sync, /reauthorization_required/);
 assert.match(sync, /Scheduled provider verification succeeded/);

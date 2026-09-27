@@ -1,4 +1,4 @@
-import { directVerificationRequest } from './manualConnectionVerificationPolicy.js';
+import { verifyDirectConnection } from './manualConnectionVerificationPolicy.js';
 
 export const OAUTH_ENV: Record<string, string> = {
   gmail: 'APP_USER_CONNECTOR_GMAIL_ID',
@@ -33,7 +33,5 @@ export const OAUTH_ENV: Record<string, string> = {
 };
 
 export async function verifyManualConnection(connection: any) {
-  const request = directVerificationRequest(connection.platform, connection.credentials || {});
-  const res = await fetch(request.url, request.init);
-  if (!res.ok) throw new Error(request.failureMessage);
+  return verifyDirectConnection(connection.platform, connection.credentials || {});
 }
