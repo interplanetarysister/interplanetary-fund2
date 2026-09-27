@@ -30,6 +30,8 @@ assert.match(worker, /No run may create a Donation or mark a connection provider
 assert.match(worker, /Never sign in, submit forms, message people, make payments/);
 assert.match(worker, /external_only:\s*true/);
 assert.doesNotMatch(worker, /entities\.Donation\.create/);
+assert.match(recipes, /patreon:\s*\{\s*connect:\s*\{\s*preferred_transport:\s*'token'/);
+assert.doesNotMatch(oauthFinalize, /APP_USER_CONNECTOR_PATREON_ID/);
 assert.match(oauthFinalize, /const APP_CAPABILITIES = \['read_account', 'read_resources'\]/);
 assert.match(oauthFinalize, /const SOCIAL_CAPABILITIES =/);
 assert.match(oauthFinalize, /const CROWDFUNDING_CAPABILITIES =/);
