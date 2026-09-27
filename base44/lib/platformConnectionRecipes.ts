@@ -24,12 +24,34 @@ export const STATIC_CONNECTION_RECIPES = {
   buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },
   bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },
   mastodon: { connect: { preferred_transport: 'token', worker_key: 'mastodonDirect' } },
-  gofundme: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  kickstarter: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  indiegogo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  givesendgo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  spotfund: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
+  // Crowdfunding sites without a configured first-party connector still have a
+  // legitimate connection route: the owner links the campaign URL and grants
+  // read-only OBO access. Public browser observation is evidence/metrics only;
+  // it must never be promoted to transaction-level or custody evidence.
+  gofundme: {
+    connect: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection', capabilities: ['GET_METRICS'] },
+    read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' },
+  },
+  kickstarter: {
+    connect: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection', capabilities: ['GET_METRICS'] },
+    read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' },
+  },
+  indiegogo: {
+    connect: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection', capabilities: ['GET_METRICS'] },
+    read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' },
+  },
+  fundrazr: {
+    connect: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection', capabilities: ['GET_METRICS'] },
+    read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' },
+  },
+  givesendgo: {
+    connect: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection', capabilities: ['GET_METRICS'] },
+    read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' },
+  },
+  spotfund: {
+    connect: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection', capabilities: ['GET_METRICS'] },
+    read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' },
+  },
 };
 
 export function staticRecipe(platform, operation = 'connect') {
