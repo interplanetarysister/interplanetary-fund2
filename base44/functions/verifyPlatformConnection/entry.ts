@@ -29,6 +29,29 @@ export default async function(req) {
           throw new Error('Waiting for Ko-fi to verify the connection with a webhook event.');
         }
       } else {
+        // URL/browser-linked crowdfunding connections are valid tracking links,
+        // but they are not provider-authenticated accounts. Keep that distinction
+        // explicit instead of turning a healthy tracking link into an error.
+        const browserLinked = ['gofundme', 'kickstarter', 'indiegogo', 'fundrazr', 'givesendgo', 'spotfund'];
+        if (browserLinked.includes(connection.platform) && /^https:\/\//i.test(String(connection.external_url || ''))) {
+          const updated = await base44.entities.PlatformConnection.update(connection.id, {
+            status: 'connected',
+            verification_status: 'unverified',
+            capability_status: 'confirmed',
+            last_error: '',
+            history: [...(connection.history || []), {
+              at: now, event: 'health_check',
+              detail: 'Tracking link is ready; provider account authentication is not claimed'
+            }].slice(-30),
+          });
+          return Response.json({
+            working: true,
+            tracking_only: true,
+            provider_authenticated: false,
+            external_only: true,
+            connection: updated,
+          });
+        }
         throw new Error('This platform is linked for tracking; provider verification is not available.');
       }
 
