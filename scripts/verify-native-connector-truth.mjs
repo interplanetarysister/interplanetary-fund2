@@ -3,10 +3,20 @@ import { readFileSync } from 'node:fs';
 
 const catalog = readFileSync('src/components/connections/platformCatalog.js', 'utf8');
 const dialog = readFileSync('src/components/connections/ConnectDialog.jsx', 'utf8');
+const connectorLookup = readFileSync('base44/functions/getAppUserConnector/entry.ts', 'utf8');
+const connectorVerify = readFileSync('base44/functions/verifyAppUserConnector/entry.ts', 'utf8');
+const connectionVerification = readFileSync('base44/shared/connectionVerification.ts', 'utf8');
 const finalize = readFileSync('base44/functions/finalizeAppUserOAuthConnection/entry.ts', 'utf8');
 
 assert.match(catalog, /id: "tiktok"[\s\S]{0,500}Posting is not currently supported/);
 assert.doesNotMatch(catalog, /id: "tiktok"[\s\S]{0,220}post campaign content/);
+
+for (const env of ['THREADS','X','PINTEREST','REDDIT','YOUTUBE','PATREON']) {
+  assert.doesNotMatch(connectorLookup, new RegExp(`APP_USER_CONNECTOR_${env}_ID`));
+  assert.doesNotMatch(connectorVerify, new RegExp(`APP_USER_CONNECTOR_${env}_ID`));
+  assert.doesNotMatch(connectionVerification, new RegExp(`APP_USER_CONNECTOR_${env}_ID`));
+  assert.doesNotMatch(finalize, new RegExp(`APP_USER_CONNECTOR_${env}_ID`));
+}
 
 assert.match(dialog, /platform\.kind === "crowdfunding"/);
 assert.match(dialog, /platform\.kind === "social"/);
