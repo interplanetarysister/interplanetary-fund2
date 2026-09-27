@@ -43,7 +43,6 @@ const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities:
   pinterest: { env: 'APP_USER_CONNECTOR_PINTEREST_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
   reddit: { env: 'APP_USER_CONNECTOR_REDDIT_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
   youtube: { env: 'APP_USER_CONNECTOR_YOUTUBE_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
-  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding', requestedCapabilities: CROWDFUNDING_CAPABILITIES },
 };
 
 function providerCapabilities(oauth: any): string[] {
