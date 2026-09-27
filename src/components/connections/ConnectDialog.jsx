@@ -49,18 +49,23 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // One comprehensive IF consent per user/platform. This describes the full
-  // application-wide capability envelope; the provider still decides which
-  // permissions it can actually grant in its immediately-following auth step.
-  const permissionItems = usesProviderOAuth ? [
-    "Connect your account, profile, pages, campaigns, groups, channels, and other available resources",
-    "Create, update, publish, and manage campaign content and media when supported",
-    "Read and respond to comments, replies, mentions, messages, and other campaign interactions",
-    "Support outreach, discovery, follows, joins, communities, and engagement where the platform permits",
-    "Read available analytics, engagement, campaign, donation, payment, transaction, and balance information",
-    "Check available money activity and help with supported money-moving steps only when you separately allow them",
+  // Describe only the capability family relevant to this connection. The
+  // provider authorization screen remains authoritative for the exact scopes.
+  const permissionItems = !usesProviderOAuth ? [] : platform.kind === "crowdfunding" ? [
+    "Connect your fundraising account and available campaigns",
+    "Read campaign, supporter, donation, transaction, balance, and analytics information when the provider allows it",
+    "Help manage campaign information only where the provider and your settings allow it",
     "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
-  ] : [];
+  ] : platform.kind === "social" ? [
+    "Connect your account, profile, pages, groups, channels, and other available social resources",
+    "Create or manage campaign content only when this provider connection supports it",
+    "Read or respond to interactions and view analytics only when this provider connection supports it",
+    "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
+  ] : [
+    "Connect this app and its available resources",
+    "Read or update those resources only when the provider connection supports it",
+    "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
+  ];
 
   const connectWithProvider = async () => {
     setConnecting(true);
