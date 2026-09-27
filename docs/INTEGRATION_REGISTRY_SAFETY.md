@@ -25,6 +25,11 @@ The Base44 registry is an administrative view of provider state, not a source of
 - Only fresh `proven` recipes return an explicit transport order. Probation, stale, disabled, malformed, and expired recipes return no route and no implicit fallback—especially no browser fallback.
 - Evidence stores bounded codes, not raw provider responses, secrets, tokens, OTPs, browser sessions, or user data.
 
+## Direct provider verification and denial auditing
+
+- Direct credential verification may contact only fixed endpoints listed in the repository-owned verification policy, and redirects fail closed. User-controlled Mastodon hostnames are not fetched because Base44 exposes no verified DNS resolution-and-pinning/private-egress control for that request path. Mastodon stays unverified until a safe provider-authorized route exists.
+- `verifyAgentPlatformAccess` attempts an `AuditLog` service-role write for anonymous, invalid, and owner-forbidden requests after the Base44 client exists. Anonymous denial records contain fixed metadata only; request body values, credentials, and requested OBO identifiers are never copied. Audit persistence remains best-effort because the shared audit helper deliberately cannot make an already-denied access request succeed when the audit store is unavailable.
+
 ## Agent safety
 
 - Agent instructions must never ask an agent to bypass CAPTCHAs, rate limits, provider terms, safety controls, or human/provider authentication.

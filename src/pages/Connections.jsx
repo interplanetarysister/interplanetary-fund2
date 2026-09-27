@@ -8,6 +8,7 @@ import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import PageError from "@/components/PageError";
+import { connectionHealth } from "@/lib/connectionHealth";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -84,12 +85,8 @@ export default function Connections() {
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
   const savedIds = connections.map((c) => c.platform);
-  const verifiedConnections = connections.filter((connection) =>
-    connection.status === "connected" && connection.verification_status === "verified"
-  );
-  const attentionConnections = connections.filter((connection) =>
-    connection.status !== "connected" || connection.verification_status !== "verified"
-  );
+  const verifiedConnections = connections.filter((connection) => connectionHealth(connection).usable);
+  const attentionConnections = connections.filter((connection) => !connectionHealth(connection).usable);
   const workingCount = verifiedConnections.length;
   const discoveredTotals = syncResult?.discovered_totals ||
     (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);

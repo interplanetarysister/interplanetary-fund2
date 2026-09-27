@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { boundedStringList } from '../../shared/integrationInputPolicy.js';
 import { normalizeIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
 
 const ACTIONS = new Set(['upsert', 'authorize_agent', 'revoke_agent', 'reauthorize', 'revoke', 'change_credential_ref']);
@@ -8,11 +9,7 @@ const AUTH_TYPES = new Set(['oauth', 'api_key', 'webhook_secret', 'env_config', 
 const ENVIRONMENTS = new Set(['production', 'development', 'sandbox']);
 
 const boundedString = (value, max = 300) => typeof value === 'string' ? value.trim().slice(0, max) : '';
-const boundedList = (value, maxItems = 40, maxLength = 128) => {
-  if (!Array.isArray(value) || value.length > maxItems) return null;
-  const result = value.map((item) => boundedString(item, maxLength));
-  return result.every(Boolean) ? [...new Set(result)] : null;
-};
+const boundedList = boundedStringList;
 
 // Admin-only management of the Platform Access Registry. Every mutation is
 // audit-logged. Never accepts or stores secret values — only reference names.
@@ -48,9 +45,9 @@ export default async function(req) {
     const audit = (a) => logAudit(base44, { ...a, actor_user_id: user.id, target_type: 'PlatformAccessRegistry', target_id: entry ? entry.id : '' });
 
     if (action === 'upsert') {
-      const secretRefs = body.secret_refs === undefined ? (entry?.secret_refs || []) : boundedList(body.secret_refs);
-      const authorizedAgents = body.authorized_agents === undefined ? (entry?.authorized_agents || []) : boundedList(body.authorized_agents);
-      const dependencies = body.dependencies === undefined ? (entry?.dependencies || []) : boundedList(body.dependencies);
+      const secretRefs = boundedList(body.secret_refs === undefined ? (entry?.secret_refs || []) : body.secret_refs);
+      const authorizedAgents = boundedList(body.authorized_agents === undefined ? (entry?.authorized_agents || []) : body.authorized_agents);
+      const dependencies = boundedList(body.dependencies === undefined ? (entry?.dependencies || []) : body.dependencies);
       const invalidKind = body.integration_kind !== undefined && !INTEGRATION_KINDS.has(body.integration_kind);
       const invalidAuth = body.auth_type !== undefined && !AUTH_TYPES.has(body.auth_type);
       const invalidEnvironment = body.environment !== undefined && !ENVIRONMENTS.has(body.environment);
@@ -82,7 +79,8 @@ export default async function(req) {
     }
 
     if (action === 'authorize_agent' || action === 'revoke_agent') {
-      const agent = boundedString(body.agent_name, 128);
+      const agentList = boundedList([body.agent_name]);
+      const agent = agentList?.[0] || '';
       if (!agent) return Response.json({ error: 'agent_name required' }, { status: 400 });
       const list = boundedList(entry.authorized_agents || []);
       if (!list) return Response.json({ error: 'Stored integration metadata requires repair.' }, { status: 409 });

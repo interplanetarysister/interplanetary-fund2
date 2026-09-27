@@ -15,6 +15,8 @@ import {
   recipeTransportOrder,
   sanitizedCapability,
 } from '../base44/shared/platformConnectionRecipePolicy.js';
+import { boundedStringList } from '../base44/shared/integrationInputPolicy.js';
+import { connectionHealth } from '../src/lib/connectionHealth.js';
 import {
   createSettlementLock,
   parseHealthResponse,
@@ -51,6 +53,27 @@ assert.match(agentAccess, /normalizeIntegrationStatus\(entry\.status\)/);
 assert.match(agentAccess, /authentication required/);
 assert.match(agentAccess, /oboUserId !== user\.id/);
 assert.doesNotMatch(agentAccess, /error:\s*error\.message/);
+assert.match(agentAccess, /actor_user_id: 'anonymous'/);
+assert.match(agentAccess, /denial_reason: 'authentication_required'/);
+assert.match(agentAccess, /denial_reason: 'owner_authorization_required'/);
+assert.ok(
+  agentAccess.indexOf("denial_reason: 'authentication_required'")
+    < agentAccess.indexOf("reason: 'authentication required' }, { status: 401"),
+  'anonymous denial must be audited before the 401 response',
+);
+assert.ok(
+  agentAccess.indexOf("denial_reason: 'owner_authorization_required'")
+    < agentAccess.indexOf("reason: 'owner authorization required' }, { status: 403"),
+  'forbidden OBO denial must be audited before the 403 response',
+);
+
+// Credential references and other registry lists reject invalid items whole;
+// they never truncate an overlong value into a different reference.
+assert.deepEqual(boundedStringList([' SECRET_A ', 'SECRET_A', 'SECRET_B']), ['SECRET_A', 'SECRET_B']);
+assert.equal(boundedStringList(['x'.repeat(129)]), null);
+assert.equal(boundedStringList(['valid', 42]), null);
+assert.equal(boundedStringList(Array.from({ length: 41 }, (_, i) => `ref-${i}`)), null);
+assert.match(manage, /boundedStringList/);
 
 // Strict bounded response parsing and hostile-value containment.
 const goodRow = {
@@ -126,6 +149,8 @@ const fresh = { id: 'r1', status: 'proven', preferred_transport: 'oauth', fallba
 assert.deepEqual(recipeTransportOrder(fresh), ['oauth', 'manual']);
 assert.deepEqual(recipeTransportOrder({ ...fresh, status: 'stale' }), []);
 assert.deepEqual(recipeTransportOrder({ ...fresh, last_verified_at: '2020-01-01T00:00:00.000Z' }), []);
+assert.deepEqual(recipeTransportOrder({ ...fresh, last_verified_at: undefined }), []);
+assert.deepEqual(recipeTransportOrder({ ...fresh, last_verified_at: new Date(Date.now() + 60_000).toISOString() }), []);
 const publicView = sanitizedCapability(fresh, 'facebook', 'connect');
 assert.equal(publicView.available, true);
 assert.equal('worker_key' in publicView, false);
@@ -138,8 +163,15 @@ assert.doesNotMatch(resolver, /public_browser/);
 
 // Connected counts/groups are derived only from both transport and provider
 // verification. Observations remain external-only and never create donations.
-assert.match(connections, /connection\.status === "connected" && connection\.verification_status === "verified"/);
+assert.match(connections, /connectionHealth\(connection\)\.usable/);
 assert.match(connections, /Only provider-verified connections appear here/);
+const now = Date.now();
+const freshVerifiedConnection = {
+  status: 'connected', verification_status: 'verified', last_synced: new Date(now).toISOString(), last_error: '',
+};
+assert.equal(connectionHealth(freshVerifiedConnection, now).usable, true);
+assert.equal(connectionHealth({ ...freshVerifiedConnection, last_error: 'provider failed' }, now).usable, false);
+assert.equal(connectionHealth({ ...freshVerifiedConnection, last_synced: new Date(now - (8 * 24 * 60 * 60 * 1000)).toISOString() }, now).usable, false);
 
 // Explicitly reject the unsafe PlatformAdminSkill/Gatebreaker proposal.
 for (const forbidden of ['Gatebreaker', 'simulate CAPTCHA solvers', 'bot farm', 'Geo-Location Spoofing', 'X-Admin-Role', 'Gmail OTP']) {

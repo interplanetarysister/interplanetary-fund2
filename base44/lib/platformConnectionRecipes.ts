@@ -1,3 +1,5 @@
+import { recipeTransportOrder } from '../shared/platformConnectionRecipePolicy.js';
+
 // Shared platform-level linkage knowledge.
 // This registry contains no user credentials, OAuth tokens, browser sessions, account IDs,
 // campaign IDs, or user consent. It lets later connection attempts reuse a proven route
@@ -31,10 +33,7 @@ export function staticRecipe(platform, operation = 'connect') {
 }
 
 export function orderedTransports(recipe) {
-  const preferred = recipe?.preferred_transport;
-  const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  // Never manufacture a fallback order. Only explicitly stored, currently
-  // verified methods may be attempted by a caller.
-  if (recipe?.status !== 'proven') return [];
-  return [...new Set([preferred, ...fallbacks].filter((item) => TRANSPORT_PRIORITY.includes(item)))];
+  // The shared policy owns both the allowlist and the 30-day evidence window.
+  // A missing, future, invalid, or stale timestamp must fail closed.
+  return recipeTransportOrder(recipe);
 }

@@ -17,7 +17,21 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
     const user = await base44.auth.me().catch(() => null);
-    if (!user?.id) return Response.json({ authorized: false, reason: 'authentication required' }, { status: 401 });
+    if (!user?.id) {
+      // The backend client exposes service-role entity writes even when there
+      // is no authenticated app user. Persist only fixed denial metadata: do
+      // not parse or copy caller-controlled fields into this audit record.
+      await logAudit(base44, {
+        action: 'agent_integration_access',
+        actor_user_id: 'anonymous',
+        target_type: 'PlatformAccessRegistry',
+        target_id: '',
+        detail: 'Denied agent platform access: authentication required.',
+        status: 'failure',
+        metadata: { authenticated: false, authorized: false, denial_reason: 'authentication_required' },
+      });
+      return Response.json({ authorized: false, reason: 'authentication required' }, { status: 401 });
+    }
 
     const body = await req.json().catch(() => null);
     const agentName = typeof body?.agent_name === 'string' ? body.agent_name.trim().slice(0, 128) : '';
@@ -25,9 +39,27 @@ export default async function(req) {
     const task = typeof body?.task === 'string' ? body.task.trim().slice(0, 128) : 'access';
     const oboUserId = typeof body?.obo_user_id === 'string' ? body.obo_user_id.trim().slice(0, 128) : '';
     if (!agentName || platform === 'unknown') {
+      await logAudit(base44, {
+        action: 'agent_integration_access',
+        actor_user_id: user.id,
+        target_type: 'PlatformAccessRegistry',
+        target_id: '',
+        detail: 'Denied agent platform access: invalid request.',
+        status: 'failure',
+        metadata: { authenticated: true, authorized: false, denial_reason: 'invalid_request' },
+      });
       return Response.json({ error: 'agent_name and platform are required' }, { status: 400 });
     }
     if (user.role !== 'admin' && (!oboUserId || oboUserId !== user.id)) {
+      await logAudit(base44, {
+        action: 'agent_integration_access',
+        actor_user_id: user.id,
+        target_type: 'PlatformAccessRegistry',
+        target_id: '',
+        detail: 'Denied agent platform access: owner authorization required.',
+        status: 'failure',
+        metadata: { authenticated: true, authorized: false, denial_reason: 'owner_authorization_required' },
+      });
       return Response.json({ authorized: false, reason: 'owner authorization required' }, { status: 403 });
     }
 
