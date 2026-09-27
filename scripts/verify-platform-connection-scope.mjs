@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const recipes = readFileSync('base44/lib/platformConnectionRecipes.ts', 'utf8');
 const resolver = readFileSync('base44/functions/resolvePlatformConnectionRecipe/entry.ts', 'utf8');
 const worker = readFileSync('base44/functions/runBrowserConnection/entry.ts', 'utf8');
+const verify = readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
 const sync = readFileSync('base44/functions/syncExternalFunds/entry.ts', 'utf8');
 
 const browserCrowdfunding = ['gofundme','kickstarter','indiegogo','fundrazr','givesendgo','spotfund'];
@@ -28,6 +29,10 @@ assert.match(worker, /No run may create a Donation or mark a connection provider
 assert.match(worker, /Never sign in, submit forms, message people, make payments/);
 assert.match(worker, /external_only:\s*true/);
 assert.doesNotMatch(worker, /entities\.Donation\.create/);
+assert.match(verify, /tracking_only:\s*true/);
+assert.match(verify, /provider_authenticated:\s*false/);
+assert.match(verify, /verification_status:\s*'unverified'/);
+assert.match(verify, /external_only:\s*true/);
 assert.match(sync, /recordCanonicalExternalObservation/);
 assert.match(sync, /withdrawable_imported:\s*0/);
 
