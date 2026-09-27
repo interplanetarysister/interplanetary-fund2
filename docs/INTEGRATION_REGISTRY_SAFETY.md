@@ -31,6 +31,7 @@ The Base44 registry is an administrative view of provider state, not a source of
 - An app-user access token proves authorization material is present, not that a provider account is reachable or verified. Finalization records `disconnected`/`unverified` until a supported live provider probe succeeds.
 - Capability requests are provider-specific and least-privilege. A general connection/share consent never includes transfer or payout authority and never enables automation. Financial observation and money movement require separate provider support, user authorization, execution-time checks, idempotency, and audit evidence.
 - `PlatformConnection` trusted-state writes are server/admin owned. Authenticated-user functions may use service-role writes only after authenticating the caller and validating connection/campaign ownership; owners cannot directly manufacture status, verification, capabilities, consent, automation, or credential state through entity CRUD.
+- Every owner-facing response produced after a service-role connection read/write must pass through the shared credential redactor. Success and failure responses preserve only non-secret identifiers plus boolean secret-presence metadata; raw tokens, app passwords, and webhook secrets never enter frontend state.
 
 ## Direct provider verification and denial auditing
 

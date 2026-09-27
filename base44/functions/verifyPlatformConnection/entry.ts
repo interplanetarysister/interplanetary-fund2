@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
+import { redactPlatformConnection } from '../../shared/credentialRedaction.js';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
 const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
@@ -49,7 +50,7 @@ export default async function(req) {
         last_error: '',
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
-      return Response.json({ working: true, provider_verified: true, connection: updated });
+      return Response.json({ working: true, provider_verified: true, connection: redactPlatformConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
       const reauth = reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
@@ -61,7 +62,7 @@ export default async function(req) {
         capability_status: reauth ? 'reauthorization_required' : 'unknown',
         history: [...(connection.history || []), { at: now, event: 'health_check_failed', detail: message }].slice(-30),
       });
-      return Response.json({ working: false, provider_verified: false, connection: updated, error: message });
+      return Response.json({ working: false, provider_verified: false, connection: redactPlatformConnection(updated), error: message });
     }
   } catch (error) {
     console.error('verifyPlatformConnection error:', error?.name || 'UnknownError');

@@ -2,6 +2,9 @@
 // validator, the agent-access gatekeeper, and the admin management function.
 // Never imports or handles secret values — only reference names and metadata.
 import { normalizeIntegrationStatus } from './integrationStatusPolicy.js';
+import { SECRET_FIELDS, redactCredentials } from './credentialRedaction.js';
+
+export { SECRET_FIELDS, redactCredentials };
 
 export const STATUS_LABEL = {
   ACTIVE: "Active",
@@ -63,26 +66,6 @@ export async function emitIntegrationAlert(sr, entry, title, body) {
   } catch (e) {
     console.error("emitIntegrationAlert failed:", e?.name || "UnknownError");
   }
-}
-
-// Credential fields that are actual secrets (never returned to the frontend,
-// never logged). Non-secret identifiers (handles, instances) stay visible.
-export const SECRET_FIELDS = [
-  "kofi_verification_token",
-  "bluesky_app_password",
-  "mastodon_access_token",
-];
-
-// Strip secret values from a credentials object and report which secrets are
-// set, so the UI can show "set — enter new to replace" without ever holding
-// the raw value in frontend state.
-export function redactCredentials(creds) {
-  const c = creds || {};
-  const meta = {};
-  for (const f of SECRET_FIELDS) meta[f + "_set"] = !!c[f];
-  const redacted = { ...c };
-  for (const f of SECRET_FIELDS) if (redacted[f]) redacted[f] = "";
-  return { credentials: redacted, credentials_meta: meta };
 }
 
 // Merge incoming credential edits onto existing ones. Secret fields are only
