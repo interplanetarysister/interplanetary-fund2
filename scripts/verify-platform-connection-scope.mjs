@@ -34,6 +34,8 @@ assert.doesNotMatch(worker, /entities\.Donation\.create/);
 assert.match(catalog, /id: "patreon"[\s\S]{0,350}setupKind: "token"/);
 assert.match(catalog, /id: "tiktok"[\s\S]{0,500}Posting is not currently supported/);
 assert.doesNotMatch(catalog, /id: "tiktok"[\s\S]{0,220}post campaign content/);
+assert.doesNotMatch(recipes, /worker_key:\s*'patreonApi'/);
+assert.doesNotMatch(resolver, /worker_key:'patreonApi'/);
 assert.match(recipes, /patreon:\s*\{\s*connect:\s*\{\s*preferred_transport:\s*'token'/);
 assert.doesNotMatch(oauthFinalize, /APP_USER_CONNECTOR_PATREON_ID/);
 assert.match(oauthFinalize, /const APP_CAPABILITIES = \['read_account', 'read_resources'\]/);
