@@ -1,47 +1,49 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const COMMON_IF_CAPABILITIES = [
-  'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
-  'create_post', 'edit_post', 'delete_own_post', 'upload_media',
+const APP_CAPABILITIES = ['read_account', 'read_resources'];
+const SOCIAL_CAPABILITIES = [
+  'read_account', 'create_post', 'edit_post', 'delete_own_post', 'upload_media',
   'read_interactions', 'comment', 'reply_comment', 'read_messages', 'reply_message',
   'discover', 'follow', 'join', 'read_analytics',
+];
+const CROWDFUNDING_CAPABILITIES = [
+  'read_account', 'read_campaign', 'manage_campaign', 'read_analytics',
   'read_donations', 'read_payments', 'read_transactions', 'read_balance',
-  'subscribe_events', 'reconcile_external_funds', 'settlement_status', 'transfer_or_payout',
+  'subscribe_events', 'reconcile_external_funds', 'settlement_status',
 ];
 
 const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities: string[] }> = {
-  gmail: { env: 'APP_USER_CONNECTOR_GMAIL_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googledrive: { env: 'APP_USER_CONNECTOR_GOOGLEDRIVE_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googlecalendar: { env: 'APP_USER_CONNECTOR_GOOGLECALENDAR_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  google_contacts: { env: 'APP_USER_CONNECTOR_GOOGLE_CONTACTS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  google_photos: { env: 'APP_USER_CONNECTOR_GOOGLE_PHOTOS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googlesheets: { env: 'APP_USER_CONNECTOR_GOOGLESHEETS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googledocs: { env: 'APP_USER_CONNECTOR_GOOGLEDOCS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googleforms: { env: 'APP_USER_CONNECTOR_GOOGLEFORMS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googletasks: { env: 'APP_USER_CONNECTOR_GOOGLETASKS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  slack: { env: 'APP_USER_CONNECTOR_SLACK_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  notion: { env: 'APP_USER_CONNECTOR_NOTION_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  outlook: { env: 'APP_USER_CONNECTOR_OUTLOOK_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  microsoft_teams: { env: 'APP_USER_CONNECTOR_MICROSOFT_TEAMS_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  one_drive: { env: 'APP_USER_CONNECTOR_ONE_DRIVE_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  dropbox: { env: 'APP_USER_CONNECTOR_DROPBOX_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  github: { env: 'APP_USER_CONNECTOR_GITHUB_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  gitlab: { env: 'APP_USER_CONNECTOR_GITLAB_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  gmail: { env: 'APP_USER_CONNECTOR_GMAIL_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  googledrive: { env: 'APP_USER_CONNECTOR_GOOGLEDRIVE_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  googlecalendar: { env: 'APP_USER_CONNECTOR_GOOGLECALENDAR_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  google_contacts: { env: 'APP_USER_CONNECTOR_GOOGLE_CONTACTS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  google_photos: { env: 'APP_USER_CONNECTOR_GOOGLE_PHOTOS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  googlesheets: { env: 'APP_USER_CONNECTOR_GOOGLESHEETS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  googledocs: { env: 'APP_USER_CONNECTOR_GOOGLEDOCS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  googleforms: { env: 'APP_USER_CONNECTOR_GOOGLEFORMS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  googletasks: { env: 'APP_USER_CONNECTOR_GOOGLETASKS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  slack: { env: 'APP_USER_CONNECTOR_SLACK_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  notion: { env: 'APP_USER_CONNECTOR_NOTION_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  outlook: { env: 'APP_USER_CONNECTOR_OUTLOOK_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  microsoft_teams: { env: 'APP_USER_CONNECTOR_MICROSOFT_TEAMS_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  one_drive: { env: 'APP_USER_CONNECTOR_ONE_DRIVE_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  dropbox: { env: 'APP_USER_CONNECTOR_DROPBOX_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  github: { env: 'APP_USER_CONNECTOR_GITHUB_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
+  gitlab: { env: 'APP_USER_CONNECTOR_GITLAB_ID', kind: 'app', requestedCapabilities: APP_CAPABILITIES },
 
-  // Request the complete foreseeable IF capability envelope once. These are
-  // desired capabilities only; provider-reported scopes remain the sole source
-  // for what is actually granted and usable.
-  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  threads: { env: 'APP_USER_CONNECTOR_THREADS_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  x: { env: 'APP_USER_CONNECTOR_X_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  pinterest: { env: 'APP_USER_CONNECTOR_PINTEREST_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  reddit: { env: 'APP_USER_CONNECTOR_REDDIT_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  youtube: { env: 'APP_USER_CONNECTOR_YOUTUBE_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  // Request only the capability family appropriate to the connection kind.
+  // Provider-reported scopes remain authoritative for what is actually usable.
+  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  threads: { env: 'APP_USER_CONNECTOR_THREADS_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  x: { env: 'APP_USER_CONNECTOR_X_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  pinterest: { env: 'APP_USER_CONNECTOR_PINTEREST_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  reddit: { env: 'APP_USER_CONNECTOR_REDDIT_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  youtube: { env: 'APP_USER_CONNECTOR_YOUTUBE_ID', kind: 'social', requestedCapabilities: SOCIAL_CAPABILITIES },
+  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding', requestedCapabilities: CROWDFUNDING_CAPABILITIES },
 };
 
 function providerCapabilities(oauth: any): string[] {
