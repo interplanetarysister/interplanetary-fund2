@@ -127,12 +127,12 @@ export const CROWDFUNDING_PLATFORMS = [
     color: "#ff424d",
     icon: "🎨",
     tagline: "Connect Patreon to keep your supporter totals together.",
-    setupKind: "oauth",
+    setupKind: "token",
     steps: [
-      { id: "oauth",  label: "Sign in with Patreon", hint: "Patreon will ask you to sign in and approve the connection. We never see your password." },
-      { id: "link",   label: "Link to a campaign (optional)", hint: "Pledge totals will roll up into this campaign." },
+      { id: "token", label: "Enter your Patreon connection code", hint: "Use a Patreon API access code for Interplanetary Fund. Never enter your Patreon password." },
+      { id: "link", label: "Link to a campaign (optional)", hint: "Verified Patreon observations can be associated with this campaign." },
     ],
-    api: "Sign in to Patreon and approve the connection.",
+    api: "Connect Patreon with an authorized API access code.",
   },
   {
     id: "spotfund",
@@ -274,13 +274,13 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#010101",
     icon: "🎵",
-    tagline: "Sign in with TikTok to post campaign content to your audience.",
+    tagline: "Connect TikTok to view your profile and audience stats.",
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with TikTok", hint: "TikTok will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
+      { id: "auto",  label: "Posting availability", hint: "The current TikTok connection supports profile and stats. Posting is unavailable until the provider connector supports it." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Connect TikTok for profile and stats. Posting is not currently supported.",
   },
   {
     id: "pinterest",
