@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const recipes = readFileSync('base44/lib/platformConnectionRecipes.ts', 'utf8');
 const resolver = readFileSync('base44/functions/resolvePlatformConnectionRecipe/entry.ts', 'utf8');
 const worker = readFileSync('base44/functions/runBrowserConnection/entry.ts', 'utf8');
+const catalog = readFileSync('src/components/connections/platformCatalog.js', 'utf8');
 const oauthFinalize = readFileSync('base44/functions/finalizeAppUserOAuthConnection/entry.ts', 'utf8');
 const verify = readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
 const sync = readFileSync('base44/functions/syncExternalFunds/entry.ts', 'utf8');
@@ -30,6 +31,9 @@ assert.match(worker, /No run may create a Donation or mark a connection provider
 assert.match(worker, /Never sign in, submit forms, message people, make payments/);
 assert.match(worker, /external_only:\s*true/);
 assert.doesNotMatch(worker, /entities\.Donation\.create/);
+assert.match(catalog, /id: "patreon"[\s\S]{0,350}setupKind: "token"/);
+assert.match(catalog, /id: "tiktok"[\s\S]{0,500}Posting is not currently supported/);
+assert.doesNotMatch(catalog, /id: "tiktok"[\s\S]{0,220}post campaign content/);
 assert.match(recipes, /patreon:\s*\{\s*connect:\s*\{\s*preferred_transport:\s*'token'/);
 assert.doesNotMatch(oauthFinalize, /APP_USER_CONNECTOR_PATREON_ID/);
 assert.match(oauthFinalize, /const APP_CAPABILITIES = \['read_account', 'read_resources'\]/);
