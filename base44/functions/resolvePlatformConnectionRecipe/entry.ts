@@ -12,12 +12,12 @@ const STATIC: Record<string, Record<string, any>> = {
   buymeacoffee:{connect:{preferred_transport:'token',worker_key:'buyMeACoffeeApi'}},
   bluesky:{connect:{preferred_transport:'token',worker_key:'blueskyDirect'}},
   mastodon:{connect:{preferred_transport:'token',worker_key:'mastodonDirect'}},
-  gofundme:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  kickstarter:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  indiegogo:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  fundrazr:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  givesendgo:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  spotfund:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
+  gofundme:{connect:{preferred_transport:'public_browser',worker_key:'runBrowserConnection',required_capabilities:['GET_METRICS']},read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
+  kickstarter:{connect:{preferred_transport:'public_browser',worker_key:'runBrowserConnection',required_capabilities:['GET_METRICS']},read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
+  indiegogo:{connect:{preferred_transport:'public_browser',worker_key:'runBrowserConnection',required_capabilities:['GET_METRICS']},read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
+  fundrazr:{connect:{preferred_transport:'public_browser',worker_key:'runBrowserConnection',required_capabilities:['GET_METRICS']},read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
+  givesendgo:{connect:{preferred_transport:'public_browser',worker_key:'runBrowserConnection',required_capabilities:['GET_METRICS']},read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
+  spotfund:{connect:{preferred_transport:'public_browser',worker_key:'runBrowserConnection',required_capabilities:['GET_METRICS']},read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
 };
 const seedFor=(platform:string,operation:string)=>STATIC[platform]?.[operation]||null;
 const order=(r:any)=>[...new Set([r?.preferred_transport,...(Array.isArray(r?.fallback_transports)?r.fallback_transports:[]),...TRANSPORT_PRIORITY].filter(Boolean))];
