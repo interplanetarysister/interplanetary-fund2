@@ -274,13 +274,13 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#010101",
     icon: "🎵",
-    tagline: "Sign in with TikTok to post campaign content to your audience.",
+    tagline: "Connect TikTok to view your profile and audience stats.",
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with TikTok", hint: "TikTok will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
+      { id: "auto",  label: "Posting availability", hint: "The current TikTok connection supports profile and stats. Posting is unavailable until the provider connector supports it." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Connect TikTok for profile and stats. Posting is not currently supported.",
   },
   {
     id: "pinterest",
