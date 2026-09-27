@@ -81,7 +81,7 @@ export default async function(req) {
           external_post_url: url,
           error: '',
         });
-        await base44.entities.PlatformConnection.update(connection.id, {
+        await sr.entities.PlatformConnection.update(connection.id, {
           status: 'connected',
           verification_status: 'verified',
           last_synced: new Date().toISOString(),

@@ -25,9 +25,16 @@ The Base44 registry is an administrative view of provider state, not a source of
 - Only fresh `proven` recipes return an explicit transport order. Probation, stale, disabled, malformed, and expired recipes return no route and no implicit fallback—especially no browser fallback.
 - Evidence stores bounded codes, not raw provider responses, secrets, tokens, OTPs, browser sessions, or user data.
 
+## App-user OAuth boundary
+
+- Internal Base44 connector identifiers are operational metadata and are never returned to ordinary clients. The documented backend connector surface currently supports app-scoped token retrieval, not server-owned per-user OAuth launch URLs. Until Base44 exposes a supported server-owned app-user launch method, new app-user OAuth launches fail closed; do not restore client-side identifier disclosure.
+- An app-user access token proves authorization material is present, not that a provider account is reachable or verified. Finalization records `disconnected`/`unverified` until a supported live provider probe succeeds.
+- Capability requests are provider-specific and least-privilege. A general connection/share consent never includes transfer or payout authority and never enables automation. Financial observation and money movement require separate provider support, user authorization, execution-time checks, idempotency, and audit evidence.
+- `PlatformConnection` trusted-state writes are server/admin owned. Authenticated-user functions may use service-role writes only after authenticating the caller and validating connection/campaign ownership; owners cannot directly manufacture status, verification, capabilities, consent, automation, or credential state through entity CRUD.
+
 ## Direct provider verification and denial auditing
 
-- Direct credential verification may contact only fixed endpoints listed in the repository-owned verification policy, and redirects fail closed. User-controlled Mastodon hostnames are not fetched because Base44 exposes no verified DNS resolution-and-pinning/private-egress control for that request path. Mastodon stays unverified until a safe provider-authorized route exists.
+- Direct credential verification, publishing, and mirroring may contact only fixed endpoints listed in repository-owned policy, and redirects fail closed. User-controlled Mastodon hostnames are not fetched because Base44 exposes no verified DNS resolution-and-pinning/private-egress control for those request paths. Mastodon verification, direct publishing, and mirroring stay unavailable until a safe provider-authorized route exists.
 - `verifyAgentPlatformAccess` attempts an `AuditLog` service-role write for anonymous, invalid, and owner-forbidden requests after the Base44 client exists. Anonymous denial records contain fixed metadata only; request body values, credentials, and requested OBO identifiers are never copied. Audit persistence remains best-effort because the shared audit helper deliberately cannot make an already-denied access request succeed when the audit store is unavailable.
 
 ## Agent safety

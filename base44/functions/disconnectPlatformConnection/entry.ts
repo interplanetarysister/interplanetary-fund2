@@ -35,6 +35,7 @@ const ENV_BY_PLATFORM: Record<string, string> = {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    const sr = base44.asServiceRole;
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -49,7 +50,7 @@ export default async function(req) {
 
     // Remove agent/OBO authority first. Every side-effect path re-checks these
     // fields, so revocation takes effect before provider disconnect is attempted.
-    await base44.entities.PlatformConnection.update(connection.id, {
+    await sr.entities.PlatformConnection.update(connection.id, {
       status: 'disconnected',
       verification_status: 'unverified',
       capability_status: 'unknown',
@@ -89,7 +90,7 @@ export default async function(req) {
       }
     }
 
-    await base44.entities.PlatformConnection.delete(connection.id);
+    await sr.entities.PlatformConnection.delete(connection.id);
     return Response.json({ disconnected: true, provider_disconnected: providerDisconnected });
   } catch (error) {
     console.error('disconnectPlatformConnection error:', error?.message || error);

@@ -17,17 +17,19 @@ for (const provider of providers) {
   assert.match(finalize, new RegExp('\\b'+provider+':'), provider+' missing OAuth finalization');
   assert.match(disconnect, new RegExp('\\b'+provider+':'), provider+' missing central revocation');
 }
-assert.match(dialog, /connectAppUser/);
-for (const source of [dialog, connections, app]) {
+assert.doesNotMatch(get, /connector_id/);
+assert.match(get, /launch_available: false/);
+assert.doesNotMatch(dialog, /connectAppUser/);
+for (const source of [connections, app]) {
   assert.match(source, /ifund_pending_platform_connection/);
 }
-assert.match(dialog, /userId:\s*me\.id/);
-assert.match(dialog, /sharedAgentConsent:\s*permissionAccepted/);
 assert.match(connections, /pending\.userId === me\.id/);
 assert.match(connections, /Date\.now\(\) - pending\.startedAt < 20 \* 60 \* 1000/);
 assert.match(app, /me\?\.id === pending\.userId/);
 assert.doesNotMatch(dialog, /ifund_pending_oauth_platform/);
 assert.match(finalize, /providerCapabilities/);
+assert.match(finalize, /authorization_present: true/);
+assert.match(finalize, /verification_status: 'unverified'/);
 assert.match(finalize, /capability_status: confirmed\.length \? 'confirmed' : 'unknown'/);
 assert.doesNotMatch(finalize, /granted_capabilities:\s*cfg\.requestedCapabilities/);
 assert.match(card, /disconnectPlatformConnection/);

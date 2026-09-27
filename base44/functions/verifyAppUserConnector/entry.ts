@@ -49,7 +49,9 @@ export default async function(req) {
     try {
       const connection = await base44.asServiceRole.connectors.getCurrentAppUserConnection(connectorId);
       return Response.json({
-        connected: !!connection?.accessToken,
+        authorization_present: !!connection?.accessToken,
+        connected: false,
+        provider_verified: false,
         configured: true,
       });
     } catch {

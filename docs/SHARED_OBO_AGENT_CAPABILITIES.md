@@ -5,7 +5,7 @@ This contract captures the immediate implementation requirements for connected p
 ## Connection experience
 - A platform is connected once per user, not once per agent.
 - The platform picker shows connection health with a small green indicator for a verified working connection and a simple needs-attention/not-connected state otherwise.
-- First connection launches one provider authorization flow requesting all applicable supported capabilities in plain language: read, write, post, comment, message, follow/join, donation/balance status, and withdrawal/transfer.
+- First connection requests only the applicable provider-specific capabilities in plain language. General connection consent may cover read, write, post, comment, message, follow/join, and donation/balance observation where supported; withdrawal/transfer authority is always a separate authorization.
 - OAuth scopes, APIs, PATs, tokens, refresh and webhook details are implementation concerns and are not exposed as required user knowledge.
 - The connection persists until the user disconnects it, except when the provider expires/revokes authorization or requires reauthorization.
 - Never mark an unsupported capability as granted. Provider capability discovery and actual authorization are authoritative.
@@ -46,8 +46,8 @@ Use the existing implementation as the starting point; do not rebuild the connec
 | Requirement | Current implementation to reference | Refinement target |
 |---|---|---|
 | Connections page / platform selection | `src/pages/Connections.jsx` | Replace/augment the current separate catalog cards with a compact selectable/dropdown-style platform experience. Keep existing catalog data and connection loading. A verified connection should show the small green dot; disconnected and needs-attention states remain simple. |
-| First-time connection UI | `src/components/connections/ConnectDialog.jsx` | Keep the existing provider OAuth redirect flow, but before redirect show one plain-language permission window listing the applicable capabilities requested for that provider. User accepts once; do not ask them to understand tokens/scopes/PATs. |
-| OAuth finalization | `base44/functions/finalizeAppUserOAuthConnection/entry.ts` | Persist the capabilities actually requested/granted/known supported. Do not assume a capability merely because it appears in our desired capability catalog. Provider response/discovery is authoritative. |
+| First-time connection UI | `src/components/connections/ConnectDialog.jsx` | Show one plain-language permission window listing the provider-specific capabilities. Launch OAuth only through a supported server-owned route; until Base44 exposes one, fail closed rather than disclosing an internal connector identifier. |
+| OAuth finalization | `base44/functions/finalizeAppUserOAuthConnection/entry.ts` | Persist the capabilities actually requested/granted/known supported. Token presence is authorization/configuration evidence only and leaves the connection unverified until a live provider check succeeds. |
 | Connection record | `base44/entities/PlatformConnection.jsonc` | Use `obo_consent` + `agent_access` as the shared capability contract. Preserve existing status, verification, provenance, automation and credential security fields. |
 | Connected status | `src/components/connections/ConnectionCard.jsx` | Preserve current health/provenance behavior and use the green dot only for a verified working connection. |
 | Existing AI publishing consent | `src/components/connections/AIConsentCard.jsx` and current `ai_publishing_consent` checks | Do not silently discard this control. Reconcile it with connection-level OBO consent so old users are migrated safely and the user sees one understandable permission model. |

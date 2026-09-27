@@ -8,6 +8,34 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Check } from "lucide-react";
 import CredentialFields from "./CredentialFields";
 
+const MESSAGING_PLATFORMS = new Set(["gmail", "slack", "outlook", "microsoft_teams"]);
+
+function providerPermissionItems(platform) {
+  if (platform.kind === "crowdfunding") return [
+    "Read your connected account and campaign resources",
+    "Read provider-reported campaign analytics, donations, payments, and transactions when supported",
+    "Observe reconciliation and settlement status without moving money",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed read access you approve",
+  ];
+  if (platform.kind === "social") return [
+    "Read your connected account and available campaign resources",
+    "Create and manage campaign posts and media when supported",
+    "Read and respond to campaign interactions and messages when supported",
+    "Read provider-reported engagement analytics",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed access you approve",
+  ];
+  if (MESSAGING_PLATFORMS.has(platform.id)) return [
+    "Read your connected account",
+    "Read and reply to messages when supported",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed messaging access you approve",
+  ];
+  return [
+    "Read your connected account",
+    "Read available files, records, or resources",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed read access you approve",
+  ];
+}
+
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
@@ -49,18 +77,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // One comprehensive IF consent per user/platform. This describes the full
-  // application-wide capability envelope; the provider still decides which
-  // permissions it can actually grant in its immediately-following auth step.
-  const permissionItems = usesProviderOAuth ? [
-    "Connect your account, profile, pages, campaigns, groups, channels, and other available resources",
-    "Create, update, publish, and manage campaign content and media when supported",
-    "Read and respond to comments, replies, mentions, messages, and other campaign interactions",
-    "Support outreach, discovery, follows, joins, communities, and engagement where the platform permits",
-    "Read available analytics, engagement, campaign, donation, payment, transaction, and balance information",
-    "Check available money activity and help with supported money-moving steps only when you separately allow them",
-    "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
-  ] : [];
+  const permissionItems = usesProviderOAuth ? providerPermissionItems(platform) : [];
 
   const connectWithProvider = async () => {
     setConnecting(true);
@@ -75,22 +92,14 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         setError("This platform can’t be connected this way yet.");
         return;
       }
-      if (!data?.configured || !data?.connector_id) {
+      if (!data?.configured || !data?.launch_available) {
         setError("This connection is not ready yet. Please try again later.");
         return;
       }
-      // The IF consent and provider grant are one continuous connection event.
-      // Persist only non-secret resume context; the connector owns OAuth state
-      // and credentials. Provider authorization starts immediately after consent.
-      const me = await base44.auth.me();
-      const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
-      if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
-      // localStorage survives a provider redirect that returns in another web tab.
-      // Only the same signed-in owner can resume; no provider tokens are stored here.
-      localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
-        platform: platform.id, userId: me.id, sharedAgentConsent: permissionAccepted, startedAt: Date.now(),
-      }));
-      window.location.assign(redirectUrl);
+      // A secure server-owned OAuth launch is required before this branch can
+      // redirect. The current Base44 SDK exposes no documented backend method
+      // for per-user launches, so fail closed instead of exposing connector IDs.
+      setError("Secure sign-in for this platform is not available yet.");
     } catch (e) {
       console.error("Provider OAuth start failed:", e);
       setError("We couldn’t open sign-in. Please try again.");
@@ -187,7 +196,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
               <p className="text-sm font-semibold text-foreground">Connect {platform.name} to Interplanetary Fund?</p>
-              <p className="text-xs text-muted-foreground">Approve Interplanetary Fund once here. We’ll immediately open {platform.name} to request the full set of useful permissions it supports for Interplanetary Fund. You should not need separate approvals for each IF agent or feature.</p>
+              <p className="text-xs text-muted-foreground">Approve the least-privilege access shown here. Interplanetary Fund will open {platform.name} only when a secure provider sign-in route is available. Money movement is never included in this general connection approval.</p>
               <div className="space-y-1.5">
                 {permissionItems.map((item) => <p key={item} className="flex gap-2 text-xs text-foreground"><Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />{item}</p>)}
               </div>

@@ -146,7 +146,7 @@ Return JSON only.`;
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
                 status: 'published', published_at: new Date().toISOString(), external_post_url: postUrl,
               });
-              await base44.entities.PlatformConnection.update(conn.id, {
+              await sr.entities.PlatformConnection.update(conn.id, {
                 status: 'connected',
                 verification_status: 'verified',
                 last_synced: new Date().toISOString(),

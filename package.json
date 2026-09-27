@@ -62,6 +62,7 @@
     "verify:no-active-convex": "node scripts/verify-no-active-convex-runtime.mjs",
     "verify:entitlement-obo": "node scripts/verify-entitlement-obo-contract.mjs",
     "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs",
+    "verify:platform-connection-trust": "node scripts/verify-platform-connection-trust-contract.mjs",
     "verify:integration-registry-truth": "node scripts/verify-integration-registry-truth.mjs"
   },
   "dependencies": {
@@ -155,4 +156,3 @@
     "vite": "^6.1.0"
   }
 }
-

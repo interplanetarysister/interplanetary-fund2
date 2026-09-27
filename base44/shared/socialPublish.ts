@@ -1,6 +1,8 @@
-// Real posting integrations for platforms whose APIs work with user-supplied
-// credentials (no partner approval needed): Bluesky (app password) and
-// Mastodon (instance access token). Used by publishPost and the sync worker.
+// Direct publishing for fixed-endpoint providers whose APIs work with
+// user-supplied credentials. Mastodon remains fail-closed because its instance
+// hostname is user-controlled and this runtime lacks proven private-egress
+// controls.
+import { denyMastodonNetworkAccess } from './mastodonNetworkPolicy.js';
 
 export function hasAiPublishingConsent(user) {
   return user?.ai_publishing_consent?.granted === true;
@@ -9,7 +11,7 @@ export function hasAiPublishingConsent(user) {
 export function canAutoPublish(connection) {
   const c = connection?.credentials || {};
   if (connection?.platform === 'bluesky') return !!(c.bluesky_handle && c.bluesky_app_password);
-  if (connection?.platform === 'mastodon') return !!(c.mastodon_instance && c.mastodon_access_token);
+  if (connection?.platform === 'mastodon') return false;
   return false;
 }
 
@@ -38,15 +40,10 @@ export async function publishToBluesky(handle, appPassword, text) {
 }
 
 export async function publishToMastodon(instance, accessToken, text) {
-  const host = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const res = await fetch(`https://${host}/api/v1/statuses`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ status: text.slice(0, 500) }),
-  });
-  if (!res.ok) throw new Error(`Mastodon post failed (${res.status}) — check instance and access token.`);
-  const out = await res.json();
-  return { url: out.url || `https://${host}` };
+  void instance;
+  void accessToken;
+  void text;
+  denyMastodonNetworkAccess();
 }
 
 // Publishes a DistributedPost through its connection. Throws on failure.

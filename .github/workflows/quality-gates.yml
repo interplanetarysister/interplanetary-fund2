@@ -82,6 +82,9 @@ jobs:
       - name: Connection lifecycle and operational health contract
         run: npm run verify:connection-lifecycle
 
+      - name: Platform connection trusted-state and least-privilege contract
+        run: npm run verify:platform-connection-trust
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
@@ -144,4 +147,3 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
-

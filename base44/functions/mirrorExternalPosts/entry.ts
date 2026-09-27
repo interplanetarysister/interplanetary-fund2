@@ -1,24 +1,15 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { MASTODON_NETWORK_BLOCK_REASON } from '../../shared/mastodonNetworkPolicy.js';
 
 // External Feed Mirroring worker (invoked by the "External Feed Mirroring"
 // workflow, no user context — service-scoped). Pulls the latest posts from the
-// connected social platforms (Bluesky and Mastodon public APIs, Discord via the
+// connected social platforms (Bluesky public API, Discord via the
 // authorized shared connector) and mirrors them into the internal Interplanetary
 // Social feed as SocialPost records — deduplicated by the external post id.
 // Platforms without a readable API (facebook, instagram, tiktok, linkedin) are
 // reported as no_read_api and never faked.
 
 const DISCORD_API = 'https://discord.com/api/v10';
-
-function stripHtml(html) {
-  return (html || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}
 
 async function fetchBlueskyPosts(connection) {
   const handle = connection.credentials?.bluesky_handle;
@@ -41,22 +32,8 @@ async function fetchBlueskyPosts(connection) {
 }
 
 async function fetchMastodonPosts(connection) {
-  const c = connection.credentials || {};
-  if (!c.mastodon_instance || !c.mastodon_access_token) return { error: 'credentials_required' };
-  const host = c.mastodon_instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const headers = { Authorization: `Bearer ${c.mastodon_access_token}` };
-  const meRes = await fetch(`https://${host}/api/v1/accounts/verify_credentials`, { headers });
-  if (!meRes.ok) return { error: `mastodon auth failed (${meRes.status})` };
-  const me = await meRes.json();
-  const feedRes = await fetch(`https://${host}/api/v1/accounts/${me.id}/statuses?limit=20`, { headers });
-  if (!feedRes.ok) return { error: `mastodon read failed (${feedRes.status})` };
-  const statuses = await feedRes.json();
-  const posts = (statuses || []).map((s) => ({
-    external_post_id: `${host}:${s.id}`,
-    external_url: s.url || '',
-    content: stripHtml(s.content),
-  })).filter((p) => p.content);
-  return { posts };
+  void connection;
+  return { error: MASTODON_NETWORK_BLOCK_REASON };
 }
 
 async function fetchDiscordPosts(base44) {

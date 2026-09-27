@@ -46,7 +46,11 @@ export default async function(req) {
     return Response.json({
       configured: !!connectorId,
       supported: true,
-      connector_id: connectorId || undefined,
+      // Base44's documented backend connector API does not expose a supported
+      // per-user OAuth launch method. Do not disclose the internal connector id
+      // merely to bootstrap a client-side redirect.
+      launch_available: false,
+      reason: connectorId ? 'secure_oauth_launch_unavailable' : 'connector_not_configured',
     });
   } catch (error) {
     console.error('getAppUserConnector error:', error?.message || error);

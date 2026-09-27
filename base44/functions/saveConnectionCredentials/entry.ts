@@ -17,6 +17,7 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
+    const sr = base44.asServiceRole;
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count, credentials,
@@ -115,8 +116,8 @@ export default async function(req) {
     }
 
     let saved;
-    if (existing) saved = await base44.entities.PlatformConnection.update(existing.id, data);
-    else saved = await base44.entities.PlatformConnection.create(data);
+    if (existing) saved = await sr.entities.PlatformConnection.update(existing.id, data);
+    else saved = await sr.entities.PlatformConnection.create({ ...data, created_by_id: user.id });
 
     const rotated = SECRET_FIELDS.filter((f) => credentials && credentials[f]);
     await logAudit(base44, {

@@ -6,6 +6,7 @@ const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
 
 export default async function(req) {
   const base44 = createClientFromRequest(req);
+  const sr = base44.asServiceRole;
   try {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -41,7 +42,7 @@ export default async function(req) {
       }
 
       if (!providerVerified) throw new Error('provider_probe_unavailable');
-      const updated = await base44.entities.PlatformConnection.update(connection.id, {
+      const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'connected',
         verification_status: 'verified',
         last_synced: now,
@@ -53,7 +54,7 @@ export default async function(req) {
       const reason = String(error?.message || '');
       const reauth = reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
       const message = reauth ? 'Provider authorization needs attention.' : SAFE_UNAVAILABLE;
-      const updated = await base44.entities.PlatformConnection.update(connection.id, {
+      const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'error',
         verification_status: 'unverified',
         last_error: message,
@@ -67,4 +68,3 @@ export default async function(req) {
     return Response.json({ error: SAFE_ATTENTION }, { status: 500 });
   }
 }
-
