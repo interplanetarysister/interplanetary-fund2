@@ -12,9 +12,15 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { connection_id } = await req.json().catch(() => ({}));
-    const connection = connection_id
+    const ownerVisible = connection_id
       ? await base44.entities.PlatformConnection.get(connection_id).catch(() => null)
       : null;
+    if (!ownerVisible || ownerVisible.created_by_id !== user.id) {
+      return Response.json({ error: 'Connection not found.' }, { status: 404 });
+    }
+    // Owner-mode reads omit protected credentials. Fetch the full record only
+    // after the owner check so manual verification can use the stored secret.
+    const connection = await sr.entities.PlatformConnection.get(connection_id).catch(() => null);
     if (!connection || connection.created_by_id !== user.id) {
       return Response.json({ error: 'Connection not found.' }, { status: 404 });
     }

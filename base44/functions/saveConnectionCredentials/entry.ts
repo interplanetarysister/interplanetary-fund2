@@ -36,11 +36,16 @@ export default async function(req) {
 
     let existing = null;
     if (connection_id) {
-      existing = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
-      if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
-      if (existing.created_by_id !== user.id && user.role !== 'admin') {
+      const ownerVisible = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
+      if (!ownerVisible) return Response.json({ error: 'Connection not found' }, { status: 404 });
+      if (ownerVisible.created_by_id !== user.id && user.role !== 'admin') {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
+      // Field RLS deliberately hides secrets from owner-mode reads. Fetch the
+      // complete record only after ownership authorization so blank/redacted
+      // edits preserve existing secrets instead of deleting them.
+      existing = await sr.entities.PlatformConnection.get(connection_id).catch(() => null);
+      if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
     }
 
     const effectiveKind = kind || existing?.kind || 'crowdfunding';

@@ -32,6 +32,7 @@ The Base44 registry is an administrative view of provider state, not a source of
 - Capability requests are provider-specific and least-privilege. A general connection/share consent never includes transfer or payout authority and never enables automation. Financial observation and money movement require separate provider support, user authorization, execution-time checks, idempotency, and audit evidence.
 - `PlatformConnection` trusted-state writes are server/admin owned. Authenticated-user functions may use service-role writes only after authenticating the caller and validating connection/campaign ownership; owners cannot directly manufacture status, verification, capabilities, consent, automation, or credential state through entity CRUD.
 - Every owner-facing response produced after a service-role connection read/write must pass through the shared credential redactor. Success and failure responses preserve only non-secret identifiers plus boolean secret-presence metadata; raw tokens, app passwords, and webhook secrets never enter frontend state.
+- Owner-mode reads intentionally cannot see protected credential fields. A server function that must preserve or use a secret first authorizes the owner through the user-scoped record, then fetches that same record by ID through service role. Owner lists use an authenticated, owner-ID-filtered service read followed immediately by redaction so secret-presence metadata is accurate without exposing values.
 
 ## Direct provider verification and denial auditing
 

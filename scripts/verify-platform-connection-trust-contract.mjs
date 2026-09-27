@@ -8,12 +8,17 @@ import {
   denyMastodonNetworkAccess,
   MASTODON_NETWORK_BLOCK_REASON,
 } from '../base44/shared/mastodonNetworkPolicy.js';
-import { redactPlatformConnection } from '../base44/shared/credentialRedaction.js';
+import {
+  mergeConnectionCredentials,
+  redactPlatformConnection,
+} from '../base44/shared/credentialRedaction.js';
 
 const entity = fs.readFileSync('base44/entities/PlatformConnection.jsonc', 'utf8');
 const finalize = fs.readFileSync('base44/functions/finalizeAppUserOAuthConnection/entry.ts', 'utf8');
 const verify = fs.readFileSync('base44/functions/verifyAppUserConnector/entry.ts', 'utf8');
 const verifyPlatform = fs.readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
+const saveConnection = fs.readFileSync('base44/functions/saveConnectionCredentials/entry.ts', 'utf8');
+const listConnections = fs.readFileSync('base44/functions/listConnections/entry.ts', 'utf8');
 const prepare = fs.readFileSync('base44/functions/getAppUserConnector/entry.ts', 'utf8');
 const dialog = fs.readFileSync('src/components/connections/ConnectDialog.jsx', 'utf8');
 const socialPublish = fs.readFileSync('base44/shared/socialPublish.ts', 'utf8');
@@ -78,6 +83,31 @@ for (const state of ['connected', 'error']) {
 }
 assert.equal((verifyPlatform.match(/connection: redactPlatformConnection\(updated\)/g) || []).length, 2);
 assert.doesNotMatch(verifyPlatform, /connection: updated/);
+assert.match(verifyPlatform, /ownerVisible\.created_by_id !== user\.id[\s\S]+sr\.entities\.PlatformConnection\.get/);
+
+const storedCredentials = {
+  bluesky_handle: 'owner.example',
+  bluesky_app_password: 'stored-app-password',
+  mastodon_instance: 'social.example',
+  mastodon_access_token: 'stored-access-token',
+  kofi_verification_token: 'stored-webhook-token',
+};
+const preserved = mergeConnectionCredentials(storedCredentials, {
+  bluesky_handle: 'renamed.example',
+  bluesky_app_password: '',
+  mastodon_access_token: '',
+  kofi_verification_token: '',
+});
+assert.equal(preserved.bluesky_handle, 'renamed.example');
+assert.equal(preserved.bluesky_app_password, 'stored-app-password');
+assert.equal(preserved.mastodon_access_token, 'stored-access-token');
+assert.equal(preserved.kofi_verification_token, 'stored-webhook-token');
+const ownerView = redactPlatformConnection({ credentials: preserved });
+assert.equal(ownerView.credentials.bluesky_app_password, '');
+assert.equal(ownerView.credentials_meta.bluesky_app_password_set, true);
+assert.match(saveConnection, /ownerVisible\.created_by_id !== user\.id[\s\S]+sr\.entities\.PlatformConnection\.get/);
+assert.match(listConnections, /asServiceRole\.entities\.PlatformConnection\.filter\(\{ created_by_id: user\.id \}/);
+assert.match(finalize, /connection: redactPlatformConnection\(saved\)/);
 
 assert.doesNotMatch(prepare, /connector_id/);
 assert.match(prepare, /launch_available: false/);

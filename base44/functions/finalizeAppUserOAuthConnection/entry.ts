@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { connectorPolicy, providerCapabilities } from '../../shared/appUserConnectorPolicy.js';
+import { redactPlatformConnection } from '../../shared/credentialRedaction.js';
 
 const CONFIG: Record<string, { env: string; kind: string }> = {
   gmail: { env: 'APP_USER_CONNECTOR_GMAIL_ID', kind: 'app' },
@@ -53,8 +54,11 @@ export default async function(req) {
       return Response.json({ configured: true, connected: false });
     }
 
-    const existing = (await base44.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }))[0] || null;
     const sr = base44.asServiceRole;
+    const ownerVisible = (await base44.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }))[0] || null;
+    const existing = ownerVisible
+      ? await sr.entities.PlatformConnection.get(ownerVisible.id).catch(() => null)
+      : null;
     const now = new Date().toISOString();
     const confirmed = providerCapabilities(oauth);
     const requestedCapabilities = connectorPolicy(key).requestedCapabilities;
@@ -96,7 +100,7 @@ export default async function(req) {
     const saved = existing
       ? await sr.entities.PlatformConnection.update(existing.id, data)
       : await sr.entities.PlatformConnection.create({ ...data, created_by_id: user.id });
-    return Response.json({ configured: true, authorization_present: true, connected: false, provider_verified: false, verification_required: true, connection: saved });
+    return Response.json({ configured: true, authorization_present: true, connected: false, provider_verified: false, verification_required: true, connection: redactPlatformConnection(saved) });
   } catch (error) {
     console.error('finalizeAppUserOAuthConnection error:', error?.message || error);
     return Response.json({ error: 'Unable to finish this connection.' }, { status: 500 });

@@ -21,3 +21,17 @@ export function redactPlatformConnection(connection) {
   const { credentials, credentials_meta } = redactCredentials(connection?.credentials);
   return { ...connection, credentials, credentials_meta };
 }
+
+// Merge a redacted/partial owner edit onto the service-role copy. Blank secret
+// inputs mean "keep the stored secret"; only a new non-empty secret rotates it.
+export function mergeConnectionCredentials(existingCreds, incomingCreds) {
+  const merged = { ...(existingCreds || {}) };
+  const incoming = incomingCreds || {};
+  for (const field of SECRET_FIELDS) {
+    if (incoming[field]) merged[field] = incoming[field];
+  }
+  for (const key of Object.keys(incoming)) {
+    if (!SECRET_FIELDS.includes(key)) merged[key] = incoming[key];
+  }
+  return merged;
+}

@@ -2,7 +2,7 @@
 // validator, the agent-access gatekeeper, and the admin management function.
 // Never imports or handles secret values — only reference names and metadata.
 import { normalizeIntegrationStatus } from './integrationStatusPolicy.js';
-import { SECRET_FIELDS, redactCredentials } from './credentialRedaction.js';
+import { SECRET_FIELDS, mergeConnectionCredentials, redactCredentials } from './credentialRedaction.js';
 
 export { SECRET_FIELDS, redactCredentials };
 
@@ -72,15 +72,7 @@ export async function emitIntegrationAlert(sr, entry, title, body) {
 // overwritten when a new non-empty value is provided; otherwise the stored
 // value is preserved (so a redacted edit form never has to round-trip secrets).
 export function mergeSecrets(existingCreds, incomingCreds) {
-  const merged = { ...(existingCreds || {}) };
-  const incoming = incomingCreds || {};
-  for (const f of SECRET_FIELDS) {
-    if (incoming[f]) merged[f] = incoming[f];
-  }
-  for (const k of Object.keys(incoming)) {
-    if (!SECRET_FIELDS.includes(k)) merged[k] = incoming[k];
-  }
-  return merged;
+  return mergeConnectionCredentials(existingCreds, incomingCreds);
 }
 
 // Centralized access gate. Before a backend function touches an external
