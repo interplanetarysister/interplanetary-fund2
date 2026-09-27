@@ -11,6 +11,14 @@ const finalize = readFileSync('base44/functions/finalizeAppUserOAuthConnection/e
 assert.match(catalog, /id: "tiktok"[\s\S]{0,500}Posting is not currently supported/);
 assert.doesNotMatch(catalog, /id: "tiktok"[\s\S]{0,220}post campaign content/);
 
+for (const id of ['threads','x','pinterest','reddit','youtube']) {
+  const start = catalog.indexOf(`id: "${id}"`);
+  assert.notEqual(start, -1);
+  const block = catalog.slice(start, start + 650);
+  assert.match(block, /setupKind: "link"/);
+  assert.doesNotMatch(block, /setupKind: "oauth"/);
+}
+
 for (const env of ['THREADS','X','PINTEREST','REDDIT','YOUTUBE','PATREON']) {
   assert.doesNotMatch(connectorLookup, new RegExp(`APP_USER_CONNECTOR_${env}_ID`));
   assert.doesNotMatch(connectorVerify, new RegExp(`APP_USER_CONNECTOR_${env}_ID`));
