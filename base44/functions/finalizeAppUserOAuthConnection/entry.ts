@@ -9,6 +9,15 @@ const COMMON_IF_CAPABILITIES = [
   'subscribe_events', 'reconcile_external_funds', 'settlement_status', 'transfer_or_payout',
 ];
 
+const PATREON_DESIRED_CAPABILITIES = [
+  'read_account', 'read_resources', 'read_campaign', 'read_analytics',
+  'read_donations', 'read_payments', 'read_transactions', 'read_balance',
+  'subscribe_events', 'reconcile_external_funds', 'settlement_status',
+  // Tier management remains desired-only until the provider explicitly reports
+  // an equivalent granted capability. OBO consent never creates this ability.
+  'manage_membership_tiers',
+];
+
 const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities: string[] }> = {
   gmail: { env: 'APP_USER_CONNECTOR_GMAIL_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
   googledrive: { env: 'APP_USER_CONNECTOR_GOOGLEDRIVE_ID', kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
@@ -41,7 +50,7 @@ const CONFIG: Record<string, { env: string; kind: string; requestedCapabilities:
   pinterest: { env: 'APP_USER_CONNECTOR_PINTEREST_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
   reddit: { env: 'APP_USER_CONNECTOR_REDDIT_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
   youtube: { env: 'APP_USER_CONNECTOR_YOUTUBE_ID', kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding', requestedCapabilities: PATREON_DESIRED_CAPABILITIES },
 };
 
 function providerCapabilities(oauth: any): string[] {
