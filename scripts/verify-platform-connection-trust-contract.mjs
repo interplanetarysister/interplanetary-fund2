@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
+  buildOAuthAuthorizationState,
+  connectorAuthorizationStatus,
   connectorPolicy,
   providerCapabilities,
 } from '../base44/shared/appUserConnectorPolicy.js';
@@ -44,18 +46,69 @@ assert.ok(!connectorPolicy('patreon').requestedCapabilities.includes('transfer_o
 assert.deepEqual(providerCapabilities({ accessToken: 'token-only' }), []);
 assert.deepEqual(providerCapabilities({ scopes: 'profile email profile' }), ['profile', 'email']);
 
+const tokenOnlyState = buildOAuthAuthorizationState({
+  platform: 'gmail',
+  kind: 'app',
+  oauth: { accessToken: 'token-only' },
+  sharedAgentConsent: true,
+  now: '2026-09-28T00:00:00.000Z',
+});
+assert.equal(tokenOnlyState.status, 'disconnected');
+assert.equal(tokenOnlyState.verification_status, 'unverified');
+assert.equal(tokenOnlyState.capability_status, 'unknown');
+assert.equal(tokenOnlyState.automation_mode, 'manual');
+assert.equal(tokenOnlyState.agent_access.shared_with_agents, true);
+assert.equal(tokenOnlyState.agent_access.automation_enabled, false);
+assert.deepEqual(tokenOnlyState.obo_consent.granted_capabilities, []);
+
+const overbroadGmailState = buildOAuthAuthorizationState({
+  platform: 'gmail',
+  kind: 'app',
+  oauth: { accessToken: 'present', scopes: ['read_account', 'read_messages', 'transfer_or_payout', 'read_balance'] },
+  sharedAgentConsent: true,
+  now: '2026-09-28T00:00:00.000Z',
+});
+assert.deepEqual(overbroadGmailState.obo_consent.requested_capabilities, ['read_account', 'read_messages', 'reply_message']);
+assert.deepEqual(overbroadGmailState.obo_consent.granted_capabilities, ['read_account', 'read_messages']);
+assert.ok(!overbroadGmailState.obo_consent.granted_capabilities.includes('transfer_or_payout'));
+assert.ok(!overbroadGmailState.obo_consent.granted_capabilities.includes('read_balance'));
+assert.equal(overbroadGmailState.agent_access.automation_enabled, false);
+
+const noConsentState = buildOAuthAuthorizationState({
+  platform: 'facebook',
+  kind: 'social',
+  oauth: { accessToken: 'present', scopes: ['read_account', 'create_post'] },
+  sharedAgentConsent: false,
+  existing: { history: 'invalid-legacy-history' },
+  now: '2026-09-28T00:00:00.000Z',
+});
+assert.equal(noConsentState.obo_consent.granted, false);
+assert.deepEqual(noConsentState.obo_consent.granted_capabilities, []);
+assert.equal(noConsentState.agent_access.shared_with_agents, false);
+assert.equal(noConsentState.agent_access.automation_enabled, false);
+assert.equal(noConsentState.history.length, 1);
+
+assert.deepEqual(connectorAuthorizationStatus({ accessToken: 'token-only' }), {
+  authorization_present: true,
+  connected: false,
+  provider_verified: false,
+  configured: true,
+});
+assert.deepEqual(connectorAuthorizationStatus(null), {
+  authorization_present: false,
+  connected: false,
+  provider_verified: false,
+  configured: true,
+});
+
 assert.match(finalize, /authorization_present: true/);
-assert.match(finalize, /status: 'disconnected'/);
-assert.match(finalize, /verification_status: 'unverified'/);
+assert.match(finalize, /buildOAuthAuthorizationState/);
 assert.doesNotMatch(finalize, /status: 'connected'/);
 assert.doesNotMatch(finalize, /verification_status: 'verified'/);
 assert.doesNotMatch(finalize, /transfer_or_payout/);
-assert.match(finalize, /confirmedRequested = requestedCapabilities\.filter/);
-assert.match(finalize, /granted_capabilities: sharedAgentConsent \? confirmedRequested : \[\]/);
 assert.doesNotMatch(finalize, /automation_enabled:\s*sharedAgentConsent/);
 
-assert.match(verify, /authorization_present: !!connection\?\.accessToken/);
-assert.match(verify, /provider_verified: false/);
+assert.match(verify, /connectorAuthorizationStatus\(connection\)/);
 assert.doesNotMatch(verify, /connected: !!connection\?\.accessToken/);
 
 const rawConnection = {

@@ -56,3 +56,66 @@ export function providerCapabilities(oauth) {
       : [];
   return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
 }
+
+export function connectorAuthorizationStatus(oauth) {
+  return {
+    authorization_present: Boolean(oauth?.accessToken),
+    connected: false,
+    provider_verified: false,
+    configured: true,
+  };
+}
+
+export function buildOAuthAuthorizationState({
+  platform,
+  kind,
+  oauth,
+  sharedAgentConsent = false,
+  existing = null,
+  now = new Date().toISOString(),
+}) {
+  const key = String(platform || '').toLowerCase();
+  const consentGranted = sharedAgentConsent === true;
+  const confirmed = providerCapabilities(oauth);
+  const requestedCapabilities = connectorPolicy(key).requestedCapabilities;
+  const confirmedRequested = requestedCapabilities.filter((capability) => confirmed.includes(capability));
+  const history = Array.isArray(existing?.history) ? existing.history : [];
+
+  return {
+    platform: key,
+    kind,
+    display_name: existing?.display_name || key,
+    external_url: existing?.external_url || '',
+    // Sharing a connection with agents is not automation consent. Automation
+    // requires a separate, post-verification authorization path.
+    automation_mode: 'manual',
+    obo_consent: {
+      granted: consentGranted,
+      granted_at: consentGranted ? now : null,
+      permission_version: '2026-09-comprehensive-platform-v1',
+      requested_capabilities: requestedCapabilities,
+      // Desired capabilities never become authority. Only the intersection of
+      // provider-reported capabilities and this provider's allowlist is kept.
+      granted_capabilities: consentGranted ? confirmedRequested : [],
+      provider_capabilities: confirmed,
+    },
+    agent_access: {
+      shared_with_agents: consentGranted,
+      automation_enabled: false,
+    },
+    // OAuth token presence proves authorization material exists, not that the
+    // provider is reachable or that any operation succeeded.
+    status: 'disconnected',
+    verification_status: 'unverified',
+    capability_status: confirmed.length ? 'confirmed' : 'unknown',
+    external_data_source: existing?.external_data_source || 'owner_reported',
+    last_error: 'Provider authorization saved; live verification is still required.',
+    history: [...history, {
+      at: now,
+      event: 'oauth_authorized',
+      detail: confirmed.length
+        ? `Provider authorization saved; ${confirmed.length} provider-reported capabilities recorded; live verification required`
+        : 'Provider authorization saved; detailed provider capabilities remain unknown; live verification required',
+    }].slice(-30),
+  };
+}

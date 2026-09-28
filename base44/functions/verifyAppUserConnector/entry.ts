@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { connectorAuthorizationStatus } from '../../shared/appUserConnectorPolicy.js';
 
 const ENV_BY_PLATFORM: Record<string, string> = {
   gmail: 'APP_USER_CONNECTOR_GMAIL_ID',
@@ -48,12 +49,7 @@ export default async function(req) {
 
     try {
       const connection = await base44.asServiceRole.connectors.getCurrentAppUserConnection(connectorId);
-      return Response.json({
-        authorization_present: !!connection?.accessToken,
-        connected: false,
-        provider_verified: false,
-        configured: true,
-      });
+      return Response.json(connectorAuthorizationStatus(connection));
     } catch {
       return Response.json({ connected: false, configured: true });
     }

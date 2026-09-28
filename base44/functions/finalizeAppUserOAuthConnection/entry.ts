@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { connectorPolicy, providerCapabilities } from '../../shared/appUserConnectorPolicy.js';
+import { buildOAuthAuthorizationState } from '../../shared/appUserConnectorPolicy.js';
 import { redactPlatformConnection } from '../../shared/credentialRedaction.js';
 
 const CONFIG: Record<string, { env: string; kind: string }> = {
@@ -59,44 +59,13 @@ export default async function(req) {
     const existing = ownerVisible
       ? await sr.entities.PlatformConnection.get(ownerVisible.id).catch(() => null)
       : null;
-    const now = new Date().toISOString();
-    const confirmed = providerCapabilities(oauth);
-    const requestedCapabilities = connectorPolicy(key).requestedCapabilities;
-    const confirmedRequested = requestedCapabilities.filter((capability) => confirmed.includes(capability));
-    const data = {
+    const data = buildOAuthAuthorizationState({
       platform: key,
       kind: cfg.kind,
-      display_name: existing?.display_name || key,
-      external_url: existing?.external_url || '',
-      automation_mode: 'manual',
-      obo_consent: {
-        granted: sharedAgentConsent,
-        granted_at: sharedAgentConsent ? now : null,
-        permission_version: '2026-09-comprehensive-platform-v1',
-        requested_capabilities: requestedCapabilities,
-        // Never copy desired capabilities into granted/provider capabilities.
-        // Unknown remains unknown until the connector/provider reports it.
-        granted_capabilities: sharedAgentConsent ? confirmedRequested : [],
-        provider_capabilities: confirmed,
-      },
-      agent_access: {
-        shared_with_agents: sharedAgentConsent,
-        automation_enabled: false,
-      },
-      status: 'disconnected',
-      verification_status: 'unverified',
-      capability_status: confirmed.length ? 'confirmed' : 'unknown',
-      // OAuth authorization does not verify provider reachability or crowdfunding provenance.
-      external_data_source: existing?.external_data_source || 'owner_reported',
-      last_error: 'Provider authorization saved; live verification is still required.',
-      history: [...(existing?.history || []), {
-        at: now,
-        event: 'oauth_authorized',
-        detail: confirmed.length
-          ? `Provider authorization saved; ${confirmed.length} provider-reported capabilities recorded; live verification required`
-          : 'Provider authorization saved; detailed provider capabilities remain unknown; live verification required',
-      }].slice(-30),
-    };
+      oauth,
+      sharedAgentConsent,
+      existing,
+    });
     const saved = existing
       ? await sr.entities.PlatformConnection.update(existing.id, data)
       : await sr.entities.PlatformConnection.create({ ...data, created_by_id: user.id });
