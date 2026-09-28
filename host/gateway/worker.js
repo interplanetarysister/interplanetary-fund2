@@ -18,9 +18,10 @@ async function sameSecret(a,b) {
   const x=new Uint8Array(ha), y=new Uint8Array(hb); let diff=0; for(let i=0;i<x.length;i++) diff|=x[i]^y[i]; return diff===0;
 }
 async function verifyPlatformAdmin(request, env) {
-  const auth=request.headers.get("authorization") || "";
+  const auth=request.headers.get("authorization") || request.headers.get("cookie") || "";
   if (!auth || !env.IFUND_ADMIN_VERIFY_URL) return null;
-  const r=await fetch(env.IFUND_ADMIN_VERIFY_URL,{headers:{authorization:auth,accept:"application/json"}});
+  const headerName=request.headers.get("authorization") ? "authorization" : "cookie";
+  const r=await fetch(env.IFUND_ADMIN_VERIFY_URL,{headers:{[headerName]:auth,accept:"application/json"}});
   if(!r.ok) return null;
   const user=await r.json(); return user?.role==="admin" ? user : null;
 }
