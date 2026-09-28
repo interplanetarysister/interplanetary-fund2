@@ -1,35 +1,25 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-
 const root = new URL("../", import.meta.url);
-const read = (path) => fs.readFileSync(new URL(path, root), "utf8");
-const exists = (path) => fs.existsSync(new URL(path, root));
+const read = p => fs.readFileSync(new URL(p, root), "utf8");
+const exists = p => fs.existsSync(new URL(p, root));
 
-const platform = read("src/pages/Platform.jsx");
-const chat = read("src/components/agents/AgentChat.jsx");
-const identity = read("src/lib/agentIdentity.js");
-const bridge = read("base44/functions/recordAgentInteraction/entry.ts");
-const runbook = read("docs/deferred-admin-builder-agent.md");
+const panel=read("src/components/agents/AdminDevelopmentChat.jsx");
+const gateway=read("src/lib/adminAgentGateway.js");
+const worker=read("host/gateway/worker.js");
+const normalChat=read("src/components/agents/AgentChat.jsx");
 
-assert.equal(exists("base44/agents/builder_agent.jsonc"), false,
-  "builder agent config must remain absent without a server-enforced per-agent admin gate");
-assert.equal(exists("src/components/platform/BuilderAgentPanel.jsx"), false,
-  "direct Builder chat UI must remain absent while authorization cannot be enforced");
-
-assert.doesNotMatch(platform, /BuilderAgentPanel|value=["']builder["']/,
-  "Platform must not expose a client-only Builder tab");
-assert.doesNotMatch(chat, /builder_agent|Admin Builder/,
-  "generic chat must not hardcode a route to the deferred Builder");
-assert.doesNotMatch(identity, /builder_agent|Admin Builder/,
-  "runtime aliases must not resolve the deferred Builder");
-assert.doesNotMatch(bridge, /builder_agent|Admin Builder/,
-  "interaction logging must not imply a callable Builder boundary");
-
-assert.match(runbook, /login-only/i);
-assert.match(runbook, /no verified, non-bypassable way to restrict a named agent to the admin role/i);
-assert.match(runbook, /authenticated non-admin[\s\S]*direct API/i);
-assert.match(runbook, /conversation\s+creation, message, subscription, and tool execution/i);
-assert.match(runbook, /metered or unverified proxy/i);
-assert.match(runbook, /intentionally absent/i);
-
-console.log("Deferred Builder Agent fail-closed boundary passed");
+assert.equal(exists("base44/agents/builder_agent.jsonc"), false, "Builder must not become a directly callable Base44 user agent");
+assert.doesNotMatch(normalChat,/builder_agent|Admin Builder/,"normal agent chat must not expose builder routing");
+assert.match(panel,/user\?\.role !== "admin"/,"development UI must fail closed for non-admin users");
+assert.match(gateway,/\/v1\/admin\/agents\/session/);
+assert.match(gateway,/\/v1\/admin\/agents\/message/);
+assert.doesNotMatch(panel+gateway+worker,/adminknowsthebuilder/,"admin key must never be committed to client or gateway source");
+assert.match(worker,/verifyPlatformAdmin/);
+assert.match(worker,/user\?\.role==="admin"/);
+assert.match(worker,/IFUND_ADMIN_AGENT_KEY/);
+assert.match(worker,/sameSecret/);
+assert.match(worker,/expires:Date\.now\(\)\+15\*60\*1000/);
+assert.match(worker,/IFUND_ALLOWED_ORIGINS/);
+assert.match(worker,/admin_agent_message/);
+console.log("Admin development-agent server boundary passed");
