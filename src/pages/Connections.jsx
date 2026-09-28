@@ -24,6 +24,7 @@ export default function Connections() {
   const [connectionNotice, setConnectionNotice] = useState(null);
   const [platformSearch, setPlatformSearch] = useState("");
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
+  const [sharedIntegrations, setSharedIntegrations] = useState(null);
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -70,6 +71,11 @@ export default function Connections() {
       const connRes = await base44.functions.invoke("listConnections", { scope: "mine" });
       setUser(me);
       setConnections(connRes.data.connections);
+      // Platform-managed (SHARED) integrations have no PlatformConnection record
+      // by design; surface their live status separately.
+      base44.functions.invoke("getSharedConnectorStatus", {})
+        .then(({ data }) => setSharedIntegrations(data?.shared || []))
+        .catch(() => setSharedIntegrations([]));
      } catch (e) {
        setError(e.message || "We couldn't load your connections.");
      }
@@ -148,6 +154,31 @@ export default function Connections() {
       <div className="mb-8">
         <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />
       </div>
+
+      {sharedIntegrations && sharedIntegrations.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display text-xl text-stone-900 mb-1">Platform-managed integrations</h2>
+          <p className="text-sm text-stone-500 mb-3">Managed by admins for everyone — you don't connect these yourself.</p>
+          <div className="space-y-3">
+            {sharedIntegrations.map((s) => (
+              <div key={s.type} className="rounded-2xl border border-cyan-300/15 bg-white p-4 flex items-center gap-3">
+                <span className="text-xl w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0" aria-hidden="true">{s.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-stone-900">{s.name}</p>
+                  <p className="text-xs text-stone-500">{s.note}</p>
+                </div>
+                {s.connected ? (
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    {s.verified ? "Verified" : "Connected"}
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-stone-500">Not connected</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {connections.length > 0 && (
         <div className="mb-8">

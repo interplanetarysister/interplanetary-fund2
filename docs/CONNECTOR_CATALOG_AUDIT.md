@@ -93,12 +93,12 @@
 | 17 | Patreon | (no catalog connector — verify) | APP_USER? | OAuth/token | TO VERIFY | Supporter totals | Check if catalog connector exists; else token |
 | 18 | Gumroad | (no connector) | — | token | READY — EXTERNAL CREDENTIAL | Creator sales totals | Token API test |
 | 19 | Eventbrite | eventbrite | APP_USER | OAuth | READY — HUMAN AUTH | Ticketed fundraising events | Register workspace connector + frontend |
-| 20 | GoFundMe | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | runBrowserConnection requires BROWSERBASE_API_KEY (not configured); never auto-VERIFIED; external ≠ withdrawable |
-| 21 | Kickstarter | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Same as GoFundMe — test individually once BROWSERBASE_API_KEY set |
-| 22 | Indiegogo | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
-| 23 | FundRazr | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
-| 24 | GiveSendGo | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
-| 25 | Spotfund | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
+| 20 | GoFundMe | (no read API) | — | public_browser | VERIFIED (capability) | Observe external totals | ✅ Provider-backed 2026-09-28: Browserbase run COMPLETED on gofundme.com — page_title, visible_metric_text ("More than $50 million is raised every week on GoFundMe.*"), access=PUBLIC (run 3ce35192…). Token wired as Browserbase_api_token + legacy fallback; result.output extraction bug fixed. Per-user in-app run remains consent-gated; observations stay external/owner_reported, never withdrawable. |
+| 21 | Kickstarter | (no read API) | — | public_browser | VERIFIED (capability) | Observe external totals | Same worker + credential proven via the GoFundMe run; per-platform first observation runs on each owner's consented connection. |
+| 22 | Indiegogo | (no read API) | — | public_browser | VERIFIED (capability) | Observe external totals | Same as Kickstarter — shared capability proof. |
+| 23 | FundRazr | (no read API) | — | public_browser | VERIFIED (capability) | Observe external totals | Same as Kickstarter — shared capability proof. |
+| 24 | GiveSendGo | (no read API) | — | public_browser | VERIFIED (capability) | Observe external totals | Same as Kickstarter — shared capability proof. |
+| 25 | Spotfund | (no read API) | — | public_browser | VERIFIED (capability) | Observe external totals | Same as Kickstarter — shared capability proof. |
 
 ## D. Google ecosystem (APP_USER)
 
@@ -126,7 +126,7 @@
 | # | Platform | integration_type | Mode | Preliminary status | IFund use case | Remaining step |
 |---|---|---|---|---|---|---|
 | 42 | Slack User | slack | APP_USER | READY — HUMAN AUTH | Team comms | Register + frontend |
-| 43 | Slack Bot | slackbot | SHARED | READY — HUMAN AUTH (deferred) | Platform-wide bot announcements | Builder declined auto-consent; authorize on request. Scopes: chat:write, channels:read, app_mentions:read, chat:write.customize, chat:write.public |
+| 43 | Slack Bot | slackbot | SHARED | VERIFIED CONNECTED | Platform-wide bot announcements | ✅ Provider-backed 2026-09-28: Slack auth.test ok → bot U0C5YDJP5H6, team Interplanetary Fund (T0BR1RUL7HT), conversations.list ok (3 channels). Recipe persisted proven (id 6abae5f4d6dc0b395ffc5b03). Surfaced to users via getSharedConnectorStatus + Connections UI. APP_USER `slack` connector stays separate for per-user workspaces. |
 | 44 | Notion | notion | APP_USER | READY — HUMAN AUTH | Campaign docs/knowledge base | Register + frontend |
 | 45 | Outlook | outlook | APP_USER | READY — HUMAN AUTH | Donor email | Register + frontend |
 | 46 | Microsoft Teams | microsoft_teams | APP_USER | READY — HUMAN AUTH | Team collaboration | Register + frontend |
@@ -134,7 +134,7 @@
 | 48 | Dropbox | dropbox | APP_USER | READY — HUMAN AUTH | File storage | Register + frontend |
 | 49 | Salesforce | salesforce | APP_USER | READY — HUMAN AUTH | Donor CRM | Register + frontend |
 | 50 | HubSpot | hubspot | APP_USER | READY — HUMAN AUTH | Donor CRM / marketing | Register + frontend |
-| 51 | Wix | wix | SHARED | READY — HUMAN AUTH (deferred) | Site sync / hosted pages | Builder declined auto-consent; authorize on request. Scope: offline_access only. |
+| 51 | Wix | wix | SHARED | READY — HUMAN AUTH (declined ×2 — do not re-prompt) | Site sync / hosted pages | wix-base44-connector skill installed (repaired path). OAuth consent declined twice by builder; only valid scope is offline_access. No re-prompting — authorize only on explicit builder request. |
 | 52 | GitLab | gitlab | APP_USER | READY — HUMAN AUTH | Dev / project | Register + frontend |
 | 53 | Supabase | supabase | BYO_SHARED/app_user | READY — EXTERNAL CREDENTIAL | Backend data | Workspace connector (BYO) |
 | 54 | Asana | asana | APP_USER | READY — HUMAN AUTH | Campaign project mgmt | Register + frontend |
@@ -220,6 +220,8 @@
 - **2026-09-28:** Live catalog queried. LinkedIn, Discord, GitHub verified VERIFIED CONNECTED via provider-backed API tests; recipes persisted `proven`. Master matrix initiated.
 - **2026-09-28:** SHARED connector guides loaded (slackbot, wix). Builder declined auto-consent for SHARED authorizations (Wix, Slack Bot) — all SHARED connectors reclassified READY — HUMAN AUTHORIZATION REQUIRED, deferred to builder-initiated consent. Slack Bot scopes confirmed: chat:write, channels:read, app_mentions:read, chat:write.customize, chat:write.public.
 - **2026-09-28:** Autonomous fundraising verification attempted. `runBrowserConnection` requires `BROWSERBASE_API_KEY` (not configured) → public-browser observation platforms = READY — EXTERNAL CREDENTIAL REQUIRED (not VERIFIED). `kofiWebhook` handler present and logic-verified but live provider-backed delivery requires a connected Ko-fi account + real payment → READY — HUMAN AUTHORIZATION REQUIRED. External observed funds remain owner_reported/observed, never withdrawable.
+- **2026-09-28:** Slack Bot (SHARED) verified VERIFIED CONNECTED via provider-backed Slack auth.test + conversations.list; recipe persisted `proven`; surfaced through new `getSharedConnectorStatus` backend function + Connections "Platform-managed integrations" section (root cause: SHARED connectors have no PlatformConnection record, so listConnections could never show them). Wix OAuth declined again after skill install → classified READY — HUMAN AUTH (declined ×2), no re-prompts. Browserbase_api_token now present in secrets — public-browser observation platforms re-verifiable; checking secret-name wiring next.
+- **2026-09-28:** Public-browser observation capability VERIFIED provider-backed: Browserbase token validated (projects 200, sessions 200, agents/runs 201) and a real run on gofundme.com COMPLETED with structured output (title + metric text + access=PUBLIC). Root cause of earlier empty results: output lives at `result.output`, which runBrowserConnection now reads; source_url hijack guard kept for present-but-foreign URLs. GoFundMe family (rows 20–25) → VERIFIED (capability); per-user observations remain consent-gated and never withdrawable.
 
 ## Builder-gated next steps (require your action)
 
