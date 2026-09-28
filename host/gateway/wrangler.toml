@@ -1,0 +1,7 @@
+name = "interplanetary-fund-admin-gateway"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+# Non-secret values are set after the free host URL is selected.
+# Secrets such as IFUND_ADMIN_AGENT_KEY and IFUND_SERVICE_TOKEN must be
+# configured with the host secret store and never committed here.
