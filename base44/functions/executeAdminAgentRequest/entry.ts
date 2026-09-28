@@ -1,4 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+const SUPER_ADMIN_OWNER_EMAILS=new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com']);
+const isSuperAdminOwner=(user)=>user?.role==='admin'&&SUPER_ADMIN_OWNER_EMAILS.has(String(user?.email||'').trim().toLowerCase());
 import { logAudit } from '../../shared/auditLog.ts';
 const ALLOWED=new Set(['chief_of_staff','builder_agent','admin_agent','review_agent','verification_agent']);
 export default async function(req) {
@@ -6,7 +8,7 @@ export default async function(req) {
     const base44=createClientFromRequest(req);
     const user=await base44.auth.me().catch(()=>null);
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
-    if(user.role!=='admin') return Response.json({error:'Forbidden'},{status:403});
+    if(!isSuperAdminOwner(user)) return Response.json({error:'Forbidden — super admin only.'},{status:403});
     const body=await req.json().catch(()=>({}));
     const agent=String(body.agent||'chief_of_staff');
     const content=String(body.content||'').trim().slice(0,12000);
