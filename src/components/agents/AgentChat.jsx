@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
+import { recordAgentInteraction } from "@/lib/recordAgentInteraction";
 
 // Conversation UI for an in-app AI agent. Base44 agent memory is authoritative.
 // New conversation sessions may be created when the selected specialist changes;
@@ -31,6 +32,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
         if (cancelled) return;
         convRef.current = conv;
         setMessages(conv.messages || []);
+        void recordAgentInteraction({ agentName, summary: `Conversation started with ${agentLabel}`, outcome: conv?.id ? `Conversation ${conv.id} created` : "Conversation created", approved: true });
         unsub = base44.agents.subscribeToConversation(conv.id, (data) => {
           setMessages(data.messages || []);
         });
@@ -50,6 +52,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     setSending(true);
     try {
       await base44.agents.addMessage(convRef.current, { role: "user", content });
+      void recordAgentInteraction({ agentName, summary: content, outcome: "Message accepted by the agent conversation runtime", approved: true });
     } catch (e) {
       console.error("Agent message send failed", e);
       setInput((current) => current || content);
