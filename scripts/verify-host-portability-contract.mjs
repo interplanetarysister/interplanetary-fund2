@@ -14,5 +14,5 @@ assert.match(gateway, /\/v1\/admin\/agents\/message/);
 assert.doesNotMatch(runtime + gateway, /adminknowsthebuilder/);
 assert.match(docs, /IFUND_ADMIN_AGENT_KEY/);
 assert.match(docs, /split-brain/i);
-assert.match(docs, /same authoritative Base44 application\/data plane/i);
+assert.match(docs, /same authoritative Base44 application\/data plane/i);\nassert.match(docs, /MUST NOT fail solely because a paid provider capability is unavailable/i);\nassert.match(docs, /Base44 two-way GitHub sync/i);\nassert.match(docs, /manual-sync-required/i);
 console.log("Host portability and admin-agent contract passed");
