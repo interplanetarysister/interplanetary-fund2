@@ -16,7 +16,7 @@ for (const provider of providers) {
   assert.match(disconnect, new RegExp('\\b'+provider+':'), provider+' missing central revocation');
 }
 assert.match(dialog, /connectAppUser/);
-assert.match(dialog, /ifund_pending_oauth_platform/);
+assert.match(dialog, /ifund_pending_platform_connection/);
 assert.match(finalize, /providerCapabilities/);
 assert.match(finalize, /capability_status:\s*confirmed\.length\s*\?\s*'confirmed'\s*:\s*'unknown'/);
 assert.doesNotMatch(finalize, /granted_capabilities:\s*cfg\.requestedCapabilities/);
