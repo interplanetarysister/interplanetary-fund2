@@ -39,6 +39,60 @@ While the zero-credit constraint is active:
 
 The goal is a self-checking, resumable, deterministic, low-resource development system, not endless agent execution.
 
+
+## Base44 portability freeze — effective 2026-09-28
+
+Feature development is temporarily frozen while Interplanetary Fund is prepared for host portability.
+
+This is a **preserve-and-switch** migration, not a Base44-removal project.
+
+### Non-destructive migration rule
+
+- Do **not** delete, disable, replace, or deliberately break a working Base44 dependency merely because an alternate host is being prepared.
+- Keep the Base44 version operational and behaviorally authoritative during the preparation period.
+- Preserve Base44 entities, RLS, auth, backend functions, agents, workflows, connectors, storage paths, secrets references, webhooks, and other working integrations until a separately verified cutover is explicitly authorized.
+- Prepare dependencies so they can later be suspended, redirected, or switched to an alternate host through documented adapters/configuration/cutover controls.
+- Prefer provider-neutral interfaces and reversible configuration boundaries around existing Base44 behavior. Do not prematurely route production traffic to an unverified replacement.
+- Never copy secret values into source control. Record only secret/reference names and migration requirements.
+- A successful alternate deployment does not prove independence. Every runtime dependency must be inventoried and its alternate path verified before cutover.
+- Base44 and alternate-host implementations must not create competing financial ledgers, user identities, or mutable production sources of truth during the preparation phase.
+
+### Agent 1 — dependency and portability engineer
+
+Agent 1 owns the dependency inventory and preparation implementation.
+
+For every Base44 dependency, record:
+1. dependency/service;
+2. exact source/config/schema/function locations;
+3. consumers and data involved;
+4. authorization/security requirements;
+5. current Base44 behavior;
+6. proposed alternate-host equivalent;
+7. adapter/configuration/cutover mechanism;
+8. rollback mechanism;
+9. verification required before activation;
+10. status.
+
+Agent 1 may add non-destructive adapters, interfaces, configuration switches, tests, documentation, and dormant alternate-host implementations. Agent 1 must not remove the working Base44 path.
+
+### Agent 2 — independent migration and security reviewer
+
+Agent 2 independently audits Agent 1's inventory and changes. Specifically search for missed RLS/service-role behavior, authentication assumptions, financial invariants, secrets, OAuth grants, connector state, webhooks, scheduled/workflow execution, uploads/storage, environment configuration, agent runtimes, and generated Base44 configuration.
+
+Reject a portability change if it weakens authorization, privacy, idempotency, financial integrity, auditability, rollback capability, or the current Base44 production path.
+
+### Agent 3 — parity, recovery, and cutover QA
+
+Agent 3 establishes and maintains the Base44 reference baseline: routes, components, assets, responsive/mobile behavior, important UI states, auth flows, campaign behavior, donations/withdrawals, administration, agents, community/social behavior, and integrations.
+
+For each alternate implementation, verify parity without changing production authority. Maintain explicit cutover and rollback tests. A dependency is cutover-ready only after Agent 1 implementation, Agent 2 approval, and Agent 3 verification.
+
+### Shared completion gate
+
+During this freeze, completion means **zero undiscovered Base44 runtime dependencies and a verified reversible alternate path for each dependency**. It does not mean deleting Base44, switching production early, or merely obtaining a successful alternate-host build.
+
+Required sequence: **inventory -> preserve -> abstract safely -> reproduce -> verify parity -> prepare reversible cutover -> await explicit cutover authorization**.
+
 ## Data source rule
 
 Never assume runtime configuration, payment availability, deployment state, environment state, account state, or integration state. Trace information to its authoritative source. If authoritative data is unavailable, record it as unresolved rather than inventing a value.
