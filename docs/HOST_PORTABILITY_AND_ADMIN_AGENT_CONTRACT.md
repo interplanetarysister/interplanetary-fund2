@@ -11,7 +11,7 @@ Until a replacement backend has a verified bidirectional replication layer, ever
 - No host may create an independent campaign, donation, user, connection, agent-memory, or admin-action database and call it synchronized.
 - A future backend migration must use explicit IDs, idempotent change events, conflict handling, replay/checkpoints, and reconciliation before it may become writable.
 
-This prevents split-brain state while free hosting is introduced.
+This prevents split-brain state while free hosting is introduced.\n\n## Degraded-provider and billing rule\n\nA build MUST NOT fail solely because a paid provider capability is unavailable, suspended, quota-limited, or inaccessible due to the account's current billing state. This includes Base44 two-way GitHub sync. Such conditions are runtime/deployment capability states, not source-integrity failures.\n\nWhen a paid capability is unavailable:\n\n- continue building and testing all locally verifiable product code;\n- report the affected capability as `degraded`, `unavailable`, or `manual-sync-required`;\n- preserve queued/replayable synchronization intent where supported;\n- never report unavailable synchronization as completed;\n- do not erase or fork authoritative product data merely to make the status appear healthy.\n\nBuild-blocking failures remain appropriate for source errors, compilation/type failures, security/authorization regressions, schema/contract corruption, financial-integrity failures, or deterministic tests that fail independently of provider billing/availability.
 
 ## Admin development-agent gateway
 
