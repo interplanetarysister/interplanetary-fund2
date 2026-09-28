@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { getFrontendIdentity } from '@/lib/adminBootstrap';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
@@ -132,9 +133,13 @@ export const AuthProvider = ({ children }) => {
     base44.auth.redirectToLogin(window.location.href);
   };
 
+  const frontendIdentity = getFrontendIdentity(user);
+
   return (
     <AuthContext.Provider value={{ 
-      user, 
+      user,
+      frontendIdentity,
+      isSuperAdmin: frontendIdentity.superAdminOwner, 
       isAuthenticated, 
       isLoadingAuth,
       isLoadingPublicSettings,
