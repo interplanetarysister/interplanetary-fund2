@@ -18,7 +18,7 @@ for (const provider of providers) {
 assert.match(dialog, /connectAppUser/);
 assert.match(dialog, /ifund_pending_oauth_platform/);
 assert.match(finalize, /providerCapabilities/);
-assert.match(finalize, /capability_status: confirmed\.length \? 'confirmed' : 'unknown'/);
+assert.match(finalize, /capability_status:\s*confirmed\.length\s*\?\s*'confirmed'\s*:\s*'unknown'/);
 assert.doesNotMatch(finalize, /granted_capabilities:\s*cfg\.requestedCapabilities/);
 assert.match(card, /disconnectPlatformConnection/);
 assert.doesNotMatch(card, /PlatformConnection\.delete/);
