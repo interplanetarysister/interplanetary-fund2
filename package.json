@@ -62,7 +62,8 @@
     "verify:no-active-convex": "node scripts/verify-no-active-convex-runtime.mjs",
     "verify:entitlement-obo": "node scripts/verify-entitlement-obo-contract.mjs",
     "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs",
-    "verify:host-portability": "node scripts/verify-host-portability-contract.mjs"
+    "verify:host-portability": "node scripts/verify-host-portability-contract.mjs",
+    "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.51",
