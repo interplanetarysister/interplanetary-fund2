@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, LockKeyhole, Send } from "lucide-react";
 import { createAdminAgentSession, sendAdminAgentMessage } from "@/lib/adminAgentGateway";
+import { getFrontendIdentity } from "@/lib/adminBootstrap";
 
 const DEVELOPMENT_AGENTS = [
   ["chief_of_staff", "Chief of Staff"],
@@ -22,7 +23,7 @@ export default function AdminDevelopmentChat({ user }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  if (user?.role !== "admin") return null;
+  if (!getFrontendIdentity(user).superAdminOwner) return null;
 
   const unlock = async () => {
     setBusy(true); setError("");
@@ -45,7 +46,7 @@ export default function AdminDevelopmentChat({ user }) {
   };
 
   if (!sessionId) return <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-    <div className="flex items-center gap-2 font-semibold"><LockKeyhole className="w-4 h-4" /> Admin development access</div>
+    <div className="flex items-center gap-2 font-semibold"><LockKeyhole className="w-4 h-4" /> Super admin development access</div>
     <p className="text-sm text-muted-foreground">Enter the admin development key to connect Chief of Staff to the protected development-agent gateway.</p>
     <div className="flex gap-2"><Input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} placeholder="Admin key" /><Button onClick={unlock} disabled={!key || busy}>{busy ? <Loader2 className="w-4 h-4 animate-spin"/> : "Unlock"}</Button></div>
     {error && <p className="text-sm text-destructive">{error}</p>}
