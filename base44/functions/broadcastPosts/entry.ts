@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
@@ -66,7 +66,7 @@ export default async function(req) {
 
       const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
       const connectionAutomationAllowed = obo.ok && connection.agent_access?.automation_enabled === true;
-      if (!canAutoPublish(connection) || !aiConsentGranted || !connectionAutomationAllowed) {
+      if (!canAutoPublish(connection) || !aiConsentGranted || !connectionAutomationAllowed || !hasFreshProviderVerification(connection)) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);

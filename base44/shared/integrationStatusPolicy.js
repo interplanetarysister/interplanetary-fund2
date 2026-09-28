@@ -22,6 +22,27 @@ export function normalizeIntegrationStatus(value) {
   return SUPPORTED_INTEGRATION_STATUSES.has(value) ? value : 'UNKNOWN';
 }
 
+// Historical ACTIVE rows were produced by configuration/token-only checks.
+// No registry verifier currently stores independently attributable live
+// provider evidence. Quarantine those persisted rows on every read, including
+// before the next admin-triggered health scan; a future live verifier must
+// establish a server-owned evidence contract before lifting this guard.
+export function effectiveIntegrationStatus(entry) {
+  const status = normalizeIntegrationStatus(entry?.status);
+  return status === 'ACTIVE' || status === 'EXPIRES_SOON' ? 'UNKNOWN' : status;
+}
+
+// A successful provider check applies to the configuration that was checked.
+// Replacing its account, authentication route, secret references, environment,
+// or dependencies invalidates that evidence before another external action.
+export function statusAfterIntegrationEdit(previous, next) {
+  if (!previous) return 'DISCONNECTED';
+  const status = normalizeIntegrationStatus(previous.status);
+  const changed = ['integration_kind', 'account_identifier', 'auth_type', 'environment', 'secret_refs', 'dependencies']
+    .some((field) => JSON.stringify(previous[field] ?? null) !== JSON.stringify(next[field] ?? null));
+  return changed && (status === 'ACTIVE' || status === 'EXPIRES_SOON') ? 'REAUTH_REQUIRED' : status;
+}
+
 export function mergeIntegrationStatus(current, candidate, { providerVerified = false } = {}) {
   const safeCurrent = normalizeIntegrationStatus(current);
   const safeCandidate = normalizeIntegrationStatus(candidate);

@@ -1,3 +1,5 @@
+import { effectiveIntegrationStatus } from "../../base44/shared/integrationStatusPolicy.js";
+
 const STATUS_SET = new Set([
   "ACTIVE",
   "REAUTH_REQUIRED",
@@ -70,9 +72,9 @@ function parseRegistryEntry(entry) {
   const accountIdentifier = boundedString(entry.account_identifier ?? "", 200);
   const adminOwner = boundedString(entry.admin_owner ?? "", 200);
   const reauthInstructions = boundedString(entry.reauth_instructions ?? "", 1000);
-  const integrationKind = boundedString(entry.integration_kind ?? "api", 40, { allowEmpty: false });
-  const authType = boundedString(entry.auth_type ?? "none", 40, { allowEmpty: false });
-  const environment = boundedString(entry.environment ?? "production", 40, { allowEmpty: false });
+  const integrationKind = boundedString(entry.integration_kind, 40, { allowEmpty: false });
+  const authType = boundedString(entry.auth_type, 40, { allowEmpty: false });
+  const environment = boundedString(entry.environment, 40, { allowEmpty: false });
   const secretRefs = boundedStringList(entry.secret_refs ?? []);
   const agents = boundedStringList(entry.authorized_agents ?? []);
   const dependencies = boundedStringList(entry.dependencies ?? []);
@@ -90,7 +92,7 @@ function parseRegistryEntry(entry) {
     return null;
   }
 
-  const status = normalizeIntegrationStatus(entry.status);
+  const status = effectiveIntegrationStatus(entry);
   return {
     id,
     platform: platform.toLowerCase(),

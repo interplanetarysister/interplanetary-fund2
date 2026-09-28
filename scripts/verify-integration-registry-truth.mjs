@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import {
   mergeIntegrationStatus,
   normalizeIntegrationStatus,
+  effectiveIntegrationStatus,
+  statusAfterIntegrationEdit,
 } from '../base44/shared/integrationStatusPolicy.js';
 import {
   BROWSER_RUN_POLICY,
@@ -25,6 +27,7 @@ import {
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const manage = read('base44/functions/managePlatformAccess/entry.ts');
+const sharedRegistry = read('base44/shared/integrationRegistry.ts');
 const agentAccess = read('base44/functions/verifyAgentPlatformAccess/entry.ts');
 const health = read('base44/functions/validateIntegrationHealth/entry.ts');
 const worker = read('base44/functions/runBrowserConnection/entry.ts');
@@ -44,12 +47,23 @@ for (const candidate of ['MISCONFIGURED', 'REAUTH_REQUIRED', 'ACTIVE', 'DISCONNE
 assert.equal(mergeIntegrationStatus('MISCONFIGURED', 'ACTIVE', { providerVerified: true }), 'MISCONFIGURED');
 assert.equal(mergeIntegrationStatus('UNKNOWN', 'DISCONNECTED'), 'UNKNOWN');
 assert.equal(mergeIntegrationStatus('DISCONNECTED', 'ACTIVE'), 'UNKNOWN');
-assert.match(manage, /status: entry \? normalizeIntegrationStatus\(entry\.status\) : 'DISCONNECTED'/);
+const verifiedConfig = { status: 'ACTIVE', integration_kind: 'api', account_identifier: 'account-a', auth_type: 'oauth', environment: 'production', secret_refs: ['SECRET_A'], dependencies: [] };
+assert.equal(statusAfterIntegrationEdit(null, verifiedConfig), 'DISCONNECTED');
+assert.equal(statusAfterIntegrationEdit(verifiedConfig, { ...verifiedConfig, purpose: 'renamed' }), 'ACTIVE');
+for (const field of ['integration_kind', 'account_identifier', 'auth_type', 'environment', 'secret_refs', 'dependencies']) {
+  const changed = { ...verifiedConfig, [field]: field === 'secret_refs' ? ['SECRET_B'] : field === 'dependencies' ? ['other'] : 'other' };
+  assert.equal(statusAfterIntegrationEdit(verifiedConfig, changed), 'REAUTH_REQUIRED', `${field} edit retained provider authority`);
+  assert.equal(statusAfterIntegrationEdit({ ...verifiedConfig, status: 'EXPIRES_SOON' }, changed), 'REAUTH_REQUIRED');
+  assert.equal(statusAfterIntegrationEdit({ ...verifiedConfig, status: 'REVOKED' }, changed), 'REVOKED');
+}
+assert.equal(mergeIntegrationStatus('REAUTH_REQUIRED', 'ACTIVE', { providerVerified: true }), 'ACTIVE');
+assert.match(manage, /data\.status = statusAfterIntegrationEdit\(entry, data\)/);
+assert.match(manage, /statusAfterIntegrationEdit\(entry, \{ \.\.\.entry, secret_refs: refs \}\)/);
 assert.doesNotMatch(manage, /status: 'ACTIVE'/);
 assert.match(health, /providerVerified = false/);
 assert.match(health, /result\.status === 'ACTIVE' && result\.providerVerified/);
 assert.doesNotMatch(agentAccess, /entry\.status \|\| 'ACTIVE'/);
-assert.match(agentAccess, /normalizeIntegrationStatus\(entry\.status\)/);
+assert.match(agentAccess, /effectiveIntegrationStatus\(entry\)/);
 assert.match(agentAccess, /authentication required/);
 assert.match(agentAccess, /oboUserId !== user\.id/);
 assert.doesNotMatch(agentAccess, /error:\s*error\.message/);
@@ -83,7 +97,18 @@ const goodRow = {
   status: 'ACTIVE', last_verified: '', last_successful_verification: '',
   auth_failures: 0, cleanup_flags: [],
 };
-assert.equal(parseRegistryResponse([goodRow])?.[0].status, 'ACTIVE');
+assert.equal(effectiveIntegrationStatus({ status: 'ACTIVE', last_successful_verification: new Date().toISOString() }), 'UNKNOWN');
+assert.equal(effectiveIntegrationStatus({ status: 'EXPIRES_SOON' }), 'UNKNOWN');
+assert.equal(effectiveIntegrationStatus({ status: 'REVOKED' }), 'REVOKED');
+assert.equal(parseRegistryResponse([goodRow])?.[0].status, 'UNKNOWN');
+const legacyActive = { ...goodRow, last_successful_verification: new Date().toISOString() };
+assert.equal(effectiveIntegrationStatus(legacyActive), 'UNKNOWN');
+assert.match(sharedRegistry, /const status = effectiveIntegrationStatus\(entry\)/);
+for (const field of ['integration_kind', 'auth_type', 'environment']) {
+  const incomplete = { ...goodRow };
+  delete incomplete[field];
+  assert.equal(parseRegistryResponse([incomplete]), null, `${field} missing but registry displayed operational state`);
+}
 assert.equal(parseRegistryResponse([{ ...goodRow, platform: 'x'.repeat(65) }]), null);
 assert.equal(parseRegistryResponse(Array.from({ length: 201 }, () => goodRow)), null);
 const hostile = new Proxy({}, { get() { throw new Error('hostile getter'); } });

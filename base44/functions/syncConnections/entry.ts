@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { assertPlatformAccess, assertOboGrant } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
@@ -59,7 +59,11 @@ export default async function(req) {
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
       const consentGranted = hasAiPublishingConsent(owner);
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed(connection) && ownerChainMatches && consentGranted && access.ok) {
+      const obo = ownerChainMatches
+        ? await assertOboGrant(sr, 'platform_outreach_agent', ownerUserId, 'social_publish', connection)
+        : { ok: false };
+      const verificationFresh = hasFreshProviderVerification(connection, now.getTime());
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed(connection) && ownerChainMatches && consentGranted && access.ok && obo.ok && verificationFresh) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -95,7 +99,9 @@ export default async function(req) {
         // hand back to the owner instead of allowing an automated external side effect.
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
-          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !connectionAutomationAllowed(connection)
+          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !verificationFresh
+            ? { error: 'Automatic publishing blocked: provider verification is not current.' }
+            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !connectionAutomationAllowed(connection)
             ? { error: 'Automatic publishing blocked: this connection is not authorized for shared agent automation.' }
             : connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
             ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }

@@ -134,4 +134,3 @@ export default function ConnectionCard({ connection, platform, onManage, onRemov
     </div>
   );
 }
-

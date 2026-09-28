@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
@@ -60,9 +60,9 @@ export default async function(req) {
       // registry level, fall back to a manual handoff instead of auto-posting.
       const access = await assertPlatformAccess(sr, 'social_publish');
       const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
-      if (!access.ok || !obo.ok) {
+      if (!access.ok || !obo.ok || !hasFreshProviderVerification(connection)) {
         const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
-        const reason = !access.ok ? access.reason : obo.reason;
+        const reason = !access.ok ? access.reason : !obo.ok ? obo.reason : 'provider verification is not current';
         await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked: ${reason}`, status: 'failure' });
         return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason });
       }

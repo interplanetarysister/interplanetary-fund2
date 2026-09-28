@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { boundedStringList } from '../../shared/integrationInputPolicy.js';
-import { normalizeIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
+import { normalizeIntegrationStatus, safeIntegrationPlatform, statusAfterIntegrationEdit } from '../../shared/integrationStatusPolicy.js';
 
 const ACTIONS = new Set(['upsert', 'authorize_agent', 'revoke_agent', 'reauthorize', 'revoke', 'change_credential_ref']);
 const INTEGRATION_KINDS = new Set(['payment', 'auth', 'social', 'deployment', 'webhook', 'api', 'external_platform']);
@@ -69,8 +69,11 @@ export default async function(req) {
         dependencies,
         reauth_instructions: boundedString(body.reauth_instructions ?? entry?.reauth_instructions, 1000),
         admin_owner: boundedString(body.admin_owner ?? entry?.admin_owner ?? user.email, 200),
-        status: entry ? normalizeIntegrationStatus(entry.status) : 'DISCONNECTED',
       };
+      data.status = statusAfterIntegrationEdit(entry, data);
+      if (entry && data.status === 'REAUTH_REQUIRED' && normalizeIntegrationStatus(entry.status) !== 'REAUTH_REQUIRED') {
+        data.last_failure = 'Provider verification required after integration configuration changed.';
+      }
       let saved;
       if (entry) { saved = await sr.entities.PlatformAccessRegistry.update(entry.id, data); }
       else { saved = await sr.entities.PlatformAccessRegistry.create(data); }
@@ -116,12 +119,16 @@ export default async function(req) {
     if (action === 'change_credential_ref') {
       const refs = boundedList(body.secret_refs);
       if (!refs) return Response.json({ error: 'Invalid integration metadata.' }, { status: 400 });
+      const status = statusAfterIntegrationEdit(entry, { ...entry, secret_refs: refs });
       await sr.entities.PlatformAccessRegistry.update(entry.id, {
         secret_refs: refs,
-        status: normalizeIntegrationStatus(entry.status),
+        status,
+        ...(status === 'REAUTH_REQUIRED' && normalizeIntegrationStatus(entry.status) !== 'REAUTH_REQUIRED'
+          ? { last_failure: 'Provider verification required after integration configuration changed.' }
+          : {}),
       });
       await audit({ action: 'credential_reference_change', detail: `updated secret references for ${platform}`, metadata: { platform, secret_ref_count: refs.length } });
-      return Response.json({ ok: true, platform, secret_ref_count: refs.length, status: normalizeIntegrationStatus(entry.status) });
+      return Response.json({ ok: true, platform, secret_ref_count: refs.length, status });
     }
 
     return Response.json({ error: 'Invalid integration operation.' }, { status: 400 });

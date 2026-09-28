@@ -3,12 +3,16 @@
 The Base44 registry is an administrative view of provider state, not a source of provider truth.
 
 - A new or manually reauthorized entry must remain fail-closed until a provider-backed check succeeds.
+- Historical `ACTIVE`/`EXPIRES_SOON` rows and their timestamps came from configuration-only checks. Registry authorization and admin display quarantine them as Unknown before any health scan. No current registry validator proves live provider access, so external registry-gated actions remain unavailable until a server-owned provider-evidence path is implemented and independently verified.
 - Secret or token presence is configuration evidence only. It must never create an `ACTIVE` status or advance `last_successful_verification`. When no supported live provider probe exists, the entry remains fail-closed.
+- Changing a previously verified account, authentication type, environment, secret reference, integration kind, or dependency invalidates its `ACTIVE`/`EXPIRES_SOON` authorization immediately; only a new provider-backed check can restore authority. Revocation remains revoked.
 - Unknown and malformed statuses render as **Unknown**, never as Active.
 - UI requests must have bounded waits, synchronous duplicate-action locks, stale-response/unmount protection, and selected-row reconciliation after refresh.
+- Incomplete registry rows cannot acquire default production/authentication metadata in the admin view; reject incomplete responses rather than displaying a fabricated operational environment.
 - Provider and SDK errors are logged only in bounded diagnostic form. User-visible and persisted failures use fixed safe messages.
 - Convex is legacy evidence only and is not an active health requirement for the Base44 runtime.
 - Verification must include negative cases for malformed responses, duplicate clicks, stale refreshes, and manual activation attempts.
+- Contract checks should assert the authorization predicate and denial behavior, not incidental explanatory text. A check for a removed bootstrap comment failed after the implementation retained its canonical admin-role guard; the corrected check asserts that guard directly. Passing source checks still does not establish hosted Base44 behavior.
 
 ## External browser observations
 
@@ -17,6 +21,7 @@ The Base44 registry is an administrative view of provider state, not a source of
 - An allowlisted hostname is not by itself an SSRF control. DNS resolution must be pinned and private, loopback, link-local, metadata, and rebinding destinations must be denied by a proven egress boundary.
 - Until Base44 exposes repository-verifiable atomic reservation and DNS/private-egress controls, `runBrowserConnection` fails closed before reading a Browserbase secret or making an outbound request. Its daily quota is effectively zero.
 - Browser observations are external-only text evidence. They never create donations, modify provider-verification status, or make external totals withdrawable.
+- Scheduled and direct social publishing both require current provider verification on the same connection before an external request. A saved automation grant does not override disconnected, unverified, stale, future-dated, or provider-error state.
 
 ## Shared connection recipes
 

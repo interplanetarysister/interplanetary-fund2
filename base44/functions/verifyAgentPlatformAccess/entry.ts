@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertOboGrant } from '../../shared/integrationRegistry.ts';
-import { normalizeIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
+import { effectiveIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
 // agent's behalf) uses an external platform, it calls this to: locate the
@@ -71,7 +71,7 @@ export default async function(req) {
 
     if (entry) {
       const authorizedAgents = Array.isArray(entry.authorized_agents) ? entry.authorized_agents : [];
-      const status = normalizeIntegrationStatus(entry.status);
+      const status = effectiveIntegrationStatus(entry);
       if (!authorizedAgents.includes(agentName)) {
         reason = `agent "${agentName}" is not authorized for "${platform}"`;
       } else if (status !== 'ACTIVE') {
@@ -112,7 +112,7 @@ export default async function(req) {
     // load through the protected secret mechanism, and only when authorized.
     return Response.json({
       authorized,
-      status: entry ? normalizeIntegrationStatus(entry.status) : null,
+      status: entry ? effectiveIntegrationStatus(entry) : null,
       environment: entry ? entry.environment : null,
       secret_refs: authorized ? (entry.secret_refs || []) : [],
       reason,

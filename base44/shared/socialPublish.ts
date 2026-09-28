@@ -3,6 +3,7 @@
 // hostname is user-controlled and this runtime lacks proven private-egress
 // controls.
 import { denyMastodonNetworkAccess } from './mastodonNetworkPolicy.js';
+export { hasFreshProviderVerification } from './providerVerificationPolicy.js';
 
 export function hasAiPublishingConsent(user) {
   return user?.ai_publishing_consent?.granted === true;

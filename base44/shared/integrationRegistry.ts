@@ -1,7 +1,7 @@
 // Shared helpers for the Platform Access Registry. Reused by the health
 // validator, the agent-access gatekeeper, and the admin management function.
 // Never imports or handles secret values — only reference names and metadata.
-import { normalizeIntegrationStatus } from './integrationStatusPolicy.js';
+import { normalizeIntegrationStatus, effectiveIntegrationStatus } from './integrationStatusPolicy.js';
 import { SECRET_FIELDS, mergeConnectionCredentials, redactCredentials } from './credentialRedaction.js';
 
 export { SECRET_FIELDS, redactCredentials };
@@ -89,7 +89,7 @@ export async function assertPlatformAccess(sr, platform) {
   }
   const entry = entries && entries[0];
   if (!entry) return { ok: false, status: null, reason: `no registry entry for ${platform}` };
-  const status = normalizeIntegrationStatus(entry.status);
+  const status = effectiveIntegrationStatus(entry);
   const ok = status === "ACTIVE" || status === "EXPIRES_SOON";
   return { ok, status, reason: ok ? "ok" : `status ${status}` };
 }

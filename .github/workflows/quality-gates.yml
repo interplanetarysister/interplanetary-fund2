@@ -88,6 +88,12 @@ jobs:
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
+      - name: Host portability and shared data-plane contract
+        run: npm run verify:host-portability
+
+      - name: Canonical admin authorization contract
+        run: npm run verify:admin-authorization
+
       - name: Agent reasoning coherence
         run: npm run verify:agent-reasoning-coherence
 

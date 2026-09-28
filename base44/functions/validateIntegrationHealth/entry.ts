@@ -172,4 +172,3 @@ export default async function(req) {
     return Response.json({ error: 'Integration health check could not complete.' }, { status: 500 });
   }
 }
-

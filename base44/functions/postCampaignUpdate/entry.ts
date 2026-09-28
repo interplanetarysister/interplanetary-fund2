@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
@@ -138,7 +138,7 @@ Return JSON only.`;
           crosspost.generated++;
 
           const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', conn);
-          if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
+          if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok && hasFreshProviderVerification(conn)) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({

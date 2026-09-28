@@ -5,10 +5,16 @@ import {
   directVerificationRequest,
   verifyDirectConnection,
 } from '../base44/shared/manualConnectionVerificationPolicy.js';
+import { hasFreshProviderVerification } from '../base44/shared/providerVerificationPolicy.js';
 
 const verify = fs.readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
 const provider = fs.readFileSync('base44/shared/connectionVerification.ts', 'utf8');
 const sync = fs.readFileSync('base44/functions/syncConnections/entry.ts', 'utf8');
+const directPublish = [
+  'base44/functions/publishPost/entry.ts',
+  'base44/functions/broadcastPosts/entry.ts',
+  'base44/functions/postCampaignUpdate/entry.ts',
+].map((path) => fs.readFileSync(path, 'utf8'));
 const health = fs.readFileSync('src/lib/connectionHealth.js', 'utf8');
 const disconnect = fs.readFileSync('base44/functions/disconnectPlatformConnection/entry.ts', 'utf8');
 const card = fs.readFileSync('src/components/connections/ConnectionCard.jsx', 'utf8');
@@ -21,6 +27,22 @@ assert.match(verify, /if \(!providerVerified\) throw/);
 assert.match(verify, /verification_status: 'verified'/);
 assert.match(verify, /verification_status: 'unverified'/);
 assert.match(sync, /oauth_live_probe_unavailable/);
+assert.match(sync, /assertOboGrant\(sr, 'platform_outreach_agent', ownerUserId, 'social_publish', connection\)/);
+assert.match(sync, /hasFreshProviderVerification\(connection, now\.getTime\(\)\)/);
+assert.match(sync, /access\.ok && obo\.ok && verificationFresh/);
+for (const source of directPublish) {
+  assert.match(source, /hasFreshProviderVerification\((?:conn|connection)\)/);
+  assert.ok(source.indexOf('hasFreshProviderVerification(') < source.indexOf('await publishThroughConnection('), 'verification must precede the provider side effect');
+}
+const verifiedAt = Date.now();
+const ready = { status: 'connected', verification_status: 'verified', last_synced: new Date(verifiedAt).toISOString(), last_error: '' };
+assert.equal(hasFreshProviderVerification(ready, verifiedAt), true);
+for (const denied of [
+  { status: 'disconnected' }, { verification_status: 'unverified' },
+  { last_error: 'provider rejected access' }, { last_synced: '' },
+  { last_synced: new Date(verifiedAt - 8 * 86400_000).toISOString() },
+  { last_synced: new Date(verifiedAt + 60_000).toISOString() },
+]) assert.equal(hasFreshProviderVerification({ ...ready, ...denied }, verifiedAt), false);
 assert.match(sync, /capability_status: reauth \? 'reauthorization_required' : 'unknown'/);
 assert.doesNotMatch(sync, /if \(oauth\?\.accessToken\)[\s\S]{0,200}verification_status: 'verified'/);
 assert.match(verify, /capability_status: reauth \? 'reauthorization_required' : 'unknown'/);
