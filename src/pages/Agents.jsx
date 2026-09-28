@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import AgentChat from "@/components/agents/AgentChat";
+import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
+import { base44 } from "@/api/base44Client";
 import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown } from "lucide-react";
 
 // Always-on AI agent team. The Chief of Staff coordinates; each specialist
@@ -16,6 +18,8 @@ const AGENTS = [
 
 export default function Agents() {
   const [active, setActive] = useState(AGENTS[0]);
+  const [user, setUser] = useState(null);
+  useEffect(() => { base44.auth.me().then(setUser).catch(() => setUser(null)); }, []);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -41,6 +45,8 @@ export default function Agents() {
           );
         })}
       </div>
+
+      {active.name === "chief_of_staff" && user?.role === "admin" && <div className="mb-4"><AdminDevelopmentChat user={user} /></div>}
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
         <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />
