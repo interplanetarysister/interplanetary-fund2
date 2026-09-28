@@ -25,9 +25,26 @@ async function verifyPlatformAdmin(request, env) {
   if(!r.ok) return null;
   const user=await r.json(); return user?.role==="admin" ? user : null;
 }
-const sessions=new Map();
-function newSession(userId){const id=crypto.randomUUID();sessions.set(id,{userId,expires:Date.now()+15*60*1000});return id;}
-function validSession(id,userId){const s=sessions.get(id);return !!s&&s.userId===userId&&s.expires>Date.now();}
+function b64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
+async function sessionSignature(payload,env){
+  if(!env.IFUND_SESSION_SECRET) throw new Error("Session signing secret is not configured.");
+  const key=await crypto.subtle.importKey("raw",enc.encode(env.IFUND_SESSION_SECRET),{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+  return b64url(new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(payload))));
+}
+async function newSession(userId,env){
+  const payload=b64url(enc.encode(JSON.stringify({uid:userId,exp:Date.now()+15*60*1000,nonce:crypto.randomUUID()})));
+  return payload+"."+await sessionSignature(payload,env);
+}
+async function validSession(token,userId,env){
+  const [payload,sig,...extra]=String(token||"").split(".");
+  if(!payload||!sig||extra.length) return false;
+  if(!(await sameSecret(sig,await sessionSignature(payload,env)))) return false;
+  try{
+    const raw=atob(payload.replace(/-/g,"+").replace(/_/g,"/"));
+    const data=JSON.parse(new TextDecoder().decode(Uint8Array.from(raw,c=>c.charCodeAt(0))));
+    return data.uid===userId&&Number(data.exp)>Date.now();
+  }catch{return false;}
+}
 async function audit(env,event){if(!env.IFUND_AUDIT_URL)return;await fetch(env.IFUND_AUDIT_URL,{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${env.IFUND_SERVICE_TOKEN||""}`},body:JSON.stringify(event)}).catch(()=>{});}
 export default { async fetch(request, env) {
   const origin=allowedOrigin(request,env);
@@ -39,11 +56,11 @@ export default { async fetch(request, env) {
   if(url.pathname==="/v1/admin/agents/session"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
     if(!(await sameSecret(body.adminKey,env.IFUND_ADMIN_AGENT_KEY))){await audit(env,{type:"admin_agent_auth_failed",userId:user.id,at:new Date().toISOString()});return json({error:"Admin development key rejected."},403,origin);}
-    const sessionId=newSession(user.id); await audit(env,{type:"admin_agent_session",userId:user.id,agent:"chief_of_staff",at:new Date().toISOString()}); return json({sessionId,expiresIn:900},200,origin);
+    const sessionId=await newSession(user.id,env); await audit(env,{type:"admin_agent_session",userId:user.id,agent:"chief_of_staff",at:new Date().toISOString()}); return json({sessionId,expiresIn:900},200,origin);
   }
   if(url.pathname==="/v1/admin/agents/message"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
-    if(!validSession(body.sessionId,user.id)) return json({error:"Admin development session expired."},401,origin);
+    if(!(await validSession(body.sessionId,user.id,env))) return json({error:"Admin development session expired."},401,origin);
     const allowed=new Set(["chief_of_staff","builder_agent","admin_agent","review_agent","verification_agent"]);
     if(!allowed.has(body.agent)) return json({error:"Agent is not approved for this gateway."},400,origin);
     if(!env.IFUND_AGENT_EXECUTE_URL) return json({error:"Development agent runtime is not configured on this host.","degraded":true},503,origin);
