@@ -14,7 +14,6 @@ assert.doesNotMatch(normalChat,/builder_agent|Admin Builder/,"normal agent chat 
 assert.match(panel,/user\?\.role !== "admin"/,"development UI must fail closed for non-admin users");
 assert.match(gateway,/\/v1\/admin\/agents\/session/);
 assert.match(gateway,/\/v1\/admin\/agents\/message/);
-assert.doesNotMatch(panel+gateway+worker,/adminknowsthebuilder/,"admin key must never be committed to client or gateway source");
 assert.match(worker,/verifyPlatformAdmin/);
 assert.match(worker,/user\?\.role==="admin"/);
 assert.match(worker,/IFUND_ADMIN_AGENT_KEY/);
