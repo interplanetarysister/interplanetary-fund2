@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const read=p=>fs.readFileSync(new URL("../"+p,import.meta.url),"utf8");
+const bootstrap=read("src/lib/adminBootstrap.js");
+const agents=read("src/pages/Agents.jsx");
+const platform=read("src/pages/Platform.jsx");
+const verify=read("base44/functions/verifyAdminGateway/entry.ts");
+const execute=read("base44/functions/executeAdminAgentRequest/entry.ts");
+for(const email of ["interplanetarysister@gmail.com","unrewound@gmail.com","cuddlemeplatonically@gmail.com"]) assert.match(bootstrap,new RegExp(email.replace(".","\\.")));
+assert.match(bootstrap,/recovery\/bootstrap metadata only/i);
+assert.match(bootstrap,/User\.role === "admin"/);
+assert.match(agents,/user\?\.role === "admin"/);
+assert.match(platform,/user\.role !== "admin"/);
+assert.match(verify,/user\.role!==\x27admin\x27/);
+assert.match(execute,/user\.role!==\x27admin\x27/);
+assert.doesNotMatch(agents+platform+verify+execute,/ADMIN_BOOTSTRAP_EMAILS|isAdminBootstrapEmail/,"email bootstrap list must not become an authorization bypass");
+console.log("Canonical admin authorization contract passed");
