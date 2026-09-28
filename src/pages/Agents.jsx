@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import AgentChat from "@/components/agents/AgentChat";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
 import { base44 } from "@/api/base44Client";
+import { getFrontendIdentity } from "@/lib/adminBootstrap";
 import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown } from "lucide-react";
 
 // Always-on AI agent team. The Chief of Staff coordinates; each specialist
@@ -46,7 +47,7 @@ export default function Agents() {
         })}
       </div>
 
-      {active.name === "chief_of_staff" && user?.role === "admin" && <div className="mb-4"><AdminDevelopmentChat user={user} /></div>}
+      {active.name === "chief_of_staff" && getFrontendIdentity(user).superAdminOwner && <div className="mb-4"><AdminDevelopmentChat user={user} /></div>}
 
       <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
         <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />
