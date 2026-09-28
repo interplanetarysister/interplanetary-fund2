@@ -22,6 +22,7 @@ The Base44 registry is an administrative view of provider state, not a source of
 - Until Base44 exposes repository-verifiable atomic reservation and DNS/private-egress controls, `runBrowserConnection` fails closed before reading a Browserbase secret or making an outbound request. Its daily quota is effectively zero.
 - Browser observations are external-only text evidence. They never create donations, modify provider-verification status, or make external totals withdrawable.
 - Scheduled and direct social publishing both require current provider verification on the same connection before an external request. A saved automation grant does not override disconnected, unverified, stale, future-dated, or provider-error state.
+- Scheduled feed mirroring must have an explicit, independently verified service invocation identity and a per-owner provider/connector binding. A platform-wide connector dataset must never be copied into multiple owners' records or attributed to those owners. Until both boundaries are available and executable two-owner tests prove zero cross-tenant reads/writes, mirroring fails closed before connection reads, provider fetches, or `SocialPost` writes.
 
 ## Shared connection recipes
 

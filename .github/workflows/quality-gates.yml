@@ -85,6 +85,9 @@ jobs:
       - name: Platform connection trusted-state and least-privilege contract
         run: npm run verify:platform-connection-trust
 
+      - name: External mirroring tenant-isolation contract
+        run: npm run verify:external-mirroring-isolation
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
