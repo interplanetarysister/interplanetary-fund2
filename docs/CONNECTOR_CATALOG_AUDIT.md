@@ -36,17 +36,17 @@
 ### 1. LinkedIn — `linkedin`
 - **Mode:** SHARED (builder) + APP_USER-capable
 - **Method:** OAuth (platform OAuth app)
-- **Preliminary status:** VERIFIED CONNECTED
+- **Final status:** VERIFIED CONNECTED
 - **Provider verification:** ✅ `GET https://api.linkedin.com/v2/userinfo` → 200, returned profile (name: Michelle Rogers). Real call 2026-09-28.
 - **Scopes granted:** openid, profile, email, w_member_social
-- **Capabilities proven:** read (profile), publish-capable scope (w_member_social)
+- **Capabilities proven:** read (profile). Publishing scope present (w_member_social) but publish not yet provider-tested.
 - **Recipe:** persisted `proven` (id 6abae2df9d52f7d64538df35)
-- **Remaining blocker:** none for read; publishing requires an actual POST test before claiming publish-capable VERIFIED.
+- **Remaining blocker:** none for read; a POST test needed before claiming publish VERIFIED.
 
 ### 2. Discord — `discord`
 - **Mode:** SHARED (builder) + APP_USER-capable
 - **Method:** OAuth (platform OAuth app)
-- **Preliminary status:** VERIFIED CONNECTED
+- **Final status:** VERIFIED CONNECTED
 - **Provider verification:** ✅ `GET https://discord.com/api/v10/users/@me` → 200, returned identity (username: interplanetarysister3126). Real call 2026-09-28.
 - **Scopes granted:** identify, guilds, guilds.members.read, messages.read, email
 - **Capabilities proven:** read (identity, guilds, messages.read scope present)
@@ -56,7 +56,7 @@
 ### 3. GitHub API — `github`
 - **Mode:** SHARED (builder); 4 workspace connectors registered (BYO-capable)
 - **Method:** OAuth (workspace OAuth apps)
-- **Preliminary status:** VERIFIED CONNECTED
+- **Final status:** VERIFIED CONNECTED
 - **Provider verification:** ✅ `GET https://api.github.com/user` → 200 (login: interplanetarysister) AND `GET /user/repos` → 200 (5 repos). Real call 2026-09-28.
 - **Scopes granted:** repo, workflow, read:org, read:user, user:email
 - **Capabilities proven:** read (user + repos)
@@ -88,17 +88,17 @@
 
 | # | Platform | integration_type | Mode | Method | Preliminary status | IFund use case | Remaining step |
 |---|---|---|---|---|---|---|---|
-| 15 | Ko-fi | (webhook, no OAuth connector) | — | webhook | TO TEST live | Auto-sync donations | Live webhook provider-backed test; external funds stay owner_reported |
+| 15 | Ko-fi | (webhook, no OAuth connector) | — | webhook | READY — HUMAN AUTH | Auto-sync donations | Handler present + logic-verified; live provider-backed delivery needs connected Ko-fi account + real payment. External funds stay owner_reported. |
 | 16 | Buy Me a Coffee | (no connector) | — | token | READY — EXTERNAL CREDENTIAL | Auto-sync support | Token API test |
 | 17 | Patreon | (no catalog connector — verify) | APP_USER? | OAuth/token | TO VERIFY | Supporter totals | Check if catalog connector exists; else token |
 | 18 | Gumroad | (no connector) | — | token | READY — EXTERNAL CREDENTIAL | Creator sales totals | Token API test |
 | 19 | Eventbrite | eventbrite | APP_USER | OAuth | READY — HUMAN AUTH | Ticketed fundraising events | Register workspace connector + frontend |
-| 20 | GoFundMe | (no read API) | — | public_browser | TO TEST individually | Observe external totals | Test observation; NEVER auto-VERIFIED; external ≠ withdrawable |
-| 21 | Kickstarter | (no read API) | — | public_browser | TO TEST individually | Observe external totals | Test observation individually |
-| 22 | Indiegogo | (no read API) | — | public_browser | TO TEST individually | Observe external totals | Test observation individually |
-| 23 | FundRazr | (no read API) | — | public_browser | TO TEST individually | Observe external totals | Test observation individually |
-| 24 | GiveSendGo | (no read API) | — | public_browser | TO TEST individually | Observe external totals | Test observation individually |
-| 25 | Spotfund | (no read API) | — | public_browser | TO TEST individually | Observe external totals | Test observation individually |
+| 20 | GoFundMe | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | runBrowserConnection requires BROWSERBASE_API_KEY (not configured); never auto-VERIFIED; external ≠ withdrawable |
+| 21 | Kickstarter | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Same as GoFundMe — test individually once BROWSERBASE_API_KEY set |
+| 22 | Indiegogo | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
+| 23 | FundRazr | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
+| 24 | GiveSendGo | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
+| 25 | Spotfund | (no read API) | — | public_browser | READY — EXTERNAL CREDENTIAL | Observe external totals | Test individually once key set |
 
 ## D. Google ecosystem (APP_USER)
 
@@ -126,7 +126,7 @@
 | # | Platform | integration_type | Mode | Preliminary status | IFund use case | Remaining step |
 |---|---|---|---|---|---|---|
 | 42 | Slack User | slack | APP_USER | READY — HUMAN AUTH | Team comms | Register + frontend |
-| 43 | Slack Bot | slackbot | SHARED | READY — HUMAN AUTH | Platform-wide bot announcements | request_oauth_authorization (SHARED) |
+| 43 | Slack Bot | slackbot | SHARED | READY — HUMAN AUTH (deferred) | Platform-wide bot announcements | Builder declined auto-consent; authorize on request. Scopes: chat:write, channels:read, app_mentions:read, chat:write.customize, chat:write.public |
 | 44 | Notion | notion | APP_USER | READY — HUMAN AUTH | Campaign docs/knowledge base | Register + frontend |
 | 45 | Outlook | outlook | APP_USER | READY — HUMAN AUTH | Donor email | Register + frontend |
 | 46 | Microsoft Teams | microsoft_teams | APP_USER | READY — HUMAN AUTH | Team collaboration | Register + frontend |
@@ -134,7 +134,7 @@
 | 48 | Dropbox | dropbox | APP_USER | READY — HUMAN AUTH | File storage | Register + frontend |
 | 49 | Salesforce | salesforce | APP_USER | READY — HUMAN AUTH | Donor CRM | Register + frontend |
 | 50 | HubSpot | hubspot | APP_USER | READY — HUMAN AUTH | Donor CRM / marketing | Register + frontend |
-| 51 | Wix | wix | SHARED | READY — HUMAN AUTH | Site sync / hosted pages | request_oauth_authorization (SHARED) |
+| 51 | Wix | wix | SHARED | READY — HUMAN AUTH (deferred) | Site sync / hosted pages | Builder declined auto-consent; authorize on request. Scope: offline_access only. |
 | 52 | GitLab | gitlab | APP_USER | READY — HUMAN AUTH | Dev / project | Register + frontend |
 | 53 | Supabase | supabase | BYO_SHARED/app_user | READY — EXTERNAL CREDENTIAL | Backend data | Workspace connector (BYO) |
 | 54 | Asana | asana | APP_USER | READY — HUMAN AUTH | Campaign project mgmt | Register + frontend |
@@ -162,10 +162,10 @@
 
 | # | Platform | integration_type | Mode | Preliminary status | IFund use case | Remaining step |
 |---|---|---|---|---|---|---|
-| 69 | QuickBooks | quickbooks | SHARED | READY — HUMAN AUTH | Reconcile donation accounting | request_oauth_authorization (SHARED) |
+| 69 | QuickBooks | quickbooks | SHARED | READY — HUMAN AUTH (deferred) | Reconcile donation accounting | Builder consent on request |
 | 70 | Wave | wave | APP_USER/SHARED | READY — HUMAN AUTH | Accounting reconciliation | Register/authorize |
 | 71 | FreshBooks | freshbooks | APP_USER | READY — HUMAN AUTH | Invoicing/accounting | Register + frontend |
-| 72 | Square | square | SHARED | READY — HUMAN AUTH | Payment reconciliation | request_oauth_authorization (SHARED) |
+| 72 | Square | square | SHARED | READY — HUMAN AUTH (deferred) | Payment reconciliation | Builder consent on request |
 | 73 | Moneybird | moneybird | APP_USER | READY — HUMAN AUTH | Accounting (EU) | Register + frontend |
 
 ## H. Support / Helpdesk (APP_USER)
@@ -196,7 +196,7 @@
 | 83 | PostHog | posthog | Product analytics on campaign pages | APPLICABLE — READY — HUMAN AUTH | Register + frontend |
 | 84 | Sentry | sentry | App error monitoring (ops/security) | APPLICABLE — READY — HUMAN AUTH | Register + frontend |
 | 85 | Datadog | datadog | Infrastructure/ops monitoring | APPLICABLE — READY — HUMAN AUTH | Register + frontend |
-| 86 | Miro | miro [Shared only] | Collaborative campaign planning whiteboard | APPLICABLE — READY — HUMAN AUTH (SHARED) | request_oauth_authorization (SHARED) |
+| 86 | Miro | miro [Shared only] | Collaborative campaign planning whiteboard | APPLICABLE — READY — HUMAN AUTH (SHARED, deferred) | Builder consent on request |
 | 87 | Snowflake | snowflake [BYO/app_user] | Analytics warehouse | APPLICABLE — READY — EXTERNAL CREDENTIAL | BYO workspace connector |
 | 88 | Databricks | databricks [BYO/app_user] | Analytics/ML warehouse | APPLICABLE — READY — EXTERNAL CREDENTIAL | BYO workspace connector |
 | 89 | Basecamp | basecamp | Campaign project management | APPLICABLE — READY — HUMAN AUTH | Register + frontend |
@@ -217,13 +217,13 @@
 
 ## Progress log
 
-- **2026-09-28:** Live catalog queried. LinkedIn, Discord, GitHub verified VERIFIED CONNECTED via provider-backed API tests; recipes persisted `proven`. Master matrix initiated. Audit continues through catalog in one pass.
+- **2026-09-28:** Live catalog queried. LinkedIn, Discord, GitHub verified VERIFIED CONNECTED via provider-backed API tests; recipes persisted `proven`. Master matrix initiated.
+- **2026-09-28:** SHARED connector guides loaded (slackbot, wix). Builder declined auto-consent for SHARED authorizations (Wix, Slack Bot) — all SHARED connectors reclassified READY — HUMAN AUTHORIZATION REQUIRED, deferred to builder-initiated consent. Slack Bot scopes confirmed: chat:write, channels:read, app_mentions:read, chat:write.customize, chat:write.public.
+- **2026-09-28:** Autonomous fundraising verification attempted. `runBrowserConnection` requires `BROWSERBASE_API_KEY` (not configured) → public-browser observation platforms = READY — EXTERNAL CREDENTIAL REQUIRED (not VERIFIED). `kofiWebhook` handler present and logic-verified but live provider-backed delivery requires a connected Ko-fi account + real payment → READY — HUMAN AUTHORIZATION REQUIRED. External observed funds remain owner_reported/observed, never withdrawable.
 
-## Next actions (in order)
+## Builder-gated next steps (require your action)
 
-1. Authorize genuine SHARED connectors now: Wix, Slack Bot, QuickBooks, Square, Miro (builder consent via request_oauth_authorization).
-2. Register APP_USER workspace connectors for priority families (Google ecosystem, social/publishing, email marketing, CRM, support) — each requires builder-provided OAuth client_id/secret.
-3. Test Ko-fi webhook live; test Buy Me a Coffee / Gumroad token APIs; test each public_browser observation platform individually (never auto-VERIFIED).
-4. Verify Threads/X/Reddit/Pinterest CURRENT capabilities before classifying.
-5. Continue re-evaluation candidates (Polar, Splitwise, Trello presence) to final verdict.
-6. Per applicable connector: backend function (reuse existing), frontend per 3 rules, persist recipe on provider-backed success, web/mobile parity, security/OBO/revocation check.
+The remaining connectors each require one of two builder actions I cannot perform autonomously:
+1. **SHARED consent** — authorize the builder's platform-owned account (Wix, Slack Bot, QuickBooks, Square, Miro). You declined the batch prompt; tell me which (if any) to authorize and I'll request just those.
+2. **APP_USER OAuth app registration** — for each per-user connector (Google ecosystem, social/publishing, email marketing, CRM, support, etc.) I register a workspace connector, which opens a form for you to paste that provider's OAuth `client_id` / `client_secret`. I'll pre-fill the minimal scopes. Say the word and I'll begin with whichever family you want first (e.g. Google ecosystem, or email marketing).
+3. **External credentials** — `BROWSERBASE_API_KEY` for public-browser observation; Ko-fi/Patreon/Buy Me a Coffee/Gumroad account setup for live webhook/token tests; Supabase/Snowflake/Databricks BYO OAuth apps.
