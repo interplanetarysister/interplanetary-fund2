@@ -444,6 +444,13 @@ assert.match(syncSource, /assertPlatformAccess\(sr, 'github'\)/);
 assert.doesNotMatch(syncSource, /Deno\.Command|child_process|execSync|spawnSync/,
   'Base44 verification must use the provider API, not shell git');
 assert.match(syncSource, /checked_at: now/);
+assert.match(syncSource, /GitHubSyncCheckpoint\.filter/);
+assert.match(syncSource, /GitHubSyncCheckpoint\.create/);
+assert.match(syncSource, /relationship = 'UNCHANGED'/);
+assert.match(syncSource, /'FAST_FORWARD'/);
+assert.match(syncSource, /'DIVERGED'/);
+assert.match(syncSource, /Automatic source movement remains blocked/);
+assert.match(syncSource, /\/compare\//, 'provider compare API must classify checkpoint history before future movement');
 assert.doesNotMatch(syncSource, /synced_at: now/);
 assert.ok(
   syncAnalysis.humanText.includes('[GitHub Verification] One or more connection checks failed'),
