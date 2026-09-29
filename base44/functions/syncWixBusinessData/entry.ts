@@ -3,6 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 const URLS = {
   contacts: 'https://www.wixapis.com/contacts/v4/contacts?fieldsets=FULL&paging.limit=100',
   orders: 'https://www.wixapis.com/ecom/v1/orders/search',
+  marketing: 'https://www.wixapis.com/email-marketing/v1/campaigns',
 };
 
 async function upsert(sr: any, owner: string, type: string, externalId: string, data: any, status = '') {
@@ -43,10 +44,20 @@ export default async function(req: Request) {
       orders++;
     }
 
+    const marketingRes = await fetch(URLS.marketing, { headers: auth });
+    const marketingBody = marketingRes.ok ? await marketingRes.json() : { campaigns: [] };
+    let marketing = 0;
+    for (const m of marketingBody.campaigns || []) {
+      const id = String(m.campaignId || m.id || '');
+      if (!id) continue;
+      await upsert(sr, user.id, 'marketing', id, m, String(m.distributionStatus || m.status || 'observed'));
+      marketing++;
+    }
+
     // Wix orders remain external commerce observations. They do not create
     // IFund Donation records or withdrawable balances without a separate,
     // provider-verified settlement/reconciliation path.
-    return Response.json({ ok: contactsRes.ok && ordersRes.ok, contacts, leads, orders });
+    return Response.json({ ok: contactsRes.ok && ordersRes.ok && marketingRes.ok, contacts, leads, orders, marketing });
   } catch (error) {
     console.error('syncWixBusinessData error:', error?.message || error);
     return Response.json({ error: 'Wix business data could not be synchronized.' }, { status: 500 });
