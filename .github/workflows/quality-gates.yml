@@ -79,6 +79,9 @@ jobs:
       - name: Connection lifecycle and operational health contract
         run: npm run verify:connection-lifecycle
 
+      - name: Connection catalog consistency contract
+        run: node scripts/verify-connection-catalog-contract.mjs
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
