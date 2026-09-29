@@ -2,5 +2,5 @@ import assert from "node:assert/strict"; import fs from "node:fs";
 const wrangler=fs.readFileSync("wrangler.toml","utf8"); const worker=fs.readFileSync("host/gateway/worker.js","utf8"); const workflow=fs.readFileSync(".github/workflows/deploy-cloudflare.yml","utf8");
 assert.match(wrangler,/name\s*=\s*"interplanetary-fund"/); assert.match(wrangler,/main\s*=\s*"host\/gateway\/worker\.js"/); assert.match(wrangler,/directory\s*=\s*"\.\/dist"/); assert.match(wrangler,/binding\s*=\s*"ASSETS"/); assert.match(wrangler,/not_found_handling\s*=\s*"single-page-application"/); assert.match(wrangler,/run_worker_first\s*=\s*\["\/v1\/admin\/agents\/\*"\]/);
 assert.match(worker,/\/v1\/admin\/agents\/session/); assert.match(worker,/\/v1\/admin\/agents\/message/); assert.match(workflow,/npx --yes wrangler@4 deploy/); assert.match(workflow,/CLOUDFLARE_ACCESS_TOKEN/); assert.match(workflow,/deployment_url/); assert.match(workflow,/curl --fail/);
-assert.match(workflow, /environment:\s*Ifund2 production/, "Cloudflare deployment must use the environment that owns production credentials");
+assert.match(workflow, /environment:\s*production_if2/, "Cloudflare deployment must use the environment that owns production credentials");
 console.log("Cloudflare SPA, compute runtime, and deployment contract passed.");
