@@ -88,6 +88,9 @@ jobs:
       - name: Wix campaign synchronization contract
         run: node scripts/verify-wix-campaign-sync-contract.mjs
 
+      - name: Wix data synchronization contracts
+        run: node scripts/verify-wix-data-sync-contract.mjs
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
