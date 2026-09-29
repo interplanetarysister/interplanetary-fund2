@@ -480,3 +480,60 @@
     animation: brand-fade-up 0.5s ease-out both;
   }
 }
+
+/* Mobile/readability hardening shared by the web build and installed app.
+   Keep controls visible, prevent accidental character-by-character columns,
+   and reserve space for fixed mobile navigation. */
+@layer base {
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    opacity: .72;
+  }
+
+  button:disabled:not(.bg-primary):not(.bg-destructive):not(.bg-secondary),
+  [role="button"][aria-disabled="true"]:not(.bg-primary):not(.bg-destructive):not(.bg-secondary) {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  button svg,
+  [role="button"] svg {
+    color: currentColor;
+  }
+
+  table th,
+  table td {
+    word-break: normal !important;
+    overflow-wrap: break-word;
+  }
+
+  @media (max-width: 1023px) {
+    main table {
+      table-layout: auto;
+    }
+  }
+}
+
+@layer components {
+  .ifund-mobile-card {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .ifund-mobile-card :where(p, span, div, li) {
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+}
+
+@media (max-width: 767px) {
+  .ifund-experience {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .ifund-experience :where(.bg-white) {
+    max-width: 100%;
+  }
+}
