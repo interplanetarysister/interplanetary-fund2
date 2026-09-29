@@ -12,7 +12,7 @@ function PriorityList({ icon: Icon, title, items }) {
       </h3>
       <ul className="space-y-2">
         {items.map((item, i) => (
-          <li key={i} className="flex gap-2 text-sm text-slate-600">
+          <li key={i} className="flex min-w-0 gap-2 text-sm leading-6 text-slate-600">
             <span className="text-primary font-semibold">{i + 1}.</span> {item}
           </li>
         ))}
@@ -41,7 +41,7 @@ export default function BriefingPanel({ brief }) {
         )}
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <PriorityList icon={CalendarDays} title="Today" items={brief.today_priorities} />
         <PriorityList icon={CalendarRange} title="This Week" items={brief.week_priorities} />
         <PriorityList icon={Target} title="Long-Term" items={brief.long_term} />
