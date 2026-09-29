@@ -103,6 +103,9 @@ jobs:
       - name: Host portability and shared data-plane contract
         run: npm run verify:host-portability
 
+      - name: Cloudflare SPA and compute runtime contract
+        run: node scripts/verify-cloudflare-runtime-contract.mjs
+
       - name: Canonical admin authorization contract
         run: npm run verify:admin-authorization
 
