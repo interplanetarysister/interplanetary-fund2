@@ -9,7 +9,7 @@ const audit = fs.readFileSync('docs/CONNECTOR_CATALOG_AUDIT.md', 'utf8');
 
 const entitySchema = JSON.parse(entity);
 const allowed = entitySchema.properties.platform.enum;
-const ids = [...catalog.matchAll(/\bid:\s*"([^"]+)"/g)].map((m) => m[1]);
+const ids = [...catalog.matchAll(/\{\s*id:\s*"([^"]+)",\s*name:\s*"[^"]+"/g)].map((m) => m[1]);
 assert.equal(new Set(ids).size, ids.length, 'platformCatalog contains duplicate ids');
 for (const id of ids) assert.ok(allowed.includes(id), `UI catalog platform ${id} is missing from PlatformConnection enum`);
 
