@@ -45,16 +45,53 @@ async function checkSlackBot(sr: any) {
   }
 }
 
-async function checkGeneric(sr: any, type: string) {
+function connectorCapabilities(conn: any): string[] {
+  const raw = conn?.capabilities || conn?.grantedCapabilities || conn?.scopes || conn?.scope;
+  const values = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/[ ,]+/) : [];
+  return [...new Set(values.map((value) => String(value).trim()).filter(Boolean))];
+}
+
+async function checkWix(sr: any) {
   try {
-    const conn = await sr.connectors.getConnection(type);
-    if (!conn?.accessToken) return { connected: false, verified: false };
-    // Token presence proves the OAuth transport succeeded. Wix has no single
-    // universal "verify" endpoint independent of a site, so transport-verified
-    // is the honest ceiling here; a site-scoped API call happens on first use.
-    return { connected: true, verified: true, verified_at: new Date().toISOString() };
-  } catch {
-    return { connected: false, verified: false };
+    const conn = await sr.connectors.getConnection('wix');
+    if (!conn?.accessToken) return { connected: false, verified: false, capabilities: [] };
+
+    // A token is configuration evidence, not provider verification. Prove the
+    // connector against Wix with a harmless authenticated, site-scoped read.
+    const res = await fetch('https://www.wixapis.com/site-properties/v4/properties', {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${conn.accessToken}` },
+    });
+    if (!res.ok) {
+      return {
+        connected: true,
+        verified: false,
+        capabilities: connectorCapabilities(conn),
+        last_error: `Wix verification failed (${res.status})`,
+      };
+    }
+
+    const body = await res.json().catch(() => ({}));
+    return {
+      connected: true,
+      verified: true,
+      capabilities: connectorCapabilities(conn),
+      identity: {
+        site_display_name: body?.properties?.siteDisplayName || null,
+        business_name: body?.properties?.businessName || null,
+        language: body?.properties?.language || null,
+        currency: body?.properties?.paymentCurrency || null,
+        time_zone: body?.properties?.timeZone || null,
+      },
+      verified_at: new Date().toISOString(),
+    };
+  } catch (e) {
+    return {
+      connected: false,
+      verified: false,
+      capabilities: [],
+      last_error: String(e?.message || e).slice(0, 200),
+    };
   }
 }
 
@@ -66,7 +103,7 @@ export default async function(req: Request) {
     const sr = base44.asServiceRole;
     const results = [];
     for (const c of SHARED_CONNECTORS) {
-      const status = c.type === 'slackbot' ? await checkSlackBot(sr) : await checkGeneric(sr, c.type);
+      const status = c.type === 'slackbot' ? await checkSlackBot(sr) : await checkWix(sr);
       results.push({ ...c, ...status });
     }
     return Response.json({ shared: results });
