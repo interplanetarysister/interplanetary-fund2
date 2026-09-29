@@ -85,6 +85,9 @@ jobs:
       - name: Wix webhook ingestion contract
         run: node scripts/verify-wix-webhook-contract.mjs
 
+      - name: Wix campaign synchronization contract
+        run: node scripts/verify-wix-campaign-sync-contract.mjs
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
