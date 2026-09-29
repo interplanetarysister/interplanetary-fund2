@@ -167,10 +167,10 @@ export default function Connections() {
                   <p className="font-semibold text-stone-900">{s.name}</p>
                   <p className="text-xs text-stone-500">{s.note}</p>
                 </div>
-                {s.connected ? (
-                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    {s.verified ? "Verified" : "Connected"}
-                  </span>
+                {s.connected && s.verified ? (
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Working</span>
+                ) : s.connected ? (
+                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">Needs attention</span>
                 ) : (
                   <span className="shrink-0 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-stone-500">Not connected</span>
                 )}
