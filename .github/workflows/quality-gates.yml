@@ -91,6 +91,9 @@ jobs:
       - name: Wix data synchronization contracts
         run: node scripts/verify-wix-data-sync-contract.mjs
 
+      - name: Wix Mission Control and replaceability contract
+        run: node scripts/verify-wix-mission-control-contract.mjs
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
