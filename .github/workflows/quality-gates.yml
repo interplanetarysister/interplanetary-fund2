@@ -82,6 +82,9 @@ jobs:
       - name: Connection catalog consistency contract
         run: node scripts/verify-connection-catalog-contract.mjs
 
+      - name: Wix webhook ingestion contract
+        run: node scripts/verify-wix-webhook-contract.mjs
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
