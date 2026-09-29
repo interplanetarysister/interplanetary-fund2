@@ -446,7 +446,7 @@ assert.doesNotMatch(syncSource, /Deno\.Command|child_process|execSync|spawnSync/
 assert.match(syncSource, /checked_at: now/);
 assert.match(syncSource, /GitHubSyncCheckpoint\.filter/);
 assert.match(syncSource, /GitHubSyncCheckpoint\.create/);
-assert.match(syncSource, /relationship = 'UNCHANGED'/);
+assert.match(syncSource, /\? 'UNCHANGED'/);
 assert.match(syncSource, /'FAST_FORWARD'/);
 assert.match(syncSource, /'DIVERGED'/);
 assert.match(syncSource, /Automatic source movement remains blocked/);
