@@ -23,7 +23,7 @@ for (const required of [
 for (const sharedId of ['wix','slackbot']) {
   assert.match(shared + resolver + audit, new RegExp('\\b' + sharedId + '\\b', 'i'), `shared connector missing: ${sharedId}`);
 }
-assert.match(audit, /VERIFIED CONNECTED requires an actual successful provider-backed API call/i);
+assert.match(audit, /VERIFIED CONNECTED\\*\\* requires an actual successful provider-backed API call/i);
 assert.match(resolver, /Configuration, recipes, saved credentials, or public URLs are NOT sufficient/);
 
 console.log(`Connection catalog contract verified: ${ids.length} user-facing platforms plus shared connector coverage.`);
