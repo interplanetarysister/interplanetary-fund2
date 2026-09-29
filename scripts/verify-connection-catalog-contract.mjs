@@ -6,6 +6,7 @@ const entity = fs.readFileSync('base44/entities/PlatformConnection.jsonc', 'utf8
 const resolver = fs.readFileSync('base44/functions/resolveConnectionStatus/entry.ts', 'utf8');
 const shared = fs.readFileSync('base44/functions/getSharedConnectorStatus/entry.ts', 'utf8');
 const audit = fs.readFileSync('docs/CONNECTOR_CATALOG_AUDIT.md', 'utf8');
+const registry = fs.readFileSync('base44/shared/connectionVerification.ts', 'utf8');
 
 const entitySchema = JSON.parse(entity);
 const allowed = entitySchema.properties.platform.enum;
@@ -25,5 +26,6 @@ for (const sharedId of ['wix','slackbot']) {
 }
 assert.ok(audit.replaceAll('*', '').includes('VERIFIED CONNECTED requires an actual successful provider-backed API call'));
 assert.match(resolver, /Configuration, recipes, saved credentials, or public URLs are NOT sufficient/);
+assert.match(registry, /facebook_pages:\s*'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID'/, 'Facebook Pages provider alias must resolve through canonical OAuth registry');
 
 console.log(`Connection catalog contract verified: ${ids.length} user-facing platforms plus shared connector coverage.`);
