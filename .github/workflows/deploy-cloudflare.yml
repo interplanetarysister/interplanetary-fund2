@@ -32,9 +32,18 @@ jobs:
           VITE_BASE44_APP_BASE_URL: ${{ vars.VITE_BASE44_APP_BASE_URL }}
           VITE_ADMIN_AGENT_API_URL: ${{ vars.VITE_ADMIN_AGENT_API_URL }}
         run: npm run build
-      - name: Deploy static frontend to Cloudflare Workers
+      - name: Deploy frontend and compute runtime to Cloudflare Workers
+        id: deploy
         uses: cloudflare/wrangler-action@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_ACCESS_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4"
           command: deploy
+      - name: Verify deployed Worker serves IFund
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL"
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 "$DEPLOYMENT_URL/" -o /tmp/ifund-cloudflare.html
+          grep -q '<div id="root"></div>' /tmp/ifund-cloudflare.html
