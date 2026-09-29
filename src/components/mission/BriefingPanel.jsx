@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 function PriorityList({ icon: Icon, title, items }) {
   if (!items?.length) return null;
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5">
+    <div className="ifund-mobile-card bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5">
       <h3 className="flex items-center gap-2 font-semibold text-sm text-stone-900 mb-3">
         <Icon className="w-4 h-4 text-primary" /> {title}
       </h3>
