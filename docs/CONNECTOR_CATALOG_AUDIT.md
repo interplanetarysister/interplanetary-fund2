@@ -134,7 +134,7 @@
 | 48 | Dropbox | dropbox | APP_USER | READY — HUMAN AUTH | File storage | Register + frontend |
 | 49 | Salesforce | salesforce | APP_USER | READY — HUMAN AUTH | Donor CRM | Register + frontend |
 | 50 | HubSpot | hubspot | APP_USER | READY — HUMAN AUTH | Donor CRM / marketing | Register + frontend |
-| 51 | Wix | wix | SHARED | READY — HUMAN AUTH (declined ×2 — do not re-prompt) | Site sync / hosted pages | wix-base44-connector skill installed (repaired path). OAuth consent declined twice by builder; only valid scope is offline_access. No re-prompting — authorize only on explicit builder request. |
+| 51 | Wix | wix | SHARED | VERIFIED CONNECTED | Site sync / hosted campaign pages; read site data; manage content; receive platform-managed webhooks | ✅ Provider-backed 2026-09-29: OAuth transport authorized (offline_access). `wx.context` returned real site report — site "Interplanetary Fund" (id c44bdf22-…), locale en/US, currency USD, 6 installed apps (Wix Stores V3, Wix Payments, Wix Blog, Wix Pricing Plans, Wix Invoices, Promote SEO). `getSharedConnectorStatus.checkWix` hardened to call the dynamic-context endpoint provider-side (was token-presence-only). Recipe persisted `proven` (preferred_transport: oauth, shared). Webhooks platform-managed (order/contact/form/CMS events) — available but not yet exercised into a sync pipeline. |
 | 52 | GitLab | gitlab | APP_USER | READY — HUMAN AUTH | Dev / project | Register + frontend |
 | 53 | Supabase | supabase | BYO_SHARED/app_user | READY — EXTERNAL CREDENTIAL | Backend data | Workspace connector (BYO) |
 | 54 | Asana | asana | APP_USER | READY — HUMAN AUTH | Campaign project mgmt | Register + frontend |

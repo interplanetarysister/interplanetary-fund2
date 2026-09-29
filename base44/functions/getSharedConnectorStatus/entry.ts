@@ -14,7 +14,7 @@ const SHARED_CONNECTORS = [
   { type: 'slackbot', platform: 'slack', name: 'Slack Bot', kind: 'app', icon: '💬',
     note: 'Platform-wide bot for announcements and mentions. Managed by admins.' },
   { type: 'wix', platform: 'wix', name: 'Wix', kind: 'app', icon: '🌐',
-    note: 'Site sync for hosted campaign pages. Managed by admins.' },
+    note: 'Connected Wix site — read site data, manage content, and receive platform-managed webhooks. Managed by admins.' },
 ];
 
 async function checkSlackBot(sr: any) {

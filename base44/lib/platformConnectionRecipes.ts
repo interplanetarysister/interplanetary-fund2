@@ -30,6 +30,9 @@ export const STATIC_CONNECTION_RECIPES = {
   fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   givesendgo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   spotfund: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
+  // SHARED (platform-managed) connector — builder's Wix site. OAuth transport
+  // is platform-handled; no per-user authorization or app-owned callback.
+  wix: { connect: { preferred_transport: 'oauth', connector_type: 'wix', shared: true } },
 };
 
 export function staticRecipe(platform, operation = 'connect') {
