@@ -25,6 +25,8 @@ export default function Connections() {
   const [platformSearch, setPlatformSearch] = useState("");
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const [sharedIntegrations, setSharedIntegrations] = useState(null);
+  const [wixSyncing, setWixSyncing] = useState(false);
+  const [wixSyncResult, setWixSyncResult] = useState(null);
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -40,6 +42,28 @@ export default function Connections() {
       setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     }
     setSyncing(false);
+  };
+
+  const syncWix = async () => {
+    setWixSyncing(true);
+    setWixSyncResult(null);
+    try {
+      const responses = await Promise.all([
+        base44.functions.invoke("syncWixCampaigns", {}),
+        base44.functions.invoke("syncWixContent", {}),
+        base44.functions.invoke("syncWixBusinessData", {}),
+        base44.functions.invoke("syncWixAnalytics", {}),
+      ]);
+      const payloads = responses.map((response) => response?.data || {});
+      setWixSyncResult({
+        ok: payloads.every((payload) => payload?.ok !== false && !payload?.error),
+        payloads,
+      });
+    } catch {
+      setWixSyncResult({ ok: false });
+    } finally {
+      setWixSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -134,7 +158,13 @@ export default function Connections() {
         <Button onClick={syncAll} disabled={syncing} className="rounded-xl">
           {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Refresh now
         </Button>
+        {sharedIntegrations?.some((integration) => integration.type === "wix" && integration.connected) && (
+          <Button onClick={syncWix} disabled={wixSyncing} variant="outline" className="rounded-xl">
+            {wixSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Wix
+          </Button>
+        )}
       </div>
+      {wixSyncResult && <div className={`mb-4 rounded-xl border p-3 text-sm ${wixSyncResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{wixSyncResult.ok ? "Wix is synchronized." : "Wix sync needs attention. Existing IFund data was left unchanged."}</div>}
       {syncResult && (
         <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">
           {syncResult.error ? (
