@@ -5,7 +5,7 @@ const analytics=fs.readFileSync('base44/functions/syncWixAnalytics/entry.ts','ut
 const ledger=fs.readFileSync('base44/entities/ExternalPlatformRecord.jsonc','utf8');
 assert.match(content,/IFundContent/); assert.match(content,/SocialPost/); assert.match(content,/CampaignUpdate/);
 assert.match(business,/contacts\/v4\/contacts/); assert.match(business,/ecom\/v1\/orders\/search/);
-assert.match(business,/record_type: type/); assert.match(business,/email-marketing\\/v1\\/campaigns/); assert.match(business,/'marketing'/); assert.match(business,/do not create\s*\/\/ IFund Donation records|do not create/i);
+assert.match(business,/record_type: type/); assert.ok(business.includes('email-marketing/v1/campaigns')); assert.match(business,/'marketing'/); assert.match(business,/do not create\s*\/\/ IFund Donation records|do not create/i);
 assert.match(analytics,/analytics\/v2\/site-analytics\/data/); assert.match(analytics,/TOTAL_SESSIONS/); assert.match(analytics,/TOTAL_FORMS_SUBMITTED/);
 assert.match(ledger,/"record_type"/); assert.match(ledger,/"owner_user_id"/);
 console.log('Wix content, contacts, leads, orders, marketing-signal, and analytics sync contracts passed.');
