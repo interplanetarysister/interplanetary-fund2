@@ -52,8 +52,8 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
         toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
       }
     } catch (e) {
-      const reason = e?.response?.data?.reason || e?.response?.data?.error || e?.data?.reason || e?.data?.error || e?.message || "GitHub verification failed.";
-      toast({ title: "GitHub verification failed", description: reason, variant: "destructive" });
+      console.error("GitHub verification failed:", e?.name || "UnknownError");
+      toast({ title: "GitHub verification failed", description: "GitHub verification could not be completed. Review secured integration diagnostics before retrying.", variant: "destructive" });
     }
     setBusy(null);
   };
