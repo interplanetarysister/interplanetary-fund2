@@ -1,18 +1,99 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { RefreshCw, Loader2, ShieldAlert } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 import OpsAgentCard from "@/components/ops/OpsAgentCard";
 import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
-import PendingDonationReview from "@/components/ops/PendingDonationReview";
 import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
-// Ops Center — Base44-native operational view. Data is read directly from
-// Base44 entities; refresh reloads the current authoritative platform state.
+const SAFE_OPS_ERROR = "We couldn't load Ops Center data. Please try again.";
+const SAFE_SYNC_ERROR = "Sync failed. Cached operational data remains visible.";
+
+const safeOwn = (value, key) => {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return undefined;
+    return Object.prototype.hasOwnProperty.call(value, key) ? value[key] : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isPlainRecord = (value) => {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+  } catch {
+    return false;
+  }
+};
+
+const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+const isFiniteNumber = (value) => typeof value === "number" && Number.isFinite(value);
+const isBoolean = (value) => typeof value === "boolean";
+
+const isAgentRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  const name = safeOwn(value, "name");
+  const status = safeOwn(value, "status");
+  const role = safeOwn(value, "role");
+  const trustScore = safeOwn(value, "trust_score");
+  return isNonEmptyString(id) && isNonEmptyString(name) && isNonEmptyString(status)
+    && isNonEmptyString(role) && isFiniteNumber(trustScore) && trustScore >= 0 && trustScore <= 100;
+};
+
+const isCampaignRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  const title = safeOwn(value, "title");
+  const status = safeOwn(value, "status");
+  const goal = safeOwn(value, "goal_amount");
+  const raised = safeOwn(value, "raised_amount");
+  return isNonEmptyString(id) && isNonEmptyString(title) && isNonEmptyString(status)
+    && isFiniteNumber(goal) && goal >= 0 && isFiniteNumber(raised) && raised >= 0
+    && ["outreach_enabled", "payment_active", "story_present", "cover_image_present"].every((key) => {
+      const field = safeOwn(value, key);
+      return field === undefined || isBoolean(field);
+    });
+};
+
+const isTreasurySnapshot = (value) => {
+  if (!isPlainRecord(value)) return false;
+  return ["total_raised", "total_held", "total_fees", "net_position"].every((key) => {
+    const field = safeOwn(value, key);
+    return isFiniteNumber(field) && field >= 0;
+  });
+};
+
+const isReportRow = (value) => {
+  if (!isPlainRecord(value)) return false;
+  const id = safeOwn(value, "id");
+  return isNonEmptyString(id);
+};
+
+const hasUniqueIds = (rows) => {
+  const seen = new Set();
+  for (const row of rows) {
+    const id = safeOwn(row, "id");
+    if (!isNonEmptyString(id) || seen.has(id)) return false;
+    seen.add(id);
+  }
+  return true;
+};
+
+const readSyncEnvelope = (value) => {
+  if (!isPlainRecord(value)) return { ok: false };
+  const error = safeOwn(value, "error");
+  const success = safeOwn(value, "success");
+  return { ok: success === true && !error };
+};
+
+// Ops Center — operational mirror of the Convex mission backend. Convex remains authoritative.
 export default function OpsCenter() {
   const [agents, setAgents] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -22,67 +103,68 @@ export default function OpsCenter() {
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
+  const mountedRef = useRef(false);
+  const requestGenerationRef = useRef(0);
+  const syncingRef = useRef(false);
 
   const load = useCallback(async () => {
+    const generation = ++requestGenerationRef.current;
     try {
-      const me = await base44.auth.me();
-      setUser(me || null);
-      setAuthReady(true);
-      if (me?.role !== "admin") {
-        setLoading(false);
-        return;
-      }
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
         base44.entities.MonitoredCampaign.list("-raised_amount", 50),
         base44.entities.TreasurySnapshot.list("-created_date", 1),
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
+      if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+      const validAgents = Array.isArray(a) && a.every(isAgentRow) && hasUniqueIds(a);
+      const validCampaigns = Array.isArray(c) && c.every(isCampaignRow) && hasUniqueIds(c);
+      const validTreasury = Array.isArray(t) && t.length <= 1 && (t.length === 0 || isTreasurySnapshot(t[0]));
+      const validReports = Array.isArray(r) && r.every(isReportRow) && hasUniqueIds(r);
+      if (!validAgents || !validCampaigns || !validTreasury || !validReports) throw new Error("MALFORMED_OPS_RESPONSE");
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
       setReports(r);
-    } catch (e) {
-      setAuthReady(true);
-      setError("We couldn't load Ops Center data.");
+      setError(null);
+    } catch {
+      if (!mountedRef.current || generation !== requestGenerationRef.current) return;
+      setError(SAFE_OPS_ERROR);
     } finally {
-      setLoading(false);
+      if (mountedRef.current && generation === requestGenerationRef.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => {
+      mountedRef.current = false;
+      requestGenerationRef.current += 1;
+    };
+  }, [load]);
 
   const syncNow = async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     setSyncError("");
     try {
+      const res = await base44.functions.invoke("syncFromConvex", {});
+      const data = safeOwn(res, "data");
+      if (!readSyncEnvelope(data).ok) throw new Error("SYNC_FAILED");
       await load();
-    } catch (e) {
-      console.error("Ops Center refresh failed:", e?.name || "UnknownError");
-      setSyncError("Refresh failed — showing the last loaded data.");
+    } catch {
+      if (mountedRef.current) setSyncError(SAFE_SYNC_ERROR);
+    } finally {
+      syncingRef.current = false;
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
-
-  if (!authReady) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>;
-  }
-
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="max-w-md mx-auto text-center py-24 px-6">
-        <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" />
-        <h1 className="font-display text-2xl text-stone-900 mt-4">Administrators only</h1>
-        <p className="text-stone-500 mt-2">Ops Center and platform financial operations are restricted to platform administrators.</p>
-      </div>
-    );
-  }
 
   const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
   const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
-  const usingFallbackAgents = agents.length === 0;
+  const showingFallback = agents.length === 0;
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -90,7 +172,7 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{usingFallbackAgents ? " · showing in-app agent roster" : " · Base44 live data"}</p>
+            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{showingFallback ? " · showing in-app agents (mirror unavailable)" : " · Convex mission backend mirror"}</p>
           </div>
           <button
             onClick={syncNow}
@@ -109,16 +191,15 @@ export default function OpsCenter() {
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
-            <TabsList className="w-full grid grid-cols-3 sm:grid-cols-6 bg-white/5 border border-white/10 rounded-xl h-11">
+            <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 rounded-xl h-11">
               <TabsTrigger value="agents" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Agents</TabsTrigger>
               <TabsTrigger value="campaigns" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Campaigns</TabsTrigger>
               <TabsTrigger value="treasury" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Treasury</TabsTrigger>
               <TabsTrigger value="migrate" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Migrate</TabsTrigger>
-              <TabsTrigger value="donations" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Donations</TabsTrigger>
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
-              {usingFallbackAgents && <p className="text-xs text-amber-400/80 text-center py-3">No persisted agent records are available — showing the platform's in-app agent roster.</p>}
+              {showingFallback && <p className="text-xs text-amber-400/80 text-center py-3">Convex mission backend mirror unavailable — showing in-app agents. Tap Sync Now to retry.</p>}
               {displayAgents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
             </TabsContent>
             <TabsContent value="campaigns" className="mt-4 space-y-3">
@@ -130,9 +211,6 @@ export default function OpsCenter() {
             </TabsContent>
             <TabsContent value="migrate" className="mt-4">
               <FundMigrationDashboard />
-            </TabsContent>
-            <TabsContent value="donations" className="mt-4">
-              <PendingDonationReview />
             </TabsContent>
             <TabsContent value="reports" className="mt-4">
               <OpsReports reports={reports} />
