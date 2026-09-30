@@ -1,114 +1,139 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Loader2, Link2, RefreshCw, Search, ChevronDown } from "lucide-react";
-import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
+import { Loader2, Link2, Rocket, Share2, RefreshCw } from "lucide-react";
+import FetchCredentialsDialog from "@/components/connections/FetchCredentialsDialog";
+import { CROWDFUNDING_PLATFORMS, SOCIAL_PLATFORMS, ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import PageError from "@/components/PageError";
-import { connectionHealth } from "@/lib/connectionHealth";
 
-// The Universal Connections Center — connect once, fund everywhere. Every
-// crowdfunding platform and social network Interplanetary Fund can reach,
-// managed from a single place.
+const SAFE_LOAD_ERROR = "We couldn't load your connections. Please try again.";
+const SAFE_SYNC_ERROR = "We couldn't sync your linked platforms. Please try again.";
+const SAFE_MALFORMED_CONNECTIONS = "Connections are temporarily unavailable. Please try again.";
+const SAFE_MALFORMED_SYNC = "Sync returned an unavailable response. Please try again.";
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const isConnectionList = (value) => Array.isArray(value) && value.every(isRecord);
+
+const readData = (response) => {
+  try {
+    return isRecord(response) && isRecord(response.data) ? response.data : null;
+  } catch {
+    return null;
+  }
+};
+
+const readConnections = (response) => {
+  try {
+    const data = readData(response);
+    return data && isConnectionList(data.connections) ? data.connections : null;
+  } catch {
+    return null;
+  }
+};
+
+const readSyncResult = (response) => {
+  try {
+    const data = readData(response);
+    if (!data) return null;
+    return {
+      campaigns_covered: typeof data.campaigns_covered === "number" ? data.campaigns_covered : 0,
+      total_discovered: typeof data.total_discovered === "number" ? data.total_discovered : 0,
+      total_imported: typeof data.total_imported === "number" ? data.total_imported : 0,
+      overall_status: typeof data.overall_status === "string" ? data.overall_status.slice(0, 64) : "unknown",
+      hasError: typeof data.error === "string" && data.error.length > 0,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export default function Connections() {
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
-  const [dialog, setDialog] = useState(null); // { platform, existing }
+  const [dialog, setDialog] = useState(null);
   const [error, setError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
-  const [connectionNotice, setConnectionNotice] = useState(null);
-  const [platformSearch, setPlatformSearch] = useState("");
-  const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
-  const [sharedIntegrations, setSharedIntegrations] = useState(null);
-  const [wixSyncing, setWixSyncing] = useState(false);
-  const [wixSyncResult, setWixSyncResult] = useState(null);
+  const [fetchPlatform, setFetchPlatform] = useState(null);
+  const requestGeneration = useRef(0);
+  const syncInFlight = useRef(false);
+  const mountedRef = useRef(false);
+  const subscriptionActive = user?.subscription_status === "active";
 
-  // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
-  // centralized syncExternalFunds engine — never a separate implementation.
+  const isCurrent = (generation) => mountedRef.current && generation === requestGeneration.current;
+
   const syncAll = async () => {
+    if (syncInFlight.current || !mountedRef.current) return;
+    syncInFlight.current = true;
+    const generation = ++requestGeneration.current;
     setSyncing(true);
     setSyncResult(null);
+    setConnections(null);
     try {
-      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
+      const response = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
+      if (!isCurrent(generation)) return;
+      const data = readSyncResult(response);
+      if (!data) {
+        setSyncResult({ error: SAFE_MALFORMED_SYNC });
+        setError(SAFE_MALFORMED_SYNC);
+        return;
+      }
+      if (data.hasError) {
+        setSyncResult({ error: SAFE_SYNC_ERROR });
+        setError(SAFE_SYNC_ERROR);
+        return;
+      }
       setSyncResult(data);
-      const r = await base44.functions.invoke("listConnections", { scope: "mine" });
-      setConnections(r.data.connections);
-    } catch (e) {
-      setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
-    }
-    setSyncing(false);
-  };
 
-  const syncWix = async () => {
-    setWixSyncing(true);
-    setWixSyncResult(null);
-    try {
-      const responses = await Promise.all([
-        base44.functions.invoke("syncWixCampaigns", {}),
-        base44.functions.invoke("syncWixContent", {}),
-        base44.functions.invoke("syncWixBusinessData", {}),
-        base44.functions.invoke("syncWixAnalytics", {}),
-      ]);
-      const payloads = responses.map((response) => response?.data || {});
-      setWixSyncResult({
-        ok: payloads.every((payload) => payload?.ok !== false && !payload?.error),
-        payloads,
-      });
+      const refreshGeneration = ++requestGeneration.current;
+      const refreshed = await base44.functions.invoke("listConnections", {});
+      if (!isCurrent(refreshGeneration)) return;
+      const nextConnections = readConnections(refreshed);
+      if (!nextConnections) {
+        setSyncResult({ error: SAFE_MALFORMED_CONNECTIONS });
+        setError(SAFE_MALFORMED_CONNECTIONS);
+        return;
+      }
+      setConnections(nextConnections);
     } catch {
-      setWixSyncResult({ ok: false });
+      if (isCurrent(generation)) {
+        setSyncResult({ error: SAFE_SYNC_ERROR });
+        setError(SAFE_SYNC_ERROR);
+      }
     } finally {
-      setWixSyncing(false);
+      if (mountedRef.current && generation === requestGeneration.current) setSyncing(false);
+      syncInFlight.current = false;
     }
   };
 
   useEffect(() => {
+    mountedRef.current = true;
+    const generation = ++requestGeneration.current;
     (async () => {
-     try {
-      const me = await base44.auth.me();
-      let pending = null;
       try {
-        pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null");
-      } catch { localStorage.removeItem("ifund_pending_platform_connection"); }
-      const fresh = pending && pending.userId === me.id && Date.now() - pending.startedAt < 20 * 60 * 1000;
-      if (pending && !fresh) localStorage.removeItem("ifund_pending_platform_connection");
-      if (fresh) {
-        try {
-          const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
-            platform: pending.platform, shared_agent_consent: pending.sharedAgentConsent === true,
-          });
-          if (data?.connected) {
-            localStorage.removeItem("ifund_pending_platform_connection");
-            setConnectionNotice({ ok: true, text: `${pending.platform} is connected.` });
-          } else {
-            setConnectionNotice({ ok: false, text: `Finish connecting ${pending.platform}, then return here. If sign-in was cancelled, try again.` });
-          }
-        } catch (oauthError) {
-          console.error("OAuth connection finalization failed:", oauthError);
-          setConnectionNotice({ ok: false, text: "We couldn’t finish the connection. Try again." });
+        const [me, connRes] = await Promise.all([base44.auth.me(), base44.functions.invoke("listConnections", {})]);
+        if (!isCurrent(generation)) return;
+        const nextConnections = readConnections(connRes);
+        if (!nextConnections) {
+          setError(SAFE_MALFORMED_CONNECTIONS);
+          return;
         }
+        setUser(me);
+        setConnections(nextConnections);
+      } catch {
+        if (isCurrent(generation)) setError(SAFE_LOAD_ERROR);
       }
-      const connRes = await base44.functions.invoke("listConnections", { scope: "mine" });
-      setUser(me);
-      setConnections(connRes.data.connections);
-      // Platform-managed (SHARED) integrations have no PlatformConnection record
-      // by design; surface their live status separately.
-      base44.functions.invoke("getSharedConnectorStatus", {})
-        .then(({ data }) => setSharedIntegrations(data?.shared || []))
-        .catch(() => setSharedIntegrations([]));
-     } catch (e) {
-       console.error("Connections load failed:", e?.name || "UnknownError");
-       setError("We couldn't load your connections. Please try again.");
-     }
     })();
-  }, [reloadKey]);
+    return () => {
+      mountedRef.current = false;
+      requestGeneration.current += 1;
+    };
+  }, []);
 
   if (error) {
-    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); setReloadKey((key) => key + 1); }} /></div>;
+    return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); requestGeneration.current += 1; }} /></div>;
   }
   if (!connections) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
@@ -116,193 +141,33 @@ export default function Connections() {
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
   const connectedIds = connections.map((c) => c.platform);
-  const workingCount = connections.filter((connection) => connectionHealth(connection).usable).length;
-  const discoveredTotals = syncResult?.discovered_totals ||
-    (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
-  const discoveredSummary = discoveredTotals
-    .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
-    .join(", ");
-  const availablePlatforms = ALL_PLATFORMS.filter((p) =>
-    (p.id === "custom" || !connectedIds.includes(p.id)) &&
-    (`${p.name} ${p.kind || ""}`.toLowerCase().includes(platformSearch.trim().toLowerCase()))
+  const kinds = { crowdfunding: CROWDFUNDING_PLATFORMS, social: SOCIAL_PLATFORMS };
+  const catalogSection = (title, Icon, items) => (
+    <div className="mb-8">
+      <h2 className="flex items-center gap-2 font-display text-xl text-stone-900 mb-3"><Icon className="w-4 h-4 text-primary" /> {title}</h2>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {items.filter((p) => p.id === "custom" || !connectedIds.includes(p.id)).map((p) => (
+          <div key={p.id} className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4 flex items-start justify-between gap-3">
+            <div className="min-w-0"><p className="font-semibold text-stone-900">{p.name}</p><p className="text-xs text-stone-400 mt-0.5">{p.api}</p></div>
+            <Button size="sm" onClick={() => setDialog({ platform: { ...p, kind: items === CROWDFUNDING_PLATFORMS ? "crowdfunding" : "social" } })} className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">Connect</Button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 
-  const choosePlatform = (platform) => {
-    setDialog({ platform });
-    setPlatformSearch("");
-    setPlatformMenuOpen(false);
-  };
-
   return (
-    <div className="connections-hub max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-      <div className="rounded-[2rem] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-5 sm:p-7 shadow-xl mb-7">
-      <h1 className="flex items-center gap-2.5 font-display text-3xl text-cyan-50 mb-1">
-        <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
-          <Link2 className="w-5 h-5 text-white" />
-        </span>
-        Connections
-      </h1>
-      <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
-      <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} working · {connections.length} saved</span>
-        <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social + apps in one place</span>
-      </div>
-      </div>
-
-      {connectionNotice && (
-        <div className={`mb-4 rounded-xl border p-3 text-sm ${connectionNotice.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
-          {connectionNotice.text}
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <Button onClick={syncAll} disabled={syncing} className="rounded-xl">
-          {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Refresh now
-        </Button>
-        {sharedIntegrations?.some((integration) => integration.type === "wix" && integration.connected) && (
-          <Button onClick={syncWix} disabled={wixSyncing} variant="outline" className="rounded-xl">
-            {wixSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Wix
-          </Button>
-        )}
-      </div>
-      {wixSyncResult && <div className={`mb-4 rounded-xl border p-3 text-sm ${wixSyncResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{wixSyncResult.ok ? "Wix is synchronized." : "Wix sync needs attention. Existing IFund data was left unchanged."}</div>}
-      {syncResult && (
-        <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">
-          {syncResult.error ? (
-            <p className="text-red-600">{syncResult.error}</p>
-          ) : (
-            <p className="text-stone-700">
-              {["success", "partial"].includes(syncResult.overall_status)
-                ? `Working. ${discoveredSummary ? `${discoveredSummary} found.` : "Your connected platforms were checked."}`
-                : syncResult.overall_status === "no_connections"
-                  ? "Nothing is on yet. Turn on a platform below to get started."
-                  : "One or more connections need attention. Use Fix Connection below."}
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="mb-8">
-        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />
-      </div>
-
-      {sharedIntegrations && sharedIntegrations.length > 0 && (
-        <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-1">Platform-managed integrations</h2>
-          <p className="text-sm text-stone-500 mb-3">Managed by admins for everyone — you don't connect these yourself.</p>
-          <div className="space-y-3">
-            {sharedIntegrations.map((s) => (
-              <div key={s.type} className="rounded-2xl border border-cyan-300/15 bg-white p-4 flex items-center gap-3">
-                <span className="text-xl w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0" aria-hidden="true">{s.icon}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-stone-900">{s.name}</p>
-                  <p className="text-xs text-stone-500">{s.note}</p>
-                </div>
-                {s.connected && s.verified ? (
-                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Working</span>
-                ) : s.connected ? (
-                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">Needs attention</span>
-                ) : (
-                  <span className="shrink-0 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-stone-500">Not connected</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {connections.length > 0 && (
-        <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-1">Your platforms</h2>
-          <p className="text-sm text-stone-500 mb-3">A saved link needs a successful check before it can show as working.</p>
-          <div className="space-y-3">
-            {connections.map((c) => (
-              <ConnectionCard
-                key={c.id}
-                connection={c}
-                platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
-                onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
-                onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="mb-8">
-        <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
-        <p className="text-sm text-stone-500 mb-3">Search for the platform you want to connect. Interplanetary Fund handles the available connection method behind the scenes.</p>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setPlatformMenuOpen((open) => !open)}
-            className="w-full min-h-14 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 px-4 py-3 text-left shadow-lg flex items-center justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-            aria-expanded={platformMenuOpen}
-          >
-            <span className="flex items-center gap-3 min-w-0">
-              <span className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0"><Search className="w-4 h-4 text-cyan-200" /></span>
-              <span>
-                <span className="block font-semibold text-cyan-50">Choose a platform</span>
-                <span className="block text-xs text-slate-400">Fundraising, social, and apps</span>
-              </span>
-            </span>
-            <ChevronDown className={`w-5 h-5 text-cyan-200 transition-transform ${platformMenuOpen ? "rotate-180" : ""}`} />
-          </button>
-
-          {platformMenuOpen && (
-            <div className="mt-2 rounded-2xl border border-cyan-300/20 bg-slate-950 shadow-2xl overflow-hidden">
-              <div className="p-3 border-b border-white/10">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  <Input
-                    autoFocus
-                    value={platformSearch}
-                    onChange={(e) => setPlatformSearch(e.target.value)}
-                    placeholder="Search platforms…"
-                    className="pl-9 h-11 rounded-xl border-cyan-300/20 bg-slate-900 text-cyan-50 placeholder:text-slate-500 focus-visible:ring-cyan-400/50"
-                  />
-                </div>
-              </div>
-              <div className="max-h-72 overflow-y-auto p-2">
-                {availablePlatforms.length ? availablePlatforms.map((p) => (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => choosePlatform(p)}
-                    className="w-full rounded-xl px-3 py-3 flex items-center gap-3 text-left hover:bg-cyan-400/10 focus:bg-cyan-400/10 focus:outline-none transition-colors"
-                  >
-                    <span className="text-xl w-8 text-center shrink-0" aria-hidden="true">{p.icon || "✦"}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
-                      <span className="block text-xs text-slate-400 capitalize">{p.kind === "crowdfunding" ? "Fundraising" : p.kind === "app" ? "App" : "Social"}</span>
-                    </span>
-                    <span className="text-xs font-semibold text-cyan-200">Connect</span>
-                  </button>
-                )) : (
-                  <p className="px-3 py-6 text-center text-sm text-slate-400">No matching platforms.</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {dialog && (
-        <ConnectDialog
-          platform={dialog.platform}
-          existing={dialog.existing}
-          aiAuthorized={aiAuthorized}
-          open={!!dialog}
-          onOpenChange={(o) => !o && setDialog(null)}
-          onSaved={(saved) =>
-            setConnections((prev) => {
-              const exists = prev.some((x) => x.id === saved.id);
-              return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
-            })
-          }
-        />
-      )}
-
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      <h1 className="flex items-center gap-2.5 font-display text-3xl text-stone-900 mb-1"><span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center"><Link2 className="w-5 h-5 text-white" /></span>Connections</h1>
+      <p className="text-stone-500 mb-6">Create once. Connect once. Fund everywhere. Manage every fundraising and social destination from one place.</p>
+      <div className="flex flex-wrap items-center gap-2 mb-6"><Button onClick={syncAll} disabled={syncing} className="rounded-xl">{syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Linked Platforms</Button>{!subscriptionActive && <span className="text-xs text-stone-400">Fetch Credentials / API Info is a subscription feature.</span>}</div>
+      {syncResult && <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">{syncResult.error ? <p className="text-red-600">{syncResult.error}</p> : <p className="text-stone-700">Synced <span className="font-medium">{syncResult.campaigns_covered}</span> campaigns · discovered <span className="font-medium">${syncResult.total_discovered.toLocaleString()}</span> · imported <span className="font-medium">{syncResult.total_imported}</span> · status <span className="font-medium">{syncResult.overall_status}</span></p>}</div>}
+      <div className="mb-8"><AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} /></div>
+      {connections.length > 0 && <div className="mb-8"><h2 className="font-display text-xl text-stone-900 mb-3">Connected</h2><div className="space-y-3">{connections.map((c) => <ConnectionCard key={c.id} connection={c} platform={ALL_PLATFORMS.find((p) => p.id === c.platform)} onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })} onRemoved={(id) => setConnections((prev) => prev.filter((x) => x.id !== id))} onUpdated={(u) => setConnections((prev) => prev.map((x) => (x.id === u.id ? u : x)))} subscriptionActive={subscriptionActive} onFetchCredentials={setFetchPlatform} />)}</div></div>}
+      {catalogSection("Crowdfunding platforms", Rocket, kinds.crowdfunding)}
+      {catalogSection("Social networks", Share2, kinds.social)}
+      {dialog && <ConnectDialog platform={dialog.platform} existing={dialog.existing} aiAuthorized={aiAuthorized} open={!!dialog} onOpenChange={(o) => !o && setDialog(null)} onSaved={(saved) => setConnections((prev) => { const exists = prev.some((x) => x.id === saved.id); return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev]; })} />}
+      <FetchCredentialsDialog platform={fetchPlatform} open={!!fetchPlatform} onOpenChange={(o) => !o && setFetchPlatform(null)} />
     </div>
   );
 }
