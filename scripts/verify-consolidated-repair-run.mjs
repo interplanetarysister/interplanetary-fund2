@@ -24,4 +24,9 @@ for (const p of [
   "src/lib/secureLLM.js",
   "src/pages/FollowedCampaigns.jsx"
 ]) must(r(p).length > 200, "missing legacy consolidation: " + p);
+for (const p of [
+ "base44/functions/stripeWebhook/entry.ts","base44/functions/updateRecurringDonation/entry.ts","base44/functions/verifyStripeCatalog/entry.ts","base44/shared/subscriptionCatalog.ts","src/components/giving/RecurringPlanCard.jsx",
+ "base44/functions/postCampaignUpdate/entry.ts","base44/shared/socialPublish.ts","src/components/dashboard/MissionControl.jsx","src/components/distribution/DistributedPostCard.jsx","src/components/distribution/DistributionPanel.jsx",
+ "base44/entities/PlatformEvent.jsonc","base44/functions/recordPlatformEvent/entry.ts","src/components/platform/FeatureFlagsPanel.jsx","src/components/platform/KnowledgePanel.jsx","src/lib/platform/foundationContracts.js","src/pages/Platform.jsx"
+]) must(r(p).length > 100, "missing foundational consolidation: " + p);
 console.log("Consolidated Agent 1/2/3 repair run contract passed.");
