@@ -1,41 +1,105 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
+// Convex is authoritative for persistent agent memory and outcomes.
+const CONVEX_MUTATION_URL = 'https://rosy-butterfly-2.convex.cloud/api/mutation';
+const ALLOWED_KEYS = new Set([
+  'canonicalAgentId',
+  'source',
+  'action',
+  'summary',
+  'outcome',
+  'campaignId',
+  'approved',
+]);
+
+function boundedText(value, max, fallback = '') {
+  return typeof value === 'string' ? value.trim().slice(0, max) : fallback;
+}
+
+function safeDiagnostic(value) {
+  try {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    const type = typeof value;
+    if (type !== 'object' && type !== 'function') return type;
+    return 'object';
+  } catch {
+    return 'unknown';
+  }
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 export default async function(req) {
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json', Allow: 'POST' },
+    });
+  }
+
   try {
     const base44 = createClientFromRequest(req);
-    const sr = base44.asServiceRole;
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
     const body = await req.json();
-    const requestedAgent = String(body.canonicalAgentId || body.agentName || '').trim();
-    if (!requestedAgent) return Response.json({ error: 'Agent is required.' }, { status: 400 });
-    const summary = String(body.summary || '').slice(0, 2000);
-    const outcome = body.outcome ? String(body.outcome).slice(0, 2000) : '';
-    const campaignId = body.campaignId ? String(body.campaignId) : '';
-    let campaignTitle = '';
-    if (campaignId) {
-      const campaign = await sr.entities.Campaign.get(campaignId).catch(() => null);
-      if (!campaign) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
-      if (campaign.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
-      campaignTitle = String(campaign.title || '');
+    if (!isPlainObject(body)) {
+      return Response.json({ error: 'Invalid request body.' }, { status: 400 });
     }
-    const record = await sr.entities.AgentActivity.create({
-      campaign_id: campaignId || ('user:' + user.id),
-      campaign_title: campaignTitle,
-      owner_user_id: user.id,
-      category: 'other',
-      action: String(body.action || 'conversation').slice(0, 500),
-      reason: summary || 'Agent interaction',
-      result: outcome,
-      expected_impact: '',
-      recommended_next_actions: [],
-      artifact_type: 'none',
-      status: body.approved === true ? 'approved' : 'pending',
-      description: JSON.stringify({ agent_id: requestedAgent, source: String(body.source || 'base44_agent_chat').slice(0, 100), approved: typeof body.approved === 'boolean' ? body.approved : null }),
+    for (const key of Object.keys(body)) {
+      if (!ALLOWED_KEYS.has(key)) {
+        return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+      }
+    }
+
+    const canonicalAgentId = boundedText(body.canonicalAgentId, 128);
+    const source = boundedText(body.source, 64, 'base44_agent_chat');
+    const action = boundedText(body.action, 128, 'conversation');
+    const summary = boundedText(body.summary, 2000);
+    const outcome = body.outcome === undefined ? undefined : boundedText(body.outcome, 1000);
+    const campaignId = body.campaignId === undefined ? undefined : boundedText(body.campaignId, 128);
+    if (!canonicalAgentId || !summary || !source || !action) {
+      return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+    if (body.approved !== undefined && typeof body.approved !== 'boolean') {
+      return Response.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
+
+    const payload = {
+      path: 'agentBridge:recordInteraction',
+      args: {
+        canonicalAgentId,
+        source,
+        action,
+        summary,
+        outcome,
+        campaignId,
+        userId: boundedText(user.id, 128),
+        approved: typeof body.approved === 'boolean' ? body.approved : undefined,
+      },
+      format: 'json',
+    };
+
+    const res = await fetch(CONVEX_MUTATION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
     });
-    return Response.json({ ok: true, result: { id: record.id, stored_in: 'base44' } });
+    const json = await res.json().catch(() => null);
+    if (!res.ok || !isPlainObject(json) || json.status === 'error') {
+      console.error('recordAgentInteraction Convex failure:', safeDiagnostic(json));
+      return Response.json({ error: 'Unable to record the agent interaction.' }, { status: 502 });
+    }
+    if (json.status !== 'success' || !Object.prototype.hasOwnProperty.call(json, 'value')) {
+      console.error('recordAgentInteraction Convex malformed response:', safeDiagnostic(json));
+      return Response.json({ error: 'Unable to record the agent interaction.' }, { status: 502 });
+    }
+    return Response.json({ ok: true, result: json.value });
   } catch (error) {
-    console.error('recordAgentInteraction error:', error?.message || error);
+    console.error('recordAgentInteraction failure:', safeDiagnostic(error));
     return Response.json({ error: 'Unable to record the agent interaction.' }, { status: 500 });
   }
 }
