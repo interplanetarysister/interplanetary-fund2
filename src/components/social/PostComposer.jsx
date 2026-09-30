@@ -65,25 +65,15 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
     if (!content.trim()) return;
     setLoading(true);
     try {
-      const newScore = (user.social_score || 0) + 10;
-      const newTier = getTierFromScore(newScore);
       const campaign = campaigns?.find((c) => c.id === selectedCampaign);
-
-      const post = await base44.entities.SocialPost.create({
-        author_user_id: user.id,
-        author_username: user.username || user.full_name,
-        author_name: user.full_name,
-        author_banner_tier: newTier,
-        content: content.trim(),
-        media_url: mediaUrl || undefined,
-        campaign_id: campaign?.id || undefined,
-        campaign_title: campaign?.title,
-        is_top_post: newTier === "gold" || newTier === "platinum",
-        crosspost_platforms: crossPost,
-        ai_generated: aiGenerated,
+      const { data } = await base44.functions.invoke("createSocialPost", {
+        content: content.trim(), media_url: mediaUrl || undefined, campaign_id: campaign?.id,
+        crosspost_platforms: crossPost, ai_generated: aiGenerated,
       });
-
-      await base44.auth.updateMe({ social_score: newScore, banner_tier: newTier });
+      if (data?.ok !== true || !data?.post) throw new Error("Social post creation rejected");
+      const post = data.post;
+      const newScore = data.social_score;
+      const newTier = data.banner_tier;
 
       // Cross-post to linked external platforms where a campaign is linked.
       if (campaign && crossPost.length > 0) {
