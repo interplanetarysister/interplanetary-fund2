@@ -118,6 +118,9 @@ jobs:
       - name: PayPal campaign checkout contract
         run: node scripts/verify-paypal-checkout-contract.mjs
 
+      - name: External fund migration authority contract
+        run: node scripts/verify-external-fund-migration-contract.mjs
+
       - name: Production build
         run: npm run build
 
