@@ -1,0 +1,1 @@
+IFund accumulated verification batch 2 — payment integrity, client error redaction, installed-app manifest, and Eventbrite connection routing.
