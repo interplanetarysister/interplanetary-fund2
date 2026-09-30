@@ -1,191 +1,82 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { secrets } from 'base44:runtime';
 import { captureOrder } from '../../shared/paypal.ts';
-import { checkRateLimit } from '../../shared/rateLimit.ts';
-import { logAudit } from '../../shared/auditLog.ts';
-import { round2, validateDonationAmount } from '../../shared/fees.js';
-import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/base44Financial.ts';
-import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
-import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
-import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
-// Captures a PayPal/Google Pay order and applies the resulting donation through
-// Base44's canonical transactional financial boundary. Provider capture idempotency + the
-// canonical operation key guarantees concurrent/retried handlers cannot create
-// multiple financial donations or increment campaign totals more than once.
+// Captures a PayPal order that was confirmed via Google Pay, then records the
+// donation in the ledger. Provider order identity and amount are authoritative.
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. This campaign payment was not captured.' }, { status: 409 });
-    if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
     const sr = base44.asServiceRole;
 
-    const { order_id, campaign_id, donor_name, message, is_recurring } = await req.json();
-    if (!order_id || !campaign_id) {
+    const { order_id, campaign_id, donor_name, message } = await req.json();
+    if (typeof order_id !== 'string' || !order_id.trim() || typeof campaign_id !== 'string' || !campaign_id.trim()) {
       return Response.json({ error: 'Order id and campaign are required' }, { status: 400 });
     }
 
-    // Complete all local authorization and campaign checks before the irreversible
-    // provider capture. Once PayPal reports COMPLETED, later campaign status drift
-    // must not strand captured money outside the canonical ledger.
-    const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
-    if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
-    if (campaign.status !== 'active') return Response.json({ error: 'This campaign is not accepting donations.' }, { status: 400 });
-    const donorGuard = await assertActiveAccountIfSignedIn(base44);
-    if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
-    const donor = donorGuard.donor;
+    const orderId = order_id.trim();
+    const requestedCampaignId = campaign_id.trim();
 
-    let cap;
-    try {
-      cap = await captureOrder(order_id);
-    } catch (capErr) {
-      console.error('capturePayPalOrder capture error:', capErr?.message || capErr);
-      const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
-      if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
-      await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: 'Capture failed', status: 'failure' });
-      return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 502 });
+    // Sequential retries are idempotent. A true uniqueness constraint for the
+    // external reference remains a backend/schema requirement for concurrent races.
+    const existing = await sr.entities.Donation.filter({ stripe_session_id: orderId });
+    if (existing.length > 0) {
+      const prior = existing[0];
+      if (prior.campaign_id !== requestedCampaignId) {
+        return Response.json({ error: 'Payment order is bound to a different campaign' }, { status: 409 });
+      }
+      return Response.json({ ok: true, donation_id: prior.id, amount: prior.amount, idempotent: true });
     }
+
+    const cap = await captureOrder(orderId);
     if (cap.status !== 'COMPLETED') {
-      const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
-      if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
-      await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: `Capture not completed (${cap.status})`, status: 'failure' });
       return Response.json({ error: 'Payment was not completed', status: cap.status }, { status: 402 });
     }
-    if (cap.currency !== 'USD') {
-      return Response.json({ error: 'Captured payment currency does not match this campaign.' }, { status: 409 });
+    if (cap.campaign_id !== requestedCampaignId) {
+      return Response.json({ error: 'Payment order does not match the requested campaign' }, { status: 409 });
+    }
+    if (!Number.isFinite(cap.amount) || cap.amount <= 0) {
+      return Response.json({ error: 'Payment amount could not be verified' }, { status: 422 });
     }
 
-    // custom_id is generated by createPayPalOrder on the server and binds all
-    // financial allocations to the captured provider order:
-    // campaignId|donationCents|processingFeeCents|platformContributionCents|paymentChannel
-    const parts = String(cap.custom_id || '').split('|');
-    if (parts.length !== 5 || parts[0] !== campaign_id) {
-      return Response.json({ error: 'PayPal order does not match this campaign.' }, { status: 409 });
-    }
-    const donCents = Number.parseInt(parts[1], 10);
-    const procCents = Number.parseInt(parts[2], 10);
-    const contributionCents = Number.parseInt(parts[3], 10);
-    const paymentChannel = parts[4] === 'googlepay' ? 'googlepay' : parts[4] === 'paypal' ? 'paypal' : '';
-    if (!paymentChannel || ![donCents, procCents, contributionCents].every(Number.isInteger) || donCents <= 0 || procCents < 0 || contributionCents < 0 || contributionCents > donCents) {
-      return Response.json({ error: 'PayPal order financial metadata is invalid.' }, { status: 409 });
-    }
+    const campaign = await sr.entities.Campaign.get(requestedCampaignId);
+    if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
-    const total = round2(donCents / 100);
-    const processingFee = round2(procCents / 100);
-    const contribution = round2(contributionCents / 100);
-    const amountCheck = validateDonationAmount(total);
-    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
+    let donor = null;
+    try { donor = await base44.auth.me(); } catch (_) { /* supporters may be signed out */ }
 
-    const expectedCharge = round2(total + processingFee);
-    if (Math.abs(round2(cap.amount) - expectedCharge) > 0.01) {
-      return Response.json({ error: 'Captured PayPal amount does not match the server-created order.' }, { status: 409 });
-    }
-
-    await ensureCanonicalCampaign(sr, campaign);
-    const displayName = donor_name || cap.payer_name || donor?.full_name || 'Anonymous';
-    const canonical = await recordCanonicalDonation(sr, {
-      operationKey: `paypal:${order_id}`,
-      provider: 'paypal',
-      providerTransactionId: cap.capture_id || order_id,
-      campaignId: campaign_id,
-      campaignTitle: campaign.title,
-      campaignOwnerUserId: campaign.created_by_id || '',
-      grossAmount: total,
-      platformContribution: contribution,
-      processingFee,
-      donorName: displayName,
-      ...(donor?.email ? { donorEmail: donor.email } : {}),
-      ...(donor?.id ? { donorUserId: donor.id } : {}),
-      message: message || '',
-      paymentMethod: paymentChannel,
-      paymentVerified: true,
-      source: 'paypal_capture',
-      isRecurring: !!is_recurring,
+    const safeDonorName = typeof donor_name === 'string' ? donor_name.trim().slice(0, 160) : '';
+    const safeMessage = typeof message === 'string' ? message.trim().slice(0, 2000) : '';
+    const value = cap.amount;
+    const donation = await sr.entities.Donation.create({
+      campaign_id: requestedCampaignId,
+      campaign_title: campaign.title,
+      amount: value,
+      donor_name: safeDonorName || cap.payer_name || donor?.full_name || 'Anonymous',
+      message: safeMessage,
+      is_recurring: false,
+      donor_user_id: donor?.id,
+      payment_method: 'paypal',
+      stripe_session_id: orderId,
     });
 
-    await mirrorCanonicalCampaignTotal(sr, campaign_id, canonical);
-
-    // The designated Interplanetary Fund holding account is the business PayPal
-    // account. A COMPLETED capture is provider evidence that this direct PayPal
-    // donation reached that account. Mirror custody separately from beneficial
-    // ownership so pooled PayPal funds remain allocated to the correct campaign.
-    const holdingOperationKey = `holding:paypal:${cap.capture_id || order_id}`;
-    const existingHolding = await sr.entities.HoldingLedgerEntry.filter({ operation_key: holdingOperationKey }).catch(() => []);
-    if (!existingHolding?.length) {
-      await sr.entities.HoldingLedgerEntry.create({
-        operation_key: holdingOperationKey,
-        direction: 'in',
-        state: 'settled',
-        source_type: 'payment_processor',
-        source_provider: 'paypal',
-        source_account_ref: 'interplanetary_business_paypal',
-        provider_transaction_id: String(cap.capture_id || order_id),
-        campaign_id,
-        beneficiary_user_id: campaign.created_by_id || '',
-        amount: total,
-        currency: cap.currency,
-        platform_contribution: contribution,
-        processing_fee: processingFee,
-        canonical_operation_id: String(canonical.operationId),
-        settled_at: new Date().toISOString(),
-        reconciliation_note: 'Verified PayPal capture received into the designated Interplanetary Fund business PayPal holding account.',
-      });
-    }
-
-    const donation = await reconcileDonationMirror(sr, canonical.operationId, {
-      campaign_id,
-      campaign_title: campaign.title,
-      amount: total,
-      platform_contribution: contribution,
-      processing_fee: processingFee,
-      donor_name: displayName,
-      message: message || '',
-      is_recurring: !!is_recurring,
-      ...(is_recurring ? { recurring_status: 'active' } : {}),
-      ...(donor?.id ? { donor_user_id: donor.id } : {}),
-      payment_method: paymentChannel,
-      payment_verified: true,
-      cleared: false,
-      provider_transaction_id: String(cap.capture_id || order_id),
+    await sr.entities.Campaign.update(requestedCampaignId, {
+      raised_amount: (campaign.raised_amount || 0) + value,
+      donor_count: (campaign.donor_count || 0) + 1,
     });
 
     if (campaign.created_by_id) {
-      await reconcileNotificationMirror(sr, canonical.operationId, {
+      await sr.entities.Notification.create({
         user_id: campaign.created_by_id,
         title: 'New donation received',
-        body: `${displayName} gave USD ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'}`,
+        body: `${donation.donor_name} gave $${value.toLocaleString()} to "${campaign.title}" via Google Pay`,
         type: 'donation',
-        link: `/campaign/${campaign_id}`,
-        read: false,
+        link: `/campaign/${requestedCampaignId}`,
       });
     }
 
-    if (canonical.applied) {
-      await logAudit(base44, {
-        action: 'donation_captured',
-        target_type: 'campaign',
-        target_id: campaign_id,
-        detail: `USD ${total} via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'} captured and applied canonically`,
-        status: 'success',
-        metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: cap.capture_id || order_id },
-      });
-    }
-
-    // Automated receipt: email the donor a receipt for every verified gift.
-    if (canonical.applied) {
-      await sendDonationReceipt(sr, { ...donation, donor_email: donor?.email }, campaign);
-    }
-
-    return Response.json({
-      ok: true,
-      donation_id: donation?.id,
-      amount: total,
-      duplicate: !canonical.applied,
-      canonical_operation_id: String(canonical.operationId),
-    });
+    return Response.json({ ok: true, donation_id: donation.id, amount: value, idempotent: false });
   } catch (error) {
-    console.error('capturePayPalOrder error:', error?.message || error);
-    return Response.json({ error: 'Unable to complete your donation safely. Please try again or contact support.' }, { status: 503 });
+    console.error('capturePayPalOrder error:', error);
+    return Response.json({ error: 'Unable to finalize the payment at this time' }, { status: 500 });
   }
 }
