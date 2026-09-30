@@ -77,7 +77,8 @@ export default function AccountManagement({ user, onUserChanged }) {
       toast({ title: "Account deleted" });
       await base44.auth.logout("/login");
     } catch (e) {
-      toast({ title: "Couldn't delete account", description: e.message, variant: "destructive" });
+      console.error("Account deletion failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't delete account", description: "Account deletion could not be confirmed. Your account remains active unless the app confirms deletion.", variant: "destructive" });
       setDeleting(false);
       setDeleteOpen(false);
       setConfirmText("");
