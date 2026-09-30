@@ -3,6 +3,32 @@ import { base44 } from "@/api/base44Client";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import { Sparkles, TrendingUp } from "lucide-react";
 
+const momentum = (campaign) => {
+  const amount = Number(campaign.raised_amount);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+};
+const byId = (a, b) => String(a.id).localeCompare(String(b.id));
+
+// One ranking path for anonymous, new, and returning users. Count each
+// supported/followed campaign once, regardless of duplicate observation rows.
+export function rankRecommendations(campaigns = [], userId = null, supportedIds = [], follows = []) {
+  const active = campaigns.filter((c) => c.status === "active");
+  const signals = new Set([...supportedIds, ...follows
+    .filter((f) => f.user_id === userId).map((f) => f.campaign_id)]);
+  const exclude = new Set(signals);
+  if (userId) campaigns.forEach((c) => { if (c.created_by_id === userId) exclude.add(c.id); });
+  const affinity = new Map();
+  campaigns.forEach((c) => {
+    if (signals.has(c.id) && c.category) affinity.set(c.category, (affinity.get(c.category) || 0) + 1);
+  });
+  const mode = affinity.size ? "recommended" : "trending";
+  const score = (c) => (affinity.get(c.category) || 0) * 4 + momentum(c) * 0.0002;
+  const recs = active.filter((c) => !exclude.has(c.id)).sort((a, b) =>
+    (mode === "recommended" ? score(b) - score(a) : momentum(b) - momentum(a)) || byId(a, b)
+  ).slice(0, 3);
+  return { recs, mode };
+}
+
 // A personalized "Recommended for you" feed. Scores active campaigns by the
 // categories a user has already followed or supported, excluding campaigns they
 // own, follow, or have donated to. New users (no history) see a trending feed
@@ -14,54 +40,23 @@ export default function RecommendedCampaigns({ allCampaigns }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const active = (allCampaigns || []).filter((c) => c.status === "active");
+      const campaigns = Array.isArray(allCampaigns) ? allCampaigns : [];
       let me = null;
       try { me = await base44.auth.me(); } catch { me = null; }
 
       if (!me) {
-        const trending = [...active].sort((a, b) => (b.raised_amount || 0) - (a.raised_amount || 0)).slice(0, 3);
-        if (!cancelled) { setRecs(trending); setMode("trending"); }
+        const result = rankRecommendations(campaigns);
+        if (!cancelled) { setRecs(result.recs); setMode(result.mode); }
         return;
       }
 
-      const [donations, follows] = await Promise.all([
-        base44.entities.Donation.filter({ donor_user_id: me.id }).catch(() => []),
-        base44.entities.FollowedCampaign.filter({ user_id: me.id }).catch(() => []),
+      const [giving, follows] = await Promise.all([
+        base44.functions.invoke("getMyGiving", { projection: "campaign_ids" }).catch(() => null),
+        base44.entities.FollowedCampaign.filter({ user_id: me.id }, "-created_date", 1000).catch(() => []),
       ]);
-
-      const exclude = new Set();
-      donations.forEach((d) => d.campaign_id && exclude.add(d.campaign_id));
-      follows.forEach((f) => f.campaign_id && exclude.add(f.campaign_id));
-      allCampaigns.forEach((c) => { if (c.created_by_id === me.id) exclude.add(c.id); });
-
-      const affinity = {};
-      [...donations, ...follows].forEach((d) => {
-        const c = allCampaigns.find((x) => x.id === d.campaign_id);
-        if (c) affinity[c.category] = (affinity[c.category] || 0) + 1;
-      });
-      const hasAffinity = Object.keys(affinity).length > 0;
-
-      const pool = active.filter((c) => !exclude.has(c.id));
-      const scored = pool.map((c) => ({
-        c,
-        score: (affinity[c.category] || 0) * 4
-          + (c.donor_count || 0) * 0.05
-          + (c.raised_amount || 0) * 0.0002
-          + Math.random() * 0.3,
-      }));
-      scored.sort((a, b) => b.score - a.score);
-      let top = scored.slice(0, 3).map((s) => s.c);
-      let m = "recommended";
-
-      if (!hasAffinity) m = "trending";
-      if (top.length < 3) {
-        const backfill = [...active]
-          .sort((a, b) => (b.raised_amount || 0) - (a.raised_amount || 0))
-          .filter((c) => !exclude.has(c.id) && !top.find((t) => t.id === c.id))
-          .slice(0, 3 - top.length);
-        top = [...top, ...backfill];
-      }
-      if (!cancelled) { setRecs(top); setMode(m); }
+      const supportedIds = Array.isArray(giving?.data?.campaign_ids) ? giving.data.campaign_ids : [];
+      const result = rankRecommendations(campaigns, me.id, supportedIds, Array.isArray(follows) ? follows : []);
+      if (!cancelled) { setRecs(result.recs); setMode(result.mode); }
     })();
     return () => { cancelled = true; };
   }, [allCampaigns]);
