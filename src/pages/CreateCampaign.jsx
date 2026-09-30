@@ -126,10 +126,10 @@ export default function CreateCampaign() {
         location_lng: form.location_lng || undefined,
         status,
       };
-      const campaign = draftId
-        ? await base44.entities.Campaign.update(draftId, payload)
-        : await base44.entities.Campaign.create(payload);
-      if (!draftId) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
+      const { data } = await base44.functions.invoke("saveCampaign", { campaign_id: draftId || undefined, campaign: payload });
+      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Campaign save rejected");
+      const campaign = data.campaign;
+      if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch {
       toast({ title: "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
