@@ -69,6 +69,9 @@ jobs:
       - name: Client error-disclosure contract
         run: node scripts/verify-client-error-disclosure.mjs
 
+      - name: Fraud-control financial authority contract
+        run: node scripts/verify-fraud-control-financial-boundary.mjs
+
       - name: Connection authorization and data-truth contract
         run: node scripts/verify-connect-dialog-safe-errors.mjs
 
