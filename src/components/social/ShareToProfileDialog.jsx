@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Send, Loader2, Check, Link2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { getTierFromScore } from "@/components/social/ProfileBanner";
 import { isUsableConnection } from "@/lib/connectionHealth";
 
 const PLATFORM_LABELS = {
