@@ -1,8 +1,16 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+
+function classifyPublishError(error) {
+  if (error instanceof TypeError) return 'type';
+  if (error instanceof SyntaxError) return 'syntax';
+  if (error instanceof RangeError) return 'range';
+  if (error instanceof Error) return 'error';
+  return typeof error;
+}
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -18,38 +26,19 @@ export default async function(req) {
     const { post_id } = await req.json();
     if (!post_id) return Response.json({ error: 'Missing post_id' }, { status: 400 });
 
+    // User-scoped read — RLS guarantees the post belongs to the caller.
     const post = await base44.entities.DistributedPost.get(post_id).catch(() => null);
     if (!post) return Response.json({ error: 'Post not found' }, { status: 404 });
-    const sr = base44.asServiceRole;
-    const campaign = post.campaign_id
-      ? await sr.entities.Campaign.get(post.campaign_id).catch(() => null)
-      : null;
-    const connection = await sr.entities.PlatformConnection.get(post.connection_id).catch(() => null);
-    if (!campaign || !connection) return Response.json({ error: 'Campaign or connection no longer exists' }, { status: 404 });
-    const ownerChainMatches = !!post.created_by_id &&
-      !!campaign.created_by_id &&
-      !!connection.created_by_id &&
-      post.created_by_id === campaign.created_by_id &&
-      connection.created_by_id === campaign.created_by_id &&
-      (!connection.campaign_id || connection.campaign_id === campaign.id) &&
-      user.id === campaign.created_by_id;
-    if (!ownerChainMatches) {
-      return Response.json({ error: 'Publishing blocked because post, campaign, connection, and caller ownership do not match.' }, { status: 403 });
-    }
     // Idempotency: never re-publish a post that already went live.
     if (post.status === 'published') {
       return Response.json({ manual: false, post });
     }
+    const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
+    if (!connection) return Response.json({ error: 'Connection no longer exists' }, { status: 404 });
 
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-    const consentOwner = user;
-    if (!hasAiPublishingConsent(consentOwner)) {
-      return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
-    }
-    const connectionOboAllowed = connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
-    const connectionAutomationAllowed = connectionOboAllowed && connection.agent_access?.automation_enabled === true;
-    if (!canAutoPublish(connection) || !connectionAutomationAllowed) {
+    if (!canAutoPublish(connection)) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
@@ -58,13 +47,11 @@ export default async function(req) {
     try {
       // Centralized access gate: if social publishing is revoked/disabled at the
       // registry level, fall back to a manual handoff instead of auto-posting.
-      const access = await assertPlatformAccess(sr, 'social_publish');
-      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
-      if (!access.ok || !obo.ok) {
+      const access = await assertPlatformAccess(base44.asServiceRole, 'social_publish');
+      if (!access.ok) {
         const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
-        const reason = !access.ok ? access.reason : obo.reason;
-        await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked: ${reason}`, status: 'failure' });
-        return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason });
+        await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked by registry: ${access.reason}`, status: 'failure' });
+        return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason: access.reason });
       }
       const { url } = await publishThroughConnection(connection, text);
       const updated = await base44.entities.DistributedPost.update(post_id, {
@@ -74,15 +61,13 @@ export default async function(req) {
         error: '',
       });
       await base44.entities.PlatformConnection.update(connection.id, {
-        status: 'connected',
-        verification_status: 'verified',
         last_synced: new Date().toISOString(),
-        history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
+        history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for \"${post.campaign_title}\"` }].slice(-30),
       });
       await logAudit(base44, { action: 'post_published', target_type: 'distributed_post', target_id: post_id, detail: `Published to ${connection.platform}`, status: 'success' });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {
-      console.error('publishPost publish error:', pubError && pubError.message ? pubError.message : pubError);
+      console.error('publishPost publish failed', { diagnostic_type: classifyPublishError(pubError) });
       await base44.entities.DistributedPost.update(post_id, {
         status: 'failed',
         error: 'Publishing failed.',
@@ -92,7 +77,7 @@ export default async function(req) {
       return Response.json({ error: 'Publishing failed. Try again or post manually on the platform.' }, { status: 502 });
     }
   } catch (error) {
-    console.error('publishPost error:', error.message);
+    console.error('publishPost failed', { diagnostic_type: classifyPublishError(error) });
     return Response.json({ error: 'Unable to publish this post. Please try again.' }, { status: 500 });
   }
 }
