@@ -50,7 +50,7 @@ export default function VolunteerTab({ community, isMember, canManage }) {
       setMySignups((prev) => [...prev, opp.id]);
       setOpportunities((prev) => prev.map((o) => (o.id === opp.id ? { ...o, volunteer_count: (o.volunteer_count || 0) + 1 } : o)));
     } else if (data?.error) {
-      alert(data.error);
+      alert("The volunteer signup could not be completed. Please try again.");
     }
     setJoining(null);
   };
