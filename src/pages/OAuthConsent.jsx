@@ -129,7 +129,8 @@ export default function OAuthConsent() {
         setSubmitting(false);
       }
     } catch (e) {
-      setError(e.message);
+      console.error("OAuth consent action failed:", e?.name || "UnknownError");
+      setError("Authorization could not be completed safely. Please try again.");
       setSubmitting(false);
     }
   };
