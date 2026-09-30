@@ -78,7 +78,7 @@ export default function Withdrawals() {
   const approve = async (id) => {
     try {
       const res = await base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: id });
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Server operation rejected");
       toast({ title: "Withdrawal approved & paid out" });
       load();
     } catch (e) {
