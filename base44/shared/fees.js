@@ -27,6 +27,12 @@ export const PLATFORM_FEE_RATE = 0.03;
 export const CONTRIBUTION_RATE = 0.10;
 export const PROCESSING_RATE = 0.029;
 export const PROCESSING_FIXED = 0.30;
+// PayPal US published standard domestic pricing (effective Sep 1, 2026):
+// PayPal Checkout 3.49% + $0.49; Expanded Checkout wallets 2.89% + $0.29.
+export const PAYPAL_PROCESSING_RATE = 0.0349;
+export const PAYPAL_PROCESSING_FIXED = 0.49;
+export const PAYPAL_WALLET_PROCESSING_RATE = 0.0289;
+export const PAYPAL_WALLET_PROCESSING_FIXED = 0.29;
 
 // Minimum donation: one dollar. Sub-dollar charges are rejected by most
 // processors and cannot yield a meaningful recipient payout after fees.
@@ -82,6 +88,16 @@ export function computeProcessingFee(amount) {
 
 // Total charged to the donor where the processor permits passing the processing
 // cost through: the donation plus the processor's fee.
+export function computePayPalProcessingFee(amount) {
+  const a = toCents(amount);
+  return fromCents(Math.round(a * PAYPAL_PROCESSING_RATE) + PAYPAL_PROCESSING_FIXED * 100);
+}
+
+export function computePayPalWalletProcessingFee(amount) {
+  const a = toCents(amount);
+  return fromCents(Math.round(a * PAYPAL_WALLET_PROCESSING_RATE) + PAYPAL_WALLET_PROCESSING_FIXED * 100);
+}
+
 export function computeChargeTotal(amount) {
   const a = round2(Number(amount) || 0);
   return round2(a + computeProcessingFee(a));
