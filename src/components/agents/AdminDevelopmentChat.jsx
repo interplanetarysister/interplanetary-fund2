@@ -31,7 +31,7 @@ export default function AdminDevelopmentChat({ user }) {
       const result = await createAdminAgentSession({ adminKey: key, agent: "chief_of_staff" });
       setSessionId(result.sessionId);
       setKey("");
-    } catch (e) { setError(e.message); } finally { setBusy(false); }
+    } catch (e) { console.error("Admin development session failed:", e?.name || "UnknownError"); setError("Admin development session could not be started."); } finally { setBusy(false); }
   };
 
   const send = async () => {
