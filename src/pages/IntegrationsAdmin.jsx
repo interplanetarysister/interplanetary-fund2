@@ -1,124 +1,91 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { Loader2, ShieldAlert, ShieldCheck, Activity, GitFork } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
-import { useToast } from "@/components/ui/use-toast";
-
-const SAFE_REGISTRY_ERROR = "We couldn\'t load the integration registry. Please try again.";
-const SAFE_HEALTH_ERROR = "We couldn\'t complete the integration health check. Please try again.";
-
-function isAdminUser(value) {
-  return Boolean(value && typeof value === "object" && value.role === "admin");
-}
-
-function isRegistryResponse(value) {
-  return Array.isArray(value) && value.every((entry) => entry && typeof entry === "object");
-}
-
-function isHealthResponse(value) {
-  return Boolean(value && typeof value === "object" && value.data && typeof value.data === "object" && !Array.isArray(value.data));
-}
+import {
+  SAFE_AUTH_ERROR,
+  SAFE_AUTH_PAYLOAD_ERROR,
+  SAFE_REGISTRY_ERROR,
+  SAFE_REGISTRY_UNAVAILABLE,
+  SAFE_HEALTH_ERROR,
+  readAdminRole,
+  classifyRegistryResponse,
+  createSingleFlight,
+} from "@/lib/integrations-admin-contract";
 
 export default function IntegrationsAdmin() {
-  const { toast } = useToast();
   const [user, setUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
   const [entries, setEntries] = useState(null);
-  const [registryError, setRegistryError] = useState(null);
-  const [healthError, setHealthError] = useState(null);
+  const [error, setError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
-  const [verifyingGitHub, setVerifyingGitHub] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const requestGeneration = useRef(0);
-  const mounted = useRef(true);
-
-  const loadRegistry = useCallback(async () => {
-    const generation = ++requestGeneration.current;
-    try {
-      const me = await base44.auth.me();
-      if (!mounted.current || generation !== requestGeneration.current) return;
-      if (!me || typeof me !== "object" || typeof me.role !== "string") throw new Error("Malformed auth response");
-      setUser(me);
-      setAuthReady(true);
-      if (!isAdminUser(me)) return;
-      const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
-      if (!isRegistryResponse(list)) throw new Error("Malformed registry response");
-      if (!mounted.current || generation !== requestGeneration.current) return;
-      setEntries(list);
-      setRegistryError(null);
-    } catch (e) {
-      console.error("IntegrationsAdmin registry load failed:", e?.name || "UnknownError");
-      if (!mounted.current || generation !== requestGeneration.current) return;
-      setAuthReady(true);
-      setRegistryError(SAFE_REGISTRY_ERROR);
-    }
-  }, []);
+  const requestIdRef = useRef(0);
+  const healthFlightRef = useRef(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    mounted.current = true;
-    loadRegistry();
-    return () => {
-      mounted.current = false;
-      requestGeneration.current += 1;
-    };
-  }, [loadRegistry, refreshKey]);
+    mountedRef.current = true;
+    let authResolved = false;
+    const requestId = ++requestIdRef.current;
+    setError(null);
+    setEntries(null);
+
+    (async () => {
+      try {
+        const me = await base44.auth.me();
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
+        authResolved = true;
+        const authState = readAdminRole(me);
+        if (authState.kind === "malformed") {
+          setError(SAFE_AUTH_PAYLOAD_ERROR);
+          return;
+        }
+        setUser({ role: authState.role });
+        if (authState.role !== "admin") return;
+        const list = await base44.entities.PlatformAccessRegistry.list("-platform", 200);
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
+        const registryState = classifyRegistryResponse(list);
+        if (registryState.kind !== "ok") {
+          setError(SAFE_REGISTRY_UNAVAILABLE);
+          return;
+        }
+        setEntries(registryState.entries);
+      } catch {
+        if (!mountedRef.current || requestId !== requestIdRef.current) return;
+        setError(authResolved ? SAFE_REGISTRY_ERROR : SAFE_AUTH_ERROR);
+      }
+    })();
+    return () => { mountedRef.current = false; };
+  }, [refreshKey]);
 
   const reload = () => setRefreshKey((k) => k + 1);
 
   const runHealthCheck = async () => {
-    if (checking) return;
-    setChecking(true);
-    setHealthError(null);
-    try {
-      const response = await base44.functions.invoke("validateIntegrationHealth", {});
-      if (!isHealthResponse(response)) throw new Error("Malformed health response");
-      reload();
-    } catch (e) {
-      console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
-      if (mounted.current) setHealthError(SAFE_HEALTH_ERROR);
-    } finally {
-      if (mounted.current) setChecking(false);
-    }
-  };
-
-  const verifyGitHubConnection = async () => {
-    setVerifyingGitHub(true);
-    try {
-      const res = await base44.functions.invoke("syncGitHub", { direction: "both" });
-      const data = res?.data || res;
-      if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub verification completed", description: details || "Connection verification completed." });
-      } else if (data?.skipped) {
-        toast({ title: "GitHub verification unavailable", description: data.reason || "GitHub integration is not active.", variant: "destructive" });
-      } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "Connection verification encountered an issue.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+    if (healthFlightRef.current?.active) return healthFlightRef.current.promise;
+    const flight = createSingleFlight();
+    healthFlightRef.current = { active: true, promise: flight.run(async () => {
+      setChecking(true);
+      try {
+        await base44.functions.invoke("validateIntegrationHealth", {});
+        if (mountedRef.current) reload();
+      } catch {
+        if (mountedRef.current) setError(SAFE_HEALTH_ERROR);
+      } finally {
+        if (mountedRef.current) setChecking(false);
+        healthFlightRef.current = null;
       }
-    } catch (e) {
-      console.error("GitHub verification failed:", e?.name || "UnknownError");
-      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection. Review controlled server logs for provider diagnostics.", variant: "destructive" });
-    }
-    setVerifyingGitHub(false);
+    }) };
+    return healthFlightRef.current.promise;
   };
 
-  if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
+  if (!user) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
-  if (registryError) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={registryError} onRetry={() => { setRegistryError(null); reload(); }} /></div>;
-
-  if (!user) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
-
-  if (!isAdminUser(user)) {
+  if (user.role !== "admin") {
     return (
       <div className="max-w-md mx-auto text-center py-24 px-6">
         <ShieldAlert className="w-10 h-10 text-stone-300 mx-auto" />
@@ -128,12 +95,11 @@ export default function IntegrationsAdmin() {
     );
   }
 
-  if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
+  if (error) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={error} onRetry={() => { setError(null); setEntries(null); reload(); }} /></div>;
+  if (!entries) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
-  const visibleEntries = entries.filter((e) => String(e.platform || "").toLowerCase() !== "convex");
-  const needsAttention = visibleEntries.filter((e) => e.status && e.status !== "ACTIVE");
-  const counts = visibleEntries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
-  const githubEntry = visibleEntries.find((e) => e.platform === "github");
+  const needsAttention = entries.filter((e) => e.status && e.status !== "ACTIVE");
+  const counts = entries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -142,29 +108,14 @@ export default function IntegrationsAdmin() {
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Integration Registry</h1>
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {githubEntry && (
-            <Button
-              onClick={verifyGitHubConnection}
-              disabled={verifyingGitHub || checking}
-              variant="outline"
-              className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
-              {verifyingGitHub ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
-              Verify GitHub connection
-            </Button>
-          )}
-          <Button onClick={runHealthCheck} disabled={checking || verifyingGitHub} className="rounded-xl" aria-busy={checking}>
-            {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
-            {checking ? "Checking…" : "Run health check"}
-          </Button>
-        </div>
+        <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl">
+          {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
+          Run health check
+        </Button>
       </div>
 
-      {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
-
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
-        <Stat label="Registered" value={visibleEntries.length} />
+        <Stat label="Registered" value={entries.length} />
         <Stat label="Active" value={counts.ACTIVE || 0} tone="emerald" />
         <Stat label="Need attention" value={needsAttention.length} tone={needsAttention.length ? "amber" : "stone"} />
         <Stat label="Misconfigured" value={counts.MISCONFIGURED || 0} tone={counts.MISCONFIGURED ? "red" : "stone"} />
@@ -181,7 +132,7 @@ export default function IntegrationsAdmin() {
                 <button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">
                   {e.platform}
                 </button>
-                {" — "}{(STATUS_BADGE[e.status] || {}).label || e.status}{e.last_failure ? " — provider diagnostics retained in the secured integration record" : ""}
+                {" — "}{(STATUS_BADGE[e.status] || {}).label || e.status}{e.last_failure ? `: ${e.last_failure}` : ""}
               </li>
             ))}
           </ul>
@@ -189,7 +140,7 @@ export default function IntegrationsAdmin() {
       )}
 
       <div className="mt-6">
-        <IntegrationsTable entries={visibleEntries} onRowClick={setSelected} />
+        <IntegrationsTable entries={entries} onRowClick={setSelected} />
       </div>
 
       <IntegrationDetailPanel entry={selected} onClose={() => setSelected(null)} onUpdated={reload} />
