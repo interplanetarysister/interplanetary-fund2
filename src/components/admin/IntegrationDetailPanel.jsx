@@ -6,6 +6,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
 import { Loader2, RefreshCw, ShieldOff, ShieldCheck, GitFork } from "lucide-react";
 
+const SAFE_INTEGRATION_ERROR = "The integration action could not be completed. Please retry or contact an administrator.";
+
 function Row({ label, children }) {
   return (
     <div className="flex gap-3 py-2 border-b border-stone-100 last:border-0">
@@ -27,11 +29,11 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
       await base44.functions.invoke("managePlatformAccess", { action, platform: entry.platform, ...payload });
       toast({ title: "Updated", description: `${entry.platform}: ${action}` });
       onUpdated?.();
-    } catch (e) {
-      console.error("Integration update failed:", e?.name || "UnknownError");
-      toast({ title: "Couldn't update", description: "The integration update could not be completed safely.", variant: "destructive" });
+    } catch {
+      toast({ title: "Couldn't update", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   const syncGitHub = async (direction) => {
@@ -48,14 +50,14 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
         const reason =
           data?.reason ||
           Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "GitHub connection verification failed.";
+          "Sync failed.";
         toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
       }
-    } catch (e) {
-      console.error("GitHub verification failed:", e?.name || "UnknownError");
-      toast({ title: "GitHub verification failed", description: "GitHub verification could not be completed. Review secured integration diagnostics before retrying.", variant: "destructive" });
+    } catch {
+      toast({ title: "GitHub verification failed", description: SAFE_INTEGRATION_ERROR, variant: "destructive" });
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
   };
 
   return (
@@ -102,7 +104,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <GitFork className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Verify GitHub source status
+                Check GitHub → Base44
               </Button>
               <Button
                 size="sm"
@@ -116,7 +118,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />
                 )}
-                Verify GitHub destination status
+                Check Base44 → GitHub
               </Button>
               <Button
                 size="sm"
@@ -129,12 +131,12 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
                 ) : (
                   <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                 )}
-                Verify GitHub connection
+                Verify both directions
               </Button>
             </div>
             <p className="text-xs text-blue-500 mt-2">
-              These authenticated admin checks confirm connected GitHub access and the current remote HEAD.
-              They do not move files, create commits, or replace Base44’s native source synchronization.
+              Pull fast-forwards Base44 to match GitHub. Push sends Base44 commits to GitHub.
+              Conflicts surface as notifications rather than silently overwriting code.
             </p>
           </div>
         )}
