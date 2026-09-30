@@ -39,7 +39,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     await saveEdit();
     try {
       const { data } = await base44.functions.invoke("publishPost", { post_id: post.id });
-      if (data?.error) setNotice(data.error);
+      if (data?.error) setNotice("Publishing could not be completed safely. Review the connection and try again.");
       else if (data?.manual) {
         onChanged(data.post);
         setNotice("We can’t post this one for you yet. It’s ready to copy and post on your account.");
