@@ -41,7 +41,8 @@ export default function OutreachAgentPanel({ campaign }) {
 
   const setStatus = async (id, status) => {
     setActivities((prev) => (prev || []).map((a) => (a.id === id ? { ...a, status } : a)));
-    await base44.entities.AgentActivity.update(id, { status });
+    const { data } = await base44.functions.invoke("reviewAgentActivity", { activity_id: id, status });
+    if (data?.ok !== true) throw new Error("Agent activity review rejected");
   };
 
   if (!user || !activities) {
