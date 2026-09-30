@@ -3,7 +3,6 @@ import { base44 } from "@/api/base44Client";
 import { Loader2, Users, ShieldCheck, UserX, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
 
 const TIER_LABELS = {
   free: "Free",
@@ -14,8 +13,8 @@ const TIER_LABELS = {
   nonprofit: "Nonprofit",
 };
 
-// User Management + Permissions Panel — admin only
-// List all users; promote/demote admin role; view subscription info.
+// User Management + Permissions Panel — admin only.
+// All directory reads and role mutations use the authoritative admin workflow.
 export default function UserManagementPanel() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,13 +23,17 @@ export default function UserManagementPanel() {
   const [currentUser, setCurrentUser] = useState(null);
 
   const load = async () => {
-    const [me, all] = await Promise.all([
-      base44.auth.me(),
-      base44.entities.User.list("-created_date", 200),
-    ]);
-    setCurrentUser(me);
-    setUsers(all || []);
-    setLoading(false);
+    try {
+      const me = await base44.auth.me();
+      setCurrentUser(me);
+      const response = await base44.functions.invoke("adminUserManagement", { action: "list" });
+      setUsers(response?.data?.users || response?.users || []);
+    } catch (e) {
+      console.error("User management load failed:", e);
+      setError("Unable to load user management data.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -44,11 +47,17 @@ export default function UserManagementPanel() {
     if (u.id === currentUser?.id) { msg(false, "You cannot change your own role."); return; }
     const newRole = u.role === "admin" ? "user" : "admin";
     try {
-      const { data } = await base44.functions.invoke("adminUpdateUserRole", { user_id: u.id, role: newRole });
-      if (data?.ok !== true || data?.role !== newRole) throw new Error("role update not confirmed");
+      await base44.functions.invoke("adminUserManagement", {
+        action: "set_role",
+        user_id: u.id,
+        role: newRole,
+      });
       msg(true, `${u.full_name || u.email} is now ${newRole}.`);
-      load();
-    } catch (e) { console.error("User role update failed:", e?.name || "UnknownError"); msg(false, "User role update failed safely; no change was confirmed."); }
+      await load();
+    } catch (e) {
+      console.error("User role update failed:", e);
+      msg(false, "Unable to update the user's role.");
+    }
   };
 
   if (loading) {
@@ -69,7 +78,6 @@ export default function UserManagementPanel() {
       {error && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</p>}
       {success && <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">{success}</p>}
 
-      {/* Admin Users */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <ShieldCheck className="w-4 h-4 text-cyan-600" />
@@ -82,7 +90,6 @@ export default function UserManagementPanel() {
         </div>
       </section>
 
-      {/* Regular Users */}
       <section>
         <div className="flex items-center gap-2 mb-3">
           <Users className="w-4 h-4 text-stone-400" />
@@ -104,9 +111,8 @@ export default function UserManagementPanel() {
 
 function UserRow({ u, isSelf, onToggle }) {
   const isAdmin = u.role === "admin";
-  const subscription = effectiveSubscription(u);
-  const tier = subscription.adminGranted ? subscription.plan.name : (TIER_LABELS[u.subscription_tier] || u.subscription_tier || "Free");
-  const subActive = subscription.active;
+  const tier = TIER_LABELS[u.subscription_tier] || u.subscription_tier || "Free";
+  const subActive = u.subscription_status === "active" || u.subscription_status === "trialing";
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-3 flex items-center gap-3">
@@ -119,8 +125,7 @@ function UserRow({ u, isSelf, onToggle }) {
         <p className="text-xs text-stone-400 truncate mt-0.5">{u.email}</p>
         <p className="text-[10px] text-stone-400 mt-0.5">
           {tier} {subActive ? <span className="text-emerald-600">· Active</span> : ""}
-          {!subscription.adminGranted && u.subscription_status === "past_due" ? <span className="text-amber-600"> · Past Due</span> : ""}
-          {subscription.adminGranted ? <span className="text-cyan-600"> · Permanent admin access</span> : ""}
+          {u.subscription_status === "past_due" ? <span className="text-amber-600"> · Past Due</span> : ""}
         </p>
       </div>
       {!isSelf && (
