@@ -71,6 +71,9 @@ jobs:
       - name: Client error-disclosure contract
         run: node scripts/verify-client-error-disclosure.mjs
 
+      - name: Server-authoritative sensitive mutation contract
+        run: node scripts/verify-server-authoritative-mutations.mjs
+
       - name: Fraud-control financial authority contract
         run: node scripts/verify-fraud-control-financial-boundary.mjs
 
