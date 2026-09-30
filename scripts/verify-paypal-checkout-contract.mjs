@@ -20,5 +20,7 @@ assert.match(scripts,/window\.paypal\?\.Buttons/);
 assert.match(capture,/via PayPal/);
 assert.match(create,/PAYPAL_MODE.*live/);
 assert.match(capture,/PAYPAL_MODE.*live/);
-assert.doesNotMatch(capture,/via Google Pay/);
+assert.match(capture,/Google Pay/);
+assert.match(capture,/payment_method: paymentChannel/);
+assert.match(create,/payment_channel/);
 console.log("PayPal campaign checkout contract verified.");
