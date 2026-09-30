@@ -114,7 +114,17 @@ async function syncPull(token, sr, actorUserId) {
     }).catch(() => {});
   }
 
-  return { ok: relationship !== 'DIVERGED', relationship, remote_sha: remoteSha, previous_remote_sha: previous?.remote_head_sha || null, detail: relationship === 'DIVERGED' ? 'GitHub history diverged from the previous verified checkpoint. Automatic source movement remains blocked pending reconciliation.' : `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH} (${relationship}). Repository changes are applied only through Base44 native source synchronization.` };
+  const safeForSourceMovement = relationship === 'UNCHANGED' || relationship === 'FAST_FORWARD';
+  return {
+    ok: relationship !== 'DIVERGED',
+    relationship,
+    safe_for_source_movement: safeForSourceMovement,
+    remote_sha: remoteSha,
+    previous_remote_sha: previous?.remote_head_sha || null,
+    detail: !safeForSourceMovement
+      ? `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH} (${relationship}). Automatic source movement remains blocked until history is proven unchanged or fast-forward.`
+      : `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH} (${relationship}). History is safe for Base44 native source synchronization; this health function does not move source itself.`,
+  };
 }
 
 // Push compatibility label: verify GitHub destination reachability only.
