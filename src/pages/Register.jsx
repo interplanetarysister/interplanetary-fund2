@@ -18,20 +18,33 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
 
+  const validateRegistration = () => {
+    const next = {};
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanUsername = username.trim();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(cleanEmail)) next.email = "Enter a valid email address.";
+    else if (/\\.con$/i.test(cleanEmail)) next.email = "Check the email ending. Did you mean .com?";
+    if (!/^[A-Za-z0-9_]{3,30}$/.test(cleanUsername)) next.username = "Use 3–30 letters, numbers, or underscores.";
+    if (!password) next.password = "Enter a password.";
+    if (password !== confirmPassword) next.confirmPassword = "Passwords do not match.";
+    return { next, cleanEmail };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+    const { next, cleanEmail } = validateRegistration();
+    setFieldErrors(next);
+    if (Object.keys(next).length) return;
+    setEmail(cleanEmail);
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
+      await base44.auth.register({ email: cleanEmail, password });
       setShowOtp(true);
     } catch (err) {
       setError(safeAuthErrorMessage("register"));
@@ -175,11 +188,13 @@ export default function Register() {
               autoComplete="username"
               placeholder="yourhandle"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => { setUsername(e.target.value); setFieldErrors((v) => ({ ...v, username: "" })); }}
               className="pl-10 h-12"
+              aria-invalid={!!fieldErrors.username}
               required
             />
           </div>
+          {fieldErrors.username && <p className="text-sm text-destructive">{fieldErrors.username}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -192,11 +207,13 @@ export default function Register() {
               autoFocus
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setFieldErrors((v) => ({ ...v, email: "" })); }}
               className="pl-10 h-12"
+              aria-invalid={!!fieldErrors.email}
               required
             />
           </div>
+          {fieldErrors.email && <p className="text-sm text-destructive">{fieldErrors.email}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
@@ -208,11 +225,13 @@ export default function Register() {
               autoComplete="new-password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); setFieldErrors((v) => ({ ...v, password: "", confirmPassword: "" })); }}
               className="pl-10 h-12"
+              aria-invalid={!!fieldErrors.password}
               required
             />
           </div>
+          {fieldErrors.password && <p className="text-sm text-destructive">{fieldErrors.password}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirm Password</Label>
@@ -224,11 +243,13 @@ export default function Register() {
               autoComplete="new-password"
               placeholder="••••••••"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((v) => ({ ...v, confirmPassword: "" })); }}
               className="pl-10 h-12"
+              aria-invalid={!!fieldErrors.confirmPassword}
               required
             />
           </div>
+          {fieldErrors.confirmPassword && <p className="text-sm text-destructive">{fieldErrors.confirmPassword}</p>}
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
