@@ -31,7 +31,7 @@ export default function Dashboard() {
         setUser(me);
         const mine = await base44.entities.Campaign.filter({ created_by_id: me.id }, "-created_date");
         setCampaigns(mine);
-      } catch (e) { setError(e.message || "We couldn't load your dashboard."); }
+      } catch (e) { console.error("Dashboard load failed:", e?.name || "UnknownError"); setError("We couldn't load your dashboard. Please try again."); }
     })();
   }, [refreshKey]);
 
