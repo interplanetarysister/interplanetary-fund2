@@ -11,6 +11,8 @@ const ai=read('src/components/campaigns/EditAIInstructionsDialog.jsx');
 const queue=read('src/components/admin/ActionQueuePanel.jsx');
 const saveCampaign=read('base44/functions/saveCampaign/entry.ts');
 const createCampaign=read('src/pages/CreateCampaign.jsx');
+const managePost=read('base44/functions/manageDistributedPost/entry.ts');
+const postCard=read('src/components/distribution/DistributedPostCard.jsx');
 
 assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(settings,/ALLOWED/);
@@ -28,4 +30,7 @@ assert.doesNotMatch(queue,/entities\.PlatformConnection\.update/);
 assert.match(saveCampaign,/existing\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(createCampaign,/functions\.invoke\("saveCampaign"/);
 assert.doesNotMatch(createCampaign,/entities\.Campaign\.(?:create|update)/);
+assert.match(managePost,/post\.created_by_id !== user\.id && user\.role !== 'admin'/);
+assert.match(postCard,/functions\.invoke\("manageDistributedPost"/);
+assert.doesNotMatch(postCard,/entities\.DistributedPost\.(?:update|delete)/);
 console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');
