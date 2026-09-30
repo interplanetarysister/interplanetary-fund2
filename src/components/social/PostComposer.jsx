@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { getTierFromScore } from "@/components/social/ProfileBanner";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
 
