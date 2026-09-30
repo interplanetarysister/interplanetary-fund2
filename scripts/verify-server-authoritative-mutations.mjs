@@ -13,6 +13,10 @@ const saveCampaign=read('base44/functions/saveCampaign/entry.ts');
 const createCampaign=read('src/pages/CreateCampaign.jsx');
 const managePost=read('base44/functions/manageDistributedPost/entry.ts');
 const postCard=read('src/components/distribution/DistributedPostCard.jsx');
+const createSocial=read('base44/functions/createSocialPost/entry.ts');
+const createDistributed=read('base44/functions/createDistributedPost/entry.ts');
+const composer=read('src/components/social/PostComposer.jsx');
+const share=read('src/components/social/ShareToProfileDialog.jsx');
 
 assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(settings,/ALLOWED/);
@@ -33,4 +37,12 @@ assert.doesNotMatch(createCampaign,/entities\.Campaign\.(?:create|update)/);
 assert.match(managePost,/post\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(postCard,/functions\.invoke\("manageDistributedPost"/);
 assert.doesNotMatch(postCard,/entities\.DistributedPost\.(?:update|delete)/);
+assert.match(createSocial,/author_user_id:user\.id/);
+assert.match(createDistributed,/campaign\.created_by_id!==user\.id/);
+for (const client of [composer,share]) {
+  assert.match(client,/functions\.invoke\("createSocialPost"/);
+  assert.match(client,/functions\.invoke\("createDistributedPost"/);
+  assert.doesNotMatch(client,/entities\.SocialPost\.create/);
+  assert.doesNotMatch(client,/entities\.DistributedPost\.create/);
+}
 console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');
