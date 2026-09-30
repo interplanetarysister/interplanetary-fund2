@@ -45,7 +45,8 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
         setNotice("We can’t post this one for you yet. It’s ready to copy and post on your account.");
       } else onChanged(data.post);
     } catch (e) {
-      setNotice(e.response?.data?.error || "Publishing failed.");
+      console.error("Distributed post publish failed:", e?.name || "UnknownError");
+      setNotice("Publishing failed safely. Review the connection and try again.");
     }
     setBusy(false);
   };
