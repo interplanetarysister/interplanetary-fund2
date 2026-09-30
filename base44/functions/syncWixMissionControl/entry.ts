@@ -8,6 +8,9 @@ const COLLECTIONS = {
 };
 
 const text = (value: unknown, max = 4000) => String(value ?? '').slice(0, max);
+const PUBLIC_CAMPAIGN_STATUSES = new Set(['active', 'published', 'funded', 'completed']);
+const publicCampaignUrl = (id: unknown) =>
+  `https://interplanetaryfund.com/Campaign?id=${encodeURIComponent(String(id ?? ''))}`;
 const slugify = (value: unknown) => text(value, 120)
   .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -50,7 +53,7 @@ export default async function(req: Request) {
 
     const startedAt = new Date().toISOString();
     const campaigns = await sr.entities.Campaign.list('-updated_date', 500).catch(() => []);
-    const publicCampaigns = campaigns.filter((campaign: any) => campaign.status !== 'draft');
+    const publicCampaigns = campaigns.filter((campaign: any) => PUBLIC_CAMPAIGN_STATUSES.has(String(campaign.status || '').toLowerCase()));
     const publicIds = new Set(publicCampaigns.map((campaign: any) => campaign.id));
 
     const campaignItems = publicCampaigns.map((campaign: any) => ({
@@ -60,7 +63,7 @@ export default async function(req: Request) {
         title: text(campaign.title, 500),
         slug: slugify(campaign.title) || campaign.id,
         summary: text(campaign.summary || campaign.story, 4000),
-        campaignUrl: `https://interplanetaryfund.base44.app/Campaign?id=${encodeURIComponent(campaign.id)}`,
+        campaignUrl: publicCampaignUrl(campaign.id),
         status: text(campaign.status || 'active', 40),
         lastSyncedAt: startedAt,
       },
@@ -75,7 +78,7 @@ export default async function(req: Request) {
           ifundCampaignId: update.campaign_id,
           title: text(update.title || 'Campaign update', 500),
           body: text(update.content, 12000),
-          sourceUrl: `https://interplanetaryfund.base44.app/Campaign?id=${encodeURIComponent(update.campaign_id)}`,
+          sourceUrl: publicCampaignUrl(update.campaign_id),
           publishedAt: update.created_date || update.updated_date || startedAt,
         },
       }));
@@ -114,7 +117,7 @@ export default async function(req: Request) {
       }];
       results.health = await wixBulkSave(wix.accessToken, COLLECTIONS.state, selfState);
     } catch (error) {
-      const message = text((error as any)?.message || error, 500);
+      const message = 'Synchronization failed; review IFund server logs for the provider diagnostic.';
       await wixBulkSave(wix.accessToken, COLLECTIONS.state, [{
         id: 'ifund-wix-sync',
         data: {
@@ -146,6 +149,6 @@ export default async function(req: Request) {
     });
   } catch (error) {
     console.error('syncWixMissionControl error:', (error as any)?.message || error);
-    return Response.json({ error: 'Wix synchronization failed.', detail: text((error as any)?.message || error, 300) }, { status: 500 });
+    return Response.json({ error: 'Wix synchronization failed.' }, { status: 500 });
   }
 }
