@@ -25,7 +25,7 @@ export default function PublishOpportunityForm({ institution, onCreated, onCance
     if (data?.opportunity) {
       onCreated(data.opportunity);
     } else if (data?.error) {
-      alert(data.error);
+      alert("The opportunity could not be published. Please try again.");
     }
     setSaving(false);
   };
