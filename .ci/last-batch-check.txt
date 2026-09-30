@@ -1,1 +1,2 @@
 IFund accumulated verification batch 2 — payment integrity, client error redaction, installed-app manifest, and Eventbrite connection routing.
+IFund accumulated verification batch 3 — live-mode payment enforcement, false-donation prevention, channel-specific processor fees, and payment reconciliation hardening.
