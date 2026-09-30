@@ -29,8 +29,9 @@ export default function FollowPrefsDialog({ follow, onChanged }) {
 
   const save = async () => {
     setSaving(true);
-    const updated = await base44.entities.FollowedCampaign.update(follow.id, { notification_prefs: prefs });
-    onChanged(updated);
+    const { data } = await base44.functions.invoke("updateFollowPreferences", { follow_id: follow.id, notification_prefs: prefs });
+    if (data?.ok !== true) throw new Error("Notification preference update rejected");
+    onChanged(data.follow);
     setSaving(false);
     setOpen(false);
     toast({ title: "Notification preferences saved" });
