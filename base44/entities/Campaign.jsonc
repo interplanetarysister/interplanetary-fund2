@@ -1,4 +1,5 @@
 {
+  "name": "Campaign",
   "type": "object",
   "properties": {
     "title": {
@@ -60,16 +61,24 @@
       "description": "The city where this campaign is based, so it can appear on the global activity globe."
     },
     "location_lat": {
-      "type": "number"
+      "type": "number",
+      "description": "Geocoded latitude of the campaign location."
     },
     "location_lng": {
-      "type": "number"
+      "type": "number",
+      "description": "Geocoded longitude of the campaign location."
     },
     "cashapp_tag": {
-      "type": "string"
+      "type": "string",
+      "description": "The creator's Cash App $Cashtag, so supporters can give with Cash App."
+    },
+    "active_migration_request_id": {
+      "type": "string",
+      "description": "Authoritative server-side Fund Migration claim. Held while a migration withdrawal remains unresolved; never supplied by client financial calculations."
     },
     "ai_profile": {
       "type": "object",
+      "description": "The campaign's permanent AI profile — answers from the AI Instructions step, used by every AI feature to represent and promote the campaign consistently and truthfully.",
       "properties": {
         "primary_goal": {
           "type": "string"
@@ -78,18 +87,6 @@
           "type": "string"
         },
         "ideal_donors": {
-          "type": "string",
-          "description": "Optional creator hypothesis about likely supporters. AI audience discovery must not treat this as a fixed targeting constraint."
-        },
-        "donor_discovery_mode": {
-          "type": "string",
-          "enum": [
-            "ai_research",
-            "creator_guided"
-          ],
-          "default": "ai_research"
-        },
-        "donor_discovery_notes": {
           "type": "string"
         },
         "tone": {
@@ -123,6 +120,7 @@
     },
     "story_versions": {
       "type": "array",
+      "description": "Saved AI-generated story versions for version history and regeneration.",
       "items": {
         "type": "object",
         "properties": {
@@ -150,11 +148,13 @@
     },
     "outreach_enabled": {
       "type": "boolean",
-      "default": true
+      "default": true,
+      "description": "Whether the AI Outreach Agent is activated and authorized to work autonomously on this campaign. Default on per Michelle's Campaign Protocol."
     },
     "outreach_paused": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "When true, the AI Outreach Agent holds automated work for this campaign until resumed."
     }
   },
   "required": [
@@ -162,9 +162,6 @@
     "goal_amount"
   ],
   "rls": {
-    "create": {
-      "created_by_id": "{{user.id}}"
-    },
     "read": {
       "$or": [
         {
@@ -206,6 +203,5 @@
         }
       ]
     }
-  },
-  "name": "Campaign"
+  }
 }
