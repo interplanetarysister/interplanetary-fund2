@@ -83,6 +83,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                 campaign_id: campaign.id,
                 amount: value,
                 platform_contribution: !!p.platformContribution,
+              intent_id: intentRef.current,
               });
               if (!order?.id || typeof order.id !== "string") return { transactionState: "ERROR", error: { message: "Unable to start payment." } };
 
