@@ -33,12 +33,12 @@ export default function InboxItemCard({ item, onChanged }) {
     setShowDraft(true);
     const text = draftInboxReply(item, platformName(item.platform));
     setDraft(text);
-    if (item.record_id) await base44.entities.InboxItem.update(item.record_id, { ai_draft: text });
+    if (item.record_id) { const { data } = await base44.functions.invoke("updateInboxItem", { item_id: item.record_id, ai_draft: text }); if (data?.ok !== true) throw new Error("Inbox draft update rejected"); }
     setDrafting(false);
   };
 
   const markDone = async () => {
-    if (item.record_id) await base44.entities.InboxItem.update(item.record_id, { status: "done" });
+    if (item.record_id) { const { data } = await base44.functions.invoke("updateInboxItem", { item_id: item.record_id, status: "done" }); if (data?.ok !== true) throw new Error("Inbox status update rejected"); }
     else if (item.notification_id) await base44.entities.Notification.update(item.notification_id, { read: true });
     onChanged({ ...item, status: "done" });
   };
