@@ -42,7 +42,8 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
         toast({ title: "Update posted", description: summary });
       }
     } catch (e) {
-      toast({ title: "Couldn't post update", description: e.response?.data?.error || "Please try again.", variant: "destructive" });
+      console.error("Campaign update failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive" });
     }
     setTitle(""); setContent(""); setMediaUrl("");
     setSaving(false);
