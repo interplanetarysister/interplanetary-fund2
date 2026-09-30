@@ -1,220 +1,330 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
-import { reconcileInboxMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 
-// Ko-fi webhooks report payments made directly into the creator's connected
-// PayPal/Stripe account. They are canonical EXTERNAL OBSERVATIONS only — never
-// IF-withdrawable funds until a separate, verified transfer into IF occurs.
-// Ko-fi retries a failed delivery with the same message_id, which is the primary
-// provider identity. A deterministic payload hash remains only as a legacy/test
-// fallback when message_id is absent.
-
-function cyrb53(str, seed = 0) {
-  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
-  for (let i = 0, ch; i < str.length; i++) {
-    ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+function safeWebhookError() {
+  return 'Unable to process Ko-fi webhook.';
 }
 
-function stableOrder(rows) {
-  return [...(rows || [])].sort((a, b) => {
-    const at = new Date(a.created_date || 0).getTime();
-    const bt = new Date(b.created_date || 0).getTime();
-    if (at !== bt) return at - bt;
-    return String(a.id || '').localeCompare(String(b.id || ''));
-  });
+function supportedDonationType(type) {
+  if (!type) return true;
+  return new Set(['Donation', 'donation', 'Payment', 'payment', 'Monthly Donation', 'monthly_donation']).has(type);
 }
 
-async function recoveryRecord(sr, eventKey, eventType) {
-  let rows = await sr.entities.WebhookEvent.filter({ source: 'kofi', event_key: eventKey }).catch(() => []);
-  let record = stableOrder(rows)[0] || null;
-  if (!record) {
-    record = await sr.entities.WebhookEvent.create({
-      source: 'kofi',
-      event_key: eventKey,
-      event_type: eventType || 'payment',
-      state: 'claimed',
-      attempt_count: 1,
-    });
-  } else if (record.state !== 'side_effects_complete') {
-    await sr.entities.WebhookEvent.update(record.id, {
-      event_type: eventType || record.event_type || 'payment',
-      attempt_count: Number(record.attempt_count || 0) + 1,
-      last_error: '',
-    });
-  }
-
-  // Base44 recovery rows are diagnostic only. FinancialOperation owns idempotency; collapse
-  // any duplicate local rows deterministically so all retries use one state row.
-  rows = await sr.entities.WebhookEvent.filter({ source: 'kofi', event_key: eventKey }).catch(() => []);
-  const ordered = stableOrder(rows);
-  record = ordered[0] || record;
-  for (const duplicate of ordered.slice(1)) await sr.entities.WebhookEvent.delete(duplicate.id).catch(() => {});
-  return record;
-}
-
-async function markRecovery(sr, record, patch) {
-  if (!record?.id) return;
-  await sr.entities.WebhookEvent.update(record.id, patch).catch(() => {});
-}
-
-function parsePayload(req, contentType) {
-  if (contentType.includes('application/json')) {
-    return req.json().then((body) => {
-      if (typeof body?.data === 'string') return JSON.parse(body.data);
-      return body?.data || body;
-    });
-  }
-  return req.formData().then((form) => {
-    const raw = form.get('data');
-    if (!raw) throw new Error('Missing data field');
-    return JSON.parse(String(raw));
-  });
-}
-
-function fallbackProviderId(payload, connectionId) {
-  const stableFields = [
-    String(connectionId || ''),
-    String(payload.type || ''),
-    String(payload.amount || ''),
-    String(payload.currency || ''),
-    String(payload.from_name || ''),
-    String(payload.email || ''),
-    String(payload.message || ''),
-    String(payload.url || ''),
-    String(payload.timestamp || ''),
-  ].join('|');
-  return `legacy-${cyrb53(stableFields)}`;
-}
-
-export default async function(req) {
-  let base44;
-  let recovery = null;
-  try {
-    base44 = createClientFromRequest(req);
-    const sr = base44.asServiceRole;
-    const contentType = req.headers.get('content-type') || '';
-    const payload = await parsePayload(req, contentType);
-
-    const token = payload?.verification_token;
-    if (!token) return Response.json({ error: 'Missing verification token' }, { status: 401 });
-
-    const connections = await sr.entities.PlatformConnection.filter({ platform: 'kofi' });
-    const connection = connections.find((c) => c.credentials && c.credentials.kofi_verification_token === token);
-    if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
-    if (!connection.campaign_id) return Response.json({ error: 'Ko-fi connection is not linked to a campaign' }, { status: 409 });
-
-    const campaign = await sr.entities.Campaign.get(connection.campaign_id).catch(() => null);
-    if (!campaign) return Response.json({ error: 'Linked campaign not found' }, { status: 409 });
-    if (!campaign.created_by_id || campaign.created_by_id !== connection.created_by_id) {
-      return Response.json({ error: 'Ko-fi connection ownership does not match the linked campaign' }, { status: 403 });
-    }
-
-    const amount = Number.parseFloat(payload.amount);
-    const currency = String(payload.currency || '').trim().toUpperCase();
-    if (!Number.isFinite(amount) || amount <= 0) return Response.json({ error: 'Invalid Ko-fi payment amount' }, { status: 400 });
-    if (!/^[A-Z]{3}$/.test(currency)) return Response.json({ error: 'Invalid Ko-fi currency' }, { status: 400 });
-
-    const providerId = String(payload.message_id || payload.kofi_transaction_id || fallbackProviderId(payload, connection.id));
-    const operationKey = `kofi:${connection.id}:${providerId}`;
-    const eventKey = `kofi:${providerId}`;
-    recovery = await recoveryRecord(sr, eventKey, payload.type || 'payment');
-    if (recovery?.state === 'side_effects_complete') return Response.json({ ok: true, duplicate: true });
-
-    await ensureCanonicalCampaign(sr, campaign);
-    const observation = await recordCanonicalExternalObservation(sr, {
-      operationKey,
-      provider: 'kofi',
-      providerTransactionId: providerId,
-      providerAccountId: String(connection.id),
-      campaignId: campaign.id,
-      campaignOwnerUserId: campaign.created_by_id,
-      amount,
-      currency,
-      donorName: payload.from_name || 'Ko-fi supporter',
-      ...(payload.email ? { donorEmail: String(payload.email) } : {}),
-      source: 'kofi_webhook',
-      metadata: JSON.stringify({ type: payload.type || 'payment', url: payload.url || '', isSubscription: !!payload.is_subscription_payment }),
-    });
-
-    await markRecovery(sr, recovery, {
-      state: 'financial_applied',
-      canonical_operation_id: String(observation.observationId),
-      financial_applied_at: new Date().toISOString(),
-      last_error: '',
-    });
-
-    const now = new Date().toISOString();
-    const priorCurrency = String(connection.external_currency || '').trim().toUpperCase();
-    if (priorCurrency && priorCurrency !== currency) {
-      // Never combine currencies in one numeric total. The canonical observation
-      // is retained; the connection is flagged for explicit conversion/review.
-      await sr.entities.PlatformConnection.update(connection.id, {
-        status: 'error',
-        verification_status: 'verified',
-        external_data_source: 'provider_verified',
-        last_synced: now,
-        last_error: `Ko-fi observation received in ${currency}; existing connection total is ${priorCurrency}. Currency conversion/reconciliation required.`,
-      });
-    } else {
-      await sr.entities.PlatformConnection.update(connection.id, {
-        external_total: Number(observation.observedTotal || 0),
-        external_donor_count: Number(observation.observedCount || 0),
-        external_currency: currency,
-        status: 'connected',
-        verification_status: 'verified',
-        external_data_source: 'provider_verified',
-        last_synced: now,
-        last_error: '',
-        history: [
-          ...(connection.history || []),
-          { at: now, event: observation.created ? 'synced' : 'reconciled', detail: `Ko-fi ${payload.type || 'payment'}: ${currency} ${amount.toFixed(2)} from ${payload.from_name || 'a supporter'} (external observation only)` },
-        ].slice(-30),
-      });
-    }
-
-    await reconcileInboxMirror(sr, observation.observationId, {
-      user_id: campaign.created_by_id,
+async function ensureSideEffects(sr, connection, payload, amount, eventId) {
+  const existingInbox = await sr.entities.InboxItem.filter({ external_event_id: eventId });
+  if (existingInbox.length === 0) {
+    await sr.entities.InboxItem.create({
+      user_id: connection.created_by_id,
       platform: 'kofi',
-      campaign_id: campaign.id,
-      campaign_title: campaign.title,
+      campaign_id: connection.campaign_id,
       type: 'donation',
       author: payload.from_name || 'Ko-fi supporter',
-      content: `External Ko-fi payment observed: ${currency} ${amount.toFixed(2)}${payload.message ? ` — \"${String(payload.message).slice(0, 400)}\"` : ''}. This payment went to your connected Ko-fi payment account and is not an IF-withdrawable balance.`,
+      content: `Gave $${amount}${payload.message ? ` — \"${payload.message}\"` : ''}`,
       link: payload.url || connection.external_url || '',
       status: 'open',
+      external_event_id: eventId,
     });
+  }
 
-    await reconcileNotificationMirror(sr, observation.observationId, {
-      user_id: campaign.created_by_id,
-      title: 'New Ko-fi payment observed',
-      body: `${payload.from_name || 'A supporter'} paid ${currency} ${amount.toFixed(2)} on Ko-fi. It remains external until transferred into Interplanetary Fund.`,
+  const existingNotification = await sr.entities.Notification.filter({ external_event_id: eventId });
+  if (existingNotification.length === 0) {
+    await sr.entities.Notification.create({
+      user_id: connection.created_by_id,
+      title: 'New Ko-fi donation',
+      body: `${payload.from_name || 'A supporter'} gave $${amount} on Ko-fi`,
       type: 'donation',
       link: '/inbox',
-      read: false,
+      external_event_id: eventId,
     });
+  }
+}
 
-    await markRecovery(sr, recovery, {
-      state: 'side_effects_complete',
-      canonical_operation_id: String(observation.observationId),
-      side_effects_completed_at: new Date().toISOString(),
-      processed_at: new Date().toISOString(),
-      last_error: '',
-    });
-    return Response.json({ ok: true, duplicate: !observation.created, external_only: true, currency, observed_total: observation.observedTotal });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error('kofiWebhook error:', message);
-    if (base44 && recovery) {
-      await markRecovery(base44.asServiceRole, recovery, { state: 'failed', last_error: message.slice(0, 500) });
+async function ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt) {
+  const existing = await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId });
+  if (existing.length > 0) return existing[0];
+
+  return sr.entities.KoFiWebhookEvent.create({
+    event_id: eventId,
+    provider: 'kofi',
+    message_id: payload.message_id,
+    connection_id: connection.id,
+    user_id: connection.created_by_id,
+    amount,
+    event_type: payload.type || 'donation',
+    claimed_at: claimedAt,
+    financial_applied: false,
+    side_effects_complete: false,
+    last_error: '',
+  });
+}
+
+async function syncFinancialStateFromLedger(sr, connectionId, eventId, claimToken, ledger) {
+  if (!ledger?.financial_applied) return;
+  await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+    },
+    {
+      $set: {
+        kofi_active_event_financial_applied: true,
+      },
+    },
+  );
+}
+
+async function applyFinancialClaim(sr, connectionId, eventId, claimToken, amount) {
+  const result = await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+      $or: [
+        { kofi_active_event_financial_applied: { $exists: false } },
+        { kofi_active_event_financial_applied: false },
+      ],
+    },
+    {
+      $inc: {
+        external_total: amount,
+        external_donor_count: 1,
+      },
+      $set: {
+        kofi_active_event_financial_applied: true,
+      },
+    },
+  );
+
+  if (result.success && result.updated === 1) return true;
+
+  const current = await sr.entities.PlatformConnection.get(connectionId);
+  if (
+    current?.kofi_active_event_id === eventId &&
+    current?.kofi_active_event_claim_token === claimToken &&
+    current?.kofi_active_event_financial_applied === true
+  ) {
+    return false;
+  }
+
+  throw new Error('Ko-fi financial claim ownership was lost before completion.');
+}
+
+async function completeEventLedger(sr, ledger) {
+  if (!ledger?.id) return;
+  await sr.entities.KoFiWebhookEvent.update(ledger.id, {
+    financial_applied: true,
+    side_effects_complete: true,
+    last_error: '',
+  });
+}
+
+async function clearActiveClaim(sr, connectionId, eventId, claimToken) {
+  await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+    },
+    {
+      $unset: {
+        kofi_active_event_id: '',
+        kofi_active_event_claimed_at: '',
+        kofi_active_event_claim_token: '',
+        kofi_active_event_financial_applied: '',
+        kofi_recovery_required: '',
+      },
+    },
+  );
+}
+
+async function markRecoveryRequired(sr, connectionId, eventId, claimToken) {
+  await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connectionId,
+      kofi_active_event_id: eventId,
+      kofi_active_event_claim_token: claimToken,
+    },
+    {
+      $set: {
+        kofi_recovery_required: true,
+      },
+    },
+  );
+}
+
+async function acquireRecoveryClaim(sr, connection, eventId) {
+  const recoveryToken = `${eventId}:${crypto.randomUUID()}`;
+  const recoveryClaim = await sr.entities.PlatformConnection.updateMany(
+    {
+      id: connection.id,
+      kofi_active_event_id: eventId,
+      kofi_recovery_required: true,
+    },
+    {
+      $set: {
+        kofi_active_event_claim_token: recoveryToken,
+        kofi_recovery_required: false,
+      },
+    },
+  );
+
+  return recoveryClaim.success && recoveryClaim.updated === 1 ? recoveryToken : null;
+}
+
+async function processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken) {
+  // The connection-level claim is the serialized ownership boundary. The
+  // ledger and both user-visible side effects are deliberately reconciled only
+  // while this claim token is held, so concurrent deliveries cannot race their
+  // filter-then-create operations against one another.
+  let ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+  if (!ledger) {
+    ledger = await ensureEventLedgerUnderClaim(sr, eventId, connection, payload, amount, claimedAt);
+  }
+
+  await syncFinancialStateFromLedger(sr, connection.id, eventId, claimToken, ledger);
+  await applyFinancialClaim(sr, connection.id, eventId, claimToken, amount);
+  await ensureSideEffects(sr, connection, payload, amount, eventId);
+  await completeEventLedger(sr, ledger);
+  await clearActiveClaim(sr, connection.id, eventId, claimToken);
+  return ledger;
+}
+
+async function recoverClaimedEvent(sr, eventId, connection, payload, amount, claimedAt) {
+  const ledger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+  if (ledger?.side_effects_complete) return ledger;
+
+  const recoveryToken = await acquireRecoveryClaim(sr, connection, eventId);
+  if (!recoveryToken) {
+    throw new Error('Ko-fi event recovery is not explicitly available yet. Retry later.');
+  }
+
+  return processClaimedEvent(
+    sr,
+    connection,
+    payload,
+    amount,
+    eventId,
+    ledger?.claimed_at || claimedAt,
+    recoveryToken,
+  );
+}
+
+// Live Ko-fi donation sync. The connection-level active-event claim is the
+// authoritative single-winner boundary for the entire event lifecycle. It is
+// acquired before any durable event-ledger lookup or creation, so concurrent
+// identical deliveries cannot independently enter filter-then-create ledger or
+// side-effect paths. Recovery takeover is only enabled after the previous
+// worker explicitly marks the event as needing recovery; a time-based lease
+// alone is never treated as proof that a worker stopped.
+export default async function(req) {
+  try {
+    const base44 = createClientFromRequest(req);
+    const sr = base44.asServiceRole;
+
+    let payload;
+    const contentType = req.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      payload = await req.json();
+      if (typeof payload.data === 'string') payload = JSON.parse(payload.data);
+      else if (payload.data) payload = payload.data;
+    } else {
+      const form = await req.formData();
+      const raw = form.get('data');
+      if (!raw) return Response.json({ error: 'Missing data field' }, { status: 400 });
+      payload = JSON.parse(raw);
     }
-    // Ko-fi retries non-2xx deliveries with the same message_id, while Base44 FinancialOperation
-    // idempotency guarantees any already-recorded observation is not duplicated.
-    return Response.json({ error: 'Unable to process Ko-fi webhook' }, { status: 500 });
+
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return Response.json({ error: 'Invalid webhook payload' }, { status: 400 });
+    }
+
+    const token = payload.verification_token;
+    if (!token || typeof token !== 'string') {
+      return Response.json({ error: 'Missing verification token' }, { status: 401 });
+    }
+
+    const messageId = payload.message_id;
+    if (!messageId || typeof messageId !== 'string' || messageId.length > 200) {
+      return Response.json({ error: 'Missing webhook message id' }, { status: 400 });
+    }
+
+    const amount = Number(payload.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) {
+      return Response.json({ error: 'Invalid webhook amount' }, { status: 400 });
+    }
+
+    if (!supportedDonationType(payload.type)) {
+      return Response.json({ ok: true, ignored: true });
+    }
+
+    const connections = await sr.entities.PlatformConnection.filter({ platform: 'kofi' });
+    const connection = connections.find((c) => c.credentials?.kofi_verification_token === token);
+    if (!connection) return Response.json({ error: 'Unknown verification token' }, { status: 401 });
+
+    const eventId = `kofi:${connection.id}:${messageId}`;
+    const claimedAt = new Date().toISOString();
+    const claimToken = `${eventId}:${crypto.randomUUID()}`;
+    const claim = await sr.entities.PlatformConnection.updateMany(
+      {
+        id: connection.id,
+        kofi_active_event_id: { $exists: false },
+      },
+      {
+        $set: {
+          status: 'connected',
+          last_synced: claimedAt,
+          last_error: '',
+          kofi_active_event_id: eventId,
+          kofi_active_event_claimed_at: claimedAt,
+          kofi_active_event_claim_token: claimToken,
+          kofi_active_event_financial_applied: false,
+          kofi_recovery_required: false,
+        },
+        $push: {
+          history: {
+            at: claimedAt,
+            event: 'claimed',
+            detail: `Ko-fi ${payload.type || 'donation'}: $${amount} from ${payload.from_name || 'a supporter'}`,
+          },
+        },
+      },
+    );
+
+    if (!claim.success || claim.updated !== 1) {
+      const current = await sr.entities.PlatformConnection.get(connection.id);
+      if (current?.kofi_active_event_id === eventId && current?.kofi_recovery_required === true) {
+        try {
+          await recoverClaimedEvent(sr, eventId, current, payload, amount, current.kofi_active_event_claimed_at || claimedAt);
+          return Response.json({ ok: true, recovered: true });
+        } catch (error) {
+          console.error('kofiWebhook explicit recovery error:', error);
+          return Response.json({ error: safeWebhookError() }, { status: 500 });
+        }
+      }
+      // A live claim owned by another delivery is not evidence that the event
+      // completed. Return 202 and let the current owner finish; only an explicit
+      // recovery marker authorizes another worker to take ownership.
+      return Response.json({ ok: true, duplicate: true, retry: true }, { status: 202 });
+    }
+
+    try {
+      await processClaimedEvent(sr, connection, payload, amount, eventId, claimedAt, claimToken);
+    } catch (error) {
+      console.error('kofiWebhook claimed-event recovery error:', error);
+      const failedLedger = (await sr.entities.KoFiWebhookEvent.filter({ event_id: eventId }))[0];
+      if (failedLedger?.id) {
+        await sr.entities.KoFiWebhookEvent.update(failedLedger.id, {
+          side_effects_complete: false,
+          last_error: 'Downstream side-effect recovery is explicitly required.',
+        });
+      }
+      await markRecoveryRequired(sr, connection.id, eventId, claimToken);
+      return Response.json({ error: safeWebhookError() }, { status: 500 });
+    }
+
+    return Response.json({ ok: true, claimed: true });
+  } catch (error) {
+    console.error('kofiWebhook error:', error);
+    return Response.json({ error: safeWebhookError() }, { status: 500 });
   }
 }
