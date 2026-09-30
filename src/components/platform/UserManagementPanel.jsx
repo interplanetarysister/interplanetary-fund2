@@ -44,7 +44,8 @@ export default function UserManagementPanel() {
     if (u.id === currentUser?.id) { msg(false, "You cannot change your own role."); return; }
     const newRole = u.role === "admin" ? "user" : "admin";
     try {
-      await base44.entities.User.update(u.id, { role: newRole });
+      const { data } = await base44.functions.invoke("adminUpdateUserRole", { user_id: u.id, role: newRole });
+      if (data?.ok !== true || data?.role !== newRole) throw new Error("role update not confirmed");
       msg(true, `${u.full_name || u.email} is now ${newRole}.`);
       load();
     } catch (e) { console.error("User role update failed:", e?.name || "UnknownError"); msg(false, "User role update failed safely; no change was confirmed."); }
