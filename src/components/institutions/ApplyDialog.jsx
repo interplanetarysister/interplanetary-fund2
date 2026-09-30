@@ -50,7 +50,7 @@ export default function ApplyDialog({ opportunity, institution, onApplied }) {
       onApplied(data.application);
       setOpen(false);
     } else if (data?.error) {
-      alert(data.error);
+      alert("The application could not be submitted. Please try again.");
     }
     setSaving(false);
   };
