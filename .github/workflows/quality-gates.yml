@@ -1,6 +1,7 @@
 name: Production Quality Gates
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -18,6 +19,7 @@ concurrency:
 
 jobs:
   quality:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]')
     name: Node 20 Base44 compatibility build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -152,6 +154,7 @@ jobs:
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
 
   node22-compatibility:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]')
     name: Node 22 compatibility build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -165,6 +168,7 @@ jobs:
       - run: npm run build
 
   typecheck:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]')
     name: Typecheck on Base44 baseline
     runs-on: ubuntu-latest
     timeout-minutes: 15
