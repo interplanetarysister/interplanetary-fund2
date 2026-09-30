@@ -4,7 +4,7 @@ const source = fs.readFileSync('src/components/platform/ServiceHealthPanel.jsx',
 const required = [
   ['safe service error constant', source.includes('SAFE_SERVICE_ERROR')],
   ['raw exception not rendered', !source.includes('error: e.message')],
-  ['server diagnostics retained', source.includes('console.error(`Service health check failed for ${s.name}:`, e)')],
+  ['server diagnostics retained', source.includes('console.error(`Service health check failed for ${sanitizeServiceName(s.name)} (${failureType}).`)')],
   ['safe error rendered', source.includes('error: SAFE_SERVICE_ERROR')],
 ];
 
