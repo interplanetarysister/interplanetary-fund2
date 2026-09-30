@@ -7,6 +7,8 @@ const scripts=read("src/components/payments/paypalScripts.js");
 const capture=read("base44/functions/capturePayPalOrder/entry.ts");
 assert.match(dialog,/PayPalCheckoutButton/);
 assert.match(dialog,/Give with PayPal/);
+assert.match(dialog,/paypal\?\.api_live === true/);
+assert.match(dialog,/stripe\?\.live === true/);
 assert.match(button,/createPayPalOrder/);
 assert.match(button,/capturePayPalOrder/);
 assert.match(button,/result\?\.ok !== true/);
