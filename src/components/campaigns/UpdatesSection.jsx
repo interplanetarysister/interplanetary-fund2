@@ -33,7 +33,7 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
         cross_post: crossPost,
       });
       if (data?.error) {
-        toast({ title: "Couldn't post update", description: data.error, variant: "destructive" });
+        toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive" });
       } else {
         const cp = data?.crosspost || {};
         const summary = crossPost && (cp.published || cp.pending || cp.drafts || cp.failed)
