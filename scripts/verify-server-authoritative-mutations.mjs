@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const read=(p)=>fs.readFileSync(p,'utf8');
+const settings=read('base44/functions/updateCampaignSettings/entry.ts');
+const review=read('base44/functions/reviewAgentActivity/entry.ts');
+const ack=read('base44/functions/acknowledgeConnectionIssue/entry.ts');
+const cash=read('src/components/campaigns/CashAppSettings.jsx');
+const outreach=read('src/components/campaigns/OutreachAgentPanel.jsx');
+const ai=read('src/components/campaigns/EditAIInstructionsDialog.jsx');
+const queue=read('src/components/admin/ActionQueuePanel.jsx');
+
+assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
+assert.match(settings,/ALLOWED/);
+assert.match(review,/activity\.owner_user_id !== user\.id && user\.role !== 'admin'/);
+assert.match(review,/activity\.status !== 'pending'/);
+assert.match(ack,/user\.role !== 'admin'/);
+assert.match(cash,/functions\.invoke\("updateCampaignSettings"/);
+assert.doesNotMatch(cash,/entities\.Campaign\.update/);
+assert.match(outreach,/functions\.invoke\("updateCampaignSettings"/);
+assert.match(outreach,/functions\.invoke\("reviewAgentActivity"/);
+assert.doesNotMatch(outreach,/entities\.AgentActivity\.update/);
+assert.match(ai,/functions\.invoke\("updateCampaignSettings"/);
+assert.match(queue,/functions\.invoke\("acknowledgeConnectionIssue"/);
+assert.doesNotMatch(queue,/entities\.PlatformConnection\.update/);
+console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');
