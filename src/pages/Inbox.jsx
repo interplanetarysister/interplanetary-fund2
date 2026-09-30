@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,11 +8,13 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
-import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
 
-// The Universal Inbox — one communication center aggregating connected-platform
-// interactions (InboxItems, e.g. live Ko-fi gifts), Interplanetary Fund
-// donations to your campaigns, and your notifications.
+const SAFE_INBOX_ERROR = "We couldn't load your inbox right now. Please try again.";
+
+function isArray(value) {
+  return Array.isArray(value);
+}
+
 export default function Inbox() {
   const [items, setItems] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -21,49 +23,70 @@ export default function Inbox() {
   const [platform, setPlatform] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
+  const requestRef = useRef(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const requestId = ++requestRef.current;
+    const isCurrent = () => active && mountedRef.current && requestRef.current === requestId;
+
     (async () => {
-     try {
-      const me = await base44.auth.me();
-      setIsAdmin(me.role === "admin");
-      const [inboxItems, notifications, myCampaigns] = await Promise.all([
-        base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
-        base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
-        base44.entities.Campaign.filter({ created_by_id: me.id }),
-      ]);
-      const dResults = await Promise.all(
-        myCampaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
-      );
-      const donationLists = dResults.map((r) => (r.data && r.data.donations) || []);
+      try {
+        const me = await base44.auth.me();
+        const [inboxItems, notifications, myCampaigns] = await Promise.all([
+          base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
+          base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
+          base44.entities.Campaign.filter({ created_by_id: me.id }),
+        ]);
+        if (![inboxItems, notifications, myCampaigns].every(isArray)) throw new Error("invalid inbox response");
 
-      const merged = [
-        ...inboxItems.map((i) => ({
-          key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
-          content: i.content, link: i.link, campaign_id: i.campaign_id,
-          campaign_title: i.campaign_title || myCampaigns.find((c) => c.id === i.campaign_id)?.title,
-          status: i.status, date: i.created_date, ai_draft: i.ai_draft,
-        })),
-        ...donationLists.flat().map((d) => ({
-          key: `d-${d.id}`, platform: "interplanetary", type: "donation", author: d.donor_name || "Anonymous",
-          content: `Gave $${(d.amount || 0).toLocaleString()}${d.message ? ` — "${d.message}"` : ""}`,
-          link: `/campaign/${d.campaign_id}`, campaign_id: d.campaign_id, campaign_title: d.campaign_title,
-          status: "done", date: d.created_date,
-        })),
-        ...notifications.map((n) => ({
-          key: `n-${n.id}`, notification_id: n.id, platform: "interplanetary", type: n.type === "donation" ? "donation" : "system",
-          author: "", content: `${n.title}${n.body ? ` — ${n.body}` : ""}`, link: n.link,
-          status: n.read ? "done" : "open", date: n.created_date,
-        })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const dResults = await Promise.all(
+          myCampaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
+        );
+        if (!dResults.every((result) => result && isArray(result.data?.donations))) {
+          throw new Error("invalid donation response");
+        }
+        const donationLists = dResults.map((result) => result.data.donations);
 
-      setItems(merged);
-     } catch (e) {
-       console.error("Inbox load failed:", e?.name || "UnknownError");
-       setError("We couldn't load your inbox. Please try again.");
-     }
+        const merged = [
+          ...inboxItems.map((i) => ({
+            key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
+            content: i.content, link: i.link, campaign_id: i.campaign_id,
+            campaign_title: i.campaign_title || myCampaigns.find((c) => c.id === i.campaign_id)?.title,
+            status: i.status, date: i.created_date, ai_draft: i.ai_draft,
+          })),
+          ...donationLists.flat().map((d) => ({
+            key: `d-${d.id}`, platform: "interplanetary", type: "donation", author: d.donor_name || "Anonymous",
+            content: `Gave $${(d.amount || 0).toLocaleString()}${d.message ? ` — \"${d.message}\"` : ""}`,
+            link: `/campaign/${d.campaign_id}`, campaign_id: d.campaign_id, campaign_title: d.campaign_title,
+            status: "done", date: d.created_date,
+          })),
+          ...notifications.map((n) => ({
+            key: `n-${n.id}`, notification_id: n.id, platform: "interplanetary", type: n.type === "donation" ? "donation" : "system",
+            author: "", content: `${n.title}${n.body ? ` — ${n.body}` : ""}`, link: n.link,
+            status: n.read ? "done" : "open", date: n.created_date,
+          })),
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        if (isCurrent()) {
+          setItems(merged);
+          setError(null);
+        }
+      } catch {
+        if (isCurrent()) {
+          setError(SAFE_INBOX_ERROR);
+          setItems(null);
+        }
+      }
     })();
+
+    return () => { active = false; };
   }, [refreshKey]);
 
   if (error) {
@@ -92,11 +115,6 @@ export default function Inbox() {
         Universal Inbox
       </h1>
       <p className="text-stone-500 mb-6">Every donation, comment, and alert from every connected platform — one communication center.</p>
-      {isAdmin && <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
-        <h2 className="font-display text-lg text-stone-900 mb-1">Admin action inbox</h2>
-        <p className="text-sm text-stone-500 mb-4">Requests from agents and the platform that need a decision, account sign-in, more information, or investigation.</p>
-        <AdminApprovalQueue />
-      </div>}
 
       <div className="flex flex-wrap gap-3 mb-5">
         <Tabs value={tab} onValueChange={setTab}>
