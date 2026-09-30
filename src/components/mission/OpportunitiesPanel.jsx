@@ -37,7 +37,8 @@ export default function OpportunitiesPanel() {
       await base44.functions.invoke("generateIntelligence", { mode: "opportunities" });
       await load();
     } catch (e) {
-      setError(e.response?.data?.error || "Discovery failed. Please try again.");
+      console.error("Opportunity discovery failed:", e?.name || "UnknownError");
+      setError("Discovery failed. Please try again.");
     }
     setDiscovering(false);
   };
