@@ -3,7 +3,7 @@ import { secrets } from 'base44:runtime';
 import { createOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
+import { validateDonationAmount, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 
@@ -21,11 +21,13 @@ export default async function (req) {
     const donorGuard = await assertActiveAccountIfSignedIn(base44);
     if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
 
-    const { campaign_id, amount, platform_contribution, intent_id } = await req.json();
+    const { campaign_id, amount, platform_contribution, intent_id, payment_channel } = await req.json();
     const amountCheck = validateDonationAmount(amount);
     if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
     if (!campaign_id) return Response.json({ error: 'A campaign is required' }, { status: 400 });
     if (!intent_id || !/^[A-Za-z0-9_-]{16,100}$/.test(String(intent_id))) return Response.json({ error: 'A stable payment intent is required' }, { status: 400 });
+    const channel = payment_channel === 'googlepay' ? 'googlepay' : payment_channel === 'paypal' ? 'paypal' : '';
+    if (!channel) return Response.json({ error: 'A supported payment channel is required' }, { status: 400 });
     const value = Number(amount);
 
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
@@ -40,7 +42,7 @@ export default async function (req) {
 
     await ensureCanonicalCampaign(sr, campaign);
 
-    const processing = computeProcessingFee(value);
+    const processing = channel === 'googlepay' ? computePayPalWalletProcessingFee(value) : computePayPalProcessingFee(value);
     const contribution = computeContribution(value, !!platform_contribution);
     const totalCharge = round2(value + processing);
     const order = await createOrder({
@@ -51,6 +53,7 @@ export default async function (req) {
         Math.round(value * 100),
         Math.round(processing * 100),
         Math.round(contribution * 100),
+        channel,
       ].join('|'),
       requestId: String(intent_id),
     });
