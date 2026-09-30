@@ -106,7 +106,8 @@ export default function IntegrationsAdmin() {
         toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
       }
     } catch (e) {
-      toast({ title: "GitHub verification failed", description: e.message || "Could not verify the GitHub connection.", variant: "destructive" });
+      console.error("GitHub verification failed:", e?.name || "UnknownError");
+      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection. Review controlled server logs for provider diagnostics.", variant: "destructive" });
     }
     setVerifyingGitHub(false);
   };
@@ -180,7 +181,7 @@ export default function IntegrationsAdmin() {
                 <button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">
                   {e.platform}
                 </button>
-                {" — "}{(STATUS_BADGE[e.status] || {}).label || e.status}{e.last_failure ? `: ${e.last_failure}` : ""}
+                {" — "}{(STATUS_BADGE[e.status] || {}).label || e.status}{e.last_failure ? " — provider diagnostics retained in the secured integration record" : ""}
               </li>
             ))}
           </ul>
