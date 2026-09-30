@@ -60,7 +60,8 @@ export default function OpsCenter() {
     try {
       await load();
     } catch (e) {
-      setSyncError(e.message || "Refresh failed — showing the last loaded data.");
+      console.error("Ops Center refresh failed:", e?.name || "UnknownError");
+      setSyncError("Refresh failed — showing the last loaded data.");
     }
     setSyncing(false);
   };
