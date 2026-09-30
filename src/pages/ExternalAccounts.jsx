@@ -37,7 +37,8 @@ export default function ExternalAccounts() {
         setAgents(ags);
         setCampaigns(Object.fromEntries(camps.map((c) => [c.id, c])));
       } catch (e) {
-        setError(e.message || "Couldn't load external accounts.");
+        console.error("External accounts load failed:", e?.name || "UnknownError");
+        setError("Couldn't load external accounts. Please try again.");
       }
     })();
   }, [refreshKey]);
