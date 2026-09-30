@@ -43,7 +43,7 @@ export default function FundMigrationDashboard() {
       const c = await base44.entities.Campaign.list("-raised_amount", 100);
       setCampaigns(c || []);
     } catch (e) {
-      setReconcileResult({ error: e?.message || "Reconciliation failed." });
+      setReconcileResult({ error: "Reconciliation failed. Please try again." });
     }
     setReconciling(false);
   };
@@ -65,7 +65,7 @@ export default function FundMigrationDashboard() {
         setCampaigns(c || []);
         setPending(w || []);
       } catch (e) {
-        setError(e?.message || "Unable to load migration data.");
+        setError("Unable to load migration data.");
       } finally {
         setLoadingCampaigns(false);
       }
@@ -130,7 +130,7 @@ export default function FundMigrationDashboard() {
       setResult({ created: created.length, totalGross, totalNet });
       setStep("result");
     } catch (e) {
-      setError(e?.message || "Migration failed. Please try again.");
+      setError("Migration failed. Please try again.");
     }
     setSubmitting(false);
   };
