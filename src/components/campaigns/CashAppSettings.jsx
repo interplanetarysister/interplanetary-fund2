@@ -13,7 +13,8 @@ export default function CashAppSettings({ campaign, onSaved }) {
 
   const save = async () => {
     setSaving(true);
-    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { cashapp_tag: tag.replace(/^\$/, "") } });\n    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
+    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { cashapp_tag: tag.replace(/^\$/, "") } });
+    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
