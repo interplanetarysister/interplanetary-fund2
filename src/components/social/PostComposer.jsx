@@ -80,7 +80,9 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
           const conn = connections?.find((c) => c.platform === platform && isUsableConnection(c));
           if (!conn) continue;
           try {
-            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: content.trim() });\n            if (distributed?.ok !== true || !distributed?.post?.id) continue;\n            const dp = distributed.post;
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: content.trim() });
+            if (distributed?.ok !== true || !distributed?.post?.id) continue;
+            const dp = distributed.post;
             await base44.functions.invoke("publishPost", { post_id: dp.id });
           } catch {
             // Cross-post failure doesn't block the native post.
