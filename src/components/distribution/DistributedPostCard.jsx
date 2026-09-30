@@ -16,8 +16,9 @@ const statusStyles = {
   failed: "bg-red-100 text-red-700",
 };
 
-// One AI-generated platform post: edit, approve & publish (direct API where
-// supported, copy-to-post otherwise), schedule, or discard.
+// One AI-generated platform update. Account linking supplies authorization;
+// this card edits, publishes, schedules, copies, or discards without another
+// approval click.
 export default function DistributedPostCard({ post, onChanged, onRemoved }) {
   const [content, setContent] = useState(post.content);
   const [busy, setBusy] = useState(false);
@@ -30,9 +31,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
 
   const saveEdit = async () => {
     if (content === post.content) return;
-    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "edit", post_id: post.id, content });
-    if (data?.ok !== true) throw new Error("Post edit rejected");
-    onChanged(data.post);
+    onChanged(await base44.entities.DistributedPost.update(post.id, { content }));
   };
 
   const publish = async () => {
@@ -41,14 +40,13 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     await saveEdit();
     try {
       const { data } = await base44.functions.invoke("publishPost", { post_id: post.id });
-      if (data?.error) setNotice("Publishing could not be completed safely. Review the connection and try again.");
+      if (data?.error) setNotice(data.error);
       else if (data?.manual) {
         onChanged(data.post);
-        setNotice("We can’t post this one for you yet. It’s ready to copy and post on your account.");
+        setNotice("This platform has no publishing API — the update is ready. Copy it and post it on your account.");
       } else onChanged(data.post);
     } catch (e) {
-      console.error("Distributed post publish failed:", e?.name || "UnknownError");
-      setNotice("Publishing failed safely. Review the connection and try again.");
+      setNotice(e.response?.data?.error || "Publishing failed.");
     }
     setBusy(false);
   };
@@ -57,17 +55,14 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     if (!scheduleAt) return;
     setBusy(true);
     await saveEdit();
-    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "schedule", post_id: post.id, scheduled_for: new Date(scheduleAt).toISOString() });
-    if (data?.ok !== true) throw new Error("Post schedule rejected");
-    onChanged(data.post);
+    onChanged(await base44.entities.DistributedPost.update(post.id, { status: "scheduled", scheduled_for: new Date(scheduleAt).toISOString() }));
     setShowSchedule(false);
     setBusy(false);
   };
 
   const remove = async () => {
     setBusy(true);
-    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "delete", post_id: post.id });
-    if (data?.ok !== true || data?.deleted !== true) throw new Error("Post deletion rejected");
+    await base44.entities.DistributedPost.delete(post.id);
     onRemoved(post.id);
   };
 
@@ -81,7 +76,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     <div className="rounded-xl border border-stone-200 p-4">
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="font-semibold text-stone-900 text-sm">{platformName(post.platform)}</p>
-        <Badge className={`${statusStyles[post.status] || ""} border-0 capitalize`}>{post.status.replace("_", " ")}</Badge>
+        <Badge className={`${statusStyles[post.status] || ""} border-0 capitalize`}>{post.status === "pending_approval" ? "ready" : post.status.replace("_", " ")}</Badge>
       </div>
       {post.status === "published" ? (
         <p className="text-sm text-stone-600 whitespace-pre-line">{fullText}</p>
@@ -97,7 +92,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
       <div className="flex flex-wrap gap-2 mt-3">
         {post.status !== "published" && (
           <Button size="sm" onClick={publish} disabled={busy} className="rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground">
-            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Approve & publish
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Publish
           </Button>
         )}
         {post.status !== "published" && (
