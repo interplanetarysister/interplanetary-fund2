@@ -58,7 +58,8 @@ export default function FraudControlPanel() {
 
   const unfreeze = async (c) => {
     try {
-      await base44.entities.Campaign.update(c.id, { status: "active" });
+      const { data } = await base44.functions.invoke("adminCampaignControl", { action: "restore", campaign_id: c.id });
+      if (data?.ok !== true || data?.status !== "active") throw new Error("restore not confirmed");
       msg(true, `Campaign "${c.title}" restored to active.`);
       load();
     } catch (e) { console.error("Campaign restore failed:", e?.name || "UnknownError"); msg(false, "Campaign restore failed safely; no change was confirmed."); }
@@ -67,7 +68,8 @@ export default function FraudControlPanel() {
   const freeze = async (campaignId, title) => {
     if (!freezeReason) { msg(false, "Reason required to pause campaign."); return; }
     try {
-      await base44.entities.Campaign.update(campaignId, { status: "paused" });
+      const { data } = await base44.functions.invoke("adminCampaignControl", { action: "pause", campaign_id: campaignId, reason: freezeReason });
+      if (data?.ok !== true || data?.status !== "paused") throw new Error("pause not confirmed");
       msg(true, `Campaign "${title}" paused.`);
       setFreezeTarget(null);
       setFreezeReason("");
