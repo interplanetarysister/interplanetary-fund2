@@ -16,7 +16,7 @@ for (const id of ids) assert.ok(allowed.includes(id), `UI catalog platform ${id}
 
 for (const required of [
   'gofundme','kickstarter','indiegogo','fundrazr','givesendgo','spotfund',
-  'kofi','buymeacoffee','patreon','facebook','instagram','x','linkedin',
+  'kofi','buymeacoffee','patreon','eventbrite','facebook','instagram','x','linkedin',
   'tiktok','discord','bluesky','mastodon','gmail','googledrive','googlecalendar',
   'slack','notion','github'
 ]) assert.ok(ids.includes(required), `required connection surface missing: ${required}`);
@@ -26,6 +26,7 @@ for (const sharedId of ['wix','slackbot']) {
 }
 assert.ok(audit.replaceAll('*', '').includes('VERIFIED CONNECTED requires an actual successful provider-backed API call'));
 assert.match(resolver, /Configuration, recipes, saved credentials, or public URLs are NOT sufficient/);
+assert.match(registry, /eventbrite:\s*'APP_USER_CONNECTOR_EVENTBRITE_ID'/, 'Eventbrite must resolve through canonical OAuth registry');
 assert.match(registry, /facebook_pages:\s*'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID'/, 'Facebook Pages provider alias must resolve through canonical OAuth registry');
 
 console.log(`Connection catalog contract verified: ${ids.length} user-facing platforms plus shared connector coverage.`);
