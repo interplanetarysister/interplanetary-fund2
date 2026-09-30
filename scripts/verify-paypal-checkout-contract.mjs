@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const read=(p)=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
+const dialog=read("src/components/campaigns/DonateDialog.jsx");
+const button=read("src/components/payments/PayPalCheckoutButton.jsx");
+const scripts=read("src/components/payments/paypalScripts.js");
+assert.match(dialog,/PayPalCheckoutButton/);
+assert.match(dialog,/Give with PayPal/);
+assert.match(button,/createPayPalOrder/);
+assert.match(button,/capturePayPalOrder/);
+assert.match(button,/result\?\.ok !== true/);
+assert.match(button,/data\?\.orderID/);
+assert.doesNotMatch(button,/\.message\b/,"provider exception messages must not reach PayPal UI");
+assert.match(scripts,/components=buttons,googlepay-payments/);
+assert.match(scripts,/window\.paypal\?\.Buttons/);
+console.log("PayPal campaign checkout contract verified.");
