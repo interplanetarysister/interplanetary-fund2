@@ -262,10 +262,11 @@ export default async function(req) {
       const w = await sr.entities.Withdrawal.get(body.withdrawal_id);
       if (!w) return Response.json({ error: 'Withdrawal not found.' }, { status: 404 });
       if (!['provider_status_unknown', 'reservation_release_pending', 'under_review'].includes(w.status)) return Response.json({ error: 'This withdrawal cannot be released from its current state.' }, { status: 400 });
-      await cancelCanonicalWithdrawal(sr, { operationKey: w.canonical_operation_key || operationKeyFor(w.id), reason: 'Admin confirmed provider did not pay.' });
+      const adminNote = String(body.admin_note || '').trim().slice(0, 500);
+      await cancelCanonicalWithdrawal(sr, { operationKey: w.canonical_operation_key || operationKeyFor(w.id), reason: adminNote || 'Admin confirmed provider did not pay.' });
       await releaseDonationMirrors(sr, w.id);
-      await sr.entities.Withdrawal.update(w.id, { status: 'cancelled', review_note: 'Provider non-payment confirmed; funds released.', processed_at: new Date().toISOString() });
-      await logAudit(base44, { action: 'withdrawal_reservation_released', target_type: 'withdrawal', target_id: w.id, detail: 'Admin confirmed provider non-payment; canonical and mirror reservations released', status: 'success', metadata: { actor: user.id } });
+      await sr.entities.Withdrawal.update(w.id, { status: 'cancelled', review_note: adminNote ? `Provider non-payment confirmed; funds released. Admin note: ${adminNote}` : 'Provider non-payment confirmed; funds released.', processed_at: new Date().toISOString() });
+      await logAudit(base44, { action: 'withdrawal_reservation_released', target_type: 'withdrawal', target_id: w.id, detail: adminNote ? `Admin confirmed provider non-payment; canonical and mirror reservations released. Note: ${adminNote}` : 'Admin confirmed provider non-payment; canonical and mirror reservations released', status: 'success', metadata: { actor: user.id } });
       return Response.json({ ok: true, status: 'cancelled', withdrawal_id: w.id });
     }
 
