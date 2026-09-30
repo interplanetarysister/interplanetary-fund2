@@ -37,8 +37,9 @@ export default function FraudControlPanel() {
 
   const approve = async (w) => {
     try {
-      await base44.entities.Withdrawal.update(w.id, { status: "paid" });
-      msg(true, `Approved — ${money(w.net_amount)} payout marked paid.`);
+      const { data } = await base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: w.id });
+      if (data?.ok !== true || !["paid", "reconciliation_pending", "provider_status_unknown"].includes(data?.status)) throw new Error("approval not confirmed");
+      msg(true, data.status === "paid" ? `Approved — ${money(w.net_amount)} payout confirmed paid.` : "Payout submitted; provider reconciliation is still required.");
       load();
     } catch (e) { console.error("Fraud control approval failed:", e?.name || "UnknownError"); msg(false, "Approval could not be completed safely."); }
   };
@@ -46,12 +47,13 @@ export default function FraudControlPanel() {
   const deny = async (w) => {
     if (!denyReason) { msg(false, "Reason required to deny payout."); return; }
     try {
-      await base44.entities.Withdrawal.update(w.id, { status: "failed", review_note: denyReason });
-      msg(true, "Payout denied. Funds returned to holding account.");
+      const { data } = await base44.functions.invoke("requestWithdrawal", { action: "release_reservation", withdrawal_id: w.id, confirm_not_paid: true, admin_note: denyReason });
+      if (data?.ok !== true || data?.status !== "cancelled") throw new Error("release not confirmed");
+      msg(true, "Payout denied. The canonical reservation was released.");
       setDenyTarget(null);
       setDenyReason("");
       load();
-    } catch (e) { msg(false, e.message || "Denial failed."); }
+    } catch (e) { console.error("Payout denial failed:", e?.name || "UnknownError"); msg(false, "Denial could not be completed safely; funds remain reserved until confirmed otherwise."); }
   };
 
   const unfreeze = async (c) => {
@@ -59,7 +61,7 @@ export default function FraudControlPanel() {
       await base44.entities.Campaign.update(c.id, { status: "active" });
       msg(true, `Campaign "${c.title}" restored to active.`);
       load();
-    } catch (e) { msg(false, e.message || "Unfreeze failed."); }
+    } catch (e) { console.error("Campaign restore failed:", e?.name || "UnknownError"); msg(false, "Campaign restore failed safely; no change was confirmed."); }
   };
 
   const freeze = async (campaignId, title) => {
@@ -70,7 +72,7 @@ export default function FraudControlPanel() {
       setFreezeTarget(null);
       setFreezeReason("");
       load();
-    } catch (e) { msg(false, e.message || "Pause failed."); }
+    } catch (e) { console.error("Campaign pause failed:", e?.name || "UnknownError"); msg(false, "Campaign pause failed safely; no change was confirmed."); }
   };
 
   if (loading) {
