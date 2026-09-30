@@ -154,7 +154,7 @@ export default async function (req) {
       await reconcileNotificationMirror(sr, canonical.operationId, {
         user_id: campaign.created_by_id,
         title: 'New donation received',
-        body: `${displayName} gave ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'}`,
+        body: `${displayName} gave USD ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'}`,
         type: 'donation',
         link: `/campaign/${campaign_id}`,
         read: false,
@@ -166,7 +166,7 @@ export default async function (req) {
         action: 'donation_captured',
         target_type: 'campaign',
         target_id: campaign_id,
-        detail: `${total} via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'} captured and applied canonically`,
+        detail: `USD ${total} via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'} captured and applied canonically`,
         status: 'success',
         metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: cap.capture_id || order_id },
       });
