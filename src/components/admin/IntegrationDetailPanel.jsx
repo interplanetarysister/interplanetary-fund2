@@ -28,7 +28,8 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
       toast({ title: "Updated", description: `${entry.platform}: ${action}` });
       onUpdated?.();
     } catch (e) {
-      toast({ title: "Couldn't update", description: e.message, variant: "destructive" });
+      console.error("Integration update failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't update", description: "The integration update could not be completed safely.", variant: "destructive" });
     }
     setBusy(null);
   };
