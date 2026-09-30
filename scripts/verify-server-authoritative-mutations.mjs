@@ -9,6 +9,8 @@ const cash=read('src/components/campaigns/CashAppSettings.jsx');
 const outreach=read('src/components/campaigns/OutreachAgentPanel.jsx');
 const ai=read('src/components/campaigns/EditAIInstructionsDialog.jsx');
 const queue=read('src/components/admin/ActionQueuePanel.jsx');
+const saveCampaign=read('base44/functions/saveCampaign/entry.ts');
+const createCampaign=read('src/pages/CreateCampaign.jsx');
 
 assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(settings,/ALLOWED/);
@@ -23,4 +25,7 @@ assert.doesNotMatch(outreach,/entities\.AgentActivity\.update/);
 assert.match(ai,/functions\.invoke\("updateCampaignSettings"/);
 assert.match(queue,/functions\.invoke\("acknowledgeConnectionIssue"/);
 assert.doesNotMatch(queue,/entities\.PlatformConnection\.update/);
+assert.match(saveCampaign,/existing\.created_by_id !== user\.id && user\.role !== 'admin'/);
+assert.match(createCampaign,/functions\.invoke\("saveCampaign"/);
+assert.doesNotMatch(createCampaign,/entities\.Campaign\.(?:create|update)/);
 console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');
