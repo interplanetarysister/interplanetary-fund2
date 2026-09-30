@@ -34,7 +34,7 @@ export default function AdminContentPanel({ onGenerated }) {
         toast({ title: "AI post generated!", description: `Feature: ${res.data.topic}` });
         onGenerated?.(res.data.post);
       } else if (res?.data?.error) {
-        toast({ title: res.data.error, variant: "destructive" });
+        toast({ title: "Generation failed", description: "The content request could not be completed safely.", variant: "destructive" });
       }
     } catch {
       toast({ title: "Generation failed", variant: "destructive" });
