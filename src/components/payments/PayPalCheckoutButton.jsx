@@ -32,6 +32,7 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
               amount: Number(amount),
               platform_contribution: !!platformContribution,
               intent_id: intentRef.current,
+              payment_channel: "paypal",
             });
             if (!data?.id) throw new Error("Order creation failed");
             return data.id;
