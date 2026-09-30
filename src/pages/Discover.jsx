@@ -20,7 +20,7 @@ export default function Discover() {
   useEffect(() => {
     base44.entities.Campaign.filter({ status: "active" }, "-created_date", 100)
       .then(setCampaigns)
-      .catch((e) => setError(e.message || "We couldn't load campaigns."));
+      .catch((e) => { console.error("Discover load failed:", e?.name || "UnknownError"); setError("We couldn't load campaigns. Please try again."); });
   }, [refreshKey]);
 
   if (error) {
