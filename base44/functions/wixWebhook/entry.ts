@@ -53,9 +53,9 @@ export default async function(req: Request) {
     const eventId = String(envelope?.eventId || envelope?.event_id || data?.id || data?._id || '');
     const stableId = eventId || await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)).then(b => Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''));
     const externalId = `wix:${instanceId}:${eventType}:${stableId}`;
-    const existing = await sr.entities.ExternalSyncEvent.filter({ provider: 'wix', external_event_id: externalId });
+    const existing = await sr.entities.ExternalSyncEvent.filter({ provider: 'wix', event_id: externalId });
     if (existing?.length) return Response.json({ ok: true, duplicate: true });
-    const record = await sr.entities.ExternalSyncEvent.create({ provider: 'wix', external_event_id: externalId, event_type: eventType, status: 'received', received_at: new Date().toISOString(), payload: { instanceId, eventType, data } });
+    const record = await sr.entities.ExternalSyncEvent.create({ provider: 'wix', event_id: externalId, event_type: eventType, instance_id: instanceId, entity_id: String(data?.id || data?._id || ''), status: 'received', received_at: new Date().toISOString(), payload: { instanceId, eventType, data } });
     // Webhooks are synchronization signals only. Financial events never create
     // IFund Donation records or withdrawable balances without settlement reconciliation.
     await sr.entities.ExternalSyncEvent.update(record.id, { status: 'processed', processed_at: new Date().toISOString() });
