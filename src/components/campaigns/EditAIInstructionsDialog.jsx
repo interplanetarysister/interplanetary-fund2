@@ -15,7 +15,7 @@ export default function EditAIInstructionsDialog({ campaign, onSaved }) {
   const save = async () => {
     setSaving(true);
     try {
-      await base44.entities.Campaign.update(campaign.id, { ai_profile: profile });
+      const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { ai_profile: profile } });\n      if (data?.ok !== true) throw new Error("Campaign setting update rejected");
       onSaved?.();
       setOpen(false);
     } catch (e) {
