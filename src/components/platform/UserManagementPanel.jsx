@@ -47,7 +47,7 @@ export default function UserManagementPanel() {
       await base44.entities.User.update(u.id, { role: newRole });
       msg(true, `${u.full_name || u.email} is now ${newRole}.`);
       load();
-    } catch (e) { msg(false, e.message || "Update failed."); }
+    } catch (e) { console.error("User role update failed:", e?.name || "UnknownError"); msg(false, "User role update failed safely; no change was confirmed."); }
   };
 
   if (loading) {
