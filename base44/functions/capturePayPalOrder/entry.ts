@@ -149,7 +149,7 @@ export default async function (req) {
       await reconcileNotificationMirror(sr, canonical.operationId, {
         user_id: campaign.created_by_id,
         title: 'New donation received',
-        body: `${displayName} gave $${total.toLocaleString()} to "${campaign.title}" via Google Pay`,
+        body: `${displayName} gave ${total.toLocaleString()} to "${campaign.title}" via PayPal`,
         type: 'donation',
         link: `/campaign/${campaign_id}`,
         read: false,
