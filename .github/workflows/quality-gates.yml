@@ -124,6 +124,9 @@ jobs:
       - name: Google Pay provider response contract
         run: node scripts/verify-google-pay-contract.mjs
 
+      - name: My Giving response safety contract
+        run: node scripts/verify-my-giving-contract.mjs
+
       - name: Production build
         run: npm run build
 
