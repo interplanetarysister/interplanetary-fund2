@@ -35,7 +35,8 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
       setResult(res.data);
       onDone?.();
     } catch (e) {
-      setError(e.message || "Something went wrong. Please try again.");
+      console.error("Withdrawal request failed:", e?.name || "UnknownError");
+      setError("We couldn't complete the withdrawal request safely. Please try again.");
     } finally {
       setSubmitting(false);
     }
