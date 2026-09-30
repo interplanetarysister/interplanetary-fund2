@@ -66,7 +66,8 @@ export default function Withdrawals() {
         setReviewQueue(rq || []);
       }
     } catch (e) {
-      setError(e.message || "We couldn't load your withdrawals.");
+      console.error("Withdrawals load failed:", e?.name || "UnknownError");
+      setError("We couldn't load your withdrawals. Please try again.");
     } finally {
       setLoading(false);
     }
