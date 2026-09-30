@@ -31,7 +31,7 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
         paypal_email: email,
         paypal_email_confirm: confirm,
       });
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Server operation rejected");
       setResult(res.data);
       onDone?.();
     } catch (e) {
