@@ -17,7 +17,7 @@ assert.match(button,/data\?\.orderID/);
 assert.doesNotMatch(button,/\.message\b/,"provider exception messages must not reach PayPal UI");
 assert.match(scripts,/components=buttons,googlepay-payments/);
 assert.match(scripts,/window\.paypal\?\.Buttons/);
-assert.match(capture,/via PayPal/);
+assert.match(capture,/paymentChannel === 'googlepay' \? 'Google Pay' : 'PayPal'/);
 assert.match(create,/PAYPAL_MODE.*live/);
 assert.match(capture,/PAYPAL_MODE.*live/);
 assert.match(capture,/Google Pay/);
