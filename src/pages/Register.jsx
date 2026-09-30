@@ -27,8 +27,8 @@ export default function Register() {
     const next = {};
     const cleanEmail = email.trim().toLowerCase();
     const cleanUsername = username.trim();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(cleanEmail)) next.email = "Enter a valid email address.";
-    else if (/\\.con$/i.test(cleanEmail)) next.email = "Check the email ending. Did you mean .com?";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) next.email = "Enter a valid email address.";
+    else if (/\.con$/i.test(cleanEmail)) next.email = "Check the email ending. Did you mean .com?";
     if (!/^[A-Za-z0-9_]{3,30}$/.test(cleanUsername)) next.username = "Use 3–30 letters, numbers, or underscores.";
     if (!password) next.password = "Enter a password.";
     if (password !== confirmPassword) next.confirmPassword = "Passwords do not match.";
@@ -191,10 +191,11 @@ export default function Register() {
               onChange={(e) => { setUsername(e.target.value); setFieldErrors((v) => ({ ...v, username: "" })); }}
               className="pl-10 h-12"
               aria-invalid={!!fieldErrors.username}
+              aria-describedby={fieldErrors.username ? "username-error" : undefined}
               required
             />
           </div>
-          {fieldErrors.username && <p className="text-sm text-destructive">{fieldErrors.username}</p>}
+          {fieldErrors.username && <p id="username-error" role="alert" className="text-sm text-destructive">{fieldErrors.username}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
@@ -210,10 +211,11 @@ export default function Register() {
               onChange={(e) => { setEmail(e.target.value); setFieldErrors((v) => ({ ...v, email: "" })); }}
               className="pl-10 h-12"
               aria-invalid={!!fieldErrors.email}
+              aria-describedby={fieldErrors.email ? "email-error" : undefined}
               required
             />
           </div>
-          {fieldErrors.email && <p className="text-sm text-destructive">{fieldErrors.email}</p>}
+          {fieldErrors.email && <p id="email-error" role="alert" className="text-sm text-destructive">{fieldErrors.email}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
@@ -228,10 +230,11 @@ export default function Register() {
               onChange={(e) => { setPassword(e.target.value); setFieldErrors((v) => ({ ...v, password: "", confirmPassword: "" })); }}
               className="pl-10 h-12"
               aria-invalid={!!fieldErrors.password}
+              aria-describedby={fieldErrors.password ? "password-error" : undefined}
               required
             />
           </div>
-          {fieldErrors.password && <p className="text-sm text-destructive">{fieldErrors.password}</p>}
+          {fieldErrors.password && <p id="password-error" role="alert" className="text-sm text-destructive">{fieldErrors.password}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">Confirm Password</Label>
@@ -246,10 +249,11 @@ export default function Register() {
               onChange={(e) => { setConfirmPassword(e.target.value); setFieldErrors((v) => ({ ...v, confirmPassword: "" })); }}
               className="pl-10 h-12"
               aria-invalid={!!fieldErrors.confirmPassword}
+              aria-describedby={fieldErrors.confirmPassword ? "confirm-error" : undefined}
               required
             />
           </div>
-          {fieldErrors.confirmPassword && <p className="text-sm text-destructive">{fieldErrors.confirmPassword}</p>}
+          {fieldErrors.confirmPassword && <p id="confirm-error" role="alert" className="text-sm text-destructive">{fieldErrors.confirmPassword}</p>}
         </div>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
