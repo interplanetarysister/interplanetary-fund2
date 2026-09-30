@@ -248,7 +248,7 @@ export const SOCIAL_PLATFORMS = [
     color: "#101010",
     icon: "🧵",
     tagline: "Share campaign updates on Threads via your Instagram account.",
-    setupKind: "oauth",
+    setupKind: "link",
     steps: [
       { id: "oauth", label: "Sign in with Threads", hint: "Threads will ask you to sign in and approve the connection." },
       { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
@@ -262,7 +262,7 @@ export const SOCIAL_PLATFORMS = [
     color: "#000000",
     icon: "𝕏",
     tagline: "Post campaign updates to X — reach your followers with every update.",
-    setupKind: "oauth",
+    setupKind: "link",
     steps: [
       { id: "oauth", label: "Sign in with X", hint: "X will ask you to sign in and approve the connection. We never see your password." },
       { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
@@ -289,7 +289,7 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#010101",
     icon: "🎵",
-    tagline: "Sign in with TikTok to post campaign content to your audience.",
+    tagline: "Connect TikTok to view supported profile and audience information.",
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with TikTok", hint: "TikTok will ask you to sign in and approve the connection. We never see your password." },
@@ -304,7 +304,7 @@ export const SOCIAL_PLATFORMS = [
     color: "#e60023",
     icon: "📌",
     tagline: "Pin campaign updates to your Pinterest boards.",
-    setupKind: "oauth",
+    setupKind: "link",
     steps: [
       { id: "oauth", label: "Sign in with Pinterest", hint: "Pinterest will ask you to sign in and approve the connection." },
       { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
@@ -318,7 +318,7 @@ export const SOCIAL_PLATFORMS = [
     color: "#ff4500",
     icon: "👽",
     tagline: "Share campaign posts to relevant subreddits.",
-    setupKind: "oauth",
+    setupKind: "link",
     steps: [
       { id: "oauth", label: "Sign in with Reddit", hint: "Reddit will ask you to sign in and approve the connection." },
       { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
@@ -332,7 +332,7 @@ export const SOCIAL_PLATFORMS = [
     color: "#ff0000",
     icon: "▶️",
     tagline: "Post campaign updates to your YouTube Community tab.",
-    setupKind: "oauth",
+    setupKind: "link",
     steps: [
       { id: "oauth", label: "Sign in with Google / YouTube", hint: "Google will ask you to sign in and approve the YouTube connection." },
       { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
