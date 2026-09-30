@@ -32,7 +32,7 @@
     },
     "canonical_operation_id": {
       "type": "string",
-      "description": "Optional canonical Base44 FinancialOperation id used to reconcile/deduplicate notification mirrors for financial events."
+      "description": "Optional Convex canonical operation id used to reconcile/deduplicate notification mirrors for financial events."
     }
   },
   "required": [
@@ -64,18 +64,7 @@
         }
       ]
     },
-    "update": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
-    },
+    "update": false,
     "delete": {
       "$or": [
         {
