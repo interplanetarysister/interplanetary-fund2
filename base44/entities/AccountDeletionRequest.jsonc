@@ -1,0 +1,21 @@
+{
+  "name": "AccountDeletionRequest",
+  "type": "object",
+  "properties": {
+    "user_id": {"type": "string", "description": "Authenticated account requesting deletion."},
+    "request_id": {"type": "string", "description": "Stable request identity used for idempotent retry/reconciliation and worker authorization."},
+    "status": {"type": "string", "enum": ["requested", "processing", "completed", "failed"], "default": "requested"},
+    "requested_at": {"type": "string", "format": "date-time"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "last_error_code": {"type": "string", "description": "Stable internal recovery code; never raw exception text."},
+    "attempt_count": {"type": "number", "default": 0}
+  },
+  "required": ["user_id", "request_id", "status", "requested_at"],
+  "rls": {
+    "read": {"$or": [{"data.user_id": "{{user.id}}"}, {"user_condition": {"role": "admin"}}]},
+    "create": {"data.user_id": "{{user.id}}"},
+    "update": {"user_condition": {"role": "admin"}},
+    "delete": {"user_condition": {"role": "admin"}}
+  }
+}
