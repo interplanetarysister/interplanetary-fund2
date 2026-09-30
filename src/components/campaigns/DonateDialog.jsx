@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
+import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
 import { Heart, Loader2, Lock, CheckCircle2, Sparkles, CreditCard } from "lucide-react";
@@ -120,7 +121,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {capabilityError && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">We couldn’t check payment choices right now. Please try again.</p>}
 
 
-            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /><p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p></div>}
+            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName={name} message={message} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /></div>}\n\n            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /><p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p></div>}
 
             {stripeAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{recurring ? "Monthly giving via card" : "Give with a card"}</p><Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">{stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${bd.totalCharged.toFixed(2)} with card` : "Donate with card"}</Button><p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p></div>}
 
