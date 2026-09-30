@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { secrets } from 'base44:runtime';
 import { captureOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
@@ -17,6 +18,7 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. This campaign payment was not captured.' }, { status: 409 });
+    if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
     const sr = base44.asServiceRole;
 
     const { order_id, campaign_id, donor_name, message, is_recurring } = await req.json();
