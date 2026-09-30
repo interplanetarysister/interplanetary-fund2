@@ -40,7 +40,7 @@ export default function FraudControlPanel() {
       await base44.entities.Withdrawal.update(w.id, { status: "paid" });
       msg(true, `Approved — ${money(w.net_amount)} payout marked paid.`);
       load();
-    } catch (e) { msg(false, e.message || "Approval failed."); }
+    } catch (e) { console.error("Fraud control approval failed:", e?.name || "UnknownError"); msg(false, "Approval could not be completed safely."); }
   };
 
   const deny = async (w) => {
