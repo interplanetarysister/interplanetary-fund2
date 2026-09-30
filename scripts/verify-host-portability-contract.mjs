@@ -26,6 +26,8 @@ assert.match(docs, /Base44 two-way GitHub sync/i);
 assert.match(docs, /manual-sync-required/i);
 assert.match(client, /runtimeContract\.appId/);
 assert.match(client, /runtimeContract\.appBaseUrl/);
+assert.match(client, /serverUrl:\s*appBaseUrl/, "Hosted frontends must send Base44 auth/API traffic to the canonical backend, not same-origin /api");
+assert.doesNotMatch(client, /serverUrl:\s*['\"]{2}/, "Hosted frontends must not use an empty same-origin Base44 server URL");
 assert.match(panel, /createAdminAgentSession/);
 assert.match(worker, /IFUND_AGENT_EXECUTE_URL/);
 assert.match(worker, /degraded.*true/);
