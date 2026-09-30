@@ -2,3 +2,4 @@ IFund accumulated verification batch 2 — payment integrity, client error redac
 IFund accumulated verification batch 3 — live-mode payment enforcement, false-donation prevention, channel-specific processor fees, and payment reconciliation hardening.
 IFund accumulated verification batch 4 — provider-live enforcement plus processor-specific PayPal/Google Pay fee and ledger reconciliation.
 IFund accumulated verification batch 5 — fraud-control payout authority, canonical reservation release, audited campaign controls, and checkout syntax repair.
+IFund accumulated verification batch 6 — super-admin role authority, canonical fraud controls, and platform-wide backend-error redaction.
