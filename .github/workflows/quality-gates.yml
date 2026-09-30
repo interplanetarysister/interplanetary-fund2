@@ -115,6 +115,9 @@ jobs:
       - name: Payment and financial-integrity contracts
         run: npm run test:payments
 
+      - name: PayPal campaign checkout contract
+        run: node scripts/verify-paypal-checkout-contract.mjs
+
       - name: Production build
         run: npm run build
 
