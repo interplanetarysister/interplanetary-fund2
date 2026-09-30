@@ -48,8 +48,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
     return () => { cancelled = true; };
   }, [open]);
 
-  const paypalApiAvailable = capabilities?.paypal?.api_configured === true;
-  const stripeAvailable = capabilities?.stripe?.configured === true;
+  const paypalApiAvailable = capabilities?.paypal?.api_live === true;
+  const stripeAvailable = capabilities?.stripe?.live === true;
 
   useEffect(() => {
     if (recurring && capabilities && !stripeAvailable) setRecurring(false);
