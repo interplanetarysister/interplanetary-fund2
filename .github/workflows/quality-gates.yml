@@ -1,5 +1,7 @@
 name: Production Quality Gates
 
+# Batch verification marker: 2026-09-30 repair batch
+
 on:
   workflow_dispatch:
   push:
