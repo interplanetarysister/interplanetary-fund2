@@ -9,17 +9,17 @@ export default async function(req: Request) {
     const end = new Date();
     const start = new Date(end); start.setUTCDate(start.getUTCDate() - 30);
     const fmt = (d: Date) => d.toISOString().slice(0,10);
-    const url = 'https://www.wixapis.com/analytics/v2/site-analytics/data';
-    const requestBody = {
-      dateRange: { startDate: fmt(start), endDate: fmt(end) },
-      measurementTypes: ['TOTAL_SESSIONS','TOTAL_ORDERS','TOTAL_FORMS_SUBMITTED','TOTAL_UNIQUE_VISITORS','CLICKS_TO_CONTACT'],
-    };
-    // Wix's Analytics Data API is GET-with-JSON-body. Query-string encoding is
-    // not equivalent to the documented request contract.
+    const url = new URL('https://www.wixapis.com/analytics-ng/v2/site-analytics/data');
+    url.searchParams.set('dateRange.startDate', fmt(start));
+    url.searchParams.set('dateRange.endDate', fmt(end));
+    for (const m of ['TOTAL_SESSIONS','TOTAL_ORDERS','TOTAL_FORMS_SUBMITTED','TOTAL_UNIQUE_VISITORS','CLICKS_TO_CONTACT']) {
+      url.searchParams.append('measurementTypes', m);
+    }
+    // The API spec maps dateRange and measurementTypes to query parameters.
+    // This exact shape was provider-verified against the live Wix site.
     const r = await fetch(url, {
       method: 'GET',
-      headers: { Authorization: `Bearer ${conn.accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody),
+      headers: { Authorization: `Bearer ${conn.accessToken}` },
     });
     if (!r.ok) return Response.json({ error: 'Wix analytics are unavailable.', status: r.status }, { status: 502 });
     const body = await r.json();
