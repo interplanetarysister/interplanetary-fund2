@@ -17,73 +17,66 @@
     },
     "gross_amount": {
       "type": "number",
-      "description": "Total cleared recipient funds reserved in the canonical ledger before payout."
+      "description": "Total cleared funds withdrawn, before the platform fee."
     },
     "platform_fee": {
       "type": "number",
-      "description": "3% Interplanetary Fund fee deducted once at payout."
+      "description": "8% platform fee deducted from the gross amount."
     },
     "net_amount": {
       "type": "number",
-      "description": "Amount submitted to the user's PayPal account."
+      "description": "Amount actually sent to the user's PayPal account."
     },
     "paypal_email": {
       "type": "string",
       "description": "The PayPal account the payout was sent to."
+    },
+    "source_platform": {
+      "type": "string",
+      "description": "External platform from which the migrated funds originated."
+    },
+    "payout_method": {
+      "type": "string",
+      "enum": ["paypal"],
+      "description": "Authoritative payout method used by the current migration payout workflow."
+    },
+    "payout_destination": {
+      "type": "string",
+      "description": "Server-validated payout destination captured for auditability; never hardcoded in the UI."
+    },
+    "migration_request_id": {
+      "type": "string",
+      "description": "Stable Fund Migration request identity used for duplicate/retry reconciliation."
     },
     "covered_donation_ids": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Base44 donation records reserved by this withdrawal. The canonical Base44 FinancialOperation reservation is the authoritative double-spend lock."
+      "description": "Donation records consumed by this withdrawal, to prevent double-withdrawal."
     },
     "status": {
       "type": "string",
       "enum": [
         "pending",
-        "reserving",
         "processing",
         "under_review",
-        "provider_status_unknown",
-        "reconciliation_pending",
-        "reservation_release_pending",
         "paid",
-        "failed",
-        "cancelled"
+        "failed"
       ],
       "default": "pending"
-    },
-    "canonical_operation_key": {
-      "type": "string",
-      "description": "Stable Base44 withdrawal idempotency key."
-    },
-    "canonical_reservation_id": {
-      "type": "string",
-      "description": "Canonical Base44 payout reservation id."
-    },
-    "canonical_ledger_entry_id": {
-      "type": "string",
-      "description": "Canonical Base44 pending/completed payout ledger entry."
     },
     "payout_batch_id": {
       "type": "string",
       "description": "PayPal payout batch id returned once the payout is submitted."
     },
-    "provider_sender_batch_id": {
-      "type": "string",
-      "description": "Deterministic PayPal sender_batch_id used to prevent duplicate payouts across retries."
-    },
     "review_note": {
       "type": "string",
-      "description": "Why a withdrawal was held, failed, or requires reconciliation."
+      "description": "Why a withdrawal was held for admin review, or why it failed."
     },
     "processed_at": {
       "type": "string",
       "format": "date-time"
-    },
-    "description": {
-      "type": "string"
     }
   },
   "required": [
