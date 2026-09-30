@@ -73,7 +73,7 @@ export default function AccountManagement({ user, onUserChanged }) {
     setDeleting(true);
     try {
       const res = await base44.functions.invoke("deleteAccount", {});
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Server operation rejected");
       toast({ title: "Account deleted" });
       await base44.auth.logout("/login");
     } catch (e) {
