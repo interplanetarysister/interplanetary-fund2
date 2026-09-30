@@ -11,16 +11,16 @@ export default async function(req: Request) {
     const posts = await base44.entities.SocialPost.filter({ author_user_id: user.id });
     const updates = await base44.entities.CampaignUpdate.filter({ created_by_id: user.id });
     const headers = { Authorization: `Bearer ${conn.accessToken}`, 'Content-Type': 'application/json' };
-    let synced = 0;
+    let synced = 0, failed = 0;
     for (const p of posts) {
       const r = await fetch(SAVE, { method: 'POST', headers, body: JSON.stringify({ dataCollectionId: COLLECTION, dataItem: { id: `post-${p.id}`, data: { sourceType: 'social_post', sourceId: p.id, campaignId: p.campaign_id || '', title: p.campaign_title || '', content: p.content || '', mediaUrl: p.media_url || '', syncedAt: new Date().toISOString() } } }) });
-      if (r.ok) synced++;
+      if (r.ok) synced++; else failed++;
     }
     for (const u of updates) {
       const r = await fetch(SAVE, { method: 'POST', headers, body: JSON.stringify({ dataCollectionId: COLLECTION, dataItem: { id: `update-${u.id}`, data: { sourceType: 'campaign_update', sourceId: u.id, campaignId: u.campaign_id || '', title: u.title || '', content: u.content || '', mediaUrl: u.media_url || '', syncedAt: new Date().toISOString() } } }) });
-      if (r.ok) synced++;
+      if (r.ok) synced++; else failed++;
     }
-    return Response.json({ ok: true, synced });
+    return Response.json({ ok: failed === 0, synced, failed }, { status: failed === 0 ? 200 : 502 });
   } catch (error) {
     console.error('syncWixContent error:', error?.message || error);
     return Response.json({ error: 'Content could not be synchronized to Wix.' }, { status: 500 });
