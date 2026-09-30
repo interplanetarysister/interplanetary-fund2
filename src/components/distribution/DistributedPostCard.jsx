@@ -30,7 +30,9 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
 
   const saveEdit = async () => {
     if (content === post.content) return;
-    onChanged(await base44.entities.DistributedPost.update(post.id, { content }));
+    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "edit", post_id: post.id, content });
+    if (data?.ok !== true) throw new Error("Post edit rejected");
+    onChanged(data.post);
   };
 
   const publish = async () => {
@@ -55,14 +57,17 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     if (!scheduleAt) return;
     setBusy(true);
     await saveEdit();
-    onChanged(await base44.entities.DistributedPost.update(post.id, { status: "scheduled", scheduled_for: new Date(scheduleAt).toISOString() }));
+    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "schedule", post_id: post.id, scheduled_for: new Date(scheduleAt).toISOString() });
+    if (data?.ok !== true) throw new Error("Post schedule rejected");
+    onChanged(data.post);
     setShowSchedule(false);
     setBusy(false);
   };
 
   const remove = async () => {
     setBusy(true);
-    await base44.entities.DistributedPost.delete(post.id);
+    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "delete", post_id: post.id });
+    if (data?.ok !== true || data?.deleted !== true) throw new Error("Post deletion rejected");
     onRemoved(post.id);
   };
 
