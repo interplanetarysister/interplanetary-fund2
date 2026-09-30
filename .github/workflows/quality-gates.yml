@@ -121,6 +121,9 @@ jobs:
       - name: External fund migration authority contract
         run: node scripts/verify-external-fund-migration-contract.mjs
 
+      - name: Google Pay provider response contract
+        run: node scripts/verify-google-pay-contract.mjs
+
       - name: Production build
         run: npm run build
 
