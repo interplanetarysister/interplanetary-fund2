@@ -101,7 +101,8 @@ export default function Connections() {
         .then(({ data }) => setSharedIntegrations(data?.shared || []))
         .catch(() => setSharedIntegrations([]));
      } catch (e) {
-       setError(e.message || "We couldn't load your connections.");
+       console.error("Connections load failed:", e?.name || "UnknownError");
+       setError("We couldn't load your connections. Please try again.");
      }
     })();
   }, [reloadKey]);
