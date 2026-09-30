@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { logPlatformEvent } from "./logPlatformEvent";
+import { createIdempotencyKey } from "@/lib/platform/foundationContracts";
 import { Loader2, Plus } from "lucide-react";
 
 export default function FeatureFlagsPanel() {
@@ -24,28 +25,38 @@ export default function FeatureFlagsPanel() {
 
   const create = async () => {
     setSaving(true);
-    const flag = await base44.entities.FeatureFlag.create({ ...form, enabled: false });
-    await logPlatformEvent({
-      action: "Feature flag created",
-      category: "configuration",
-      affected_resource: flag.key,
-      details: `Scope: ${flag.scope}`,
-    });
-    setFlags((prev) => [flag, ...prev]);
-    setForm({ key: "", label: "", description: "", scope: "global" });
-    setShowForm(false);
-    setSaving(false);
+    try {
+      const flag = await base44.entities.FeatureFlag.create({ ...form, enabled: false });
+      await logPlatformEvent({
+        action: "Feature flag created",
+        category: "configuration",
+        affected_resource: flag.key,
+        details: `Scope: ${flag.scope}`,
+        idempotency_key: createIdempotencyKey("feature-flag-create", flag.id),
+      });
+      setFlags((prev) => [flag, ...prev]);
+      setForm({ key: "", label: "", description: "", scope: "global" });
+      setShowForm(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggle = async (flag, enabled) => {
     setFlags((prev) => prev.map((f) => (f.id === flag.id ? { ...f, enabled } : f)));
-    await base44.entities.FeatureFlag.update(flag.id, { enabled });
-    await logPlatformEvent({
-      action: `Feature flag ${enabled ? "enabled" : "disabled"}`,
-      category: "configuration",
-      affected_resource: flag.key,
-      details: `Changed by administrator — reversible at any time.`,
-    });
+    try {
+      await base44.entities.FeatureFlag.update(flag.id, { enabled });
+      await logPlatformEvent({
+        action: `Feature flag ${enabled ? "enabled" : "disabled"}`,
+        category: "configuration",
+        affected_resource: flag.key,
+        details: `Changed by administrator — reversible at any time.`,
+        idempotency_key: createIdempotencyKey("feature-flag-toggle", flag.id, enabled ? "on" : "off"),
+      });
+    } catch (error) {
+      setFlags((prev) => prev.map((f) => (f.id === flag.id ? { ...f, enabled: flag.enabled } : f)));
+      throw error;
+    }
   };
 
   return (
