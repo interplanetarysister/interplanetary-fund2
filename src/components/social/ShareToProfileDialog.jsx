@@ -60,13 +60,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
           const conn = connectedSocial.find((c) => c.platform === platform);
           if (!conn || !campaignId) continue;
           try {
-            const dp = await base44.entities.DistributedPost.create({
-              campaign_id: campaignId,
-              connection_id: conn.id,
-              platform,
-              content: draft.trim(),
-              status: "pending_approval",
-            });
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });\n            if (distributed?.ok !== true || !distributed?.post?.id) continue;\n            const dp = distributed.post;
             await base44.functions.invoke("publishPost", { post_id: dp.id });
           } catch { /* best-effort */ }
         }
