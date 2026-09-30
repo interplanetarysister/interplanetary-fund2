@@ -5,6 +5,7 @@ import { loadPayPalSdk } from "./paypalScripts";
 export default function PayPalCheckoutButton({ campaign, amount, donorName, message, platformContribution, onPaid }) {
   const containerRef = useRef(null);
   const buttonsRef = useRef(null);
+  const intentRef = useRef(crypto.randomUUID());
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
               campaign_id: campaign.id,
               amount: Number(amount),
               platform_contribution: !!platformContribution,
+              intent_id: intentRef.current,
             });
             if (!data?.id) throw new Error("Order creation failed");
             return data.id;
