@@ -63,7 +63,8 @@ export default function AccountManagement({ user, onUserChanged }) {
       URL.revokeObjectURL(url);
       toast({ title: "Your data has been downloaded" });
     } catch (e) {
-      toast({ title: "Couldn't export data", description: e.message, variant: "destructive" });
+      console.error("Account export failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't export data", description: "Your data export could not be completed. Please try again.", variant: "destructive" });
     }
     setExporting(false);
   };
