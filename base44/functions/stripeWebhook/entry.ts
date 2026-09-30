@@ -210,6 +210,12 @@ export default async function(req) {
       return Response.json({ error: 'Invalid signature' }, { status: 400 });
     }
 
+    // Production financial state must never be created from Stripe test-mode events.
+    if (event.livemode !== true) {
+      console.warn('Ignoring non-live Stripe event:', event.id, event.type);
+      return Response.json({ received: true, ignored: true, reason: 'non_live_event' }, { status: 202 });
+    }
+
     const eventKey = `stripe:${event.id}`;
     webhookRecord = await getWebhookRecord(sr, eventKey, event.type);
     if (webhookRecord?.state === 'side_effects_complete' || webhookRecord?.state === 'nonfinancial_complete') {
