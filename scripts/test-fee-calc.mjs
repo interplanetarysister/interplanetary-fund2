@@ -2,7 +2,7 @@
 // Pure runtime math — no network, no charges, no payouts.
 import {
   computeContribution, recipientGift, computePlatformFee, computeRecipientNet,
-  computeProcessingFee, computeBreakdown, computeWithdrawal, giftOf,
+  computeProcessingFee, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeBreakdown, computeWithdrawal, giftOf,
   validateDonationAmount,
 } from '../base44/shared/fees.js';
 
@@ -27,7 +27,9 @@ eq('contribution on (100)', computeContribution(100, true), 10);
 eq('gift on (100)', recipientGift(100, true), 90);
 eq('platformFee on (100)', computePlatformFee(100, true), 2.70);
 eq('recipientNet on (100)', computeRecipientNet(100, true), 87.30);
-eq('processing fee (100)', computeProcessingFee(100), 3.20);
+eq('Stripe processing fee (100)', computeProcessingFee(100), 3.20);
+eq('PayPal Checkout processing fee (100)', computePayPalProcessingFee(100), 3.98);
+eq('PayPal wallet processing fee (100)', computePayPalWalletProcessingFee(100), 3.18);
 
 // --- Optional contribution on/off edge cases ---
 eq('contribution on (0)', computeContribution(0, true), 0);
