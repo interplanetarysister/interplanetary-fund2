@@ -82,7 +82,8 @@ export default function Withdrawals() {
       toast({ title: "Withdrawal approved & paid out" });
       load();
     } catch (e) {
-      toast({ title: "Approval failed", description: e.message, variant: "destructive" });
+      console.error("Withdrawal approval failed:", e?.name || "UnknownError");
+      toast({ title: "Approval failed", description: "The payout could not be confirmed safely. Review the withdrawal status before retrying.", variant: "destructive" });
     }
   };
 
