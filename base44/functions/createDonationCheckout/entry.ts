@@ -29,7 +29,13 @@ export default async function(req) {
     try { originUrl = new URL(origin); } catch (_) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
-    if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
+    const configuredOrigins = String(secrets.get('PUBLIC_APP_ORIGINS') || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const allowedOrigins = new Set([
+      'https://interplanetaryfund.base44.app',
+      'https://interplanetary-fund2.interplanetary-fund.workers.dev',
+      ...configuredOrigins,
+    ].map((value) => { try { return new URL(value).origin; } catch (_) { return ''; } }).filter(Boolean));
+    if (originUrl.protocol !== 'https:' || !allowedOrigins.has(originUrl.origin)) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
 
