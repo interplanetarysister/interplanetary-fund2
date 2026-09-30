@@ -1,4 +1,4 @@
-// Modular, pluggable configuration for the Interplanetary Fund onboarding experience.
+// Modular, pluggable configuration for the Crowdfund onboarding experience.
 // Add new capability modules, AI agents, or integrations here without redesigning the UI.
 
 export const ENGINE_CAPABILITIES = [
@@ -18,7 +18,7 @@ export const ENGINE_CAPABILITIES = [
     id: "automation",
     icon: "Zap",
     title: "Fundraising Automation",
-    description: "Helps share campaign updates to the places you connect.",
+    description: "Automates cross-platform publishing and synchronized campaign updates where supported.",
   },
   {
     id: "support",
@@ -28,11 +28,8 @@ export const ENGINE_CAPABILITIES = [
   },
 ];
 
-// Capability modules describe what the application supports, not live provider
-// health. Never hard-code a payment provider as "connected" here: connection/
-// live status must come from verified runtime/provider capability data. The
-// PayPal donation path is implemented in this app, but that fact alone is not
-// permission to manufacture a connection state for the current environment.
+// Capability modules describe readiness prerequisites. Actual connected state
+// is resolved from the user's authoritative PlatformConnection records in ConnectStep.
 export const CAPABILITY_MODULES = [
   {
     id: "external_fundraising",
@@ -47,18 +44,18 @@ export const CAPABILITY_MODULES = [
     id: "social",
     group: "Social Media & Channels",
     items: [
-      { id: "facebook_pages", label: "Facebook Pages", status: "available" },
-      { id: "instagram", label: "Instagram Business", status: "available" },
-      { id: "tiktok", label: "TikTok", status: "available" },
-      { id: "linkedin", label: "LinkedIn", status: "available" },
+      { id: "facebook_pages", label: "Facebook Pages", status: "setup_required" },
+      { id: "instagram", label: "Instagram Business", status: "setup_required" },
+      { id: "tiktok", label: "TikTok", status: "setup_required" },
+      { id: "linkedin", label: "LinkedIn", status: "setup_required" },
     ],
   },
   {
     id: "payments",
     group: "Payment Providers",
     items: [
-      { id: "stripe", label: "Stripe", status: "verify_runtime" },
-      { id: "paypal", label: "PayPal", status: "verify_runtime" },
+      { id: "stripe", label: "Stripe", status: "setup_required" },
+      { id: "paypal", label: "PayPal", status: "setup_required" },
     ],
   },
 ];
