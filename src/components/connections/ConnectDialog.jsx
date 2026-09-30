@@ -93,8 +93,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       if (!saved || typeof saved !== "object" || typeof saved.id !== "string") throw new Error("malformed_save_response");
       onSaved(saved);
       onOpenChange(false);
-    } catch {
-      setError(SAFE_SAVE_ERROR);
+    } catch (e) {
+      console.error("ConnectDialog connection save failed:", e);
+      setError("Couldn't save this connection. Please try again. If the problem continues, contact support.");
     } finally {
       setSaving(false);
     }
