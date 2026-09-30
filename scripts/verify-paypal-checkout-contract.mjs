@@ -5,6 +5,7 @@ const dialog=read("src/components/campaigns/DonateDialog.jsx");
 const button=read("src/components/payments/PayPalCheckoutButton.jsx");
 const scripts=read("src/components/payments/paypalScripts.js");
 const capture=read("base44/functions/capturePayPalOrder/entry.ts");
+const create=read("base44/functions/createPayPalOrder/entry.ts");
 assert.match(dialog,/PayPalCheckoutButton/);
 assert.match(dialog,/Give with PayPal/);
 assert.match(dialog,/paypal\?\.api_live === true/);
@@ -17,5 +18,7 @@ assert.doesNotMatch(button,/\.message\b/,"provider exception messages must not r
 assert.match(scripts,/components=buttons,googlepay-payments/);
 assert.match(scripts,/window\.paypal\?\.Buttons/);
 assert.match(capture,/via PayPal/);
+assert.match(create,/PAYPAL_MODE.*live/);
+assert.match(capture,/PAYPAL_MODE.*live/);
 assert.doesNotMatch(capture,/via Google Pay/);
 console.log("PayPal campaign checkout contract verified.");
