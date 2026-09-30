@@ -29,13 +29,13 @@ export default function OutreachAgentPanel({ campaign }) {
 
   const toggleEnabled = async () => {
     setEnabling(true);
-    await base44.entities.Campaign.update(campaign.id, { outreach_enabled: !campaign.outreach_enabled });
+    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_enabled: !campaign.outreach_enabled } });\n    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
     setEnabling(false);
   };
 
   const togglePaused = async () => {
     setEnabling(true);
-    await base44.entities.Campaign.update(campaign.id, { outreach_paused: !campaign.outreach_paused });
+    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_paused: !campaign.outreach_paused } });\n    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
     setEnabling(false);
   };
 
