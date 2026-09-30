@@ -47,20 +47,13 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
     if (!draft.trim()) return;
     setPosting(true);
     try {
-      const newScore = (user?.social_score || 0) + 10;
-      const newTier = getTierFromScore(newScore);
-      const post = await base44.entities.SocialPost.create({
-        author_user_id: user.id,
-        author_username: user.username || user.full_name,
-        author_name: user.full_name,
-        author_banner_tier: newTier,
-        content: draft.trim(),
-        campaign_id: campaignId,
-        is_top_post: newTier === "gold" || newTier === "platinum",
-        crosspost_platforms: crossPost,
-        ai_generated: true,
+      const { data } = await base44.functions.invoke("createSocialPost", {
+        content: draft.trim(), campaign_id: campaignId, crosspost_platforms: crossPost, ai_generated: true,
       });
-      await base44.auth.updateMe({ social_score: newScore, banner_tier: newTier });
+      if (data?.ok !== true || !data?.post) throw new Error("Social share creation rejected");
+      const post = data.post;
+      const newScore = data.social_score;
+      const newTier = data.banner_tier;
 
       // Cross-post to linked external platforms
       if (crossPost.length > 0) {
