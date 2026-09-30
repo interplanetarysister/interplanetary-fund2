@@ -22,7 +22,7 @@ export const STATIC_CONNECTION_RECIPES = {
   eventbrite: {
     connect: { preferred_transport: 'oauth', connector_type: 'eventbrite' },
   },
-  patreon: { connect: { preferred_transport: 'oauth', connector_type: 'patreon' } },
+  patreon: { connect: { preferred_transport: 'manual' } },
   kofi: { connect: { preferred_transport: 'webhook', worker_key: 'kofiWebhook' } },
   buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },
   bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },
