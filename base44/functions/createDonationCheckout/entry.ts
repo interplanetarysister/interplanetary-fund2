@@ -66,7 +66,9 @@ export default async function(req) {
       platform_contribution_amount: String(contribution),
     };
 
-    const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
+    const stripeSecret = secrets.get('STRIPE_SECRET_KEY');
+    if (!stripeSecret || !String(stripeSecret).startsWith('sk_live_')) return Response.json({ error: 'Card payments are not currently available.' }, { status: 503 });
+    const stripe = new Stripe(stripeSecret);
     const session = await stripe.checkout.sessions.create({
       mode: is_recurring ? 'subscription' : 'payment',
       line_items: is_recurring ? [{
