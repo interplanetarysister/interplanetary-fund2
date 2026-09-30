@@ -21,8 +21,8 @@ export default function MyGiving() {
         throw new Error("Malformed giving response");
       }
       setDonations(data.donations);
-    } catch (e) {
-      setError(e.message || "We couldn't load your giving history.");
+    } catch (_) {
+      setError("We couldn't load your giving history. Please try again.");
     }
   }, []);
 
