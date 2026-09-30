@@ -68,7 +68,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
       if (data?.pending_verification) {
         setError("Payment reported as pending. It will not affect the campaign total until an administrator separately verifies that it arrived.");
       } else {
-        setError(data?.error || "We couldn't record your payment.");
+        setError("We couldn't record your payment safely. Please try again.");
       }
     } catch (_) { setError("We couldn't record your payment. Please try again."); }
     setSaving(false);
@@ -86,7 +86,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         platform_contribution: platformContribution,
       });
       if (data?.url) { window.location.href = data.url; return; }
-      setError(data?.error || "Couldn't start card checkout.");
+      setError("Couldn't start card checkout safely. Please try again.");
     } catch (_) { setError("Couldn't start card checkout. Please try again."); }
     setStripeLoading(false);
   };
