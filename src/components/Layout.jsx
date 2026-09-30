@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2, Plug, ShieldCheck, Radio } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, Bell, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Share2, Plug, ShieldCheck, Radio } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -12,7 +12,6 @@ import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
-import { base44 } from "@/api/base44Client";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -82,26 +81,21 @@ const navSections = [
   },
 ];
 
-// Flat list kept for backward-compatible lookups (e.g. mobile menu).
 const navItems = navSections.flatMap((s) => s.items);
 
 const bottomNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
-  { to: "/social", label: "Social Media", icon: Radio },
-  { to: "/inbox", label: "Inbox", icon: MailOpen },
+  { to: "/mission", label: "AI Assistant", icon: Sparkles },
+  { to: "/notifications", label: "Alerts", icon: Bell },
   { to: "/profile", label: "Profile", icon: User },
 ];
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    base44.auth.me().then((u) => setIsAdmin(u?.role === "admin")).catch(() => setIsAdmin(false));
-  }, []);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/social", "/inbox", "/profile"];
+  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/mission", "/notifications", "/profile"];
   const isRoot = TAB_ROOTS.includes(pathname);
   useSwipeBack(!isRoot);
 
@@ -109,9 +103,9 @@ export default function Layout() {
   const TAB_SECTIONS = {
     "/dashboard": ["/dashboard"],
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
-    "/social": ["/social"],
-    "/inbox": ["/inbox", "/communications", "/notifications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
+    "/mission": ["/mission", "/agents", "/ops", "/analytics", "/community", "/institutions", "/connections"],
+    "/notifications": ["/notifications", "/inbox", "/communications"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/connect", "/admin/external-accounts", "/admin/integrations"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";
@@ -158,12 +152,12 @@ export default function Layout() {
   }, [open]);
 
   const nav = (
-    <nav className="flex min-h-0 flex-1 flex-col gap-3 px-3 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <nav className="flex flex-col gap-3 px-3 overflow-y-auto scrollbar-hide pb-4">
       {navSections.map((section) => (
         <div key={section.label}>
           <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
           <div className="flex flex-col gap-0.5">
-            {section.items.filter(({ to }) => isAdmin || !["/analytics", "/connect"].includes(to) && !to.startsWith("/admin/")).map(({ to, label, icon: Icon }) => (
+            {section.items.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -186,11 +180,11 @@ export default function Layout() {
   );
 
   return (
-    <div className="min-h-dvh w-full min-w-0 overflow-x-hidden bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
-            <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
+            <Link to="/profile" className="min-w-0 cursor-pointer" aria-label="Go to profile">
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
             <NotificationBell />
@@ -202,17 +196,18 @@ export default function Layout() {
       </aside>
 
       <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
-        <div className="flex items-center gap-1 min-w-0">
-          {!isRoot && (
+        {isRoot ? (
+          <Link to="/profile" className="min-w-0 cursor-pointer" aria-label="Go to profile">
+            <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] truncate" />
+          </Link>
+        ) : (
+          <div className="flex items-center gap-1 min-w-0">
             <button onClick={goBack} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
               <ChevronLeft className="w-6 h-6" />
             </button>
-          )}
-          <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
-            <BrandLogo size="sm" showName={isRoot} nameClassName="text-slate-100 text-[15px] truncate" />
-          </Link>
-          {!isRoot && <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>}
-        </div>
+            <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>
+          </div>
+        )}
         <div className="flex items-center gap-1 shrink-0">
           <NotificationBell />
           <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
@@ -224,7 +219,7 @@ export default function Layout() {
       {open && (
         <>
           <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 deep-space pt-2 shadow-xl flex flex-col overflow-hidden">{nav}</div>
+          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 z-40 deep-space pb-4 pt-2 shadow-xl">{nav}</div>
         </>
       )}
 
@@ -246,7 +241,7 @@ export default function Layout() {
         })}
       </nav>
 
-      <main className="ifund-experience w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden bg-background text-foreground">
+      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
@@ -254,7 +249,6 @@ export default function Layout() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: "100%" }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="w-full min-w-0 max-w-full overflow-x-hidden"
           >
             <ErrorBoundary>
               <Outlet />
