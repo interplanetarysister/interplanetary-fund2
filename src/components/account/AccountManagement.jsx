@@ -29,7 +29,8 @@ export default function AccountManagement({ user, onUserChanged }) {
       onUserChanged?.({ ...user, comm_prefs: next });
       toast({ title: "Notification preference saved" });
     } catch (e) {
-      toast({ title: "Couldn't save preference", description: e.message, variant: "destructive" });
+      console.error("Account preference update failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't save preference", description: "Your preference could not be saved. Please try again.", variant: "destructive" });
       setPrefs(prefs);
     }
     setSavingPrefs(false);
