@@ -64,8 +64,7 @@ export default function CreateCampaign() {
     setLocating(true);
     try {
       const res = await base44.functions.invoke("geocodeCity", { city: form.location });
-      const err = res.error || res.data?.error;
-      if (err) throw new Error(err);
+      if (res.error || res.data?.error) throw new Error("Geocoding request rejected");
       setForm((f) => ({ ...f, location_lat: res.data.lat, location_lng: res.data.lng }));
       toast({ title: "Location found", description: (res.data.display || form.location).split(",")[0] });
     } catch {
