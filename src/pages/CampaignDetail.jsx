@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import DistributionPanel from "@/components/distribution/DistributionPanel";
 import FollowButton from "@/components/campaigns/FollowButton";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCard";
-import { Loader2, Heart, MapPin } from "lucide-react";
+import { Loader2, Heart, MapPin, Pencil } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
@@ -87,7 +87,10 @@ export default function CampaignDetail() {
             </div>
             <div className="flex items-start justify-between gap-3">
               <h1 className="font-display text-3xl sm:text-4xl text-stone-900 leading-tight">{campaign.title}</h1>
-              {!isOwner && <FollowButton campaign={campaign} />}
+              <div className="flex items-center gap-2 shrink-0">
+                {canManage && <Link to={`/create?draft=${campaign.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-200 bg-white px-3 text-sm font-semibold text-stone-700 shadow-sm hover:bg-stone-50"><Pencil className="w-4 h-4" /> Edit</Link>}
+                {!isOwner && <FollowButton campaign={campaign} />}
+              </div>
             </div>
             {campaign.summary && <p className="text-stone-600 mt-2 text-lg">{campaign.summary}</p>}
           </div>
