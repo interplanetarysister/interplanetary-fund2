@@ -35,6 +35,7 @@ const actionQueue = read("src/components/admin/ActionQueuePanel.jsx");
 const runtimeGate = read("scripts/require-node22.mjs");
 const deferredWorkflowRunbook = read("docs/deferred-base44-workflows.md");
 const frontendSources = readSourceTree(path.join(appRoot, "src"));
+const directPlatformConnectionReaders = [...frontendSources.matchAll(/base44\.entities\.PlatformConnection\s*\.\s*(?:list|filter|get)\s*\(/g)];
 const adminSources = [
   read("src/components/admin/ActionQueuePanel.jsx"),
   read("src/components/admin/AccountDetailPanel.jsx"),
@@ -99,9 +100,9 @@ assert.match(syncRun, /"discovered_totals"/);
 assert.match(kofi, /PlatformConnection\.updateMany/);
 assert.match(kofi, /payment_status|financial_claim|claim/i);
 
-assert.doesNotMatch(
-  frontendSources,
-  /base44\.entities\.PlatformConnection\s*\.\s*(?:list|filter|get)\s*\(/,
+assert.equal(
+  directPlatformConnectionReaders.length,
+  0,
   "frontend code must use the redacting listConnections backend instead of reading PlatformConnection secrets directly"
 );
 assert.match(connectionList, /redactCredentials\(c\.credentials\)/);
