@@ -144,7 +144,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
                 <Label>Donors there</Label>
                 <Input type="number" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
               </div>
-            </div>
               <div className="col-span-2 space-y-1.5">
                 <Label>Currency (ISO)</Label>
                 <Input value={form.external_currency} onChange={(e) => set("external_currency", e.target.value.toUpperCase())} placeholder="USD" maxLength={3} />
