@@ -26,6 +26,10 @@ const discussions=read('src/components/community/DiscussionsTab.jsx');
 const help=read('src/pages/Help.jsx');
 const recs=read('src/components/mission/RecommendationsPanel.jsx');
 const opps=read('src/components/mission/OpportunitiesPanel.jsx');
+const volunteer=read('src/components/community/VolunteerTab.jsx');
+const knowledge=read('src/components/platform/KnowledgePanel.jsx');
+const flags=read('src/components/platform/FeatureFlagsPanel.jsx');
+const platformEvent=read('src/components/platform/logPlatformEvent.js');
 
 assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(settings,/ALLOWED/);
@@ -72,4 +76,8 @@ assert.doesNotMatch(help,/entities\.SupportTicket\.create/);
 for (const panel of [recs,opps]) { assert.match(panel,/functions\.invoke\("updateMissionItemStatus"/); }
 assert.doesNotMatch(recs,/entities\.Recommendation\.update/);
 assert.doesNotMatch(opps,/entities\.Opportunity\.update/);
+assert.match(volunteer,/functions\.invoke\("createVolunteerOpportunity"/); assert.doesNotMatch(volunteer,/entities\.VolunteerOpportunity\.create/);
+assert.match(knowledge,/functions\.invoke\("createKnowledgeArticle"/); assert.doesNotMatch(knowledge,/entities\.KnowledgeArticle\.create/);
+assert.match(flags,/functions\.invoke\("manageFeatureFlag"/); assert.doesNotMatch(flags,/entities\.FeatureFlag\.(?:create|update)/);
+assert.match(platformEvent,/functions\.invoke\("logPlatformEvent"/); assert.doesNotMatch(platformEvent,/entities\.PlatformEvent\.create/);
 console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');
