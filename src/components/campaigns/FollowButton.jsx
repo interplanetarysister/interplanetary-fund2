@@ -44,7 +44,8 @@ export default function FollowButton({ campaign }) {
       // Optimistic unfollow — clear immediately, restore only if the delete fails.
       setFollow(null);
       try {
-        await base44.entities.FollowedCampaign.delete(wasFollow.id);
+        const { data } = await base44.functions.invoke("toggleCampaignFollow", { campaign_id: campaign.id });
+        if (data?.ok !== true || data?.following !== false) throw new Error("Unfollow rejected");
         toast({ title: "Removed from Followed" });
       } catch (e) {
         setFollow(wasFollow);
@@ -62,8 +63,9 @@ export default function FollowButton({ campaign }) {
       };
       setFollow({ ...payload, id: "pending" });
       try {
-        const created = await base44.entities.FollowedCampaign.create(payload);
-        setFollow(created);
+        const { data } = await base44.functions.invoke("toggleCampaignFollow", { campaign_id: campaign.id });
+        if (data?.ok !== true || data?.following !== true || !data?.follow) throw new Error("Follow rejected");
+        setFollow(data.follow);
         hapticSuccess();
         toast({ title: "Campaign Added to Followed", description: "You'll get updates in your Follow Feed." });
       } catch (e) {
