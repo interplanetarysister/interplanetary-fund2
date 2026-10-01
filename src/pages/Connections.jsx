@@ -64,6 +64,7 @@ export default function Connections() {
     setLifecycleMap(Object.fromEntries(entries.filter(([, v]) => v)));
   };
 
+
   const syncWix = async () => {
     setWixSyncing(true);
     setWixSyncResult(null);
