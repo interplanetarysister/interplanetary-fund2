@@ -135,8 +135,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
               </Button>
             </div>
             <p className="text-xs text-blue-500 mt-2">
-              Pull fast-forwards Base44 to match GitHub. Push sends Base44 commits to GitHub.
-              Conflicts surface as notifications rather than silently overwriting code.
+              These controls verify the configured GitHub connection in each direction. Source application remains handled by Base44’s native GitHub synchronization controls.
             </p>
           </div>
         )}
