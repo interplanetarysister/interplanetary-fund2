@@ -77,6 +77,9 @@ jobs:
       - name: Production custom-domain contract
         run: node scripts/verify-production-domain-contract.mjs
 
+      - name: Donor-entered total payment contract
+        run: node scripts/verify-donor-total-contract.mjs
+
       - name: Fraud-control financial authority contract
         run: node scripts/verify-fraud-control-financial-boundary.mjs
 
