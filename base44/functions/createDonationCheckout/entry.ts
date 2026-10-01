@@ -31,6 +31,8 @@ export default async function(req) {
     }
     const configuredOrigins = String(secrets.get('PUBLIC_APP_ORIGINS') || '').split(',').map((value) => value.trim()).filter(Boolean);
     const allowedOrigins = new Set([
+      'https://interplanetaryfund.com',
+      'https://www.interplanetaryfund.com',
       'https://interplanetaryfund.base44.app',
       'https://interplanetary-fund2.interplanetary-fund.workers.dev',
       ...configuredOrigins,
