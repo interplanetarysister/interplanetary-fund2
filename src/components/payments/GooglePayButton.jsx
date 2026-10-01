@@ -11,6 +11,7 @@ import { computeChargeTotal } from "../../../base44/shared/fees.js";
 // options already shown above it.
 export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid }) {
   const containerRef = useRef(null);
+  const intentRef = useRef(crypto.randomUUID());
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
 
@@ -83,7 +84,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                 campaign_id: campaign.id,
                 amount: value,
                 platform_contribution: !!p.platformContribution,
-              intent_id: intentRef.current,
+                intent_id: intentRef.current,
               payment_channel: "googlepay",
               });
               if (!order?.id || typeof order.id !== "string") return { transactionState: "ERROR", error: { message: "Unable to start payment." } };
