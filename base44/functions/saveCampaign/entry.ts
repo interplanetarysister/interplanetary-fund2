@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
-const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng']);
+const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng','ai_profile','story_versions']);
 const STATUSES = new Set(['draft','active','paused','completed']);
 
 export default async function(req) {
