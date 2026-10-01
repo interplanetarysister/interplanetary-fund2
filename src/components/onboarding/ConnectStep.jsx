@@ -27,11 +27,8 @@ export default function ConnectStep({ data, onChange }) {
     let cancelled = false;
     (async () => {
       try {
-        const me = await base44.auth.me();
-        const connections = await base44.entities.PlatformConnection.filter({
-          created_by_id: me.id,
-          status: "connected",
-        });
+        const response = await base44.functions.invoke("listConnections", {});
+        const connections = (response?.data?.connections || []).filter((connection) => connection.status === "connected");
         const ids = new Set((connections || []).map((connection) => CONNECTION_ID_BY_PLATFORM[connection.platform]).filter(Boolean));
         if (!cancelled) setConnectedIds(ids);
       } catch (error) {
