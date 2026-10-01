@@ -39,7 +39,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       campaign_id: existing?.campaign_id || "",
       automation_mode: existing?.automation_mode || "manual",
       external_total: existing?.external_total ?? "",
-      external_donor_count: existing?.external_donor_count ?? "",
+      external_donor_count: existing?.external_donor_count ?? "", external_currency: existing ? (existing.external_currency || "") : "USD",
     });
     setCredentials(existing?.credentials || {});
     (async () => {
@@ -87,6 +87,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         automation_mode: form.automation_mode,
         external_total: isCrowd ? Number(form.external_total) || 0 : 0,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
+        external_currency: isCrowd ? form.external_currency : undefined,
         credentials,
       });
       const saved = res?.data?.connection;
@@ -142,6 +143,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
               <div className="space-y-1.5">
                 <Label>Donors there</Label>
                 <Input type="number" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
+              </div>
+            </div>
+              <div className="col-span-2 space-y-1.5">
+                <Label>Currency (ISO)</Label>
+                <Input value={form.external_currency} onChange={(e) => set("external_currency", e.target.value.toUpperCase())} placeholder="USD" maxLength={3} />
               </div>
             </div>
           )}
