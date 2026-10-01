@@ -35,7 +35,7 @@ const actionQueue = read("src/components/admin/ActionQueuePanel.jsx");
 const runtimeGate = read("scripts/require-node22.mjs");
 const deferredWorkflowRunbook = read("docs/deferred-base44-workflows.md");
 const frontendSources = readSourceTree(path.join(appRoot, "src"));
-const directPlatformConnectionReaderPattern = /base44\.entities\.PlatformConnection\s*\.\s*(?:list|filter|get)\s*\(/g;
+const directPlatformConnectionReaderPattern = /base44\.entities\.PlatformConnection\s*\.\s*(?:list|filter|get)\s*\(/;
 const directPlatformConnectionReaderFiles = fs.readdirSync(path.join(appRoot, "src"), { withFileTypes: true });
 const findDirectReaders = (directory, relative = "src") => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
   const absolute = path.join(directory, entry.name);
