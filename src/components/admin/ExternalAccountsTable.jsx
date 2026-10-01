@@ -72,7 +72,7 @@ export default function ExternalAccountsTable({ connections, campaigns, agents, 
         <div className="flex items-center justify-between gap-3 mb-4 rounded-xl bg-stone-900 text-white px-4 py-2.5 shadow-lg">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-stone-300">Provider status cannot be changed manually.</span>
+            <span className="text-xs text-stone-300">Provider status cannot be changed manually; provider verification is still required.</span>
             <button onClick={() => setSelected(new Set())} className="inline-flex items-center gap-1 rounded-lg px-3 text-sm text-stone-200 hover:text-white min-h-[44px]">
               <X className="w-3.5 h-3.5" /> Clear
             </button>
