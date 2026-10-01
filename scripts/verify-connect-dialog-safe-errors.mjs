@@ -35,7 +35,16 @@ const actionQueue = read("src/components/admin/ActionQueuePanel.jsx");
 const runtimeGate = read("scripts/require-node22.mjs");
 const deferredWorkflowRunbook = read("docs/deferred-base44-workflows.md");
 const frontendSources = readSourceTree(path.join(appRoot, "src"));
-const directPlatformConnectionReaders = [...frontendSources.matchAll(/base44\.entities\.PlatformConnection\s*\.\s*(?:list|filter|get)\s*\(/g)];
+const directPlatformConnectionReaderPattern = /base44\.entities\.PlatformConnection\s*\.\s*(?:list|filter|get)\s*\(/g;
+const directPlatformConnectionReaderFiles = fs.readdirSync(path.join(appRoot, "src"), { withFileTypes: true });
+const findDirectReaders = (directory, relative = "src") => fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+  const absolute = path.join(directory, entry.name);
+  const display = relative + "/" + entry.name;
+  if (entry.isDirectory()) return findDirectReaders(absolute, display);
+  if (!/\.(?:js|jsx|ts|tsx)$/.test(entry.name)) return [];
+  return directPlatformConnectionReaderPattern.test(fs.readFileSync(absolute, "utf8")) ? [display] : [];
+});
+const directPlatformConnectionReaders = findDirectReaders(path.join(appRoot, "src"));
 const adminSources = [
   read("src/components/admin/ActionQueuePanel.jsx"),
   read("src/components/admin/AccountDetailPanel.jsx"),
