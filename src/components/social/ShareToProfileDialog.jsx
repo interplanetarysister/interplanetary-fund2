@@ -60,7 +60,9 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
           const conn = connectedSocial.find((c) => c.platform === platform);
           if (!conn || !campaignId) continue;
           try {
-            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });\n            if (distributed?.ok !== true || !distributed?.post?.id) continue;\n            const dp = distributed.post;
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });
+            if (distributed?.ok !== true || !distributed?.post?.id) continue;
+            const dp = distributed.post;
             await base44.functions.invoke("publishPost", { post_id: dp.id });
           } catch { /* best-effort */ }
         }
