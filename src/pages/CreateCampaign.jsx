@@ -100,7 +100,8 @@ export default function CreateCampaign() {
   };
 
   const launch = async (status) => {
-    if (status === "active") {
+    const effectiveStatus = draftId && status === "draft" ? "draft" : status;
+    if (effectiveStatus === "active") {
       const missing = [];
       if (!form.title?.trim()) missing.push("title");
       if (!form.story?.trim() && !form.summary?.trim()) missing.push("campaign story");
@@ -124,7 +125,7 @@ export default function CreateCampaign() {
         location: form.location || undefined,
         location_lat: form.location_lat || undefined,
         location_lng: form.location_lng || undefined,
-        status,
+        status: effectiveStatus,
       };
       const { data } = await base44.functions.invoke("saveCampaign", { campaign_id: draftId || undefined, campaign: payload });
       if (data?.ok !== true || !data?.campaign?.id) throw new Error("Campaign save rejected");
@@ -132,7 +133,7 @@ export default function CreateCampaign() {
       if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch {
-      toast({ title: "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
+      toast({ title: draftId ? "Couldn't save campaign" : "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
       setSaving(false);
     }
   };
@@ -193,7 +194,7 @@ export default function CreateCampaign() {
 
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 min-w-0">
         <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="quest-button"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
-        {step < 3 ? <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={!canNext} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button> : <div className="flex flex-col sm:flex-row gap-2 min-w-0"><Button type="button" variant="outline" onClick={() => launch("draft")} disabled={saving} className="quest-button">Save draft</Button><Button type="button" onClick={() => launch("active")} disabled={saving} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}</Button></div>}
+        {step < 3 ? <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={!canNext} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button> : <div className="flex flex-col sm:flex-row gap-2 min-w-0"><Button type="button" variant="outline" onClick={() => launch(draftId ? (form.status || "draft") : "draft")} disabled={saving} className="quest-button">{draftId ? "Save changes" : "Save draft"}</Button><Button type="button" onClick={() => launch("active")} disabled={saving} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}</Button></div>}
       </div>
     </div>
   );
