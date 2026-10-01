@@ -56,7 +56,7 @@ jobs:
           test -n "$EXPECTED_SHA"
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           curl --fail --silent --show-error --retry 4 --retry-delay 3 "$DEPLOYMENT_URL/" -o /tmp/ifund-cloudflare.html
-          grep -Eq '<div[[:space:]]+id=["'"']root["'"'][[:space:]]*></div>' /tmp/ifund-cloudflare.html
+          grep -q 'id="root"' /tmp/ifund-cloudflare.html
           grep -q 'https://interplanetaryfund.com/' /tmp/ifund-cloudflare.html
           curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/ -o /tmp/ifund-custom-domain.html
-          grep -Eq '<div[[:space:]]+id=["'"']root["'"'][[:space:]]*></div>' /tmp/ifund-custom-domain.html
+          grep -q 'id="root"' /tmp/ifund-custom-domain.html
