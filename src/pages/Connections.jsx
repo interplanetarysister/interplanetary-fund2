@@ -124,8 +124,9 @@ export default function Connections() {
       // summary, and the resolver all agree on "working". Best-effort: a failed
       // resolve leaves the local heuristic in place.
       resolveLifecycles(connRes.data.connections);
-      } catch (e) {
-       setError(e.message || "We couldn't load your connections.");
+     } catch (e) {
+       console.error("Connections load failed:", e?.name || "UnknownError");
+       setError("We couldn't load your connections. Please try again.");
      }
     })();
   }, [reloadKey]);
