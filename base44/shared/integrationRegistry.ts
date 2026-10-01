@@ -111,7 +111,7 @@ export async function assertPlatformAccess(sr, platform) {
     entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
   } catch (e) {
     console.warn("assertPlatformAccess registry read failed", { type: classifyDiagnostic(e) });
-    return { ok: true, status: null, reason: "registry unavailable (fail-open)" };
+    return { ok: false, status: null, reason: "registry unavailable (fail-closed)" };
   }
   const entry = entries && entries[0];
   if (!entry) return { ok: false, status: null, reason: `no registry entry for ${platform}` };
