@@ -29,7 +29,7 @@ export default function Register() {
     const cleanUsername = username.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) next.email = "Enter a valid email address.";
     else if (/\.con$/i.test(cleanEmail)) next.email = "Check the email ending. Did you mean .com?";
-    if (!/^[A-Za-z0-9_]{3,30}$/.test(cleanUsername)) next.username = "Use 3–30 letters, numbers, or underscores.";
+    if (!cleanUsername) next.username = "Enter a username.";\n    else if (cleanUsername.length > 80) next.username = "Keep your username under 80 characters.";
     if (!password) next.password = "Enter a password.";
     if (password !== confirmPassword) next.confirmPassword = "Passwords do not match.";
     return { next, cleanEmail };
@@ -177,7 +177,7 @@ export default function Register() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
           <div className="relative">
