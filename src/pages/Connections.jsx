@@ -27,6 +27,9 @@ export default function Connections() {
   const [sharedIntegrations, setSharedIntegrations] = useState(null);
   const [wixSyncing, setWixSyncing] = useState(false);
   const [wixSyncResult, setWixSyncResult] = useState(null);
+  // Canonical lifecycle from resolveConnectionStatus, keyed by connection id.
+  // The local record heuristic is the fallback; the resolver is authoritative.
+  const [lifecycleMap, setLifecycleMap] = useState({});
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -38,10 +41,27 @@ export default function Connections() {
       setSyncResult(data);
       const r = await base44.functions.invoke("listConnections", { scope: "mine" });
       setConnections(r.data.connections);
+      resolveLifecycles(r.data.connections);
     } catch (e) {
       setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     }
     setSyncing(false);
+  };
+
+  // Fetch the canonical lifecycle for every saved connection in parallel.
+  // resolveConnectionStatus is the single source of truth for "is this working";
+  // a per-connection failure is non-fatal and leaves the local heuristic in place.
+  const resolveLifecycles = async (conns) => {
+    const list = Array.isArray(conns) ? conns : connections;
+    if (!list || !list.length) { setLifecycleMap({}); return; }
+    const entries = await Promise.all(
+      list.map((c) =>
+        base44.functions.invoke("resolveConnectionStatus", { platform: c.platform, connection_id: c.id })
+          .then(({ data }) => [c.id, data || null])
+          .catch(() => [c.id, null])
+      )
+    );
+    setLifecycleMap(Object.fromEntries(entries.filter(([, v]) => v)));
   };
 
   const syncWix = async () => {
@@ -100,7 +120,11 @@ export default function Connections() {
       base44.functions.invoke("getSharedConnectorStatus", {})
         .then(({ data }) => setSharedIntegrations(data?.shared || []))
         .catch(() => setSharedIntegrations([]));
-     } catch (e) {
+      // Enrich each connection with the canonical lifecycle so the card, the
+      // summary, and the resolver all agree on "working". Best-effort: a failed
+      // resolve leaves the local heuristic in place.
+      resolveLifecycles(connRes.data.connections);
+      } catch (e) {
        setError(e.message || "We couldn't load your connections.");
      }
     })();
@@ -115,7 +139,11 @@ export default function Connections() {
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
   const connectedIds = connections.map((c) => c.platform);
-  const workingCount = connections.filter((connection) => connectionHealth(connection).usable).length;
+  // A connection is "working" when the canonical resolver says CONNECTED;
+  // fall back to the local heuristic while the resolver is still loading.
+  const workingCount = connections.filter((c) =>
+    lifecycleMap[c.id] ? lifecycleMap[c.id].lifecycle === "CONNECTED" : connectionHealth(c).usable
+  ).length;
   const discoveredTotals = syncResult?.discovered_totals ||
     (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
   const discoveredSummary = discoveredTotals
@@ -220,8 +248,18 @@ export default function Connections() {
                 key={c.id}
                 connection={c}
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
+                resolved={lifecycleMap[c.id]}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
-                onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
+                onRemoved={(id, updated) => {
+                  setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id));
+                  // After a provider check updates a connection, refresh its
+                  // canonical lifecycle so the card reflects the new state.
+                  if (updated) {
+                    base44.functions.invoke("resolveConnectionStatus", { platform: updated.platform, connection_id: updated.id })
+                      .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [updated.id]: data })))
+                      .catch(() => {});
+                  }
+                }}
               />
             ))}
           </div>
@@ -293,12 +331,15 @@ export default function Connections() {
           aiAuthorized={aiAuthorized}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}
-          onSaved={(saved) =>
+          onSaved={(saved) => {
             setConnections((prev) => {
               const exists = prev.some((x) => x.id === saved.id);
               return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
-            })
-          }
+            });
+            base44.functions.invoke("resolveConnectionStatus", { platform: saved.platform, connection_id: saved.id })
+              .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [saved.id]: data })))
+              .catch(() => {});
+          }}
         />
       )}
 
