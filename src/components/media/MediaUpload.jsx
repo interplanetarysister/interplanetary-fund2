@@ -148,7 +148,7 @@ export default function MediaUpload({
         variant="outline"
         onClick={() => inputRef.current?.click()}
         disabled={uploading || rendering}
-        className="rounded-xl"
+        className="rounded-xl border-2 border-cyan-500 bg-white text-slate-950 font-semibold shadow-sm hover:bg-cyan-50 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-cyan-400"
       >
         {uploading ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
