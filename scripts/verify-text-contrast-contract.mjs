@@ -15,7 +15,7 @@ const hasSemanticPair = (className) => {
 const mainMatch = layout.match(/<main\s+className="([^"]*)"/);
 assert.ok(mainMatch && hasSemanticPair(mainMatch[1]), 'shared app main must explicitly pair background and foreground');
 
-const shellMatch = layout.match(/<div\s+className="([^"]*)"/);
+const shellMatch = layout.match(/<div\s+className="([^"]*min-h-(?:screen|dvh)[^"]*)"/);
 assert.ok(shellMatch, 'shared app shell must be present');
 const shellTokens = shellMatch[1].trim().split(/\s+/);
 assert.ok(
