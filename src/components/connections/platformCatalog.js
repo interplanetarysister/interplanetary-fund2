@@ -126,13 +126,13 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ff424d",
     icon: "🎨",
-    tagline: "Connect Patreon to keep your supporter totals together.",
-    setupKind: "oauth",
+    tagline: "Link Patreon while automated account authorization is unavailable.",
+    setupKind: "link",
     steps: [
-      { id: "oauth",  label: "Sign in with Patreon", hint: "Patreon will ask you to sign in and approve the connection. We never see your password." },
-      { id: "link",   label: "Link to a campaign (optional)", hint: "Pledge totals will roll up into this campaign." },
+      { id: "url", label: "Paste your Patreon page URL", hint: "Copy the public URL for the Patreon page you want associated with Interplanetary Fund." },
+      { id: "link", label: "Link to a campaign (optional)", hint: "Associate this Patreon page with one of your Interplanetary Fund campaigns." },
     ],
-    api: "Sign in to Patreon and approve the connection.",
+    api: "Link your Patreon page. Automated Patreon authorization is not currently claimed.",
   },
   {
     id: "spotfund",
