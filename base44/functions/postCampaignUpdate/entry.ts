@@ -1,9 +1,19 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, publishThroughConnection, safePublishError } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
-// Auto-publishing is limited to the campaign owner's explicitly authorized
-// connections; all other destinations become reviewable DistributedPosts.
+// When an owner publishes an update, this function:
+//   1. stores the CampaignUpdate,
+//   2. asks the AI Distribution Engine for platform-specific versions,
+//   3. publishes immediately on "auto" connections that support direct posting,
+//      otherwise leaves a draft / pending_approval DistributedPost per the
+//      owner's automation setting (never auto-posting without consent),
+//   4. notifies every follower who opted in to update notifications.
+// The owner stays in control — auto-publish only happens where they chose
+// "Publish automatically" AND supplied real credentials.
 
 const PLATFORM_RULES = {
   facebook: 'Facebook: warm update, 2-3 short paragraphs, up to 400 words, 2-3 hashtags.',
@@ -35,8 +45,9 @@ const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts,
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { campaign_id, title, content, media_url, media_type, cross_post } = await req.json();
     if (!content || !content.trim()) return Response.json({ error: 'Update content is required.' }, { status: 400 });
@@ -46,7 +57,11 @@ export default async function(req) {
     if (campaign.created_by_id !== user.id && user.role !== 'admin') {
       return Response.json({ error: 'Only the campaign owner can post updates.' }, { status: 403 });
     }
+    if (cross_post !== false && campaign.created_by_id !== user.id) {
+      return Response.json({ error: 'Only the campaign owner can authorize AI preparation or cross-platform publishing.' }, { status: 403 });
+    }
 
+    // 1. Store the update
     const update = await base44.entities.CampaignUpdate.create({
       campaign_id,
       title: title || undefined,
@@ -55,11 +70,30 @@ export default async function(req) {
       media_type: media_type || (media_url ? 'image' : 'none'),
     });
 
-    const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0 };
+    // 2. Cross-post to social connections (unless the owner opted out for this post)
+    const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0, authorization_blocked: '' };
     if (cross_post !== false) {
-      const connections = await base44.entities.PlatformConnection.filter({});
-      const targets = connections.filter((c) => c.automation_mode !== 'manual');
+      const sr = base44.asServiceRole;
+      const connections = user.role === 'admin' && campaign.created_by_id !== user.id
+        ? await sr.entities.PlatformConnection.filter({ created_by_id: campaign.created_by_id })
+        : await base44.entities.PlatformConnection.filter({});
+      const consentOwner = campaign.created_by_id === user.id
+        ? user
+        : await sr.entities.User.get(campaign.created_by_id).catch(() => null);
+      const aiConsentGranted = hasAiPublishingConsent(consentOwner);
+      const platformAccess = await assertPlatformAccess(sr, 'social_publish');
+      const targets = aiConsentGranted
+        ? connections.filter((c) =>
+            c.automation_mode !== 'manual' &&
+            c.obo_consent?.granted === true &&
+            c.agent_access?.shared_with_agents === true &&
+            (c.automation_mode !== 'auto' || c.agent_access?.automation_enabled === true) &&
+            c.created_by_id === campaign.created_by_id &&
+            (!c.campaign_id || c.campaign_id === campaign.id)
+          )
+        : [];
       crosspost.skipped = connections.length - targets.length;
+      if (!aiConsentGranted) crosspost.authorization_blocked = 'AI preparation and publishing authorization is not active.';
 
       if (targets.length) {
         const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
@@ -103,7 +137,8 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
-          if (conn.automation_mode === 'auto' && canAutoPublish(conn, user)) {
+          const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', conn);
+          if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({
@@ -111,13 +146,18 @@ Return JSON only.`;
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
                 status: 'published', published_at: new Date().toISOString(), external_post_url: postUrl,
               });
+              await base44.entities.PlatformConnection.update(conn.id, {
+                status: 'connected',
+                verification_status: 'verified',
+                last_synced: new Date().toISOString(),
+                last_error: '',
+              });
               crosspost.published++;
             } catch (e) {
-              console.error('postCampaignUpdate provider error:', e?.message || e);
               await base44.entities.DistributedPost.create({
                 campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
                 source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-                status: 'failed', error: safePublishError(), retry_count: 1,
+                status: 'failed', error: 'Publishing failed.', retry_count: 1,
               });
               crosspost.failed++;
             }
@@ -134,6 +174,7 @@ Return JSON only.`;
       }
     }
 
+    // 3. Notify followers who opted in to updates (service role — reads all follows)
     const sr = base44.asServiceRole;
     const followers = await sr.entities.FollowedCampaign.filter({ campaign_id, archived: false });
     let notified = 0;
@@ -150,9 +191,22 @@ Return JSON only.`;
       notified++;
     }
 
+    await emitActivityEvent(base44, {
+      type: 'campaign_update',
+      actor_user_id: user.id,
+      actor_display_name: user.full_name || 'Campaign owner',
+      campaign_id,
+      campaign_title: campaign.title,
+      campaign_image_url: campaign.cover_image_url || undefined,
+      body: title || content.slice(0, 140),
+      link: `/campaign/${campaign_id}`,
+      visibility: 'public',
+      metadata: { update_id: update.id },
+    });
+
     return Response.json({ update, crosspost, followers_notified: notified });
   } catch (error) {
-    console.error('postCampaignUpdate error:', error?.message || error);
-    return Response.json({ error: 'Unable to publish the campaign update right now.' }, { status: 500 });
+    console.error('postCampaignUpdate error:', error.message);
+    return Response.json({ error: 'Unable to publish your update. Please try again.' }, { status: 500 });
   }
 }
