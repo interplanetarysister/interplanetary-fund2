@@ -68,7 +68,7 @@ export default function PullToRefresh({ onRefresh, children, className = "" }) {
   }, [onRefresh]);
 
   return (
-    <div ref={wrapRef} className={className} style={{ touchAction: "pan-y pinch-zoom" }}>
+    <div ref={wrapRef} className={className} style={{ touchAction: "pan-y" }}>
       <div
         className="flex items-center justify-center overflow-hidden"
         style={{ height: refreshing ? THRESHOLD : pull, transition: refreshing ? "none" : "height 0.18s ease" }}
