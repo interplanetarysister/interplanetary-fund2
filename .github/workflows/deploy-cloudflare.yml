@@ -47,10 +47,16 @@ jobs:
           DEPLOYMENT_URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' /tmp/wrangler-deploy.log | tail -1)"
           test -n "$DEPLOYMENT_URL"
           echo "deployment_url=$DEPLOYMENT_URL" >> "$GITHUB_OUTPUT"
-      - name: Verify deployed Worker serves IFund
+      - name: Verify deployed Worker serves exact validated build
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment_url }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           test -n "$DEPLOYMENT_URL"
+          test -n "$EXPECTED_SHA"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
           curl --fail --silent --show-error --retry 4 --retry-delay 3 "$DEPLOYMENT_URL/" -o /tmp/ifund-cloudflare.html
           grep -q '<div id="root"></div>' /tmp/ifund-cloudflare.html
+          grep -q 'https://interplanetaryfund.com/' /tmp/ifund-cloudflare.html
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/ -o /tmp/ifund-custom-domain.html
+          grep -q '<div id="root"></div>' /tmp/ifund-custom-domain.html
