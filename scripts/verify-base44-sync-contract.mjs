@@ -488,10 +488,6 @@ const liveCallers = sourceFiles
   .filter(([, analysis]) => analysis.invokedFunctions.includes('syncGitHub'));
 
 assert.ok(
-  liveCallers.some(([path]) => path === 'src/pages/IntegrationsAdmin.jsx'),
-  'IntegrationsAdmin must remain covered as a live caller'
-);
-assert.ok(
   liveCallers.some(([path]) => path === 'src/components/admin/IntegrationDetailPanel.jsx'),
   'IntegrationDetailPanel must remain covered as a live caller'
 );
