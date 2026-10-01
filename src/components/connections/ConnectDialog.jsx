@@ -1,79 +1,106 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
-import { AUTOMATION_MODES } from "./platformCatalog";
+import { Loader2, Check } from "lucide-react";
 import CredentialFields from "./CredentialFields";
-
-const SAFE_SAVE_ERROR = "Couldn't save this connection. Please try again. If the problem continues, contact support.";
-const SAFE_CAMPAIGN_LOAD_ERROR = "Couldn't load your campaigns. Please try again.";
 
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
 export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
-  const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_donor_count: "" });
+  const usesProviderOAuth = platform.setupKind === "oauth";
+  const canUseUnifiedProviderFlow = usesProviderOAuth;
+  const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [campaigns, setCampaigns] = useState([]);
-  const [campaignsLoading, setCampaignsLoading] = useState(false);
-  const [campaignsError, setCampaignsError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
-  const loadGeneration = useRef(0);
+  const [permissionAccepted, setPermissionAccepted] = useState(false);
+  const [browserReadConsent, setBrowserReadConsent] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    const generation = ++loadGeneration.current;
-    let mounted = true;
-    setError("");
-    setCampaignsError("");
-    setCampaignsLoading(true);
     setForm({
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
       campaign_id: existing?.campaign_id || "",
-      automation_mode: existing?.automation_mode || "manual",
+      automation_mode: existing?.automation_mode || (aiAuthorized ? "auto" : "manual"),
       external_total: existing?.external_total ?? "",
-      external_donor_count: existing?.external_donor_count ?? "", external_currency: existing ? (existing.external_currency || "") : "USD",
+      external_currency: existing ? (existing.external_currency || "") : "USD",
+      external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
-    (async () => {
-      try {
-        const me = await base44.auth.me();
-        if (!me?.id) throw new Error("unauthorized");
-        const result = await base44.entities.Campaign.filter({ created_by_id: me.id });
-        if (!Array.isArray(result) || result.some((campaign) => !campaign || typeof campaign !== "object" || typeof campaign.id !== "string" || typeof campaign.title !== "string")) {
-          throw new Error("malformed_campaigns");
-        }
-        if (mounted && generation === loadGeneration.current) {
-          setCampaigns(result);
-          setCampaignsError("");
-        }
-      } catch {
-        if (mounted && generation === loadGeneration.current) {
-          setCampaignsError(SAFE_CAMPAIGN_LOAD_ERROR);
-          setCampaigns([]);
-        }
-      } finally {
-        if (mounted && generation === loadGeneration.current) setCampaignsLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
+    setBrowserReadConsent(existing?.obo_consent?.granted === true &&
+      existing?.obo_consent?.granted_capabilities?.includes("GET_METRICS") === true);
+    let pending = null;
+    try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* An invalid resume record is ignored. */ }
+    setPermissionAccepted(!!existing || (pending?.platform === platform.id && pending?.sharedAgentConsent === true));
+    base44.auth.me()
+      .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
+      .then(setCampaigns)
+      .catch(() => setCampaigns([]));
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const save = async () => {
-    if (saving) return;
-    setSaving(true);
+  // One comprehensive IF consent per user/platform. This describes the full
+  // application-wide capability envelope; the provider still decides which
+  // permissions it can actually grant in its immediately-following auth step.
+  const permissionItems = usesProviderOAuth ? [
+    "Connect your account, profile, pages, campaigns, groups, channels, and other available resources",
+    "Create, update, publish, and manage campaign content and media when supported",
+    "Read and respond to comments, replies, mentions, messages, and other campaign interactions",
+    "Support outreach, discovery, follows, joins, communities, and engagement where the platform permits",
+    "Read available analytics, engagement, campaign, donation, payment, transaction, and balance information",
+    "Check available money activity and help with supported money-moving steps only when you separately allow them",
+    "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
+  ] : [];
+
+  const connectWithProvider = async () => {
+    setConnecting(true);
     setError("");
+    try {
+      if (!permissionAccepted) {
+        setError("Approve the connection first.");
+        return;
+      }
+      const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
+      if (!data?.supported) {
+        setError("This platform can’t be connected this way yet.");
+        return;
+      }
+      if (!data?.configured || !data?.connector_id) {
+        setError("This connection is not ready yet. Please try again later.");
+        return;
+      }
+      // The IF consent and provider grant are one continuous connection event.
+      // Persist only non-secret resume context; the connector owns OAuth state
+      // and credentials. Provider authorization starts immediately after consent.
+      const me = await base44.auth.me();
+      const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
+      if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
+      // localStorage survives a provider redirect that returns in another web tab.
+      // Only the same signed-in owner can resume; no provider tokens are stored here.
+      localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
+        platform: platform.id, userId: me.id, sharedAgentConsent: permissionAccepted, startedAt: Date.now(),
+      }));
+      window.location.assign(redirectUrl);
+    } catch (e) {
+      console.error("Provider OAuth start failed:", e);
+      setError("We couldn’t open sign-in. Please try again.");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const save = async () => {
+    setSaving(true);
     try {
       // Route through the credential-merge function so secret values never
       // round-trip through the frontend and merges preserve unchanged secrets.
@@ -86,13 +113,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         campaign_id: form.campaign_id || undefined,
         automation_mode: form.automation_mode,
         external_total: isCrowd ? Number(form.external_total) || 0 : 0,
+        external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
-        external_currency: isCrowd ? form.external_currency : undefined,
         credentials,
+        browser_read_consent: isCrowd && !usesProviderOAuth ? browserReadConsent : undefined,
       });
-      const saved = res?.data?.connection;
-      if (!saved || typeof saved !== "object" || typeof saved.id !== "string") throw new Error("malformed_save_response");
-      onSaved(saved);
+      const saved = res.data.connection;
+      onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
       onOpenChange(false);
     } catch (e) {
       console.error("ConnectDialog connection save failed:", e);
@@ -108,68 +135,78 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-stone-500 -mt-2">{platform.api}</p>
+        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform to connect it." : "Add your link and follow the steps shown."}</p>
         <div className="space-y-4">
-          <div className="space-y-1.5">
+          {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
             <Input value={form.display_name} onChange={(e) => set("display_name", e.target.value)} placeholder={isCrowd ? "e.g. Help Rebuild Our Shelter" : "e.g. @interplanetaryfund"} />
-          </div>
-          <div className="space-y-1.5">
+          </div>}
+          {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
-          </div>
-          <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />
+          </div>}
+          {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
           <div className="space-y-1.5">
             <Label>Linked Interplanetary Fund campaign</Label>
-            {campaignsError ? (
-              <p role="alert" className="text-sm text-red-600">{campaignsError}</p>
-            ) : campaignsLoading ? (
-              <p role="status" aria-live="polite" className="text-sm text-stone-500">Loading your campaigns…</p>
-            ) : (
-              <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
-                <SelectTrigger><SelectValue placeholder="Optional — pick a campaign" /></SelectTrigger>
-                <SelectContent>
-                  {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
+              <SelectTrigger><SelectValue placeholder="Optional — pick a campaign" /></SelectTrigger>
+              <SelectContent>
+                {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           {isCrowd && (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Raised there ($)</Label>
-                <Input type="number" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Donors there</Label>
-                <Input type="number" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <Label>Currency (ISO)</Label>
-                <Input value={form.external_currency} onChange={(e) => set("external_currency", e.target.value.toUpperCase())} placeholder="USD" maxLength={3} />
+            <div className="space-y-2">
+              <p className="text-xs text-stone-500">Enter the numbers shown on the other fundraiser. We’ll label them as confirmed only after we can check them.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Reported total</Label>
+                  <Input type="number" min="0" step="0.01" value={form.external_total} onChange={(e) => set("external_total", e.target.value)} placeholder="0" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Currency</Label>
+                  <Input value={form.external_currency} maxLength={3} onChange={(e) => set("external_currency", e.target.value.toUpperCase())} placeholder="USD" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Reported donors</Label>
+                  <Input type="number" min="0" step="1" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
+                </div>
               </div>
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label>AI automation for this destination</Label>
-            <Select value={form.automation_mode} onValueChange={(v) => set("automation_mode", v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {AUTOMATION_MODES.map((m) => (
-                  <SelectItem key={m.value} value={m.value} disabled={m.value !== "manual" && !aiAuthorized}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-stone-400">
-              {aiAuthorized
-                ? AUTOMATION_MODES.find((m) => m.value === form.automation_mode)?.desc
-                : "Accept the AI Publishing Authorization above to enable automation options."}
-            </p>
+          {isCrowd && !usesProviderOAuth && (
+            <label className="flex items-start gap-2 rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground cursor-pointer">
+              <input type="checkbox" checked={browserReadConsent} onChange={(e) => setBrowserReadConsent(e.target.checked)} className="mt-1" />
+              <span>Let my Interplanetary Fund agents check this campaign through my authorized browser connection when available. This only reads the external page; it does not move donations or make the account active before sign-in is verified.</span>
+            </label>
+          )}
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
+            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "Your Interplanetary Fund helpers can use this connection for the things you allowed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to help with connected platforms."}</p>
           </div>
-          {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-          <Button onClick={save} disabled={saving || campaignsLoading || Boolean(campaignsError)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
-          </Button>
+          {usesProviderOAuth && !existing && (
+            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+              <p className="text-sm font-semibold text-foreground">Connect {platform.name} to Interplanetary Fund?</p>
+              <p className="text-xs text-muted-foreground">Approve Interplanetary Fund once here. We’ll immediately open {platform.name} to request the full set of useful permissions it supports for Interplanetary Fund. You should not need separate approvals for each IF agent or feature.</p>
+              <div className="space-y-1.5">
+                {permissionItems.map((item) => <p key={item} className="flex gap-2 text-xs text-foreground"><Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />{item}</p>)}
+              </div>
+              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                <input type="checkbox" checked={permissionAccepted} onChange={(e) => setPermissionAccepted(e.target.checked)} className="mt-0.5" />
+                <span>I approve this connection and the choices above. My Interplanetary Fund helpers may reuse it only within my settings.</span>
+              </label>
+            </div>
+          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {usesProviderOAuth && (!existing || existing?.capability_status === "reauthorization_required") ? (
+            <Button onClick={connectWithProvider} disabled={connecting || !permissionAccepted} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Allow & connect ${platform.name}`}
+            </Button>
+          ) : (
+            <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
