@@ -74,6 +74,9 @@ jobs:
       - name: Server-authoritative sensitive mutation contract
         run: node scripts/verify-server-authoritative-mutations.mjs
 
+      - name: Production custom-domain contract
+        run: node scripts/verify-production-domain-contract.mjs
+
       - name: Fraud-control financial authority contract
         run: node scripts/verify-fraud-control-financial-boundary.mjs
 
