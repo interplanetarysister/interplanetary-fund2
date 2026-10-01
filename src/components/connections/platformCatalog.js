@@ -252,7 +252,7 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "url", label: "Paste your Threads profile URL", hint: "Copy the public URL for the Threads profile you want to link." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Link your Threads profile; direct publishing is not currently claimed.",
   },
   {
     id: "x",
@@ -265,7 +265,7 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "url", label: "Paste your X profile URL", hint: "Copy the public URL for the X profile you want to link." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Link your X profile; direct publishing is not currently claimed.",
   },
   {
     id: "linkedin",
@@ -291,7 +291,7 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with TikTok", hint: "TikTok will ask you to sign in and approve the connection. We never see your password." },
-          ],
+    ],
     api: "Connect TikTok to read only the provider capabilities actually granted.",
   },
   {
@@ -305,7 +305,7 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "url", label: "Paste your Pinterest profile URL", hint: "Copy the public URL for the Pinterest profile you want to link." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Link your Pinterest profile; direct publishing is not currently claimed.",
   },
   {
     id: "reddit",
@@ -318,7 +318,7 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "url", label: "Paste your Reddit profile URL", hint: "Copy the public URL for the Reddit profile you want to link." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Link your Reddit profile; direct publishing is not currently claimed.",
   },
   {
     id: "youtube",
@@ -331,7 +331,7 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "url", label: "Paste your YouTube channel URL", hint: "Copy the public URL for the YouTube channel you want to link." },
     ],
-    api: "Connect your account to share updates where available.",
+    api: "Link your YouTube channel; direct publishing is not currently claimed.",
   },
   {
     id: "discord",
