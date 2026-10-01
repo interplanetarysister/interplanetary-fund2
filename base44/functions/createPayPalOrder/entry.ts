@@ -28,7 +28,7 @@ export default async function (req) {
     if (!intent_id || !/^[A-Za-z0-9_-]{16,100}$/.test(String(intent_id))) return Response.json({ error: 'A stable payment intent is required' }, { status: 400 });
     const channel = payment_channel === 'googlepay' ? 'googlepay' : payment_channel === 'paypal' ? 'paypal' : '';
     if (!channel) return Response.json({ error: 'A supported payment channel is required' }, { status: 400 });
-    const value = Number(amount);
+    const totalCharge = round2(Number(amount));
 
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
     const rl = await checkRateLimit(base44, `createPayPalOrder:${ip}`, 10, 60);
@@ -42,9 +42,9 @@ export default async function (req) {
 
     await ensureCanonicalCampaign(sr, campaign);
 
-    const processing = channel === 'googlepay' ? computePayPalWalletProcessingFee(value) : computePayPalProcessingFee(value);
+    const processing = channel === 'googlepay' ? computePayPalWalletProcessingFee(totalCharge) : computePayPalProcessingFee(totalCharge);
+    const value = round2(totalCharge - processing);
     const contribution = computeContribution(value, !!platform_contribution);
-    const totalCharge = round2(value + processing);
     const order = await createOrder({
       amount: totalCharge,
       description: `Donation to ${campaign.title}`,
