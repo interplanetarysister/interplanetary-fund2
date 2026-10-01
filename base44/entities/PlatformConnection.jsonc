@@ -26,7 +26,7 @@
     "status": {
       "type": "string",
       "enum": ["connected", "error", "disconnected"],
-      "default": "connected"
+      "default": "disconnected"
     },
     "automation_mode": {
       "type": "string",
@@ -45,6 +45,9 @@
         "mastodon_access_token": {"type": "string", "description": "Mastodon access token — enables direct publishing."}
       }
     },
+    "external_currency": {"type": "string", "description": "Three-letter ISO currency code for owner-reported external totals."},
+    "verification_status": {"type": "string", "enum": ["unverified", "verified"], "default": "unverified"},
+    "external_data_source": {"type": "string", "enum": ["owner_reported", "provider_verified"], "default": "owner_reported"},
     "external_total": {
       "type": "number",
       "default": 0,
