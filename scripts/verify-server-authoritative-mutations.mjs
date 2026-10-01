@@ -24,6 +24,8 @@ const followButton=read('src/components/campaigns/FollowButton.jsx');
 const followPrefs=read('src/components/campaigns/FollowPrefsDialog.jsx');
 const discussions=read('src/components/community/DiscussionsTab.jsx');
 const help=read('src/pages/Help.jsx');
+const recs=read('src/components/mission/RecommendationsPanel.jsx');
+const opps=read('src/components/mission/OpportunitiesPanel.jsx');
 
 assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(settings,/ALLOWED/);
@@ -67,4 +69,7 @@ assert.match(discussions,/functions\.invoke\("createDiscussionPost"/);
 assert.doesNotMatch(discussions,/entities\.DiscussionPost\.create/);
 assert.match(help,/functions\.invoke\("createSupportTicket"/);
 assert.doesNotMatch(help,/entities\.SupportTicket\.create/);
+for (const panel of [recs,opps]) { assert.match(panel,/functions\.invoke\("updateMissionItemStatus"/); }
+assert.doesNotMatch(recs,/entities\.Recommendation\.update/);
+assert.doesNotMatch(opps,/entities\.Opportunity\.update/);
 console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');
