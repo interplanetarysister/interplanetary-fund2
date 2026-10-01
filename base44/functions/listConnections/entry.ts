@@ -17,8 +17,11 @@ const diagnosticType = (error) => {
 };
 
 const PUBLIC_CONNECTION_FIELDS = [
-  'id', 'platform', 'status', 'display_name', 'handle', 'username', 'instance',
-  'auth_type', 'environment', 'created_date', 'updated_date', 'last_synced_at',
+  'id', 'created_by_id', 'platform', 'kind', 'status', 'display_name', 'external_url',
+  'campaign_id', 'automation_mode', 'external_currency', 'verification_status',
+  'external_data_source', 'external_total', 'external_donor_count', 'last_synced',
+  'last_error', 'history', 'handle', 'username', 'instance', 'auth_type', 'environment',
+  'created_date', 'updated_date', 'last_synced_at',
 ];
 
 function projectConnection(connection) {
@@ -27,8 +30,8 @@ function projectConnection(connection) {
   for (const field of PUBLIC_CONNECTION_FIELDS) {
     const value = connection[field];
     if (value === undefined) continue;
-    if (typeof value === 'string' && value.length > 512) continue;
-    if (typeof value !== 'string') continue;
+    if (typeof value === 'string' && value.length > 4096) continue;
+    if (value !== null && !['string', 'number', 'boolean'].includes(typeof value) && !Array.isArray(value)) continue;
     projected[field] = value;
   }
   const { credentials, credentials_meta } = redactCredentials(connection.credentials);
@@ -46,7 +49,10 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const list = await base44.entities.PlatformConnection.list('-updated_date', 300);
+    const { scope } = await req.json().catch(() => ({}));
+    const list = scope === 'all' && user.role === 'admin'
+      ? await base44.asServiceRole.entities.PlatformConnection.list('-updated_date', 300)
+      : await base44.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 300);
     if (!Array.isArray(list)) {
       return Response.json({ error: 'Could not load connections.' }, { status: 502 });
     }
