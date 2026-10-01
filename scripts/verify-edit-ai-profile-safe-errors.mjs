@@ -7,7 +7,7 @@ assert.match(source, /toast\(\{ title: "Couldn't save AI profile", description: 
 assert.match(source, /console\.error\("EditAIInstructionsDialog AI profile save failed:", e\)/);
 assert.doesNotMatch(source, /description:\s*e\.message/);
 assert.doesNotMatch(source, /description:\s*.*error\.message/);
-assert.match(source, /base44\.entities\.Campaign\.update\(campaign\.id, \{ ai_profile: profile \}\)/);
+assert.match(source, /base44\.functions\.invoke\("updateCampaignSettings", \{ campaign_id: campaign\.id, patch: \{ ai_profile: profile \} \}\)/);\nassert.doesNotMatch(source, /base44\.entities\.Campaign\.update/);
 assert.match(source, /AIInstructionsStep value=\{profile\} onChange=\{setProfile\}/);
 
 console.log("EditAIInstructionsDialog safe-error contract passed");
