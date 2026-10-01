@@ -241,7 +241,7 @@ export default function Layout() {
         })}
       </nav>
 
-      <main className="md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip bg-background text-foreground">
+      <main className="min-h-screen bg-background text-foreground md:pl-60 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-clip">
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
