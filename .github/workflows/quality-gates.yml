@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   quality:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
     name: Node 20 Base44 compatibility build
     runs-on: ubuntu-latest
     timeout-minutes: 15
