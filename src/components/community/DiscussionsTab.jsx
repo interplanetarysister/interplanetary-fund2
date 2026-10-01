@@ -29,14 +29,9 @@ export default function DiscussionsTab({ communityId, isMember }) {
 
   const publish = async () => {
     setPosting(true);
-    const me = await base44.auth.me();
-    const post = await base44.entities.DiscussionPost.create({
-      community_id: communityId,
-      title,
-      content,
-      category,
-      author_name: me.full_name || me.email,
-    });
+    const { data } = await base44.functions.invoke("createDiscussionPost", { community_id: communityId, title, content, category });
+    if (data?.ok !== true || !data?.post) throw new Error("Discussion post rejected");
+    const post = data.post;
     setPosts((prev) => [post, ...(prev || [])]);
     setTitle("");
     setContent("");
