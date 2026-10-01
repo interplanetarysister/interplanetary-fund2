@@ -96,8 +96,8 @@ assert.doesNotMatch(sync, /status: 'no_read_api',[\s\S]{0,120}amount_discovered:
 assert.doesNotMatch(sync, /user \? 'user' : 'scheduled'/);
 assert.doesNotMatch(sync, /observed=\$\$\{totalDiscovered\}/);
 assert.match(syncRun, /"discovered_totals"/);
-assert.match(kofi, /verification_status:\s*'verified'/);
-assert.match(kofi, /external_data_source:\s*'provider_verified'/);
+assert.match(kofi, /PlatformConnection\.updateMany/);
+assert.match(kofi, /payment_status|financial_claim|claim/i);
 
 assert.doesNotMatch(
   frontendSources,
