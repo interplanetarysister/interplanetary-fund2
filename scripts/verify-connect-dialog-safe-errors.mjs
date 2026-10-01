@@ -112,7 +112,7 @@ assert.match(kofi, /payment_status|financial_claim|claim/i);
 assert.equal(
   directPlatformConnectionReaders.length,
   0,
-  "frontend code must use the redacting listConnections backend instead of reading PlatformConnection secrets directly"
+  "frontend code must use the redacting listConnections backend instead of reading PlatformConnection secrets directly; readers: " + directPlatformConnectionReaders.join(", ")
 );
 assert.match(connectionList, /redactCredentials\(c\.credentials\)/);
 assert.match(accountManagement, /base44\.functions\.invoke\("listConnections"/);
