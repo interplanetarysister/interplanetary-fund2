@@ -115,7 +115,7 @@ assert.equal(
   "frontend code must use the redacting listConnections backend instead of reading PlatformConnection secrets directly"
 );
 assert.match(connectionList, /redactCredentials\(c\.credentials\)/);
-assert.match(accountManagement, /\.map\(\(\{ credentials, credentials_meta, \.\.\.connection \}\) => connection\)/);
+assert.match(accountManagement, /base44\.functions\.invoke\("listConnections"/);
 
 assert.match(socialPublish, /hasAiPublishingConsent/);
 assert.match(generateDistributionContent, /hasAiPublishingConsent\(user\)/);
