@@ -45,12 +45,13 @@ export default function AccountManagement({ user, onUserChanged }) {
         base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 200),
         // PlatformConnection RLS permits administrators to read all connections;
         // the export must remain explicitly owner-scoped and secret-free.
-        base44.entities.PlatformConnection.filter({ created_by_id: me.id }, "-updated_date", 100),
+        base44.functions.invoke("listConnections", { owner_only: true }),
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 200),
         base44.entities.Donation.filter({ donor_user_id: me.id }, "-created_date", 200),
       ]);
 
-      const safeConnections = connections.map((connection) => ({
+      const connectionRows = Array.isArray(connections?.data?.connections) ? connections.data.connections : [];
+      const safeConnections = connectionRows.map((connection) => ({
         id: connection.id,
         platform: connection.platform,
         kind: connection.kind,
