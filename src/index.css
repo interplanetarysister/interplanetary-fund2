@@ -351,6 +351,18 @@
     -webkit-user-select: text;
     user-select: text;
   }
+
+  /* Editable controls must override surrounding mobile chrome's selection and
+     gesture rules. Android WebView otherwise can focus a field without
+     entering text when an ancestor is treated as non-selectable/tap-only. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text !important;
+    user-select: text !important;
+    touch-action: manipulation !important;
+    pointer-events: auto !important;
+  }
 }
 
 /* Interplanetary Fund visual language: deep space surfaces, soft glows,
