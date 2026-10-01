@@ -31,12 +31,9 @@ export default function VolunteerTab({ community, isMember, canManage }) {
 
   const publish = async () => {
     setSaving(true);
-    const opp = await base44.entities.VolunteerOpportunity.create({
-      ...form,
-      community_id: community.id,
-      community_name: community.name,
-      status: "open",
-    });
+    const { data } = await base44.functions.invoke("createVolunteerOpportunity", { ...form, community_id: community.id });
+    const opp = data?.opportunity;
+    if (!opp) { setSaving(false); return; }
     setOpportunities((prev) => [opp, ...(prev || [])]);
     setForm({ role_title: "", description: "", skills_needed: "", location: "", schedule: "", estimated_hours: "", remote_ok: false });
     setShowForm(false);
