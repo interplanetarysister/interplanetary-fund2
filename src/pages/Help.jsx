@@ -29,7 +29,8 @@ export default function Help() {
     if (!user || !form.message.trim()) return;
     setStatus("Submitting…");
     try {
-      const { data } = await base44.functions.invoke("createSupportTicket", { subject: form.subject.trim(), message: form.message.trim() });\n      if (data?.ok !== true) throw new Error("Support request rejected");
+      const { data } = await base44.functions.invoke("createSupportTicket", { subject: form.subject.trim(), message: form.message.trim() });
+      if (data?.ok !== true) throw new Error("Support request rejected");
       setForm({ subject: "", message: "" }); setShowForm(false); setStatus("Support request submitted.");
     } catch { setStatus("Support request could not be submitted. Please try again."); }
   };
