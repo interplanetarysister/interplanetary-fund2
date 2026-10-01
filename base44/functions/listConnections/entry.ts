@@ -20,7 +20,7 @@ const PUBLIC_CONNECTION_FIELDS = [
   'id', 'created_by_id', 'platform', 'kind', 'status', 'display_name', 'external_url',
   'campaign_id', 'automation_mode', 'external_currency', 'verification_status',
   'external_data_source', 'external_total', 'external_donor_count', 'last_synced',
-  'last_error', 'history', 'handle', 'username', 'instance', 'auth_type', 'environment',
+  'handle', 'username', 'instance', 'auth_type', 'environment',
   'created_date', 'updated_date', 'last_synced_at',
 ];
 
