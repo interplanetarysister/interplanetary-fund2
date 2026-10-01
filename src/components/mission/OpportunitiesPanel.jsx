@@ -45,7 +45,8 @@ export default function OpportunitiesPanel() {
 
   const setStatus = async (opp, status) => {
     setOpps((prev) => status === "dismissed" ? prev.filter((o) => o.id !== opp.id) : prev.map((o) => (o.id === opp.id ? { ...o, status } : o)));
-    await base44.entities.Opportunity.update(opp.id, { status });
+    const { data } = await base44.functions.invoke("updateMissionItemStatus", { kind: "opportunity", id: opp.id, status });
+    if (data?.ok !== true) throw new Error("Mission item update rejected");
   };
 
   return (
