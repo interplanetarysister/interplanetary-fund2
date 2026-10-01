@@ -20,6 +20,12 @@ export default async function(req) {
     if (status === 'active' && !String(input.story || input.summary || '').trim()) return Response.json({ error: 'Campaign story is required to launch' }, { status: 400 });
 
     const safe = { ...input, title, goal_amount: goal, status };
+    if (safe.ai_profile !== undefined && (!safe.ai_profile || typeof safe.ai_profile !== 'object' || Array.isArray(safe.ai_profile))) {
+      return Response.json({ error: 'Invalid AI profile' }, { status: 400 });
+    }
+    if (safe.story_versions !== undefined && !Array.isArray(safe.story_versions)) {
+      return Response.json({ error: 'Invalid story versions' }, { status: 400 });
+    }
     if (campaignId) {
       const rows = await base44.asServiceRole.entities.Campaign.filter({ id: campaignId });
       const existing = rows?.[0];
