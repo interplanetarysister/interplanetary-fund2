@@ -29,7 +29,8 @@ export default function Register() {
     const cleanUsername = username.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) next.email = "Enter a valid email address.";
     else if (/\.con$/i.test(cleanEmail)) next.email = "Check the email ending. Did you mean .com?";
-    if (!cleanUsername) next.username = "Enter a username.";\n    else if (cleanUsername.length > 80) next.username = "Keep your username under 80 characters.";
+    if (!cleanUsername) next.username = "Enter a username.";
+    else if (cleanUsername.length > 80) next.username = "Keep your username under 80 characters.";
     if (!password) next.password = "Enter a password.";
     if (password !== confirmPassword) next.confirmPassword = "Passwords do not match.";
     return { next, cleanEmail };
