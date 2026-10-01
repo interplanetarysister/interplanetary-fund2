@@ -60,7 +60,8 @@ export default function Analytics() {
     (async () => {
       try {
         const me = await base44.auth.me();
-        if (!mounted || requestId !== refreshKey || !isRecord(me) || !isNonEmptyString(me.id)) return;
+        if (!mounted || requestId !== refreshKey) return;
+        if (!isRecord(me) || !isNonEmptyString(me.id)) throw new Error("Malformed auth response");
 
         const [campaigns, communities, institutions, volunteerOpps, applications, opportunities] = await Promise.all([
           base44.entities.Campaign.filter({ created_by_id: me.id }),
