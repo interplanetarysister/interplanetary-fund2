@@ -32,7 +32,7 @@ export default function CreateCampaign() {
     title: "", category: "other", goal_amount: "", end_date: "",
     summary: "", story: "", cover_image_url: "",
     location: "", location_lat: null, location_lng: null,
-    ai_profile: emptyAiProfile, story_versions: [],
+    ai_profile: emptyAiProfile, story_versions: [], status: "draft",
   });
   const [locating, setLocating] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(!!draftId);
@@ -50,7 +50,7 @@ export default function CreateCampaign() {
           title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount || "", end_date: draft.end_date || "",
           summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "",
           location: draft.location || "", location_lat: draft.location_lat ?? null, location_lng: draft.location_lng ?? null,
-          ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [],
+          ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [], status: draft.status || "draft",
         });
       } catch {
         if (!cancelled) toast({ title: "Couldn't reopen that draft", description: "It may have been removed or you may not have access.", variant: "destructive" });
