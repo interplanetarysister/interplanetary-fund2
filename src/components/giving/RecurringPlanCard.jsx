@@ -27,7 +27,8 @@ export default function RecurringPlanCard({ donation, onChanged }) {
       if (response?.data?.error) throw new Error(response.data.error);
       onChanged?.();
     } catch (err) {
-      setError(err?.message || "Unable to update recurring donation.");
+      console.error("RecurringPlanCard recurring donation update failed:", err);
+      setError("Unable to update recurring donation. Please try again.");
     } finally {
       setSaving(false);
     }
