@@ -2,10 +2,9 @@
 // I/O — identical on client and server and safe to unit-test.
 //
 // APPROVED FEE POLICY (each fee applied in exactly one place — never double-charged):
-//  - The donor's entered amount is the DONATION. The processor's fee is ADDED
-//    ON TOP of the donation where the processor permits (Stripe line item /
-//    PayPal order total), so Interplanetary Fund no longer silently absorbs it.
-//    totalCharged = donation + processingFee.
+//  - The donor's entered amount is the TOTAL CHARGED. The processor fee is
+//    derived from that total and the remainder becomes the donation. This keeps
+//    checkout totals identical to the amount the donor explicitly entered.
 //  - The optional 10% platform contribution is an ALLOCATION FROM the donation
 //    (never added on top), directed to the platform. Recipient's gift =
 //    donation − contribution.
@@ -81,27 +80,27 @@ export function giftOf(donation) {
 
 // The processor's fee (Stripe/PayPal). Charged ON TOP of the donation where the
 // processor permits, identified by its actual source — never an IF fee.
-export function computeProcessingFee(amount) {
-  const a = toCents(amount);
-  return fromCents(Math.round(a * PROCESSING_RATE) + PROCESSING_FIXED * 100);
+export function computeProcessingFee(total) {
+  const t = toCents(total);
+  if (t <= 0) return 0;
+  const fixed = Math.round(PROCESSING_FIXED * 100);
+  const donation = Math.max(0, Math.floor((t - fixed) / (1 + PROCESSING_RATE)));
+  return fromCents(t - donation);
 }
 
 // Total charged to the donor where the processor permits passing the processing
 // cost through: the donation plus the processor's fee.
-export function computePayPalProcessingFee(amount) {
-  const a = toCents(amount);
-  return fromCents(Math.round(a * PAYPAL_PROCESSING_RATE) + PAYPAL_PROCESSING_FIXED * 100);
+function feeFromTotal(total, rate, fixedDollars) {
+  const t = toCents(total);
+  if (t <= 0) return 0;
+  const fixed = Math.round(fixedDollars * 100);
+  const donation = Math.max(0, Math.floor((t - fixed) / (1 + rate)));
+  return fromCents(t - donation);
 }
+export function computePayPalProcessingFee(total) { return feeFromTotal(total, PAYPAL_PROCESSING_RATE, PAYPAL_PROCESSING_FIXED); }
+export function computePayPalWalletProcessingFee(total) { return feeFromTotal(total, PAYPAL_WALLET_PROCESSING_RATE, PAYPAL_WALLET_PROCESSING_FIXED); }
 
-export function computePayPalWalletProcessingFee(amount) {
-  const a = toCents(amount);
-  return fromCents(Math.round(a * PAYPAL_WALLET_PROCESSING_RATE) + PAYPAL_WALLET_PROCESSING_FIXED * 100);
-}
-
-export function computeChargeTotal(amount) {
-  const a = round2(Number(amount) || 0);
-  return round2(a + computeProcessingFee(a));
-}
+export function computeChargeTotal(total) { return round2(Number(total) || 0); }
 
 // 3% platform fee on the recipient's gift (deducted at payout). Never negative.
 export function computePlatformFee(amount, optedIn) {
@@ -117,14 +116,14 @@ export function computeRecipientNet(amount, optedIn) {
 }
 
 // Full breakdown for the donor-facing UI.
-export function computeBreakdown(amount, optedIn) {
-  const a = round2(Number(amount) || 0);
+export function computeBreakdown(total, optedIn) {
+  const totalCharged = round2(Number(total) || 0);
+  const processing = computeProcessingFee(totalCharged);
+  const a = round2(Math.max(0, totalCharged - processing));
   const contribution = computeContribution(a, optedIn);
   const gift = round2(a - contribution);
-  const processing = computeProcessingFee(a);
   const platformFee = computePlatformFee(a, optedIn);
   const recipientNet = round2(Math.max(0, gift - platformFee));
-  const totalCharged = round2(a + processing);
   return { amount: a, contribution, recipientGift: gift, processing, platformFee, recipientNet, totalCharged };
 }
 
