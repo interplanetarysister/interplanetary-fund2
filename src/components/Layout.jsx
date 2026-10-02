@@ -13,6 +13,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
 import { base44 } from "@/api/base44Client";
+import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
 
 const PAGE_TITLES = {
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
@@ -95,10 +96,12 @@ const bottomNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState(null);
   useEffect(() => {
-    base44.auth.me().then((u) => setIsAdmin(u?.role === "admin")).catch(() => setIsAdmin(false));
+    base44.auth.me().then(setUser).catch(() => setUser(null));
   }, []);
+  const isAdmin = user?.role === "admin";
+  const hasAiAgents = hasPlanLevel(user, 1);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const TAB_ROOTS = ["/", "/dashboard", "/discover", "/social", "/inbox", "/profile"];
@@ -163,7 +166,7 @@ export default function Layout() {
         <div key={section.label}>
           <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
           <div className="flex flex-col gap-0.5">
-            {section.items.filter(({ to }) => isAdmin || !["/analytics", "/connect"].includes(to) && !to.startsWith("/admin/")).map(({ to, label, icon: Icon }) => (
+            {section.items.filter(({ to }) => (to === "/agents" ? hasAiAgents : isAdmin || !["/analytics", "/connect"].includes(to) && !to.startsWith("/admin/"))).map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
