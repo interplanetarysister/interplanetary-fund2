@@ -3,15 +3,14 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 
-const SUPPORTED_MAJORS = new Set([20, 22]);
 const BASE44_BASELINE = '20';
 
 export function verifyReleaseContract(root = process.cwd()) {
   const errors = [];
 
   const executingMajor = Number(process.versions.node.split('.')[0]);
-  if (!SUPPORTED_MAJORS.has(executingMajor)) {
-    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 20.x or 22.x is required`);
+  if (executingMajor < 20) {
+    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 20 or newer is required`);
   }
 
   function readRequired(path) {
@@ -42,7 +41,7 @@ export function verifyReleaseContract(root = process.cwd()) {
   }
 
   const pkg = parseRequiredJson('package.json');
-  if (pkg && pkg.engines?.node !== '>=20 <23') errors.push('package.json engines.node must be >=20 <23');
+  if (pkg && pkg.engines?.node !== '>=20') errors.push('package.json engines.node must be >=20');
   if (readRequired('.node-version')?.trim() !== BASE44_BASELINE) errors.push('.node-version must use the Node 20 Base44 baseline');
   if (readRequired('.nvmrc')?.trim() !== BASE44_BASELINE) errors.push('.nvmrc must use the Node 20 Base44 baseline');
 
@@ -90,8 +89,9 @@ export function verifyReleaseContract(root = process.cwd()) {
           : '';
         if (version === '20' || version === '20.x') node20Declarations += 1;
         if (version === '22' || version === '22.x') node22Declarations += 1;
-        if (!['20', '20.x', '22', '22.x'].includes(version)) {
-          errors.push(`${path} setup-node pins ${version || '<missing>'}; expected Node 20 or Node 22`);
+        const major = Number(version.replace(/\.x$/, ''));
+        if (!Number.isInteger(major) || major < 20) {
+          errors.push(`${path} setup-node pins ${version || '<missing>'}; expected Node 20 or newer`);
         }
       }
     }
@@ -109,7 +109,7 @@ export function verifyReleaseContract(root = process.cwd()) {
 
   const lock = parseRequiredJson('package-lock.json');
   if (lock) {
-    if (lock.packages?.['']?.engines?.node !== '>=20 <23') errors.push('package-lock.json root engine must be >=20 <23');
+    if (lock.packages?.['']?.engines?.node !== '>=20') errors.push('package-lock.json root engine must be >=20');
   }
 
   return errors;
@@ -118,12 +118,12 @@ export function verifyReleaseContract(root = process.cwd()) {
 function run() {
   const errors = verifyReleaseContract();
   if (errors.length) {
-    console.error('Node 20/22 runtime contract FAILED');
+    console.error('Node 20+ runtime contract FAILED');
     for (const error of errors) console.error(`- ${error}`);
     process.exitCode = 1;
     return;
   }
-  console.log('Runtime contract passed: Base44 Node 20 compatibility and Node 22 release support are retained.');
+  console.log('Runtime contract passed: Node 20+ is generally supported while Base44 and release compatibility lanes are retained.');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) run();

@@ -13,14 +13,13 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-// Base44 may execute on Node 20 while Node 22 is the preferred release/tooling runtime.
-// Base44 compatibility remains on Node 20; release/tooling runtime remains Node 22.
-const SUPPORTED = [20, 22];
+// General project policy accepts Node 20 and newer. Provider-specific lanes may pin a known-compatible runtime.
+const MINIMUM_SUPPORTED = 20;
 
-if (!SUPPORTED.includes(nodeMajor)) {
+if (nodeMajor < MINIMUM_SUPPORTED) {
   console.error(
     `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Supported runtimes: Node ${SUPPORTED.join(' or ')}. ` +
+    `Supported runtimes: Node ${MINIMUM_SUPPORTED} and newer. ` +
     'Select a supported runtime before install, build, typecheck, lint, or verification.',
   );
   process.exit(1);

@@ -20,10 +20,10 @@ function runFixture(mutator) {
 const conflictingEngines = runFixture((fixture) => {
   const packagePath = path.join(fixture, "package.json");
   const pkg = JSON.parse(fs.readFileSync(packagePath, "utf8"));
-  pkg.engines.node = ">=20 <24";
+  pkg.engines.node = ">=21";
   fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
 });
-assert.notEqual(conflictingEngines.status, 0, "conflicting package engine range must fail");
+assert.notEqual(conflictingEngines.status, 0, "raising the minimum above Node 20 must fail");
 
 const node22Only = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, ".nvmrc"), "22\n");
