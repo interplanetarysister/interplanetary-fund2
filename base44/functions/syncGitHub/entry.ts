@@ -62,7 +62,8 @@ async function githubRequest(token, method, path, body = null) {
 
 async function getGitHubToken(base44) {
   try {
-    const conn = await base44.connectors?.getConnection?.('github');
+    // Shared (builder-authorized) connectors are only reachable via the service role.
+    const conn = await base44.asServiceRole.connectors.getConnection('github');
     if (conn && conn.accessToken) return conn.accessToken;
   } catch (_) { /* fall through */ }
   return null;
