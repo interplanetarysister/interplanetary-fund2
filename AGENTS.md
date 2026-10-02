@@ -144,3 +144,12 @@ A full rewrite is allowed only when the existing artifact cannot safely be edite
 ## Continuity rule
 
 When a new decision changes repository ownership, agent roles, workflow, hosting scope, or application boundaries, update the affected durable repository instructions so stale guidance cannot silently override the newer decision. Runtime/version claims must be derived from the exact current `main` configuration and kept consistent across package metadata, lockfiles, version files, CI, and active PR handoffs; documentation alone cannot declare a new Node target.
+
+
+## Canonical work-location and anti-duplication rule
+
+Before creating an issue, branch, PR, workflow, verifier, entity, component, function, document, tracker, or replacement implementation, search `docs/CANONICAL_WORK_MAP.md`, current `main`, the owning canonical issue, open PRs, and existing branches. Extend the existing canonical location when one exists.
+
+Do not create date-suffixed, `current-main`, `v2`, retry, run-number, or agent-number variants merely because existing work needs revision. A new location requires a concrete architectural reason the canonical artifact cannot safely represent the change. Reconcile and close superseded work rather than abandoning it beside a replacement.
+
+Preserve published main history. Consolidation means reducing the active work surface, not rewriting old evidence. Before deleting a branch, verify that its unique work is in current `main` or intentionally preserved in a canonical tracker/artifact. One logical repair batch should normally produce one coherent branch/PR/commit path.
