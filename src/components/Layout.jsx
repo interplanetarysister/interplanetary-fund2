@@ -256,7 +256,7 @@ export default function Layout() {
             transition={{ duration: 0.25, ease: "easeOut" }}
             className="w-full min-w-0 max-w-full overflow-x-hidden"
           >
-            <ErrorBoundary>
+            <ErrorBoundary key={pathname}>
               <Outlet />
             </ErrorBoundary>
           </motion.div>

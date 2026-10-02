@@ -85,8 +85,7 @@ Do not diagnose Base44 sync as blocked solely because this Codespaces job runs.
 Application startup reads have a 20-second deadline per request. Failed public
 settings or identity reads show a safe retry screen; no access is granted on a
 failed identity read. Restricted localStorage must not crash parameter parsing.
-Secondary pages load on demand to reduce the initial download on mobile and web.
-These behaviors are covered by `verify:auth-pages-safe-diagnostics` and CI.
+Route modules remain in the primary application bundle because Base44 preview/runtime navigation must not depend on secondary dynamic chunk delivery. Startup timeout and safe error handling remain covered by `verify:auth-pages-safe-diagnostics` and CI.
 
 The audited main tree contained 599 tracked files, no tracked node_modules/dist
 archives, and no symlinks/submodules. The initial local production build passed
@@ -94,10 +93,4 @@ in about 11 seconds; commit count alone is not a build-duration estimate.
 Base44 editor loading still requires direct editor evidence. Local compilation
 and Codespaces state cannot verify that editor has recovered.
 
-The route split reduced the initial JavaScript entry from approximately 2,734 KB
-to 600 KB (before compression). A Tailwind-expanded secondary-button selector
-produced an invalid CSS selector; attribute-based matching preserves contrast
-without that malformed expansion. Route download failures use the existing
-error boundary with a full reload retry and a safe public error message.
-The CI preview HTTP check verifies served HTML only; its name now states that
-scope instead of claiming browser rendering.
+A temporary route-splitting change was reverted after Base44 navigation showed route-level load failures when secondary dynamic chunks were requested. Keep route delivery compatible with Base44 preview/runtime unless browser-level verification proves split chunks load correctly there. The CI preview HTTP check verifies served HTML only; its name states that scope instead of claiming browser rendering.
