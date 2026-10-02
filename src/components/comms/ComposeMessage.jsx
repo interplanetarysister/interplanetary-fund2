@@ -94,7 +94,8 @@ export default function ComposeMessage({ onSent }) {
       setContent("");
       onSent?.();
     } catch (e) {
-      setError(e.response?.data?.error || "Sending failed. Please try again.");
+      console.error("Message send failed:", e?.name || "UnknownError");
+      setError("Sending failed. Please try again.");
     }
     setSending(false);
   };

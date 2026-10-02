@@ -30,7 +30,9 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
 
   const saveEdit = async () => {
     if (content === post.content) return;
-    onChanged(await base44.entities.DistributedPost.update(post.id, { content }));
+    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "edit", post_id: post.id, content });
+    if (data?.ok !== true) throw new Error("Post edit rejected");
+    onChanged(data.post);
   };
 
   const publish = async () => {
@@ -39,13 +41,14 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     await saveEdit();
     try {
       const { data } = await base44.functions.invoke("publishPost", { post_id: post.id });
-      if (data?.error) setNotice(data.error);
+      if (data?.error) setNotice("Publishing could not be completed safely. Review the connection and try again.");
       else if (data?.manual) {
         onChanged(data.post);
         setNotice("We can’t post this one for you yet. It’s ready to copy and post on your account.");
       } else onChanged(data.post);
     } catch (e) {
-      setNotice(e.response?.data?.error || "Publishing failed.");
+      console.error("Distributed post publish failed:", e?.name || "UnknownError");
+      setNotice("Publishing failed safely. Review the connection and try again.");
     }
     setBusy(false);
   };
@@ -54,14 +57,17 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
     if (!scheduleAt) return;
     setBusy(true);
     await saveEdit();
-    onChanged(await base44.entities.DistributedPost.update(post.id, { status: "scheduled", scheduled_for: new Date(scheduleAt).toISOString() }));
+    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "schedule", post_id: post.id, scheduled_for: new Date(scheduleAt).toISOString() });
+    if (data?.ok !== true) throw new Error("Post schedule rejected");
+    onChanged(data.post);
     setShowSchedule(false);
     setBusy(false);
   };
 
   const remove = async () => {
     setBusy(true);
-    await base44.entities.DistributedPost.delete(post.id);
+    const { data } = await base44.functions.invoke("manageDistributedPost", { action: "delete", post_id: post.id });
+    if (data?.ok !== true || data?.deleted !== true) throw new Error("Post deletion rejected");
     onRemoved(post.id);
   };
 

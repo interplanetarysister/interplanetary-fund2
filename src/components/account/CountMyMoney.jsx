@@ -57,8 +57,8 @@ export default function CountMyMoney() {
               </div>
             </div>
           ))}
-          {!(result.provider_results || []).length && (
-            <p className="text-xs text-stone-400">Nothing is on yet. Turn on a fundraising platform in Connections to get started.</p>
+          {!(result.provider_results || []).length && result.overall_status !== "no_connections" && (
+            <p className="text-xs text-stone-500">No provider details were returned. Check Connections for connection status.</p>
           )}
         </div>
       )}

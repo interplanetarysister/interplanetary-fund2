@@ -25,7 +25,8 @@ export default function ActivityFeed() {
       setCursor(data.next_cursor || null);
       setHasMore(!!data.next_cursor);
     } catch (e) {
-      setError(e.message || "We couldn't load the feed.");
+      console.error("Activity feed load failed:", e?.name || "UnknownError");
+      setError("We couldn't load the feed. Please try again.");
       setItems([]);
     }
   }, []);

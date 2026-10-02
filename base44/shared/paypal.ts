@@ -95,13 +95,14 @@ export async function sendPayout({ receiver, amount, note, itemId }) {
 // Google Pay donations flow through the same PayPal business account as a
 // standard PayPal v2 order: create an order on approval, capture it once the
 // Google Pay payment data is confirmed.
-export async function createOrder({ amount, description, customId }) {
+export async function createOrder({ amount, description, customId, requestId }) {
   const token = await getAccessToken();
   const res = await fetch(`${apiBase()}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...(requestId ? { "PayPal-Request-Id": stableProviderKey("IF_ORDER", requestId, 70) } : {}),
     },
     body: JSON.stringify({
       intent: "CAPTURE",

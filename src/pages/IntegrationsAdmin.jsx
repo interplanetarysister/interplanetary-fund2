@@ -123,6 +123,7 @@ export default function IntegrationsAdmin() {
         toast({ title: "GitHub verification issue", description: "Connection verification encountered an issue.", variant: "destructive" });
       }
     } catch (e) {
+      console.error("GitHub verification failed:", e?.name || "UnknownError");
       if (request.isCurrent()) toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
     } finally {
       const releaseUi = () => {
@@ -190,7 +191,12 @@ export default function IntegrationsAdmin() {
           <div className="flex items-center gap-2 text-amber-800 font-medium text-sm"><ShieldAlert className="w-4 h-4" />{needsAttention.length} integration(s) need attention</div>
           <ul className="mt-2 space-y-1 text-sm text-amber-700">
             {needsAttention.map((e) => (
-              <li key={e.id}><button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">{e.platform}</button>{" — "}{(STATUS_BADGE[e.status] || UNKNOWN_STATUS_BADGE).label}{e.last_failure ? `: ${e.last_failure}` : ""}</li>
+              <li key={e.id}>
+                <button onClick={() => setSelected(e)} className="underline-offset-2 hover:underline">
+                  {e.platform}
+                </button>
+                {" — "}{(STATUS_BADGE[e.status] || UNKNOWN_STATUS_BADGE).label}{e.last_failure ? " — provider diagnostics retained in the secured integration record" : ""}
+              </li>
             ))}
           </ul>
         </div>

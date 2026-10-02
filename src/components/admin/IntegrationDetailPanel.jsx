@@ -42,6 +42,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
       toast({ title: "Updated", description: `${entry.platform}: ${action}` });
       onUpdated?.();
     } catch (e) {
+      console.error("Integration update failed:", e?.name || "UnknownError");
       if (request.isCurrent()) toast({ title: "Couldn't update", description: "The integration update could not be completed.", variant: "destructive" });
     } finally {
       const releaseUi = () => {
@@ -65,6 +66,7 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
         toast({ title: "GitHub verification issue", description: "GitHub connection verification did not succeed.", variant: "destructive" });
       }
     } catch (e) {
+      console.error("GitHub verification failed:", e?.name || "UnknownError");
       if (request.isCurrent()) toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
     } finally {
       const releaseUi = () => {

@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
+import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
 import { Heart, Loader2, Lock, CheckCircle2, Sparkles, CreditCard } from "lucide-react";
-import { computeBreakdown, MIN_DONATION } from "../../../base44/shared/fees.js";
+import { computeBreakdown, computePayPalProcessingFee, computePayPalWalletProcessingFee, MIN_DONATION } from "../../../base44/shared/fees.js";
 
 const presets = [25, 50, 100, 250];
 
@@ -36,6 +37,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const idempotencyRef = useRef(crypto.randomUUID());
   const newIntent = () => { idempotencyRef.current = crypto.randomUUID(); };
   const bd = computeBreakdown(parseFloat(amount) || 0, platformContribution);
+  const paypalFee = computePayPalProcessingFee(parseFloat(amount) || 0);
+  const paypalWalletFee = computePayPalWalletProcessingFee(parseFloat(amount) || 0);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,8 +50,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
     return () => { cancelled = true; };
   }, [open]);
 
-  const paypalApiAvailable = capabilities?.paypal?.api_configured === true;
-  const stripeAvailable = capabilities?.stripe?.configured === true;
+  const paypalApiAvailable = capabilities?.paypal?.api_live === true;
+  const stripeAvailable = capabilities?.stripe?.live === true;
 
   useEffect(() => {
     if (recurring && capabilities && !stripeAvailable) setRecurring(false);
@@ -67,7 +70,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
       if (data?.pending_verification) {
         setError("Payment reported as pending. It will not affect the campaign total until an administrator separately verifies that it arrived.");
       } else {
-        setError(data?.error || "We couldn't record your payment.");
+        setError("We couldn't record your payment safely. Please try again.");
       }
     } catch (_) { setError("We couldn't record your payment. Please try again."); }
     setSaving(false);
@@ -85,7 +88,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         platform_contribution: platformContribution,
       });
       if (data?.url) { window.location.href = data.url; return; }
-      setError(data?.error || "Couldn't start card checkout.");
+      setError("Couldn't start card checkout safely. Please try again.");
     } catch (_) { setError("Couldn't start card checkout. Please try again."); }
     setStripeLoading(false);
   };
@@ -114,13 +117,16 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             <div className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-4 py-3"><div><Label htmlFor="contrib" className="text-sm text-stone-700 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-amber-500" /> Support the platform</Label><p className="text-xs text-stone-500 mt-0.5">Direct 10% of your gift to Interplanetary Fund. Optional, off by default.</p></div><Switch id="contrib" checked={platformContribution} onCheckedChange={setPlatformContribution} /></div>
 
-            {amount && parseFloat(amount) > 0 && <div className="rounded-xl border border-stone-200 p-4 bg-stone-50/50"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Where your gift goes</p><dl className="text-sm space-y-1.5"><div className="flex justify-between"><dt className="text-stone-600">Donation</dt><dd className="text-stone-900 font-medium">${bd.amount.toFixed(2)}</dd></div>{stripeAvailable && <div className="flex justify-between"><dt className="text-stone-500">Card processing fee (added to card total)</dt><dd className="text-stone-900">+${bd.processing.toFixed(2)}</dd></div>}{bd.contribution > 0 && <div className="flex justify-between"><dt className="text-stone-600">Optional Interplanetary Fund contribution (10%)</dt><dd className="text-amber-600">-${bd.contribution.toFixed(2)}</dd></div>}<div className="flex justify-between"><dt className="text-stone-500">Interplanetary Fund fee (3%, at payout)</dt><dd className="text-stone-400">-${bd.platformFee.toFixed(2)}</dd></div><div className="flex justify-between border-t border-stone-200 pt-1.5"><dt className="text-stone-700 font-medium">Expected amount to campaign</dt><dd className="text-emerald-600 font-semibold">${bd.recipientNet.toFixed(2)}</dd></div></dl>{paypalApiAvailable && <p className="text-[11px] text-stone-400 mt-2">Your gift is counted after PayPal confirms the payment.</p>}</div>}
+            {amount && parseFloat(amount) > 0 && <div className="rounded-xl border border-stone-200 p-4 bg-stone-50/50"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Where your gift goes</p><dl className="text-sm space-y-1.5"><div className="flex justify-between"><dt className="text-stone-600">Donation</dt><dd className="text-stone-900 font-medium">${bd.amount.toFixed(2)}</dd></div>{stripeAvailable && <div className="flex justify-between"><dt className="text-stone-500">Card processing fee (included in total)</dt><dd className="text-stone-900">+${bd.processing.toFixed(2)}</dd></div>}{bd.contribution > 0 && <div className="flex justify-between"><dt className="text-stone-600">Optional Interplanetary Fund contribution (10%)</dt><dd className="text-amber-600">-${bd.contribution.toFixed(2)}</dd></div>}<div className="flex justify-between"><dt className="text-stone-500">Interplanetary Fund fee (3%, at payout)</dt><dd className="text-stone-400">-${bd.platformFee.toFixed(2)}</dd></div><div className="flex justify-between border-t border-stone-200 pt-1.5"><dt className="text-stone-700 font-medium">Expected amount to campaign</dt><dd className="text-emerald-600 font-semibold">${bd.recipientNet.toFixed(2)}</dd></div></dl>{paypalApiAvailable && <p className="text-[11px] text-stone-400 mt-2">Your gift is counted after PayPal confirms the payment.</p>}</div>}
 
             {!capabilities && !capabilityError && <div className="flex items-center justify-center py-4 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking available payment methods…</div>}
             {capabilityError && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">We couldn’t check payment choices right now. Please try again.</p>}
+            {capabilities && !paypalApiAvailable && !stripeAvailable && !campaign.cashapp_tag && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">No live payment method is available for this campaign right now. No payment has been started.</p>}
 
 
-            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /><p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p></div>}
+            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName={name} message={message} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 && <p className="text-[11px] text-stone-500 mt-2 text-center">PayPal total: ${parseFloat(amount).toFixed(2)} including ${paypalFee.toFixed(2)} PayPal processing.</p>}</div>}
+
+            {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /><p className="text-[11px] text-stone-400 mt-2 text-center">{amount && parseFloat(amount) > 0 ? `Google Pay total: ${parseFloat(amount).toFixed(2)} including ${paypalWalletFee.toFixed(2)} processing via PayPal.` : "Processed by the configured PayPal payment service."}</p></div>}
 
             {stripeAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{recurring ? "Monthly giving via card" : "Give with a card"}</p><Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">{stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${bd.totalCharged.toFixed(2)} with card` : "Donate with card"}</Button><p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p></div>}
 

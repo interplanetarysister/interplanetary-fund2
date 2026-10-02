@@ -67,7 +67,7 @@ export default function GlobalGlobe() {
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <div className="text-center mb-5">
-          <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Campaigns across the planet</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">Campaigns across the planet</h1>
           <p className="text-stone-500 mt-1">Drag the globe to explore. Tap a glowing pin to discover a campaign happening there.</p>
         </div>
 
@@ -103,7 +103,7 @@ export default function GlobalGlobe() {
 
         {campaigns && withCoords.length > 0 && (
           <section className="mt-10">
-            <h2 className="font-display text-xl text-stone-900 mb-4">All locations</h2>
+            <h2 className="font-display text-xl text-foreground mb-4">All locations</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {withCoords.map((c) => <CampaignCard key={c.id} campaign={c} />)}
             </div>

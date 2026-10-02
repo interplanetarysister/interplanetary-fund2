@@ -1,37 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { buildOAuthAuthorizationState } from '../../shared/appUserConnectorPolicy.js';
 import { redactPlatformConnection } from '../../shared/credentialRedaction.js';
+import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 
-const CONFIG: Record<string, { env: string; kind: string }> = {
-  gmail: { env: 'APP_USER_CONNECTOR_GMAIL_ID', kind: 'app' },
-  googledrive: { env: 'APP_USER_CONNECTOR_GOOGLEDRIVE_ID', kind: 'app' },
-  googlecalendar: { env: 'APP_USER_CONNECTOR_GOOGLECALENDAR_ID', kind: 'app' },
-  google_contacts: { env: 'APP_USER_CONNECTOR_GOOGLE_CONTACTS_ID', kind: 'app' },
-  google_photos: { env: 'APP_USER_CONNECTOR_GOOGLE_PHOTOS_ID', kind: 'app' },
-  googlesheets: { env: 'APP_USER_CONNECTOR_GOOGLESHEETS_ID', kind: 'app' },
-  googledocs: { env: 'APP_USER_CONNECTOR_GOOGLEDOCS_ID', kind: 'app' },
-  googleforms: { env: 'APP_USER_CONNECTOR_GOOGLEFORMS_ID', kind: 'app' },
-  googletasks: { env: 'APP_USER_CONNECTOR_GOOGLETASKS_ID', kind: 'app' },
-  slack: { env: 'APP_USER_CONNECTOR_SLACK_ID', kind: 'app' },
-  notion: { env: 'APP_USER_CONNECTOR_NOTION_ID', kind: 'app' },
-  outlook: { env: 'APP_USER_CONNECTOR_OUTLOOK_ID', kind: 'app' },
-  microsoft_teams: { env: 'APP_USER_CONNECTOR_MICROSOFT_TEAMS_ID', kind: 'app' },
-  one_drive: { env: 'APP_USER_CONNECTOR_ONE_DRIVE_ID', kind: 'app' },
-  dropbox: { env: 'APP_USER_CONNECTOR_DROPBOX_ID', kind: 'app' },
-  github: { env: 'APP_USER_CONNECTOR_GITHUB_ID', kind: 'app' },
-  gitlab: { env: 'APP_USER_CONNECTOR_GITLAB_ID', kind: 'app' },
-  linkedin: { env: 'APP_USER_CONNECTOR_LINKEDIN_ID', kind: 'social' },
-  facebook: { env: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID', kind: 'social' },
-  instagram: { env: 'APP_USER_CONNECTOR_INSTAGRAM_ID', kind: 'social' },
-  discord: { env: 'APP_USER_CONNECTOR_DISCORD_ID', kind: 'social' },
-  tiktok: { env: 'APP_USER_CONNECTOR_TIKTOK_ID', kind: 'social' },
-  threads: { env: 'APP_USER_CONNECTOR_THREADS_ID', kind: 'social' },
-  x: { env: 'APP_USER_CONNECTOR_X_ID', kind: 'social' },
-  pinterest: { env: 'APP_USER_CONNECTOR_PINTEREST_ID', kind: 'social' },
-  reddit: { env: 'APP_USER_CONNECTOR_REDDIT_ID', kind: 'social' },
-  youtube: { env: 'APP_USER_CONNECTOR_YOUTUBE_ID', kind: 'social' },
-  patreon: { env: 'APP_USER_CONNECTOR_PATREON_ID', kind: 'crowdfunding' },
-};
+const APP_PLATFORMS = new Set([
+  'gmail', 'googledrive', 'googlecalendar', 'google_contacts', 'google_photos',
+  'googlesheets', 'googledocs', 'googleforms', 'googletasks', 'slack', 'notion',
+  'outlook', 'microsoft_teams', 'one_drive', 'dropbox', 'github', 'gitlab',
+]);
+const CROWDFUNDING_PLATFORMS = new Set(['patreon', 'eventbrite']);
+const CONFIG: Record<string, { kind: string }> = Object.fromEntries(
+  Object.keys(OAUTH_ENV).map((platform) => [
+    platform,
+    { kind: APP_PLATFORMS.has(platform) ? 'app' : CROWDFUNDING_PLATFORMS.has(platform) ? 'crowdfunding' : 'social' },
+  ]),
+);
 
 export default async function(req) {
   try {
@@ -43,7 +26,8 @@ export default async function(req) {
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
     const sharedAgentConsent = shared_agent_consent === true;
-    const connectorId = cfg ? (Deno.env.get(cfg.env) || '') : '';
+    const envName = OAUTH_ENV[key];
+    const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
 
     let oauth: any;

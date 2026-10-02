@@ -14,13 +14,13 @@ const FLAG_LABEL = {
 export default function IntegrationsTable({ entries, onRowClick }) {
   return (
     <>
-      <div className="md:hidden space-y-3">
+      <div className="lg:hidden space-y-3">
         {entries.map((e) => {
           const badge = STATUS_BADGE[normalizeIntegrationStatus(e.status)];
           const verified = e.last_verified ? new Date(e.last_verified).toLocaleString() : "never";
           return (
             <button key={e.id} type="button" onClick={() => onRowClick(e)}
-              className="w-full min-w-0 rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm">
+              className="ifund-mobile-card w-full min-w-0 rounded-2xl border border-stone-200 bg-white p-4 text-left shadow-sm">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-semibold text-stone-900 break-words">{e.platform}</div>
@@ -36,7 +36,7 @@ export default function IntegrationsTable({ entries, onRowClick }) {
           );
         })}
       </div>
-      <div className="hidden md:block overflow-x-auto rounded-2xl border border-stone-200 bg-white">
+      <div className="hidden lg:block overflow-x-auto rounded-2xl border border-stone-200 bg-white">
       <table className="w-full text-sm">
         <thead className="bg-stone-50 text-left text-xs uppercase tracking-wide text-stone-500">
           <tr>

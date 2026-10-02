@@ -41,7 +41,7 @@ export function getFrontendIdentity(user) {
   });
 }
 
-// The super-admin owner identity is for non-internal frontend recognition and
+// ADMIN_BOOTSTRAP_EMAILS are recovery/bootstrap metadata only, never authorization.\n// The super-admin owner identity is for non-internal frontend recognition and
 // contextual UX only. It becomes active only after the canonical backend has
 // authenticated the connected account AND returned User.role === "admin".
 // Protected data/actions must continue to enforce server-side admin checks.

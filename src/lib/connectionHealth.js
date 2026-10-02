@@ -23,6 +23,42 @@ export function connectionHealth(connection, now = Date.now()) {
   return { key: "connected", label: "Connected", usable: true, needsAttention: false };
 }
 
+// Canonical lifecycle labels returned by resolveConnectionStatus. A SHARED
+// connector and a per-user connection share the same vocabulary, so the card
+// and the page summary never disagree on what "working" means.
+export const LIFECYCLE_LABELS = {
+  CONNECTED: "Connected",
+  DEGRADED: "Needs attention",
+  RECONNECT_REQUIRED: "Reconnect",
+  AUTHORIZATION_REQUIRED: "Authorize",
+  CONNECTING: "Connecting",
+  NOT_CONNECTED: "Connect",
+  DISCONNECTED: "Connect",
+  BLOCKED: "Blocked",
+};
+
+export function lifecycleHealth(resolved) {
+  if (!resolved) return null;
+  const lifecycle = resolved.lifecycle;
+  const usable = lifecycle === "CONNECTED";
+  const needsAttention = [
+    "DEGRADED",
+    "RECONNECT_REQUIRED",
+    "AUTHORIZATION_REQUIRED",
+    "CONNECTING",
+    "BLOCKED",
+  ].includes(lifecycle);
+  return {
+    key: String(lifecycle || "unknown").toLowerCase(),
+    label: LIFECYCLE_LABELS[lifecycle] || lifecycle || "Unknown",
+    usable,
+    needsAttention,
+    reason: resolved.recovery_hint || resolved.last_error || null,
+    transport: resolved.transport || null,
+    ownership_mode: resolved.ownership_mode || null,
+  };
+}
+
 export function isUsableConnection(connection) {
   return connectionHealth(connection).usable;
 }

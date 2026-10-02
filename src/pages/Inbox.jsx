@@ -60,7 +60,8 @@ export default function Inbox() {
 
       setItems(merged);
      } catch (e) {
-       setError(e.message || "We couldn't load your inbox.");
+       console.error("Inbox load failed:", e?.name || "UnknownError");
+       setError("We couldn't load your inbox. Please try again.");
      }
     })();
   }, [refreshKey]);

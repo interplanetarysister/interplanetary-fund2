@@ -7,6 +7,7 @@ import OpsCampaignCard from "@/components/ops/OpsCampaignCard";
 import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
+import PendingDonationReview from "@/components/ops/PendingDonationReview";
 import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
@@ -59,7 +60,8 @@ export default function OpsCenter() {
     try {
       await load();
     } catch (e) {
-      setSyncError(e.message || "Refresh failed — showing the last loaded data.");
+      console.error("Ops Center refresh failed:", e?.name || "UnknownError");
+      setSyncError("Refresh failed — showing the last loaded data.");
     }
     setSyncing(false);
   };
@@ -107,11 +109,12 @@ export default function OpsCenter() {
           <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
-            <TabsList className="w-full grid grid-cols-5 bg-white/5 border border-white/10 rounded-xl h-11">
+            <TabsList className="w-full grid grid-cols-3 sm:grid-cols-6 bg-white/5 border border-white/10 rounded-xl h-11">
               <TabsTrigger value="agents" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Agents</TabsTrigger>
               <TabsTrigger value="campaigns" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Campaigns</TabsTrigger>
               <TabsTrigger value="treasury" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Treasury</TabsTrigger>
               <TabsTrigger value="migrate" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Migrate</TabsTrigger>
+              <TabsTrigger value="donations" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Donations</TabsTrigger>
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
@@ -127,6 +130,9 @@ export default function OpsCenter() {
             </TabsContent>
             <TabsContent value="migrate" className="mt-4">
               <FundMigrationDashboard />
+            </TabsContent>
+            <TabsContent value="donations" className="mt-4">
+              <PendingDonationReview />
             </TabsContent>
             <TabsContent value="reports" className="mt-4">
               <OpsReports reports={reports} />

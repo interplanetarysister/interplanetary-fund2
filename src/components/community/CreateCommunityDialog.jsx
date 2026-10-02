@@ -22,15 +22,9 @@ export default function CreateCommunityDialog() {
 
   const create = async () => {
     setSaving(true);
-    const me = await base44.auth.me();
-    const community = await base44.entities.Community.create({ name, description, type, location, member_count: 1 });
-    await base44.entities.CommunityMember.create({
-      community_id: community.id,
-      user_id: me.id,
-      user_name: me.full_name || me.email,
-      role: "owner",
-    });
-    navigate(`/community/${community.id}`);
+    const { data } = await base44.functions.invoke("createCommunity", { name, description, type, location });
+    if (data?.ok !== true || !data?.community?.id) throw new Error("Community creation rejected");
+    navigate(`/community/${data.community.id}`);
   };
 
   return (

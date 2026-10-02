@@ -43,7 +43,8 @@ export default function Community() {
           const all = await base44.entities.Community.list("-created_date", 100);
           setCommunities(all);
         } catch (e) {
-          setError(e.message || "We couldn't load communities.");
+          console.error("Community load failed:", e?.name || "UnknownError");
+          setError("We couldn't load communities. Please try again.");
         }
       }
     })();

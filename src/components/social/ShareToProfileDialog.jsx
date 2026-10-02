@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Send, Loader2, Check, Link2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
-import { getTierFromScore } from "@/components/social/ProfileBanner";
 import { isUsableConnection } from "@/lib/connectionHealth";
 
 const PLATFORM_LABELS = {
@@ -47,20 +46,13 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
     if (!draft.trim()) return;
     setPosting(true);
     try {
-      const newScore = (user?.social_score || 0) + 10;
-      const newTier = getTierFromScore(newScore);
-      const post = await base44.entities.SocialPost.create({
-        author_user_id: user.id,
-        author_username: user.username || user.full_name,
-        author_name: user.full_name,
-        author_banner_tier: newTier,
-        content: draft.trim(),
-        campaign_id: campaignId,
-        is_top_post: newTier === "gold" || newTier === "platinum",
-        crosspost_platforms: crossPost,
-        ai_generated: true,
+      const { data } = await base44.functions.invoke("createSocialPost", {
+        content: draft.trim(), campaign_id: campaignId, crosspost_platforms: crossPost, ai_generated: true,
       });
-      await base44.auth.updateMe({ social_score: newScore, banner_tier: newTier });
+      if (data?.ok !== true || !data?.post) throw new Error("Social share creation rejected");
+      const post = data.post;
+      const newScore = data.social_score;
+      const newTier = data.banner_tier;
 
       // Cross-post to linked external platforms
       if (crossPost.length > 0) {
@@ -68,13 +60,9 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
           const conn = connectedSocial.find((c) => c.platform === platform);
           if (!conn || !campaignId) continue;
           try {
-            const dp = await base44.entities.DistributedPost.create({
-              campaign_id: campaignId,
-              connection_id: conn.id,
-              platform,
-              content: draft.trim(),
-              status: "pending_approval",
-            });
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });
+            if (distributed?.ok !== true || !distributed?.post?.id) continue;
+            const dp = distributed.post;
             await base44.functions.invoke("publishPost", { post_id: dp.id });
           } catch { /* best-effort */ }
         }

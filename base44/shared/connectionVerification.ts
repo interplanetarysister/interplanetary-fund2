@@ -21,6 +21,7 @@ export const OAUTH_ENV: Record<string, string> = {
 
   linkedin: 'APP_USER_CONNECTOR_LINKEDIN_ID',
   facebook: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID',
+  facebook_pages: 'APP_USER_CONNECTOR_FACEBOOK_PAGES_ID',
   instagram: 'APP_USER_CONNECTOR_INSTAGRAM_ID',
   discord: 'APP_USER_CONNECTOR_DISCORD_ID',
   tiktok: 'APP_USER_CONNECTOR_TIKTOK_ID',
@@ -30,6 +31,7 @@ export const OAUTH_ENV: Record<string, string> = {
   reddit: 'APP_USER_CONNECTOR_REDDIT_ID',
   youtube: 'APP_USER_CONNECTOR_YOUTUBE_ID',
   patreon: 'APP_USER_CONNECTOR_PATREON_ID',
+  eventbrite: 'APP_USER_CONNECTOR_EVENTBRITE_ID',
 };
 
 export async function verifyManualConnection(connection: any) {

@@ -59,6 +59,7 @@
       "type": "string",
       "enum": [
         "paypal",
+        "googlepay",
         "cashapp",
         "stripe",
         "other"

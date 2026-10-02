@@ -62,17 +62,49 @@ async function githubRequest(token, method, path, body = null) {
 
 async function getGitHubToken(base44) {
   try {
-    const conn = await base44.connectors?.getConnection?.('github');
+    // Shared (builder-authorized) connectors are only reachable via the service role.
+    const conn = await base44.asServiceRole.connectors.getConnection('github');
     if (conn && conn.accessToken) return conn.accessToken;
   } catch (_) { /* fall through */ }
   return null;
 }
 
 // Pull compatibility label: observe the current GitHub HEAD and record it.
-async function syncPull(token, sr) {
+async function syncPull(token, sr, actorUserId) {
   const branch = await githubRequest(token, 'GET', `/repos/${REPO}/branches/${BRANCH}`);
   const remoteSha = branch?.commit?.sha;
   if (!remoteSha) return { ok: false, detail: 'Could not read branch HEAD from GitHub.' };
+
+  // Record a durable provider-observed checkpoint before any future source movement is considered.
+  const checkpoints = await sr.entities.GitHubSyncCheckpoint.filter({ repository: REPO, branch: BRANCH }).catch(() => []);
+  const previous = (checkpoints || []).sort((a, b) => String(b.observed_at || '').localeCompare(String(a.observed_at || '')))[0] || null;
+  let relationship = previous?.remote_head_sha === remoteSha ? 'UNCHANGED' : previous?.remote_head_sha ? 'UNKNOWN' : 'INITIAL';
+
+  if (previous?.remote_head_sha && previous.remote_head_sha !== remoteSha) {
+    try {
+      const comparison = await githubRequest(token, 'GET', `/repos/${REPO}/compare/${previous.remote_head_sha}...${remoteSha}`);
+      relationship = comparison?.status === 'ahead' ? 'FAST_FORWARD'
+        : comparison?.status === 'identical' ? 'UNCHANGED'
+        : comparison?.status === 'diverged' || comparison?.status === 'behind' ? 'DIVERGED'
+        : 'UNKNOWN';
+    } catch (_) {
+      relationship = 'UNKNOWN';
+    }
+  }
+
+  await sr.entities.GitHubSyncCheckpoint.create({
+    repository: REPO,
+    branch: BRANCH,
+    remote_head_sha: remoteSha,
+    previous_remote_head_sha: previous?.remote_head_sha || '',
+    relationship,
+    observed_at: new Date().toISOString(),
+    observed_by_user_id: actorUserId,
+    source: 'github_provider_api',
+    detail: relationship === 'DIVERGED'
+      ? 'Remote history is not a safe fast-forward from the previous verified checkpoint. Automatic source movement remains blocked.'
+      : `Provider-observed GitHub HEAD checkpoint: ${remoteSha.slice(0, 12)} (${relationship}).`,
+  });
 
   // Record the observed SHA in the registry so health checks can detect drift.
   const entries = await sr.entities.PlatformAccessRegistry.filter({ platform: 'github' }).catch(() => []);
@@ -83,7 +115,17 @@ async function syncPull(token, sr) {
     }).catch(() => {});
   }
 
-  return { ok: true, detail: `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH}. Repository changes are applied only through Base44 native source synchronization.` };
+  const safeForSourceMovement = relationship === 'UNCHANGED' || relationship === 'FAST_FORWARD';
+  return {
+    ok: relationship !== 'DIVERGED',
+    relationship,
+    safe_for_source_movement: safeForSourceMovement,
+    remote_sha: remoteSha,
+    previous_remote_sha: previous?.remote_head_sha || null,
+    detail: !safeForSourceMovement
+      ? `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH} (${relationship}). Automatic source movement remains blocked until history is proven unchanged or fast-forward.`
+      : `GitHub HEAD is ${remoteSha.slice(0, 12)} on ${BRANCH} (${relationship}). History is safe for Base44 native source synchronization; this health function does not move source itself.`,
+  };
 }
 
 // Push compatibility label: verify GitHub destination reachability only.
@@ -137,7 +179,7 @@ export default async function (req) {
     const results = {};
 
     if (direction === 'pull' || direction === 'both') {
-      results.pull = await syncPull(token, sr);
+      results.pull = await syncPull(token, sr, user.id);
     }
     if (direction === 'push' || direction === 'both') {
       results.push = await syncPush(token);

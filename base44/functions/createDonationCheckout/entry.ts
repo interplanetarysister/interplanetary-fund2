@@ -20,16 +20,24 @@ export default async function(req) {
     if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
     if (!campaign_id || !origin) return Response.json({ error: 'Invalid donation request' }, { status: 400 });
 
-    const value = Number(amount);
-    const processing = computeProcessingFee(value);
+    const totalCharge = round2(Number(amount));
+    const processing = computeProcessingFee(totalCharge);
+    const value = round2(totalCharge - processing);
     const contribution = computeContribution(value, !!platform_contribution);
-    const totalCharge = round2(value + processing);
 
     let originUrl;
     try { originUrl = new URL(origin); } catch (_) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
-    if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
+    const configuredOrigins = String(secrets.get('PUBLIC_APP_ORIGINS') || '').split(',').map((value) => value.trim()).filter(Boolean);
+    const allowedOrigins = new Set([
+      'https://interplanetaryfund.com',
+      'https://www.interplanetaryfund.com',
+      'https://interplanetaryfund.base44.app',
+      'https://interplanetary-fund2.interplanetary-fund.workers.dev',
+      ...configuredOrigins,
+    ].map((value) => { try { return new URL(value).origin; } catch (_) { return ''; } }).filter(Boolean));
+    if (originUrl.protocol !== 'https:' || !allowedOrigins.has(originUrl.origin)) {
       return Response.json({ error: 'Invalid donation request' }, { status: 400 });
     }
 
@@ -60,21 +68,20 @@ export default async function(req) {
       platform_contribution_amount: String(contribution),
     };
 
-    const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
+    const stripeSecret = secrets.get('STRIPE_SECRET_KEY');
+    if (!stripeSecret || !String(stripeSecret).startsWith('sk_live_')) return Response.json({ error: 'Card payments are not currently available.' }, { status: 503 });
+    const stripe = new Stripe(stripeSecret);
     const session = await stripe.checkout.sessions.create({
       mode: is_recurring ? 'subscription' : 'payment',
-      line_items: is_recurring ? [{
+      line_items: [{
         quantity: 1,
         price_data: {
           currency: 'usd',
           unit_amount: Math.round(totalCharge * 100),
-          product_data: { name: `Donation to ${campaign.title}` },
-          recurring: { interval: 'month' },
+          product_data: { name: `Donation to ${campaign.title} (includes processor fee)` },
+          ...(is_recurring ? { recurring: { interval: 'month' } } : {}),
         },
-      }] : [
-        { quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(value * 100), product_data: { name: `Donation to ${campaign.title}` } } },
-        { quantity: 1, price_data: { currency: 'usd', unit_amount: Math.round(processing * 100), product_data: { name: 'Processing fee (Stripe)' } } },
-      ],
+      }],
       success_url: `${originUrl.origin}/campaign/${campaign_id}?donation=success`,
       cancel_url: `${originUrl.origin}/campaign/${campaign_id}`,
       metadata,

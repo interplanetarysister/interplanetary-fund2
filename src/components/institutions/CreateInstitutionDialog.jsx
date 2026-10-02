@@ -28,8 +28,9 @@ export default function CreateInstitutionDialog() {
 
   const create = async () => {
     setSaving(true);
-    const inst = await base44.entities.Institution.create({ ...form, verification_status: "unverified" });
-    navigate(`/institutions/${inst.id}`);
+    const { data } = await base44.functions.invoke("createInstitution", form);
+    if (data?.ok !== true || !data?.institution?.id) throw new Error("Institution registration rejected");
+    navigate(`/institutions/${data.institution.id}`);
   };
 
   return (

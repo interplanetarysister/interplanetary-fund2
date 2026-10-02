@@ -43,7 +43,8 @@ export default function FollowedCampaigns() {
       fresh.forEach((c) => { if (c) map[c.id] = c; });
       setCampaigns(map);
      } catch (e) {
-       setError(e.message || "We couldn't load your followed campaigns.");
+       console.error("Followed campaigns load failed:", e?.name || "UnknownError");
+       setError("We couldn't load your followed campaigns. Please try again.");
      }
     })();
   }, []);

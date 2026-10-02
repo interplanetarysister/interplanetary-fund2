@@ -2,7 +2,7 @@
 // Pure runtime math — no network, no charges, no payouts.
 import {
   computeContribution, recipientGift, computePlatformFee, computeRecipientNet,
-  computeProcessingFee, computeBreakdown, computeWithdrawal, giftOf,
+  computeProcessingFee, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeBreakdown, computeWithdrawal, giftOf,
   validateDonationAmount,
 } from '../base44/shared/fees.js';
 
@@ -27,7 +27,9 @@ eq('contribution on (100)', computeContribution(100, true), 10);
 eq('gift on (100)', recipientGift(100, true), 90);
 eq('platformFee on (100)', computePlatformFee(100, true), 2.70);
 eq('recipientNet on (100)', computeRecipientNet(100, true), 87.30);
-eq('processing fee (100)', computeProcessingFee(100), 3.20);
+eq('Stripe processing fee derived from $100 total', computeProcessingFee(100), 3.11);
+eq('PayPal Checkout processing fee derived from $100 total', computePayPalProcessingFee(100), 3.85);
+eq('PayPal wallet processing fee derived from $100 total', computePayPalWalletProcessingFee(100), 3.10);
 
 // --- Optional contribution on/off edge cases ---
 eq('contribution on (0)', computeContribution(0, true), 0);
@@ -49,8 +51,8 @@ for (const opt of [false, true]) {
 // allocation FROM the total, never added on top.
 for (const opt of [false, true]) {
   const bd = computeBreakdown(100, opt);
-  eq(`total charged == entered amount (opt=${opt})`, bd.amount, 100);
-  eq(`recipient never charged more than entered (opt=${opt})`, bd.contribution + bd.recipientGift, 100);
+  eq(`total charged == entered amount (opt=${opt})`, bd.totalCharged, 100);
+  eq(`net donation plus processor fee == entered amount (opt=${opt})`, bd.amount + bd.processing, 100);
 }
 
 // giftOf reads the recipient gift from a stored Donation record.
@@ -79,7 +81,7 @@ eq('withdrawal fee zero on tiny', computeWithdrawal(0.01).fee, 0);
 eq('contribution cents (33.33)', computeContribution(33.33, true), 3.33);
 eq('gift cents (33.33)', recipientGift(33.33, true), 30.00);
 eq('platformFee cents (33.33)', computePlatformFee(33.33, false), 1.00);
-eq('processing cents (33.33)', computeProcessingFee(33.33), 1.27);
+eq('processing cents derived from 33.33 total', computeProcessingFee(33.33), 1.24);
 
 if (failed) { console.error(`\n${failed} fee-calc test(s) failed.`); process.exit(1); }
 console.log('\nAll fee-calc tests passed.');

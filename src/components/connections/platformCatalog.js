@@ -150,6 +150,21 @@ export const CROWDFUNDING_PLATFORMS = [
     api: "Link your fundraiser and keep its total here.",
   },
   {
+    id: "eventbrite",
+    name: "Eventbrite",
+    kind: "crowdfunding",
+    color: "#f05537",
+    icon: "🎟️",
+    tagline: "Connect Eventbrite to bring fundraising-event activity into your campaign workspace.",
+    setupKind: "oauth",
+    integrationType: "eventbrite",
+    steps: [
+      { id: "oauth", label: "Sign in with Eventbrite", hint: "Eventbrite will ask you to approve the connection. Interplanetary Fund never receives your password." },
+      { id: "link", label: "Link to a campaign (optional)", hint: "Choose which Interplanetary Fund campaign this event activity belongs with." },
+    ],
+    api: "Connect Eventbrite through its supported account authorization.",
+  },
+  {
     id: "custom",
     name: "Custom Campaign URL",
     kind: "crowdfunding",

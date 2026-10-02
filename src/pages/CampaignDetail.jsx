@@ -75,9 +75,9 @@ export default function CampaignDetail() {
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
           {isVideo(campaign.cover_image_url) ? (
-            <video src={campaign.cover_image_url} controls className="w-full h-56 sm:h-80 rounded-2xl object-cover" />
+            <video src={campaign.cover_image_url} controls className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
           ) : (
-            <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={campaign.title} className="w-full h-56 sm:h-80 rounded-2xl object-cover" />
+            <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={campaign.title} className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
           )}
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -86,10 +86,10 @@ export default function CampaignDetail() {
               {campaign.status !== "active" && <Badge variant="outline" className="capitalize">{campaign.status}</Badge>}
             </div>
             <div className="flex items-start justify-between gap-3">
-              <h1 className="font-display text-3xl sm:text-4xl text-stone-900 leading-tight">{campaign.title}</h1>
+              <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-950 leading-tight drop-shadow-[0_1px_0_rgba(255,255,255,.75)]">{campaign.title}</h1>
               {!isOwner && <FollowButton campaign={campaign} />}
             </div>
-            {campaign.summary && <p className="text-stone-600 mt-2 text-lg">{campaign.summary}</p>}
+            {campaign.summary && <p className="text-slate-800 mt-2 text-lg font-medium leading-relaxed">{campaign.summary}</p>}
           </div>
           {/* Phones: funding progress + Donate Now sit directly under the title,
               so the primary action is visible without scrolling. */}

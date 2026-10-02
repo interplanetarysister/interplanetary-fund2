@@ -29,19 +29,22 @@ export default function OutreachAgentPanel({ campaign }) {
 
   const toggleEnabled = async () => {
     setEnabling(true);
-    await base44.entities.Campaign.update(campaign.id, { outreach_enabled: !campaign.outreach_enabled });
+    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_enabled: !campaign.outreach_enabled } });
+    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
     setEnabling(false);
   };
 
   const togglePaused = async () => {
     setEnabling(true);
-    await base44.entities.Campaign.update(campaign.id, { outreach_paused: !campaign.outreach_paused });
+    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_paused: !campaign.outreach_paused } });
+    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
     setEnabling(false);
   };
 
   const setStatus = async (id, status) => {
     setActivities((prev) => (prev || []).map((a) => (a.id === id ? { ...a, status } : a)));
-    await base44.entities.AgentActivity.update(id, { status });
+    const { data } = await base44.functions.invoke("reviewAgentActivity", { activity_id: id, status });
+    if (data?.ok !== true) throw new Error("Agent activity review rejected");
   };
 
   if (!user || !activities) {

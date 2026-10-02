@@ -64,8 +64,7 @@ export default function CreateCampaign() {
     setLocating(true);
     try {
       const res = await base44.functions.invoke("geocodeCity", { city: form.location });
-      const err = res.error || res.data?.error;
-      if (err) throw new Error(err);
+      if (res.error || res.data?.error) throw new Error("Geocoding request rejected");
       setForm((f) => ({ ...f, location_lat: res.data.lat, location_lng: res.data.lng }));
       toast({ title: "Location found", description: (res.data.display || form.location).split(",")[0] });
     } catch {
@@ -127,10 +126,10 @@ export default function CreateCampaign() {
         location_lng: form.location_lng || undefined,
         status,
       };
-      const campaign = draftId
-        ? await base44.entities.Campaign.update(draftId, payload)
-        : await base44.entities.Campaign.create(payload);
-      if (!draftId) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
+      const { data } = await base44.functions.invoke("saveCampaign", { campaign_id: draftId || undefined, campaign: payload });
+      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Campaign save rejected");
+      const campaign = data.campaign;
+      if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch {
       toast({ title: "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
@@ -180,7 +179,7 @@ export default function CreateCampaign() {
           <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 sm:p-5 space-y-2"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">Final transmission</p><Label className="quest-label text-base">Your campaign story</Label></div><Textarea rows={10} className="quest-input min-h-56 resize-y whitespace-pre-wrap break-words" placeholder="Write it yourself or forge a draft above, then remix it here." value={form.story} onChange={(e) => set("story", e.target.value)} /><p className="text-xs text-slate-400">This is the one story that goes live. Story Forge edits this same field and keeps earlier versions available to restore.</p></div>
           <div className="space-y-2">
             <Label className="quest-label">Campaign art</Label>
-            <Image src={form.cover_image_url || FALLBACK_IMAGE} alt={form.cover_image_url ? "Campaign cover preview" : "Default campaign cover"} className="w-full h-44 rounded-xl object-cover" />
+            <Image src={form.cover_image_url || FALLBACK_IMAGE} alt={form.cover_image_url ? "Campaign cover preview" : "Default campaign cover"} className="w-full max-h-[32rem] rounded-xl object-contain bg-slate-950" />
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 min-w-0">
               <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}{form.cover_image_url ? "Regenerate cover" : "Generate cover"}</Button>
               <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => set("cover_image_url", url)} label="Upload your own photo" previewClassName="hidden" /></div>
@@ -189,7 +188,7 @@ export default function CreateCampaign() {
           </div>
         </>)}
 
-        {step === 3 && <div className="space-y-4 min-w-0 text-slate-200">{form.cover_image_url && <Image src={form.cover_image_url} alt="Campaign cover" className="w-full h-44 rounded-xl object-cover" />}<div className="min-w-0"><p className="text-[11px] font-medium uppercase tracking-wider text-primary">{categoryLabels[form.category]}</p><h2 className="font-display text-2xl text-white break-words">{form.title}</h2>{form.summary && <p className="text-slate-300 mt-1 whitespace-pre-wrap break-words">{form.summary}</p>}</div><p className="text-sm text-slate-300 break-words">Goal: <span className="font-semibold text-cyan-200">${parseFloat(form.goal_amount || 0).toLocaleString()}</span>{form.end_date && ` · Ends ${form.end_date}`}</p>{form.story && <details className="rounded-2xl border border-white/10 bg-slate-950/35 p-4" open><summary className="cursor-pointer text-sm font-semibold text-cyan-200 mb-2">Campaign story</summary><p className="text-sm text-slate-300 whitespace-pre-wrap break-words">{form.story}</p></details>}</div>}
+        {step === 3 && <div className="space-y-4 min-w-0 text-slate-200">{form.cover_image_url && <Image src={form.cover_image_url} alt="Campaign cover" className="w-full max-h-[32rem] rounded-xl object-contain bg-slate-950" />}<div className="min-w-0"><p className="text-[11px] font-medium uppercase tracking-wider text-primary">{categoryLabels[form.category]}</p><h2 className="font-display text-2xl text-white break-words">{form.title}</h2>{form.summary && <p className="text-slate-300 mt-1 whitespace-pre-wrap break-words">{form.summary}</p>}</div><p className="text-sm text-slate-300 break-words">Goal: <span className="font-semibold text-cyan-200">${parseFloat(form.goal_amount || 0).toLocaleString()}</span>{form.end_date && ` · Ends ${form.end_date}`}</p>{form.story && <details className="rounded-2xl border border-white/10 bg-slate-950/35 p-4" open><summary className="cursor-pointer text-sm font-semibold text-cyan-200 mb-2">Campaign story</summary><p className="text-sm text-slate-300 whitespace-pre-wrap break-words">{form.story}</p></details>}</div>}
       </div>
 
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 min-w-0">

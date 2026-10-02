@@ -24,6 +24,12 @@ export default function Connections() {
   const [connectionNotice, setConnectionNotice] = useState(null);
   const [platformSearch, setPlatformSearch] = useState("");
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
+  const [sharedIntegrations, setSharedIntegrations] = useState(null);
+  const [wixSyncing, setWixSyncing] = useState(false);
+  const [wixSyncResult, setWixSyncResult] = useState(null);
+  // Canonical lifecycle from resolveConnectionStatus, keyed by connection id.
+  // The local record heuristic is the fallback; the resolver is authoritative.
+  const [lifecycleMap, setLifecycleMap] = useState({});
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -35,10 +41,50 @@ export default function Connections() {
       setSyncResult(data);
       const r = await base44.functions.invoke("listConnections", { scope: "mine" });
       setConnections(r.data.connections);
+      resolveLifecycles(r.data.connections);
     } catch (e) {
       setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     }
     setSyncing(false);
+  };
+
+  // Fetch the canonical lifecycle for every saved connection in parallel.
+  // resolveConnectionStatus is the single source of truth for "is this working";
+  // a per-connection failure is non-fatal and leaves the local heuristic in place.
+  const resolveLifecycles = async (conns) => {
+    const list = Array.isArray(conns) ? conns : connections;
+    if (!list || !list.length) { setLifecycleMap({}); return; }
+    const entries = await Promise.all(
+      list.map((c) =>
+        base44.functions.invoke("resolveConnectionStatus", { platform: c.platform, connection_id: c.id })
+          .then(({ data }) => [c.id, data || null])
+          .catch(() => [c.id, null])
+      )
+    );
+    setLifecycleMap(Object.fromEntries(entries.filter(([, v]) => v)));
+  };
+
+
+  const syncWix = async () => {
+    setWixSyncing(true);
+    setWixSyncResult(null);
+    try {
+      const responses = await Promise.all([
+        base44.functions.invoke("syncWixCampaigns", {}),
+        base44.functions.invoke("syncWixContent", {}),
+        base44.functions.invoke("syncWixBusinessData", {}),
+        base44.functions.invoke("syncWixAnalytics", {}),
+      ]);
+      const payloads = responses.map((response) => response?.data || {});
+      setWixSyncResult({
+        ok: payloads.every((payload) => payload?.ok !== false && !payload?.error),
+        payloads,
+      });
+    } catch {
+      setWixSyncResult({ ok: false });
+    } finally {
+      setWixSyncing(false);
+    }
   };
 
   useEffect(() => {
@@ -70,8 +116,18 @@ export default function Connections() {
       const connRes = await base44.functions.invoke("listConnections", { scope: "mine" });
       setUser(me);
       setConnections(connRes.data.connections);
+      // Platform-managed (SHARED) integrations have no PlatformConnection record
+      // by design; surface their live status separately.
+      base44.functions.invoke("getSharedConnectorStatus", {})
+        .then(({ data }) => setSharedIntegrations(data?.shared || []))
+        .catch(() => setSharedIntegrations([]));
+      // Enrich each connection with the canonical lifecycle so the card, the
+      // summary, and the resolver all agree on "working". Best-effort: a failed
+      // resolve leaves the local heuristic in place.
+      resolveLifecycles(connRes.data.connections);
      } catch (e) {
-       setError(e.message || "We couldn't load your connections.");
+       console.error("Connections load failed:", e?.name || "UnknownError");
+       setError("We couldn't load your connections. Please try again.");
      }
     })();
   }, [reloadKey]);
@@ -85,8 +141,11 @@ export default function Connections() {
 
   const aiAuthorized = !!user?.ai_publishing_consent?.granted;
   const savedIds = connections.map((c) => c.platform);
-  const verifiedConnections = connections.filter((connection) => connectionHealth(connection).usable);
-  const attentionConnections = connections.filter((connection) => !connectionHealth(connection).usable);
+  const isWorking = (connection) => lifecycleMap[connection.id]
+    ? lifecycleMap[connection.id].lifecycle === "CONNECTED"
+    : connectionHealth(connection).usable;
+  const verifiedConnections = connections.filter(isWorking);
+  const attentionConnections = connections.filter((connection) => !isWorking(connection));
   const workingCount = verifiedConnections.length;
   const discoveredTotals = syncResult?.discovered_totals ||
     (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
@@ -130,7 +189,13 @@ export default function Connections() {
         <Button onClick={syncAll} disabled={syncing} className="rounded-xl">
           {syncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Refresh now
         </Button>
+        {sharedIntegrations?.some((integration) => integration.type === "wix" && integration.connected) && (
+          <Button onClick={syncWix} disabled={wixSyncing} variant="outline" className="rounded-xl">
+            {wixSyncing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />} Sync Wix
+          </Button>
+        )}
       </div>
+      {wixSyncResult && <div className={`mb-4 rounded-xl border p-3 text-sm ${wixSyncResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{wixSyncResult.ok ? "Wix is synchronized." : "Wix sync needs attention. Existing IFund data was left unchanged."}</div>}
       {syncResult && (
         <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">
           {syncResult.error ? (
@@ -151,6 +216,31 @@ export default function Connections() {
         <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />
       </div>
 
+      {sharedIntegrations && sharedIntegrations.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display text-xl text-stone-900 mb-1">Platform-managed integrations</h2>
+          <p className="text-sm text-stone-500 mb-3">Managed by admins for everyone — you don't connect these yourself.</p>
+          <div className="space-y-3">
+            {sharedIntegrations.map((s) => (
+              <div key={s.type} className="rounded-2xl border border-cyan-300/15 bg-white p-4 flex items-center gap-3">
+                <span className="text-xl w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0" aria-hidden="true">{s.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-stone-900">{s.name}</p>
+                  <p className="text-xs text-stone-500">{s.note}</p>
+                </div>
+                {s.connected && s.verified ? (
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Working</span>
+                ) : s.connected ? (
+                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">Needs attention</span>
+                ) : (
+                  <span className="shrink-0 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-semibold text-stone-500">Not connected</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {verifiedConnections.length > 0 && (
         <div className="mb-8">
           <h2 className="font-display text-xl text-stone-900 mb-1">Connected platforms</h2>
@@ -161,6 +251,7 @@ export default function Connections() {
                 key={c.id}
                 connection={c}
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
+                resolved={lifecycleMap[c.id]}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
                 onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
               />
@@ -179,8 +270,18 @@ export default function Connections() {
                 key={c.id}
                 connection={c}
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
+                resolved={lifecycleMap[c.id]}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
-                onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
+                onRemoved={(id, updated) => {
+                  setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id));
+                  // After a provider check updates a connection, refresh its
+                  // canonical lifecycle so the card reflects the new state.
+                  if (updated) {
+                    base44.functions.invoke("resolveConnectionStatus", { platform: updated.platform, connection_id: updated.id })
+                      .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [updated.id]: data })))
+                      .catch(() => {});
+                  }
+                }}
               />
             ))}
           </div>
@@ -252,12 +353,15 @@ export default function Connections() {
           aiAuthorized={aiAuthorized}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}
-          onSaved={(saved) =>
+          onSaved={(saved) => {
             setConnections((prev) => {
               const exists = prev.some((x) => x.id === saved.id);
               return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
-            })
-          }
+            });
+            base44.functions.invoke("resolveConnectionStatus", { platform: saved.platform, connection_id: saved.id })
+              .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [saved.id]: data })))
+              .catch(() => {});
+          }}
         />
       )}
 

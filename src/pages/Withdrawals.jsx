@@ -66,7 +66,8 @@ export default function Withdrawals() {
         setReviewQueue(rq || []);
       }
     } catch (e) {
-      setError(e.message || "We couldn't load your withdrawals.");
+      console.error("Withdrawals load failed:", e?.name || "UnknownError");
+      setError("We couldn't load your withdrawals. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -77,11 +78,12 @@ export default function Withdrawals() {
   const approve = async (id) => {
     try {
       const res = await base44.functions.invoke("requestWithdrawal", { action: "approve", withdrawal_id: id });
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Server operation rejected");
       toast({ title: "Withdrawal approved & paid out" });
       load();
     } catch (e) {
-      toast({ title: "Approval failed", description: e.message, variant: "destructive" });
+      console.error("Withdrawal approval failed:", e?.name || "UnknownError");
+      toast({ title: "Approval failed", description: "The payout could not be confirmed safely. Review the withdrawal status before retrying.", variant: "destructive" });
     }
   };
 

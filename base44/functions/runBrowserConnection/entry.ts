@@ -40,7 +40,6 @@ export default async function(req) {
     if (decision.reason === 'authorization_required') {
       return Response.json({ error: 'Browser access is not authorized for this connection.' }, { status: 403 });
     }
-
     return Response.json({
       error: SAFE_UNAVAILABLE,
       code: 'browser_execution_deferred',

@@ -33,7 +33,7 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
         cross_post: crossPost,
       });
       if (data?.error) {
-        toast({ title: "Couldn't post update", description: data.error, variant: "destructive" });
+        toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive" });
       } else {
         const cp = data?.crosspost || {};
         const summary = crossPost && (cp.published || cp.pending || cp.drafts || cp.failed)
@@ -42,7 +42,8 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
         toast({ title: "Update posted", description: summary });
       }
     } catch (e) {
-      toast({ title: "Couldn't post update", description: e.response?.data?.error || "Please try again.", variant: "destructive" });
+      console.error("Campaign update failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive" });
     }
     setTitle(""); setContent(""); setMediaUrl("");
     setSaving(false);
@@ -57,13 +58,13 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
       </div>
       {isOwner && (
         <div className="space-y-3 mb-6 pb-6 border-b border-stone-100">
-          <Input placeholder="Update title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Textarea placeholder="Share progress with your supporters…" value={content} onChange={(e) => setContent(e.target.value)} rows={3} />
+          <Input className="bg-white text-stone-950 placeholder:text-stone-500 caret-stone-950" placeholder="Update title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <Textarea className="bg-white text-stone-950 placeholder:text-stone-500 caret-stone-950" placeholder="Share progress with your supporters…" value={content} onChange={(e) => setContent(e.target.value)} rows={3} />
           <MediaUpload
             value={mediaUrl}
             onChange={setMediaUrl}
             label="Attach a photo or video"
-            previewClassName="w-full h-40 rounded-xl object-cover"
+            previewClassName="w-full max-h-80 rounded-xl object-contain bg-stone-100"
           />
           <label className="flex items-center gap-2 text-sm text-stone-600">
             <Checkbox checked={crossPost} onCheckedChange={setCrossPost} />
@@ -86,7 +87,7 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
               {u.media_url && (isVideo(u.media_url) ? (
                 <video src={u.media_url} controls className="w-full max-h-80 rounded-xl mb-3" />
               ) : (
-                <Image src={u.media_url} alt={u.title || "Update media"} className="w-full max-h-80 rounded-xl object-cover mb-3" />
+                <Image src={u.media_url} alt={u.title || "Update media"} className="w-full max-h-[32rem] rounded-xl object-contain bg-stone-100 mb-3" />
               ))}
               <p className="text-sm text-stone-600 leading-relaxed whitespace-pre-wrap">{u.content}</p>
             </div>
