@@ -6,7 +6,7 @@ import {
   verifyDirectConnection,
 } from '../base44/shared/manualConnectionVerificationPolicy.js';
 import { hasFreshProviderVerification } from '../base44/shared/providerVerificationPolicy.js';
-import { deriveConnectionLifecycle, scopedOboGrants } from '../base44/shared/connectionLifecyclePolicy.js';
+import { deriveConnectionLifecycle, operationalOboGrants, scopedOboGrants } from '../base44/shared/connectionLifecyclePolicy.js';
 
 const verify = fs.readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
 const provider = fs.readFileSync('base44/shared/connectionVerification.ts', 'utf8');
@@ -142,6 +142,22 @@ assert.equal(scopedOboGrants(consentedConnection, [
   { status: 'active', agent_name: 'analytics-agent', scope: 'read_analytics' },
 ], verifiedAt).length, 1);
 assert.match(resolver, /BROWSER_RUN_POLICY\.enabled/);
-assert.match(resolver, /scopedOboGrants/);
+assert.match(resolver, /operationalOboGrants/);
+
+const matchingGrant = { status: 'active', agent_name: 'analytics-agent', scope: 'read_analytics' };
+for (const lifecycle of ['DISCONNECTED', 'BLOCKED', 'CONNECTING', 'RECONNECT_REQUIRED']) {
+  assert.equal(operationalOboGrants({
+    connection: consentedConnection,
+    grants: [matchingGrant],
+    lifecycle,
+    now: verifiedAt,
+  }).length, 0, `${lifecycle} connection must not advertise operational OBO authority`);
+}
+assert.equal(operationalOboGrants({
+  connection: consentedConnection,
+  grants: [matchingGrant],
+  lifecycle: 'CONNECTED',
+  now: verifiedAt,
+}).length, 1);
 
 console.log('Connection lifecycle, canonical resolver, and recovery contract verified.');

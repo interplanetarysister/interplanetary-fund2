@@ -52,3 +52,8 @@ export function scopedOboGrants(connection, grants, now = Date.now()) {
     return Number.isFinite(expires) && expires > now;
   });
 }
+
+export function operationalOboGrants({ connection, grants, lifecycle, now = Date.now() }) {
+  if (lifecycle !== 'CONNECTED') return [];
+  return scopedOboGrants(connection, grants, now);
+}

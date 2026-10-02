@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 import { BROWSER_RUN_POLICY } from '../../shared/browserConnectionPolicy.js';
-import { deriveConnectionLifecycle, scopedOboGrants } from '../../shared/connectionLifecyclePolicy.js';
+import { deriveConnectionLifecycle, operationalOboGrants } from '../../shared/connectionLifecyclePolicy.js';
 import { recipeTransportOrder } from '../../shared/platformConnectionRecipePolicy.js';
 
 // Inline minimal recipe registry (matches the established pattern in
@@ -179,7 +179,7 @@ export default async function(req) {
       recipe,
       browserRunEnabled: BROWSER_RUN_POLICY.enabled,
     });
-    const authorizedGrants = scopedOboGrants(connection, grants);
+    const authorizedGrants = operationalOboGrants({ connection, grants, lifecycle });
 
     // Capabilities: only what is genuinely verified. Never inferred from config.
     const capabilities_verified: string[] = [];
