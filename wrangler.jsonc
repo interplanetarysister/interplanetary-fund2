@@ -1,15 +1,18 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "interplanetary-fund2",
+  "main": "./worker/index.js",
   "compatibility_date": "2026-09-27",
 
-  // Preserve variables configured in the Cloudflare dashboard during deploys.
-  // Secret values remain encrypted in Cloudflare and are never committed here.
+  // Preserve dashboard-managed runtime variables and encrypted secrets on deploy.
   "keep_vars": true,
 
-  // This is a Vite SPA deployed with Workers Static Assets.
+  // Serve the Vite SPA directly at the edge. Only /api/* invokes Worker code first,
+  // leaving hashed/static assets on Cloudflare's static-asset path.
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
   }
 }
