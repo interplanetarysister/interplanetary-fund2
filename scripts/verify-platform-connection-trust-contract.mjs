@@ -88,6 +88,24 @@ assert.equal(noConsentState.agent_access.shared_with_agents, false);
 assert.equal(noConsentState.agent_access.automation_enabled, false);
 assert.equal(noConsentState.history.length, 1);
 
+const reauthorizedCrowdfundingState = buildOAuthAuthorizationState({
+  platform: 'patreon',
+  kind: 'crowdfunding',
+  oauth: { accessToken: 'replacement-token', scopes: ['read_account', 'read_donations'] },
+  sharedAgentConsent: true,
+  existing: {
+    external_total: 250,
+    external_currency: 'USD',
+    external_data_source: 'provider_verified',
+    history: [],
+  },
+  now: '2026-09-28T00:00:00.000Z',
+});
+assert.equal(reauthorizedCrowdfundingState.status, 'disconnected');
+assert.equal(reauthorizedCrowdfundingState.verification_status, 'unverified');
+assert.equal(reauthorizedCrowdfundingState.external_data_source, 'owner_reported',
+  'reauthorization must invalidate the checked/provider-verified badge until a fresh provider call succeeds');
+
 assert.deepEqual(connectorAuthorizationStatus({ accessToken: 'token-only' }), {
   authorization_present: true,
   connected: false,

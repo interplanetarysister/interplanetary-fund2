@@ -1,6 +1,7 @@
 {
   "name": "External Feed Mirroring",
-  "description": "Hourly safety check for external feed mirroring. Mirroring remains disabled until per-owner provider binding and scheduled authorization are verified; it never fans shared connector data across users.",
+  "description": "Disabled safety definition for external feed mirroring. Do not activate until per-owner provider binding, scheduled authorization, and execution cost are verified.",
+  "is_active": false,
   "trigger": {
     "condition": null,
     "config": {

@@ -6,9 +6,12 @@ import {
 } from '../base44/shared/externalMirroringPolicy.js';
 
 const entry = fs.readFileSync('base44/functions/mirrorExternalPosts/entry.ts', 'utf8');
+const workflow = JSON.parse(fs.readFileSync('base44/workflows/External Feed Mirroring.jsonc', 'utf8'));
 assert.match(entry, /runExternalMirroring\(\)/);
 assert.doesNotMatch(entry, /connectors\.getConnection/);
 assert.doesNotMatch(entry, /entities\.SocialPost\.create/);
+assert.equal(workflow.is_active, false, 'unproven scheduled mirroring must not consume execution credits');
+assert.equal(workflow.trigger?.config?.trigger_type, 'scheduled', 'keep the disabled definition reviewable and reversible');
 
 const owners = [
   {

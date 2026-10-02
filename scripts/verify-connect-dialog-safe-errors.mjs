@@ -11,6 +11,7 @@ const readSourceTree = (directory) => fs.readdirSync(directory, { withFileTypes:
   return /\.(?:js|jsx|ts|tsx)$/.test(entry.name) ? [fs.readFileSync(absolute, "utf8")] : [];
 }).join("\n");
 const source = read("src/components/connections/ConnectDialog.jsx");
+const connectionsPage = read("src/pages/Connections.jsx");
 const save = read("base44/functions/saveConnectionCredentials/entry.ts");
 const entity = read("base44/entities/PlatformConnection.jsonc");
 const card = read("src/components/connections/ConnectionCard.jsx");
@@ -67,6 +68,12 @@ assert.doesNotMatch(save, /status: 'connected'/);
 assert.match(save, /effectiveAutomationMode !== 'manual'/);
 assert.match(save, /hasAiPublishingConsent\(consentOwner\)/);
 assert.doesNotMatch(save, /existing\?\.external_currency \|\| 'USD'/);
+assert.match(save, /hasOwnProperty\.call\(body, 'external_total'\)/);
+assert.match(save, /existing\?\.external_total \?\? 0/);
+assert.match(save, /hasOwnProperty\.call\(body, 'external_donor_count'\)/);
+assert.doesNotMatch(save, /Number\(external_total \?\? 0\)/);
+assert.doesNotMatch(connectionsPage, /currency:\s*["']USD["'][\s\S]{0,80}total_discovered/);
+assert.match(connectionsPage, /Array\.isArray\(syncResult\?\.discovered_totals\)/);
 
 assert.match(entity, /"status":\s*\{[\s\S]*?"default":\s*"disconnected"/);
 assert.match(entity, /"verification_status"/);

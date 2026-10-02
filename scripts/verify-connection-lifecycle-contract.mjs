@@ -6,6 +6,7 @@ import {
   verifyDirectConnection,
 } from '../base44/shared/manualConnectionVerificationPolicy.js';
 import { hasFreshProviderVerification } from '../base44/shared/providerVerificationPolicy.js';
+import { deriveConnectionLifecycle, scopedOboGrants } from '../base44/shared/connectionLifecyclePolicy.js';
 
 const verify = fs.readFileSync('base44/functions/verifyPlatformConnection/entry.ts', 'utf8');
 const provider = fs.readFileSync('base44/shared/connectionVerification.ts', 'utf8');
@@ -19,6 +20,7 @@ const health = fs.readFileSync('src/lib/connectionHealth.js', 'utf8');
 const disconnect = fs.readFileSync('base44/functions/disconnectPlatformConnection/entry.ts', 'utf8');
 const card = fs.readFileSync('src/components/connections/ConnectionCard.jsx', 'utf8');
 const resolver = fs.readFileSync('base44/functions/resolveConnectionStatus/entry.ts', 'utf8');
+const lifecyclePolicy = fs.readFileSync('base44/shared/connectionLifecyclePolicy.js', 'utf8');
 const recipe = fs.readFileSync('base44/entities/PlatformConnectionRecipe.jsonc', 'utf8');
 
 assert.match(verify, /getCurrentAppUserConnection/);
@@ -99,17 +101,47 @@ assert.doesNotMatch(card, /console\.error\("Connection check failed", e\)/);
 assert.match(card, /verifyPlatformConnection/);
 assert.match(card, /\/>Check/);
 
-assert.match(resolver, /TRANSPORT_PRIORITY/);
 assert.match(resolver, /orderedTransports/);
-assert.match(resolver, /deriveLifecycle/);
+assert.match(resolver, /deriveConnectionLifecycle/);
 assert.match(resolver, /recoveryHint/);
-for (const state of ['NOT_CONNECTED','AUTHORIZATION_REQUIRED','CONNECTED','RECONNECT_REQUIRED','DEGRADED','CONNECTING']) {
-  assert.match(resolver, new RegExp(state));
+for (const state of ['NOT_CONNECTED','AUTHORIZATION_REQUIRED','CONNECTED','RECONNECT_REQUIRED','DEGRADED','CONNECTING','DISCONNECTED','BLOCKED']) {
+  assert.match(resolver + lifecyclePolicy, new RegExp(state));
 }
 for (const transport of ['oauth','api','webhook','token','authenticated_browser','public_browser','manual']) {
   assert.match(resolver + recipe, new RegExp(transport));
 }
 assert.match(resolver, /provider-verified provenance/);
 assert.match(resolver, /Configuration, recipes, saved credentials, or public URLs are NOT sufficient/);
+
+const oauthRecipe = { preferred_transport: 'oauth' };
+const browserRecipe = { preferred_transport: 'public_browser' };
+assert.equal(deriveConnectionLifecycle({
+  connection: { status: 'connected', verification_status: 'unverified', last_synced: new Date(verifiedAt).toISOString() },
+  oauth: { configured: true, transport_ok: true }, recipe: oauthRecipe, now: verifiedAt,
+}), 'CONNECTING', 'an OAuth token without provider proof must not be connected');
+assert.equal(deriveConnectionLifecycle({
+  connection: { ...ready, last_synced: new Date(verifiedAt - 8 * 86400_000).toISOString() },
+  oauth: { configured: true, transport_ok: true }, recipe: oauthRecipe, now: verifiedAt,
+}), 'CONNECTING', 'stale provider proof must not be connected');
+assert.equal(deriveConnectionLifecycle({
+  connection: { ...ready, external_url: 'https://example.test/campaign', obo_consent: { granted: true } },
+  recipe: browserRecipe, browserRunEnabled: false, now: verifiedAt,
+}), 'BLOCKED', 'a disabled browser runner must remain blocked even with URL, consent, and old verification');
+assert.equal(deriveConnectionLifecycle({
+  connection: ready, oauth: { configured: true, transport_ok: true }, recipe: oauthRecipe, now: verifiedAt,
+}), 'CONNECTED');
+
+const consentedConnection = {
+  obo_consent: { granted: true, granted_capabilities: ['read_analytics'] },
+  agent_access: { shared_with_agents: true },
+};
+assert.equal(scopedOboGrants(consentedConnection, [
+  { status: 'active', agent_name: 'unrelated-agent', scope: 'publish_draft' },
+], verifiedAt).length, 0, 'an unrelated active grant must not authorize this connection capability');
+assert.equal(scopedOboGrants(consentedConnection, [
+  { status: 'active', agent_name: 'analytics-agent', scope: 'read_analytics' },
+], verifiedAt).length, 1);
+assert.match(resolver, /BROWSER_RUN_POLICY\.enabled/);
+assert.match(resolver, /scopedOboGrants/);
 
 console.log('Connection lifecycle, canonical resolver, and recovery contract verified.');

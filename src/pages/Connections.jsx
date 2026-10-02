@@ -102,7 +102,10 @@ export default function Connections() {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
             platform: pending.platform, shared_agent_consent: pending.sharedAgentConsent === true,
           });
-          if (data?.connected) {
+          if (data?.authorization_present && data?.verification_required) {
+            localStorage.removeItem("ifund_pending_platform_connection");
+            setConnectionNotice({ ok: false, text: `${pending.platform} authorization was saved. A live provider check is still required before it can be shown as connected.` });
+          } else if (data?.connected) {
             localStorage.removeItem("ifund_pending_platform_connection");
             setConnectionNotice({ ok: true, text: `${pending.platform} is connected.` });
           } else {
@@ -147,10 +150,11 @@ export default function Connections() {
   const verifiedConnections = connections.filter(isWorking);
   const attentionConnections = connections.filter((connection) => !isWorking(connection));
   const workingCount = verifiedConnections.length;
-  const discoveredTotals = syncResult?.discovered_totals ||
-    (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
+  const discoveredTotals = Array.isArray(syncResult?.discovered_totals)
+    ? syncResult.discovered_totals.filter(({ currency, amount }) => /^[A-Z]{3}$/.test(String(currency || "")) && Number.isFinite(Number(amount)))
+    : [];
   const discoveredSummary = discoveredTotals
-    .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
+    .map(({ currency, amount }) => `${currency} ${Number(amount).toLocaleString()}`)
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
     (p.id === "custom" || !savedIds.includes(p.id)) &&

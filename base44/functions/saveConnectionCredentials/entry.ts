@@ -25,15 +25,6 @@ export default async function(req) {
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
-    const reportedTotal = Number(external_total ?? 0);
-    const reportedDonors = Number(external_donor_count ?? 0);
-    if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
-      return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
-    }
-    if (!Number.isInteger(reportedDonors) || reportedDonors < 0) {
-      return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
-    }
-
     let existing = null;
     if (connection_id) {
       const ownerVisible = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
@@ -46,6 +37,19 @@ export default async function(req) {
       // edits preserve existing secrets instead of deleting them.
       existing = await sr.entities.PlatformConnection.get(connection_id).catch(() => null);
       if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
+    }
+
+    const reportedTotal = Number(Object.prototype.hasOwnProperty.call(body, 'external_total')
+      ? external_total
+      : existing?.external_total ?? 0);
+    const reportedDonors = Number(Object.prototype.hasOwnProperty.call(body, 'external_donor_count')
+      ? external_donor_count
+      : existing?.external_donor_count ?? 0);
+    if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
+      return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
+    }
+    if (!Number.isInteger(reportedDonors) || reportedDonors < 0) {
+      return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
     }
 
     const effectiveKind = kind || existing?.kind || 'crowdfunding';

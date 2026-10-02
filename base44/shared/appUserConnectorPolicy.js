@@ -108,7 +108,10 @@ export function buildOAuthAuthorizationState({
     status: 'disconnected',
     verification_status: 'unverified',
     capability_status: confirmed.length ? 'confirmed' : 'unknown',
-    external_data_source: existing?.external_data_source || 'owner_reported',
+    // Reauthorization invalidates the provenance of any prior provider check.
+    // Existing values remain historical owner-reported context until a fresh
+    // provider call verifies them again.
+    external_data_source: 'owner_reported',
     last_error: 'Provider authorization saved; live verification is still required.',
     history: [...history, {
       at: now,
