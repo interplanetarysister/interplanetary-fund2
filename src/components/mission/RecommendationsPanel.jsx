@@ -20,7 +20,8 @@ export default function RecommendationsPanel({ refreshKey }) {
 
   const setStatus = async (rec, status) => {
     setRecs((prev) => prev.map((r) => (r.id === rec.id ? { ...r, status } : r)));
-    await base44.entities.Recommendation.update(rec.id, { status });
+    const { data } = await base44.functions.invoke("updateMissionItemStatus", { kind: "recommendation", id: rec.id, status });
+    if (data?.ok !== true) throw new Error("Mission item update rejected");
   };
 
   const open = recs.filter((r) => r.status === "open");

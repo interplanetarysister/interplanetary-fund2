@@ -21,9 +21,9 @@ let ppPromise = null;
 export function loadPayPalSdk(clientId) {
   if (ppPromise) return ppPromise;
   ppPromise = new Promise((resolve, reject) => {
-    if (window.paypal?.createInstance) return resolve();
+    if (window.paypal?.createInstance && window.paypal?.Buttons) return resolve();
     const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=googlepay-payments&intent=capture&currency=USD`;
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay-payments&intent=capture&currency=USD`;
     s.async = true;
     s.onload = () => resolve();
     s.onerror = () => { ppPromise = null; reject(new Error("Failed to load PayPal SDK")); };

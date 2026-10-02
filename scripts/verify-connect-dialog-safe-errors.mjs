@@ -151,12 +151,12 @@ assert.match(externalAccounts, /bluesky_app_password_set/);
 assert.match(accountDetail, /UNSPECIFIED/);
 assert.doesNotMatch(actionQueue, /last_error:\s*""/);
 assert.doesNotMatch(actionQueue, /status:\s*"disconnected"/);
-assert.match(runtimeGate, /const SUPPORTED = \[20, 22, 24\];/);
-assert.match(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*24/);
+assert.match(runtimeGate, /const SUPPORTED = \[20, 22\];/);
+assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*24/);
 
 assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
-assert.match(adminSources, /provider verification is still required/i);
+assert.match(adminSources, /Provider state changes only after a provider-backed webhook, API operation, or synchronization workflow succeeds\./i);
 
 const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e)');
 const safeMessageIndex = source.indexOf('setError("Couldn\'t save this connection. Please try again. If the problem continues, contact support.")');

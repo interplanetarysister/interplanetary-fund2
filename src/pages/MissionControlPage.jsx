@@ -33,7 +33,8 @@ export default function MissionControlPage() {
       setBrief(data.brief);
       setRefreshKey((k) => k + 1);
     } catch (e) {
-      setError(e.response?.data?.error || "Analysis failed. Please try again.");
+      console.error("Mission Control analysis failed:", e?.name || "UnknownError");
+      setError("Analysis failed. Please try again.");
     }
     setAnalyzing(false);
   };

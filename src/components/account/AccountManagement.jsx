@@ -29,7 +29,8 @@ export default function AccountManagement({ user, onUserChanged }) {
       onUserChanged?.({ ...user, comm_prefs: next });
       toast({ title: "Notification preference saved" });
     } catch (e) {
-      toast({ title: "Couldn't save preference", description: e.message, variant: "destructive" });
+      console.error("Account preference update failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't save preference", description: "Your preference could not be saved. Please try again.", variant: "destructive" });
       setPrefs(prefs);
     }
     setSavingPrefs(false);
@@ -62,7 +63,8 @@ export default function AccountManagement({ user, onUserChanged }) {
       URL.revokeObjectURL(url);
       toast({ title: "Your data has been downloaded" });
     } catch (e) {
-      toast({ title: "Couldn't export data", description: e.message, variant: "destructive" });
+      console.error("Account export failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't export data", description: "Your data export could not be completed. Please try again.", variant: "destructive" });
     }
     setExporting(false);
   };
@@ -71,11 +73,12 @@ export default function AccountManagement({ user, onUserChanged }) {
     setDeleting(true);
     try {
       const res = await base44.functions.invoke("deleteAccount", {});
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Server operation rejected");
       toast({ title: "Account deleted" });
       await base44.auth.logout("/login");
     } catch (e) {
-      toast({ title: "Couldn't delete account", description: e.message, variant: "destructive" });
+      console.error("Account deletion failed:", e?.name || "UnknownError");
+      toast({ title: "Couldn't delete account", description: "Account deletion could not be confirmed. Your account remains active unless the app confirms deletion.", variant: "destructive" });
       setDeleting(false);
       setDeleteOpen(false);
       setConfirmText("");

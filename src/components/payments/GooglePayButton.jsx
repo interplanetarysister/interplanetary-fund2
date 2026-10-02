@@ -11,6 +11,7 @@ import { computeChargeTotal } from "../../../base44/shared/fees.js";
 // options already shown above it.
 export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid }) {
   const containerRef = useRef(null);
+  const intentRef = useRef(crypto.randomUUID());
   const [state, setState] = useState("loading");
   const [error, setError] = useState("");
 
@@ -83,8 +84,10 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                 campaign_id: campaign.id,
                 amount: value,
                 platform_contribution: !!p.platformContribution,
+                intent_id: intentRef.current,
+              payment_channel: "googlepay",
               });
-              if (order?.error) return { transactionState: "ERROR", error: { message: order.error } };
+              if (!order?.id || typeof order.id !== "string") return { transactionState: "ERROR", error: { message: "Unable to start payment." } };
 
               const { status } = await session.confirmOrder({
                 orderId: order.id,
@@ -99,12 +102,12 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   message: p.message,
                   is_recurring: !!p.recurring,
                 });
-                if (cap?.error) return { transactionState: "ERROR", error: { message: cap.error } };
+                if (cap?.ok !== true || typeof cap?.canonical_operation_id !== "string") return { transactionState: "ERROR", error: { message: "Payment could not be confirmed safely." } };
                 if (!cancelled) p.onPaid?.(cap);
               }
               return { transactionState: "SUCCESS" };
             } catch (err) {
-              return { transactionState: "ERROR", error: { message: err.message || "Payment failed" } };
+              return { transactionState: "ERROR", error: { message: "Payment failed. Please try again." } };
             }
           },
         },

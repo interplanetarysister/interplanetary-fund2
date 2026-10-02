@@ -1,6 +1,9 @@
 name: Production Quality Gates
 
+# Batch verification marker: 2026-09-30 repair batch
+
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -18,8 +21,9 @@ concurrency:
 
 jobs:
   quality:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
     name: Node 20 Base44 compatibility build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -64,6 +68,28 @@ jobs:
       - name: Edit AI profile safe-error contract
         run: npm run verify:edit-ai-profile-safe-errors
 
+      - name: Reject literal escaped newlines in JSX
+        run: |
+          if grep -RFn '\\n' src --include='*.jsx' --include='*.tsx'; then
+            echo "Literal escaped newline found in JSX/TSX source."
+            exit 1
+          fi
+
+      - name: Client error-disclosure contract
+        run: node scripts/verify-client-error-disclosure.mjs
+
+      - name: Server-authoritative sensitive mutation contract
+        run: node scripts/verify-server-authoritative-mutations.mjs
+
+      - name: Production custom-domain contract
+        run: node scripts/verify-production-domain-contract.mjs
+
+      - name: Donor-entered total payment contract
+        run: node scripts/verify-donor-total-contract.mjs
+
+      - name: Fraud-control financial authority contract
+        run: node scripts/verify-fraud-control-financial-boundary.mjs
+
       - name: Connection authorization and data-truth contract
         run: node scripts/verify-connect-dialog-safe-errors.mjs
 
@@ -82,11 +108,29 @@ jobs:
       - name: Connection catalog consistency contract
         run: node scripts/verify-connection-catalog-contract.mjs
 
+      - name: Wix webhook ingestion contract
+        run: node scripts/verify-wix-webhook-contract.mjs
+
+      - name: Wix campaign synchronization contract
+        run: node scripts/verify-wix-campaign-sync-contract.mjs
+
+      - name: Wix data synchronization contracts
+        run: node scripts/verify-wix-data-sync-contract.mjs
+
+      - name: Wix Mission Control and replaceability contract
+        run: node scripts/verify-wix-mission-control-contract.mjs
+
+      - name: Wix shared web/mobile parity contract
+        run: node scripts/verify-wix-parity-contract.mjs
+
       - name: Builder agent authorization boundary
         run: npm run verify:builder-agent-boundary
 
       - name: Host portability and shared data-plane contract
         run: npm run verify:host-portability
+
+      - name: Cloudflare SPA and compute runtime contract
+        run: node scripts/verify-cloudflare-runtime-contract.mjs
 
       - name: Canonical admin authorization contract
         run: npm run verify:admin-authorization
@@ -96,6 +140,18 @@ jobs:
 
       - name: Payment and financial-integrity contracts
         run: npm run test:payments
+
+      - name: PayPal campaign checkout contract
+        run: node scripts/verify-paypal-checkout-contract.mjs
+
+      - name: External fund migration authority contract
+        run: node scripts/verify-external-fund-migration-contract.mjs
+
+      - name: Google Pay provider response contract
+        run: node scripts/verify-google-pay-contract.mjs
+
+      - name: My Giving response safety contract
+        run: node scripts/verify-my-giving-contract.mjs
 
       - name: Production build
         run: npm run build
@@ -119,8 +175,9 @@ jobs:
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
 
   node22-compatibility:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
     name: Node 22 compatibility build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -132,8 +189,9 @@ jobs:
       - run: npm run build
 
   typecheck:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
     name: Typecheck on Base44 baseline
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout

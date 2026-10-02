@@ -13,6 +13,7 @@ const STATIC_RECIPES: Record<string, Record<string, { preferred_transport: strin
   discord: { connect: { preferred_transport: 'oauth', connector_type: 'discord' } },
   tiktok: { connect: { preferred_transport: 'oauth', connector_type: 'tiktok' } },
   patreon: { connect: { preferred_transport: 'oauth', connector_type: 'patreon' } },
+  eventbrite: { connect: { preferred_transport: 'oauth', connector_type: 'eventbrite' } },
   kofi: { connect: { preferred_transport: 'webhook', worker_key: 'kofiWebhook' } },
   buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },
   bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },

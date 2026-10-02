@@ -43,7 +43,7 @@ export default function FundMigrationDashboard() {
       const c = await base44.entities.Campaign.list("-raised_amount", 100);
       setCampaigns(c || []);
     } catch (e) {
-      setReconcileResult({ error: e?.message || "Reconciliation failed." });
+      setReconcileResult({ error: "Reconciliation failed. Please try again." });
     }
     setReconciling(false);
   };
@@ -65,7 +65,7 @@ export default function FundMigrationDashboard() {
         setCampaigns(c || []);
         setPending(w || []);
       } catch (e) {
-        setError(e?.message || "Unable to load migration data.");
+        setError("Unable to load migration data.");
       } finally {
         setLoadingCampaigns(false);
       }
@@ -110,39 +110,27 @@ export default function FundMigrationDashboard() {
       );
       if (!valid.length) { setError("Fill in at least one migration entry."); setSubmitting(false); return; }
 
-      // Record each migration as a Withdrawal entity in Base44
+      // Record each migration through the authenticated server boundary. A migration
+      // remains under review until independently reconciled; the UI never marks a
+      // provider payout paid merely because an admin entered an amount.
       const created = [];
       for (const m of valid) {
-        const gross = parseFloat(m.grossAmount);
-        // Approved 3% platform fee. Processing is covered by Interplanetary Fund
-        // (not deducted). This is an admin-attested external amount — not a
-        // client-authoritative total — recorded as an already-completed migration.
-        const platformFee = gross * 0.03;
-        const net = gross - platformFee;
-        if (net <= 0) throw new Error("Gross amount must be large enough to cover the 3% fee.");
-
-        const camp = campaigns.find((c) => c.id === m.campaignId);
-        const ownerUserId = camp?.created_by_id;
-        if (!ownerUserId) throw new Error("Selected campaign was not found (or is missing an owner).");
-
-        const w = await base44.entities.Withdrawal.create({
+        const requestId = crypto.randomUUID();
+        const { data } = await base44.functions.invoke("recordExternalFundMigration", {
           campaign_id: m.campaignId,
-          campaign_title: m.campaignTitle || camp?.title,
-          owner_user_id: ownerUserId,
-          gross_amount: Math.round(gross * 100) / 100,
-          platform_fee: Math.round(platformFee * 100) / 100,
-          net_amount: Math.round(net * 100) / 100,
-          paypal_email: payoutMethod === "paypal" ? payoutDest : "",
-          status: "paid",
-          review_note: `Fund migration from ${m.sourcePlatform} (admin-attested) via ${payoutMethod}.`,
-          processed_at: new Date().toISOString(),
+          source_platform: m.sourcePlatform,
+          gross_amount: Number(m.grossAmount),
+          payout_method: payoutMethod,
+          payout_destination: payoutDest,
+          request_id: requestId,
         });
-        created.push(w);
+        if (data?.ok !== true) throw new Error("Migration could not be recorded safely.");
+        created.push(data);
       }
       setResult({ created: created.length, totalGross, totalNet });
       setStep("result");
     } catch (e) {
-      setError(e?.message || "Migration failed. Please try again.");
+      setError("Migration failed. Please try again.");
     }
     setSubmitting(false);
   };
@@ -151,9 +139,9 @@ export default function FundMigrationDashboard() {
     return (
       <div className="text-center py-8">
         <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-        <p className="font-display text-lg text-slate-100 mb-1">Migration recorded</p>
+        <p className="font-display text-lg text-slate-100 mb-1">Migration queued for reconciliation</p>
         <p className="text-sm text-slate-400">
-          {result.created} withdrawal{result.created !== 1 ? "s" : ""} created ·{" "}
+          {result.created} migration record{result.created !== 1 ? "s" : ""} created ·{" "}
           {fmt(result.totalGross)} gross → {fmt(result.totalNet)} net after fees
         </p>
         <Button
@@ -191,7 +179,7 @@ export default function FundMigrationDashboard() {
         <div className="flex gap-2">
           <Button variant="ghost" className="flex-1 text-slate-400" onClick={() => setStep("payout")} disabled={submitting}>Back</Button>
           <Button className="flex-1 bg-cyan-400/20 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/30" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm & Record"}
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Queue for reconciliation"}
           </Button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 const source = readFileSync('base44/functions/stripeWebhook/entry.ts', 'utf8');
 const checks = [
   ['validates Stripe signature', source.includes("return Response.json({ error: 'Invalid signature' }, { status: 400 });")],
+  ['rejects Stripe test-mode events from production financial state', /event\.livemode !== true/.test(source)],
   ['uses signed event id for recovery identity', /eventKey\s*=\s*`stripe:\$\{event\.id\}`/.test(source)],
   ['retains explicit financial_applied recovery state', source.includes("state: 'financial_applied'")],
   ['marks side effects complete only after reconciliation', source.includes("state: 'side_effects_complete'")],

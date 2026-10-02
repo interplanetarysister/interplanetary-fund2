@@ -31,11 +31,12 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
         paypal_email: email,
         paypal_email_confirm: confirm,
       });
-      if (res.data?.error) throw new Error(res.data.error);
+      if (res.data?.error) throw new Error("Server operation rejected");
       setResult(res.data);
       onDone?.();
     } catch (e) {
-      setError(e.message || "Something went wrong. Please try again.");
+      console.error("Withdrawal request failed:", e?.name || "UnknownError");
+      setError("We couldn't complete the withdrawal request safely. Please try again.");
     } finally {
       setSubmitting(false);
     }

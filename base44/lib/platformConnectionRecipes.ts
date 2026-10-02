@@ -19,6 +19,9 @@ export const STATIC_CONNECTION_RECIPES = {
   instagram: { connect: { preferred_transport: 'oauth', connector_type: 'instagram' } },
   discord: { connect: { preferred_transport: 'oauth', connector_type: 'discord' } },
   tiktok: { connect: { preferred_transport: 'oauth', connector_type: 'tiktok' } },
+  eventbrite: {
+    connect: { preferred_transport: 'oauth', connector_type: 'eventbrite' },
+  },
   patreon: { connect: { preferred_transport: 'oauth', connector_type: 'patreon' } },
   kofi: { connect: { preferred_transport: 'webhook', worker_key: 'kofiWebhook' } },
   buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },

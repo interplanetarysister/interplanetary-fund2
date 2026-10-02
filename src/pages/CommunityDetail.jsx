@@ -48,7 +48,7 @@ export default function CommunityDetail() {
     setBusy(true);
     const { data } = await base44.functions.invoke("communityMembership", { action: "join", community_id: id });
     if (!data?.error) await load();
-    else alert(data.error);
+    else alert("The community action could not be completed. Please try again.");
     setBusy(false);
   };
 

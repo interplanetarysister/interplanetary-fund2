@@ -25,7 +25,7 @@ export default function Institutions() {
   useEffect(() => {
     base44.entities.Institution.list("-created_date", 100)
       .then(setInstitutions)
-      .catch((e) => setError(e.message || "We couldn't load institutions."));
+      .catch((e) => { console.error("Institutions load failed:", e?.name || "UnknownError"); setError("We couldn't load institutions. Please try again."); });
   }, []);
 
   if (error) {

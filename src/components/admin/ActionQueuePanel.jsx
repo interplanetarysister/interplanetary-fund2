@@ -10,15 +10,9 @@ export default function ActionQueuePanel({ connections, campaigns, onResolved })
 
   const resolve = async (c) => {
     setBusyId(c.id);
-    const now = new Date().toISOString();
     try {
-      await base44.entities.PlatformConnection.update(c.id, {
-        history: [...(c.history || []), {
-          at: now,
-          event: "admin_acknowledged",
-          detail: `Admin acknowledged: ${c.last_error || "provider verification is still required"}`,
-        }].slice(-30),
-      });
+      const { data } = await base44.functions.invoke("acknowledgeConnectionIssue", { connection_id: c.id });
+      if (data?.ok !== true) throw new Error("Connection acknowledgement rejected");
       onResolved?.();
     } finally { setBusyId(null); }
   };

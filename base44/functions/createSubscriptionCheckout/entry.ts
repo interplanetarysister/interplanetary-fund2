@@ -37,8 +37,14 @@ export default async function(req) {
     } catch (_) {
       return Response.json({ error: 'Missing subscription details' }, { status: 400 });
     }
-    if (originUrl.protocol !== 'https:' && originUrl.protocol !== 'http:') {
-      return Response.json({ error: 'Missing subscription details' }, { status: 400 });
+    const allowedOrigins = new Set([
+      'https://interplanetaryfund.com',
+      'https://www.interplanetaryfund.com',
+      'https://interplanetaryfund.base44.app',
+      'https://interplanetary-fund2.interplanetary-fund.workers.dev',
+    ]);
+    if (originUrl.protocol !== 'https:' || !allowedOrigins.has(originUrl.origin)) {
+      return Response.json({ error: 'Invalid subscription origin' }, { status: 400 });
     }
     if (trial_days != null && (Number(trial_days) <= 0 || Number(trial_days) > 365)) {
       return Response.json({ error: 'Invalid subscription details' }, { status: 400 });

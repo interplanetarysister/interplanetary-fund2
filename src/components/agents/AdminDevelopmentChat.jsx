@@ -31,7 +31,7 @@ export default function AdminDevelopmentChat({ user }) {
       const result = await createAdminAgentSession({ adminKey: key, agent: "chief_of_staff" });
       setSessionId(result.sessionId);
       setKey("");
-    } catch (e) { setError(e.message); } finally { setBusy(false); }
+    } catch (e) { console.error("Admin development session failed:", e?.name || "UnknownError"); setError("Admin development session could not be started."); } finally { setBusy(false); }
   };
 
   const send = async () => {
@@ -42,7 +42,7 @@ export default function AdminDevelopmentChat({ user }) {
     try {
       const result = await sendAdminAgentMessage({ sessionId, content, agent });
       setMessages(m => [...m, { role: "assistant", content: result.response || "Request recorded." }]);
-    } catch (e) { setError(e.message); setInput(content); } finally { setBusy(false); }
+    } catch (e) { console.error("Admin development message failed:", e?.name || "UnknownError"); setError("The development-agent request could not be completed safely."); setInput(content); } finally { setBusy(false); }
   };
 
   if (!sessionId) return <div className="rounded-2xl border border-border bg-card p-4 space-y-3">

@@ -17,9 +17,12 @@ export default function MyGiving() {
       // getMyGiving returns verified donations server-side; manual PayPal/Cash
       // App reports remain pending until separately verified.
       const { data } = await base44.functions.invoke("getMyGiving", {});
-      setDonations(data?.donations || []);
-    } catch (e) {
-      setError(e.message || "We couldn't load your giving history.");
+      if (!data || !Array.isArray(data.donations) || data.donations.some((row) => !row || typeof row !== "object" || !Number.isFinite(Number(row.amount)))) {
+        throw new Error("Malformed giving response");
+      }
+      setDonations(data.donations);
+    } catch (_) {
+      setError("We couldn't load your giving history. Please try again.");
     }
   }, []);
 

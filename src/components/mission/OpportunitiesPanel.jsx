@@ -37,14 +37,16 @@ export default function OpportunitiesPanel() {
       await base44.functions.invoke("generateIntelligence", { mode: "opportunities" });
       await load();
     } catch (e) {
-      setError(e.response?.data?.error || "Discovery failed. Please try again.");
+      console.error("Opportunity discovery failed:", e?.name || "UnknownError");
+      setError("Discovery failed. Please try again.");
     }
     setDiscovering(false);
   };
 
   const setStatus = async (opp, status) => {
     setOpps((prev) => status === "dismissed" ? prev.filter((o) => o.id !== opp.id) : prev.map((o) => (o.id === opp.id ? { ...o, status } : o)));
-    await base44.entities.Opportunity.update(opp.id, { status });
+    const { data } = await base44.functions.invoke("updateMissionItemStatus", { kind: "opportunity", id: opp.id, status });
+    if (data?.ok !== true) throw new Error("Mission item update rejected");
   };
 
   return (

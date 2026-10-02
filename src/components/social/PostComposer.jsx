@@ -2,7 +2,6 @@ import React, { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { getTierFromScore } from "@/components/social/ProfileBanner";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
 
@@ -65,25 +64,15 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
     if (!content.trim()) return;
     setLoading(true);
     try {
-      const newScore = (user.social_score || 0) + 10;
-      const newTier = getTierFromScore(newScore);
       const campaign = campaigns?.find((c) => c.id === selectedCampaign);
-
-      const post = await base44.entities.SocialPost.create({
-        author_user_id: user.id,
-        author_username: user.username || user.full_name,
-        author_name: user.full_name,
-        author_banner_tier: newTier,
-        content: content.trim(),
-        media_url: mediaUrl || undefined,
-        campaign_id: campaign?.id || undefined,
-        campaign_title: campaign?.title,
-        is_top_post: newTier === "gold" || newTier === "platinum",
-        crosspost_platforms: crossPost,
-        ai_generated: aiGenerated,
+      const { data } = await base44.functions.invoke("createSocialPost", {
+        content: content.trim(), media_url: mediaUrl || undefined, campaign_id: campaign?.id,
+        crosspost_platforms: crossPost, ai_generated: aiGenerated,
       });
-
-      await base44.auth.updateMe({ social_score: newScore, banner_tier: newTier });
+      if (data?.ok !== true || !data?.post) throw new Error("Social post creation rejected");
+      const post = data.post;
+      const newScore = data.social_score;
+      const newTier = data.banner_tier;
 
       // Cross-post to linked external platforms where a campaign is linked.
       if (campaign && crossPost.length > 0) {
@@ -91,14 +80,9 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
           const conn = connections?.find((c) => c.platform === platform && isUsableConnection(c));
           if (!conn) continue;
           try {
-            const dp = await base44.entities.DistributedPost.create({
-              campaign_id: campaign.id,
-              campaign_title: campaign.title,
-              connection_id: conn.id,
-              platform,
-              content: content.trim(),
-              status: "pending_approval",
-            });
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: content.trim() });
+            if (distributed?.ok !== true || !distributed?.post?.id) continue;
+            const dp = distributed.post;
             await base44.functions.invoke("publishPost", { post_id: dp.id });
           } catch {
             // Cross-post failure doesn't block the native post.

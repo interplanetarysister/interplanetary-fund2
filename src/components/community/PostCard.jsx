@@ -41,7 +41,7 @@ export default function PostCard({ post, isMember }) {
       setReplyCount((c) => c + 1);
       setReplyText("");
     } else if (data?.error) {
-      alert(data.error);
+      alert("The reply could not be posted. Please try again.");
     }
     setSending(false);
   };

@@ -24,6 +24,6 @@ assert.match(finalize, /capability_status: confirmed\.length \? 'confirmed' : 'u
 assert.doesNotMatch(finalize, /granted_capabilities:\s*cfg\.requestedCapabilities/);
 assert.match(card, /disconnectPlatformConnection/);
 assert.doesNotMatch(card, /PlatformConnection\.delete/);
-assert.match(runtime, /const SUPPORTED = \[20, 22, 24\];/);
+assert.match(runtime, /const SUPPORTED = \[20, 22\];/);
 assert.doesNotMatch(runtime, /SUPPORTED\s*=\s*\[22\]/);
 console.log('Pc Job connection contract passed.');

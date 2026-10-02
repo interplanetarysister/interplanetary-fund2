@@ -14,7 +14,7 @@ export default function MediaUpload({
   onChange,
   label = "Upload media",
   accept = "image/*,video/*",
-  previewClassName = "w-full h-44 rounded-xl object-cover",
+  previewClassName = "w-full max-h-[32rem] rounded-xl object-contain bg-slate-950",
 }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -129,7 +129,7 @@ export default function MediaUpload({
             )}
           </div>
           <p className="mt-2 text-[11px] text-slate-300">
-            IFund keeps your photo's subject and identity, then applies the Interplanetary Fund signature treatment.
+            IFund identity preservation means the same person's face and distinguishing features must remain recognizable—not a similar-looking replacement. The style is applied around the original identity.
           </p>
         </div>
       )}
@@ -148,7 +148,7 @@ export default function MediaUpload({
         variant="outline"
         onClick={() => inputRef.current?.click()}
         disabled={uploading || rendering}
-        className="rounded-xl"
+        className="rounded-xl border-2 border-cyan-500 bg-white text-slate-950 font-semibold shadow-sm hover:bg-cyan-50 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-cyan-400"
       >
         {uploading ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

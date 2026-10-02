@@ -24,7 +24,9 @@ export default function FeatureFlagsPanel() {
 
   const create = async () => {
     setSaving(true);
-    const flag = await base44.entities.FeatureFlag.create({ ...form, enabled: false });
+    const { data } = await base44.functions.invoke("manageFeatureFlag", form);
+    const flag = data?.flag;
+    if (!flag) { setSaving(false); return; }
     await logPlatformEvent({
       action: "Feature flag created",
       category: "configuration",
@@ -39,7 +41,8 @@ export default function FeatureFlagsPanel() {
 
   const toggle = async (flag, enabled) => {
     setFlags((prev) => prev.map((f) => (f.id === flag.id ? { ...f, enabled } : f)));
-    await base44.entities.FeatureFlag.update(flag.id, { enabled });
+    const { data } = await base44.functions.invoke("manageFeatureFlag", { id: flag.id, enabled });
+    if (!data?.flag) setFlags((prev) => prev.map((f) => (f.id === flag.id ? flag : f)));
     await logPlatformEvent({
       action: `Feature flag ${enabled ? "enabled" : "disabled"}`,
       category: "configuration",

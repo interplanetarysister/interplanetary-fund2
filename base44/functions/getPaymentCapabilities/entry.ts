@@ -19,6 +19,7 @@ export default async function (_req) {
     },
     stripe: {
       configured: Boolean(stripeSecret),
+      live: Boolean(stripeSecret && String(stripeSecret).startsWith('sk_live_')),
     },
   });
 }

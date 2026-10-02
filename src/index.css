@@ -130,7 +130,7 @@
     overflow-y: auto;
     height: auto;
     min-height: 100%;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -138,7 +138,7 @@
     min-height: 100vh;
     min-height: 100dvh;
     overflow: visible;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
   }
 
   body {
@@ -279,14 +279,14 @@
     overflow-x: hidden;
     overscroll-behavior-x: none;
     overscroll-behavior-y: none;
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
   }
 
   /* A single vertical finger is the canonical page gesture on web and the
      installed app. Nested scroll surfaces may scroll vertically too, but no
      page-level rule may require a second finger or horizontal pan. */
   main, main > div, [data-page-scroll] {
-    touch-action: pan-y pinch-zoom;
+    touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
   }
 
