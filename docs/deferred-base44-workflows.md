@@ -72,3 +72,32 @@ safety is unavailable.
 ---
 
 *Last updated: see git log for this file.*
+
+## Loading and prebuild diagnostics
+
+The GitHub workflow path `dynamic/codespaces/create_codespaces_prebuilds`
+identifies a Codespaces environment prebuild. Its `Create Template` / `Upload
+Template` steps are not the npm `prebuild` lifecycle and do not establish the
+status of Base44's editor synchronization. On October 2, 2026, run 37071398984
+completed `Create Template` successfully and moved to `Upload Template`.
+Do not diagnose Base44 sync as blocked solely because this Codespaces job runs.
+
+Application startup reads have a 20-second deadline per request. Failed public
+settings or identity reads show a safe retry screen; no access is granted on a
+failed identity read. Restricted localStorage must not crash parameter parsing.
+Secondary pages load on demand to reduce the initial download on mobile and web.
+These behaviors are covered by `verify:auth-pages-safe-diagnostics` and CI.
+
+The audited main tree contained 599 tracked files, no tracked node_modules/dist
+archives, and no symlinks/submodules. The initial local production build passed
+in about 11 seconds; commit count alone is not a build-duration estimate.
+Base44 editor loading still requires direct editor evidence. Local compilation
+and Codespaces state cannot verify that editor has recovered.
+
+The route split reduced the initial JavaScript entry from approximately 2,734 KB
+to 600 KB (before compression). A Tailwind-expanded secondary-button selector
+produced an invalid CSS selector; attribute-based matching preserves contrast
+without that malformed expansion. Route download failures use the existing
+error boundary with a full reload retry and a safe public error message.
+The CI preview HTTP check verifies served HTML only; its name now states that
+scope instead of claiming browser rendering.

@@ -312,7 +312,7 @@
     color: hsl(var(--foreground)) !important;
     -webkit-text-fill-color: hsl(var(--foreground)) !important;
   }
-  button.bg-secondary, [role="button"].bg-secondary {
+  button[class~="bg-secondary"], [role="button"][class~="bg-secondary"] {
     color: hsl(var(--secondary-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--secondary-foreground)) !important;
   }

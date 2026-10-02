@@ -5,6 +5,21 @@ import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { getFrontendIdentity } from '@/lib/adminBootstrap';
 
 const AuthContext = createContext();
+// Bound startup reads; late responses cannot update state after the deadline.
+export async function withStartupDeadline(request, timeoutMs = 20000) {
+  let timer;
+  try {
+    return await Promise.race([
+      request,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Application startup timed out')), timeoutMs);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
 
 export const AuthProvider = ({ children }) => {
@@ -34,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const publicSettings = await withStartupDeadline(appClient.get(`/prod/public-settings/by-id/${appParams.appId}`));
         setAppPublicSettings(publicSettings);
         
         if (appParams.token) {
@@ -90,7 +105,7 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      const currentUser = await withStartupDeadline(base44.auth.me());
       // Revoke access for an account whose deletion is in progress — the
       // backend state machine set account_deletion_pending before wiping data.
       if (currentUser?.account_deletion_pending) {
@@ -109,11 +124,14 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setAuthChecked(true);
       
+      setUser(null);
       if (error.status === 401 || error.status === 403) {
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'
         });
+      } else {
+        setAuthError({ type: 'unknown', message: SAFE_APP_ERROR });
       }
     }
   };

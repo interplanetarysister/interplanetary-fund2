@@ -16,7 +16,13 @@ export default class ErrorBoundary extends React.Component {
     console.error("Route render error:", error, info);
   }
 
-  reset = () => this.setState({ error: null });
+  reset = () => {
+    if (this.props.reloadOnRetry) {
+      window.location.reload();
+      return;
+    }
+    this.setState({ error: null });
+  };
 
   render() {
     if (this.state.error) {
@@ -27,7 +33,7 @@ export default class ErrorBoundary extends React.Component {
           </div>
           <h2 className="font-display text-xl text-stone-900 mb-1">This page hit a snag</h2>
           <p className="text-sm text-stone-500 mb-5">
-            {this.state.error?.message || "An unexpected error occurred while rendering this page."}
+            This page could not load. Please try again.
           </p>
           <div className="flex items-center justify-center gap-3">
             <button
