@@ -2,11 +2,12 @@ import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Link2, RefreshCw, Search, ChevronDown } from "lucide-react";
+import { Loader2, Link2, RefreshCw, Search, ChevronDown, History } from "lucide-react";
 import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
+import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
 
@@ -25,6 +26,7 @@ export default function Connections() {
   const [platformSearch, setPlatformSearch] = useState("");
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const [sharedIntegrations, setSharedIntegrations] = useState(null);
+  const [historyKey, setHistoryKey] = useState(0);
   const [wixSyncing, setWixSyncing] = useState(false);
   const [wixSyncResult, setWixSyncResult] = useState(null);
   // Canonical lifecycle from resolveConnectionStatus, keyed by connection id.
@@ -42,6 +44,7 @@ export default function Connections() {
       const r = await base44.functions.invoke("listConnections", { scope: "mine" });
       setConnections(r.data.connections);
       resolveLifecycles(r.data.connections);
+      setHistoryKey((k) => k + 1);
     } catch (e) {
       setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     }
@@ -210,6 +213,14 @@ export default function Connections() {
           )}
         </div>
       )}
+
+      <div className="mb-8">
+        <h2 className="font-display text-xl text-stone-900 mb-1 flex items-center gap-2">
+          <History className="w-5 h-5 text-stone-500" /> Recent refreshes
+        </h2>
+        <p className="text-sm text-stone-500 mb-3">The last few times your platforms were checked and what each one reported.</p>
+        <SyncRunHistory refreshKey={historyKey} />
+      </div>
 
       <div className="mb-8">
         <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />

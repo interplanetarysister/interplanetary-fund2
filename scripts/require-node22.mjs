@@ -14,8 +14,8 @@ try {
 }
 
 // Base44 may execute on Node 20 while Node 22 is the preferred release/tooling runtime.
-// Base44 compatibility remains on Node 20; release/tooling runtime remains Node 22.
-const SUPPORTED = [20, 22];
+// Node 24 is supported for local development environments per the project runtime decision.
+const SUPPORTED = [20, 22, 24];
 
 if (!SUPPORTED.includes(nodeMajor)) {
   console.error(

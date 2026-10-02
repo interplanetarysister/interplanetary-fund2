@@ -175,6 +175,8 @@ export default async function (req) {
     // Automated receipt: email the donor a receipt for every verified gift.
     if (canonical.applied) {
       await sendDonationReceipt(sr, { ...donation, donor_email: donor?.email }, campaign);
+      // Marketing KPI: a verified, canonically-applied donation is the ultimate proof of trust.
+      try { await base44.analytics.track({ eventName: 'donation_completed', properties: { campaign_id, amount: total, is_recurring: !!is_recurring } }); } catch (_) { /* non-fatal */ }
     }
 
     return Response.json({
