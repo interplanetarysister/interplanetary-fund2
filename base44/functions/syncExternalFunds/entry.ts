@@ -226,14 +226,17 @@ export default async function (req) {
     const totalDiscoveredUsd = num(discoveredByCurrency.get('USD'));
     const hasError = providerResults.some((r) => r.status === 'error');
     const hasImported = providerResults.some((r) => r.status === 'imported');
-    const hasUnavailable = providerResults.some((r) => ['realtime_webhook', 'credentials_required', 'no_read_api'].includes(r.status));
+    // 'no_read_api' and 'realtime_webhook' are healthy states for link-based
+    // and webhook platforms — they are NOT unavailable. Only
+    // 'credentials_required' genuinely needs user action.
+    const needsAction = providerResults.some((r) => r.status === 'credentials_required');
     const overall = providerResults.length === 0
       ? 'no_connections'
       : hasError
-        ? (hasImported ? 'partial' : 'failed')
-        : hasImported
-          ? (hasUnavailable ? 'partial' : 'success')
-          : 'unavailable';
+        ? (hasImported || !needsAction ? 'partial' : 'failed')
+        : needsAction
+          ? 'partial'
+          : 'success';
 
     const run = await sr.entities.SyncRun.create({
       initiator_type: initiatorType,
