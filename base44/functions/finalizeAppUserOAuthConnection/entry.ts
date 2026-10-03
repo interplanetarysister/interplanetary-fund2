@@ -65,19 +65,12 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { platform, shared_agent_consent } = await req.json().catch(() => ({}));
+    const { platform } = await req.json().catch(() => ({}));
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
-    // Canonical IFund-wide OBO is the sole authorization decision. When it has
-    // been decided, it is decisive. Before the canonical decision exists, an
-    // explicit connection-flow choice (shared_agent_consent) may establish the
-    // initial grant — this is a per-action consent, not a competing stored
-    // preference. Legacy ai_publishing_consent / ai_connection_consent are no
-    // longer consulted; subsequent changes go through setUnifiedOboConsent.
-    const canonicalDecided = typeof user.ai_obo_consent?.granted === 'boolean';
-    const sharedAgentConsent = canonicalDecided
-      ? user.ai_obo_consent.granted === true
-      : shared_agent_consent === true;
+    // The account-level IFund help toggle is the sole IFund authorization.
+    // The Connect click is the user's command; this finalizer never asks for a second IFund consent.
+    const sharedAgentConsent = user.ai_obo_consent?.granted === true;
     const envName = OAUTH_ENV[key];
     const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
@@ -102,7 +95,7 @@ export default async function(req) {
       obo_consent: {
         granted: sharedAgentConsent,
         granted_at: sharedAgentConsent ? now : null,
-        permission_version: '2026-10-unified-obo-v1',
+        permission_version: '2026-10-user-extension-obo-v2',
         requested_capabilities: cfg.requestedCapabilities,
         // Never copy desired capabilities into granted/provider capabilities.
         // Unknown remains unknown until the connector/provider reports it.
@@ -111,12 +104,21 @@ export default async function(req) {
       },
       agent_access: {
         shared_with_agents: sharedAgentConsent,
-        automation_enabled: sharedAgentConsent && (existing?.automation_mode || 'auto') === 'auto',
+        automation_enabled: sharedAgentConsent,
       },
       status: 'connected',
       verification_status: 'verified',
       capability_status: confirmed.length ? 'confirmed' : 'unknown',
       // OAuth verifies the account connection, not crowdfunding totals/provenance.
+      delegated_execution: {
+        ...(existing?.delegated_execution || {}),
+        principal_user_id: user.id,
+        execution_model: 'user_directed_extension',
+        command_source: 'direct_user_command',
+        enabled: sharedAgentConsent,
+        authorized_at: sharedAgentConsent ? (existing?.delegated_execution?.authorized_at || now) : null,
+        revoked_at: sharedAgentConsent ? null : (existing?.delegated_execution?.revoked_at || now),
+      },
       external_data_source: existing?.external_data_source || 'owner_reported',
       last_synced: now,
       last_error: '',
