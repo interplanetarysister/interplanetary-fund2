@@ -22,7 +22,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
   const [permissionAccepted, setPermissionAccepted] = useState(false);
-  const [browserReadConsent, setBrowserReadConsent] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -36,8 +35,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
-    setBrowserReadConsent(existing?.obo_consent?.granted === true &&
-      existing?.obo_consent?.granted_capabilities?.includes("GET_METRICS") === true);
     let pending = null;
     try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* An invalid resume record is ignored. */ }
     setPermissionAccepted(!!existing || (pending?.platform === platform.id && pending?.sharedAgentConsent === true));
@@ -116,7 +113,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
-        browser_read_consent: isCrowd && !usesProviderOAuth ? browserReadConsent : undefined,
       });
       const saved = res.data.connection;
       onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
@@ -174,15 +170,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
               </div>
             </div>
           )}
-          {isCrowd && !usesProviderOAuth && (
-            <label className="flex items-start gap-2 rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground cursor-pointer">
-              <input type="checkbox" checked={browserReadConsent} onChange={(e) => setBrowserReadConsent(e.target.checked)} className="mt-1" />
-              <span>Let my Interplanetary Fund agents check this campaign through my authorized browser connection when available. This only reads the external page; it does not move donations or make the account active before sign-in is verified.</span>
-            </label>
-          )}
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
-            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "Your Interplanetary Fund helpers can use this connection for the things you allowed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to help with connected platforms."}</p>
+            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
           </div>
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
