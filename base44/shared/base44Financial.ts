@@ -124,14 +124,18 @@ export async function reserveCanonicalWithdrawal(sr, args) {
   }
   const campaign = await sr.entities.Campaign.get(args.campaignId);
   if (!campaign || campaign.created_by_id !== args.campaignOwnerUserId) throw new Error('Campaign ownership mismatch.');
-  const totals = await ensureCanonicalCampaign(sr, campaign);
   const gross = round2(Number(args.requestedGross || 0));
-  if (!(gross > 0) || gross > totals.availableBalance) throw new Error('Insufficient verified available balance.');
+  const donationGross = round2(Number(args.verifiedDonationGross || 0));
+  const externalGross = round2(Number(args.verifiedExternalGross || 0));
+  if (!(gross > 0) || gross !== round2(donationGross + externalGross)) {
+    throw new Error('Verified reserved sources do not match the requested withdrawal.');
+  }
   const { fee, net } = computeWithdrawal(gross);
   const op = await sr.entities.FinancialOperation.create({
     operation_key: args.operationKey, operation_type: 'withdrawal_reservation', state: 'reserved',
     campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId,
     gross_amount: gross, platform_fee: fee, net_amount: net, payout_method: args.payoutMethod || '',
+    donation_gross_amount: donationGross, external_gross_amount: externalGross,
     payout_destination_ref: args.payoutDestination ? 'configured' : ''
   });
   return { reservationId: op.id, ledgerEntryId: op.id, grossAmount: gross, platformFee: fee, netAmount: net };

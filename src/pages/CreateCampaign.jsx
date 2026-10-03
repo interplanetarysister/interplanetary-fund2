@@ -15,7 +15,7 @@ import MediaUpload from "@/components/media/MediaUpload";
 import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
-import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2 } from "lucide-react";
 
 const steps = ["Your Details", "Basics", "Campaign Story", "Launch"];
 
@@ -23,7 +23,6 @@ export default function CreateCampaign() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draft");
-  const importConnectionId = searchParams.get("import_connection");
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -37,7 +36,6 @@ export default function CreateCampaign() {
   });
   const [locating, setLocating] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(!!draftId);
-  const [importing, setImporting] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   React.useEffect(() => {
@@ -60,20 +58,6 @@ export default function CreateCampaign() {
     })();
     return () => { cancelled = true; };
   }, [draftId]);
-
-  const importConnectedCampaign = async () => {
-    if (!importConnectionId) return;
-    setImporting(true);
-    try {
-      const discovered = await base44.functions.invoke("discoverExternalCampaignSnapshot", { connection_id: importConnectionId });
-      if (!discovered.data?.ok || !discovered.data?.campaign) throw new Error("Discovery failed");
-      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: discovered.data.campaign, sync_enabled: true });
-      if (!data?.campaign_id && !data?.campaign?.id) throw new Error("Import failed");
-      navigate(`/create?draft=${data.campaign_id || data.campaign.id}`, { replace: true });
-    } catch {
-      toast({ title: "Couldn't import campaign", description: "The connected platform could not populate this campaign yet.", variant: "destructive" });
-    } finally { setImporting(false); }
-  };
 
   const locate = async () => {
     if (!form.location) return;
@@ -175,8 +159,6 @@ export default function CreateCampaign() {
         {step === 0 && "Tell us what matters"}{step === 1 && "Set the campaign basics"}{step === 2 && "Choose how your story is told"}{step === 3 && "Review & launch"}
       </h1>
       <p className="text-sm text-slate-300 mb-6">{step === 0 ? "Give your campaign a spark. The AI can handle the complicated stuff." : step === 1 ? "Just the essentials. You can fine-tune the rest later." : step === 2 ? "Pick a vibe, create your story, then make it yours." : "One last look before your campaign enters orbit."}</p>
-      {importConnectionId && !draftId && <Button type="button" onClick={importConnectedCampaign} disabled={importing} variant="outline" className="quest-button mb-4">{importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}Import from connected fundraiser</Button>}
-
       <div className="glass-panel rounded-[1.75rem] p-4 sm:p-6 shadow-[0_20px_70px_rgba(2,6,23,.45)] space-y-5 min-w-0">
         {step === 0 && <AIInstructionsStep value={form.ai_profile} onChange={(p) => set("ai_profile", p)} />}
 

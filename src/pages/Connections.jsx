@@ -10,6 +10,7 @@ import ConnectDialog from "@/components/connections/ConnectDialog";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
+import { resolveUnifiedOboConsent } from "@/lib/unifiedOboConsent";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -105,7 +106,10 @@ export default function Connections() {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
             platform: pending.platform, shared_agent_consent: pending.sharedAgentConsent === true,
           });
-          if (data?.connected) {
+          if (data?.authorization_present && data?.verification_required) {
+            localStorage.removeItem("ifund_pending_platform_connection");
+            setConnectionNotice({ ok: false, text: `${pending.platform} authorization was saved. A live provider check is still required before it can be shown as connected.` });
+          } else if (data?.connected) {
             localStorage.removeItem("ifund_pending_platform_connection");
             setConnectionNotice({ ok: true, text: `${pending.platform} is connected.` });
           } else {
@@ -142,20 +146,22 @@ export default function Connections() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const aiAuthorized = user?.ai_obo_consent?.granted === true;
-  const connectedIds = connections.map((c) => c.platform);
-  // A connection is "working" when the canonical resolver says CONNECTED;
-  // fall back to the local heuristic while the resolver is still loading.
-  const workingCount = connections.filter((c) =>
-    lifecycleMap[c.id] ? lifecycleMap[c.id].lifecycle === "CONNECTED" : connectionHealth(c).usable
-  ).length;
-  const discoveredTotals = syncResult?.discovered_totals ||
-    (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
+  const aiAuthorized = resolveUnifiedOboConsent(user)?.granted === true;
+  const savedIds = connections.map((c) => c.platform);
+  const isWorking = (connection) => lifecycleMap[connection.id]
+    ? lifecycleMap[connection.id].lifecycle === "CONNECTED"
+    : connectionHealth(connection).usable;
+  const verifiedConnections = connections.filter(isWorking);
+  const attentionConnections = connections.filter((connection) => !isWorking(connection));
+  const workingCount = verifiedConnections.length;
+  const discoveredTotals = Array.isArray(syncResult?.discovered_totals)
+    ? syncResult.discovered_totals.filter(({ currency, amount }) => /^[A-Z]{3}$/.test(String(currency || "")) && Number.isFinite(Number(amount)))
+    : [];
   const discoveredSummary = discoveredTotals
-    .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
+    .map(({ currency, amount }) => `${currency} ${Number(amount).toLocaleString()}`)
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
-    (p.id === "custom" || !connectedIds.includes(p.id)) &&
+    (p.id === "custom" || !savedIds.includes(p.id)) &&
     (`${p.name} ${p.kind || ""}`.toLowerCase().includes(platformSearch.trim().toLowerCase()))
   );
 
@@ -176,7 +182,7 @@ export default function Connections() {
       </h1>
       <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
       <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} working · {connections.length} saved</span>
+        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} connected · {attentionConnections.length} need attention</span>
         <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social + apps in one place</span>
       </div>
       </div>
@@ -223,7 +229,15 @@ export default function Connections() {
       </div>
 
       <div className="mb-8">
-        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v, ai_publishing_consent: v, ai_connection_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v, ai_publishing_consent: v, ai_connection_consent: v }))} />
+        <AIConsentCard
+          user={user}
+          onChanged={(value) => setUser((current) => ({
+            ...current,
+            ai_obo_consent: value,
+            ai_publishing_consent: value,
+            ai_connection_consent: value,
+          }))}
+        />
       </div>
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (
@@ -251,12 +265,31 @@ export default function Connections() {
         </div>
       )}
 
-      {connections.length > 0 && (
+      {verifiedConnections.length > 0 && (
         <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-1">Your platforms</h2>
-          <p className="text-sm text-stone-500 mb-3">A saved link needs a successful check before it can show as working.</p>
+          <h2 className="font-display text-xl text-stone-900 mb-1">Connected platforms</h2>
+          <p className="text-sm text-stone-500 mb-3">Only provider-verified connections appear here.</p>
           <div className="space-y-3">
-            {connections.map((c) => (
+            {verifiedConnections.map((c) => (
+              <ConnectionCard
+                key={c.id}
+                connection={c}
+                platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
+                resolved={lifecycleMap[c.id]}
+                onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
+                onRemoved={(id, updated) => setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id))}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {attentionConnections.length > 0 && (
+        <div className="mb-8">
+          <h2 className="font-display text-xl text-stone-900 mb-1">Needs attention</h2>
+          <p className="text-sm text-stone-500 mb-3">Saved links stay here until a real provider check succeeds.</p>
+          <div className="space-y-3">
+            {attentionConnections.map((c) => (
               <ConnectionCard
                 key={c.id}
                 connection={c}

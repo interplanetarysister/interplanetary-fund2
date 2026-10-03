@@ -15,9 +15,7 @@ export default function ImportedCampaignSync({ campaign, onSynced }) {
   const refresh=async()=>{
     setBusy(true); setMessage("");
     try{
-      const discovered=await base44.functions.invoke("discoverExternalCampaignSnapshot",{connection_id:record.connection_id});
-      if(!discovered.data?.ok||!discovered.data?.campaign) throw new Error("discovery");
-      const synced=await base44.functions.invoke("syncImportedCampaign",{import_id:record.id,campaign:discovered.data.campaign,source_updated_at:new Date().toISOString()});
+      const synced=await base44.functions.invoke("syncImportedCampaign",{import_id:record.id});
       if(!synced.data?.ok) throw new Error("sync");
       const locked=synced.data.locally_locked_fields?.length||0;
       setMessage(locked ? "Updated from "+record.platform+". "+locked+" locally edited field"+(locked===1?" was":"s were")+" preserved." : "Updated from "+record.platform+".");

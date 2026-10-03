@@ -1,12 +1,9 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw, Stethoscope, ChevronDown, Download } from "lucide-react";
+import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw, Stethoscope, ChevronDown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
-import { useNavigate } from "react-router-dom";
-
-const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fundrazr","givesendgo","kofi","buymeacoffee","patreon","spotfund","eventbrite"]);
 
 // One connected destination: status, health, last sync, granted automation,
 // totals, provenance, and the manage / disconnect / history controls.
@@ -19,8 +16,8 @@ const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fu
 //   and informational only; it is never withdrawable from Interplanetary Fund.
 
 export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved }) {
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const actionLock = useRef(false);
   const [showDoctor, setShowDoctor] = useState(false);
 
   // Prefer the canonical lifecycle from resolveConnectionStatus; fall back to
@@ -35,18 +32,23 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   const currency = connection.external_currency || "UNSPECIFIED";
 
   const checkConnection = async () => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     try {
       const { data } = await base44.functions.invoke("verifyPlatformConnection", { connection_id: connection.id });
       if (data?.connection) onRemoved?.(connection.id, data.connection);
     } catch (e) {
-      console.error("Connection check failed", e);
+      console.error("Connection check failed", e?.name || "UnknownError");
     } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   };
 
   const disconnect = async () => {
+    if (actionLock.current) return;
+    actionLock.current = true;
     setBusy(true);
     try {
       // Central revocation removes agent/OBO authority first and then asks the
@@ -57,7 +59,9 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       });
       onRemoved(connection.id);
     } catch (e) {
-      console.error("Disconnect failed", e);
+      console.error("Disconnect failed", e?.name || "UnknownError");
+    } finally {
+      actionLock.current = false;
       setBusy(false);
     }
   };
@@ -119,8 +123,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
-        {connection.kind === "crowdfunding" && IMPORTABLE_FUNDRAISING.has(connection.platform) && !connection.campaign_id && <Button size="sm" variant="outline" onClick={() => navigate(`/create?import_connection=${connection.id}`)} className="rounded-lg"><Download className="w-3.5 h-3.5" />Import campaign</Button>}
-                <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
+        <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
           <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />Check
         </Button>
         {connection.external_url && (

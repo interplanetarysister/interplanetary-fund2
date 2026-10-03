@@ -96,6 +96,9 @@ jobs:
       - name: Connection authorization and data-truth contract
         run: node scripts/verify-connect-dialog-safe-errors.mjs
 
+      - name: Integration registry truth transitions
+        run: npm run verify:integration-registry-truth
+
       - name: Subscription entitlement and canonical connection-health contract
         run: npm run verify:entitlements-connections
 
@@ -107,6 +110,12 @@ jobs:
 
       - name: Connection lifecycle and operational health contract
         run: npm run verify:connection-lifecycle
+
+      - name: Platform connection trusted-state and least-privilege contract
+        run: npm run verify:platform-connection-trust
+
+      - name: External mirroring tenant-isolation contract
+        run: npm run verify:external-mirroring-isolation
 
       - name: Connection catalog consistency contract
         run: node scripts/verify-connection-catalog-contract.mjs
@@ -132,6 +141,9 @@ jobs:
       - name: Host portability and shared data-plane contract
         run: npm run verify:host-portability
 
+      - name: OAuth redirect destination contract
+        run: npm run verify:oauth-redirect
+
       - name: Cloudflare SPA and compute runtime contract
         run: node scripts/verify-cloudflare-runtime-contract.mjs
 
@@ -143,6 +155,9 @@ jobs:
 
       - name: Payment and financial-integrity contracts
         run: npm run test:payments
+
+      - name: Frontend/backend fee and prelaunch policy parity
+        run: npm run verify:frontend-shared-parity
 
       - name: PayPal campaign checkout contract
         run: node scripts/verify-paypal-checkout-contract.mjs

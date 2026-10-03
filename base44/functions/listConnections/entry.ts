@@ -17,7 +17,7 @@ export default async function(req) {
     // The personal Connections page always sees the caller's own records.
     const list = scope === 'all' && user.role === 'admin'
       ? await base44.asServiceRole.entities.PlatformConnection.list('-updated_date', 300)
-      : await base44.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 300);
+      : await base44.asServiceRole.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 300);
     const connections = list.map((c) => {
       const { credentials, credentials_meta } = redactCredentials(c.credentials);
       return { ...c, credentials, credentials_meta };

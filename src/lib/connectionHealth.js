@@ -1,21 +1,22 @@
-// Connections never expire based on time. A connection stays "connected" until
-// the user manually disconnects or a real provider error occurs. There is no
-// staleness check — if the platform verified the connection, it stays working.
-export function connectionHealth(connection) {
+const STALE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function connectionHealth(connection, now = Date.now()) {
   if (!connection || connection.status === "disconnected") {
     return { key: "disconnected", label: "Connect", usable: false, needsAttention: false };
   }
 
+  const lastSync = connection.last_synced ? new Date(connection.last_synced).getTime() : 0;
+  const stale = !!lastSync && Number.isFinite(lastSync) && now - lastSync > STALE_MS;
   const hasError = connection.status === "error" || !!connection.last_error;
   const verified = connection.status === "connected" && connection.verification_status === "verified";
 
-  if (hasError || !verified) {
+  if (hasError || stale || !verified) {
     return {
       key: "needs_attention",
       label: "Needs attention",
       usable: false,
       needsAttention: true,
-      reason: connection.last_error || "Connection is not verified.",
+      reason: connection.last_error || (stale ? "Connection has not been verified recently." : "Connection is not verified."),
     };
   }
 

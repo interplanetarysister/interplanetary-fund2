@@ -1,9 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
-import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -46,28 +45,11 @@ export default async function(req) {
 
     const consentOwner = user;
     if (!hasAiPublishingConsent(consentOwner)) {
-      return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
+      return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
     }
-    // Auto-publishing to connected platforms requires an active outreach+
-    // subscription. Without it, the post is saved as approved for manual posting.
-    if (!hasSubscriptionLevel(user, 2)) {
-      const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
-      await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post (no active subscription) for ${connection.platform}`, status: 'success' });
-      return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason: 'An active outreach subscription is required to auto-publish. You can post this manually.' });
-    }
-    const actionAuthorization = await assertExternalAgentAction(sr, {
-      ownerUser: consentOwner,
-      ownerUserId: campaign.created_by_id,
-      campaign,
-      connection,
-      capability: 'create_post',
-      requireAutomation: connection.automation_mode === 'auto',
-    });
-    // Credential-based publishing (Bluesky, Mastodon) or OAuth connector
-    // publishing (LinkedIn). If neither is available, fall back to manual.
-    const canCredentialPublish = canAutoPublish(connection);
-    const canConnectorPublish = canPublishViaConnector(connection.platform);
-    if ((!canCredentialPublish && !canConnectorPublish) || !actionAuthorization.ok) {
+    const connectionOboAllowed = connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
+    const connectionAutomationAllowed = connectionOboAllowed && connection.agent_access?.automation_enabled === true;
+    if (!canAutoPublish(connection) || !connectionAutomationAllowed) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
@@ -77,21 +59,21 @@ export default async function(req) {
       // Centralized access gate: if social publishing is revoked/disabled at the
       // registry level, fall back to a manual handoff instead of auto-posting.
       const access = await assertPlatformAccess(sr, 'social_publish');
-      const obo = actionAuthorization;
-      if (!access.ok || !obo.ok) {
+      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
+      if (!access.ok || !obo.ok || !hasFreshProviderVerification(connection)) {
         const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
-        const reason = !access.ok ? access.reason : obo.reason;
+        const reason = !access.ok ? access.reason : !obo.ok ? obo.reason : 'provider verification is not current';
         await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked: ${reason}`, status: 'failure' });
         return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason });
       }
-      const { url } = await publishThroughConnection(connection, text, sr);
+      const { url } = await publishThroughConnection(connection, text);
       const updated = await base44.entities.DistributedPost.update(post_id, {
         status: 'published',
         published_at: new Date().toISOString(),
         external_post_url: url,
         error: '',
       });
-      await base44.entities.PlatformConnection.update(connection.id, {
+      await sr.entities.PlatformConnection.update(connection.id, {
         status: 'connected',
         verification_status: 'verified',
         last_synced: new Date().toISOString(),

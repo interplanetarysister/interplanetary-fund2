@@ -14,8 +14,8 @@ const directReady = (c) => {
   return (c.platform === "bluesky" && cr.bluesky_handle && cr.bluesky_app_password) ||
     (c.platform === "mastodon" && cr.mastodon_instance && cr.mastodon_access_token);
 };
-const aiReady = (c, aiAuthorized) => aiAuthorized && isUsableConnection(c) && c.automation_mode !== "manual";
-const approvedReady = (c, aiAuthorized) => aiAuthorized && isUsableConnection(c) && directReady(c);
+const aiReady = (c) => isUsableConnection(c) && c.obo_consent?.granted === true && c.agent_access?.shared_with_agents === true && c.automation_mode !== "manual";
+const approvedReady = (c) => isUsableConnection(c) && c.obo_consent?.granted === true && directReady(c);
 
 function DestinationGroup({ title, hint, icon: Icon, connections, selected, setSelected }) {
   if (!connections.length) return null;
@@ -29,13 +29,13 @@ function DestinationGroup({ title, hint, icon: Icon, connections, selected, setS
 }
 
 export default function DistributionPanel({ campaign }) {
-  const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]), [aiAuthorized,setAiAuthorized]=useState(false);
+  const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]);
   const [generating,setGenerating]=useState(false), [broadcasting,setBroadcasting]=useState(false), [error,setError]=useState("");
   const {toast}=useToast();
-  useEffect(()=>{(async()=>{const [r,p,me]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me()]);const authorized=me?.ai_obo_consent?.granted===true;const cs=(r.data?.connections||[]).filter(c=>!c.campaign_id||c.campaign_id===campaign.id);setAiAuthorized(authorized);setConnections(cs);setSelected(cs.filter(c=>aiReady(c,authorized)).map(c=>c.id));setPosts(p)})()},[campaign.id]);
+  useEffect(()=>{(async()=>{const [r,p]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30)]);const cs=(r.data?.connections||[]).filter(c=>!c.campaign_id||c.campaign_id===campaign.id);setConnections(cs);setSelected(cs.filter(aiReady).map(c=>c.id));setPosts(p)})()},[campaign.id]);
   if(!connections)return null;
   const pending=posts.filter(p=>["pending_approval","draft","approved","failed"].includes(p.status));
-  const ai=connections.filter(c=>aiReady(c,aiAuthorized)), approved=connections.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,aiAuthorized)), copy=connections.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,aiAuthorized));
+  const ai=connections.filter(aiReady), approved=connections.filter(c=>!aiReady(c)&&approvedReady(c)), copy=connections.filter(c=>!aiReady(c)&&!approvedReady(c));
   const generate=async()=>{setGenerating(true);setError("");try{const {data}=await base44.functions.invoke("generateDistributionContent",{campaign_id:campaign.id,connection_ids:selected});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else setPosts(prev=>[...(data.posts||[]),...prev])}catch(e){console.error("Distribution generation failed:",e?.name||"UnknownError");setError("Couldn't prepare the posts. Please try again.")}setGenerating(false)};
   const broadcast=async()=>{setBroadcasting(true);setError("");try{const {data}=await base44.functions.invoke("broadcastPosts",{campaign_id:campaign.id});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else{const m=new Map(posts.map(p=>[p.id,p]));for(const u of(data.posts||[]))m.set(u.id,u);setPosts([...m.values()].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)));toast({title:"Posts prepared",description:`${data.published} sent · ${data.manual} ready for you to copy and post${data.failed?` · ${data.failed} need attention`:""}.`})}}catch(e){console.error("Distribution broadcast failed:",e?.name||"UnknownError");setError("Couldn't send the posts. Please try again.")}setBroadcasting(false)};
   return <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { appParams } from "@/lib/app-params";
+import { runtimeContract } from "@/lib/runtimeContract";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import { trustedOAuthRedirect } from "@/lib/oauthRedirect";
 
 // App-side OAuth consent page for the app's MCP server. The platform redirects
 // AI clients here (see base44/mcp/config.json `consent_path`) with an opaque
@@ -13,6 +15,7 @@ import AuthLayout from "@/components/AuthLayout";
 // and copy are safe to edit.
 export default function OAuthConsent() {
   const ctx = new URLSearchParams(window.location.search).get("ctx");
+  const appId = runtimeContract.appId;
   const [info, setInfo] = useState(null);
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +27,7 @@ export default function OAuthConsent() {
     (async () => {
       let redirecting = false;
       try {
-        if (!ctx) {
+        if (!ctx || !appId) {
           setError("This authorization link is invalid or has expired.");
           return;
         }
@@ -37,7 +40,7 @@ export default function OAuthConsent() {
         const infoHeaders = {};
         if (appParams.token) infoHeaders.Authorization = "Bearer " + appParams.token;
         const res = await fetch(
-          `/api/apps/${appParams.appId}/mcp/consent-info?handle=${encodeURIComponent(ctx)}`,
+          `/api/apps/${appId}/mcp/consent-info?handle=${encodeURIComponent(ctx)}`,
           { credentials: "include", headers: infoHeaders },
         );
         if (!res.ok) {
@@ -77,7 +80,7 @@ export default function OAuthConsent() {
         if (!redirecting) setChecking(false);
       }
     })();
-  }, [ctx]);
+  }, [ctx, appId]);
 
   const respond = async (action) => {
     setSubmitting(true);
@@ -87,7 +90,8 @@ export default function OAuthConsent() {
       // Cookie-backed sessions carry no token; sending "Bearer null" would
       // shadow the valid cookie, so add the header only when a token exists.
       if (appParams.token) headers.Authorization = "Bearer " + appParams.token;
-      const res = await fetch(`/api/apps/${appParams.appId}/mcp/authorize-grant`, {
+      if (!appId) throw new Error("Missing build-owned application identity.");
+      const res = await fetch(`/api/apps/${appId}/mcp/authorize-grant`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -120,8 +124,14 @@ export default function OAuthConsent() {
         throw new Error("Could not complete authorization. Please try again.");
       }
       const data = await res.json();
-      window.location.href = data.redirect_url;
-      if (!/^https?:/i.test(data.redirect_url)) {
+      const redirect = trustedOAuthRedirect(data.redirect_url, window.location.origin);
+      if (!redirect) {
+        setReconnect("The authorization destination was rejected. Reconnect from your AI client to try again.");
+        setSubmitting(false);
+        return;
+      }
+      window.location.assign(redirect.url);
+      if (!redirect.browser) {
         // Custom-scheme redirect (native AI clients, e.g. cursor://): browsers
         // may block or not visibly navigate, so show a terminal state instead
         // of an eternal spinner.

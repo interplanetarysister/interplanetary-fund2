@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Network, ShieldCheck, Clock, BadgeCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
-const money=(amount,currency="USD")=>new Intl.NumberFormat(undefined,{style:"currency",currency:currency||"USD"}).format(Number(amount||0));
+const money=(amount,currency)=>/^[A-Z]{3}$/.test(String(currency||""))
+  ? new Intl.NumberFormat(undefined,{style:"currency",currency}).format(Number(amount||0))
+  : `${Number(amount||0).toLocaleString()} (currency unavailable)`;
 
 // Observation freshness: communicate whether a balance is provider-verified or
 // owner-reported, and when it was last observed. Stale owner-reported figures
@@ -56,13 +58,13 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
   const attention=(prepared?.sources||[]).filter(s=>s.status!=="ready_for_authorization");
   return <Dialog open={open} onOpenChange={(v)=>{onOpenChange(v);if(!v){setPrepared(null);setError("");}}}>
     <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle className="font-display text-xl flex items-center gap-2"><Network className="w-5 h-5"/>Collect & Withdraw</DialogTitle></DialogHeader>
-      <p className="text-sm text-muted-foreground">Bring supported external fundraiser balances into one withdrawal flow for <strong>{campaign?.title || "all of your campaigns"}</strong>.</p>
+      <DialogHeader><DialogTitle className="font-display text-xl flex items-center gap-2"><Network className="w-5 h-5"/>Review connected funds</DialogTitle></DialogHeader>
+      <p className="text-sm text-muted-foreground">Check which external balances are informational and whether any provider has a currently verified transfer path for <strong>{campaign?.title || "all of your campaigns"}</strong>.</p>
       {!prepared && <Button onClick={prepare} disabled={preparing} className="w-full rounded-xl">{preparing?<Loader2 className="w-4 h-4 animate-spin"/>:"Check connected funds"}</Button>}
       {prepared && <div className="space-y-3">
         {(prepared.sources||[]).length===0 && <div className="rounded-xl border p-4 text-sm text-muted-foreground">No connected fundraising sources are linked to this campaign yet.</div>}
         {(prepared.sources||[]).map(s=><div key={s.connection_id} className="rounded-xl border p-3 flex items-start justify-between gap-3">
-          <div><p className="font-medium capitalize">{s.platform}</p><p className="text-sm">{money(s.amount,s.currency)}</p><ObservationLabel source={s}/>{s.note&&<p className="text-xs text-muted-foreground mt-1">{s.note}</p>}</div>
+          <div><p className="font-medium capitalize">{s.platform}</p><p className="text-sm">{money(s.amount,s.currency)}</p><ObservationLabel source={s}/>{s.status==="ready_for_authorization"&&<p className="text-xs text-muted-foreground mt-1">Estimated 3% IFund withdrawal fee: {money(s.estimated_platform_fee,s.currency)} · estimated net before provider/processor fees: {money(s.estimated_net_after_platform_fee,s.currency)}</p>}{s.note&&<p className="text-xs text-muted-foreground mt-1">{s.note}</p>}</div>
           <Badge variant="outline">{s.status==="ready_for_authorization"?"Ready":"Action required"}</Badge>
         </div>)}
         {ready.length>0&&!prepared.authorized&&<div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 space-y-2">
@@ -70,7 +72,7 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
           <p className="text-xs text-muted-foreground">This authorization applies only to the listed sources in this collection operation. Provider verification or user-controlled security steps may still be required.</p>
           <Button onClick={authorize} disabled={authorizing} className="w-full rounded-xl">{authorizing?<Loader2 className="w-4 h-4 animate-spin"/>:"Allow collection from listed platforms"}</Button>
         </div>}
-        {prepared.authorized&&<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Authorization recorded and supported collection routing started. IFund will not count external money as collected until settlement is independently verified. Sources requiring provider action remain paused.</div>}
+        {prepared.authorized&&<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Authorization recorded and eligibility rechecked. IFund will not count external money as collected or withdrawable until settlement is independently verified. Sources requiring provider action remain paused.</div>}
         {attention.length>0&&<p className="text-xs text-muted-foreground">{attention.length} source{attention.length===1?"":"s"} currently require provider or user action and will not be represented as collected.</p>}
       </div>}
       {error&&<p className="text-sm text-destructive">{error}</p>}

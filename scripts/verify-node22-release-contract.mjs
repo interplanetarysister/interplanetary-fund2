@@ -3,15 +3,15 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
 
-const MINIMUM_NODE_MAJOR = 20;
+const SUPPORTED_MAJORS = new Set([20, 22]);
 const BASE44_BASELINE = '20';
 
 export function verifyReleaseContract(root = process.cwd()) {
   const errors = [];
 
   const executingMajor = Number(process.versions.node.split('.')[0]);
-  if (executingMajor < MINIMUM_NODE_MAJOR) {
-    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 20 or newer is required`);
+  if (!SUPPORTED_MAJORS.has(executingMajor)) {
+    errors.push(`executing Node ${process.versions.node} at ${process.execPath}; Node 20.x or 22.x is required`);
   }
 
   function readRequired(path) {
@@ -42,7 +42,7 @@ export function verifyReleaseContract(root = process.cwd()) {
   }
 
   const pkg = parseRequiredJson('package.json');
-  if (pkg && pkg.engines?.node !== '>=20') errors.push('package.json engines.node must be >=20');
+  if (pkg && pkg.engines?.node !== '>=20 <23') errors.push('package.json engines.node must be >=20 <23');
   if (readRequired('.node-version')?.trim() !== BASE44_BASELINE) errors.push('.node-version must use the Node 20 Base44 baseline');
   if (readRequired('.nvmrc')?.trim() !== BASE44_BASELINE) errors.push('.nvmrc must use the Node 20 Base44 baseline');
 
@@ -109,7 +109,7 @@ export function verifyReleaseContract(root = process.cwd()) {
 
   const lock = parseRequiredJson('package-lock.json');
   if (lock) {
-    if (lock.packages?.['']?.engines?.node !== '>=20') errors.push('package-lock.json root engine must be >=20');
+    if (lock.packages?.['']?.engines?.node !== '>=20 <23') errors.push('package-lock.json root engine must be >=20 <23');
   }
 
   return errors;

@@ -5,7 +5,7 @@ This contract captures the immediate implementation requirements for connected p
 ## Connection experience
 - A platform is connected once per user, not once per agent.
 - The platform picker shows connection health with a small green indicator for a verified working connection and a simple needs-attention/not-connected state otherwise.
-- First connection launches one provider authorization flow requesting all applicable supported capabilities in plain language: read, write, post, comment, message, follow/join, donation/balance status, and withdrawal/transfer.
+- First connection requests only the applicable provider-specific capabilities in plain language. General connection consent may cover read, write, post, comment, message, follow/join, and donation/balance observation where supported; withdrawal/transfer authority is always a separate authorization.
 - OAuth scopes, APIs, PATs, tokens, refresh and webhook details are implementation concerns and are not exposed as required user knowledge.
 - The connection persists until the user disconnects it, except when the provider expires/revokes authorization or requires reauthorization.
 - Never mark an unsupported capability as granted. Provider capability discovery and actual authorization are authoritative.
@@ -35,6 +35,8 @@ Agents are interfaces into Interplanetary Fund, not isolated chatbots. Preserve 
 ## Financial custody
 Reading an external donation does not make that money held by Interplanetary Fund. Only a provider-verified settlement/transfer into the platform's holding account may become platform-held/withdrawable value. Ledger entries must preserve gross amount, external/provider fees, transfers, refunds/chargebacks, Interplanetary Fund fees, currency, provenance, and net available to the user.
 
+Provider campaign imports and refreshes are server-bound operations: the backend refetches the approved provider page/API and never relabels a browser-supplied campaign object as provider provenance. Base44's ordinary hostname fetch does not pin the DNS result, so public-page discovery remains unavailable until a pinned/private-egress-safe transport or provider API/connector exists. Financial eligibility additionally requires fresh provider evidence, a shipped provider-specific transfer adapter, a fresh provider-verified balance/currency, a verified owner destination, and a fee-versioned consent snapshot. A settled receipt is linked to one exact external observation before it can enter holding custody; the holding entry is atomically claimed when withdrawn and receives the same canonical 3% withdrawal fee.
+
 ## Memory and training
 Agent conversations and instructions should persist for the user through the platform memory system. Chief of Staff receives cross-agent context when available. Each specialist keeps separate role training; verified knowledge can overlap. Delegated real work and verified outcomes are learning signals, but learning never expands authorization.
 
@@ -46,17 +48,23 @@ Use the existing implementation as the starting point; do not rebuild the connec
 | Requirement | Current implementation to reference | Refinement target |
 |---|---|---|
 | Connections page / platform selection | `src/pages/Connections.jsx` | Replace/augment the current separate catalog cards with a compact selectable/dropdown-style platform experience. Keep existing catalog data and connection loading. A verified connection should show the small green dot; disconnected and needs-attention states remain simple. |
-| First-time connection UI | `src/components/connections/ConnectDialog.jsx` | Keep the existing provider OAuth redirect flow, but before redirect show one plain-language permission window listing the applicable capabilities requested for that provider. User accepts once; do not ask them to understand tokens/scopes/PATs. |
-| OAuth finalization | `base44/functions/finalizeAppUserOAuthConnection/entry.ts` | Persist the capabilities actually requested/granted/known supported. Do not assume a capability merely because it appears in our desired capability catalog. Provider response/discovery is authoritative. |
-| Connection record | `base44/entities/PlatformConnection.jsonc` | User `ai_obo_consent` is the authorization source of truth. Connection `obo_consent` + `agent_access` are synchronized execution/audit metadata only and must never contradict the owner-level decision. Preserve status, verification, provenance, automation and credential security fields. |
+| First-time connection UI | `src/components/connections/ConnectDialog.jsx` | Show one plain-language permission window listing the provider-specific capabilities. Launch OAuth only through a supported server-owned route; until Base44 exposes one, fail closed rather than disclosing an internal connector identifier. |
+| OAuth finalization | `base44/functions/finalizeAppUserOAuthConnection/entry.ts` | Persist the capabilities actually requested/granted/known supported. Token presence is authorization/configuration evidence only and leaves the connection unverified until a live provider check succeeds. |
+| Connection record | `base44/entities/PlatformConnection.jsonc` | Use `obo_consent` + `agent_access` as the shared capability contract. Preserve existing status, verification, provenance, automation and credential security fields. |
 | Connected status | `src/components/connections/ConnectionCard.jsx` | Preserve current health/provenance behavior and use the green dot only for a verified working connection. |
-| Existing AI publishing consent | `src/components/connections/AIConsentCard.jsx` and legacy `ai_publishing_consent` checks | Migrate any existing positive IFund AI authorization into canonical `ai_obo_consent`. The user sees one AI/OBO authorization; connected platforms inherit it automatically. |
+| Existing AI publishing consent | `src/components/connections/AIConsentCard.jsx` and current `ai_publishing_consent` checks | Do not silently discard this control. Reconcile it with connection-level OBO consent so old users are migrated safely and the user sees one understandable permission model. |
 | Existing update/cross-post engine | `base44/functions/postCampaignUpdate/entry.ts` | Extend rather than duplicate. It already resolves campaign connections, tailors posts, stages drafts/pending approval and auto-publishes authorized targets. Add explicit destination selection/prefill support for agent handoffs. |
 | Existing social automation | `base44/functions/runSocialAutopilot/entry.ts` | Reuse its owner/connection/automation/cadence gates. Expand capabilities without bypassing provider or user authorization. |
 | Existing external fund observation | `base44/functions/syncExternalFunds/entry.ts` | Extend provider adapters for donation/balance reads. Keep its custody rule: observed external money is not IF-held/withdrawable until a real transfer/settlement is verified. |
 | Agent chat | `src/components/agents/AgentChat.jsx` | It currently creates a fresh conversation when switching agents. Add durable per-user conversation continuity and structured handoff context rather than relying only on best-effort interaction summaries. |
 | Agent selector | `src/pages/Agents.jsx` | Preserve the existing specialist team. Add tool/workflow handoffs instead of creating a second agent UI. |
 | Chief of Staff | `base44/agents/chief_of_staff.jsonc` | Use cross-conversation context plus structured delegation. It should know what was delegated, to whom, campaign/context, status and result. |
+
+### Unified authorization safety boundary
+
+The owner-level AI/OBO decision is the single user-facing authorization choice, but it is not provider proof and does not create capabilities. Propagating that decision to an existing connection may activate only capabilities the provider reported for that same connection. Every external action must still require the connection to be owned by the user, connected, provider-verified with fresh evidence, and permitted for the requested capability. Browser execution retains its explicit scope and zero-cost/cost-safety gate, and enabling AI/OBO must never silently enable background automation.
+
+An explicit canonical revocation is authoritative over every legacy authorization record. Gatekeepers must evaluate it before consulting legacy grants, and a denial must return no secret-reference metadata.
 | Shared training | `docs/AGENT_TRAINING_CORE.md` and role-specific `.agents/skills/*.md` / `base44/agents/*.jsonc` | Shared principles belong in core training; specialties and executable behavior belong in each role's own training/config. |
 
 ## Required refinements before this feature is considered complete
@@ -72,7 +80,7 @@ Use the existing implementation as the starting point; do not rebuild the connec
 9. **Agent learning uses verified outcomes.** A delegated action can become training evidence only after its outcome is known. Do not train a role to treat a draft, attempted submission or failed interaction as successful.
 10. **Grant/relief assistance must distinguish research, preparation and submission.** Strategy/Growth can discover programs and prepare applications. Eligibility, deadlines and requirements should be source-backed/current when researched. Actual submission occurs only through a supported authorized workflow and must record what was submitted.
 11. **Fluid handoff state should be explicit.** Define a small handoff payload such as `{campaign_id, source_agent, destination_tool, draft_content, selected_connection_ids, requested_action}`. Do not make users reselect known campaign/platform information.
-12. **Migration/backward compatibility.** Any existing positive IFund AI authorization establishes the canonical owner OBO grant. Existing and newly connected platforms inherit that IFund authorization automatically. Provider authentication and provider-confirmed capabilities remain authoritative and may still require provider reauthorization when a new provider capability is requested.
+12. **Migration/backward compatibility.** Existing connections without `obo_consent` are not automatically “full access.” Preserve their current working permissions and prompt for the new expanded consent when a newly requested capability requires it.
 
 ## Concrete UX examples
 

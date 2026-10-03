@@ -1,28 +1,67 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant } from '../../shared/integrationRegistry.ts';
+import { isUnifiedOboRevoked } from '../../shared/unifiedOboPolicy.js';
+import { effectiveIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
 // agent's behalf) uses an external platform, it calls this to: locate the
 // registry entry, verify the environment, confirm the agent is authorized, and
 // confirm the integration is healthy. On success it returns the secret
 // REFERENCE NAMES (never values) the caller must then load through the
-// protected secret mechanism. Every call is audit-logged. Works whether invoked
-// by an authenticated app user (agent) or by another service-scoped function.
+// protected secret mechanism. Every call is audit-logged. Caller-controlled
+// service-role assertions are not accepted; absent a Base44 user identity, the
+// request fails closed.
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    let user = null;
-    try { user = await base44.auth.me(); } catch (_) { /* service-to-service call: no user context */ }
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) {
+      // The backend client exposes service-role entity writes even when there
+      // is no authenticated app user. Persist only fixed denial metadata: do
+      // not parse or copy caller-controlled fields into this audit record.
+      await logAudit(base44, {
+        action: 'agent_integration_access',
+        actor_user_id: 'anonymous',
+        target_type: 'PlatformAccessRegistry',
+        target_id: '',
+        detail: 'Denied agent platform access: authentication required.',
+        status: 'failure',
+        metadata: { authenticated: false, authorized: false, denial_reason: 'authentication_required' },
+      });
+      return Response.json({ authorized: false, reason: 'authentication required' }, { status: 401 });
+    }
 
-    const body = await req.json().catch(() => ({}));
-    const agentName = body.agent_name;
-    const platform = body.platform;
-    const task = body.task || 'access';
-    if (!agentName || !platform) {
+    const body = await req.json().catch(() => null);
+    const agentName = typeof body?.agent_name === 'string' ? body.agent_name.trim().slice(0, 128) : '';
+    const platform = safeIntegrationPlatform(body?.platform);
+    const task = typeof body?.task === 'string' ? body.task.trim().slice(0, 128) : 'access';
+    const oboUserId = typeof body?.obo_user_id === 'string' ? body.obo_user_id.trim().slice(0, 128) : '';
+    if (!agentName || platform === 'unknown') {
+      await logAudit(base44, {
+        action: 'agent_integration_access',
+        actor_user_id: user.id,
+        target_type: 'PlatformAccessRegistry',
+        target_id: '',
+        detail: 'Denied agent platform access: invalid request.',
+        status: 'failure',
+        metadata: { authenticated: true, authorized: false, denial_reason: 'invalid_request' },
+      });
       return Response.json({ error: 'agent_name and platform are required' }, { status: 400 });
+    }
+    if (user.role !== 'admin' && (!oboUserId || oboUserId !== user.id)) {
+      await logAudit(base44, {
+        action: 'agent_integration_access',
+        actor_user_id: user.id,
+        target_type: 'PlatformAccessRegistry',
+        target_id: '',
+        detail: 'Denied agent platform access: owner authorization required.',
+        status: 'failure',
+        metadata: { authenticated: true, authorized: false, denial_reason: 'owner_authorization_required' },
+      });
+      return Response.json({ authorized: false, reason: 'owner authorization required' }, { status: 403 });
     }
 
     const entries = await sr.entities.PlatformAccessRegistry.filter({ platform });
@@ -32,8 +71,8 @@ export default async function(req) {
     let reason = 'no registry entry for platform';
 
     if (entry) {
-      const authorizedAgents = entry.authorized_agents || [];
-      const status = entry.status || 'ACTIVE';
+      const authorizedAgents = Array.isArray(entry.authorized_agents) ? entry.authorized_agents : [];
+      const status = effectiveIntegrationStatus(entry);
       if (!authorizedAgents.includes(agentName)) {
         reason = `agent "${agentName}" is not authorized for "${platform}"`;
       } else if (status !== 'ACTIVE') {
@@ -48,20 +87,31 @@ export default async function(req) {
       }
     }
 
-    // OBO is one owner-level IFund AI authorization. Platform/provider access
-    // remains a separate technical capability check, but agents do not require
-    // a second per-agent AuthorizationGrant after the owner authorizes AI.
-    if (authorized && body.obo_user_id) {
-      const owner = await sr.entities.User.get(body.obo_user_id).catch(() => null);
-      if (!owner || !hasUnifiedOboConsent(owner)) {
+    // OBO: a saved platform credential is NOT authorization to act for a user.
+    // When the caller specifies an on-behalf-of user, require an explicit, active
+    // AuthorizationGrant for (agent, user, platform) — integrated with the
+    // existing registry/gatekeeper, not a parallel auth system.
+    if (authorized && oboUserId) {
+      const owner = oboUserId === user.id
+        ? user
+        : (await sr.entities.User.filter({ id: oboUserId }).catch(() => []))[0] || null;
+      // The canonical owner decision is authoritative. In particular, an old
+      // AuthorizationGrant must never survive an explicit unified revocation.
+      if (!owner || isUnifiedOboRevoked(owner)) {
         authorized = false;
-        reason = 'owner AI/OBO authorization is not active';
+        reason = 'owner AI authorization is revoked';
+      } else {
+        const grant = await assertOboGrant(sr, agentName, oboUserId, platform);
+        if (!grant.ok) {
+          authorized = false;
+          reason = grant.reason;
+        }
       }
     }
 
     await logAudit(base44, {
       action: 'agent_integration_access',
-      actor_user_id: (user && user.id) || agentName,
+      actor_user_id: user.id,
       target_type: 'PlatformAccessRegistry',
       target_id: entry ? entry.id : '',
       detail: `agent=${agentName} platform=${platform} task=${task} authorized=${authorized} (${reason})`,
@@ -73,13 +123,13 @@ export default async function(req) {
     // load through the protected secret mechanism, and only when authorized.
     return Response.json({
       authorized,
-      status: entry ? entry.status : null,
+      status: entry ? effectiveIntegrationStatus(entry) : null,
       environment: entry ? entry.environment : null,
       secret_refs: authorized ? (entry.secret_refs || []) : [],
       reason,
     });
   } catch (error) {
-    console.error('verifyAgentPlatformAccess error:', error.message);
-    return Response.json({ authorized: false, reason: 'verification failed', error: error.message }, { status: 500 });
+    console.error('verifyAgentPlatformAccess error:', error?.name || 'UnknownError');
+    return Response.json({ authorized: false, reason: 'verification failed' }, { status: 500 });
   }
 }

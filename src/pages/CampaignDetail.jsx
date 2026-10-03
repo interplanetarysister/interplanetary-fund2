@@ -9,11 +9,9 @@ import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
-import ImportedCampaignSync from "@/components/campaigns/ImportedCampaignSync";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
-import DeleteCampaignButton from "@/components/campaigns/DeleteCampaignButton";
 import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
 import DistributionPanel from "@/components/distribution/DistributionPanel";
 import FollowButton from "@/components/campaigns/FollowButton";
@@ -137,13 +135,11 @@ export default function CampaignDetail() {
             </div>
           )}
 
-          {isOwner && <ImportedCampaignSync campaign={campaign} onSynced={load} />}
           {isOwner && <CashAppSettings campaign={campaign} onSaved={load} />}
           {isOwner && <EditAIInstructionsDialog campaign={campaign} onSaved={load} />}
           {isOwner && <OutreachAgentPanel campaign={campaign} />}
           {isOwner && <CampaignHealth campaign={campaign} updatesCount={updates.length} />}
           {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
-          {isOwner && <DeleteCampaignButton campaign={campaign} />}
         </div>
       </div>
 

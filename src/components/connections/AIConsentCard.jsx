@@ -2,23 +2,29 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
+import { resolveUnifiedOboConsent } from "@/lib/unifiedOboConsent";
 
 // The AI Authorization agreement. AI never publishes to a connected campaign or
 // social account without this explicit, revocable license — and even with it,
 // per-platform automation settings still govern every destination.
-export default function AIConsentCard({ user, onChanged, onConnectionChanged }) {
+export default function AIConsentCard({ user, onChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const consent = user?.ai_obo_consent || user?.ai_publishing_consent || user?.ai_connection_consent;
+  const consent = resolveUnifiedOboConsent(user);
 
   const decide = async (granted) => {
     setSaving(true);
     try {
       const result = await base44.functions.invoke("setUnifiedOboConsent", { granted });
-      const value = result?.data?.consent || { granted, decided_at: new Date().toISOString() };
+      const payload = result?.data;
+      const value = payload?.consent;
+      if (!value || typeof value.granted !== "boolean") {
+        throw new Error("Invalid authorization response");
+      }
       onChanged?.(value);
-      onConnectionChanged?.(value);
-      setError("");
+      setError(payload.partial
+        ? "Your AI choice was saved, but some connected platforms could not be updated. Retry to finish applying it everywhere."
+        : "");
     } catch {
       setError("Couldn't save your AI authorization. Try again.");
     } finally {

@@ -1,10 +1,17 @@
 import { createClient } from '@base44/sdk';
 import { appParams } from '@/lib/app-params';
 import { runtimeContract } from '@/lib/runtimeContract';
+import { createTrustedBase44Client } from '@/lib/base44RuntimeClient';
 
 const { token, functionsVersion } = appParams;
-const appId = runtimeContract.appId || appParams.appId;
-const appBaseUrl = runtimeContract.appBaseUrl || appParams.appBaseUrl;
+// Application identity is part of the build-owned runtime contract. Query
+// parameters and localStorage are caller-controlled and may carry only session
+// material; they must never select another Base44 application's data plane.
+const appId = runtimeContract.appId;
+// Network destinations must come only from the build-owned runtime contract.
+// Query/localStorage app parameters are caller-controlled and must never choose
+// where an access token is sent.
+const appBaseUrl = runtimeContract.appBaseUrl;
 
 // Base44's own hosted app should use the SDK's native endpoint selection.
 // Alternate hosts (Cloudflare/custom domains) may route to the canonical Base44
@@ -26,4 +33,7 @@ if (!isNativeBase44Host && appBaseUrl) {
   clientConfig.serverUrl = appBaseUrl;
 }
 
-export const base44 = createClient(clientConfig);
+// A missing build identity is a fatal configuration state. Do not construct an
+// SDK client that would emit X-App-Id: "undefined" or address /apps/undefined.
+// AuthContext renders the safe application error before any route can use it.
+export const base44 = createTrustedBase44Client(clientConfig, createClient);

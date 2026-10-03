@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { canAutoPublish, hasAiPublishingConsent } from '../../shared/socialPublish.ts';
-import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Autonomous Social Media Autopilot (invoked by the "Social Media Autopilot"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -72,25 +72,13 @@ export default async function(req) {
         continue;
       }
       if (!hasAiPublishingConsent(owner)) {
-        report.skipped.push({ id: campaign.id, reason: 'no AI OBO authorization' });
+        report.skipped.push({ id: campaign.id, reason: 'no AI publishing consent' });
         continue;
       }
-      const ownerTargets = activeConnections.filter((c) =>
+      const targets = activeConnections.filter((c) =>
         c.created_by_id === campaign.created_by_id &&
         (!c.campaign_id || c.campaign_id === campaign.id)
       );
-      const targets = [];
-      for (const connection of ownerTargets) {
-        const authorization = await assertExternalAgentAction(sr, {
-          ownerUser: owner,
-          ownerUserId: campaign.created_by_id,
-          campaign,
-          connection,
-          capability: 'create_post',
-          requireAutomation: connection.automation_mode === 'auto',
-        });
-        if (authorization.ok) targets.push(connection);
-      }
       if (!targets.length) {
         report.skipped.push({ id: campaign.id, reason: 'no matching social connections' });
         continue;

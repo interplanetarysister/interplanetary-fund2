@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Coins, CheckCircle2, AlertTriangle, Info, Wifi, Clock } from "lucide-react";
+import { Loader2, Coins, AlertTriangle, Info, Wifi, Clock } from "lucide-react";
 
 // "Count My Money" — retrieves and reconciles available donation and fund
 // information from every connected, supported fundraising platform for every
@@ -50,11 +50,11 @@ export default function CountMyMoney() {
   const errorSources = providerResults.filter(r => classifySource(r).type === "error");
   const manualSources = providerResults.filter(r => classifySource(r).type === "manual");
 
-  // External observed totals are NEVER the same as withdrawable cash.
+  // External observed totals are NEVER the same as withdrawable cash. This
+  // synchronization response does not calculate the owner's canonical IFund
+  // available balance, so it must not render a withdrawable-balance card.
   const externalObserved = result?.total_discovered || 0;
-  const withdrawable = result?.withdrawable_imported || 0;
 
-  const overallOk = result && ["success", "partial"].includes(result.overall_status);
   const noConnections = result?.overall_status === "no_connections";
 
   return (
@@ -79,13 +79,6 @@ export default function CountMyMoney() {
             </div>
           ) : (
             <>
-              {/* Withdrawable — the number users actually care about */}
-              <div className={`rounded-xl border p-3 ${withdrawable > 0 ? "border-emerald-200 bg-emerald-50" : "border-stone-200 bg-stone-50"}`}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Available in Interplanetary Fund</p>
-                <p className="text-2xl font-bold text-stone-900 mt-1">${withdrawable.toLocaleString()}</p>
-                <p className="text-xs text-stone-500 mt-0.5">Verified, settled funds you can withdraw.</p>
-              </div>
-
               {/* External observed — clearly labeled as informational */}
               {externalObserved > 0 && (
                 <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">

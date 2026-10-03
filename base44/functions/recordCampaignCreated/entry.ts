@@ -1,13 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
-import { generateAndDistribute } from '../../shared/crossPost.ts';
 
-// Publishes a campaign into the Community feed, registers its stable application
-// identity with the canonical Base44 financial store, and cross-posts a launch
-// announcement to every connected social + fundraising platform. Auto-publishing
-// requires an active outreach+ subscription; without it, posts are saved as
-// drafts for the user to review and post manually.
+// Publishes a campaign into the Community feed and registers its stable
+// application identity with the canonical Base44 financial store. Financial writes
+// fail closed unless this mapping exists, so registration happens before the
+// public campaign-created event.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -50,31 +48,10 @@ export default async function(req) {
       metadata: { category: campaign.category, goal_amount: campaign.goal_amount },
     });
 
-    // Cross-post a launch announcement to every connected platform. The shared
-    // engine handles subscription gating, AI consent, and auto-publish vs draft.
-    let crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0, authorization_blocked: '' };
-    try {
-      const connections = await sr.entities.PlatformConnection.filter({ created_by_id: campaign.created_by_id });
-      const url = `${new URL(req.url).origin}/campaign/${campaign.id}`;
-      const prompt = `You are the AI Campaign Distribution Engine for Interplanetary Fund.
-A campaign just launched. Write one platform-tailored launch announcement per platform. Do NOT reuse identical text — adapt tone, length, and format per platform rules. Every post must include the campaign link ${url}.
-
-Campaign: ${campaign.title}
-${campaign.summary ? `Summary: ${campaign.summary}` : ''}
-${campaign.story ? `Story excerpt: ${campaign.story.slice(0, 500)}` : ''}
-
-Generate a launch announcement for each connected platform below.`;
-      crosspost = await generateAndDistribute({
-        base44, sr, user: creator || user, campaign, connections, prompt,
-      });
-    } catch (crossPostError) {
-      console.error('Campaign launch cross-post failed:', crossPostError?.message || crossPostError);
-    }
-
     // Marketing KPI: campaign creation is the core activation event.
     try { await base44.analytics.track({ eventName: 'campaign_created', properties: { campaign_id: campaign.id, category: campaign.category } }); } catch (_) { /* non-fatal */ }
 
-    return Response.json({ ok: true, canonical_registered: true, crosspost });
+    return Response.json({ ok: true, canonical_registered: true });
   } catch (error) {
     console.error('recordCampaignCreated error:', error && error.message ? error.message : error);
     return Response.json({ error: 'Unable to publish campaign because the canonical backend could not be updated.' }, { status: 503 });

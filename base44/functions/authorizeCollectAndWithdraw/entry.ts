@@ -12,6 +12,9 @@ export default async function(req) {
     const auth = await sr.entities.ExternalCollectionAuthorization.get(body.authorization_id).catch(() => null);
     if (!auth || auth.owner_user_id !== user.id) return Response.json({ error: 'Collection authorization not found.' }, { status: 404 });
     if (auth.status !== 'prepared') return Response.json({ error: 'This collection authorization is no longer awaiting confirmation.' }, { status: 409 });
+    if (!(auth.sources || []).some((source) => source.status === 'ready_for_authorization')) {
+      return Response.json({ error: 'No provider-verified source is currently eligible for collection.' }, { status: 409 });
+    }
     if (!auth.expires_at || new Date(auth.expires_at).getTime() <= Date.now()) {
       await sr.entities.ExternalCollectionAuthorization.update(auth.id, { status: 'expired' });
       return Response.json({ error: 'This collection authorization expired. Refresh balances and try again.' }, { status: 409 });

@@ -38,6 +38,18 @@
       },
       "description": "Base44 donation records reserved by this withdrawal. The canonical Base44 FinancialOperation reservation is the authoritative double-spend lock."
     },
+    "covered_holding_entry_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Settled external holding entries atomically claimed by this withdrawal."
+    },
+    "external_gross_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Provider-settled external holding value included in gross_amount."
+    },
     "status": {
       "type": "string",
       "enum": [

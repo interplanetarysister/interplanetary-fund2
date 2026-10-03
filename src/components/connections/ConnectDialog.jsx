@@ -5,8 +5,36 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 import CredentialFields from "./CredentialFields";
+
+const MESSAGING_PLATFORMS = new Set(["gmail", "slack", "outlook", "microsoft_teams"]);
+
+function providerPermissionItems(platform) {
+  if (platform.kind === "crowdfunding") return [
+    "Read your connected account and campaign resources",
+    "Read provider-reported campaign analytics, donations, payments, and transactions when supported",
+    "Observe reconciliation and settlement status without moving money",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed read access you approve",
+  ];
+  if (platform.kind === "social") return [
+    "Read your connected account and available campaign resources",
+    "Create and manage campaign posts and media when supported",
+    "Read and respond to campaign interactions and messages when supported",
+    "Read provider-reported engagement analytics",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed access you approve",
+  ];
+  if (MESSAGING_PLATFORMS.has(platform.id)) return [
+    "Read your connected account",
+    "Read and reply to messages when supported",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed messaging access you approve",
+  ];
+  return [
+    "Read your connected account",
+    "Read available files, records, or resources",
+    "Let your Interplanetary Fund helpers reuse only the provider-confirmed read access you approve",
+  ];
+}
 
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
@@ -21,6 +49,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
+  const [permissionAccepted, setPermissionAccepted] = useState(false);
+  const [browserReadConsent, setBrowserReadConsent] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -34,6 +64,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
+    setBrowserReadConsent(existing?.obo_consent?.granted === true &&
+      existing?.obo_consent?.granted_capabilities?.includes("GET_METRICS") === true);
+    let pending = null;
+    try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* An invalid resume record is ignored. */ }
+    setPermissionAccepted(!!existing || (pending?.platform === platform.id && pending?.sharedAgentConsent === true));
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
       .then(setCampaigns)
@@ -42,31 +77,29 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  const permissionItems = usesProviderOAuth ? providerPermissionItems(platform) : [];
+
   const connectWithProvider = async () => {
     setConnecting(true);
     setError("");
     try {
+      if (!permissionAccepted) {
+        setError("Approve the connection first.");
+        return;
+      }
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
         setError("This platform can’t be connected this way yet.");
         return;
       }
-      if (!data?.configured || !data?.connector_id) {
+      if (!data?.configured || !data?.launch_available) {
         setError("This connection is not ready yet. Please try again later.");
         return;
       }
-      // The IF consent and provider grant are one continuous connection event.
-      // Persist only non-secret resume context; the connector owns OAuth state
-      // and credentials. Provider authorization starts immediately after consent.
-      const me = await base44.auth.me();
-      const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
-      if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
-      // localStorage survives a provider redirect that returns in another web tab.
-      // Only the same signed-in owner can resume; no provider tokens are stored here.
-      localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
-        platform: platform.id, userId: me.id, sharedAgentConsent: aiAuthorized, startedAt: Date.now(),
-      }));
-      window.location.assign(redirectUrl);
+      // A secure server-owned OAuth launch is required before this branch can
+      // redirect. The current Base44 SDK exposes no documented backend method
+      // for per-user launches, so fail closed instead of exposing connector IDs.
+      setError("Secure sign-in for this platform is not available yet.");
     } catch (e) {
       console.error("Provider OAuth start failed:", e);
       setError("We couldn’t open sign-in. Please try again.");
@@ -92,6 +125,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
+        browser_read_consent: isCrowd && !usesProviderOAuth ? browserReadConsent : undefined,
       });
       const saved = res.data.connection;
       onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
@@ -149,20 +183,33 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
               </div>
             </div>
           )}
+          {isCrowd && !usesProviderOAuth && (
+            <label className="flex items-start gap-2 rounded-xl border border-border bg-muted/30 p-3 text-sm text-foreground cursor-pointer">
+              <input type="checkbox" checked={browserReadConsent} onChange={(e) => setBrowserReadConsent(e.target.checked)} className="mt-1" />
+              <span>Let my Interplanetary Fund agents check this campaign through my authorized browser connection when available. This only reads the external page; it does not move donations or make the account active before sign-in is verified.</span>
+            </label>
+          )}
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
-            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
+            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "Your Interplanetary Fund helpers can use this connection for the things you allowed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to help with connected platforms."}</p>
           </div>
           {usesProviderOAuth && !existing && (
-            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
-              <p className="text-sm font-semibold text-foreground">Connect {platform.name}</p>
-              <p className="text-xs text-muted-foreground">Your existing IFund AI authorization already includes OBO access for platforms you connect. {platform.name} will separately show the provider permissions it supports during sign-in.</p>
+            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+              <p className="text-sm font-semibold text-foreground">Connect {platform.name} to Interplanetary Fund?</p>
+              <p className="text-xs text-muted-foreground">Approve the least-privilege access shown here. Interplanetary Fund will open {platform.name} only when a secure provider sign-in route is available. Money movement is never included in this general connection approval.</p>
+              <div className="space-y-1.5">
+                {permissionItems.map((item) => <p key={item} className="flex gap-2 text-xs text-foreground"><Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />{item}</p>)}
+              </div>
+              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                <input type="checkbox" checked={permissionAccepted} onChange={(e) => setPermissionAccepted(e.target.checked)} className="mt-0.5" />
+                <span>I approve this connection and the choices above. My Interplanetary Fund helpers may reuse it only within my settings.</span>
+              </label>
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           {usesProviderOAuth && (!existing || existing?.capability_status === "reauthorization_required") ? (
-            <Button onClick={connectWithProvider} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
+            <Button onClick={connectWithProvider} disabled={connecting || !permissionAccepted} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Allow & connect ${platform.name}`}
             </Button>
           ) : (
             <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">

@@ -1,6 +1,7 @@
 {
   "name": "External Feed Mirroring",
-  "description": "Hourly mirrors new posts from connected external social platforms (Bluesky, Mastodon, Discord) into the internal Interplanetary Social feed, deduplicated by external post id. Platforms without a readable API are reported and never faked.",
+  "description": "Disabled safety definition for external feed mirroring. Do not activate until per-owner provider binding, scheduled authorization, and execution cost are verified.",
+  "is_active": false,
   "trigger": {
     "condition": null,
     "config": {
@@ -36,7 +37,7 @@
           "then": "end",
           "x-base44": {
             "title": "Mirror external posts",
-            "description": "Sync external feeds into Interplanetary Social"
+            "description": "Fail closed until tenant-isolated mirroring is verified"
           }
         }
       }

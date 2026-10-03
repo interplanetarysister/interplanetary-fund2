@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { resolveCapabilityMap } from '../../shared/providerCapabilities.ts';
+import { hasImplementedTransferAdapter, resolveCapabilityMap } from '../../shared/providerCapabilities.ts';
 
 // Executes only transfer paths that IFund has independently verified as
 // executable. Configuration-based/direct payout models are coordinated here but
@@ -29,7 +29,7 @@ export default async function(req) {
     for(const source of authorization.sources||[]) {
       const cap=byPlatform.get(String(source.platform||'').toLowerCase());
       if(source.status!=='ready_for_authorization') { results.push({...source,status:'user_action_required'}); continue; }
-      if(!cap||cap.capability_status!=='verified') {
+      if(!cap||!hasImplementedTransferAdapter(cap)) {
         results.push({...source,status:'user_action_required',note:'Provider payout capability is not verified for automated collection.'}); continue;
       }
       if(cap.api_transfer===true) {

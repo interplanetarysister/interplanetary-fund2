@@ -126,7 +126,7 @@ export default function Withdrawals() {
           </div>
           <div>
             <h1 className="font-display text-2xl text-stone-900">Withdrawals</h1>
-            <p className="text-sm text-stone-500">Withdraw IFund-held funds or collect supported balances from connected fundraising platforms into one withdrawal flow.</p>
+            <p className="text-sm text-stone-500">Withdraw IFund-held funds or review connected-platform balances. External balances remain informational unless a verified transfer and settlement path is available.</p>
           </div>
         </div>
 
@@ -158,7 +158,7 @@ export default function Withdrawals() {
       </section>
 
       <div className="flex justify-end">
-        <Button onClick={() => setCollectAll(true)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white">Collect & Withdraw everything</Button>
+        <Button onClick={() => setCollectAll(true)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white">Review all connected funds</Button>
       </div>
 
       {/* Campaign balances */}
@@ -191,7 +191,7 @@ export default function Withdrawals() {
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 sm:self-center">
-                  <Button onClick={() => setCollectCampaign(c)} variant="outline" className="rounded-xl">Collect & Withdraw</Button>
+                  <Button onClick={() => setCollectCampaign(c)} variant="outline" className="rounded-xl">Review connected funds</Button>
                   <Button disabled={c.available <= 0} onClick={() => setActive(c)} className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">
                     {c.available > 0 ? `Withdraw IFund ${money(c.available)}` : "No IFund-held funds"}
                   </Button>

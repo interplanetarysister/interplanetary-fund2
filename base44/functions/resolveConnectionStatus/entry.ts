@@ -1,12 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
+import { BROWSER_RUN_POLICY } from '../../shared/browserConnectionPolicy.js';
+import { deriveConnectionLifecycle, operationalOboGrants } from '../../shared/connectionLifecyclePolicy.js';
+import { recipeTransportOrder } from '../../shared/platformConnectionRecipePolicy.js';
 
 // Inline minimal recipe registry (matches the established pattern in
 // resolvePlatformConnectionRecipe, which also inlines its own copy — the shared
 // base44/lib/platformConnectionRecipes.ts is not importable from functions).
 // This is non-secret linkage knowledge only: preferred transport + connector type.
-const TRANSPORT_PRIORITY = ['oauth', 'api', 'webhook', 'token', 'authenticated_browser', 'public_browser', 'manual'];
 const STATIC_RECIPES: Record<string, Record<string, { preferred_transport: string; connector_type?: string; shared?: boolean; worker_key?: string }>> = {
   linkedin: { connect: { preferred_transport: 'oauth', connector_type: 'linkedin' } },
   facebook: { connect: { preferred_transport: 'oauth', connector_type: 'facebook_pages' } },
@@ -32,9 +33,7 @@ function staticRecipe(platform: string, operation = 'connect') {
   return STATIC_RECIPES[platform]?.[operation] || null;
 }
 function orderedTransports(recipe: any) {
-  const preferred = recipe?.preferred_transport;
-  const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  return [...new Set([preferred, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))];
+  return recipeTransportOrder(recipe);
 }
 
 // The canonical connection resolver consumed by every IFund connection surface.
@@ -116,52 +115,12 @@ async function appUserOAuthTransport(sr: any, platform: string) {
   }
 }
 
-function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe: any, platform: string, unifiedObo: boolean): string {
-  // SHARED connectors: lifecycle comes from the provider-backed shared check.
-  if (recipe?.shared) {
-    if (!shared?.connected) return 'NOT_CONNECTED';
-    if (!shared?.verified) return shared?.last_error ? 'DEGRADED' : 'RECONNECT_REQUIRED';
-    return 'CONNECTED';
-  }
-  // Per-user platforms.
-  if (!connection) {
-    // No PlatformConnection yet. OAuth-capable + connector registered but no token
-    // → the user can initiate; not an error state.
-    if (recipe?.preferred_transport === 'oauth' && oauth?.configured && !oauth?.transport_ok) return 'AUTHORIZATION_REQUIRED';
-    return 'NOT_CONNECTED';
-  }
-  if (connection.status === 'disconnected') return 'DISCONNECTED';
-  if (connection.status === 'error') {
-    return oauth?.transport_ok ? 'DEGRADED' : 'RECONNECT_REQUIRED';
-  }
-  // Connection record present + status connected — refine by transport verification.
-  if (recipe?.preferred_transport === 'oauth') {
-    return oauth?.transport_ok ? 'CONNECTED' : 'RECONNECT_REQUIRED';
-  }
-  if (recipe?.preferred_transport === 'token') {
-    // bluesky/mastodon: provider-verified at save time; stale credentials surface on next verify.
-    return connection.verification_status === 'verified' ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
-  }
-  if (recipe?.preferred_transport === 'webhook') {
-    // kofi: connected only when a provider webhook has verified the link.
-    return (connection.verification_status === 'verified' && connection.external_data_source === 'provider_verified')
-      ? 'CONNECTED' : 'CONNECTING';
-  }
-  if (recipe?.preferred_transport === 'public_browser') {
-    // Link-based tracking: a pasted URL is the connection evidence. Owner-
-    // reported totals do not require AI OBO consent — that authorization is
-    // only for AI acting on the user's behalf, not for tracking a link.
-    return connection?.external_url ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
-  }
-  return connection.status === 'connected' ? 'CONNECTED' : 'NOT_CONNECTED';
-}
-
 function recoveryHint(lifecycle: string, recipe: any, oauth: any, platform: string): string {
   switch (lifecycle) {
     case 'NOT_CONNECTED':
       if (recipe?.preferred_transport === 'oauth' && !oauth?.configured) return 'Register the workspace connector, then start OAuth.';
       if (recipe?.preferred_transport === 'oauth') return 'Start OAuth to connect this account.';
-      if (recipe?.preferred_transport === 'public_browser') return 'Link the external campaign URL. Existing IFund AI authorization applies automatically.';
+      if (recipe?.preferred_transport === 'public_browser') return 'Link the external campaign URL and grant browser observation consent.';
       if (recipe?.preferred_transport === 'token') return 'Enter the platform connection credentials.';
       if (recipe?.preferred_transport === 'webhook') return 'Follow the webhook setup steps.';
       return 'Connect this platform to begin.';
@@ -213,19 +172,25 @@ export default async function(req) {
       } catch { grants = []; }
     }
 
-    const unifiedObo = hasUnifiedOboConsent(user);
-    const lifecycle = deriveLifecycle(connection, shared, oauth, recipe, key, unifiedObo);
+    const lifecycle = deriveConnectionLifecycle({
+      connection,
+      shared,
+      oauth,
+      recipe,
+      browserRunEnabled: BROWSER_RUN_POLICY.enabled,
+    });
+    const authorizedGrants = operationalOboGrants({ connection, grants, lifecycle });
 
     // Capabilities: only what is genuinely verified. Never inferred from config.
     const capabilities_verified: string[] = [];
     if (recipe?.shared && shared?.verified) capabilities_verified.push(...(shared.capabilities || []));
-    if (!recipe?.shared) {
+    if (!recipe?.shared && lifecycle === 'CONNECTED') {
       if (oauth?.transport_ok) capabilities_verified.push('oauth_transport_verified');
       if (connection?.verification_status === 'verified') {
         if (recipe?.preferred_transport === 'token') capabilities_verified.push('provider_verified');
         if (recipe?.preferred_transport === 'webhook' && connection.external_data_source === 'provider_verified') capabilities_verified.push('receive_donation_webhooks');
       }
-      if (recipe?.preferred_transport === 'public_browser' && connection?.external_url) {
+      if (recipe?.preferred_transport === 'public_browser' && BROWSER_RUN_POLICY.enabled) {
         capabilities_verified.push('observe_external_metrics');
       }
     }
@@ -238,11 +203,7 @@ export default async function(req) {
       fallback_transports: (transports || []).filter((t: string) => t !== recipe?.preferred_transport),
       identity: shared?.identity || (connection ? { display_name: connection.display_name || null, external_url: connection.external_url || null } : null),
       capabilities_verified,
-      obo: recipe?.shared ? null : {
-        authorized: unifiedObo,
-        source: unifiedObo ? 'unified_user_authorization' : 'none',
-        legacy_grant_count: grants.length,
-      },
+      obo: recipe?.shared ? null : { authorized: authorizedGrants.length > 0, grant_count: authorizedGrants.length },
       last_verified: shared?.verified ? shared?.verified_at : connection?.last_synced || null,
       last_error: shared?.last_error || connection?.last_error || null,
       recovery_hint: recoveryHint(lifecycle, recipe, oauth, key),

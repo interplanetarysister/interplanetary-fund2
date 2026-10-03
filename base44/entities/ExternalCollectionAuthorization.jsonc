@@ -65,6 +65,25 @@
           },
           "campaign_id": {
             "type": "string"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "data_source": {
+            "type": "string"
+          },
+          "observation_stale": {
+            "type": "boolean"
+          },
+          "platform_fee_rate": {
+            "type": "number"
+          },
+          "estimated_platform_fee": {
+            "type": "number"
+          },
+          "estimated_net_after_platform_fee": {
+            "type": "number"
           }
         }
       }

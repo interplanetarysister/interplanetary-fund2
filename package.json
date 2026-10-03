@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=20 <23"
   },
   "scripts": {
     "verify:runtime-node22": "node scripts/require-node22.mjs",
@@ -62,7 +62,12 @@
     "verify:no-active-convex": "node scripts/verify-no-active-convex-runtime.mjs",
     "verify:entitlement-obo": "node scripts/verify-entitlement-obo-contract.mjs",
     "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs",
+    "verify:platform-connection-trust": "node scripts/verify-platform-connection-trust-contract.mjs",
+    "verify:external-mirroring-isolation": "node scripts/verify-external-mirroring-isolation.mjs",
+    "verify:integration-registry-truth": "node scripts/verify-integration-registry-truth.mjs",
     "verify:host-portability": "node scripts/verify-host-portability-contract.mjs",
+    "verify:frontend-shared-parity": "node scripts/verify-frontend-shared-parity.mjs",
+    "verify:oauth-redirect": "node scripts/verify-oauth-redirect-contract.mjs",
     "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs",
     "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs"
   },

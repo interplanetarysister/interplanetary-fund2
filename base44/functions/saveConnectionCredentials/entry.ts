@@ -2,7 +2,6 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS } from '../../shared/integrationRegistry.ts';
 import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
-import { isLinkBasedPlatform } from '../../shared/connectionVerification.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -18,14 +17,34 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json().catch(() => ({}));
+    const sr = base44.asServiceRole;
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count, credentials,
+      browser_read_consent,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
-    const reportedTotal = Number(external_total ?? 0);
-    const reportedDonors = Number(external_donor_count ?? 0);
+    let existing = null;
+    if (connection_id) {
+      const ownerVisible = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
+      if (!ownerVisible) return Response.json({ error: 'Connection not found' }, { status: 404 });
+      if (ownerVisible.created_by_id !== user.id && user.role !== 'admin') {
+        return Response.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      // Field RLS deliberately hides secrets from owner-mode reads. Fetch the
+      // complete record only after ownership authorization so blank/redacted
+      // edits preserve existing secrets instead of deleting them.
+      existing = await sr.entities.PlatformConnection.get(connection_id).catch(() => null);
+      if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
+    }
+
+    const reportedTotal = Number(Object.prototype.hasOwnProperty.call(body, 'external_total')
+      ? external_total
+      : existing?.external_total ?? 0);
+    const reportedDonors = Number(Object.prototype.hasOwnProperty.call(body, 'external_donor_count')
+      ? external_donor_count
+      : existing?.external_donor_count ?? 0);
     if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
       return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
     }
@@ -33,16 +52,10 @@ export default async function(req) {
       return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
     }
 
-    let existing = null;
-    if (connection_id) {
-      existing = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
-      if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
-      if (existing.created_by_id !== user.id && user.role !== 'admin') {
-        return Response.json({ error: 'Forbidden' }, { status: 403 });
-      }
-    }
-
     const effectiveKind = kind || existing?.kind || 'crowdfunding';
+    if (typeof browser_read_consent === 'boolean' && existing && existing.created_by_id !== user.id) {
+      return Response.json({ error: 'Only the connection owner can change browser access consent.' }, { status: 403 });
+    }
     const effectiveCurrency = effectiveKind === 'crowdfunding'
       ? String(external_currency || existing?.external_currency || '').trim().toUpperCase()
       : undefined;
@@ -88,45 +101,32 @@ export default async function(req) {
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
 
-    // Link-based platforms (GoFundMe, Kickstarter, Indiegogo, FundRazr,
-    // GiveSendGo, Spotfund, Buy Me a Coffee, Custom) have no provider API to
-    // verify against. A valid external URL is the connection evidence; totals
-    // are owner-reported and informational only. Mark these as connected
-    // immediately so they show as "working" instead of perpetually "needs
-    // attention".
-    if (isLinkBasedPlatform(platform) && (external_url || existing?.external_url)) {
-      data.status = 'connected';
-      data.verification_status = 'verified';
-      data.external_data_source = 'owner_reported';
-      data.last_synced = now;
-      data.history = [...(existing?.history || []), { at: now, event: 'link_verified', detail: 'Link-based connection verified; URL and owner-reported totals are active.' }].slice(-30);
+    if (effectiveKind === 'crowdfunding' && typeof browser_read_consent === 'boolean') {
+      const currentConsent = existing?.obo_consent || {};
+      const previous = (currentConsent.granted_capabilities || []).filter((item) => item !== 'GET_METRICS');
+      const grantedCapabilities = browser_read_consent ? [...new Set([...previous, 'GET_METRICS'])] : previous;
+      data.obo_consent = {
+        ...currentConsent,
+        granted: browser_read_consent || (currentConsent.granted === true && previous.length > 0),
+        granted_at: browser_read_consent ? now : currentConsent.granted_at,
+        permission_version: browser_read_consent ? '2026-09-browser-read-v1' : currentConsent.permission_version,
+        granted_capabilities: grantedCapabilities,
+        requested_capabilities: browser_read_consent
+          ? [...new Set([...(currentConsent.requested_capabilities || []), 'GET_METRICS'])]
+          : (currentConsent.requested_capabilities || []).filter((item) => item !== 'GET_METRICS'),
+      };
+      data.agent_access = {
+        ...(existing?.agent_access || {}),
+        shared_with_agents: browser_read_consent || (existing?.agent_access?.shared_with_agents === true && previous.length > 0),
+        // Browser-read consent is a narrow read grant. It must never enable
+        // unrelated background automation or publishing authority.
+        automation_enabled: existing?.agent_access?.automation_enabled === true,
+      };
     }
 
-    // Every connection inherits the owner's unified AI/OBO authorization.
-    // Provider verification/capabilities still determine what the connection
-    // can actually do; this removes a contradictory second IFund consent.
-    const unifiedObo = hasAiPublishingConsent(consentOwner);
-    const currentConsent = existing?.obo_consent || {};
-    data.obo_consent = {
-      ...currentConsent,
-      granted: unifiedObo,
-      granted_at: unifiedObo ? (currentConsent.granted_at || now) : null,
-      permission_version: '2026-10-unified-obo-v1',
-      granted_capabilities: unifiedObo
-        ? (currentConsent.provider_capabilities || currentConsent.granted_capabilities || [])
-        : [],
-    };
-    data.agent_access = {
-      ...(existing?.agent_access || {}),
-      shared_with_agents: unifiedObo,
-      automation_enabled: unifiedObo && effectiveAutomationMode === 'auto',
-    };
-
-
-
     let saved;
-    if (existing) saved = await base44.entities.PlatformConnection.update(existing.id, data);
-    else saved = await base44.entities.PlatformConnection.create(data);
+    if (existing) saved = await sr.entities.PlatformConnection.update(existing.id, data);
+    else saved = await sr.entities.PlatformConnection.create({ ...data, created_by_id: user.id });
 
     const rotated = SECRET_FIELDS.filter((f) => credentials && credentials[f]);
     await logAudit(base44, {
@@ -142,7 +142,7 @@ export default async function(req) {
     const { credentials: redactedCreds, credentials_meta } = redactCredentials(saved.credentials);
     return Response.json({ connection: { ...saved, credentials: redactedCreds, credentials_meta } });
   } catch (error) {
-    console.error('saveConnectionCredentials error:', error.message);
+    console.error('saveConnectionCredentials error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not save connection.' }, { status: 500 });
   }
 }

@@ -1,8 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
-import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
+import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -28,12 +27,8 @@ export default async function(req) {
     const sr = base44.asServiceRole;
     const consentOwner = user;
     const aiConsentGranted = hasAiPublishingConsent(consentOwner);
-    const hasSubscription = hasSubscriptionLevel(user, 2);
     if (!aiConsentGranted) {
-      return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
-    }
-    if (!hasSubscription) {
-      return Response.json({ error: 'An active outreach subscription is required to broadcast to all platforms. Upgrade to auto-publish, or publish posts individually.' }, { status: 403 });
+      return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
     }
     const access = await assertPlatformAccess(sr, 'social_publish');
     if (!access.ok) {
@@ -69,15 +64,9 @@ export default async function(req) {
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-      const obo = await assertExternalAgentAction(sr, {
-        ownerUser: consentOwner,
-        ownerUserId: campaign.created_by_id,
-        campaign,
-        connection,
-        capability: 'create_post',
-        requireAutomation: false,
-      });
-      if (!canAutoPublish(connection) || !aiConsentGranted || !obo.ok) {
+      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
+      const connectionAutomationAllowed = obo.ok && connection.agent_access?.automation_enabled === true;
+      if (!canAutoPublish(connection) || !aiConsentGranted || !connectionAutomationAllowed || !hasFreshProviderVerification(connection)) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
@@ -92,7 +81,7 @@ export default async function(req) {
           external_post_url: url,
           error: '',
         });
-        await base44.entities.PlatformConnection.update(connection.id, {
+        await sr.entities.PlatformConnection.update(connection.id, {
           status: 'connected',
           verification_status: 'verified',
           last_synced: new Date().toISOString(),

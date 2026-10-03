@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { connectorAuthorizationStatus } from '../../shared/appUserConnectorPolicy.js';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 
 
@@ -18,10 +19,7 @@ export default async function(req) {
 
     try {
       const connection = await base44.asServiceRole.connectors.getCurrentAppUserConnection(connectorId);
-      return Response.json({
-        connected: !!connection?.accessToken,
-        configured: true,
-      });
+      return Response.json(connectorAuthorizationStatus(connection));
     } catch {
       return Response.json({ connected: false, configured: true });
     }

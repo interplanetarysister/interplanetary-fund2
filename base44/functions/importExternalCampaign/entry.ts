@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { discoverProviderCampaign } from '../../shared/externalCampaignDiscovery.js';
 
 const ALLOWED = ['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
 const clean = (v, n=12000) => typeof v === 'string' ? v.trim().slice(0,n) : v;
@@ -12,12 +13,17 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     const connection = await base44.entities.PlatformConnection.get(body.connection_id).catch(() => null);
     if (!connection || connection.created_by_id !== user.id || connection.kind !== 'crowdfunding') return Response.json({ error: 'Connected fundraising account not found.' }, { status: 404 });
-    const incoming = body.campaign && typeof body.campaign === 'object' ? body.campaign : {};
+    const snapshot = await discoverProviderCampaign(String(connection.platform || '').toLowerCase(), connection.external_url);
+    const incoming = snapshot.campaign;
     const payload:any = { status: 'draft' };
     for (const key of ALLOWED) if (incoming[key] !== undefined && incoming[key] !== null) payload[key] = clean(incoming[key], key === 'story' ? 30000 : 4000);
-    payload.title = clean(payload.title || connection.display_name || ('Imported ' + connection.platform + ' campaign'), 200);
-    payload.goal_amount = Number(payload.goal_amount || 1);
-    if (!(payload.goal_amount > 0)) payload.goal_amount = 1;
+    payload.title = clean(payload.title, 200);
+    if (!payload.title) return Response.json({ error: 'The provider did not return a campaign title.' }, { status: 422 });
+    // A public provider page does not reliably expose the fundraising goal.
+    // Keep the imported record as a draft with an explicit unset value instead
+    // of inventing a live goal. Activation still requires a positive goal.
+    payload.goal_amount = Number(payload.goal_amount || 0);
+    if (!(payload.goal_amount >= 0)) payload.goal_amount = 0;
     if (!['medical','emergency','education','community','animals','business','memorial','disaster_relief','creative','other'].includes(payload.category)) payload.category = 'other';
 
     const sr = base44.asServiceRole;
@@ -26,12 +32,19 @@ export default async function(req) {
 
     const campaign = await base44.entities.Campaign.create(payload);
     const provenance:any = {};
-    for (const key of ALLOWED) if (payload[key] !== undefined) provenance[key] = { source: connection.platform, connection_id: connection.id, imported_at: new Date().toISOString(), source_value: payload[key] };
-    const imported = await base44.entities.ExternalCampaignImport.create({
+    for (const key of ALLOWED) {
+      if (incoming[key] !== undefined) {
+        provenance[key] = { source: connection.platform, source_kind: snapshot.source, connection_id: connection.id, imported_at: snapshot.fetched_at, source_value: payload[key] };
+      }
+    }
+    provenance.goal_amount = { source: 'ifund_required_default', requires_confirmation: true, imported_at: snapshot.fetched_at, source_value: 0 };
+    provenance.category = { source: 'ifund_required_default', requires_confirmation: true, imported_at: snapshot.fetched_at, source_value: payload.category };
+    const imported = await sr.entities.ExternalCampaignImport.create({
       owner_user_id: user.id, connection_id: connection.id, platform: connection.platform,
-      external_campaign_id: String(body.external_campaign_id || ''), external_url: connection.external_url || '',
+      external_campaign_id: snapshot.source_url, external_url: snapshot.source_url,
       campaign_id: campaign.id, sync_enabled: body.sync_enabled !== false,
-      last_imported_at: new Date().toISOString(), field_provenance: provenance, locally_locked_fields: [], status: 'imported'
+      source_updated_at: snapshot.fetched_at, last_imported_at: snapshot.fetched_at,
+      field_provenance: provenance, locally_locked_fields: [], status: 'needs_attention'
     });
     // Converge: concurrent import calls for the same owner+connection may each
     // pass the duplicate check and create a campaign + import record. Keep the
@@ -81,16 +94,17 @@ export default async function(req) {
         }
         await sr.entities.ExternalCampaignImport.delete(dup.id).catch(() => {});
       }
-      await sr.entities.ExternalCampaignImport.update(canonical.id, { last_imported_at: new Date().toISOString() }).catch(() => {});
+      await sr.entities.ExternalCampaignImport.update(canonical.id, { last_imported_at: snapshot.fetched_at }).catch(() => {});
       const canonicalCampaign = canonical.campaign_id ? await base44.entities.Campaign.get(canonical.campaign_id).catch(() => null) : null;
       await logAudit(base44, { action: 'external_campaign_imported', actor_user_id: user.id, target_type: 'Campaign', target_id: canonical.campaign_id, detail: 'Created IFund draft from connected external fundraiser; converged concurrent import to one canonical record.', status: 'success', metadata: { platform: connection.platform, connection_id: connection.id, import_id: canonical.id } });
-      return Response.json({ ok: true, duplicate: true, campaign: canonicalCampaign, import_record: canonical });
+      return Response.json({ ok: true, duplicate: true, campaign: canonicalCampaign, import_record: canonical, warnings: ['Confirm the fundraising goal before publishing.'] });
     }
     await sr.entities.PlatformConnection.update(connection.id, { campaign_id: campaign.id });
     await logAudit(base44, { action: 'external_campaign_imported', actor_user_id: user.id, target_type: 'Campaign', target_id: campaign.id, detail: 'Created IFund draft from connected external fundraiser.', status: 'success', metadata: { platform: connection.platform, connection_id: connection.id, import_id: imported.id } });
-    return Response.json({ ok: true, campaign, import_record: imported });
+    return Response.json({ ok: true, campaign, import_record: imported, warnings: ['Confirm the fundraising goal before publishing.'] });
   } catch (error) {
     console.error('importExternalCampaign failed:', error?.message || error);
+    if (error?.message === 'provider_discovery_transport_unavailable') return Response.json({ error: 'Provider campaign import is unavailable until a pinned provider transport is configured.' }, { status: 503 });
     return Response.json({ error: 'External campaign could not be imported.' }, { status: 500 });
   }
 }

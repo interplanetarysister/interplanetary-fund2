@@ -1,64 +1,20 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { buildOAuthAuthorizationState } from '../../shared/appUserConnectorPolicy.js';
+import { redactPlatformConnection } from '../../shared/credentialRedaction.js';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 
-const COMMON_IF_CAPABILITIES = [
-  'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
-  'create_post', 'edit_post', 'delete_own_post', 'upload_media',
-  'read_interactions', 'comment', 'reply_comment', 'read_messages', 'reply_message',
-  'discover', 'follow', 'join', 'read_analytics',
-  'read_donations', 'read_payments', 'read_transactions', 'read_balance',
-  'subscribe_events', 'reconcile_external_funds', 'settlement_status', 'transfer_or_payout',
-];
-
-const CONFIG: Record<string, { kind: string; requestedCapabilities: string[] }> = {
-  gmail: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googledrive: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googlecalendar: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  google_contacts: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  google_photos: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googlesheets: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googledocs: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googleforms: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  googletasks: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  slack: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  notion: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  outlook: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  microsoft_teams: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  one_drive: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  dropbox: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  github: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  gitlab: { kind: 'app', requestedCapabilities: COMMON_IF_CAPABILITIES },
-
-  // Request the complete foreseeable IF capability envelope once. These are
-  // desired capabilities only; provider-reported scopes remain the sole source
-  // for what is actually granted and usable.
-  linkedin: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  facebook: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  instagram: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  discord: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  tiktok: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  threads: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  x: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  pinterest: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  reddit: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  youtube: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  patreon: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  eventbrite: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
-  gumroad: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
-};
-
-function providerCapabilities(oauth: any): string[] {
-  // Base44 connector responses vary by provider. Only persist capabilities when
-  // the provider/connector explicitly reports them. Access-token presence proves
-  // connection transport, not every desired permission.
-  const raw = oauth?.capabilities || oauth?.grantedCapabilities || oauth?.scopes || oauth?.scope;
-  const values = Array.isArray(raw)
-    ? raw
-    : typeof raw === 'string'
-      ? raw.split(/[ ,]+/)
-      : [];
-  return [...new Set(values.map((v) => String(v).trim()).filter(Boolean))];
-}
+const APP_PLATFORMS = new Set([
+  'gmail', 'googledrive', 'googlecalendar', 'google_contacts', 'google_photos',
+  'googlesheets', 'googledocs', 'googleforms', 'googletasks', 'slack', 'notion',
+  'outlook', 'microsoft_teams', 'one_drive', 'dropbox', 'github', 'gitlab',
+]);
+const CROWDFUNDING_PLATFORMS = new Set(['patreon', 'eventbrite']);
+const CONFIG: Record<string, { kind: string }> = Object.fromEntries(
+  Object.keys(OAUTH_ENV).map((platform) => [
+    platform,
+    { kind: APP_PLATFORMS.has(platform) ? 'app' : CROWDFUNDING_PLATFORMS.has(platform) ? 'crowdfunding' : 'social' },
+  ]),
+);
 
 export default async function(req) {
   try {
@@ -69,16 +25,7 @@ export default async function(req) {
     const { platform, shared_agent_consent } = await req.json().catch(() => ({}));
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
-    // Canonical IFund-wide OBO is the sole authorization decision. When it has
-    // been decided, it is decisive. Before the canonical decision exists, an
-    // explicit connection-flow choice (shared_agent_consent) may establish the
-    // initial grant — this is a per-action consent, not a competing stored
-    // preference. Legacy ai_publishing_consent / ai_connection_consent are no
-    // longer consulted; subsequent changes go through setUnifiedOboConsent.
-    const canonicalDecided = typeof user.ai_obo_consent?.granted === 'boolean';
-    const sharedAgentConsent = canonicalDecided
-      ? user.ai_obo_consent.granted === true
-      : shared_agent_consent === true;
+    const sharedAgentConsent = shared_agent_consent === true;
     const envName = OAUTH_ENV[key];
     const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
@@ -91,48 +38,22 @@ export default async function(req) {
       return Response.json({ configured: true, connected: false });
     }
 
-    const existing = (await base44.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }))[0] || null;
-    const now = new Date().toISOString();
-    const confirmed = providerCapabilities(oauth);
-    const data = {
+    const sr = base44.asServiceRole;
+    const ownerVisible = (await base44.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }))[0] || null;
+    const existing = ownerVisible
+      ? await sr.entities.PlatformConnection.get(ownerVisible.id).catch(() => null)
+      : null;
+    const data = buildOAuthAuthorizationState({
       platform: key,
       kind: cfg.kind,
-      display_name: existing?.display_name || key,
-      external_url: existing?.external_url || '',
-      automation_mode: sharedAgentConsent ? (existing?.automation_mode || 'auto') : 'manual',
-      obo_consent: {
-        granted: sharedAgentConsent,
-        granted_at: sharedAgentConsent ? now : null,
-        permission_version: '2026-10-unified-obo-v1',
-        requested_capabilities: cfg.requestedCapabilities,
-        // Never copy desired capabilities into granted/provider capabilities.
-        // Unknown remains unknown until the connector/provider reports it.
-        granted_capabilities: sharedAgentConsent ? confirmed : [],
-        provider_capabilities: confirmed,
-      },
-      agent_access: {
-        shared_with_agents: sharedAgentConsent,
-        automation_enabled: sharedAgentConsent && (existing?.automation_mode || 'auto') === 'auto',
-      },
-      status: 'connected',
-      verification_status: 'verified',
-      capability_status: confirmed.length ? 'confirmed' : 'unknown',
-      // OAuth verifies the account connection, not crowdfunding totals/provenance.
-      external_data_source: existing?.external_data_source || 'owner_reported',
-      last_synced: now,
-      last_error: '',
-      history: [...(existing?.history || []), {
-        at: now,
-        event: 'oauth_connected',
-        detail: confirmed.length
-          ? `Provider OAuth verified; ${confirmed.length} provider-reported capabilities recorded`
-          : 'Provider OAuth verified; detailed provider capabilities were not reported and remain unknown',
-      }].slice(-30),
-    };
+      oauth,
+      sharedAgentConsent,
+      existing,
+    });
     const saved = existing
-      ? await base44.entities.PlatformConnection.update(existing.id, data)
-      : await base44.entities.PlatformConnection.create(data);
-    return Response.json({ configured: true, connected: true, connection: saved });
+      ? await sr.entities.PlatformConnection.update(existing.id, data)
+      : await sr.entities.PlatformConnection.create({ ...data, created_by_id: user.id });
+    return Response.json({ configured: true, authorization_present: true, connected: false, provider_verified: false, verification_required: true, connection: redactPlatformConnection(saved) });
   } catch (error) {
     console.error('finalizeAppUserOAuthConnection error:', error?.message || error);
     return Response.json({ error: 'Unable to finish this connection.' }, { status: 500 });

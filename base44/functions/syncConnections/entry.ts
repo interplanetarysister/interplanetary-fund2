@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { canAutoPublish, hasAiPublishingConsent, hasFreshProviderVerification, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { assertPlatformAccess, assertOboGrant } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
@@ -10,6 +10,12 @@ import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerifi
 // 2. Retries failed publishes (up to 3 attempts) with error logging.
 // 3. Flags stale connections (>7 days without a sync) for health monitoring.
 const MAX_RETRIES = 3;
+
+function connectionAutomationAllowed(connection) {
+  return connection?.obo_consent?.granted === true &&
+    connection?.agent_access?.shared_with_agents === true &&
+    connection?.agent_access?.automation_enabled === true;
+}
 
 export default async function(req) {
   try {
@@ -53,17 +59,11 @@ export default async function(req) {
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
       const consentGranted = hasAiPublishingConsent(owner);
-      const actionAuthorization = owner && ownerUserId
-        ? await assertExternalAgentAction(sr, {
-            ownerUser: owner,
-            ownerUserId,
-            campaign,
-            connection,
-            capability: 'create_post',
-            requireAutomation: true,
-          })
-        : { ok: false, reason: 'owner unavailable' };
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && ownerChainMatches && consentGranted && access.ok && actionAuthorization.ok) {
+      const obo = ownerChainMatches
+        ? await assertOboGrant(sr, 'platform_outreach_agent', ownerUserId, 'social_publish', connection)
+        : { ok: false };
+      const verificationFresh = hasFreshProviderVerification(connection, now.getTime());
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed(connection) && ownerChainMatches && consentGranted && access.ok && obo.ok && verificationFresh) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -99,12 +99,14 @@ export default async function(req) {
         // hand back to the owner instead of allowing an automated external side effect.
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
-          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
+          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !verificationFresh
+            ? { error: 'Automatic publishing blocked: provider verification is not current.' }
+            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !connectionAutomationAllowed(connection)
+            ? { error: 'Automatic publishing blocked: this connection is not authorized for shared agent automation.' }
+            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
             ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }
             : connection.automation_mode === 'auto' && canAutoPublish(connection) && !consentGranted
-              ? { error: 'Automatic publishing blocked: AI OBO authorization is not active.' }
-            : connection.automation_mode === 'auto' && !actionAuthorization.ok
-              ? { error: `Automatic publishing blocked: ${actionAuthorization.reason}.` }
+              ? { error: 'Automatic publishing blocked: AI publishing authorization is not active.' }
             : {}),
         });
         await sr.entities.Notification.create({
@@ -128,7 +130,10 @@ export default async function(req) {
           const connectorId = Deno.env.get(envName) || '';
           if (!connectorId) throw new Error('Provider sign-in is not configured yet.');
           const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
-          if (!oauth?.accessToken) throw new Error('Provider authorization needs to be renewed.');
+          if (!oauth?.accessToken) throw new Error('oauth_reauthorization_required');
+          // Token presence proves configuration only. This scheduled path has
+          // no supported live provider probe and must remain fail closed.
+          throw new Error('oauth_live_probe_unavailable');
         } else if (['bluesky', 'mastodon'].includes(c.platform)) {
           await verifyManualConnection(c);
         } else {
@@ -142,10 +147,12 @@ export default async function(req) {
         });
         report.verified++;
       } catch (e) {
-        const message = String(e?.message || 'Provider authorization needs attention').slice(0, 300);
+        const reason = String(e?.message || '');
+        const reauth = reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
+        const message = reauth ? 'Provider authorization needs attention.' : 'Live provider verification is unavailable.';
         await sr.entities.PlatformConnection.update(c.id, {
           status: 'error', verification_status: 'unverified', last_error: message,
-          capability_status: OAUTH_ENV[c.platform] ? 'reauthorization_required' : (c.capability_status || 'unknown'),
+          capability_status: reauth ? 'reauthorization_required' : 'unknown',
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
         });
         report.needs_attention++;

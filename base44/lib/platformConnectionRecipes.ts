@@ -1,3 +1,5 @@
+import { recipeTransportOrder } from '../shared/platformConnectionRecipePolicy.js';
+
 // Shared platform-level linkage knowledge.
 // This registry contains no user credentials, OAuth tokens, browser sessions, account IDs,
 // campaign IDs, or user consent. It lets later connection attempts reuse a proven route
@@ -27,12 +29,6 @@ export const STATIC_CONNECTION_RECIPES = {
   buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },
   bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },
   mastodon: { connect: { preferred_transport: 'token', worker_key: 'mastodonDirect' } },
-  gofundme: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  kickstarter: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  indiegogo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  givesendgo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  spotfund: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   // SHARED (platform-managed) connector — builder's Wix site. OAuth transport
   // is platform-handled; no per-user authorization or app-owned callback.
   wix: { connect: { preferred_transport: 'oauth', connector_type: 'wix', shared: true } },
@@ -43,7 +39,7 @@ export function staticRecipe(platform, operation = 'connect') {
 }
 
 export function orderedTransports(recipe) {
-  const preferred = recipe?.preferred_transport;
-  const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  return [...new Set([preferred, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))];
+  // The shared policy owns both the allowlist and the 30-day evidence window.
+  // A missing, future, invalid, or stale timestamp must fail closed.
+  return recipeTransportOrder(recipe);
 }

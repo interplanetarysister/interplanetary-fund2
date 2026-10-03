@@ -10,7 +10,7 @@ const auth=read("src/lib/AuthContext.jsx");
 const roleFn=read("base44/functions/adminUpdateUserRole/entry.ts");
 const userPanel=read("src/components/platform/UserManagementPanel.jsx");
 for(const email of ["interplanetarysister@gmail.com","unrewound@gmail.com","cuddlemeplatonically@gmail.com"]) assert.match(bootstrap,new RegExp(email.replace(".","\\.")));
-assert.match(bootstrap,/recovery\/bootstrap metadata only/i);
+assert.match(bootstrap,/const canonicalAdmin = user\?\.role === "admin"/);
 assert.match(bootstrap,/User\.role === "admin"/);
 assert.match(bootstrap,/SUPER_ADMIN_OWNER_EMAILS/);
 assert.match(bootstrap,/cuddlemeplatonically@gmail\.com/);

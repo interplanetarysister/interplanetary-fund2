@@ -7,8 +7,8 @@ import { verifyReleaseContract } from './verify-node22-release-contract.mjs';
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'runtime-release-contract-'));
   mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ engines: { node: '>=20' } }));
-  writeFileSync(join(root, 'package-lock.json'), JSON.stringify({ packages: { '': { engines: { node: '>=20' } } } }));
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ engines: { node: '>=20 <23' } }));
+  writeFileSync(join(root, 'package-lock.json'), JSON.stringify({ packages: { '': { engines: { node: '>=20 <23' } } } }));
   writeFileSync(join(root, '.node-version'), '20\n');
   writeFileSync(join(root, '.nvmrc'), '20\n');
   writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  base44:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n  release:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n');
