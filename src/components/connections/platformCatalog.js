@@ -126,13 +126,14 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ff424d",
     icon: "🎨",
-    tagline: "Connect Patreon to keep your supporter totals together.",
-    setupKind: "oauth",
+    tagline: "Link your Patreon and keep your supporter totals together.",
+    setupKind: "link",
     steps: [
-      { id: "oauth",  label: "Sign in with Patreon", hint: "Patreon will ask you to sign in and approve the connection. We never see your password." },
+      { id: "url",    label: "Paste your Patreon URL", hint: "Copy the link from your Patreon creator page." },
+      { id: "totals", label: "Enter your current totals", hint: "Enter the amount shown on your Patreon. We'll update it automatically when possible." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Pledge totals will roll up into this campaign." },
     ],
-    api: "Sign in to Patreon and approve the connection.",
+    api: "Link your Patreon and keep its total here.",
   },
   {
     id: "spotfund",
