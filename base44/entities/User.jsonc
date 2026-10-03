@@ -151,6 +151,23 @@
       ],
       "default": "active",
       "description": "Lifecycle status of the account. 'disabled' blocks all sensitive actions server-side (assertActiveAccount). Pending deletion is tracked separately by account_deletion_pending; a deleted account is simply absent from the store."
+    },
+    "ai_obo_consent": {
+      "type": "object",
+      "description": "Canonical, revocable IFund-wide authorization for AI agents to act on the user's behalf across connected platform features. Provider capabilities and connection health still limit what can actually be performed.",
+      "properties": {
+        "granted": {
+          "type": "boolean",
+          "default": false
+        },
+        "decided_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "permission_version": {
+          "type": "string"
+        }
+      }
     }
   },
   "required": [
