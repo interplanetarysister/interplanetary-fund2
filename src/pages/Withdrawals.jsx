@@ -30,6 +30,7 @@ export default function Withdrawals() {
   const [history, setHistory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [collectCampaign, setCollectCampaign] = useState(null);
+  const [collectAll, setCollectAll] = useState(false);
   const [payoutAccount, setPayoutAccount] = useState(null);
   const [payoutBusy, setPayoutBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -156,6 +157,10 @@ export default function Withdrawals() {
         </Button>
       </section>
 
+      <div className="flex justify-end">
+        <Button onClick={() => setCollectAll(true)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white">Collect & Withdraw everything</Button>
+      </div>
+
       {/* Campaign balances */}
       <section className="space-y-3">
         <h2 className="font-display text-xl text-stone-900">Your campaigns</h2>
@@ -242,6 +247,7 @@ export default function Withdrawals() {
         )}
       </section>
 
+      {collectAll && <CollectAndWithdrawDialog campaign={null} open={collectAll} onOpenChange={setCollectAll} />}
       {collectCampaign && <CollectAndWithdrawDialog campaign={collectCampaign} open={!!collectCampaign} onOpenChange={(o) => !o && setCollectCampaign(null)} />}
 
       {active && (
