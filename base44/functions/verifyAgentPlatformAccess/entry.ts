@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { assertOboGrant } from '../../shared/integrationRegistry.ts';
+import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
 // agent's behalf) uses an external platform, it calls this to: locate the
@@ -48,15 +48,14 @@ export default async function(req) {
       }
     }
 
-    // OBO: a saved platform credential is NOT authorization to act for a user.
-    // When the caller specifies an on-behalf-of user, require an explicit, active
-    // AuthorizationGrant for (agent, user, platform) — integrated with the
-    // existing registry/gatekeeper, not a parallel auth system.
+    // OBO is one owner-level IFund AI authorization. Platform/provider access
+    // remains a separate technical capability check, but agents do not require
+    // a second per-agent AuthorizationGrant after the owner authorizes AI.
     if (authorized && body.obo_user_id) {
-      const grant = await assertOboGrant(sr, agentName, body.obo_user_id, platform);
-      if (!grant.ok) {
+      const owner = await sr.entities.User.get(body.obo_user_id).catch(() => null);
+      if (!owner || !hasUnifiedOboConsent(owner)) {
         authorized = false;
-        reason = grant.reason;
+        reason = 'owner AI/OBO authorization is not active';
       }
     }
 
