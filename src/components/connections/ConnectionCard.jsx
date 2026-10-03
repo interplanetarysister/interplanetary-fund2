@@ -6,6 +6,8 @@ import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 import { useNavigate } from "react-router-dom";
 
+const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fundrazr","givesendgo","kofi","buymeacoffee","patreon","spotfund","eventbrite"]);
+
 // One connected destination: status, health, last sync, granted automation,
 // totals, provenance, and the manage / disconnect / history controls.
 //
@@ -117,7 +119,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
-        {connection.kind === "crowdfunding" && !connection.campaign_id && <Button size="sm" variant="outline" onClick={() => navigate(`/create?import_connection=${connection.id}`)} className="rounded-lg"><Download className="w-3.5 h-3.5" />Import campaign</Button>}
+        {connection.kind === "crowdfunding" && IMPORTABLE_FUNDRAISING.has(connection.platform) && !connection.campaign_id && <Button size="sm" variant="outline" onClick={() => navigate(`/create?import_connection=${connection.id}`)} className="rounded-lg"><Download className="w-3.5 h-3.5" />Import campaign</Button>}
                 <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
           <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />Check
         </Button>
