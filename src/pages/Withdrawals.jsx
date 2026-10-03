@@ -7,6 +7,7 @@ import { Image } from "@/components/ui/image";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { useToast } from "@/components/ui/use-toast";
 import WithdrawalDialog from "@/components/withdrawals/WithdrawalDialog";
+import CollectAndWithdrawDialog from "@/components/withdrawals/CollectAndWithdrawDialog";
 import { useSearchParams } from "react-router-dom";
 import PageError from "@/components/PageError";
 
@@ -28,6 +29,7 @@ export default function Withdrawals() {
   const [campaigns, setCampaigns] = useState([]);
   const [history, setHistory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
+  const [collectCampaign, setCollectCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
@@ -107,7 +109,7 @@ export default function Withdrawals() {
           </div>
           <div>
             <h1 className="font-display text-2xl text-stone-900">Withdrawals</h1>
-            <p className="text-sm text-stone-500">Cash out cleared funds from your campaigns to your PayPal account.</p>
+            <p className="text-sm text-stone-500">Withdraw IFund-held funds or collect supported balances from connected fundraising platforms into one withdrawal flow.</p>
           </div>
         </div>
 
@@ -157,13 +159,12 @@ export default function Withdrawals() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  disabled={c.available <= 0}
-                  onClick={() => setActive(c)}
-                  className="rounded-xl sm:self-center bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0"
-                >
-                  {c.available > 0 ? `Withdraw ${money(c.available)}` : "Nothing to withdraw"}
-                </Button>
+                <div className="flex flex-col gap-2 sm:self-center">
+                  <Button onClick={() => setCollectCampaign(c)} variant="outline" className="rounded-xl">Collect & Withdraw</Button>
+                  <Button disabled={c.available <= 0} onClick={() => setActive(c)} className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">
+                    {c.available > 0 ? `Withdraw IFund ${money(c.available)}` : "No IFund-held funds"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -214,6 +215,8 @@ export default function Withdrawals() {
           </div>
         )}
       </section>
+
+      {collectCampaign && <CollectAndWithdrawDialog campaign={collectCampaign} open={!!collectCampaign} onOpenChange={(o) => !o && setCollectCampaign(null)} />}
 
       {active && (
         <WithdrawalDialog
