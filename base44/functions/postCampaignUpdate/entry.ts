@@ -152,7 +152,7 @@ Return JSON only.`;
             capability: 'create_post',
             requireAutomation: conn.automation_mode === 'auto',
           });
-          if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
+          if (conn.automation_mode === 'auto' && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
               await base44.entities.DistributedPost.create({
