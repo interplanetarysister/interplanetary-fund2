@@ -8,22 +8,33 @@ import OpportunitiesTab from "@/components/institutions/OpportunitiesTab";
 import ApplicationsTab from "@/components/institutions/ApplicationsTab";
 import { Building2, MapPin, BadgeCheck, Loader2 } from "lucide-react";
 import { institutionTypes } from "@/components/institutions/institutionTypes";
+import PageError from "@/components/PageError";
 
 export default function InstitutionDetail() {
   const { id } = useParams();
   const [institution, setInstitution] = useState(null);
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const [me, inst] = await Promise.all([base44.auth.me(), base44.entities.Institution.get(id)]);
-      setInstitution(inst);
-      setIsOwner(inst?.created_by_id === me.id);
-      setLoading(false);
+      try {
+        const [me, inst] = await Promise.all([base44.auth.me().catch(() => null), base44.entities.Institution.get(id)]);
+        if (cancelled) return;
+        setInstitution(inst);
+        setIsOwner(!!me && inst?.created_by_id === me.id);
+      } catch {
+        if (!cancelled) setError("We couldn't load this institution. Please try again.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [id]);
 
+  if (error) return <PageError message={error} onRetry={() => { setError(""); setLoading(true); setInstitution(null); }} />;
   if (loading) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
