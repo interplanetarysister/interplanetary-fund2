@@ -48,6 +48,8 @@ export default function Withdrawals() {
     try {
       const me = await base44.auth.me();
       setUser(me);
+      const payout = await base44.functions.invoke("getConnectedPayoutAccount", {}).catch(() => ({ data: null }));
+      setPayoutAccount(payout?.data || null);
       const all = await base44.entities.Campaign.filter({});
       const owned = (all || []).filter((c) => c.created_by_id === me.id);
       const cutoff = Date.now() - CLEARING_DAYS * 86400000;
@@ -78,6 +80,18 @@ export default function Withdrawals() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const startPayoutAccount = async () => {
+    setPayoutBusy(true);
+    try {
+      const { data } = await base44.functions.invoke("startStripeConnectOnboarding", { origin: window.location.origin });
+      if (!data?.url) throw new Error("No onboarding URL");
+      window.location.assign(data.url);
+    } catch (e) {
+      console.error("Payout account onboarding failed:", e?.name || "UnknownError");
+      toast({ title: "Payout account setup unavailable", description: "Please try again after payment-provider access is available.", variant: "destructive" });
+    } finally { setPayoutBusy(false); }
+  };
 
   const approve = async (id) => {
     try {
@@ -131,6 +145,16 @@ export default function Withdrawals() {
           <p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p>
         </div>
       </header>
+
+      <section className="rounded-2xl border border-stone-200/70 bg-white shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg text-stone-900">IFund payout account</h2>
+          <p className="text-sm text-stone-500">{payoutAccount?.status === "ready" ? "Ready to receive supported provider settlements." : payoutAccount?.configured ? "Finish provider verification before external settlements can be consolidated." : "Create your IFund-managed payout account for supported connected-platform settlements."}</p>
+        </div>
+        <Button variant="outline" disabled={payoutBusy || payoutAccount?.status === "ready"} onClick={startPayoutAccount} className="rounded-xl shrink-0">
+          {payoutBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : payoutAccount?.status === "ready" ? "Payout account ready" : payoutAccount?.configured ? "Continue setup" : "Create payout account"}
+        </Button>
+      </section>
 
       {/* Campaign balances */}
       <section className="space-y-3">
