@@ -1,46 +1,17 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { generateAndDistribute } from '../../shared/crossPost.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
 // When an owner publishes an update, this function:
 //   1. stores the CampaignUpdate,
-//   2. asks the AI Distribution Engine for platform-specific versions,
-//   3. publishes immediately on "auto" connections that support direct posting,
-//      otherwise leaves a draft / pending_approval DistributedPost per the
-//      owner's automation setting (never auto-posting without consent),
-//   4. notifies every follower who opted in to update notifications.
-// The owner stays in control — auto-publish only happens where they chose
-// "Publish automatically" AND supplied real credentials.
-
-const PLATFORM_RULES = {
-  facebook: 'Facebook: warm update, 2-3 short paragraphs, up to 400 words, 2-3 hashtags.',
-  instagram: 'Instagram: emotive update caption, emoji-friendly, under 2200 chars, 8-12 hashtags.',
-  threads: 'Threads: conversational update, under 500 chars, 1-3 hashtags.',
-  x: 'X: punchy update, under 260 chars including link, 1-2 hashtags.',
-  linkedin: 'LinkedIn: professional impact update, 2-3 paragraphs, 3-5 hashtags.',
-  tiktok: 'TikTok: update caption + hook, casual, under 150 chars, 3-5 hashtags.',
-  pinterest: 'Pinterest: descriptive pin + update, aspirational, 2-4 hashtags.',
-  reddit: 'Reddit: honest update, no marketing tone, no hashtags.',
-  youtube: 'YouTube Community: friendly update, 1-2 paragraphs, no hashtags.',
-  discord: 'Discord: community announcement, short, emoji ok, no hashtags.',
-  bluesky: 'Bluesky: under 280 chars, authentic update, 1-2 hashtags.',
-  mastodon: 'Mastodon: under 480 chars, genuine update, 2-3 hashtags.',
-  gofundme: 'GoFundMe update: heartfelt progress update, 1-3 paragraphs, thank supporters, no hashtags.',
-  kickstarter: 'Kickstarter update: backer update, milestone-focused, 2-3 paragraphs, no hashtags.',
-  indiegogo: 'Indiegogo update: backer/perk update, progress and gratitude, 2-3 paragraphs.',
-  fundrazr: 'FundRazr update: community update, concise, gratitude and progress.',
-  givesendgo: 'GiveSendGo update: faith-friendly community update, gratitude and progress.',
-  spotfund: 'Spotfund update: brief community update, thank supporters, progress.',
-  kofi: 'Ko-fi post: casual community update, thank supporters, share progress.',
-  buymeacoffee: 'Buy Me a Coffee post: casual update, gratitude and progress.',
-  patreon: 'Patreon post: patron update, behind-the-scenes, gratitude, 2-3 paragraphs.',
-  custom: 'Custom site update: general campaign update, gratitude and progress.',
-};
-
-const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts, names, or urgency; use only the update and campaign context; no spam; no false promises.`;
+//   2. uses the shared cross-posting engine to generate platform-specific
+//      versions and distribute them (auto-publish requires outreach+
+//      subscription + AI OBO consent; otherwise saves as drafts),
+//   3. notifies every follower who opted in to update notifications.
+// The owner stays in control — auto-publish only happens with an active
+// subscription, consent, and real credentials.
 
 export default async function(req) {
   try {
@@ -71,7 +42,7 @@ export default async function(req) {
     });
 
     // 2. Cross-post to social connections (unless the owner opted out for this post)
-    const crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0, authorization_blocked: '' };
+    let crosspost = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0, authorization_blocked: '' };
     if (cross_post !== false) {
       const sr = base44.asServiceRole;
       const connections = user.role === 'admin' && campaign.created_by_id !== user.id
@@ -80,112 +51,18 @@ export default async function(req) {
       const consentOwner = campaign.created_by_id === user.id
         ? user
         : await sr.entities.User.get(campaign.created_by_id).catch(() => null);
-      const aiConsentGranted = hasAiPublishingConsent(consentOwner);
-      const platformAccess = await assertPlatformAccess(sr, 'social_publish');
-      const targets = [];
-      if (aiConsentGranted) {
-        for (const connection of connections) {
-          if (connection.automation_mode === 'manual' ||
-              connection.created_by_id !== campaign.created_by_id ||
-              (connection.campaign_id && connection.campaign_id !== campaign.id)) continue;
-          const authorization = await assertExternalAgentAction(sr, {
-            ownerUser: consentOwner,
-            ownerUserId: campaign.created_by_id,
-            campaign,
-            connection,
-            capability: 'create_post',
-            requireAutomation: connection.automation_mode === 'auto',
-          });
-          if (authorization.ok) targets.push(connection);
-        }
-      }
-      crosspost.skipped = connections.length - targets.length;
-      if (!aiConsentGranted) crosspost.authorization_blocked = 'AI OBO authorization is not active.';
-
-      if (targets.length) {
-        const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
-        const prompt = `You are the AI Campaign Distribution Engine for Interplanetary Fund.
-${COMPLIANCE}
+      const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
+      const prompt = `You are the AI Campaign Distribution Engine for Interplanetary Fund.
 A campaign owner just published an update. Write one platform-tailored post per platform announcing this update. Do NOT reuse identical text — adapt tone, length, and format per platform rules. Every post must include the campaign link ${url}.
-
-Platform rules:
-${targets.map((c) => `- ${c.platform}: ${PLATFORM_RULES[c.platform] || 'General social post, under 400 chars.'}`).join('\n')}
 
 Campaign: ${campaign.title}
 ${campaign.summary ? `Summary: ${campaign.summary}` : ''}
 Update title: ${title || '(none)'}
-Update content: ${content}
+Update content: ${content}`;
 
-Return JSON only.`;
-
-        const res = await base44.integrations.Core.InvokeLLM({
-          prompt,
-          response_json_schema: {
-            type: 'object',
-            properties: {
-              posts: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    platform: { type: 'string' },
-                    content: { type: 'string' },
-                    hashtags: { type: 'array', items: { type: 'string' } },
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        for (const post of (res.posts || [])) {
-          const conn = targets.find((c) => c.platform === post.platform);
-          if (!conn || !post.content) continue;
-          const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
-          crosspost.generated++;
-
-          const obo = await assertExternalAgentAction(sr, {
-            ownerUser: consentOwner,
-            ownerUserId: campaign.created_by_id,
-            campaign,
-            connection: conn,
-            capability: 'create_post',
-            requireAutomation: conn.automation_mode === 'auto',
-          });
-          if (conn.automation_mode === 'auto' && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
-            try {
-              const { url: postUrl } = await publishThroughConnection(conn, text);
-              await base44.entities.DistributedPost.create({
-                campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
-                source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-                status: 'published', published_at: new Date().toISOString(), external_post_url: postUrl,
-              });
-              await base44.entities.PlatformConnection.update(conn.id, {
-                status: 'connected',
-                verification_status: 'verified',
-                last_synced: new Date().toISOString(),
-                last_error: '',
-              });
-              crosspost.published++;
-            } catch (e) {
-              await base44.entities.DistributedPost.create({
-                campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
-                source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-                status: 'failed', error: 'Publishing failed.', retry_count: 1,
-              });
-              crosspost.failed++;
-            }
-          } else {
-            await base44.entities.DistributedPost.create({
-              campaign_id, campaign_title: campaign.title, connection_id: conn.id, platform: conn.platform,
-              source_update_id: update.id, content: post.content, hashtags: post.hashtags || [],
-              status: conn.automation_mode === 'draft' ? 'draft' : 'pending_approval',
-            });
-            if (conn.automation_mode === 'draft') crosspost.drafts++;
-            else crosspost.pending++;
-          }
-        }
-      }
+      crosspost = await generateAndDistribute({
+        base44, sr, user: consentOwner || user, campaign, connections, prompt, sourceUpdateId: update.id,
+      });
     }
 
     // 3. Notify followers who opted in to updates (service role — reads all follows)

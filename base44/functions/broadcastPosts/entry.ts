@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -27,8 +28,12 @@ export default async function(req) {
     const sr = base44.asServiceRole;
     const consentOwner = user;
     const aiConsentGranted = hasAiPublishingConsent(consentOwner);
+    const hasSubscription = hasSubscriptionLevel(user, 2);
     if (!aiConsentGranted) {
       return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
+    }
+    if (!hasSubscription) {
+      return Response.json({ error: 'An active outreach subscription is required to broadcast to all platforms. Upgrade to auto-publish, or publish posts individually.' }, { status: 403 });
     }
     const access = await assertPlatformAccess(sr, 'social_publish');
     if (!access.ok) {

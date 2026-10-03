@@ -3,6 +3,7 @@ import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publish
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -46,6 +47,13 @@ export default async function(req) {
     const consentOwner = user;
     if (!hasAiPublishingConsent(consentOwner)) {
       return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
+    }
+    // Auto-publishing to connected platforms requires an active outreach+
+    // subscription. Without it, the post is saved as approved for manual posting.
+    if (!hasSubscriptionLevel(user, 2)) {
+      const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
+      await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post (no active subscription) for ${connection.platform}`, status: 'success' });
+      return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason: 'An active outreach subscription is required to auto-publish. You can post this manually.' });
     }
     const actionAuthorization = await assertExternalAgentAction(sr, {
       ownerUser: consentOwner,
