@@ -142,9 +142,7 @@ export default function Connections() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const aiAuthorized = typeof user?.ai_obo_consent?.granted === "boolean"
-    ? user.ai_obo_consent.granted === true
-    : (user?.ai_publishing_consent?.granted === true || user?.ai_connection_consent?.granted === true);
+  const aiAuthorized = user?.ai_obo_consent?.granted === true;
   const connectedIds = connections.map((c) => c.platform);
   // A connection is "working" when the canonical resolver says CONNECTED;
   // fall back to the local heuristic while the resolver is still loading.

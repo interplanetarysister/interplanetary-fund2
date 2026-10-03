@@ -148,9 +148,10 @@ export async function assertOboGrant(sr, agentName, userId, platform, connection
 // Canonical IFund-wide OBO decision. Legacy user fields are read only as a
 // migration bridge; new authorization changes are written through ai_obo_consent.
 export function hasUnifiedOboConsent(user) {
-  if (user?.ai_obo_consent?.granted === true) return true;
-  if (user?.ai_obo_consent?.granted === false) return false;
-  return user?.ai_publishing_consent?.granted === true || user?.ai_connection_consent?.granted === true;
+  // Canonical IFund-wide OBO is the sole authorization decision. Legacy
+  // ai_publishing_consent / ai_connection_consent are mirrored on write only
+  // (see setUnifiedOboConsent) and are no longer read for decisions.
+  return user?.ai_obo_consent?.granted === true;
 }
 
 export async function assertExternalAgentAction(sr, {
@@ -168,10 +169,11 @@ export async function assertExternalAgentAction(sr, {
   if (connection.status !== 'connected' || connection.verification_status !== 'verified') {
     return { ok: false, reason: 'connection is not verified and active' };
   }
-  // Per-connection OBO fields are synchronized execution metadata, not a
-  // second consent decision. Canonical owner authorization above is decisive.
-  if (requireAutomation && connection.agent_access?.automation_enabled !== true) {
-    return { ok: false, reason: 'automation is disabled for this connection' };
+  // automation_mode is the only automation preference. agent_access.automation_enabled
+  // is a mirrored execution field (kept in sync by setUnifiedOboConsent and the
+  // connection-save functions), not a second authorization decision.
+  if (requireAutomation && (connection.automation_mode || 'manual') !== 'auto') {
+    return { ok: false, reason: 'automation is not enabled for this connection' };
   }
   const known = new Set([
     ...(connection.obo_consent?.provider_capabilities || []),
