@@ -142,7 +142,9 @@ export default function Connections() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const aiAuthorized = !!user?.ai_publishing_consent?.granted;
+  const aiAuthorized = typeof user?.ai_obo_consent?.granted === "boolean"
+    ? user.ai_obo_consent.granted === true
+    : (user?.ai_publishing_consent?.granted === true || user?.ai_connection_consent?.granted === true);
   const connectedIds = connections.map((c) => c.platform);
   // A connection is "working" when the canonical resolver says CONNECTED;
   // fall back to the local heuristic while the resolver is still loading.
@@ -223,7 +225,7 @@ export default function Connections() {
       </div>
 
       <div className="mb-8">
-        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />
+        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v, ai_publishing_consent: v, ai_connection_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v, ai_publishing_consent: v, ai_connection_consent: v }))} />
       </div>
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (
