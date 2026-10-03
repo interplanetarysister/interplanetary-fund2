@@ -32,12 +32,13 @@ export default async function(req) {
       const amount = Number(connection.external_total || 0);
       const payoutModel = cap?.payout_model || 'observe_only';
       const technicallyEligible = connection.status === 'connected' && connection.verification_status === 'verified' &&
-        amount > 0 && !['observe_only','user_action_required'].includes(payoutModel);
+        amount > 0 && cap?.capability_status === 'verified' &&
+        !['observe_only','user_action_required','authorized_interactive'].includes(payoutModel);
       const eligible = technicallyEligible && payoutReady;
       return {
         connection_id: connection.id, campaign_id: connection.campaign_id || '', platform: connection.platform, amount, currency,
         payout_model: payoutModel, status: eligible ? 'ready_for_authorization' : 'user_action_required',
-        note: eligible ? '' : (!payoutReady && technicallyEligible ? 'Finish your IFund payout account setup before this source can be consolidated.' : (cap ? 'This provider cannot currently be collected automatically from this connection.' : 'Provider payout capability still requires verification.')),
+        note: eligible ? '' : (!payoutReady && technicallyEligible ? 'Finish your IFund payout account setup before this source can be consolidated.' : (cap?.capability_status !== 'verified' ? 'Provider payout capability still requires independent verification.' : (cap ? 'This provider currently requires a provider-controlled collection step.' : 'Provider payout capability still requires verification.'))),
       };
     });
 
