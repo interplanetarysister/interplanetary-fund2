@@ -20,18 +20,22 @@ export default async function(req) {
     const sr = base44.asServiceRole;
     const connections = await sr.entities.PlatformConnection.filter({ created_by_id: user.id, campaign_id: campaign.id, kind: 'crowdfunding' }, '-updated_date', 100).catch(() => []);
     const capabilities = await sr.entities.FundraisingProviderCapability.list('-updated_date', 500).catch(() => []);
+    const payoutAccounts = await sr.entities.ConnectedPayoutAccount.filter({ owner_user_id: user.id, provider: 'stripe_connect' }, '-updated_date', 5).catch(() => []);
+    const payoutAccount = payoutAccounts[0] || null;
+    const payoutReady = payoutAccount?.status === 'ready' && payoutAccount?.payouts_enabled === true;
     const byPlatform = new Map((capabilities || []).map((c) => [String(c.platform).toLowerCase(), c]));
     const sources = connections.map((connection) => {
       const cap = byPlatform.get(String(connection.platform).toLowerCase());
       const currency = String(connection.external_currency || 'USD').toUpperCase();
       const amount = Number(connection.external_total || 0);
       const payoutModel = cap?.payout_model || 'observe_only';
-      const eligible = connection.status === 'connected' && connection.verification_status === 'verified' &&
+      const technicallyEligible = connection.status === 'connected' && connection.verification_status === 'verified' &&
         amount > 0 && !['observe_only','user_action_required'].includes(payoutModel);
+      const eligible = technicallyEligible && payoutReady;
       return {
         connection_id: connection.id, platform: connection.platform, amount, currency,
         payout_model: payoutModel, status: eligible ? 'ready_for_authorization' : 'user_action_required',
-        note: eligible ? '' : (cap ? 'This provider cannot currently be collected automatically from this connection.' : 'Provider payout capability still requires verification.'),
+        note: eligible ? '' : (!payoutReady && technicallyEligible ? 'Finish your IFund payout account setup before this source can be consolidated.' : (cap ? 'This provider cannot currently be collected automatically from this connection.' : 'Provider payout capability still requires verification.')),
       };
     });
 
@@ -45,7 +49,7 @@ export default async function(req) {
       consent_snapshot: JSON.stringify({ campaign_id: campaign.id, sources: sources.map(({connection_id,platform,amount,currency,payout_model}) => ({connection_id,platform,amount,currency,payout_model})) }),
     });
     await logAudit(base44, { action: 'collect_withdraw_prepared', actor_user_id: user.id, target_type: 'ExternalCollectionAuthorization', target_id: authorization.id, detail: 'Prepared external collection authorization; no money moved.', status: 'success', metadata: { operation_id, campaign_id: campaign.id, source_count: sources.length } });
-    return Response.json({ ok: true, authorization_id: authorization.id, operation_id, expires_at: authorization.expires_at, sources,
+    return Response.json({ ok: true, authorization_id: authorization.id, operation_id, expires_at: authorization.expires_at, payout_account_ready: payoutReady, sources,
       confirmation: 'Allow Interplanetary Fund to initiate withdrawal of available funds from the connected platforms listed here and combine successfully transferred funds into this withdrawal?' });
   } catch (error) {
     console.error('prepareCollectAndWithdraw failed:', error?.message || error);
