@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { assertOboGrant } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant, isUnifiedOboRevoked } from '../../shared/integrationRegistry.ts';
 import { effectiveIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an
@@ -91,10 +91,20 @@ export default async function(req) {
     // AuthorizationGrant for (agent, user, platform) — integrated with the
     // existing registry/gatekeeper, not a parallel auth system.
     if (authorized && oboUserId) {
-      const grant = await assertOboGrant(sr, agentName, oboUserId, platform);
-      if (!grant.ok) {
+      const owner = oboUserId === user.id
+        ? user
+        : (await sr.entities.User.filter({ id: oboUserId }).catch(() => []))[0] || null;
+      // The canonical owner decision is authoritative. In particular, an old
+      // AuthorizationGrant must never survive an explicit unified revocation.
+      if (!owner || isUnifiedOboRevoked(owner)) {
         authorized = false;
-        reason = grant.reason;
+        reason = 'owner AI authorization is revoked';
+      } else {
+        const grant = await assertOboGrant(sr, agentName, oboUserId, platform);
+        if (!grant.ok) {
+          authorized = false;
+          reason = grant.reason;
+        }
       }
     }
 

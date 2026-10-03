@@ -15,10 +15,16 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
     setSaving(true);
     try {
       const result = await base44.functions.invoke("setUnifiedOboConsent", { granted });
-      const value = result?.data?.consent || { granted, decided_at: new Date().toISOString() };
+      const payload = result?.data;
+      const value = payload?.consent;
+      if (!value || typeof value.granted !== "boolean") {
+        throw new Error("Invalid authorization response");
+      }
       onChanged?.(value);
       onConnectionChanged?.(value);
-      setError("");
+      setError(payload.partial
+        ? "Your AI choice was saved, but some connected platforms could not be updated. Retry to finish applying it everywhere."
+        : "");
     } catch {
       setError("Couldn't save your AI authorization. Try again.");
     } finally {

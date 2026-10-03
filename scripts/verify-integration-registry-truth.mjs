@@ -24,6 +24,7 @@ import {
   parseHealthResponse,
   parseRegistryResponse,
 } from '../src/lib/integrationRegistryContracts.js';
+import { isUnifiedOboRevoked } from '../base44/shared/integrationRegistry.ts';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const manage = read('base44/functions/managePlatformAccess/entry.ts');
@@ -70,6 +71,16 @@ assert.doesNotMatch(agentAccess, /error:\s*error\.message/);
 assert.match(agentAccess, /actor_user_id: 'anonymous'/);
 assert.match(agentAccess, /denial_reason: 'authentication_required'/);
 assert.match(agentAccess, /denial_reason: 'owner_authorization_required'/);
+assert.equal(isUnifiedOboRevoked({ ai_obo_consent: { granted: false } }), true);
+assert.equal(isUnifiedOboRevoked({ ai_obo_consent: { granted: true } }), false);
+assert.equal(isUnifiedOboRevoked({}), false);
+assert.match(agentAccess, /isUnifiedOboRevoked\(owner\)/);
+assert.match(agentAccess, /owner AI authorization is revoked/);
+assert.ok(
+  agentAccess.indexOf('isUnifiedOboRevoked(owner)')
+    < agentAccess.indexOf('assertOboGrant(sr, agentName, oboUserId, platform)'),
+  'canonical owner revocation must be checked before legacy authorization grants',
+);
 assert.ok(
   agentAccess.indexOf("denial_reason: 'authentication_required'")
     < agentAccess.indexOf("reason: 'authentication required' }, { status: 401"),

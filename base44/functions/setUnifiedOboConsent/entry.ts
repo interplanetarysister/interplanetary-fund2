@@ -64,7 +64,14 @@ export default async function(req) {
       }
     }
 
-    return Response.json({ ok: true, consent: canonical, connections: results });
+    const failed = results.filter((result) => result.updated !== true);
+    return Response.json({
+      ok: failed.length === 0,
+      partial: failed.length > 0,
+      consent: canonical,
+      connections: results,
+      failed_connection_count: failed.length,
+    }, { status: failed.length > 0 ? 207 : 200 });
   } catch (error) {
     console.error('setUnifiedOboConsent error:', error?.message || error);
     return Response.json({ error: 'Unable to update AI authorization.' }, { status: 500 });

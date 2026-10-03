@@ -61,6 +61,8 @@ Use the existing implementation as the starting point; do not rebuild the connec
 ### Unified authorization safety boundary
 
 The owner-level AI/OBO decision is the single user-facing authorization choice, but it is not provider proof and does not create capabilities. Propagating that decision to an existing connection may activate only capabilities the provider reported for that same connection. Every external action must still require the connection to be owned by the user, connected, provider-verified with fresh evidence, and permitted for the requested capability. Browser execution retains its explicit scope and zero-cost/cost-safety gate, and enabling AI/OBO must never silently enable background automation.
+
+An explicit canonical revocation is authoritative over every legacy authorization record. Gatekeepers must evaluate it before consulting legacy grants, and a denial must return no secret-reference metadata.
 | Shared training | `docs/AGENT_TRAINING_CORE.md` and role-specific `.agents/skills/*.md` / `base44/agents/*.jsonc` | Shared principles belong in core training; specialties and executable behavior belong in each role's own training/config. |
 
 ## Required refinements before this feature is considered complete

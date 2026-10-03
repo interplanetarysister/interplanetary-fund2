@@ -34,5 +34,9 @@ assert.match(consentCard, /functions\.invoke\("setUnifiedOboConsent", \{ granted
 assert.match(unifiedConsent, /Array\.isArray\(currentObo\.provider_capabilities\)/);
 assert.doesNotMatch(unifiedConsent, /provider_capabilities \|\| currentObo\.granted_capabilities/);
 assert.match(unifiedConsent, /automation_enabled: granted \? currentAgent\.automation_enabled === true : false/);
+assert.match(unifiedConsent, /partial: failed\.length > 0/);
+assert.match(unifiedConsent, /status: failed\.length > 0 \? 207 : 200/);
+assert.doesNotMatch(consentCard, /\|\| \{ granted, decided_at:/);
+assert.match(consentCard, /payload\.partial/);
 
 console.log('Unified owner authorization and fail-closed per-connection OBO contract verified.');

@@ -43,6 +43,10 @@ export function isUnhealthy(status) {
   return UNHEALTHY.has(normalizeIntegrationStatus(status));
 }
 
+export function isUnifiedOboRevoked(user) {
+  return user?.ai_obo_consent?.granted === false;
+}
+
 // Emit a deduplicated admin alert for an unhealthy integration. Skips creating
 // a new Notification when an unread integration alert for the same platform
 // already exists for an admin, so a persistent condition isn't re-alerted.
