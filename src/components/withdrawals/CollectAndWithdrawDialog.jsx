@@ -15,7 +15,7 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
   const prepare=async()=>{
     setPreparing(true); setError("");
     try {
-      const {data}=await base44.functions.invoke("prepareCollectAndWithdraw",{campaign_id:campaign.id});
+      const {data}=await base44.functions.invoke("prepareCollectAndWithdraw",campaign?.id?{campaign_id:campaign.id}:{});
       if(!data?.ok) throw new Error("prepare rejected");
       setPrepared(data);
     } catch { setError("Connected-platform balances could not be prepared safely. Refresh the connections that need attention and try again."); }
@@ -37,7 +37,7 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
   return <Dialog open={open} onOpenChange={(v)=>{onOpenChange(v);if(!v){setPrepared(null);setError("");}}}>
     <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle className="font-display text-xl flex items-center gap-2"><Network className="w-5 h-5"/>Collect & Withdraw</DialogTitle></DialogHeader>
-      <p className="text-sm text-muted-foreground">Bring supported external fundraiser balances into one withdrawal flow for <strong>{campaign.title}</strong>.</p>
+      <p className="text-sm text-muted-foreground">Bring supported external fundraiser balances into one withdrawal flow for <strong>{campaign?.title || "all of your campaigns"}</strong>.</p>
       {!prepared && <Button onClick={prepare} disabled={preparing} className="w-full rounded-xl">{preparing?<Loader2 className="w-4 h-4 animate-spin"/>:"Check connected funds"}</Button>}
       {prepared && <div className="space-y-3">
         {(prepared.sources||[]).length===0 && <div className="rounded-xl border p-4 text-sm text-muted-foreground">No connected fundraising sources are linked to this campaign yet.</div>}
