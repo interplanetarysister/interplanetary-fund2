@@ -44,11 +44,12 @@ export default async function(req) {
         agent_access: {
           ...currentAgent,
           shared_with_agents: granted,
-          automation_enabled: granted,
+          // OBO authorization and automation preference are independent. A
+          // grant restores agent access but does not silently convert a user's
+          // Ask/Draft/Manual preference into autonomous execution.
+          automation_enabled: granted ? currentAgent.automation_enabled === true : false,
         },
-        automation_mode: granted
-          ? (connection.automation_mode === 'manual' ? 'auto' : (connection.automation_mode || 'auto'))
-          : 'manual',
+        automation_mode: connection.automation_mode || 'manual',
       };
       try {
         await base44.entities.PlatformConnection.update(connection.id, patch);
