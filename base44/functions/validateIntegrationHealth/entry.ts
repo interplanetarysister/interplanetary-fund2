@@ -13,12 +13,33 @@ import { emitIntegrationAlert, isUnhealthy, STATUS_LABEL } from '../../shared/in
 const PLATFORM_SECRETS = {
   stripe: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'],
   paypal: ['PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET', 'PAYPAL_MODE'],
+  cloudflare: ['Cloudflare_api_token'],
+  openai: ['OPENAI_API_KEY'],
 };
 
 function checkSecrets(platform) {
   const names = PLATFORM_SECRETS[platform] || [];
   const missing = names.filter((n) => !secrets.get(n));
   return { names, missing };
+}
+
+// Lightweight, read-only Cloudflare API token verification. Calls the free
+// /user/tokens/verify endpoint to confirm the token is valid and active — never
+// logs or returns the token value. Failures are reported as REAUTH_REQUIRED.
+async function verifyCloudflareToken() {
+  const token = secrets.get('Cloudflare_api_token');
+  if (!token) return { ok: false, detail: 'Cloudflare API token is not configured' };
+  try {
+    const res = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
+      headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    });
+    if (!res.ok) return { ok: false, detail: `Cloudflare token verify failed (${res.status})` };
+    const data = await res.json();
+    if (data?.success && data?.result?.status === 'active') return { ok: true, detail: 'Cloudflare token active' };
+    return { ok: false, detail: `Cloudflare token status: ${data?.result?.status || 'unknown'}` };
+  } catch (err) {
+    return { ok: false, detail: `Cloudflare verify error: ${err.message || 'unknown'}` };
+  }
 }
 
 async function validateEntry(sr, e, now) {
@@ -69,6 +90,17 @@ async function validateEntry(sr, e, now) {
   if (e.auth_type === 'per_connection') {
     flags.push('decentralized_credentials');
     checks.push({ check: 'per_connection_storage', ok: true, detail: 'credentials stored on PlatformConnection records' });
+  }
+
+  // Cloudflare: verify the API token is live via the free read-only verify
+  // endpoint. A present-but-invalid token is REAUTH_REQUIRED, not ACTIVE.
+  if (p === 'cloudflare') {
+    const cf = await verifyCloudflareToken();
+    checks.push({ check: 'cloudflare_token_verified', ok: cf.ok, detail: cf.detail });
+    if (!cf.ok) {
+      status = status === 'ACTIVE' ? 'REAUTH_REQUIRED' : status;
+      if (!lastFailure) lastFailure = cf.detail;
+    }
   }
 
   // Legacy Convex is intentionally not health-gated in the authoritative

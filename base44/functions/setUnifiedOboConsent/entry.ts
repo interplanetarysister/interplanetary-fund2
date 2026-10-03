@@ -59,6 +59,32 @@ export default async function(req) {
       }
     }
 
+    // Consent-version propagation: when OBO consent changes, update active
+    // AgentDelegation records so stale delegations can be detected. Revocation
+    // pauses in-flight delegations (waiting_user) rather than silently cancelling
+    // them — the user may re-grant consent and resume. Grant propagates the
+    // current consent version so future execution can verify freshness.
+    try {
+      const delegations = await base44.entities.AgentDelegation.filter({
+        owner_user_id: user.id,
+        status: { $in: ['assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review'] },
+      });
+      for (const d of delegations || []) {
+        const patch = { consent_version: granted ? VERSION : null };
+        if (!granted && ['assigned', 'in_progress'].includes(d.status)) {
+          patch.status = 'waiting_user';
+          patch.continuation_state = {
+            ...(d.continuation_state || {}),
+            pending_step: d.continuation_state?.pending_step || 'resume_after_reauthorization',
+            external_requirement: 'OBO consent was revoked. Re-authorize AI to resume.',
+          };
+        }
+        await base44.entities.AgentDelegation.update(d.id, patch).catch(() => {});
+      }
+    } catch (e) {
+      console.error('AgentDelegation consent propagation failed:', e?.message || e);
+    }
+
     return Response.json({ ok: true, consent: canonical, connections: results });
   } catch (error) {
     console.error('setUnifiedOboConsent error:', error?.message || error);
