@@ -3,9 +3,9 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
 
-// The AI Authorization agreement. AI never publishes to a connected campaign or
-// social account without this explicit, revocable license — and even with it,
-// per-platform automation settings still govern every destination.
+// Standing OBO authorization for user-directed delegated execution. IFund software
+// performs covered tasks as the user's authorized extension; provider capabilities
+// and per-connection preferences still govern what can technically execute.
 export default function AIConsentCard({ user, onChanged, onConnectionChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -29,13 +29,10 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-5">
       <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
-        <Sparkles className="w-3.5 h-3.5" /> AI help
+        <Sparkles className="w-3.5 h-3.5" /> Delegated operation
       </p>
       <p className="text-sm text-stone-600">
-        Grant Interplanetary Fund's AI one revocable on-behalf-of authorization for AI features
-        across the platform and your connected accounts. This permission is shared by eligible
-        IFund automations; each provider can still limit which actions its connection supports.
-        You can turn this off anytime.
+        Turn this on once if you want IFund to do covered steps for you. After that, tapping Connect, Create account, or Publish tells IFund what you want done. IFund will not keep asking for the same permission. Turn it off anytime and those outside-account steps become manual again.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {consent?.granted ? (
@@ -49,10 +46,10 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
           <>
             {consent && !consent.granted && (
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-500">
-                <ShieldOff className="w-4 h-4" /> Not authorized — AI will never publish for you
+                <ShieldOff className="w-4 h-4" /> Not authorized — IFund will not act for you
               </span>
             )}
-            <Button size="sm" disabled={saving} onClick={() => decide(true)} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">Accept</Button>
+            <Button size="sm" disabled={saving} onClick={() => decide(true)} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">Authorize IFund</Button>
             {!consent && (
               <Button size="sm" variant="outline" disabled={saving} onClick={() => decide(false)} className="rounded-xl">Deny</Button>
             )}
@@ -60,8 +57,8 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
         )}
       </div>
       <div className="mt-5 pt-4 border-t border-stone-200">
-        <p className="text-sm font-semibold text-stone-900">One permission across IFund AI</p>
-        <p className="text-xs text-stone-600 mt-1">When authorized, the same OBO consent applies to connection assistance, publishing, outreach, synchronization, and other eligible AI automations. Provider capabilities, account health, and financial safeguards still apply.</p>
+        <p className="text-sm font-semibold text-stone-900">One simple permission</p>
+        <p className="text-xs text-stone-600 mt-1">When this is on, Connect can connect an account, Create account can set up an eligible outside account, and Publish can share to eligible connected accounts. When it is off, you connect, manage, and post to outside accounts yourself.</p>
       </div>
       {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     </div>

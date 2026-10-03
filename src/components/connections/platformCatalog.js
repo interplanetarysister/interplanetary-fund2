@@ -194,7 +194,6 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "handle",   label: "Enter your Bluesky handle", hint: "e.g. you.bsky.social" },
       { id: "password", label: "Get a Bluesky connection password", hint: "In Bluesky settings, create an App Password for Interplanetary Fund. Never use your main password." },
-      { id: "auto",     label: "Choose how much help you want",   hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect Bluesky to share updates from Interplanetary Fund.",
   },
@@ -209,7 +208,6 @@ export const SOCIAL_PLATFORMS = [
     steps: [
       { id: "instance", label: "Enter your Mastodon site",    hint: "For example: mastodon.social" },
       { id: "token",    label: "Get a Mastodon connection code",  hint: "In your Mastodon settings, create a connection for Interplanetary Fund and copy the code it gives you." },
-      { id: "auto",     label: "Choose how much help you want",         hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect Mastodon to share updates from Interplanetary Fund.",
   },
@@ -223,7 +221,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Facebook", hint: "Facebook will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -237,7 +234,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Instagram", hint: "Instagram will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -251,7 +247,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Threads", hint: "Threads will ask you to sign in and approve the connection." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -265,7 +260,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with X", hint: "X will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -279,7 +273,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with LinkedIn", hint: "LinkedIn will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -293,7 +286,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with TikTok", hint: "TikTok will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -307,7 +299,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Pinterest", hint: "Pinterest will ask you to sign in and approve the connection." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -321,7 +312,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Reddit", hint: "Reddit will ask you to sign in and approve the connection." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -335,7 +325,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Google / YouTube", hint: "Google will ask you to sign in and approve the YouTube connection." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -349,7 +338,6 @@ export const SOCIAL_PLATFORMS = [
     setupKind: "oauth",
     steps: [
       { id: "oauth", label: "Sign in with Discord", hint: "Discord will ask you to sign in and approve the connection. We never see your password." },
-      { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
   },
@@ -380,9 +368,8 @@ export const ALL_PLATFORMS = [...CROWDFUNDING_PLATFORMS, ...SOCIAL_PLATFORMS, ..
 export const platformName = (id) => ALL_PLATFORMS.find((p) => p.id === id)?.name || id;
 export const platformById = (id) => ALL_PLATFORMS.find((p) => p.id === id) || null;
 
+// Delegated execution is controlled only by the user's single IFund-help toggle.
 export const AUTOMATION_MODES = [
-  { value: "auto",   label: "Publish automatically",  desc: "AI publishes approved content without asking." },
-  { value: "ask",    label: "Ask before every post",  desc: "AI prepares content and waits for your approval." },
-  { value: "draft",  label: "Generate drafts only",   desc: "AI writes drafts; you publish them yourself." },
-  { value: "manual", label: "Manual posting only",    desc: "AI never touches this destination." },
+  { value: "auto", label: "IFund help on", desc: "Your action buttons can tell IFund to do covered steps for you." },
+  { value: "manual", label: "IFund help off", desc: "You do outside-account connection and posting steps yourself." },
 ];

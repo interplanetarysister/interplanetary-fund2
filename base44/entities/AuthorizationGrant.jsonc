@@ -8,7 +8,7 @@
     },
     "user_id": {
       "type": "string",
-      "description": "The grantor \u2014 the user authorizing the agent to act on their behalf (OBO)."
+      "description": "The grantor — the user authorizing the agent to act on their behalf (OBO)."
     },
     "platform": {
       "type": "string",
@@ -49,6 +49,27 @@
     },
     "description": {
       "type": "string"
+    },
+    "execution_model": {
+      "type": "string",
+      "enum": [
+        "user_directed_extension",
+        "legacy_agent"
+      ],
+      "default": "user_directed_extension",
+      "description": "How IFund interprets execution under this grant. user_directed_extension means software executes the principal user's command/standing OBO authority within scope."
+    },
+    "principal_user_id": {
+      "type": "string",
+      "description": "Explicit principal whose command/standing authorization is being executed. Normally equal to user_id."
+    },
+    "command_source": {
+      "type": "string",
+      "enum": [
+        "direct_user_command",
+        "standing_obo_instruction"
+      ],
+      "description": "Whether execution was invoked by a current user command or an already-granted standing OBO instruction."
     }
   },
   "required": [

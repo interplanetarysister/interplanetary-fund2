@@ -9,4 +9,5 @@ export const IN_APP_AGENTS = [
   { name: "Story", role: "story", status: "active", trust_score: 94, description: "Helps tell each campaign's story authentically." },
   { name: "Finance", role: "finance", status: "active", trust_score: 96, description: "Answers on raised amounts, clearing funds, fees, and payouts." },
   { name: "Outreach", role: "outreach", status: "active", trust_score: 92, description: "Surfaces recommendations and autonomous agent activity for opted-in campaigns." },
+  { name: "Managed Connections", role: "connections", status: "active", trust_score: 96, description: "Acts as an authorized software extension of eligible users to create, connect, configure, and maintain external fundraising accounts." },
 ];

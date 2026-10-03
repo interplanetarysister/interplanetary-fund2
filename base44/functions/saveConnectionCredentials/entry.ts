@@ -96,7 +96,7 @@ export default async function(req) {
       ...currentConsent,
       granted: unifiedObo,
       granted_at: unifiedObo ? (currentConsent.granted_at || now) : null,
-      permission_version: '2026-10-unified-obo-v1',
+      permission_version: '2026-10-user-extension-obo-v2',
       granted_capabilities: unifiedObo
         ? (currentConsent.provider_capabilities || currentConsent.granted_capabilities || [])
         : [],
@@ -104,7 +104,17 @@ export default async function(req) {
     data.agent_access = {
       ...(existing?.agent_access || {}),
       shared_with_agents: unifiedObo,
-      automation_enabled: unifiedObo && effectiveAutomationMode === 'auto',
+      automation_enabled: unifiedObo,
+    };
+    data.automation_mode = unifiedObo ? 'auto' : 'manual';
+    data.delegated_execution = {
+      ...(existing?.delegated_execution || {}),
+      principal_user_id: consentOwner?.id || user.id,
+      execution_model: 'user_directed_extension',
+      command_source: 'direct_user_command',
+      enabled: unifiedObo,
+      authorized_at: unifiedObo ? (existing?.delegated_execution?.authorized_at || now) : null,
+      revoked_at: unifiedObo ? null : (existing?.delegated_execution?.revoked_at || now),
     };
 
 

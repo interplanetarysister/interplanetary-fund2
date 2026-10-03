@@ -55,7 +55,9 @@ export default function Register() {
           }
         }
       }
-      window.location.href = safeReturnTo();
+      // A newly created account always sees the simple IFund-help choice first.
+      // Any requested destination can be resumed after onboarding in a later flow.
+      window.location.href = "/onboarding";
     } catch (err) {
       setError(safeAuthErrorMessage("verify"));
     } finally {
