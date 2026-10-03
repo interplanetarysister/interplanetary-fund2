@@ -13,6 +13,9 @@ const recipe = read('base44/entities/PlatformConnectionRecipe.jsonc');
 const resolver = read('base44/functions/resolvePlatformConnectionRecipe/entry.ts');
 const entitlements = read('base44/shared/subscriptionEntitlements.ts');
 const updates = read('src/components/campaigns/UpdatesSection.jsx');
+const command = read('base44/functions/requestManagedConnectionAction/entry.ts');
+const catalog = read('src/components/connections/platformCatalog.js');
+const saveConnection = read('base44/functions/saveConnectionCredentials/entry.ts');
 
 assert.match(register, /window\.location\.href = "\/onboarding"/);
 assert.match(onboarding, /id: "automate"/);
@@ -38,5 +41,14 @@ assert.match(resolver, /blockedRoutes/);
 assert.match(entitlements, /MANAGED_CONNECTIONS_MIN_LEVEL = 2/);
 assert.match(updates, /Share this update with my connected accounts/);
 assert.match(updates, />Publish</);
+assert.match(command, /create_account/);
+assert.match(command, /hasManagedConnections/);
+assert.match(command, /executable_now:false/);
+assert.match(command, /resolvePlatformConnectionRecipe/);
+assert.doesNotMatch(catalog, /Ask before every post/);
+assert.doesNotMatch(catalog, /Generate drafts only/);
+assert.match(saveConnection, /2026-10-user-extension-obo-v2/);
+assert.match(saveConnection, /delegated_execution/);
+assert.match(saveConnection, /automation_enabled: unifiedObo/);
 
 console.log('Managed Connections zero-credit static contract verified.');
