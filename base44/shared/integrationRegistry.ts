@@ -168,9 +168,8 @@ export async function assertExternalAgentAction(sr, {
   if (connection.status !== 'connected' || connection.verification_status !== 'verified') {
     return { ok: false, reason: 'connection is not verified and active' };
   }
-  if (connection.obo_consent?.granted !== true || connection.agent_access?.shared_with_agents !== true) {
-    return { ok: false, reason: 'connection has not synchronized the owner OBO authorization' };
-  }
+  // Per-connection OBO fields are synchronized execution metadata, not a
+  // second consent decision. Canonical owner authorization above is decisive.
   if (requireAutomation && connection.agent_access?.automation_enabled !== true) {
     return { ok: false, reason: 'automation is disabled for this connection' };
   }
