@@ -116,7 +116,7 @@ async function appUserOAuthTransport(sr: any, platform: string) {
   }
 }
 
-function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe: any, platform: string): string {
+function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe: any, platform: string, unifiedObo: boolean): string {
   // SHARED connectors: lifecycle comes from the provider-backed shared check.
   if (recipe?.shared) {
     if (!shared?.connected) return 'NOT_CONNECTED';
@@ -148,9 +148,9 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
       ? 'CONNECTED' : 'CONNECTING';
   }
   if (recipe?.preferred_transport === 'public_browser') {
-    // Crowdfunding observation: a linked URL + browser OBO consent = observation capable.
-    const consent = connection.obo_consent?.granted === true;
-    return (connection.external_url && consent) ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
+    // Public observation uses the user's single IFund AI/OBO decision; there is
+    // no second browser-specific IFund consent.
+    return (connection.external_url && unifiedObo) ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
   }
   return connection.status === 'connected' ? 'CONNECTED' : 'NOT_CONNECTED';
 }
@@ -160,7 +160,7 @@ function recoveryHint(lifecycle: string, recipe: any, oauth: any, platform: stri
     case 'NOT_CONNECTED':
       if (recipe?.preferred_transport === 'oauth' && !oauth?.configured) return 'Register the workspace connector, then start OAuth.';
       if (recipe?.preferred_transport === 'oauth') return 'Start OAuth to connect this account.';
-      if (recipe?.preferred_transport === 'public_browser') return 'Link the external campaign URL and grant browser observation consent.';
+      if (recipe?.preferred_transport === 'public_browser') return 'Link the external campaign URL. Existing IFund AI authorization applies automatically.';
       if (recipe?.preferred_transport === 'token') return 'Enter the platform connection credentials.';
       if (recipe?.preferred_transport === 'webhook') return 'Follow the webhook setup steps.';
       return 'Connect this platform to begin.';
@@ -212,7 +212,8 @@ export default async function(req) {
       } catch { grants = []; }
     }
 
-    const lifecycle = deriveLifecycle(connection, shared, oauth, recipe, key);
+    const unifiedObo = hasUnifiedOboConsent(user);
+    const lifecycle = deriveLifecycle(connection, shared, oauth, recipe, key, unifiedObo);
 
     // Capabilities: only what is genuinely verified. Never inferred from config.
     const capabilities_verified: string[] = [];
@@ -223,7 +224,7 @@ export default async function(req) {
         if (recipe?.preferred_transport === 'token') capabilities_verified.push('provider_verified');
         if (recipe?.preferred_transport === 'webhook' && connection.external_data_source === 'provider_verified') capabilities_verified.push('receive_donation_webhooks');
       }
-      if (recipe?.preferred_transport === 'public_browser' && connection?.external_url && connection.obo_consent?.granted) {
+      if (recipe?.preferred_transport === 'public_browser' && connection?.external_url && unifiedObo) {
         capabilities_verified.push('observe_external_metrics');
       }
     }
@@ -237,8 +238,8 @@ export default async function(req) {
       identity: shared?.identity || (connection ? { display_name: connection.display_name || null, external_url: connection.external_url || null } : null),
       capabilities_verified,
       obo: recipe?.shared ? null : {
-        authorized: hasUnifiedOboConsent(user),
-        source: hasUnifiedOboConsent(user) ? 'unified_user_authorization' : 'none',
+        authorized: unifiedObo,
+        source: unifiedObo ? 'unified_user_authorization' : 'none',
         legacy_grant_count: grants.length,
       },
       last_verified: shared?.verified ? shared?.verified_at : connection?.last_synced || null,
