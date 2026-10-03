@@ -28,7 +28,7 @@ export default async function(req) {
 
     const campaign = await base44.entities.Campaign.create(payload);
     const provenance:any = {};
-    for (const key of ALLOWED) if (payload[key] !== undefined) provenance[key] = { source: connection.platform, connection_id: connection.id, imported_at: new Date().toISOString() };
+    for (const key of ALLOWED) if (payload[key] !== undefined) provenance[key] = { source: connection.platform, connection_id: connection.id, imported_at: new Date().toISOString(), source_value: payload[key] };
     const imported = await base44.entities.ExternalCampaignImport.create({
       owner_user_id: user.id, connection_id: connection.id, platform: connection.platform,
       external_campaign_id: String(body.external_campaign_id || ''), external_url: connection.external_url || '',
