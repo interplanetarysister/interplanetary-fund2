@@ -144,3 +144,42 @@ export async function assertOboGrant(sr, agentName, userId, platform, connection
   if (!active) return { ok: false, reason: `no active OBO grant for agent=${agentName} user=${userId} platform=${platform}` };
   return { ok: true, grant: active };
 }
+
+// Canonical IFund-wide OBO decision. Legacy user fields are read only as a
+// migration bridge; new authorization changes are written through ai_obo_consent.
+export function hasUnifiedOboConsent(user) {
+  if (user?.ai_obo_consent?.granted === true) return true;
+  if (user?.ai_obo_consent?.granted === false) return false;
+  return user?.ai_publishing_consent?.granted === true || user?.ai_connection_consent?.granted === true;
+}
+
+export async function assertExternalAgentAction(sr, {
+  ownerUser,
+  ownerUserId,
+  campaign = null,
+  connection,
+  capability,
+  requireAutomation = false,
+}) {
+  if (!ownerUser || ownerUser.id !== ownerUserId) return { ok: false, reason: 'owner unavailable' };
+  if (!hasUnifiedOboConsent(ownerUser)) return { ok: false, reason: 'owner OBO authorization is not active' };
+  if (!connection || connection.created_by_id !== ownerUserId) return { ok: false, reason: 'connection owner mismatch' };
+  if (campaign && campaign.created_by_id !== ownerUserId) return { ok: false, reason: 'campaign owner mismatch' };
+  if (connection.status !== 'connected' || connection.verification_status !== 'verified') {
+    return { ok: false, reason: 'connection is not verified and active' };
+  }
+  if (connection.obo_consent?.granted !== true || connection.agent_access?.shared_with_agents !== true) {
+    return { ok: false, reason: 'connection has not synchronized the owner OBO authorization' };
+  }
+  if (requireAutomation && connection.agent_access?.automation_enabled !== true) {
+    return { ok: false, reason: 'automation is disabled for this connection' };
+  }
+  const known = new Set([
+    ...(connection.obo_consent?.provider_capabilities || []),
+    ...(connection.obo_consent?.granted_capabilities || []),
+  ]);
+  if (capability && known.size > 0 && !known.has(capability)) {
+    return { ok: false, reason: `provider capability ${capability} is not granted` };
+  }
+  return { ok: true };
+}
