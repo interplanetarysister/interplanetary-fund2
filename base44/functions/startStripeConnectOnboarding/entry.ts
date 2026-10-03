@@ -61,7 +61,13 @@ export default async function(req){
           if(dup.details_submitted&&!canonical.details_submitted) patch.details_submitted=true;
           if(dup.last_verified_at&&!canonical.last_verified_at) patch.last_verified_at=dup.last_verified_at;
         }
-        if(Object.keys(patch).length) await sr.entities.ConnectedPayoutAccount.update(canonical.id,{...canonical,...patch}).catch(()=>{});
+        // Persist canonical merged state BEFORE deleting duplicates. A failed
+        // persist throws and aborts convergence — never destroy duplicate state
+        // before the canonical record has absorbed the information it must
+        // preserve.
+        if(Object.keys(patch).length){
+          await sr.entities.ConnectedPayoutAccount.update(canonical.id,patch);
+        }
         for(const dup of ordered.slice(1)) await sr.entities.ConnectedPayoutAccount.delete(dup.id).catch(()=>{});
         record=canonical;
       }

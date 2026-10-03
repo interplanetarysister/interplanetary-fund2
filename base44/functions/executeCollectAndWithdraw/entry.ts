@@ -16,6 +16,13 @@ export default async function(req) {
     if(!authorization||authorization.owner_user_id!==user.id) return Response.json({error:'Collection authorization not found.'},{status:404});
     if(authorization.status!=='authorized') return Response.json({error:'Explicit collection authorization is required before execution.'},{status:409});
     if(!authorization.authorized_at) return Response.json({error:'Authorization timestamp is missing.'},{status:409});
+    // Authorization snapshot integrity: an expired authorization must not be
+    // executed even if its status was not yet transitioned. The user must
+    // refresh balances and re-authorize.
+    if(authorization.expires_at && new Date(authorization.expires_at).getTime() <= Date.now()) {
+      await sr.entities.ExternalCollectionAuthorization.update(authorization.id,{status:'expired'});
+      return Response.json({error:'This collection authorization has expired. Refresh balances and re-authorize.'},{status:409});
+    }
 
     const byPlatform=await resolveCapabilityMap(sr);
     const results=[];

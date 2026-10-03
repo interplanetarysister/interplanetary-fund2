@@ -47,13 +47,38 @@ export default async function(req) {
         return String(a.id || '').localeCompare(String(b.id || ''));
       });
       const canonical = ordered[0];
+      // Re-link the connection to the canonical campaign BEFORE any destructive
+      // cleanup, so the connection never points to a deleted record.
+      await sr.entities.PlatformConnection.update(connection.id, { campaign_id: canonical.campaign_id });
+
       for (const dup of ordered.slice(1)) {
+        // Do NOT assume a duplicate campaign is safe to delete merely because
+        // its import lost the race. Check for dependent entities first —
+        // donations, financial operations, posts, updates, connections,
+        // withdrawals, follows. If any exist, preserve the campaign and just
+        // re-point the import record to the canonical campaign.
         if (dup.campaign_id && dup.campaign_id !== canonical.campaign_id) {
-          await sr.entities.Campaign.delete(dup.campaign_id).catch(() => {});
+          const [donations, finOps, posts, updates, conns, withdrawals, follows] = await Promise.all([
+            sr.entities.Donation.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+            sr.entities.FinancialOperation.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+            sr.entities.SocialPost.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+            sr.entities.CampaignUpdate.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+            sr.entities.PlatformConnection.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+            sr.entities.Withdrawal.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+            sr.entities.FollowedCampaign.filter({ campaign_id: dup.campaign_id }, '-created_date', 1).catch(() => []),
+          ]);
+          const hasDeps = (donations?.length || 0) + (finOps?.length || 0) + (posts?.length || 0) +
+            (updates?.length || 0) + (conns?.length || 0) + (withdrawals?.length || 0) + (follows?.length || 0) > 0;
+          if (hasDeps) {
+            // Preserve the campaign — it has user/financial content. Mark it
+            // as a duplicate but do not destroy it.
+            await sr.entities.Campaign.update(dup.campaign_id, { status: 'completed' }).catch(() => {});
+          } else {
+            await sr.entities.Campaign.delete(dup.campaign_id).catch(() => {});
+          }
         }
         await sr.entities.ExternalCampaignImport.delete(dup.id).catch(() => {});
       }
-      await sr.entities.PlatformConnection.update(connection.id, { campaign_id: canonical.campaign_id });
       await sr.entities.ExternalCampaignImport.update(canonical.id, { last_imported_at: new Date().toISOString() }).catch(() => {});
       const canonicalCampaign = canonical.campaign_id ? await base44.entities.Campaign.get(canonical.campaign_id).catch(() => null) : null;
       await logAudit(base44, { action: 'external_campaign_imported', actor_user_id: user.id, target_type: 'Campaign', target_id: canonical.campaign_id, detail: 'Created IFund draft from connected external fundraiser; converged concurrent import to one canonical record.', status: 'success', metadata: { platform: connection.platform, connection_id: connection.id, import_id: canonical.id } });

@@ -104,9 +104,10 @@ export default async function (req) {
     });
     // Converge: concurrent admin reconciliation calls for the same PayPal
     // transaction may each pass the duplicate check and create a holding entry.
-    // Keep the earliest, delete the rest so a single receipt is never double-
-    // counted in the custody ledger.
+    // Keep the earliest as canonical, delete the rest. Use the ACTUAL canonical
+    // ID for audit and response — never reference a deleted duplicate.
     const allEntries = await sr.entities.HoldingLedgerEntry.filter({ operation_key: operationKey }, 'created_date', 10).catch(() => []);
+    let canonicalEntry = entry;
     if (allEntries.length > 1) {
       const ordered = [...allEntries].sort((a, b) => {
         const at = new Date(a.created_date || 0).getTime();
@@ -114,14 +115,26 @@ export default async function (req) {
         if (at !== bt) return at - bt;
         return String(a.id || '').localeCompare(String(b.id || ''));
       });
-      for (const dup of ordered.slice(1)) await sr.entities.HoldingLedgerEntry.delete(dup.id).catch(() => {});
+      canonicalEntry = ordered[0];
+      // Only delete duplicates if they represent the same settlement (same
+      // amount/currency/campaign). Conflicting allocations were already
+      // rejected above; duplicates here are safe convergence candidates.
+      for (const dup of ordered.slice(1)) {
+        if (dup.id === canonicalEntry.id) continue;
+        const sameAllocation =
+          dup.campaign_id === canonicalEntry.campaign_id &&
+          Math.abs(Number(dup.amount) - Number(canonicalEntry.amount)) < 0.01 &&
+          String(dup.currency || '').toUpperCase() === String(canonicalEntry.currency || '').toUpperCase();
+        if (sameAllocation) await sr.entities.HoldingLedgerEntry.delete(dup.id).catch(() => {});
+      }
     }
+    const canonicalId = canonicalEntry.id;
 
     await logAudit(base44, {
       action: 'external_funds_settled_to_holding',
       actor_user_id: user.id,
       target_type: 'HoldingLedgerEntry',
-      target_id: entry.id,
+      target_id: canonicalId,
       detail: `${iso} ${value.toFixed(2)} from ${connection.platform || 'external'} reconciled to business PayPal holding account`,
       status: 'success',
       metadata: {
@@ -133,7 +146,7 @@ export default async function (req) {
       },
     });
 
-    return Response.json({ ok: true, duplicate: false, holding_ledger_entry_id: entry.id, state: 'settled' });
+    return Response.json({ ok: true, duplicate: false, holding_ledger_entry_id: canonicalId, state: 'settled' });
   } catch (error) {
     console.error('reconcileExternalPayPalSettlement error:', error instanceof Error ? error.message : String(error));
     return Response.json({ error: 'Settlement reconciliation could not be completed safely.' }, { status: 500 });

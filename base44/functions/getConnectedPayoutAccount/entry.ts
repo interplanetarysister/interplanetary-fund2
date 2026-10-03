@@ -30,9 +30,16 @@ export default async function(req){
         if(dup.details_submitted&&!record.details_submitted) patch.details_submitted=true;
         if(dup.last_verified_at&&!record.last_verified_at) patch.last_verified_at=dup.last_verified_at;
         if(dup.provider_account_id&&!record.provider_account_id) patch.provider_account_id=dup.provider_account_id;
+      }
+      // Persist canonical merged state BEFORE deleting duplicates. A failed
+      // persist must abort convergence — never destroy duplicate state before
+      // the canonical record has absorbed the information it must preserve.
+      if(Object.keys(patch).length){
+        await sr.entities.ConnectedPayoutAccount.update(record.id,patch);
+      }
+      for(const dup of ordered.slice(1)){
         await sr.entities.ConnectedPayoutAccount.delete(dup.id).catch(()=>{});
       }
-      if(Object.keys(patch).length) await sr.entities.ConnectedPayoutAccount.update(record.id,patch).catch(()=>{});
     }
     if(!record) return Response.json({ok:true,configured:false,status:'not_started'});
     const key=secrets.get('STRIPE_SECRET_KEY');
