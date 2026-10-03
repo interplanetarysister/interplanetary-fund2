@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { resolveUnifiedOboConsent } from '../src/lib/unifiedOboConsent.js';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const entitlement = read('base44/shared/subscriptionEntitlements.ts');
@@ -37,10 +38,19 @@ assert.doesNotMatch(unifiedConsent, /provider_capabilities \|\| currentObo\.gran
 assert.match(unifiedConsent, /automation_enabled: granted \? currentAgent\.automation_enabled === true : false/);
 assert.match(unifiedConsent, /partial: failed\.length > 0/);
 assert.match(unifiedConsent, /status: failed\.length > 0 \? 207 : 200/);
+assert.match(unifiedConsent, /connection propagation read failed/);
+assert.match(unifiedConsent, /connection_sync_error: true/);
+assert.match(unifiedConsent, /connection_sync_error: true,[\s\S]+status: 207/);
 assert.doesNotMatch(consentCard, /\|\| \{ granted, decided_at:/);
 assert.match(consentCard, /payload\.partial/);
 assert.match(connectionsPage, /ai_obo_consent: value/);
 assert.match(connectionsPage, /ai_publishing_consent: value/);
 assert.match(connectionsPage, /ai_connection_consent: value/);
+assert.equal(resolveUnifiedOboConsent({ ai_obo_consent: { granted: false }, ai_publishing_consent: { granted: true } }).granted, false);
+assert.equal(resolveUnifiedOboConsent({ ai_obo_consent: { granted: true }, ai_publishing_consent: { granted: false } }).granted, true);
+assert.equal(resolveUnifiedOboConsent({ ai_publishing_consent: { granted: false }, ai_connection_consent: { granted: true } }).granted, true);
+assert.equal(resolveUnifiedOboConsent({}), null);
+assert.match(consentCard, /resolveUnifiedOboConsent\(user\)/);
+assert.match(connectionsPage, /resolveUnifiedOboConsent\(user\)\?\.granted === true/);
 
 console.log('Unified owner authorization and fail-closed per-connection OBO contract verified.');

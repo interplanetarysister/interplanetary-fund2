@@ -10,6 +10,7 @@ import ConnectDialog from "@/components/connections/ConnectDialog";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
+import { resolveUnifiedOboConsent } from "@/lib/unifiedOboConsent";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -145,7 +146,7 @@ export default function Connections() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
-  const aiAuthorized = !!user?.ai_publishing_consent?.granted;
+  const aiAuthorized = resolveUnifiedOboConsent(user)?.granted === true;
   const savedIds = connections.map((c) => c.platform);
   const isWorking = (connection) => lifecycleMap[connection.id]
     ? lifecycleMap[connection.id].lifecycle === "CONNECTED"

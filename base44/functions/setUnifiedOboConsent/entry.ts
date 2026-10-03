@@ -24,7 +24,22 @@ export default async function(req) {
       ai_connection_consent: { granted, decided_at: now },
     });
 
-    const connections = await base44.entities.PlatformConnection.filter({ created_by_id: user.id });
+    let connections;
+    try {
+      connections = await base44.entities.PlatformConnection.filter({ created_by_id: user.id });
+    } catch (error) {
+      // The canonical user decision is already durable. Report that truth and
+      // a retryable partial propagation state instead of claiming it failed.
+      console.warn('setUnifiedOboConsent connection propagation read failed:', error?.name || 'UnknownError');
+      return Response.json({
+        ok: false,
+        partial: true,
+        consent: canonical,
+        connections: [],
+        failed_connection_count: null,
+        connection_sync_error: true,
+      }, { status: 207 });
+    }
     const results = [];
     for (const connection of connections || []) {
       const currentObo = connection.obo_consent || {};

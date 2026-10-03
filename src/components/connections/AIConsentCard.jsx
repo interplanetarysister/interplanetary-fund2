@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
+import { resolveUnifiedOboConsent } from "@/lib/unifiedOboConsent";
 
 // The AI Authorization agreement. AI never publishes to a connected campaign or
 // social account without this explicit, revocable license — and even with it,
@@ -9,7 +10,7 @@ import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
 export default function AIConsentCard({ user, onChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const consent = user?.ai_obo_consent || user?.ai_publishing_consent || user?.ai_connection_consent;
+  const consent = resolveUnifiedOboConsent(user);
 
   const decide = async (granted) => {
     setSaving(true);
