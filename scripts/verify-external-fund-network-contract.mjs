@@ -20,6 +20,7 @@ const payoutOnboarding=read('base44/functions/startStripeConnectOnboarding/entry
 const payoutStatus=read('base44/functions/getConnectedPayoutAccount/entry.ts');
 const importedSync=read('base44/functions/syncImportedCampaign/entry.ts');
 const discovery=read('base44/functions/discoverExternalCampaignSnapshot/entry.ts');
+const importedCampaign=read('base44/functions/importExternalCampaign/entry.ts');
 const create=read('src/pages/CreateCampaign.jsx');
 assert.match(provider,/payout_model/);
 assert.match(provider,/api_transfer/);
@@ -55,6 +56,8 @@ assert.match(importedSync,/locally_locked_fields/);
 assert.match(importedSync,/source_value/);
 assert.match(discovery,/hostAllowed/);
 assert.match(discovery,/provider_public_campaign_page/);
+assert.doesNotMatch(discovery,/hasUnifiedOboConsent/);
+assert.doesNotMatch(importedCampaign,/hasUnifiedOboConsent/);
 assert.match(create,/discoverExternalCampaignSnapshot/);
 assert.match(prepare,/all_owned_campaigns/);
 const withdrawals=read('src/pages/Withdrawals.jsx');
