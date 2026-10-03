@@ -70,10 +70,14 @@ export default async function(req) {
     const cfg = CONFIG[key];
     // IFund-wide OBO authorization is canonical. The explicit connection-flow
     // value remains supported, and legacy grants are honored during migration.
-    const sharedAgentConsent = shared_agent_consent === true ||
-      user.ai_obo_consent?.granted === true ||
-      user.ai_publishing_consent?.granted === true ||
-      user.ai_connection_consent?.granted === true;
+    const canonicalDecided = typeof user.ai_obo_consent?.granted === 'boolean';
+    const inheritedConsent = canonicalDecided
+      ? user.ai_obo_consent.granted === true
+      : (user.ai_publishing_consent?.granted === true || user.ai_connection_consent?.granted === true);
+    // An explicit canonical revocation wins over every legacy field. A positive
+    // connection-flow choice can establish authorization only before the
+    // canonical decision exists; subsequent changes go through setUnifiedOboConsent.
+    const sharedAgentConsent = canonicalDecided ? inheritedConsent : (shared_agent_consent === true || inheritedConsent);
     const envName = OAUTH_ENV[key];
     const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
