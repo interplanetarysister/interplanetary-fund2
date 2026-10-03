@@ -4,6 +4,7 @@ import { Loader2, Users, BarChart3, CheckCircle2, XCircle, Clock, ExternalLink, 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import PageError from "@/components/PageError";
 
 const STATUS_STYLE = {
   published: "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -25,20 +26,28 @@ export default function FacebookGroups() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState("");
+  const [error, setError] = useState("");
 
   const load = async () => {
-    const [connectionResponse, p, c] = await Promise.all([
-      base44.functions.invoke("listConnections", {}),
-      base44.entities.DistributedPost.filter({ platform: "facebook" }),
-      base44.entities.Campaign.list("-raised_amount", 100),
-    ]);
-    const conn = (connectionResponse.data?.connections || []).filter(
-      (connection) => connection.platform === "facebook"
-    );
-    setConnections(conn);
-    setPosts(p || []);
-    setCampaigns(c || []);
-    setLoading(false);
+    setError("");
+    setLoading(true);
+    try {
+      const [connectionResponse, p, c] = await Promise.all([
+        base44.functions.invoke("listConnections", {}),
+        base44.entities.DistributedPost.filter({ platform: "facebook" }),
+        base44.entities.Campaign.list("-raised_amount", 100),
+      ]);
+      const conn = (connectionResponse.data?.connections || []).filter(
+        (connection) => connection.platform === "facebook"
+      );
+      setConnections(conn);
+      setPosts(p || []);
+      setCampaigns(c || []);
+    } catch {
+      setError("We couldn't load Facebook outreach. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -51,6 +60,7 @@ export default function FacebookGroups() {
   const failed = filteredPosts.filter((p) => p.status === "failed").length;
   const pending = filteredPosts.filter((p) => ["draft", "pending_approval", "approved", "scheduled"].includes(p.status)).length;
 
+  if (error) return <PageError message={error} onRetry={load} />;
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">

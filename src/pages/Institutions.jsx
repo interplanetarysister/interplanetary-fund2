@@ -21,15 +21,16 @@ export default function Institutions() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     base44.entities.Institution.list("-created_date", 100)
       .then(setInstitutions)
       .catch((e) => { console.error("Institutions load failed:", e?.name || "UnknownError"); setError("We couldn't load institutions. Please try again."); });
-  }, []);
+  }, [reloadKey]);
 
   if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); }} /></div>;
+    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); setReloadKey((key) => key + 1); }} /></div>;
   }
   if (!institutions) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;

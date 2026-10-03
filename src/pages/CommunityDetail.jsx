@@ -9,6 +9,7 @@ import VolunteerTab from "@/components/community/VolunteerTab";
 import MembersTab from "@/components/community/MembersTab";
 import { Users, MapPin, Loader2, LogOut, UserPlus } from "lucide-react";
 import { communityTypes } from "@/components/community/communityTypes";
+import PageError from "@/components/PageError";
 
 export default function CommunityDetail() {
   const { id } = useParams();
@@ -17,21 +18,29 @@ export default function CommunityDetail() {
   const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const [user, c, m] = await Promise.all([
-      base44.auth.me().catch(() => null),
-      base44.entities.Community.get(id),
-      base44.entities.CommunityMember.filter({ community_id: id }),
-    ]);
-    setMe(user);
-    setCommunity(c);
-    setMembers(m);
-    setLoading(false);
+    setError("");
+    try {
+      const [user, c, m] = await Promise.all([
+        base44.auth.me().catch(() => null),
+        base44.entities.Community.get(id),
+        base44.entities.CommunityMember.filter({ community_id: id }),
+      ]);
+      setMe(user);
+      setCommunity(c);
+      setMembers(Array.isArray(m) ? m : []);
+    } catch {
+      setError("We couldn't load this community. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
 
+  if (error) return <PageError message={error} onRetry={() => { setLoading(true); load(); }} />;
   if (loading) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
@@ -46,18 +55,28 @@ export default function CommunityDetail() {
   const join = async () => {
     if (!me) { base44.auth.redirectToLogin(window.location.pathname); return; }
     setBusy(true);
-    const { data } = await base44.functions.invoke("communityMembership", { action: "join", community_id: id });
-    if (!data?.error) await load();
-    else alert("The community action could not be completed. Please try again.");
-    setBusy(false);
+    try {
+      const { data } = await base44.functions.invoke("communityMembership", { action: "join", community_id: id });
+      if (!data?.error) await load();
+      else alert("The community action could not be completed. Please try again.");
+    } catch {
+      alert("The community action could not be completed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const leave = async () => {
     setBusy(true);
-    const { data } = await base44.functions.invoke("communityMembership", { action: "leave", community_id: id });
-    if (!data?.error) await load();
-    else alert(data.error);
-    setBusy(false);
+    try {
+      const { data } = await base44.functions.invoke("communityMembership", { action: "leave", community_id: id });
+      if (!data?.error) await load();
+      else alert("The community action could not be completed. Please try again.");
+    } catch {
+      alert("The community action could not be completed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

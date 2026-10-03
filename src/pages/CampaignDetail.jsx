@@ -21,6 +21,7 @@ import { Loader2, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
+import PageError from "@/components/PageError";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
@@ -33,19 +34,26 @@ export default function CampaignDetail() {
   const [notFound, setNotFound] = useState(false);
   const [donateOpen, setDonateOpen] = useState(false);
   const [related, setRelated] = useState([]);
+  const [error, setError] = useState("");
 
   const load = useCallback(async () => {
-    const [c, u, dRes] = await Promise.all([
-      base44.entities.Campaign.filter({ id }),
-      base44.entities.CampaignUpdate.filter({ campaign_id: id }, "-created_date"),
-      base44.functions.invoke("getCampaignDonations", { campaign_id: id }),
-    ]);
-    if (!c.length) { setNotFound(true); return; }
-    setCampaign(c[0]);
-    setUpdates(u);
-    setDonations((dRes.data && dRes.data.donations) ? dRes.data.donations.slice(0, 10) : []);
-    const rel = await base44.entities.Campaign.filter({ category: c[0].category, status: "active" }, "-raised_amount", 6);
-    setRelated(rel.filter((r) => r.id !== id).slice(0, 3));
+    setError("");
+    try {
+      const [c, u, dRes] = await Promise.all([
+        base44.entities.Campaign.filter({ id }),
+        base44.entities.CampaignUpdate.filter({ campaign_id: id }, "-created_date"),
+        base44.functions.invoke("getCampaignDonations", { campaign_id: id }),
+      ]);
+      if (!c.length) { setNotFound(true); setCampaign(null); return; }
+      setNotFound(false);
+      setCampaign(c[0]);
+      setUpdates(Array.isArray(u) ? u : []);
+      setDonations((dRes.data && dRes.data.donations) ? dRes.data.donations.slice(0, 10) : []);
+      const rel = await base44.entities.Campaign.filter({ category: c[0].category, status: "active" }, "-raised_amount", 6).catch(() => []);
+      setRelated((rel || []).filter((r) => r.id !== id).slice(0, 3));
+    } catch {
+      setError("We couldn't load this campaign. Please try again.");
+    }
   }, [id]);
 
   useEffect(() => {
@@ -53,6 +61,7 @@ export default function CampaignDetail() {
     base44.auth.me().then(setUser).catch(() => {});
   }, [load]);
 
+  if (error) return <PageError message={error} onRetry={load} />;
   if (notFound) return <div className="text-center py-24 text-stone-500">Campaign not found.</div>;
   if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 

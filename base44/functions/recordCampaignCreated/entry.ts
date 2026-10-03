@@ -48,6 +48,9 @@ export default async function(req) {
       metadata: { category: campaign.category, goal_amount: campaign.goal_amount },
     });
 
+    // Marketing KPI: campaign creation is the core activation event.
+    try { await base44.analytics.track({ eventName: 'campaign_created', properties: { campaign_id: campaign.id, category: campaign.category } }); } catch (_) { /* non-fatal */ }
+
     return Response.json({ ok: true, canonical_registered: true });
   } catch (error) {
     console.error('recordCampaignCreated error:', error && error.message ? error.message : error);

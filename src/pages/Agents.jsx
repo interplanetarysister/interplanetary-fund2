@@ -4,6 +4,8 @@ import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
 import { base44 } from "@/api/base44Client";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
 import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown } from "lucide-react";
+import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
+import { Navigate } from "react-router-dom";
 
 // Always-on AI agent team. The Chief of Staff coordinates; each specialist
 // handles one domain. Switching agents starts a fresh conversation.
@@ -20,7 +22,13 @@ const AGENTS = [
 export default function Agents() {
   const [active, setActive] = useState(AGENTS[0]);
   const [user, setUser] = useState(null);
-  useEffect(() => { base44.auth.me().then(setUser).catch(() => setUser(null)); }, []);
+  const [loadingUser, setLoadingUser] = useState(true);
+  useEffect(() => {
+    base44.auth.me().then(setUser).catch(() => setUser(null)).finally(() => setLoadingUser(false));
+  }, []);
+
+  if (loadingUser) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 text-muted-foreground">Loading AI Agents…</div>;
+  if (!hasPlanLevel(user, 1)) return <Navigate to="/subscriptions" replace />;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">

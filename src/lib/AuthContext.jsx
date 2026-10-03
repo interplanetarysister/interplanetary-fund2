@@ -1,11 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
+import { runtimeContract } from '@/lib/runtimeContract';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { getFrontendIdentity } from '@/lib/adminBootstrap';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
+const APP_STATE_TIMEOUT_MS = 12000;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -24,17 +26,17 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
+      const trustedAppBaseUrl = runtimeContract.appBaseUrl;
       const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
+        baseURL: trustedAppBaseUrl ? `${trustedAppBaseUrl}/api/apps/public` : `/api/apps/public`,
         headers: {
           'X-App-Id': appParams.appId
         },
-        token: appParams.token,
         interceptResponses: true
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`, { timeout: APP_STATE_TIMEOUT_MS });
         setAppPublicSettings(publicSettings);
         
         if (appParams.token) {

@@ -62,6 +62,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Application startup and safe auth diagnostics
+        run: npm run verify:auth-pages-safe-diagnostics
+
       - name: Analytics safety contract
         run: npm run verify:analytics-safety
 
@@ -165,7 +168,7 @@ jobs:
       - name: Production build
         run: npm run build
 
-      - name: Verify built app can render
+      - name: Verify preview serves the app HTML
         run: |
           npm run preview -- --host 127.0.0.1 --port 4173 > /tmp/ifund-preview.log 2>&1 &
           PREVIEW_PID=$!

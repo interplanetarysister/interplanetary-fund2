@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"; import fs from "node:fs";
+assert.equal(fs.existsSync("wrangler.jsonc"), false, "wrangler.jsonc must not coexist with canonical wrangler.toml; duplicate Wrangler configs can select a static-only deployment");
 const wrangler=fs.readFileSync("wrangler.toml","utf8"); const worker=fs.readFileSync("host/gateway/worker.js","utf8"); const workflow=fs.readFileSync(".github/workflows/deploy-cloudflare.yml","utf8");
 assert.match(wrangler,/name\s*=\s*"interplanetary-fund"/); assert.match(wrangler,/main\s*=\s*"host\/gateway\/worker\.js"/); assert.match(wrangler,/directory\s*=\s*"\.\/dist"/); assert.match(wrangler,/binding\s*=\s*"ASSETS"/); assert.match(wrangler,/not_found_handling\s*=\s*"single-page-application"/); assert.match(wrangler,/run_worker_first\s*=\s*\["\/v1\/admin\/agents\/\*"\]/);
 assert.match(worker,/\/v1\/admin\/agents\/session/); assert.match(worker,/\/v1\/admin\/agents\/message/); assert.match(workflow,/npx --yes wrangler@4 deploy/); assert.match(workflow,/CLOUDFLARE_ACCESS_TOKEN/); assert.match(workflow,/deployment_url/); assert.match(workflow,/curl --fail/);

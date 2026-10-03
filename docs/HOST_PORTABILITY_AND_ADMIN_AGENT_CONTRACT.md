@@ -8,6 +8,7 @@ Until a replacement backend has a verified bidirectional replication layer, ever
 
 - `VITE_BASE44_APP_ID` = the same Interplanetary Fund app ID on every host.
 - `VITE_BASE44_APP_BASE_URL` = the same authoritative Base44 app/backend URL on every host.
+- Token-bearing SDK/auth requests may derive their destination only from this build-owned runtime value or the SDK's native Base44 endpoint selection. URL parameters, browser storage, redirects, and other caller-controlled state must never choose the origin that receives an access token. Public-settings requests do not attach the login token.
 - No host may create an independent campaign, donation, user, connection, agent-memory, or admin-action database and call it synchronized.
 - A future backend migration must use explicit IDs, idempotent change events, conflict handling, replay/checkpoints, and reconciliation before it may become writable.
 
