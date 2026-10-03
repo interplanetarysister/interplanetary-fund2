@@ -7,6 +7,7 @@ const gateway = read("src/lib/adminAgentGateway.js");
 const docs = read("docs/HOST_PORTABILITY_AND_ADMIN_AGENT_CONTRACT.md");
 const client = read("src/api/base44Client.js");
 const panel = read("src/components/agents/AdminDevelopmentChat.jsx");
+const authContext = read("src/lib/AuthContext.jsx");
 const worker = read("host/gateway/worker.js");
 const verifyAdmin = read("base44/functions/verifyAdminGateway/entry.ts");
 const executeAdmin = read("base44/functions/executeAdminAgentRequest/entry.ts");
