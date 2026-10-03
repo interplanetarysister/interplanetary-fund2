@@ -69,10 +69,10 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
           <label className="flex items-center gap-2 text-sm text-stone-600">
             <Checkbox checked={crossPost} onCheckedChange={setCrossPost} />
             <Share2 className="w-3.5 h-3.5 text-stone-400" />
-            Cross-post to connected platforms (AI per your automation settings)
+            Share this update with my connected accounts
           </label>
           <Button onClick={post} disabled={saving || !content.trim()} className="bg-stone-900 hover:bg-stone-800 text-white rounded-xl">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Post update"}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Publish"}
           </Button>
         </div>
       )}
