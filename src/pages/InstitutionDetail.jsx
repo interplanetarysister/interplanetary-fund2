@@ -16,6 +16,7 @@ export default function InstitutionDetail() {
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,9 +33,9 @@ export default function InstitutionDetail() {
       }
     })();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, reloadKey]);
 
-  if (error) return <PageError message={error} onRetry={() => { setError(""); setLoading(true); setInstitution(null); }} />;
+  if (error) return <PageError message={error} onRetry={() => { setError(""); setLoading(true); setInstitution(null); setReloadKey((key) => key + 1); }} />;
   if (loading) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
