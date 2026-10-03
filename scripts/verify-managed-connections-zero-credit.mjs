@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const read = (p) => fs.readFileSync(p, 'utf8');
+const register = read('src/pages/Register.jsx');
+const onboarding = read('src/pages/Onboarding.jsx');
+const automate = read('src/components/onboarding/AutomateStep.jsx');
+const consent = read('src/components/connections/AIConsentCard.jsx');
+const setConsent = read('base44/functions/setUnifiedOboConsent/entry.ts');
+const finalize = read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
+const connection = read('base44/entities/PlatformConnection.jsonc');
+const recipe = read('base44/entities/PlatformConnectionRecipe.jsonc');
+const resolver = read('base44/functions/resolvePlatformConnectionRecipe/entry.ts');
+const entitlements = read('base44/shared/subscriptionEntitlements.ts');
+const updates = read('src/components/campaigns/UpdatesSection.jsx');
+
+assert.match(register, /window\.location\.href = "\/onboarding"/);
+assert.match(onboarding, /id: "automate"/);
+assert.match(onboarding, /setUnifiedOboConsent/);
+assert.match(onboarding, /navigate\("\/"\)/);
+assert.match(automate, /Let IFund help me do things/);
+assert.match(automate, /Connect, Create account, or Publish/);
+assert.match(consent, /one simple permission/i);
+assert.match(setConsent, /execution_model: 'user_directed_extension'/);
+assert.match(setConsent, /automation_enabled: granted/);
+assert.match(setConsent, /automation_mode: granted \? 'auto' : 'manual'/);
+assert.match(finalize, /user\.ai_obo_consent\?\.granted === true/);
+assert.doesNotMatch(finalize, /shared_agent_consent\s*===\s*true/);
+assert.match(connection, /delegated_execution/);
+assert.match(connection, /user_directed_extension/);
+assert.match(recipe, /discovery_state/);
+assert.match(recipe, /candidate_transports/);
+assert.match(recipe, /blocked_routes/);
+assert.match(recipe, /successful_route/);
+assert.match(recipe, /rediscovery_on_failure/);
+assert.match(resolver, /next_candidate/);
+assert.match(resolver, /blockedRoutes/);
+assert.match(entitlements, /MANAGED_CONNECTIONS_MIN_LEVEL = 2/);
+assert.match(updates, /Share this update with my connected accounts/);
+assert.match(updates, />Publish</);
+
+console.log('Managed Connections zero-credit static contract verified.');
