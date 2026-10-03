@@ -42,5 +42,8 @@ assert.match(importedSync,/source_value/);
 assert.match(discovery,/hostAllowed/);
 assert.match(discovery,/provider_public_campaign_page/);
 assert.match(create,/discoverExternalCampaignSnapshot/);
+assert.match(prepare,/all_owned_campaigns/);
+const withdrawals=read('src/pages/Withdrawals.jsx');
+assert.match(withdrawals,/Collect & Withdraw everything/);
 assert.match(create,/Import from connected fundraiser/);
 console.log('External fundraising network foundation verified.');
