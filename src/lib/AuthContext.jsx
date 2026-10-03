@@ -6,6 +6,7 @@ import { getFrontendIdentity } from '@/lib/adminBootstrap';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
+const APP_STATE_TIMEOUT_MS = 12000;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -25,7 +26,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
       const appClient = createAxiosClient({
-        baseURL: `/api/apps/public`,
+        baseURL: appParams.appBaseUrl ? `${String(appParams.appBaseUrl).replace(/\/$/, '')}/api/apps/public` : `/api/apps/public`,
         headers: {
           'X-App-Id': appParams.appId
         },
@@ -34,7 +35,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`, { timeout: APP_STATE_TIMEOUT_MS });
         setAppPublicSettings(publicSettings);
         
         if (appParams.token) {
