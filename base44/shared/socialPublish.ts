@@ -6,11 +6,11 @@ import { denyMastodonNetworkAccess } from './mastodonNetworkPolicy.js';
 export { hasFreshProviderVerification } from './providerVerificationPolicy.js';
 
 export function hasAiPublishingConsent(user) {
-  // Compatibility name: publishing now uses the canonical IFund-wide OBO
-  // decision. Legacy fields are honored only until migrated.
-  if (user?.ai_obo_consent?.granted === true) return true;
-  if (user?.ai_obo_consent?.granted === false) return false;
-  return user?.ai_publishing_consent?.granted === true || user?.ai_connection_consent?.granted === true;
+  // Canonical IFund-wide OBO is the sole authorization decision for automated
+  // publishing. Legacy ai_publishing_consent / ai_connection_consent are
+  // mirrored on write only (see setUnifiedOboConsent) and are no longer
+  // consulted here.
+  return user?.ai_obo_consent?.granted === true;
 }
 
 export function canAutoPublish(connection) {

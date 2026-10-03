@@ -67,7 +67,7 @@ export default async function(req) {
           // OBO authorization and automation preference are independent. A
           // grant restores agent access but does not silently convert a user's
           // Ask/Draft/Manual preference into autonomous execution.
-          automation_enabled: granted ? currentAgent.automation_enabled === true : false,
+          automation_enabled: granted && (connection.automation_mode || 'manual') === 'auto',
         },
         automation_mode: connection.automation_mode || 'manual',
       };

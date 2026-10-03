@@ -35,6 +35,8 @@ Agents are interfaces into Interplanetary Fund, not isolated chatbots. Preserve 
 ## Financial custody
 Reading an external donation does not make that money held by Interplanetary Fund. Only a provider-verified settlement/transfer into the platform's holding account may become platform-held/withdrawable value. Ledger entries must preserve gross amount, external/provider fees, transfers, refunds/chargebacks, Interplanetary Fund fees, currency, provenance, and net available to the user.
 
+Provider campaign imports and refreshes are server-bound operations: the backend refetches the approved provider page/API and never relabels a browser-supplied campaign object as provider provenance. Base44's ordinary hostname fetch does not pin the DNS result, so public-page discovery remains unavailable until a pinned/private-egress-safe transport or provider API/connector exists. Financial eligibility additionally requires fresh provider evidence, a shipped provider-specific transfer adapter, a fresh provider-verified balance/currency, a verified owner destination, and a fee-versioned consent snapshot. A settled receipt is linked to one exact external observation before it can enter holding custody; the holding entry is atomically claimed when withdrawn and receives the same canonical 3% withdrawal fee.
+
 ## Memory and training
 Agent conversations and instructions should persist for the user through the platform memory system. Chief of Staff receives cross-agent context when available. Each specialist keeps separate role training; verified knowledge can overlap. Delegated real work and verified outcomes are learning signals, but learning never expands authorization.
 

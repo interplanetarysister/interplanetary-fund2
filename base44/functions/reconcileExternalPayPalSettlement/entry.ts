@@ -1,8 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { getTransaction } from '../../shared/paypal.ts';
+import { sameSettlementAllocation } from '../../shared/externalFundPolicy.js';
 
 const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCase());
+const round2 = (v) => Math.round((Number(v) + Number.EPSILON) * 100) / 100;
 
 // Admin-only reconciliation boundary for money that originated on an exterior
 // platform and has actually arrived in the designated Interplanetary business
@@ -56,6 +58,19 @@ export default async function (req) {
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign?.created_by_id) return Response.json({ error: 'Campaign not found or has no owner.' }, { status: 404 });
 
+    const observation = await sr.entities.ExternalFundObservation.get(external_observation_id).catch(() => null);
+    const observationMatches = observation &&
+      observation.campaign_id === campaign_id &&
+      observation.beneficiary_user_id === campaign.created_by_id &&
+      observation.external_connection_id === external_connection_id &&
+      round2(observation.amount) === round2(value) &&
+      String(observation.currency || '').toUpperCase() === iso &&
+      ['external', 'pending_match'].includes(observation.settlement_state) &&
+      (!observation.receiving_paypal_transaction_id || observation.receiving_paypal_transaction_id === paypalTx.id);
+    if (!observationMatches) {
+      return Response.json({ error: 'The exterior observation does not match this campaign, connection, beneficiary, amount, currency, or settlement state.' }, { status: 409 });
+    }
+
     const connection = await sr.entities.PlatformConnection.get(external_connection_id).catch(() => null);
     if (!connection || connection.campaign_id !== campaign_id || connection.created_by_id !== campaign.created_by_id) {
       return Response.json({ error: 'External connection does not belong to this campaign.' }, { status: 409 });
@@ -102,12 +117,55 @@ export default async function (req) {
       settled_at: new Date().toISOString(),
       reconciliation_note: `Verified exterior ${connection.platform || 'platform'} funds reconciled to receipt in the Interplanetary business PayPal holding account.`,
     });
+    // Converge: concurrent admin reconciliation calls for the same PayPal
+    // transaction may each pass the duplicate check and create a holding entry.
+    // Keep the earliest as canonical, delete the rest. Use the ACTUAL canonical
+    // ID for audit and response — never reference a deleted duplicate.
+    const operationEntries = await sr.entities.HoldingLedgerEntry.filter({ operation_key: operationKey }, 'created_date', 20).catch(() => []);
+    const transactionEntries = await sr.entities.HoldingLedgerEntry.filter({ provider_transaction_id: paypalTx.id }, 'created_date', 20).catch(() => []);
+    const allEntries = [...new Map([...(operationEntries || []), ...(transactionEntries || [])].map((row) => [row.id, row])).values()];
+    let canonicalEntry = entry;
+    if (allEntries.length > 1) {
+      const ordered = [...allEntries].sort((a, b) => {
+        const at = new Date(a.created_date || 0).getTime();
+        const bt = new Date(b.created_date || 0).getTime();
+        if (at !== bt) return at - bt;
+        return String(a.id || '').localeCompare(String(b.id || ''));
+      });
+      canonicalEntry = ordered[0];
+      const expectedAllocation = { campaign_id, beneficiary_user_id: campaign.created_by_id, external_connection_id, external_observation_id, amount: value, currency: iso };
+      const conflicts = ordered.filter((candidate) => !sameSettlementAllocation(candidate, expectedAllocation));
+      if (conflicts.length) {
+        await sr.entities.ExternalFundObservation.update(observation.id, { settlement_state: 'ambiguous' }).catch(() => {});
+        await logAudit(base44, {
+          action: 'external_funds_settlement_conflict', actor_user_id: user.id,
+          target_type: 'paypal_transaction', target_id: paypalTx.id,
+          detail: 'Conflicting holding-ledger allocations exist for the same PayPal receipt; no allocation was reported as successful.',
+          status: 'failure', metadata: { holding_entry_ids: ordered.map((row) => row.id), external_observation_id },
+        });
+        return Response.json({ error: 'Conflicting allocations exist for this PayPal settlement. Reconciliation review required.' }, { status: 409 });
+      }
+      // Only delete duplicates if they represent the same settlement (same
+      // complete allocation identity). Duplicates here are safe convergence
+      // candidates because every beneficiary/provenance field matches.
+      for (const dup of ordered.slice(1)) {
+        if (dup.id === canonicalEntry.id) continue;
+        const sameAllocation = sameSettlementAllocation(dup, canonicalEntry);
+        if (sameAllocation) await sr.entities.HoldingLedgerEntry.delete(dup.id).catch(() => {});
+      }
+    }
+    const canonicalId = canonicalEntry.id;
+
+    await sr.entities.ExternalFundObservation.update(observation.id, {
+      settlement_state: 'settled', holding_ledger_entry_id: canonicalId,
+      receiving_paypal_transaction_id: paypalTx.id,
+    });
 
     await logAudit(base44, {
       action: 'external_funds_settled_to_holding',
       actor_user_id: user.id,
       target_type: 'HoldingLedgerEntry',
-      target_id: entry.id,
+      target_id: canonicalId,
       detail: `${iso} ${value.toFixed(2)} from ${connection.platform || 'external'} reconciled to business PayPal holding account`,
       status: 'success',
       metadata: {
@@ -119,7 +177,7 @@ export default async function (req) {
       },
     });
 
-    return Response.json({ ok: true, duplicate: false, holding_ledger_entry_id: entry.id, state: 'settled' });
+    return Response.json({ ok: true, duplicate: canonicalId !== entry.id, holding_ledger_entry_id: canonicalId, state: 'settled' });
   } catch (error) {
     console.error('reconcileExternalPayPalSettlement error:', error instanceof Error ? error.message : String(error));
     return Response.json({ error: 'Settlement reconciliation could not be completed safely.' }, { status: 500 });

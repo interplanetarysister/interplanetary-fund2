@@ -28,7 +28,7 @@
     },
     "goal_amount": {
       "type": "number",
-      "minimum": 1
+      "minimum": 0
     },
     "raised_amount": {
       "type": "number",

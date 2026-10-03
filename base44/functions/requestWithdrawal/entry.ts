@@ -13,6 +13,7 @@ import {
 } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { effectiveSubscription } from '../../shared/subscriptionEntitlements.ts';
+import { claimWithdrawalMirrors, releaseWithdrawalMirrors } from '../../shared/withdrawalMirrorClaims.js';
 
 const CLEARING_DAYS = 7;
 const REVIEW_THRESHOLD = 1000;
@@ -21,13 +22,6 @@ const SAFE_WITHDRAWAL_ERROR = 'Unable to complete the withdrawal request. Please
 const GENERIC_PAYOUT_REVIEW_NOTE = 'Payout failed. Detailed provider diagnostics are retained in controlled server logs.';
 const emailOk = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e || '');
 const operationKeyFor = (withdrawalId) => `base44-withdrawal:${withdrawalId}`;
-
-async function releaseDonationMirrors(sr, withdrawalId) {
-  await sr.entities.Donation.updateMany(
-    { withdrawal_id: withdrawalId },
-    { $set: { withdrawal_id: '' } }
-  ).catch(() => {});
-}
 
 async function verifyPendingDonation(base44, sr, donation, adminUser) {
   const campaign = await sr.entities.Campaign.get(donation.campaign_id).catch(() => null);
@@ -202,7 +196,7 @@ async function handleProviderFailure(base44, sr, withdrawal, err, actorId) {
 
   try {
     await cancelCanonicalWithdrawal(sr, { operationKey, reason: 'PayPal definitively rejected the payout.' });
-    await releaseDonationMirrors(sr, withdrawal.id);
+    await releaseWithdrawalMirrors(sr, withdrawal.id);
     await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: GENERIC_PAYOUT_REVIEW_NOTE });
     return { ambiguous: false, released: true };
   } catch (cancelErr) {
@@ -264,7 +258,13 @@ export default async function(req) {
       if (!['provider_status_unknown', 'reservation_release_pending', 'under_review'].includes(w.status)) return Response.json({ error: 'This withdrawal cannot be released from its current state.' }, { status: 400 });
       const adminNote = String(body.admin_note || '').trim().slice(0, 500);
       await cancelCanonicalWithdrawal(sr, { operationKey: w.canonical_operation_key || operationKeyFor(w.id), reason: adminNote || 'Admin confirmed provider did not pay.' });
-      await releaseDonationMirrors(sr, w.id);
+      try {
+        await releaseWithdrawalMirrors(sr, w.id);
+      } catch (releaseError) {
+        await sr.entities.Withdrawal.update(w.id, { status: 'reservation_release_pending', review_note: 'Provider non-payment was confirmed, but local source release requires reconciliation.' });
+        console.error('withdrawal mirror release failed:', releaseError?.message || releaseError);
+        return Response.json({ error: 'Provider non-payment was recorded, but local source release requires reconciliation.' }, { status: 409 });
+      }
       await sr.entities.Withdrawal.update(w.id, { status: 'cancelled', review_note: adminNote ? `Provider non-payment confirmed; funds released. Admin note: ${adminNote}` : 'Provider non-payment confirmed; funds released.', processed_at: new Date().toISOString() });
       await logAudit(base44, { action: 'withdrawal_reservation_released', target_type: 'withdrawal', target_id: w.id, detail: adminNote ? `Admin confirmed provider non-payment; canonical and mirror reservations released. Note: ${adminNote}` : 'Admin confirmed provider non-payment; canonical and mirror reservations released', status: 'success', metadata: { actor: user.id } });
       return Response.json({ ok: true, status: 'cancelled', withdrawal_id: w.id });
@@ -328,7 +328,12 @@ export default async function(req) {
       if (d.payment_verified !== true || d.is_institutional) return false;
       return new Date(d.created_date) <= cutoff;
     });
-    let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));
+    const holdingRows = await sr.entities.HoldingLedgerEntry.filter({
+      campaign_id, beneficiary_user_id: user.id, source_type: 'external_platform', direction: 'in', state: 'settled', currency: 'USD'
+    }, '-settled_at', 5000).catch(() => []);
+    if (holdingRows.length >= 5000) return Response.json({ error: 'External holding history exceeds the safe withdrawal batch size. Contact support.' }, { status: 409 });
+    const availableHoldings = holdingRows.filter((entry) => !entry.withdrawal_id && entry.external_observation_id);
+    let gross = round2(available.reduce((s, d) => s + giftOf(d), 0) + availableHoldings.reduce((s, entry) => s + Number(entry.amount || 0), 0));
     if (gross <= 0) return Response.json({ error: 'No cleared funds are available yet. Donations become withdrawable after verification and the applicable clearing period.' }, { status: 400 });
 
     let { fee, net } = computeWithdrawal(gross);
@@ -342,6 +347,8 @@ export default async function(req) {
       net_amount: net,
       paypal_email,
       covered_donation_ids: available.map((d) => d.id),
+      covered_holding_entry_ids: availableHoldings.map((entry) => entry.id),
+      external_gross_amount: round2(availableHoldings.reduce((s, entry) => s + Number(entry.amount || 0), 0)),
       status: 'reserving',
     });
     const operationKey = operationKeyFor(withdrawal.id);
@@ -349,19 +356,42 @@ export default async function(req) {
 
     // Local mirror reservation gives the UI an exact set of covered donations;
     // the canonical Base44 reservation below is the authoritative double-spend boundary.
-    await sr.entities.Donation.updateMany(
-      { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ''] } },
-      { $set: { withdrawal_id: withdrawal.id } }
-    );
+    try {
+      await claimWithdrawalMirrors(sr, {
+        withdrawalId: withdrawal.id,
+        donationIds: available.map((donation) => donation.id),
+        holdingIds: availableHoldings.map((entry) => entry.id),
+      });
+    } catch (claimError) {
+      await sr.entities.Withdrawal.update(withdrawal.id, {
+        status: claimError?.releasePending ? 'reservation_release_pending' : 'failed',
+        review_note: claimError?.releasePending
+          ? 'Local source reservation failed and rollback requires reconciliation.'
+          : 'Local source reservation failed and was rolled back.',
+      });
+      return Response.json({ error: 'Funds could not be claimed safely. Please try again.' }, { status: 409 });
+    }
     const reChecked = await sr.entities.Donation.filter({ withdrawal_id: withdrawal.id });
     const reservedIds = (reChecked || []).map((d) => d.id);
-    const reservedGross = round2(reservedIds.reduce((s, id) => {
+    const reservedHoldingRows = await sr.entities.HoldingLedgerEntry.filter({ withdrawal_id: withdrawal.id }).catch(() => []);
+    const reservedHoldingIds = (reservedHoldingRows || []).filter((entry) => entry.direction === 'in' && entry.state === 'settled').map((entry) => entry.id);
+    const reservedDonationGross = round2(reservedIds.reduce((s, id) => {
       const d = available.find((a) => a.id === id);
       return s + (d ? giftOf(d) : 0);
     }, 0));
+    const reservedExternalGross = round2(reservedHoldingIds.reduce((sum, id) => {
+      const entry = availableHoldings.find((candidate) => candidate.id === id);
+      return sum + (entry ? Number(entry.amount || 0) : 0);
+    }, 0));
+    const reservedGross = round2(reservedDonationGross + reservedExternalGross);
 
     if (reservedGross <= 0) {
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Funds were claimed by another withdrawal. Please try again.' });
+      try {
+        await releaseWithdrawalMirrors(sr, withdrawal.id);
+        await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Funds were claimed by another withdrawal. Please try again.' });
+      } catch {
+        await sr.entities.Withdrawal.update(withdrawal.id, { status: 'reservation_release_pending', review_note: 'No value was reserved, but local claim cleanup requires reconciliation.' });
+      }
       return Response.json({ error: 'Those funds were just claimed by another withdrawal. Please try again.' }, { status: 409 });
     }
     gross = reservedGross;
@@ -373,12 +403,18 @@ export default async function(req) {
         campaignId: campaign_id,
         campaignOwnerUserId: user.id,
         requestedGross: gross,
+        verifiedDonationGross: reservedDonationGross,
+        verifiedExternalGross: reservedExternalGross,
         payoutMethod: 'paypal',
         payoutDestination: paypal_email,
       });
     } catch (reserveErr) {
-      await releaseDonationMirrors(sr, withdrawal.id);
-      await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Canonical balance reservation failed.' });
+      try {
+        await releaseWithdrawalMirrors(sr, withdrawal.id);
+        await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Canonical balance reservation failed.' });
+      } catch {
+        await sr.entities.Withdrawal.update(withdrawal.id, { status: 'reservation_release_pending', review_note: 'Canonical reservation failed and local claim cleanup requires reconciliation.' });
+      }
       console.error('canonical withdrawal reservation failed:', reserveErr?.message || reserveErr);
       return Response.json({ error: 'Funds could not be reserved safely. Please try again.' }, { status: 409 });
     }
@@ -390,6 +426,8 @@ export default async function(req) {
       platform_fee: fee,
       net_amount: net,
       covered_donation_ids: reservedIds,
+      covered_holding_entry_ids: reservedHoldingIds,
+      external_gross_amount: reservedExternalGross,
       canonical_reservation_id: String(reservation.reservationId),
       canonical_ledger_entry_id: String(reservation.ledgerEntryId || ''),
       status: net > REVIEW_THRESHOLD ? 'under_review' : 'processing',

@@ -7,6 +7,7 @@ import { Image } from "@/components/ui/image";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { useToast } from "@/components/ui/use-toast";
 import WithdrawalDialog from "@/components/withdrawals/WithdrawalDialog";
+import CollectAndWithdrawDialog from "@/components/withdrawals/CollectAndWithdrawDialog";
 import { useSearchParams } from "react-router-dom";
 import PageError from "@/components/PageError";
 
@@ -28,6 +29,10 @@ export default function Withdrawals() {
   const [campaigns, setCampaigns] = useState([]);
   const [history, setHistory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
+  const [collectCampaign, setCollectCampaign] = useState(null);
+  const [collectAll, setCollectAll] = useState(false);
+  const [payoutAccount, setPayoutAccount] = useState(null);
+  const [payoutBusy, setPayoutBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
@@ -44,6 +49,8 @@ export default function Withdrawals() {
     try {
       const me = await base44.auth.me();
       setUser(me);
+      const payout = await base44.functions.invoke("getConnectedPayoutAccount", {}).catch(() => ({ data: null }));
+      setPayoutAccount(payout?.data || null);
       const all = await base44.entities.Campaign.filter({});
       const owned = (all || []).filter((c) => c.created_by_id === me.id);
       const cutoff = Date.now() - CLEARING_DAYS * 86400000;
@@ -74,6 +81,18 @@ export default function Withdrawals() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const startPayoutAccount = async () => {
+    setPayoutBusy(true);
+    try {
+      const { data } = await base44.functions.invoke("startStripeConnectOnboarding", { origin: window.location.origin });
+      if (!data?.url) throw new Error("No onboarding URL");
+      window.location.assign(data.url);
+    } catch (e) {
+      console.error("Payout account onboarding failed:", e?.name || "UnknownError");
+      toast({ title: "Payout account setup unavailable", description: "Please try again after payment-provider access is available.", variant: "destructive" });
+    } finally { setPayoutBusy(false); }
+  };
 
   const approve = async (id) => {
     try {
@@ -107,7 +126,7 @@ export default function Withdrawals() {
           </div>
           <div>
             <h1 className="font-display text-2xl text-stone-900">Withdrawals</h1>
-            <p className="text-sm text-stone-500">Cash out cleared funds from your campaigns to your PayPal account.</p>
+            <p className="text-sm text-stone-500">Withdraw IFund-held funds or review connected-platform balances. External balances remain informational unless a verified transfer and settlement path is available.</p>
           </div>
         </div>
 
@@ -127,6 +146,20 @@ export default function Withdrawals() {
           <p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p>
         </div>
       </header>
+
+      <section className="rounded-2xl border border-stone-200/70 bg-white shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg text-stone-900">IFund payout account</h2>
+          <p className="text-sm text-stone-500">{payoutAccount?.status === "ready" ? "Ready to receive supported provider settlements." : payoutAccount?.configured ? "Finish provider verification before external settlements can be consolidated." : "Create your IFund-managed payout account for supported connected-platform settlements."}</p>
+        </div>
+        <Button variant="outline" disabled={payoutBusy || payoutAccount?.status === "ready"} onClick={startPayoutAccount} className="rounded-xl shrink-0">
+          {payoutBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : payoutAccount?.status === "ready" ? "Payout account ready" : payoutAccount?.configured ? "Continue setup" : "Create payout account"}
+        </Button>
+      </section>
+
+      <div className="flex justify-end">
+        <Button onClick={() => setCollectAll(true)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white">Review all connected funds</Button>
+      </div>
 
       {/* Campaign balances */}
       <section className="space-y-3">
@@ -157,13 +190,12 @@ export default function Withdrawals() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  disabled={c.available <= 0}
-                  onClick={() => setActive(c)}
-                  className="rounded-xl sm:self-center bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0"
-                >
-                  {c.available > 0 ? `Withdraw ${money(c.available)}` : "Nothing to withdraw"}
-                </Button>
+                <div className="flex flex-col gap-2 sm:self-center">
+                  <Button onClick={() => setCollectCampaign(c)} variant="outline" className="rounded-xl">Review connected funds</Button>
+                  <Button disabled={c.available <= 0} onClick={() => setActive(c)} className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">
+                    {c.available > 0 ? `Withdraw IFund ${money(c.available)}` : "No IFund-held funds"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
@@ -214,6 +246,9 @@ export default function Withdrawals() {
           </div>
         )}
       </section>
+
+      {collectAll && <CollectAndWithdrawDialog campaign={null} open={collectAll} onOpenChange={setCollectAll} />}
+      {collectCampaign && <CollectAndWithdrawDialog campaign={collectCampaign} open={!!collectCampaign} onOpenChange={(o) => !o && setCollectCampaign(null)} />}
 
       {active && (
         <WithdrawalDialog

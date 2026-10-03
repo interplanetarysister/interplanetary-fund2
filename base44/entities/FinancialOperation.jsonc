@@ -44,6 +44,16 @@
       "type": "number",
       "default": 0
     },
+    "donation_gross_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Verified donation value reserved by this withdrawal."
+    },
+    "external_gross_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Verified settled external holding value reserved by this withdrawal."
+    },
     "platform_contribution": {
       "type": "number",
       "default": 0
