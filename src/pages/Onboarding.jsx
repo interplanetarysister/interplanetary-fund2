@@ -11,11 +11,11 @@ import CompleteStep from "@/components/onboarding/CompleteStep";
 import { useToast } from "@/components/ui/use-toast";
 
 const STEPS = [
+  { id: "automate", render: (d, set) => <AutomateStep data={d} onChange={set} /> },
   { id: "welcome", render: () => <WelcomeStep /> },
   { id: "profile", render: (d, set) => <ProfileStep data={d} onChange={set} /> },
   { id: "engine", render: () => <EngineStep /> },
   { id: "connect", render: (d, set) => <ConnectStep data={d} onChange={set} /> },
-  { id: "automate", render: (d, set) => <AutomateStep data={d} onChange={set} /> },
   { id: "complete", render: (d) => <CompleteStep data={d} /> },
 ];
 
@@ -32,6 +32,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       const updates = { full_name: data.full_name || undefined };
+      await base44.functions.invoke("setUnifiedOboConsent", { granted: !!data.delegated_operations_enabled });
       await base44.auth.updateMe({ ...updates, onboarding: data, onboarding_completed: true });
       navigate("/mission");
     } catch (e) {
