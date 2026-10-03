@@ -15,15 +15,23 @@ try {
 
 // Base44 may execute on Node 20 while Node 22 is the preferred release/tooling runtime.
 // Base44 compatibility remains on Node 20; release/tooling runtime remains Node 22.
-const SUPPORTED = [20, 22];
+const MINIMUM_NODE_MAJOR = 20;
+const TESTED_NODE_MAJORS = [20, 22];
 
-if (!SUPPORTED.includes(nodeMajor)) {
+if (nodeMajor < MINIMUM_NODE_MAJOR) {
   console.error(
     `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Supported runtimes: Node ${SUPPORTED.join(' or ')}. ` +
-    'Select a supported runtime before install, build, typecheck, lint, or verification.',
+    `Node ${MINIMUM_NODE_MAJOR} or newer is required.`,
   );
   process.exit(1);
+}
+
+if (!TESTED_NODE_MAJORS.includes(nodeMajor)) {
+  console.warn(
+    `Node runtime preflight: Node ${nodeVersion} is newer than the tested Base44 lanes ` +
+    `(${TESTED_NODE_MAJORS.join(', ')}). Continuing because IFund supports Node ${MINIMUM_NODE_MAJOR}+ ` +
+    'unless a concrete incompatibility is detected.',
+  );
 }
 
 console.log(
