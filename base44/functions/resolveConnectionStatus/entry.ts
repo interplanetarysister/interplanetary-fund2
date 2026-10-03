@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 
 // Inline minimal recipe registry (matches the established pattern in
@@ -235,7 +236,11 @@ export default async function(req) {
       fallback_transports: (transports || []).filter((t: string) => t !== recipe?.preferred_transport),
       identity: shared?.identity || (connection ? { display_name: connection.display_name || null, external_url: connection.external_url || null } : null),
       capabilities_verified,
-      obo: recipe?.shared ? null : { authorized: grants.length > 0, grant_count: grants.length },
+      obo: recipe?.shared ? null : {
+        authorized: hasUnifiedOboConsent(user),
+        source: hasUnifiedOboConsent(user) ? 'unified_user_authorization' : 'none',
+        legacy_grant_count: grants.length,
+      },
       last_verified: shared?.verified ? shared?.verified_at : connection?.last_synced || null,
       last_error: shared?.last_error || connection?.last_error || null,
       recovery_hint: recoveryHint(lifecycle, recipe, oauth, key),
