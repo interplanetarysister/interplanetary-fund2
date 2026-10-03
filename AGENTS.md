@@ -108,12 +108,13 @@ Use the existing Base44 application architecture in this repository for product 
 - `vite.config.js`: Vite config and Base44 Vite plugin setup.
 - `base44/`: Base44 entities and application-layer agent/workflow definitions/configuration.
 
-## Node and npm runtime memory (verified 2026-09-18 UTC)
+## Node and npm runtime memory (verified 2026-10-03 UTC)
 
-- Interplanetary Fund app `6a67a778342a8fe05ee79cba` requires Node **20 or newer**. Node 20 and 22 are established tested lanes; newer managed Node runtimes must not be rejected solely because of their major version. Preserve `package.json` engine compatibility at `>=20` and keep runtime verification aligned with that policy.
-- Previously observed Base44 sandboxes exposed Node `20.20.2` and Node `22.23.2`; these are environment observations, not permanent version pins. Use the runtime supplied by the authorized Base44 environment when it satisfies Node >=20.
+- Interplanetary Fund app `6a67a778342a8fe05ee79cba` has established, CI-backed Node **20 and 22** lanes: Node 20 is the Base44-compatible baseline and Node 22 is the current release target.
+- `package.json`, the lockfile, and the executable runtime contract currently permit `>=20 <23`; Node 24 remains unapproved until Base44 and dependency compatibility are explicitly verified and the executable gates are deliberately updated. Do not infer hosted compatibility from a local build under an unsupported major.
+- Previously observed Base44 sandboxes exposed Node `20.20.2` and Node `22.23.2`; these are environment observations, not patch-version pins. Use the authorized Base44 runtime when it is within the verified range.
 - Before installs/builds/typechecks in a new sandbox, check `node --version`, `npm --version`, and `command -v node`. Do not claim a local runtime change alters Base44's hosted sync/build runtime.
-- Repository lifecycle checks may warn when a runtime is newer than established tested lanes, but they must not fail solely because Node is newer than 22. Concrete incompatibilities should be fixed or documented based on evidence rather than a hard-coded future-major block.
+- Avoid unnecessary patch-version pins, but keep the runbook, `engines`, release contract, and CI lanes consistent. Expand the accepted major range only after evidence shows the newer major is compatible with Base44 and project dependencies.
 - Base44 backend functions use their platform Deno runtime; the Node 20/22 rule concerns Node-based development/build tooling.
 
 ## Working Notes
