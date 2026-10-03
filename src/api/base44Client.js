@@ -3,7 +3,10 @@ import { appParams } from '@/lib/app-params';
 import { runtimeContract } from '@/lib/runtimeContract';
 
 const { token, functionsVersion } = appParams;
-const appId = runtimeContract.appId || appParams.appId;
+// Application identity is part of the build-owned runtime contract. Query
+// parameters and localStorage are caller-controlled and may carry only session
+// material; they must never select another Base44 application's data plane.
+const appId = runtimeContract.appId;
 // Network destinations must come only from the build-owned runtime contract.
 // Query/localStorage app parameters are caller-controlled and must never choose
 // where an access token is sent.

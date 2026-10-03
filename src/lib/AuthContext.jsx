@@ -40,16 +40,18 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
       const trustedAppBaseUrl = runtimeContract.appBaseUrl;
+      const trustedAppId = runtimeContract.appId;
+      if (!trustedAppId) throw new Error('Missing build-owned application identity.');
       const appClient = createAxiosClient({
         baseURL: trustedAppBaseUrl ? `${trustedAppBaseUrl}/api/apps/public` : `/api/apps/public`,
         headers: {
-          'X-App-Id': appParams.appId
+          'X-App-Id': trustedAppId
         },
         interceptResponses: true
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`, { timeout: APP_STATE_TIMEOUT_MS });
+        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${trustedAppId}`, { timeout: APP_STATE_TIMEOUT_MS });
         setAppPublicSettings(publicSettings);
         
         if (appParams.token) {
