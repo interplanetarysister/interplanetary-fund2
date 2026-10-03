@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 const TRANSPORT_PRIORITY = ['oauth','api','webhook','token','authenticated_browser','public_browser','manual'];
 const STATIC: Record<string, Record<string, any>> = {
@@ -32,6 +32,7 @@ export default async function handler(req: Request) {
     const platform=clean(body.platform,80).toLowerCase();
     const operation=clean(body.operation||'connect',80).toLowerCase();
     const result=clean(body.result,30).toLowerCase();
+    const policyBlocked=body.policy_blocked===true;
     const transport=clean(body.transport,50).toLowerCase();
     const detail=clean(body.detail,500);
     if(!platform||!operation) return Response.json({error:'platform and operation are required'},{status:400});
@@ -42,7 +43,7 @@ export default async function handler(req: Request) {
 
     if(!result){
       const effective=recipe&&recipe.status!=='disabled'?recipe:seed?{platform,operation,status:'probation',...seed}:{platform,operation,status:'probation',preferred_transport:'manual'};
-      return Response.json({platform,operation,recipe:effective,transport_order:order(effective),rediscovery_required:effective.status==='stale'});
+      return Response.json({platform,operation,recipe:effective,transport_order:order(effective),rediscovery_required:effective.status==='stale'||effective.discovery_state==='exhausted'});
     }
 
     if(user.role!=='admin') return Response.json({error:'Admin required to update shared connection recipes'},{status:403});
@@ -50,6 +51,8 @@ export default async function handler(req: Request) {
 
     const now=new Date().toISOString();
     const evidence=[...(recipe?.evidence||[]),{at:now,result,transport,detail}].slice(-25);
+    const blockedRoutes=[...(recipe?.blocked_routes||[])];
+    if(result!=='success') blockedRoutes.push({transport,reason:detail||'Route did not complete',observed_at:now});
     const successCount=Number(recipe?.success_count||0)+(result==='success'?1:0);
     const failures=result==='success'?0:Number(recipe?.consecutive_failure_count||0)+1;
     const nextStatus=result==='stale'||failures>=3?'stale':result==='success'?'proven':(recipe?.status||'probation');
@@ -58,11 +61,18 @@ export default async function handler(req: Request) {
       preferred_transport:result==='success'?transport:(recipe?.preferred_transport||seed?.preferred_transport||transport),
       fallback_transports:recipe?.fallback_transports||[],connector_type:recipe?.connector_type||seed?.connector_type||'',
       worker_key:recipe?.worker_key||seed?.worker_key||'',required_capabilities:recipe?.required_capabilities||[],
-      success_count:successCount,consecutive_failure_count:failures,last_verified_at:now,evidence,notes:recipe?.notes||'',
+      success_count:successCount,consecutive_failure_count:failures,last_verified_at:now,evidence,
+      discovery_state:result==='success'?'proven':'testing',
+      candidate_transports:[...new Set([...(recipe?.candidate_transports||[]),...order(recipe||seed||{}),transport])],
+      blocked_routes:blockedRoutes.slice(-25),
+      successful_route:result==='success'?{transport,worker_key:recipe?.worker_key||seed?.worker_key||'',verified_at:now,recipe_version:Number(recipe?.recipe_version||1)}:(recipe?.successful_route||undefined),
+      rediscovery_on_failure:true,
+      notes:recipe?.notes||'',
     };
     if(result==='success') data.last_success_at=now; else data.last_failure_at=now;
     const saved=recipe?await base44.asServiceRole.entities.PlatformConnectionRecipe.update(recipe.id,data):await base44.asServiceRole.entities.PlatformConnectionRecipe.create(data);
-    return Response.json({platform,operation,learned:true,recipe:saved,transport_order:order(saved),rediscovery_required:saved.status==='stale'});
+    const remaining=order(saved).filter((candidate:string)=>!blockedRoutes.some((blocked:any)=>blocked.transport===candidate));
+    return Response.json({platform,operation,learned:true,recipe:saved,transport_order:order(saved),next_candidate:result==='success'?null:(remaining[0]||null),rediscovery_required:result!=='success',policy_blocked:policyBlocked});
   } catch(error) {
     console.error('resolvePlatformConnectionRecipe error:',error?.message||error);
     return Response.json({error:'Could not resolve platform connection recipe.'},{status:500});
