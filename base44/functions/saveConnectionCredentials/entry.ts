@@ -91,13 +91,32 @@ export default async function(req) {
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
 
+    // Every connection inherits the owner's unified AI/OBO authorization.
+    // Provider verification/capabilities still determine what the connection
+    // can actually do; this removes a contradictory second IFund consent.
+    const unifiedObo = hasAiPublishingConsent(consentOwner);
+    if (unifiedObo) {
+      const currentConsent = existing?.obo_consent || {};
+      data.obo_consent = {
+        ...currentConsent,
+        granted: true,
+        granted_at: currentConsent.granted_at || now,
+        permission_version: '2026-10-unified-obo-v1',
+      };
+      data.agent_access = {
+        ...(existing?.agent_access || {}),
+        shared_with_agents: true,
+        automation_enabled: existing?.agent_access?.automation_enabled === true,
+      };
+    }
+
     if (effectiveKind === 'crowdfunding' && typeof browser_read_consent === 'boolean') {
       const currentConsent = existing?.obo_consent || {};
       const previous = (currentConsent.granted_capabilities || []).filter((item) => item !== 'GET_METRICS');
       const grantedCapabilities = browser_read_consent ? [...previous, 'GET_METRICS'] : previous;
       data.obo_consent = {
         ...currentConsent,
-        granted: browser_read_consent || (currentConsent.granted === true && previous.length > 0),
+        granted: unifiedObo || browser_read_consent || (currentConsent.granted === true && previous.length > 0),
         granted_at: browser_read_consent ? now : currentConsent.granted_at,
         permission_version: browser_read_consent ? '2026-09-browser-read-v1' : currentConsent.permission_version,
         granted_capabilities: grantedCapabilities,
@@ -107,7 +126,7 @@ export default async function(req) {
       };
       data.agent_access = {
         ...(existing?.agent_access || {}),
-        shared_with_agents: browser_read_consent || (existing?.agent_access?.shared_with_agents === true && previous.length > 0),
+        shared_with_agents: unifiedObo || browser_read_consent || (existing?.agent_access?.shared_with_agents === true && previous.length > 0),
         automation_enabled: browser_read_consent || (existing?.agent_access?.automation_enabled === true && previous.length > 0),
       };
     }
