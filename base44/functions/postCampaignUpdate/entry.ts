@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { emitActivityEvent } from '../../shared/activityEvent.ts';
 
 // Campaign update cross-posting + follower notifications.
@@ -82,18 +82,25 @@ export default async function(req) {
         : await sr.entities.User.get(campaign.created_by_id).catch(() => null);
       const aiConsentGranted = hasAiPublishingConsent(consentOwner);
       const platformAccess = await assertPlatformAccess(sr, 'social_publish');
-      const targets = aiConsentGranted
-        ? connections.filter((c) =>
-            c.automation_mode !== 'manual' &&
-            c.obo_consent?.granted === true &&
-            c.agent_access?.shared_with_agents === true &&
-            (c.automation_mode !== 'auto' || c.agent_access?.automation_enabled === true) &&
-            c.created_by_id === campaign.created_by_id &&
-            (!c.campaign_id || c.campaign_id === campaign.id)
-          )
-        : [];
+      const targets = [];
+      if (aiConsentGranted) {
+        for (const connection of connections) {
+          if (connection.automation_mode === 'manual' ||
+              connection.created_by_id !== campaign.created_by_id ||
+              (connection.campaign_id && connection.campaign_id !== campaign.id)) continue;
+          const authorization = await assertExternalAgentAction(sr, {
+            ownerUser: consentOwner,
+            ownerUserId: campaign.created_by_id,
+            campaign,
+            connection,
+            capability: 'create_post',
+            requireAutomation: connection.automation_mode === 'auto',
+          });
+          if (authorization.ok) targets.push(connection);
+        }
+      }
       crosspost.skipped = connections.length - targets.length;
-      if (!aiConsentGranted) crosspost.authorization_blocked = 'AI preparation and publishing authorization is not active.';
+      if (!aiConsentGranted) crosspost.authorization_blocked = 'AI OBO authorization is not active.';
 
       if (targets.length) {
         const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
@@ -137,7 +144,14 @@ Return JSON only.`;
           const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
           crosspost.generated++;
 
-          const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', conn);
+          const obo = await assertExternalAgentAction(sr, {
+            ownerUser: consentOwner,
+            ownerUserId: campaign.created_by_id,
+            campaign,
+            connection: conn,
+            capability: 'create_post',
+            requireAutomation: conn.automation_mode === 'auto',
+          });
           if (conn.automation_mode === 'auto' && conn.agent_access?.automation_enabled === true && canAutoPublish(conn) && aiConsentGranted && platformAccess.ok && obo.ok) {
             try {
               const { url: postUrl } = await publishThroughConnection(conn, text);
