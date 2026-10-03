@@ -154,7 +154,7 @@
     },
     "ai_obo_consent": {
       "type": "object",
-      "description": "Canonical, revocable IFund-wide authorization for AI agents to act on the user's behalf across connected platform features. Provider capabilities and connection health still limit what can actually be performed.",
+      "description": "Canonical, revocable IFund-wide standing authorization for eligible IFund software to execute covered tasks as the user's delegated software extension. Provider capabilities and connection health still limit what can technically be performed.",
       "properties": {
         "granted": {
           "type": "boolean",
@@ -166,6 +166,20 @@
         },
         "permission_version": {
           "type": "string"
+        },
+        "execution_model": {
+          "type": "string",
+          "enum": [
+            "user_directed_extension"
+          ],
+          "default": "user_directed_extension"
+        },
+        "command_source": {
+          "type": "string",
+          "enum": [
+            "standing_obo_instruction"
+          ],
+          "default": "standing_obo_instruction"
         }
       }
     }
