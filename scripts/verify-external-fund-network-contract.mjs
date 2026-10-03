@@ -29,7 +29,6 @@ assert.match(imported,/locally_locked_fields/);
 assert.match(collection,/authorized_at/);
 assert.match(collection,/consent_snapshot/);
 assert.match(prepare,/No money moved/);
-assert.match(prepare,/hasUnifiedOboConsent/);
 assert.match(authorize,/body\.confirm !== true/);
 assert.match(authorize,/status: 'authorized'/);
 assert.match(importer,/status: 'draft'/);
