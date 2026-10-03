@@ -12,6 +12,8 @@ const connectorPolicy = read('base44/shared/appUserConnectorPolicy.js');
 const publish = read('base44/functions/publishPost/entry.ts');
 const broadcast = read('base44/functions/broadcastPosts/entry.ts');
 const update = read('base44/functions/postCampaignUpdate/entry.ts');
+const unifiedConsent = read('base44/functions/setUnifiedOboConsent/entry.ts');
+const consentCard = read('src/components/connections/AIConsentCard.jsx');
 
 assert.match(entitlement, /user\?\.role === 'admin'/);
 assert.match(entitlement, /TOP_SUBSCRIPTION_TIER = 'enterprise'/);
@@ -28,5 +30,9 @@ assert.doesNotMatch(finalize, /automation_enabled: sharedAgentConsent/);
 assert.match(publish, /assertOboGrant\([^;]+connection\)/s);
 assert.match(broadcast, /assertOboGrant\([^;]+connection\)/s);
 assert.match(update, /assertOboGrant\([^;]+conn\)/s);
+assert.match(consentCard, /functions\.invoke\("setUnifiedOboConsent", \{ granted \}\)/);
+assert.match(unifiedConsent, /Array\.isArray\(currentObo\.provider_capabilities\)/);
+assert.doesNotMatch(unifiedConsent, /provider_capabilities \|\| currentObo\.granted_capabilities/);
+assert.match(unifiedConsent, /automation_enabled: granted \? currentAgent\.automation_enabled === true : false/);
 
-console.log('Server entitlement and per-connection OBO contract verified.');
+console.log('Unified owner authorization and fail-closed per-connection OBO contract verified.');

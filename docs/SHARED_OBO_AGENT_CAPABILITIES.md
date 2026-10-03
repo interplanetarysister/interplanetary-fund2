@@ -57,6 +57,10 @@ Use the existing implementation as the starting point; do not rebuild the connec
 | Agent chat | `src/components/agents/AgentChat.jsx` | It currently creates a fresh conversation when switching agents. Add durable per-user conversation continuity and structured handoff context rather than relying only on best-effort interaction summaries. |
 | Agent selector | `src/pages/Agents.jsx` | Preserve the existing specialist team. Add tool/workflow handoffs instead of creating a second agent UI. |
 | Chief of Staff | `base44/agents/chief_of_staff.jsonc` | Use cross-conversation context plus structured delegation. It should know what was delegated, to whom, campaign/context, status and result. |
+
+### Unified authorization safety boundary
+
+The owner-level AI/OBO decision is the single user-facing authorization choice, but it is not provider proof and does not create capabilities. Propagating that decision to an existing connection may activate only capabilities the provider reported for that same connection. Every external action must still require the connection to be owned by the user, connected, provider-verified with fresh evidence, and permitted for the requested capability. Browser execution retains its explicit scope and zero-cost/cost-safety gate, and enabling AI/OBO must never silently enable background automation.
 | Shared training | `docs/AGENT_TRAINING_CORE.md` and role-specific `.agents/skills/*.md` / `base44/agents/*.jsonc` | Shared principles belong in core training; specialties and executable behavior belong in each role's own training/config. |
 
 ## Required refinements before this feature is considered complete

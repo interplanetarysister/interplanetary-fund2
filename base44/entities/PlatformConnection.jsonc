@@ -89,7 +89,11 @@
     },
     "capability_status": {
       "type": "string",
-      "enum": ["confirmed", "unknown", "reauthorization_required"],
+      "enum": [
+        "confirmed",
+        "unknown",
+        "reauthorization_required"
+      ],
       "default": "unknown",
       "description": "Truth state for provider-reported capabilities. Unknown never behaves as granted."
     },
@@ -117,20 +121,49 @@
       "type": "object",
       "description": "Plain-language on-behalf-of authorization granted by the user for this connection. Provider capabilities remain authoritative; consent never creates a capability the provider does not support.",
       "properties": {
-        "granted": { "type": "boolean", "default": false },
-        "granted_at": { "type": "string", "format": "date-time" },
-        "permission_version": { "type": "string" },
-        "requested_capabilities": { "type": "array", "items": { "type": "string" } },
-        "granted_capabilities": { "type": "array", "items": { "type": "string" } },
-        "provider_capabilities": { "type": "array", "items": { "type": "string" } }
+        "granted": {
+          "type": "boolean",
+          "default": false
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "permission_version": {
+          "type": "string"
+        },
+        "requested_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "granted_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provider_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "agent_access": {
       "type": "object",
       "description": "Shared connection capability available to the user's agents. Role purpose and provider/user authorization still gate each action.",
       "properties": {
-        "shared_with_agents": { "type": "boolean", "default": true },
-        "automation_enabled": { "type": "boolean", "default": false }
+        "shared_with_agents": {
+          "type": "boolean",
+          "default": true
+        },
+        "automation_enabled": {
+          "type": "boolean",
+          "default": false
+        }
       }
     },
     "credentials": {
@@ -146,14 +179,14 @@
       "properties": {
         "kofi_verification_token": {
           "type": "string",
-          "description": "Ko-fi webhook verification token \u2014 enables live donation sync."
+          "description": "Ko-fi webhook verification token — enables live donation sync."
         },
         "bluesky_handle": {
           "type": "string"
         },
         "bluesky_app_password": {
           "type": "string",
-          "description": "Bluesky app password \u2014 enables direct publishing."
+          "description": "Bluesky app password — enables direct publishing."
         },
         "mastodon_instance": {
           "type": "string",
@@ -161,7 +194,7 @@
         },
         "mastodon_access_token": {
           "type": "string",
-          "description": "Mastodon access token \u2014 enables direct publishing."
+          "description": "Mastodon access token — enables direct publishing."
         }
       }
     },
@@ -207,6 +240,40 @@
     },
     "description": {
       "type": "string"
+    },
+    "browser_access": {
+      "type": "object",
+      "description": "Protected authenticated-browser transport metadata. Never stores passwords, cookies, tokens, or session secrets in this entity.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "session_state": {
+          "type": "string",
+          "enum": [
+            "none",
+            "ready",
+            "reauth_required",
+            "error"
+          ],
+          "default": "none"
+        },
+        "session_ref": {
+          "type": "string",
+          "description": "Opaque server-side reference to a protected browser session; never a raw cookie or credential."
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "supported_actions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [

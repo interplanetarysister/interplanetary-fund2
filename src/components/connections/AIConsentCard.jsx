@@ -9,32 +9,18 @@ import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
 export default function AIConsentCard({ user, onChanged, onConnectionChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const consent = user?.ai_publishing_consent;
-  const connectionConsent = user?.ai_connection_consent;
+  const consent = user?.ai_obo_consent || user?.ai_publishing_consent || user?.ai_connection_consent;
 
   const decide = async (granted) => {
     setSaving(true);
-    const value = { granted, decided_at: new Date().toISOString() };
     try {
-      await base44.auth.updateMe({ ai_publishing_consent: value });
-      onChanged(value);
+      const result = await base44.functions.invoke("setUnifiedOboConsent", { granted });
+      const value = result?.data?.consent || { granted, decided_at: new Date().toISOString() };
+      onChanged?.(value);
+      onConnectionChanged?.(value);
       setError("");
     } catch {
-      setError("Couldn't save your choice. Try again.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const decideConnection = async (granted) => {
-    setSaving(true);
-    try {
-      const value = { granted, decided_at: new Date().toISOString() };
-      await base44.auth.updateMe({ ai_connection_consent: value });
-      onConnectionChanged(value);
-      setError("");
-    } catch {
-      setError("Couldn't save your choice. Try again.");
+      setError("Couldn't save your AI authorization. Try again.");
     } finally {
       setSaving(false);
     }
@@ -46,9 +32,10 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
         <Sparkles className="w-3.5 h-3.5" /> AI help
       </p>
       <p className="text-sm text-stone-600">
-        Grant Interplanetary Fund's AI a license to prepare and publish content to the campaigns
-        and social accounts you connect. AI never posts anywhere without your permission, follows
-        the choice you make for each platform. You can turn this off anytime.
+        Grant Interplanetary Fund's AI one revocable on-behalf-of authorization for AI features
+        across the platform and your connected accounts. This permission is shared by eligible
+        IFund automations; each provider can still limit which actions its connection supports.
+        You can turn this off anytime.
       </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {consent?.granted ? (
@@ -73,11 +60,8 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
         )}
       </div>
       <div className="mt-5 pt-4 border-t border-stone-200">
-        <p className="text-sm font-semibold text-stone-900">Let AI help connect platforms</p>
-        <p className="text-xs text-stone-600 mt-1">When you ask in chat, your agent can prepare a new connection and open provider sign-in. You can turn this off anytime. Payments and withdrawals are separate.</p>
-        <Button size="sm" variant={connectionConsent?.granted ? "outline" : "default"} disabled={saving} onClick={() => decideConnection(!connectionConsent?.granted)} className="mt-3 rounded-xl">
-          {connectionConsent?.granted ? "On · Turn off" : "Turn on"}
-        </Button>
+        <p className="text-sm font-semibold text-stone-900">One permission across IFund AI</p>
+        <p className="text-xs text-stone-600 mt-1">When authorized, the same OBO consent applies to connection assistance, publishing, outreach, synchronization, and other eligible AI automations. Provider capabilities, account health, and financial safeguards still apply.</p>
       </div>
       {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
     </div>
