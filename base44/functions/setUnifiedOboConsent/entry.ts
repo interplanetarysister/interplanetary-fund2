@@ -50,10 +50,10 @@ export default async function(req) {
         agent_access: {
           ...currentAgent,
           shared_with_agents: granted,
-          // OBO authorization and automation preference are independent. A
-          // grant restores agent access but does not silently convert a user's
-          // Ask/Draft/Manual preference into autonomous execution.
-          automation_enabled: granted && (connection.automation_mode || 'manual') === 'auto',
+          // The one global OBO toggle is the delegated-operation switch. When off,
+          // no IFund delegated execution occurs. When on, explicit user commands
+          // such as Connect/Create account/Publish may execute without another IFund consent prompt.
+          automation_enabled: granted,
         },
         delegated_execution: {
           ...(connection.delegated_execution || {}),
@@ -64,7 +64,7 @@ export default async function(req) {
           authorized_at: granted ? now : (connection.delegated_execution?.authorized_at || null),
           revoked_at: granted ? null : now,
         },
-        automation_mode: connection.automation_mode || 'manual',
+        automation_mode: granted ? 'auto' : 'manual',
       };
       try {
         await base44.entities.PlatformConnection.update(connection.id, patch);
