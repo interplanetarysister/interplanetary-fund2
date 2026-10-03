@@ -80,13 +80,46 @@ export default async function(req) {
     }
 
     const failed = results.filter((result) => result.updated !== true);
+    const delegationResults = [];
+    let delegationSyncError = false;
+    try {
+      const delegations = await base44.entities.AgentDelegation.filter({ owner_user_id: user.id });
+      const activeStatuses = new Set(['assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review']);
+      for (const delegation of delegations || []) {
+        if (!activeStatuses.has(delegation.status)) continue;
+        const patch: any = { consent_version: granted ? VERSION : null };
+        if (!granted && ['assigned', 'in_progress'].includes(delegation.status)) {
+          patch.status = 'waiting_user';
+          patch.continuation_state = {
+            ...(delegation.continuation_state || {}),
+            pending_step: delegation.continuation_state?.pending_step || 'resume_after_reauthorization',
+            external_requirement: 'OBO consent was revoked. Re-authorize AI to resume.',
+          };
+        }
+        try {
+          await base44.entities.AgentDelegation.update(delegation.id, patch);
+          delegationResults.push({ id: delegation.id, updated: true });
+        } catch {
+          delegationResults.push({ id: delegation.id, updated: false });
+        }
+      }
+    } catch (error) {
+      delegationSyncError = true;
+      console.warn('setUnifiedOboConsent delegation propagation read failed:', error?.name || 'UnknownError');
+    }
+
+    const failedDelegations = delegationResults.filter((result) => result.updated !== true);
+    const partial = failed.length > 0 || failedDelegations.length > 0 || delegationSyncError;
     return Response.json({
-      ok: failed.length === 0,
-      partial: failed.length > 0,
+      ok: !partial,
+      partial,
       consent: canonical,
       connections: results,
       failed_connection_count: failed.length,
-    }, { status: failed.length > 0 ? 207 : 200 });
+      delegations: delegationResults,
+      failed_delegation_count: delegationSyncError ? null : failedDelegations.length,
+      delegation_sync_error: delegationSyncError,
+    }, { status: partial ? 207 : 200 });
   } catch (error) {
     console.error('setUnifiedOboConsent error:', error?.message || error);
     return Response.json({ error: 'Unable to update AI authorization.' }, { status: 500 });

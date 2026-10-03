@@ -30,6 +30,7 @@ const volunteer=read('src/components/community/VolunteerTab.jsx');
 const knowledge=read('src/components/platform/KnowledgePanel.jsx');
 const flags=read('src/components/platform/FeatureFlagsPanel.jsx');
 const platformEvent=read('src/components/platform/logPlatformEvent.js');
+const deleteCampaign=read('base44/functions/deleteCampaign/entry.ts');
 
 assert.match(settings,/campaign\.created_by_id !== user\.id && user\.role !== 'admin'/);
 assert.match(settings,/ALLOWED/);
@@ -80,4 +81,9 @@ assert.match(volunteer,/functions\.invoke\("createVolunteerOpportunity"/); asser
 assert.match(knowledge,/functions\.invoke\("createKnowledgeArticle"/); assert.doesNotMatch(knowledge,/entities\.KnowledgeArticle\.create/);
 assert.match(flags,/functions\.invoke\("manageFeatureFlag"/); assert.doesNotMatch(flags,/entities\.FeatureFlag\.(?:create|update)/);
 assert.match(platformEvent,/functions\.invoke\("logPlatformEvent"/); assert.doesNotMatch(platformEvent,/entities\.PlatformEvent\.create/);
+assert.match(deleteCampaign,/Campaign\.update\(campaign_id,[\s\S]+status: 'draft'/);
+assert.match(deleteCampaign,/archived_at: now/);
+assert.match(deleteCampaign,/automation_mode: 'manual'/);
+assert.doesNotMatch(deleteCampaign,/Campaign\.delete\(/);
+assert.doesNotMatch(deleteCampaign,/\.deleteMany\(/);
 console.log('Server-authoritative campaign, agent-review, and connection-admin mutation contracts passed.');

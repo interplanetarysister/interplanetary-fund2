@@ -12,9 +12,9 @@ import GooglePayButton from "@/components/payments/GooglePayButton";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 import { Heart, Loader2, Lock, CheckCircle2, Sparkles, CreditCard } from "lucide-react";
-import { computeBreakdown, computePayPalProcessingFee, computePayPalWalletProcessingFee, MIN_DONATION } from "../../../base44/shared/fees.js";
+import { computeBreakdown, computePayPalProcessingFee, computePayPalWalletProcessingFee, MIN_DONATION } from "@/lib/fees";
 
 const presets = [25, 50, 100, 250];
 

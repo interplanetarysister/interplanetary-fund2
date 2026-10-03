@@ -48,6 +48,15 @@
       ],
       "default": "active"
     },
+    "archived_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When an owner/admin delete request archived this campaign. The stable campaign identity remains for financial and provider audit records."
+    },
+    "archived_by_id": {
+      "type": "string",
+      "description": "User who requested archival."
+    },
     "cover_image_url": {
       "type": "string"
     },

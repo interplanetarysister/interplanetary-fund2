@@ -1,6 +1,6 @@
 import React from "react";
 import { AlertTriangle } from "lucide-react";
-import { PRELAUNCH_HEADLINE, PRELAUNCH_NOTICE, PRELAUNCH_PAYMENT_NOTICE } from "../../../base44/shared/prelaunch.js";
+import { PRELAUNCH_HEADLINE, PRELAUNCH_NOTICE, PRELAUNCH_PAYMENT_NOTICE } from "@/lib/prelaunch";
 
 export default function PrelaunchNotice({ compact = false, payment = false, className = "" }) {
   return (

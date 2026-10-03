@@ -37,11 +37,15 @@ assert.match(unifiedConsent, /Array\.isArray\(currentObo\.provider_capabilities\
 assert.doesNotMatch(unifiedConsent, /provider_capabilities \|\| currentObo\.granted_capabilities/);
 assert.match(unifiedConsent, /automation_enabled: granted && \(connection\.automation_mode \|\| 'manual'\) === 'auto'/);
 assert.match(unifiedConsent, /automation_mode: connection\.automation_mode \|\| 'manual'/);
-assert.match(unifiedConsent, /partial: failed\.length > 0/);
-assert.match(unifiedConsent, /status: failed\.length > 0 \? 207 : 200/);
+assert.match(unifiedConsent, /const partial = failed\.length > 0 \|\| failedDelegations\.length > 0 \|\| delegationSyncError/);
 assert.match(unifiedConsent, /connection propagation read failed/);
 assert.match(unifiedConsent, /connection_sync_error: true/);
 assert.match(unifiedConsent, /connection_sync_error: true,[\s\S]+status: 207/);
+assert.match(unifiedConsent, /AgentDelegation\.filter\(\{ owner_user_id: user\.id \}\)/);
+assert.match(unifiedConsent, /consent_version: granted \? VERSION : null/);
+assert.match(unifiedConsent, /status = 'waiting_user'/);
+assert.match(unifiedConsent, /delegation_sync_error: delegationSyncError/);
+assert.match(unifiedConsent, /status: partial \? 207 : 200/);
 assert.doesNotMatch(consentCard, /\|\| \{ granted, decided_at:/);
 assert.match(consentCard, /payload\.partial/);
 assert.match(connectionsPage, /ai_obo_consent: value/);

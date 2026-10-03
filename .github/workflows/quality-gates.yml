@@ -153,6 +153,9 @@ jobs:
       - name: Payment and financial-integrity contracts
         run: npm run test:payments
 
+      - name: Frontend/backend fee and prelaunch policy parity
+        run: npm run verify:frontend-shared-parity
+
       - name: PayPal campaign checkout contract
         run: node scripts/verify-paypal-checkout-contract.mjs
 

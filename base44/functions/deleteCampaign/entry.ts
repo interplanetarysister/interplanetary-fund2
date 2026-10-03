@@ -15,25 +15,30 @@ export default async function(req) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    await sr.entities.AgentDelegation.deleteMany({ owner_user_id: campaign.created_by_id, campaign_id });
-    await sr.entities.AgentActivity.deleteMany({ campaign_id });
-    await sr.entities.CampaignUpdate.deleteMany({ campaign_id });
-    await sr.entities.DistributedPost.deleteMany({ campaign_id });
+    const now = new Date().toISOString();
 
-    // Preserve financial records rather than silently deleting payment history.
-    // Detach campaign-owned external connections so they cannot continue using
-    // stale campaign context or automation after the campaign is gone.
+    // Campaign identity is part of the canonical financial audit chain. A
+    // user-facing delete request therefore archives the campaign instead of
+    // hard-deleting it or its operational history. Draft status removes it
+    // from public reads while retaining owner/admin recovery and every foreign
+    // key used by donations, withdrawals, reservations, and provider records.
+    await sr.entities.Campaign.update(campaign_id, {
+      status: 'draft',
+      outreach_paused: true,
+      archived_at: now,
+      archived_by_id: user.id,
+    });
+
+    // Stop external/agent side effects without detaching provenance.
     const connections = await sr.entities.PlatformConnection.filter({ created_by_id: campaign.created_by_id, campaign_id });
     for (const connection of connections) {
       await sr.entities.PlatformConnection.update(connection.id, {
-        campaign_id: '',
         automation_mode: 'manual',
         agent_access: { ...(connection.agent_access || {}), automation_enabled: false },
       });
     }
 
-    await sr.entities.Campaign.delete(campaign_id);
-    return Response.json({ deleted: true });
+    return Response.json({ archived: true, deleted: false, archived_at: now });
   } catch (error) {
     console.error('deleteCampaign error:', error?.message || error);
     return Response.json({ error: 'Unable to delete this campaign.' }, { status: 500 });

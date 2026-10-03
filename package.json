@@ -66,6 +66,7 @@
     "verify:external-mirroring-isolation": "node scripts/verify-external-mirroring-isolation.mjs",
     "verify:integration-registry-truth": "node scripts/verify-integration-registry-truth.mjs",
     "verify:host-portability": "node scripts/verify-host-portability-contract.mjs",
+    "verify:frontend-shared-parity": "node scripts/verify-frontend-shared-parity.mjs",
     "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs",
     "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs"
   },

@@ -20,7 +20,7 @@ import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCar
 import { Loader2, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 import PageError from "@/components/PageError";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);

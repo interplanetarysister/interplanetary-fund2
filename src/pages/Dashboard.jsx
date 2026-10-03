@@ -16,7 +16,7 @@ import CoachMarks from "@/components/coach/CoachMarks";
 import PageTips from "@/components/coach/PageTips";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 import PageError from "@/components/PageError";
-import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 export default function Dashboard() {
   const [campaigns, setCampaigns] = useState(null);

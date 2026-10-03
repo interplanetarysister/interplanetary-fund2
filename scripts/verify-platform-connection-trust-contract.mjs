@@ -187,6 +187,8 @@ assert.doesNotMatch(dialog, /connectAppUser/);
 
 assert.doesNotMatch(socialPublish, /mastodon_instance[\s\S]{0,500}fetch\(/);
 assert.match(socialPublish, /denyMastodonNetworkAccess/);
+assert.doesNotMatch(socialPublish, /connectors\.getConnection/,
+  'per-user publishing must never fall back to a shared service-role connector token');
 assert.doesNotMatch(mirror, /mastodon_instance[\s\S]{0,700}fetch\(/);
 assert.match(mirror, /runExternalMirroring\(\)/);
 assert.doesNotMatch(mirror, /\bfetch\(/);
