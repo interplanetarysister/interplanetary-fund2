@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 
 const FIELDS=['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
@@ -10,7 +9,6 @@ export default async function(req){
     const base44=createClientFromRequest(req);
     const user=await base44.auth.me().catch(()=>null);
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
-    if(!hasUnifiedOboConsent(user)) return Response.json({error:'AI/OBO authorization is required for connected campaign synchronization.'},{status:403});
     const body=await req.json().catch(()=>({}));
     const sr=base44.asServiceRole;
     const record=await sr.entities.ExternalCampaignImport.get(body.import_id).catch(()=>null);
