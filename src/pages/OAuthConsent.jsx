@@ -4,6 +4,7 @@ import { runtimeContract } from "@/lib/runtimeContract";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
+import { trustedOAuthRedirect } from "@/lib/oauthRedirect";
 
 // App-side OAuth consent page for the app's MCP server. The platform redirects
 // AI clients here (see base44/mcp/config.json `consent_path`) with an opaque
@@ -123,8 +124,14 @@ export default function OAuthConsent() {
         throw new Error("Could not complete authorization. Please try again.");
       }
       const data = await res.json();
-      window.location.href = data.redirect_url;
-      if (!/^https?:/i.test(data.redirect_url)) {
+      const redirect = trustedOAuthRedirect(data.redirect_url, window.location.origin);
+      if (!redirect) {
+        setReconnect("The authorization destination was rejected. Reconnect from your AI client to try again.");
+        setSubmitting(false);
+        return;
+      }
+      window.location.assign(redirect.url);
+      if (!redirect.browser) {
         // Custom-scheme redirect (native AI clients, e.g. cursor://): browsers
         // may block or not visibly navigate, so show a terminal state instead
         // of an eternal spinner.

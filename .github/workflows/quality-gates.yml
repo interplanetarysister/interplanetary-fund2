@@ -141,6 +141,9 @@ jobs:
       - name: Host portability and shared data-plane contract
         run: npm run verify:host-portability
 
+      - name: OAuth redirect destination contract
+        run: npm run verify:oauth-redirect
+
       - name: Cloudflare SPA and compute runtime contract
         run: node scripts/verify-cloudflare-runtime-contract.mjs
 

@@ -337,14 +337,14 @@ assert.equal(
 
 
 assert.ok(
-  ruleHasDeclaration(css, 'html', 'touch-action', 'pan-y') ||
-    ruleHasDeclaration(css, 'body', 'touch-action', 'pan-y'),
-  'page must enforce ordinary one-finger vertical panning without pinch-zoom gesture coupling'
+  ruleHasDeclaration(css, 'html', 'touch-action', 'pan-y pinch-zoom') ||
+    ruleHasDeclaration(css, 'body', 'touch-action', 'pan-y pinch-zoom'),
+  'page must preserve one-finger vertical panning and accessible pinch zoom'
 );
-assert.doesNotMatch(
+assert.match(
   css,
   /touch-action:\s*pan-y\s+pinch-zoom/i,
-  'shared web/app surfaces must not reintroduce the two-finger pinch-zoom gesture into page scrolling'
+  'shared web/app surfaces must retain pinch zoom for accessibility'
 );
 assert.doesNotMatch(
   pullToRefresh,
