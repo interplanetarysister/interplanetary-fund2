@@ -9,6 +9,7 @@ const client = read("src/api/base44Client.js");
 const authContext = read("src/lib/AuthContext.jsx");
 const appParams = read("src/lib/app-params.js");
 const oauthConsent = read("src/pages/OAuthConsent.jsx");
+const app = read("src/App.jsx");
 const panel = read("src/components/agents/AdminDevelopmentChat.jsx");
 const worker = read("host/gateway/worker.js");
 const verifyAdmin = read("base44/functions/verifyAdminGateway/entry.ts");
@@ -50,6 +51,17 @@ assert.doesNotMatch(authContext, /token:\s*appParams\.token/, "Public-settings r
 assert.doesNotMatch(appParams, /getAppParamValue\(["']app_id["']/, "Query or stored app_id must not enter runtime parameters");
 assert.match(oauthConsent, /const appId = runtimeContract\.appId/);
 assert.doesNotMatch(oauthConsent, /\/api\/apps\/\$\{appParams\.appId\}/, "OAuth consent identity must not use caller-controlled app_id");
+assert.match(app, /authError\.type === ['"]configuration_error['"]/, "Missing build identity must render a safe application error");
+
+const { createTrustedBase44Client } = await import("../src/lib/base44RuntimeClient.js");
+let factoryCalls = 0;
+const fakeFactory = config => { factoryCalls += 1; return { config }; };
+assert.equal(createTrustedBase44Client({ appId: "" }, fakeFactory), null);
+assert.equal(createTrustedBase44Client({ appId: undefined }, fakeFactory), null);
+assert.equal(factoryCalls, 0, "Missing build identity must not construct an SDK/network client");
+const trustedClient = createTrustedBase44Client({ appId: " trusted-app ", token: "session" }, fakeFactory);
+assert.equal(factoryCalls, 1);
+assert.equal(trustedClient.config.appId, "trusted-app");
 assert.match(panel, /createAdminAgentSession/);
 assert.match(worker, /IFUND_AGENT_EXECUTE_URL/);
 assert.match(worker, /degraded.*true/);

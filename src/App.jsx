@@ -31,7 +31,11 @@ const AuthenticatedApp = () => {
       .catch(() => {});
   }, [isLoadingAuth, isLoadingPublicSettings, authError, pathname, navigate]);
   if (isLoadingPublicSettings || isLoadingAuth) return <div className="fixed inset-0 flex items-center justify-center bg-background"><BrandLogo size="lg" showName={false} className="animate-pulse" /></div>;
-  if (authError) { if (authError.type === 'user_not_registered') return <UserNotRegisteredError />; if (authError.type === 'auth_required') { navigateToLogin(); return null; } }
+  if (authError) {
+    if (authError.type === 'user_not_registered') return <UserNotRegisteredError />;
+    if (authError.type === 'auth_required') { navigateToLogin(); return null; }
+    if (authError.type === 'configuration_error') return <div className="max-w-md mx-auto px-4 py-16 text-center"><BrandLogo size="md" className="mx-auto mb-4" /><h1 className="font-display text-xl text-foreground mb-2">Unable to load the application</h1><p className="text-sm text-muted-foreground mb-5">The application configuration is unavailable. Please try again after the site has been updated.</p><button type="button" onClick={() => window.location.reload()} className="rounded-xl bg-primary text-primary-foreground px-4 min-h-[44px] text-sm font-medium">Try again</button></div>;
+  }
   return <Routes>
     <Route path="/login" element={<Login />} /><Route path="/register" element={<Register />} /><Route path="/forgot-password" element={<ForgotPassword />} /><Route path="/reset-password" element={<ResetPassword />} /><Route path="/globe" element={<GlobalGlobe />} /><Route path="/embed/campaign/:id" element={<EmbedCampaign />} /><Route path="/oauth/consent" element={<OAuthConsent />} /><Route path="/" element={<Home />} /><Route path="/about" element={<About />} /><Route path="/contact" element={<Contact />} />
     <Route element={<Layout />}><Route path="/discover" element={<Discover />} /><Route path="/campaign/:id" element={<CampaignDetail />} /><Route path="/community" element={<Community />} /><Route path="/community/:id" element={<CommunityDetail />} /><Route path="/help" element={<Help />} /></Route>

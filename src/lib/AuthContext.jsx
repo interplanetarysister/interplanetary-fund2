@@ -41,7 +41,13 @@ export const AuthProvider = ({ children }) => {
       setAuthError(null);
       const trustedAppBaseUrl = runtimeContract.appBaseUrl;
       const trustedAppId = runtimeContract.appId;
-      if (!trustedAppId) throw new Error('Missing build-owned application identity.');
+      if (!trustedAppId || !base44) {
+        setAuthError({ type: 'configuration_error', message: SAFE_APP_ERROR });
+        setIsLoadingPublicSettings(false);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return;
+      }
       const appClient = createAxiosClient({
         baseURL: trustedAppBaseUrl ? `${trustedAppBaseUrl}/api/apps/public` : `/api/apps/public`,
         headers: {
