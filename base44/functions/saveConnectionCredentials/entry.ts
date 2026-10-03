@@ -91,20 +91,21 @@ export default async function(req) {
     // Provider verification/capabilities still determine what the connection
     // can actually do; this removes a contradictory second IFund consent.
     const unifiedObo = hasAiPublishingConsent(consentOwner);
-    if (unifiedObo) {
-      const currentConsent = existing?.obo_consent || {};
-      data.obo_consent = {
-        ...currentConsent,
-        granted: true,
-        granted_at: currentConsent.granted_at || now,
-        permission_version: '2026-10-unified-obo-v1',
-      };
-      data.agent_access = {
-        ...(existing?.agent_access || {}),
-        shared_with_agents: true,
-        automation_enabled: effectiveAutomationMode === 'auto',
-      };
-    }
+    const currentConsent = existing?.obo_consent || {};
+    data.obo_consent = {
+      ...currentConsent,
+      granted: unifiedObo,
+      granted_at: unifiedObo ? (currentConsent.granted_at || now) : null,
+      permission_version: '2026-10-unified-obo-v1',
+      granted_capabilities: unifiedObo
+        ? (currentConsent.provider_capabilities || currentConsent.granted_capabilities || [])
+        : [],
+    };
+    data.agent_access = {
+      ...(existing?.agent_access || {}),
+      shared_with_agents: unifiedObo,
+      automation_enabled: unifiedObo && effectiveAutomationMode === 'auto',
+    };
 
 
 
