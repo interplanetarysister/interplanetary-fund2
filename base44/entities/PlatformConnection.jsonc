@@ -154,7 +154,7 @@
     },
     "agent_access": {
       "type": "object",
-      "description": "Shared connection capability available to the user's agents. Role purpose and provider/user authorization still gate each action.",
+      "description": "Execution availability for IFund software acting as the user's authorized delegated extension. Role purpose, OBO scope, and provider capability still gate each action.",
       "properties": {
         "shared_with_agents": {
           "type": "boolean",
@@ -272,6 +272,44 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "delegated_execution": {
+      "type": "object",
+      "description": "Attribution for user-directed software execution on this external connection. This is authority/audit metadata, not a claim about provider capabilities.",
+      "properties": {
+        "principal_user_id": {
+          "type": "string"
+        },
+        "execution_model": {
+          "type": "string",
+          "enum": [
+            "user_directed_extension"
+          ],
+          "default": "user_directed_extension"
+        },
+        "command_source": {
+          "type": "string",
+          "enum": [
+            "direct_user_command",
+            "standing_obo_instruction"
+          ]
+        },
+        "authority_grant_id": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "authorized_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     }
