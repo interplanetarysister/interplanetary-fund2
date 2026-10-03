@@ -156,6 +156,9 @@ jobs:
       - name: My Giving response safety contract
         run: node scripts/verify-my-giving-contract.mjs
 
+      - name: Verify external fundraising network contract
+        run: npm run verify:external-fund-network
+
       - name: Production build
         run: npm run build
 
