@@ -7,6 +7,19 @@ import { getFrontendIdentity } from '@/lib/adminBootstrap';
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
 const APP_STATE_TIMEOUT_MS = 12000;
+const AUTH_STATE_TIMEOUT_MS = 12000;
+
+const withTimeout = (promise, timeoutMs, label) => {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const error = new Error(`${label} timed out`);
+      error.code = 'IFUND_BOOTSTRAP_TIMEOUT';
+      reject(error);
+    }, timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -91,7 +104,7 @@ export const AuthProvider = ({ children }) => {
   const checkUserAuth = async () => {
     try {
       setIsLoadingAuth(true);
-      const currentUser = await base44.auth.me();
+      const currentUser = await withTimeout(base44.auth.me(), AUTH_STATE_TIMEOUT_MS, 'Authentication check');
       // Revoke access for an account whose deletion is in progress — the
       // backend state machine set account_deletion_pending before wiping data.
       if (currentUser?.account_deletion_pending) {
@@ -114,6 +127,14 @@ export const AuthProvider = ({ children }) => {
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'
+        });
+      } else {
+        // Never leave bootstrap on an infinite loading screen when the auth
+        // provider is unavailable or a request stalls. Public routes can still
+        // render and protected routes can offer retry/login recovery.
+        setAuthError({
+          type: 'auth_unavailable',
+          message: SAFE_APP_ERROR
         });
       }
     }
