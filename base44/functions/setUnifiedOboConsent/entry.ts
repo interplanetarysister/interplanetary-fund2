@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const VERSION = '2026-10-unified-obo-v1';
+const VERSION = '2026-10-user-extension-obo-v2';
 
 export default async function(req) {
   try {
@@ -14,7 +14,13 @@ export default async function(req) {
     }
 
     const now = new Date().toISOString();
-    const canonical = { granted, decided_at: now, permission_version: VERSION };
+    const canonical = {
+      granted,
+      decided_at: now,
+      permission_version: VERSION,
+      execution_model: 'user_directed_extension',
+      command_source: 'standing_obo_instruction',
+    };
 
     // Keep legacy user fields synchronized while all callers migrate to the
     // canonical IFund-wide authorization.
@@ -48,6 +54,15 @@ export default async function(req) {
           // grant restores agent access but does not silently convert a user's
           // Ask/Draft/Manual preference into autonomous execution.
           automation_enabled: granted && (connection.automation_mode || 'manual') === 'auto',
+        },
+        delegated_execution: {
+          ...(connection.delegated_execution || {}),
+          principal_user_id: user.id,
+          execution_model: 'user_directed_extension',
+          command_source: 'standing_obo_instruction',
+          enabled: granted,
+          authorized_at: granted ? now : (connection.delegated_execution?.authorized_at || null),
+          revoked_at: granted ? null : now,
         },
         automation_mode: connection.automation_mode || 'manual',
       };
