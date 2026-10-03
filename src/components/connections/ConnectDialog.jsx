@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import CredentialFields from "./CredentialFields";
 
 // Connect (or edit) one destination. Crowdfunding connections link an external
@@ -21,7 +21,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
-  const [permissionAccepted, setPermissionAccepted] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -35,9 +34,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
-    let pending = null;
-    try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* An invalid resume record is ignored. */ }
-    setPermissionAccepted(!!existing || (pending?.platform === platform.id && pending?.sharedAgentConsent === true));
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
       .then(setCampaigns)
@@ -46,27 +42,10 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  // One comprehensive IF consent per user/platform. This describes the full
-  // application-wide capability envelope; the provider still decides which
-  // permissions it can actually grant in its immediately-following auth step.
-  const permissionItems = usesProviderOAuth ? [
-    "Connect your account, profile, pages, campaigns, groups, channels, and other available resources",
-    "Create, update, publish, and manage campaign content and media when supported",
-    "Read and respond to comments, replies, mentions, messages, and other campaign interactions",
-    "Support outreach, discovery, follows, joins, communities, and engagement where the platform permits",
-    "Read available analytics, engagement, campaign, donation, payment, transaction, and balance information",
-    "Check available money activity and help with supported money-moving steps only when you separately allow them",
-    "Let your Interplanetary Fund helpers reuse this connection within the choices you make",
-  ] : [];
-
   const connectWithProvider = async () => {
     setConnecting(true);
     setError("");
     try {
-      if (!permissionAccepted) {
-        setError("Approve the connection first.");
-        return;
-      }
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
         setError("This platform can’t be connected this way yet.");
@@ -85,7 +64,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       // localStorage survives a provider redirect that returns in another web tab.
       // Only the same signed-in owner can resume; no provider tokens are stored here.
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
-        platform: platform.id, userId: me.id, sharedAgentConsent: permissionAccepted, startedAt: Date.now(),
+        platform: platform.id, userId: me.id, sharedAgentConsent: aiAuthorized, startedAt: Date.now(),
       }));
       window.location.assign(redirectUrl);
     } catch (e) {
@@ -175,22 +154,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
           </div>
           {usesProviderOAuth && !existing && (
-            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
-              <p className="text-sm font-semibold text-foreground">Connect {platform.name} to Interplanetary Fund?</p>
-              <p className="text-xs text-muted-foreground">Approve Interplanetary Fund once here. We’ll immediately open {platform.name} to request the full set of useful permissions it supports for Interplanetary Fund. You should not need separate approvals for each IF agent or feature.</p>
-              <div className="space-y-1.5">
-                {permissionItems.map((item) => <p key={item} className="flex gap-2 text-xs text-foreground"><Check className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />{item}</p>)}
-              </div>
-              <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
-                <input type="checkbox" checked={permissionAccepted} onChange={(e) => setPermissionAccepted(e.target.checked)} className="mt-0.5" />
-                <span>I approve this connection and the choices above. My Interplanetary Fund helpers may reuse it only within my settings.</span>
-              </label>
+            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
+              <p className="text-sm font-semibold text-foreground">Connect {platform.name}</p>
+              <p className="text-xs text-muted-foreground">Your existing IFund AI authorization already includes OBO access for platforms you connect. {platform.name} will separately show the provider permissions it supports during sign-in.</p>
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           {usesProviderOAuth && (!existing || existing?.capability_status === "reauthorization_required") ? (
-            <Button onClick={connectWithProvider} disabled={connecting || !permissionAccepted} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Allow & connect ${platform.name}`}
+            <Button onClick={connectWithProvider} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>
           ) : (
             <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
