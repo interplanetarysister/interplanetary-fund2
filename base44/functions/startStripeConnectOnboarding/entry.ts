@@ -39,6 +39,32 @@ export default async function(req){
         details_submitted:!!account.details_submitted,default_currency:String(account.default_currency||'').toUpperCase(),
         country:String(account.country||'')
       });
+      // Converge: concurrent onboarding calls for the same owner+provider receive
+      // the same Stripe account (idempotency key) but may each create a local
+      // ConnectedPayoutAccount. Keep the earliest canonical record, merge any
+      // superior readiness state from duplicates, then delete the rest so the
+      // invariant holds: one owner + one payout provider → one local record.
+      const all=await sr.entities.ConnectedPayoutAccount.filter({owner_user_id:user.id,provider:'stripe_connect',provider_account_id:accountId},'created_date',10).catch(()=>[]);
+      if(all.length>1){
+        const ordered=[...all].sort((a,b)=>{
+          const at=new Date(a.created_date||0).getTime();
+          const bt=new Date(b.created_date||0).getTime();
+          if(at!==bt) return at-bt;
+          return String(a.id||'').localeCompare(String(b.id||''));
+        });
+        const canonical=ordered[0];
+        const patch:any={};
+        for(const dup of ordered.slice(1)){
+          if(dup.status==='ready'&&canonical.status!=='ready') patch.status='ready';
+          if(dup.payouts_enabled&&!canonical.payouts_enabled) patch.payouts_enabled=true;
+          if(dup.charges_enabled&&!canonical.charges_enabled) patch.charges_enabled=true;
+          if(dup.details_submitted&&!canonical.details_submitted) patch.details_submitted=true;
+          if(dup.last_verified_at&&!canonical.last_verified_at) patch.last_verified_at=dup.last_verified_at;
+        }
+        if(Object.keys(patch).length) await sr.entities.ConnectedPayoutAccount.update(canonical.id,{...canonical,...patch}).catch(()=>{});
+        for(const dup of ordered.slice(1)) await sr.entities.ConnectedPayoutAccount.delete(dup.id).catch(()=>{});
+        record=canonical;
+      }
     }
     const link=await stripe.accountLinks.create({
       account:accountId,

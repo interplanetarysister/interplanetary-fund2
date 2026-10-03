@@ -3,9 +3,29 @@ import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Network, ShieldCheck } from "lucide-react";
+import { Loader2, Network, ShieldCheck, Clock, BadgeCheck } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 const money=(amount,currency="USD")=>new Intl.NumberFormat(undefined,{style:"currency",currency:currency||"USD"}).format(Number(amount||0));
+
+// Observation freshness: communicate whether a balance is provider-verified or
+// owner-reported, and when it was last observed. Stale owner-reported figures
+// must never be presented as freshly verified withdrawable funds.
+const ObservationLabel=({source})=>{
+  const providerVerified=source.data_source==='provider_verified';
+  const stale=source.observation_stale===true;
+  if(!source.observed_at){
+    return <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5"><Clock className="w-3 h-3"/>Balance not yet checked by a provider</p>;
+  }
+  const age=formatDistanceToNow(new Date(source.observed_at),{addSuffix:true});
+  if(providerVerified&&!stale){
+    return <p className="text-xs text-emerald-600 flex items-center gap-1 mt-0.5"><BadgeCheck className="w-3 h-3"/>Provider-verified · {age}</p>;
+  }
+  if(providerVerified&&stale){
+    return <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5"><Clock className="w-3 h-3"/>Provider-verified but stale · {age}</p>;
+  }
+  return <p className="text-xs text-stone-500 flex items-center gap-1 mt-0.5"><Clock className="w-3 h-3"/>Owner-reported · {age}{stale?' · refresh recommended':''}</p>;
+};
 
 export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange }) {
   const [preparing,setPreparing]=useState(false);
@@ -42,7 +62,7 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
       {prepared && <div className="space-y-3">
         {(prepared.sources||[]).length===0 && <div className="rounded-xl border p-4 text-sm text-muted-foreground">No connected fundraising sources are linked to this campaign yet.</div>}
         {(prepared.sources||[]).map(s=><div key={s.connection_id} className="rounded-xl border p-3 flex items-start justify-between gap-3">
-          <div><p className="font-medium capitalize">{s.platform}</p><p className="text-sm">{money(s.amount,s.currency)}</p>{s.note&&<p className="text-xs text-muted-foreground mt-1">{s.note}</p>}</div>
+          <div><p className="font-medium capitalize">{s.platform}</p><p className="text-sm">{money(s.amount,s.currency)}</p><ObservationLabel source={s}/>{s.note&&<p className="text-xs text-muted-foreground mt-1">{s.note}</p>}</div>
           <Badge variant="outline">{s.status==="ready_for_authorization"?"Ready":"Action required"}</Badge>
         </div>)}
         {ready.length>0&&!prepared.authorized&&<div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 space-y-2">

@@ -2,7 +2,34 @@ import { giftOf, round2, computeWithdrawal } from './fees.js';
 
 async function one(sr, operationKey) {
   const rows = await sr.entities.FinancialOperation.filter({ operation_key: operationKey }).catch(() => []);
-  return rows?.[0] || null;
+  if (!rows || rows.length === 0) return null;
+  if (rows.length === 1) return rows[0];
+  // Converge: concurrent webhook deliveries or retried financial calls may each
+  // pass the existence check and create a duplicate FinancialOperation. Keep the
+  // earliest as canonical, merge any superior state, and delete the rest so the
+  // idempotency invariant holds: one operation_key → one FinancialOperation.
+  const ordered = [...rows].sort((a, b) => {
+    const at = new Date(a.created_date || 0).getTime();
+    const bt = new Date(b.created_date || 0).getTime();
+    if (at !== bt) return at - bt;
+    return String(a.id || '').localeCompare(String(b.id || ''));
+  });
+  const canonical = ordered[0];
+  const patch = {};
+  for (const dup of ordered.slice(1)) {
+    // Preserve the most-advanced state if a duplicate progressed further.
+    const stateRank = { pending: 0, applied: 1, reserved: 2, completed: 3, cancelled: 3, failed: 3 };
+    if ((stateRank[dup.state] || 0) > (stateRank[canonical.state] || 0)) {
+      patch.state = dup.state;
+      if (dup.completed_at) patch.completed_at = dup.completed_at;
+      if (dup.cancelled_at) patch.cancelled_at = dup.cancelled_at;
+      if (dup.provider_transaction_id) patch.provider_transaction_id = dup.provider_transaction_id;
+    }
+    if (dup.withdrawal_id && !canonical.withdrawal_id) patch.withdrawal_id = dup.withdrawal_id;
+    await sr.entities.FinancialOperation.delete(dup.id).catch(() => {});
+  }
+  if (Object.keys(patch).length) await sr.entities.FinancialOperation.update(canonical.id, patch).catch(() => {});
+  return canonical;
 }
 
 export async function ensureCanonicalCampaign(sr, campaign) {

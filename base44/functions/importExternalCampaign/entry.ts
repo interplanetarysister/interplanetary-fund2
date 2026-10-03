@@ -33,6 +33,32 @@ export default async function(req) {
       campaign_id: campaign.id, sync_enabled: body.sync_enabled !== false,
       last_imported_at: new Date().toISOString(), field_provenance: provenance, locally_locked_fields: [], status: 'imported'
     });
+    // Converge: concurrent import calls for the same owner+connection may each
+    // pass the duplicate check and create a campaign + import record. Keep the
+    // earliest import as canonical, link the connection to it, and delete the
+    // duplicate campaign + import so the invariant holds: one owner + one
+    // connection → one imported campaign.
+    const allImports = await sr.entities.ExternalCampaignImport.filter({ owner_user_id: user.id, connection_id: connection.id }, 'created_date', 10).catch(() => []);
+    if (allImports.length > 1) {
+      const ordered = [...allImports].sort((a, b) => {
+        const at = new Date(a.created_date || 0).getTime();
+        const bt = new Date(b.created_date || 0).getTime();
+        if (at !== bt) return at - bt;
+        return String(a.id || '').localeCompare(String(b.id || ''));
+      });
+      const canonical = ordered[0];
+      for (const dup of ordered.slice(1)) {
+        if (dup.campaign_id && dup.campaign_id !== canonical.campaign_id) {
+          await sr.entities.Campaign.delete(dup.campaign_id).catch(() => {});
+        }
+        await sr.entities.ExternalCampaignImport.delete(dup.id).catch(() => {});
+      }
+      await sr.entities.PlatformConnection.update(connection.id, { campaign_id: canonical.campaign_id });
+      await sr.entities.ExternalCampaignImport.update(canonical.id, { last_imported_at: new Date().toISOString() }).catch(() => {});
+      const canonicalCampaign = canonical.campaign_id ? await base44.entities.Campaign.get(canonical.campaign_id).catch(() => null) : null;
+      await logAudit(base44, { action: 'external_campaign_imported', actor_user_id: user.id, target_type: 'Campaign', target_id: canonical.campaign_id, detail: 'Created IFund draft from connected external fundraiser; converged concurrent import to one canonical record.', status: 'success', metadata: { platform: connection.platform, connection_id: connection.id, import_id: canonical.id } });
+      return Response.json({ ok: true, duplicate: true, campaign: canonicalCampaign, import_record: canonical });
+    }
     await sr.entities.PlatformConnection.update(connection.id, { campaign_id: campaign.id });
     await logAudit(base44, { action: 'external_campaign_imported', actor_user_id: user.id, target_type: 'Campaign', target_id: campaign.id, detail: 'Created IFund draft from connected external fundraiser.', status: 'success', metadata: { platform: connection.platform, connection_id: connection.id, import_id: imported.id } });
     return Response.json({ ok: true, campaign, import_record: imported });

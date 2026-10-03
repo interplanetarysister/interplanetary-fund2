@@ -55,7 +55,22 @@ export default async function(req: Request) {
     const externalId = `wix:${instanceId}:${eventType}:${stableId}`;
     const existing = await sr.entities.ExternalSyncEvent.filter({ provider: 'wix', event_id: externalId });
     if (existing?.length) return Response.json({ ok: true, duplicate: true });
-    const record = await sr.entities.ExternalSyncEvent.create({ provider: 'wix', event_id: externalId, event_type: eventType, instance_id: instanceId, entity_id: String(data?.id || data?._id || ''), status: 'received', received_at: new Date().toISOString(), payload: { instanceId, eventType, data } });
+    let record = await sr.entities.ExternalSyncEvent.create({ provider: 'wix', event_id: externalId, event_type: eventType, instance_id: instanceId, entity_id: String(data?.id || data?._id || ''), status: 'received', received_at: new Date().toISOString(), payload: { instanceId, eventType, data } });
+    // Converge: concurrent deliveries may pass the duplicate check and each
+    // create a row. Keep the earliest, delete the rest — this is a diagnostic
+    // sync-signal entity, never a financial record, but convergence prevents
+    // unbounded duplicate accumulation.
+    const converged = await sr.entities.ExternalSyncEvent.filter({ provider: 'wix', event_id: externalId }, 'created_date', 10).catch(() => []);
+    if (converged.length > 1) {
+      const ordered = [...converged].sort((a, b) => {
+        const at = new Date(a.created_date || 0).getTime();
+        const bt = new Date(b.created_date || 0).getTime();
+        if (at !== bt) return at - bt;
+        return String(a.id || '').localeCompare(String(b.id || ''));
+      });
+      record = ordered[0];
+      for (const dup of ordered.slice(1)) await sr.entities.ExternalSyncEvent.delete(dup.id).catch(() => {});
+    }
     // Webhooks are synchronization signals only. Financial events never create
     // IFund Donation records or withdrawable balances without settlement reconciliation.
     await sr.entities.ExternalSyncEvent.update(record.id, { status: 'processed', processed_at: new Date().toISOString() });

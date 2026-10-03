@@ -8,8 +8,32 @@ export default async function(req){
     const user=await base44.auth.me().catch(()=>null);
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
     const sr=base44.asServiceRole;
-    const rows=await sr.entities.ConnectedPayoutAccount.filter({owner_user_id:user.id,provider:'stripe_connect'},'-updated_date',5).catch(()=>[]);
-    const record=rows[0]||null;
+    const rows=await sr.entities.ConnectedPayoutAccount.filter({owner_user_id:user.id,provider:'stripe_connect'},'-updated_date',10).catch(()=>[]);
+    // Converge any duplicate records for the same owner+provider to one canonical
+    // entry. This cleans up duplicates that may have been created by a concurrent
+    // onboarding race before the fix, and keeps the invariant: one owner + one
+    // payout provider → one local ConnectedPayoutAccount.
+    let record=rows[0]||null;
+    if(rows.length>1){
+      const ordered=[...rows].sort((a,b)=>{
+        const at=new Date(a.created_date||0).getTime();
+        const bt=new Date(b.created_date||0).getTime();
+        if(at!==bt) return at-bt;
+        return String(a.id||'').localeCompare(String(b.id||''));
+      });
+      record=ordered[0];
+      const patch:any={};
+      for(const dup of ordered.slice(1)){
+        if(dup.status==='ready'&&record.status!=='ready') patch.status='ready';
+        if(dup.payouts_enabled&&!record.payouts_enabled) patch.payouts_enabled=true;
+        if(dup.charges_enabled&&!record.charges_enabled) patch.charges_enabled=true;
+        if(dup.details_submitted&&!record.details_submitted) patch.details_submitted=true;
+        if(dup.last_verified_at&&!record.last_verified_at) patch.last_verified_at=dup.last_verified_at;
+        if(dup.provider_account_id&&!record.provider_account_id) patch.provider_account_id=dup.provider_account_id;
+        await sr.entities.ConnectedPayoutAccount.delete(dup.id).catch(()=>{});
+      }
+      if(Object.keys(patch).length) await sr.entities.ConnectedPayoutAccount.update(record.id,patch).catch(()=>{});
+    }
     if(!record) return Response.json({ok:true,configured:false,status:'not_started'});
     const key=secrets.get('STRIPE_SECRET_KEY');
     if(!key||!String(key).startsWith('sk_live_')) return Response.json({ok:true,configured:true,status:record.status,payouts_enabled:false,provider_available:false});

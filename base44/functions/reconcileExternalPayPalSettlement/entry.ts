@@ -102,6 +102,20 @@ export default async function (req) {
       settled_at: new Date().toISOString(),
       reconciliation_note: `Verified exterior ${connection.platform || 'platform'} funds reconciled to receipt in the Interplanetary business PayPal holding account.`,
     });
+    // Converge: concurrent admin reconciliation calls for the same PayPal
+    // transaction may each pass the duplicate check and create a holding entry.
+    // Keep the earliest, delete the rest so a single receipt is never double-
+    // counted in the custody ledger.
+    const allEntries = await sr.entities.HoldingLedgerEntry.filter({ operation_key: operationKey }, 'created_date', 10).catch(() => []);
+    if (allEntries.length > 1) {
+      const ordered = [...allEntries].sort((a, b) => {
+        const at = new Date(a.created_date || 0).getTime();
+        const bt = new Date(b.created_date || 0).getTime();
+        if (at !== bt) return at - bt;
+        return String(a.id || '').localeCompare(String(b.id || ''));
+      });
+      for (const dup of ordered.slice(1)) await sr.entities.HoldingLedgerEntry.delete(dup.id).catch(() => {});
+    }
 
     await logAudit(base44, {
       action: 'external_funds_settled_to_holding',
