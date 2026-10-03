@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS } from '../../shared/integrationRegistry.ts';
 import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
+import { isLinkBasedPlatform } from '../../shared/connectionVerification.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -86,6 +87,20 @@ export default async function(req) {
       last_error: '',
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
+
+    // Link-based platforms (GoFundMe, Kickstarter, Indiegogo, FundRazr,
+    // GiveSendGo, Spotfund, Buy Me a Coffee, Custom) have no provider API to
+    // verify against. A valid external URL is the connection evidence; totals
+    // are owner-reported and informational only. Mark these as connected
+    // immediately so they show as "working" instead of perpetually "needs
+    // attention".
+    if (isLinkBasedPlatform(platform) && (external_url || existing?.external_url)) {
+      data.status = 'connected';
+      data.verification_status = 'verified';
+      data.external_data_source = 'owner_reported';
+      data.last_synced = now;
+      data.history = [...(existing?.history || []), { at: now, event: 'link_verified', detail: 'Link-based connection verified; URL and owner-reported totals are active.' }].slice(-30);
+    }
 
     // Every connection inherits the owner's unified AI/OBO authorization.
     // Provider verification/capabilities still determine what the connection

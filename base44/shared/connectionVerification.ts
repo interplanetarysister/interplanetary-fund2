@@ -32,6 +32,18 @@ export const OAUTH_ENV: Record<string, string> = {
   eventbrite: 'APP_USER_CONNECTOR_EVENTBRITE_ID',
 };
 
+// Platforms that connect via a pasted URL and owner-reported totals. No provider
+// API exists to verify against — the URL itself is the connection evidence.
+// These are distinct from OAuth platforms (OAUTH_ENV), manual-credential
+// platforms (bluesky/mastodon), and webhook platforms (kofi).
+const MANUAL_VERIFICATION_PLATFORMS = new Set(['bluesky', 'mastodon']);
+const WEBHOOK_VERIFICATION_PLATFORMS = new Set(['kofi']);
+
+export function isLinkBasedPlatform(platform: string): boolean {
+  const key = String(platform || '').toLowerCase();
+  return !OAUTH_ENV[key] && !MANUAL_VERIFICATION_PLATFORMS.has(key) && !WEBHOOK_VERIFICATION_PLATFORMS.has(key);
+}
+
 export async function verifyManualConnection(connection: any) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') {

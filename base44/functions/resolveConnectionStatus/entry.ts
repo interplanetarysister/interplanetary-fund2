@@ -148,9 +148,10 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
       ? 'CONNECTED' : 'CONNECTING';
   }
   if (recipe?.preferred_transport === 'public_browser') {
-    // Public observation uses the user's single IFund AI/OBO decision; there is
-    // no second browser-specific IFund consent.
-    return (connection.external_url && unifiedObo) ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
+    // Link-based tracking: a pasted URL is the connection evidence. Owner-
+    // reported totals do not require AI OBO consent — that authorization is
+    // only for AI acting on the user's behalf, not for tracking a link.
+    return connection?.external_url ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
   }
   return connection.status === 'connected' ? 'CONNECTED' : 'NOT_CONNECTED';
 }
@@ -224,7 +225,7 @@ export default async function(req) {
         if (recipe?.preferred_transport === 'token') capabilities_verified.push('provider_verified');
         if (recipe?.preferred_transport === 'webhook' && connection.external_data_source === 'provider_verified') capabilities_verified.push('receive_donation_webhooks');
       }
-      if (recipe?.preferred_transport === 'public_browser' && connection?.external_url && unifiedObo) {
+      if (recipe?.preferred_transport === 'public_browser' && connection?.external_url) {
         capabilities_verified.push('observe_external_metrics');
       }
     }

@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
+import { isLinkBasedPlatform } from '../../shared/connectionVerification.ts';
 
 // Centralized external-fund synchronization engine used by scheduled sync,
 // Count My Money, Sync Linked Platforms, and Migrate Funds discovery.
@@ -169,6 +170,15 @@ export default async function (req) {
             update.external_total = Number(lastObservation.observedTotal || 0);
             update.external_donor_count = Number(lastObservation.observedCount || 0);
             update.external_currency = observedCurrency;
+          } else if (isLinkBasedPlatform(conn.platform) && conn.external_url) {
+            // Link-based platforms have no provider API to pull from. Keep
+            // them connected with owner-reported totals so they don't regress
+            // to "needs attention" after a sync run.
+            update.status = 'connected';
+            update.verification_status = 'verified';
+            update.external_data_source = 'owner_reported';
+            update.last_synced = now;
+            update.last_error = '';
           }
           await sr.entities.PlatformConnection.update(conn.id, update);
 

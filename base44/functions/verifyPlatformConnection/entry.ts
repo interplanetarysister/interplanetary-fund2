@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
+import { OAUTH_ENV, verifyManualConnection, isLinkBasedPlatform } from '../../shared/connectionVerification.ts';
 
 export default async function(req) {
   const base44 = createClientFromRequest(req);
@@ -28,6 +28,10 @@ export default async function(req) {
         if (connection.verification_status !== 'verified' || connection.external_data_source !== 'provider_verified') {
           throw new Error('Waiting for Ko-fi to verify the connection with a webhook event.');
         }
+      } else if (isLinkBasedPlatform(connection.platform)) {
+        // Link-based platforms are owner-reported tracking links. The URL is
+        // the connection evidence; no provider API exists to verify against.
+        if (!connection.external_url) throw new Error('A campaign URL is required for this connection.');
       } else {
         throw new Error('This platform is linked for tracking; provider verification is not available.');
       }

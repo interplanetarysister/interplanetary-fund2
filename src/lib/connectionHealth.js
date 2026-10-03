@@ -6,7 +6,12 @@ export function connectionHealth(connection, now = Date.now()) {
   }
 
   const lastSync = connection.last_synced ? new Date(connection.last_synced).getTime() : 0;
-  const stale = !!lastSync && Number.isFinite(lastSync) && now - lastSync > STALE_MS;
+  // Owner-reported (link-based) connections have no provider API to sync
+  // against. They don't go stale — the owner-reported totals are valid until
+  // the user changes them. Only provider-verified connections need regular
+  // sync to remain trustworthy.
+  const isOwnerReported = connection.external_data_source === 'owner_reported';
+  const stale = !isOwnerReported && !!lastSync && Number.isFinite(lastSync) && now - lastSync > STALE_MS;
   const hasError = connection.status === "error" || !!connection.last_error;
   const verified = connection.status === "connected" && connection.verification_status === "verified";
 
