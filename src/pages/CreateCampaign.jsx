@@ -65,7 +65,9 @@ export default function CreateCampaign() {
     if (!importConnectionId) return;
     setImporting(true);
     try {
-      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: form, sync_enabled: true });
+      const discovered = await base44.functions.invoke("discoverExternalCampaignSnapshot", { connection_id: importConnectionId });
+      if (!discovered.data?.ok || !discovered.data?.campaign) throw new Error("Discovery failed");
+      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: discovered.data.campaign, sync_enabled: true });
       if (!data?.campaign_id && !data?.campaign?.id) throw new Error("Import failed");
       navigate(`/create?draft=${data.campaign_id || data.campaign.id}`, { replace: true });
     } catch {
