@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { resolveCapabilityMap } from '../../shared/providerCapabilities.ts';
 
 // Executes only transfer paths that IFund has independently verified as
 // executable. Configuration-based/direct payout models are coordinated here but
@@ -16,8 +17,7 @@ export default async function(req) {
     if(authorization.status!=='authorized') return Response.json({error:'Explicit collection authorization is required before execution.'},{status:409});
     if(!authorization.authorized_at) return Response.json({error:'Authorization timestamp is missing.'},{status:409});
 
-    const capabilities=await sr.entities.FundraisingProviderCapability.list('-updated_date',500).catch(()=>[]);
-    const byPlatform=new Map((capabilities||[]).map(c=>[String(c.platform).toLowerCase(),c]));
+    const byPlatform=await resolveCapabilityMap(sr);
     const results=[];
     for(const source of authorization.sources||[]) {
       const cap=byPlatform.get(String(source.platform||'').toLowerCase());

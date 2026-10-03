@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { resolveCapabilityMap } from '../../shared/providerCapabilities.ts';
 
 const AUTH_VERSION = '2026-10-collect-withdraw-v1';
 const ttlMs = 15 * 60 * 1000;
@@ -19,11 +20,10 @@ export default async function(req) {
     const campaignIds = new Set(ownedCampaigns.map((c) => c.id));
     const allConnections = await sr.entities.PlatformConnection.filter({ created_by_id: user.id, kind: 'crowdfunding' }, '-updated_date', 300).catch(() => []);
     const connections = allConnections.filter((c) => campaign ? c.campaign_id === campaign.id : (!c.campaign_id || campaignIds.has(c.campaign_id)));
-    const capabilities = await sr.entities.FundraisingProviderCapability.list('-updated_date', 500).catch(() => []);
+    const byPlatform = await resolveCapabilityMap(sr);
     const payoutAccounts = await sr.entities.ConnectedPayoutAccount.filter({ owner_user_id: user.id, provider: 'stripe_connect' }, '-updated_date', 5).catch(() => []);
     const payoutAccount = payoutAccounts[0] || null;
     const payoutReady = payoutAccount?.status === 'ready' && payoutAccount?.payouts_enabled === true;
-    const byPlatform = new Map((capabilities || []).map((c) => [String(c.platform).toLowerCase(), c]));
     const sources = connections.map((connection) => {
       const cap = byPlatform.get(String(connection.platform).toLowerCase());
       const currency = String(connection.external_currency || 'USD').toUpperCase();
@@ -33,9 +33,16 @@ export default async function(req) {
         amount > 0 && cap?.capability_status === 'verified' &&
         !['observe_only','user_action_required','authorized_interactive'].includes(payoutModel);
       const eligible = technicallyEligible && payoutReady;
+      // Observation freshness: never represent stale owner-reported balances as
+      // freshly verified. The owner sees when the balance was last observed and
+      // whether it is provider-verified or owner-reported provenance.
+      const observedAt = connection.last_synced || null;
+      const dataSource = connection.external_data_source || 'owner_reported';
+      const stale = observedAt ? (Date.now() - new Date(observedAt).getTime()) > 24 * 60 * 60 * 1000 : true;
       return {
         connection_id: connection.id, campaign_id: connection.campaign_id || '', platform: connection.platform, amount, currency,
         payout_model: payoutModel, status: eligible ? 'ready_for_authorization' : 'user_action_required',
+        observed_at: observedAt, data_source: dataSource, observation_stale: stale,
         note: eligible ? '' : (!payoutReady && technicallyEligible ? 'Finish your IFund payout account setup before this source can be consolidated.' : (cap?.capability_status !== 'verified' ? 'Provider payout capability still requires independent verification.' : (cap ? 'This provider currently requires a provider-controlled collection step.' : 'Provider payout capability still requires verification.'))),
       };
     });
@@ -47,7 +54,7 @@ export default async function(req) {
       status: 'prepared', expires_at: new Date(now + ttlMs).toISOString(),
       sources, destination_type: 'ifund_connected_account',
       authorization_text_version: AUTH_VERSION,
-      consent_snapshot: JSON.stringify({ campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', sources: sources.map(({connection_id,campaign_id,platform,amount,currency,payout_model}) => ({connection_id,campaign_id,platform,amount,currency,payout_model})) }),
+      consent_snapshot: JSON.stringify({ campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', sources: sources.map(({connection_id,campaign_id,platform,amount,currency,payout_model,observed_at,data_source,observation_stale}) => ({connection_id,campaign_id,platform,amount,currency,payout_model,observed_at,data_source,observation_stale})) }),
     });
     await logAudit(base44, { action: 'collect_withdraw_prepared', actor_user_id: user.id, target_type: 'ExternalCollectionAuthorization', target_id: authorization.id, detail: 'Prepared external collection authorization; no money moved.', status: 'success', metadata: { operation_id, campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', source_count: sources.length } });
     return Response.json({ ok: true, authorization_id: authorization.id, operation_id, expires_at: authorization.expires_at, payout_account_ready: payoutReady, sources,
