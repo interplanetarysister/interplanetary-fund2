@@ -31,6 +31,7 @@ export default function FollowedCampaigns() {
   const [category, setCategory] = useState("all");
   const [showArchived, setShowArchived] = useState(false);
   const [error, setError] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -47,7 +48,7 @@ export default function FollowedCampaigns() {
        setError("We couldn't load your followed campaigns. Please try again.");
      }
     })();
-  }, []);
+  }, [reloadKey]);
 
   const categories = useMemo(
     () => [...new Set(follows?.map((f) => f.category).filter(Boolean))],
@@ -84,7 +85,7 @@ export default function FollowedCampaigns() {
     return rows;
   }, [follows, campaigns, sort, search, category, showArchived]);
 
-  if (error) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setFollows(null); }} /></div>;
+  if (error) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setFollows(null); setReloadKey((key) => key + 1); }} /></div>;
   if (!follows) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   const togglePin = async (f) => {
