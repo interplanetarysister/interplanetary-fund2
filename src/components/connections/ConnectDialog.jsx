@@ -28,7 +28,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
       campaign_id: existing?.campaign_id || "",
-      automation_mode: existing?.automation_mode || (aiAuthorized ? "auto" : "manual"),
+      automation_mode: aiAuthorized ? "auto" : "manual",
       external_total: existing?.external_total ?? "",
       external_currency: existing ? (existing.external_currency || "") : "USD",
       external_donor_count: existing?.external_donor_count ?? "",
@@ -87,7 +87,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
         display_name: form.display_name,
         external_url: form.external_url,
         campaign_id: form.campaign_id || undefined,
-        automation_mode: form.automation_mode,
+        automation_mode: aiAuthorized ? "auto" : "manual",
         external_total: isCrowd ? Number(form.external_total) || 0 : 0,
         external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
@@ -150,13 +150,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
             </div>
           )}
           <div className="rounded-xl border border-border bg-muted/30 p-3">
-            <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
-            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
+            <p className="text-sm font-medium text-foreground">IFund help: {aiAuthorized ? "On" : "Off"}</p>
+            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "When help is on, tapping Connect is your command for IFund to do the available connection steps. You do not have to approve the same IFund permission again." : "Help is off, so connection and posting steps stay manual until you turn it on."}</p>
           </div>
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
               <p className="text-sm font-semibold text-foreground">Connect {platform.name}</p>
-              <p className="text-xs text-muted-foreground">Your existing IFund AI authorization already includes OBO access for platforms you connect. {platform.name} will separately show the provider permissions it supports during sign-in.</p>
+              <p className="text-xs text-muted-foreground">Your IFund help permission is already on. Tapping Connect tells IFund to connect {platform.name}; the outside site may still ask you to sign in or confirm something it requires.</p>
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
