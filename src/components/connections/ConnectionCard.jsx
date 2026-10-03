@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw, Stethoscope, ChevronDown } from "lucide-react";
+import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw, Stethoscope, ChevronDown, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
+import { useNavigate } from "react-router-dom";
 
 // One connected destination: status, health, last sync, granted automation,
 // totals, provenance, and the manage / disconnect / history controls.
@@ -16,6 +17,7 @@ import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 //   and informational only; it is never withdrawable from Interplanetary Fund.
 
 export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved }) {
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [showDoctor, setShowDoctor] = useState(false);
 
@@ -115,7 +117,8 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
-        <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
+        {connection.kind === "crowdfunding" && !connection.campaign_id && <Button size="sm" variant="outline" onClick={() => navigate(`/create?import_connection=${connection.id}`)} className="rounded-lg"><Download className="w-3.5 h-3.5" />Import campaign</Button>}
+                <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
           <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />Check
         </Button>
         {connection.external_url && (
