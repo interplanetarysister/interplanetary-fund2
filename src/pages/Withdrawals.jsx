@@ -30,6 +30,8 @@ export default function Withdrawals() {
   const [history, setHistory] = useState([]);
   const [reviewQueue, setReviewQueue] = useState([]);
   const [collectCampaign, setCollectCampaign] = useState(null);
+  const [payoutAccount, setPayoutAccount] = useState(null);
+  const [payoutBusy, setPayoutBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
