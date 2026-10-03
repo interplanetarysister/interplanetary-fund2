@@ -44,7 +44,7 @@ The active implementation is the Managed Connections / user-directed IFund-help 
 - Audit every offered fundraising platform and every operation actually exposed by the product.
 - Populate/reconcile recipe candidates from current provider documentation and existing IFund adapters.
 - Exercise routes only where the environment/account permits. Documentation-only knowledge stays researched/probation, never proven.
-- Finish the external Create Account runtime/UI path so the single click invokes Managed Connections for eligible providers.
+- The canonical Create Account command boundary now exists (`requestManagedConnectionAction`); finish provider-specific executors/UI invocation so eligible routes can actually create and verify accounts.
 - Verify Publish sends to all eligible connected accounts when IFund help is ON and does not delegate when OFF.
 - Verify toggling OFF updates existing connection execution state without deleting connections.
 - Verify new-account flow end-to-end: register -> verify -> IFund help -> remaining onboarding -> homepage.
@@ -71,3 +71,13 @@ Before ending a work session, update this file if implementation state changed m
 
 ## Checkpoint rule
 Do not call the branch validated/known-good until non-metered build/typecheck/focused checks and runtime smoke tests have actually passed. Record which environment produced the evidence.
+
+## Audit repair update — 2026-10-03
+- PR #488 audited at 30+ commits ahead of main, 0 behind, mergeable at audit time.
+- Repaired manual connection saves to use OBO v2, delegated_execution attribution, and the global ON/OFF execution mode.
+- Removed obsolete per-connection consent from OAuth resume.
+- Removed stale per-platform Ask/Draft/Auto choices that contradicted the single global toggle.
+- Reconciled the connection lifecycle verifier with the route-learning resolver/schema.
+- Added canonical requestManagedConnectionAction boundary for Connect/Create Account commands; it fails truthfully at route-selection/discovery until a provider-specific executor verifies completion.
+- Extended zero-credit verification to cover these repairs.
+- Still unverified without runtime execution: provider-specific account creation, real provider publishing, full build/typecheck/lint, and end-to-end Base44 onboarding/runtime smoke tests.
