@@ -1,6 +1,5 @@
 import React from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
-import { Link } from "react-router-dom";
 
 // Per-route error boundary. Wraps <Outlet/> in the Layout so a render crash
 // in any page replaces only that page's content with a recovery card — the nav
@@ -27,7 +26,7 @@ export default class ErrorBoundary extends React.Component {
           </div>
           <h2 className="font-display text-xl text-stone-900 mb-1">This page hit a snag</h2>
           <p className="text-sm text-stone-500 mb-5">
-            {this.state.error?.message || "An unexpected error occurred while rendering this page."}
+            This part of the application could not load. Try again or return home.
           </p>
           <div className="flex items-center justify-center gap-3">
             <button
@@ -36,12 +35,12 @@ export default class ErrorBoundary extends React.Component {
             >
               <RefreshCw className="w-4 h-4" /> Try again
             </button>
-            <Link
-              to="/"
+            <a
+              href="/"
               className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-4 h-10 min-h-[44px] text-sm font-medium text-stone-600"
             >
               <Home className="w-4 h-4" /> Home
-            </Link>
+            </a>
           </div>
         </div>
       );
