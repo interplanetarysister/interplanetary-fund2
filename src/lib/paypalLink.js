@@ -5,7 +5,7 @@
 //
 // Business account: interplanetarysister@gmail.com
 
-import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 const BUSINESS_EMAIL = "interplanetarysister@gmail.com";
 

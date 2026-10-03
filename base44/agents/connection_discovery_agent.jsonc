@@ -27,6 +27,10 @@
       "allowed_operations": [
         "read"
       ]
+    },
+    {
+      "function_name": "listFundraisingProviderCapabilities",
+      "description": "Get current canonical provider capabilities to compare against research findings"
     }
   ],
   "context_files": [],
@@ -43,6 +47,10 @@
     "include_other_conversation_context": false,
     "instructions": "Store verified provider capability findings as generalized knowledge: provider name, connection method, API availability, OAuth scopes, payout model, webhook support, and verification requirements. Distinguish verified facts from inferences. Record evidence URLs and last_researched_at dates so future runs can skip recently-verified providers. Never promote an inference into a verified fact. When new evidence contradicts a stored finding, update the finding and note what changed. Keep provider-specific facts isolated to that provider \u2014 never transfer one provider's capabilities to another."
   },
+  "voice_config": {
+    "voice_id": null
+  },
+  "emails_settings": null,
   "allow_anonymous_access": false,
   "name": "connection_discovery_agent"
 }

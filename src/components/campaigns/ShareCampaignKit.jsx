@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Copy, Check, Code2, QrCode, Download } from "lucide-react";
-import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 // The Universal Donation Button — the campaign's permanent Interplanetary Fund
 // URL packaged as a branded button anyone can embed on websites, blogs, forums,

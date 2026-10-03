@@ -13,6 +13,7 @@ import ImportedCampaignSync from "@/components/campaigns/ImportedCampaignSync";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
+import DeleteCampaignButton from "@/components/campaigns/DeleteCampaignButton";
 import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
 import DistributionPanel from "@/components/distribution/DistributionPanel";
 import FollowButton from "@/components/campaigns/FollowButton";
@@ -21,7 +22,7 @@ import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCar
 import { Loader2, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 import PageError from "@/components/PageError";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
@@ -142,6 +143,7 @@ export default function CampaignDetail() {
           {isOwner && <OutreachAgentPanel campaign={campaign} />}
           {isOwner && <CampaignHealth campaign={campaign} updatesCount={updates.length} />}
           {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
+          {isOwner && <DeleteCampaignButton campaign={campaign} />}
         </div>
       </div>
 

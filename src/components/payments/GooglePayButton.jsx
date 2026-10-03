@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
-import { computeChargeTotal } from "../../../base44/shared/fees.js";
+import { computeChargeTotal } from "@/lib/fees";
 
 // Google Pay donations processed through the platform's PayPal business
 // account (PayPal JS SDK v6 + Google Pay). Flow: create a PayPal order,

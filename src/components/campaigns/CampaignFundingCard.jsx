@@ -5,7 +5,7 @@ import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import { format } from "date-fns";
 import { Users, CalendarDays, Heart, ShieldCheck } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "../../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 // The funding + Donate Now block. Rendered high on the page on phones (so the
 // donation action is above the fold) and in the sticky sidebar on desktop.

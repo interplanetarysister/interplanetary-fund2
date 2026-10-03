@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Heart } from "lucide-react";
-import { PRELAUNCH_MODE, PRELAUNCH_PAYMENT_NOTICE } from "../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE, PRELAUNCH_PAYMENT_NOTICE } from "@/lib/prelaunch";
 
 // Public, bare-bones embeddable campaign card — designed to live inside an
 // <iframe> on external sites. Only active (non-draft) campaigns are embeddable.

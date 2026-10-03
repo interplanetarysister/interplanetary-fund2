@@ -1,6 +1,15 @@
 // Real posting integrations for platforms whose APIs work with user-supplied
-// credentials (no partner approval needed): Bluesky (app password) and
-// Mastodon (instance access token). Used by publishPost and the sync worker.
+// credentials (no partner approval needed): Bluesky (app password), Mastodon
+// (instance access token), and LinkedIn (OAuth connector with w_member_social).
+// Used by publishPost and the sync worker.
+
+// Platforms that can publish through a Base44 OAuth connector (shared mode).
+// The connector access token is retrieved server-side at publish time.
+const OAUTH_PUBLISH_PLATFORMS = new Set(['linkedin']);
+
+export function canPublishViaConnector(platform) {
+  return OAUTH_PUBLISH_PLATFORMS.has(String(platform || '').toLowerCase());
+}
 
 export function hasAiPublishingConsent(user) {
   // Canonical IFund-wide OBO is the sole authorization decision for automated
@@ -53,10 +62,57 @@ export async function publishToMastodon(instance, accessToken, text) {
   return { url: out.url || `https://${host}` };
 }
 
+// Publishes to LinkedIn using the OAuth connector access token. The
+// w_member_social scope allows posting on behalf of the authorized member.
+export async function publishToLinkedIn(accessToken, text) {
+  // Resolve the member URN from the userinfo endpoint.
+  const profileRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!profileRes.ok) throw new Error(`LinkedIn profile lookup failed (${profileRes.status}).`);
+  const profile = await profileRes.json();
+  const personId = profile.sub;
+  if (!personId) throw new Error('LinkedIn profile ID not found.');
+
+  const postRes = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+      'X-Restli-Protocol-Version': '2.0.0',
+    },
+    body: JSON.stringify({
+      author: `urn:li:person:${personId}`,
+      lifecycleState: 'PUBLISHED',
+      specificContent: {
+        'com.linkedin.ugc.PostContent': {
+          shareCommentary: { text: text.slice(0, 3000) },
+          shareMediaCategory: 'NONE',
+        },
+      },
+      visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
+    }),
+  });
+  if (!postRes.ok) {
+    const errBody = await postRes.text().catch(() => '');
+    throw new Error(`LinkedIn post failed (${postRes.status}). ${errBody.slice(0, 200)}`);
+  }
+  const out = await postRes.json();
+  const postId = out.id || '';
+  return { url: `https://www.linkedin.com/feed/update/${postId}/` };
+}
+
 // Publishes a DistributedPost through its connection. Throws on failure.
-export async function publishThroughConnection(connection, text) {
+// For OAuth connector platforms (linkedin), the caller must pass the service-
+// role client so the access token can be retrieved server-side.
+export async function publishThroughConnection(connection, text, sr) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') return publishToBluesky(c.bluesky_handle, c.bluesky_app_password, text);
   if (connection.platform === 'mastodon') return publishToMastodon(c.mastodon_instance, c.mastodon_access_token, text);
+  if (connection.platform === 'linkedin' && sr) {
+    const conn = await sr.connectors.getConnection('linkedin').catch(() => null);
+    if (!conn?.accessToken) throw new Error('LinkedIn connector is not authorized.');
+    return publishToLinkedIn(conn.accessToken, text);
+  }
   throw new Error(`Direct publishing is not available for ${connection.platform} yet.`);
 }

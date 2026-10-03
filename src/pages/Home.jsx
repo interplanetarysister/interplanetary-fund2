@@ -6,7 +6,7 @@ import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "../../base44/shared/prelaunch.js";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 

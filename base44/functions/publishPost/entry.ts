@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
@@ -55,7 +55,11 @@ export default async function(req) {
       capability: 'create_post',
       requireAutomation: connection.automation_mode === 'auto',
     });
-    if (!canAutoPublish(connection) || !actionAuthorization.ok) {
+    // Credential-based publishing (Bluesky, Mastodon) or OAuth connector
+    // publishing (LinkedIn). If neither is available, fall back to manual.
+    const canCredentialPublish = canAutoPublish(connection);
+    const canConnectorPublish = canPublishViaConnector(connection.platform);
+    if ((!canCredentialPublish && !canConnectorPublish) || !actionAuthorization.ok) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
@@ -72,7 +76,7 @@ export default async function(req) {
         await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked: ${reason}`, status: 'failure' });
         return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason });
       }
-      const { url } = await publishThroughConnection(connection, text);
+      const { url } = await publishThroughConnection(connection, text, sr);
       const updated = await base44.entities.DistributedPost.update(post_id, {
         status: 'published',
         published_at: new Date().toISOString(),
