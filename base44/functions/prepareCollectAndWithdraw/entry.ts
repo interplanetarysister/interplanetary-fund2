@@ -14,11 +14,13 @@ export default async function(req) {
     if (!hasUnifiedOboConsent(user)) return Response.json({ error: 'AI/OBO authorization is required before connected-platform collection can be prepared.' }, { status: 403 });
     const body = await req.json().catch(() => ({}));
     const campaignId = String(body.campaign_id || '');
-    const campaign = campaignId ? await base44.entities.Campaign.get(campaignId).catch(() => null) : null;
-    if (!campaign || campaign.created_by_id !== user.id) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
-
     const sr = base44.asServiceRole;
-    const connections = await sr.entities.PlatformConnection.filter({ created_by_id: user.id, campaign_id: campaign.id, kind: 'crowdfunding' }, '-updated_date', 100).catch(() => []);
+    const campaign = campaignId ? await sr.entities.Campaign.get(campaignId).catch(() => null) : null;
+    if (campaignId && (!campaign || campaign.created_by_id !== user.id)) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
+    const ownedCampaigns = campaign ? [campaign] : await sr.entities.Campaign.filter({ created_by_id: user.id }, '-created_date', 200).catch(() => []);
+    const campaignIds = new Set(ownedCampaigns.map((c) => c.id));
+    const allConnections = await sr.entities.PlatformConnection.filter({ created_by_id: user.id, kind: 'crowdfunding' }, '-updated_date', 300).catch(() => []);
+    const connections = allConnections.filter((c) => campaign ? c.campaign_id === campaign.id : (!c.campaign_id || campaignIds.has(c.campaign_id)));
     const capabilities = await sr.entities.FundraisingProviderCapability.list('-updated_date', 500).catch(() => []);
     const payoutAccounts = await sr.entities.ConnectedPayoutAccount.filter({ owner_user_id: user.id, provider: 'stripe_connect' }, '-updated_date', 5).catch(() => []);
     const payoutAccount = payoutAccounts[0] || null;
@@ -33,7 +35,7 @@ export default async function(req) {
         amount > 0 && !['observe_only','user_action_required'].includes(payoutModel);
       const eligible = technicallyEligible && payoutReady;
       return {
-        connection_id: connection.id, platform: connection.platform, amount, currency,
+        connection_id: connection.id, campaign_id: connection.campaign_id || '', platform: connection.platform, amount, currency,
         payout_model: payoutModel, status: eligible ? 'ready_for_authorization' : 'user_action_required',
         note: eligible ? '' : (!payoutReady && technicallyEligible ? 'Finish your IFund payout account setup before this source can be consolidated.' : (cap ? 'This provider cannot currently be collected automatically from this connection.' : 'Provider payout capability still requires verification.')),
       };
@@ -42,13 +44,13 @@ export default async function(req) {
     const now = Date.now();
     const operation_id = operationId();
     const authorization = await sr.entities.ExternalCollectionAuthorization.create({
-      owner_user_id: user.id, campaign_id: campaign.id, operation_id,
+      owner_user_id: user.id, campaign_id: campaign?.id || '', operation_id,
       status: 'prepared', expires_at: new Date(now + ttlMs).toISOString(),
       sources, destination_type: 'ifund_connected_account',
       authorization_text_version: AUTH_VERSION,
-      consent_snapshot: JSON.stringify({ campaign_id: campaign.id, sources: sources.map(({connection_id,platform,amount,currency,payout_model}) => ({connection_id,platform,amount,currency,payout_model})) }),
+      consent_snapshot: JSON.stringify({ campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', sources: sources.map(({connection_id,campaign_id,platform,amount,currency,payout_model}) => ({connection_id,campaign_id,platform,amount,currency,payout_model})) }),
     });
-    await logAudit(base44, { action: 'collect_withdraw_prepared', actor_user_id: user.id, target_type: 'ExternalCollectionAuthorization', target_id: authorization.id, detail: 'Prepared external collection authorization; no money moved.', status: 'success', metadata: { operation_id, campaign_id: campaign.id, source_count: sources.length } });
+    await logAudit(base44, { action: 'collect_withdraw_prepared', actor_user_id: user.id, target_type: 'ExternalCollectionAuthorization', target_id: authorization.id, detail: 'Prepared external collection authorization; no money moved.', status: 'success', metadata: { operation_id, campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', source_count: sources.length } });
     return Response.json({ ok: true, authorization_id: authorization.id, operation_id, expires_at: authorization.expires_at, payout_account_ready: payoutReady, sources,
       confirmation: 'Allow Interplanetary Fund to initiate withdrawal of available funds from the connected platforms listed here and combine successfully transferred funds into this withdrawal?' });
   } catch (error) {
