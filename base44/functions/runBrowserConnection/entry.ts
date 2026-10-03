@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 // Base44 on-demand worker for read-only external-page observations. Browserbase
 // runs execute remotely; this Deno function owns user consent and run identity.
@@ -53,10 +54,8 @@ export default async function(req) {
     if (!campaign || campaign.created_by_id !== user.id) {
       return Response.json({ error: 'Campaign ownership could not be verified.' }, { status: 403 });
     }
-    if (!(connection.obo_consent?.granted === true &&
-      connection.agent_access?.shared_with_agents === true &&
-      (connection.obo_consent?.granted_capabilities || []).includes('GET_METRICS'))) {
-      return Response.json({ error: 'Browser access is not authorized for this connection.' }, { status: 403 });
+    if (!hasUnifiedOboConsent(user)) {
+      return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
     }
     // The provisioned secret is named Browserbase_api_token (env lookups are
     // case-sensitive); keep the legacy name as a fallback.
