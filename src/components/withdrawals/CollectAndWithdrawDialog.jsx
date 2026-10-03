@@ -26,7 +26,9 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
     try {
       const {data}=await base44.functions.invoke("authorizeCollectAndWithdraw",{authorization_id:prepared.authorization_id,confirm:true});
       if(!data?.ok) throw new Error("authorization rejected");
-      setPrepared((p)=>({...p,authorized:true,status:data.status}));
+      const execution=await base44.functions.invoke("executeCollectAndWithdraw",{authorization_id:prepared.authorization_id});
+      if(!execution.data?.ok) throw new Error("execution planning rejected");
+      setPrepared((p)=>({...p,authorized:true,status:execution.data.status,sources:execution.data.sources||p.sources}));
     } catch { setError("The collection authorization could not be recorded. No external transfer was started."); }
     finally { setAuthorizing(false); }
   };
@@ -48,7 +50,7 @@ export default function CollectAndWithdrawDialog({ campaign, open, onOpenChange 
           <p className="text-xs text-muted-foreground">This authorization applies only to the listed sources in this collection operation. Provider verification or user-controlled security steps may still be required.</p>
           <Button onClick={authorize} disabled={authorizing} className="w-full rounded-xl">{authorizing?<Loader2 className="w-4 h-4 animate-spin"/>:"Allow collection from listed platforms"}</Button>
         </div>}
-        {prepared.authorized&&<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Authorization recorded. IFund may proceed only through verified provider-supported transfer adapters. Sources requiring provider action remain paused rather than being counted as collected.</div>}
+        {prepared.authorized&&<div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">Authorization recorded and supported collection routing started. IFund will not count external money as collected until settlement is independently verified. Sources requiring provider action remain paused.</div>}
         {attention.length>0&&<p className="text-xs text-muted-foreground">{attention.length} source{attention.length===1?"":"s"} currently require provider or user action and will not be represented as collected.</p>}
       </div>}
       {error&&<p className="text-sm text-destructive">{error}</p>}
