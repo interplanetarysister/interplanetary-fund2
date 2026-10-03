@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { assertOboGrant, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -28,7 +28,7 @@ export default async function(req) {
     const consentOwner = user;
     const aiConsentGranted = hasAiPublishingConsent(consentOwner);
     if (!aiConsentGranted) {
-      return Response.json({ error: 'AI preparation and publishing authorization is not active.' }, { status: 403 });
+      return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
     }
     const access = await assertPlatformAccess(sr, 'social_publish');
     if (!access.ok) {
@@ -64,9 +64,15 @@ export default async function(req) {
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-      const obo = await assertOboGrant(sr, 'platform_outreach_agent', campaign.created_by_id, 'social_publish', connection);
-      const connectionAutomationAllowed = obo.ok && connection.agent_access?.automation_enabled === true;
-      if (!canAutoPublish(connection) || !aiConsentGranted || !connectionAutomationAllowed) {
+      const obo = await assertExternalAgentAction(sr, {
+        ownerUser: consentOwner,
+        ownerUserId: campaign.created_by_id,
+        campaign,
+        connection,
+        capability: 'create_post',
+        requireAutomation: false,
+      });
+      if (!canAutoPublish(connection) || !aiConsentGranted || !obo.ok) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
