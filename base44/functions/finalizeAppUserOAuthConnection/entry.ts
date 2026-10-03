@@ -44,6 +44,7 @@ const CONFIG: Record<string, { kind: string; requestedCapabilities: string[] }> 
   youtube: { kind: 'social', requestedCapabilities: COMMON_IF_CAPABILITIES },
   patreon: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
   eventbrite: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  gumroad: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
 };
 
 function providerCapabilities(oauth: any): string[] {

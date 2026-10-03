@@ -23,12 +23,8 @@ export const OAUTH_ENV: Record<string, string> = {
   instagram: 'APP_USER_CONNECTOR_INSTAGRAM_ID',
   discord: 'APP_USER_CONNECTOR_DISCORD_ID',
   tiktok: 'APP_USER_CONNECTOR_TIKTOK_ID',
-  threads: 'APP_USER_CONNECTOR_THREADS_ID',
-  x: 'APP_USER_CONNECTOR_X_ID',
-  pinterest: 'APP_USER_CONNECTOR_PINTEREST_ID',
-  reddit: 'APP_USER_CONNECTOR_REDDIT_ID',
-  youtube: 'APP_USER_CONNECTOR_YOUTUBE_ID',
   eventbrite: 'APP_USER_CONNECTOR_EVENTBRITE_ID',
+  gumroad: 'APP_USER_CONNECTOR_GUMROAD_ID',
 };
 
 // Platforms that connect via a pasted URL and owner-reported totals. No provider
