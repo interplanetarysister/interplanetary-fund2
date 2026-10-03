@@ -177,7 +177,7 @@ export async function assertExternalAgentAction(sr, {
     ...(connection.obo_consent?.provider_capabilities || []),
     ...(connection.obo_consent?.granted_capabilities || []),
   ]);
-  if (capability && known.size > 0 && !known.has(capability)) {
+  if (capability && !known.has(capability)) {
     return { ok: false, reason: `provider capability ${capability} is not granted` };
   }
   return { ok: true };
