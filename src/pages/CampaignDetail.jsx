@@ -9,6 +9,7 @@ import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
+import ImportedCampaignSync from "@/components/campaigns/ImportedCampaignSync";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
@@ -135,6 +136,7 @@ export default function CampaignDetail() {
             </div>
           )}
 
+          {isOwner && <ImportedCampaignSync campaign={campaign} onSynced={load} />}
           {isOwner && <CashAppSettings campaign={campaign} onSaved={load} />}
           {isOwner && <EditAIInstructionsDialog campaign={campaign} onSaved={load} />}
           {isOwner && <OutreachAgentPanel campaign={campaign} />}
