@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
-import { assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
@@ -59,7 +59,17 @@ export default async function(req) {
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
       const consentGranted = hasAiPublishingConsent(owner);
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed(connection) && ownerChainMatches && consentGranted && access.ok) {
+      const actionAuthorization = owner && ownerUserId
+        ? await assertExternalAgentAction(sr, {
+            ownerUser: owner,
+            ownerUserId,
+            campaign,
+            connection,
+            capability: 'create_post',
+            requireAutomation: true,
+          })
+        : { ok: false, reason: 'owner unavailable' };
+      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && connectionAutomationAllowed(connection) && ownerChainMatches && consentGranted && access.ok && actionAuthorization.ok) {
         try {
           const { url } = await publishThroughConnection(connection, text);
           await sr.entities.DistributedPost.update(post.id, {
@@ -100,7 +110,9 @@ export default async function(req) {
             : connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
             ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }
             : connection.automation_mode === 'auto' && canAutoPublish(connection) && !consentGranted
-              ? { error: 'Automatic publishing blocked: AI publishing authorization is not active.' }
+              ? { error: 'Automatic publishing blocked: AI OBO authorization is not active.' }
+            : connection.automation_mode === 'auto' && !actionAuthorization.ok
+              ? { error: `Automatic publishing blocked: ${actionAuthorization.reason}.` }
             : {}),
         });
         await sr.entities.Notification.create({
