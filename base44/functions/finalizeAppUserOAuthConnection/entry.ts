@@ -68,7 +68,12 @@ export default async function(req) {
     const { platform, shared_agent_consent } = await req.json().catch(() => ({}));
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
-    const sharedAgentConsent = shared_agent_consent === true;
+    // IFund-wide OBO authorization is canonical. The explicit connection-flow
+    // value remains supported, and legacy grants are honored during migration.
+    const sharedAgentConsent = shared_agent_consent === true ||
+      user.ai_obo_consent?.granted === true ||
+      user.ai_publishing_consent?.granted === true ||
+      user.ai_connection_consent?.granted === true;
     const envName = OAUTH_ENV[key];
     const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
@@ -93,7 +98,7 @@ export default async function(req) {
       obo_consent: {
         granted: sharedAgentConsent,
         granted_at: sharedAgentConsent ? now : null,
-        permission_version: '2026-09-comprehensive-platform-v1',
+        permission_version: '2026-10-unified-obo-v1',
         requested_capabilities: cfg.requestedCapabilities,
         // Never copy desired capabilities into granted/provider capabilities.
         // Unknown remains unknown until the connector/provider reports it.
