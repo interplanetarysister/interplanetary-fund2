@@ -12,6 +12,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AdminRoute from '@/components/AdminRoute';
 import Home from './pages/Home'; import Login from './pages/Login'; import Register from './pages/Register'; import ForgotPassword from './pages/ForgotPassword'; import ResetPassword from './pages/ResetPassword'; import Layout from './components/Layout'; import Dashboard from './pages/Dashboard'; import Discover from './pages/Discover'; import CreateCampaign from './pages/CreateCampaign'; import CampaignDetail from './pages/CampaignDetail'; import MyGiving from './pages/MyGiving'; import Communications from './pages/Communications'; import MissionControlPage from './pages/MissionControlPage'; import Community from './pages/Community'; import CommunityDetail from './pages/CommunityDetail'; import Institutions from './pages/Institutions'; import InstitutionDetail from './pages/InstitutionDetail'; import Analytics from './pages/Analytics'; import Platform from './pages/Platform'; import Onboarding from './pages/Onboarding'; import Profile from './pages/Profile'; import Connections from './pages/Connections'; import Inbox from './pages/Inbox'; import FollowedCampaigns from './pages/FollowedCampaigns'; import Notifications from './pages/Notifications'; import Subscriptions from './pages/Subscriptions'; import Withdrawals from './pages/Withdrawals'; import GlobalGlobe from './pages/GlobalGlobe'; import EmbedCampaign from './pages/EmbedCampaign'; import Agents from './pages/Agents'; import OpsCenter from './pages/OpsCenter'; import FacebookGroups from './pages/FacebookGroups'; import OAuthConsent from './pages/OAuthConsent'; import Connect from './pages/Connect'; import ExternalAccounts from './pages/ExternalAccounts'; import IntegrationsAdmin from './pages/IntegrationsAdmin'; import Help from './pages/Help'; import About from './pages/About'; import Contact from './pages/Contact'; import Social from './pages/Social';
 import BrandLogo from "@/components/brand/BrandLogo";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -41,6 +42,6 @@ const AuthenticatedApp = () => {
 
 function App() {
   useEffect(() => { const mq = window.matchMedia("(prefers-color-scheme: dark)"); const apply = (e) => document.documentElement.classList.toggle("dark", e.matches); apply(mq); mq.addEventListener("change", apply); return () => mq.removeEventListener("change", apply); }, []);
-  return <AuthProvider><QueryClientProvider client={queryClientInstance}><Router><ScrollToTop /><TermsAcceptance><AuthenticatedApp /></TermsAcceptance></Router><Toaster /></QueryClientProvider></AuthProvider>;
+  return <ErrorBoundary><AuthProvider><QueryClientProvider client={queryClientInstance}><Router><ScrollToTop /><TermsAcceptance><AuthenticatedApp /></TermsAcceptance></Router><Toaster /></QueryClientProvider></AuthProvider></ErrorBoundary>;
 }
 export default App;
