@@ -24,7 +24,7 @@ import {
   parseHealthResponse,
   parseRegistryResponse,
 } from '../src/lib/integrationRegistryContracts.js';
-import { isUnifiedOboRevoked } from '../base44/shared/integrationRegistry.ts';
+import { isUnifiedOboRevoked } from '../base44/shared/unifiedOboPolicy.js';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 const manage = read('base44/functions/managePlatformAccess/entry.ts');

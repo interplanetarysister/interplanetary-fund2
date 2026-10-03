@@ -14,6 +14,7 @@ const broadcast = read('base44/functions/broadcastPosts/entry.ts');
 const update = read('base44/functions/postCampaignUpdate/entry.ts');
 const unifiedConsent = read('base44/functions/setUnifiedOboConsent/entry.ts');
 const consentCard = read('src/components/connections/AIConsentCard.jsx');
+const connectionsPage = read('src/pages/Connections.jsx');
 
 assert.match(entitlement, /user\?\.role === 'admin'/);
 assert.match(entitlement, /TOP_SUBSCRIPTION_TIER = 'enterprise'/);
@@ -38,5 +39,8 @@ assert.match(unifiedConsent, /partial: failed\.length > 0/);
 assert.match(unifiedConsent, /status: failed\.length > 0 \? 207 : 200/);
 assert.doesNotMatch(consentCard, /\|\| \{ granted, decided_at:/);
 assert.match(consentCard, /payload\.partial/);
+assert.match(connectionsPage, /ai_obo_consent: value/);
+assert.match(connectionsPage, /ai_publishing_consent: value/);
+assert.match(connectionsPage, /ai_connection_consent: value/);
 
 console.log('Unified owner authorization and fail-closed per-connection OBO contract verified.');

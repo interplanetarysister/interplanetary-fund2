@@ -228,7 +228,15 @@ export default function Connections() {
       </div>
 
       <div className="mb-8">
-        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_publishing_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_connection_consent: v }))} />
+        <AIConsentCard
+          user={user}
+          onChanged={(value) => setUser((current) => ({
+            ...current,
+            ai_obo_consent: value,
+            ai_publishing_consent: value,
+            ai_connection_consent: value,
+          }))}
+        />
       </div>
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (

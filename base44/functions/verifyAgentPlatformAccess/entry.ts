@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { assertOboGrant, isUnifiedOboRevoked } from '../../shared/integrationRegistry.ts';
+import { assertOboGrant } from '../../shared/integrationRegistry.ts';
+import { isUnifiedOboRevoked } from '../../shared/unifiedOboPolicy.js';
 import { effectiveIntegrationStatus, safeIntegrationPlatform } from '../../shared/integrationStatusPolicy.js';
 
 // Agent-access gatekeeper. Before an agent (or a backend function acting on an

@@ -6,7 +6,7 @@ import { ShieldCheck, ShieldOff, Sparkles } from "lucide-react";
 // The AI Authorization agreement. AI never publishes to a connected campaign or
 // social account without this explicit, revocable license — and even with it,
 // per-platform automation settings still govern every destination.
-export default function AIConsentCard({ user, onChanged, onConnectionChanged }) {
+export default function AIConsentCard({ user, onChanged }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const consent = user?.ai_obo_consent || user?.ai_publishing_consent || user?.ai_connection_consent;
@@ -21,7 +21,6 @@ export default function AIConsentCard({ user, onChanged, onConnectionChanged }) 
         throw new Error("Invalid authorization response");
       }
       onChanged?.(value);
-      onConnectionChanged?.(value);
       setError(payload.partial
         ? "Your AI choice was saved, but some connected platforms could not be updated. Retry to finish applying it everywhere."
         : "");
