@@ -111,7 +111,7 @@ export default async function(req) {
       },
       agent_access: {
         shared_with_agents: sharedAgentConsent,
-        automation_enabled: sharedAgentConsent && (existing ? (existing.agent_access?.automation_enabled || existing.automation_mode === 'auto') : true),
+        automation_enabled: sharedAgentConsent && (existing?.automation_mode || 'auto') === 'auto',
       },
       status: 'connected',
       verification_status: 'verified',
