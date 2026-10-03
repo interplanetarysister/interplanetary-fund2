@@ -52,7 +52,11 @@ async function validateEntry(sr, e, now) {
   if (PLATFORM_SECRETS[p]) {
     const { names, missing } = checkSecrets(p);
     checks.push({ check: 'secret_refs_present', ok: missing.length === 0, detail: missing.length ? `missing ${missing.join(', ')}` : `${names.length} reference(s) present` });
-    if (missing.length) { status = 'MISCONFIGURED'; lastFailure = `Missing secret reference(s): ${missing.join(', ')}`; }
+    // Optional integrations (e.g. OpenAI when Base44 Core InvokeLLM is the
+    // primary LLM path) do not make the platform unhealthy when their secrets
+    // are absent. They remain ACTIVE with an informational note instead.
+    if (missing.length && !e.optional) { status = 'MISCONFIGURED'; lastFailure = `Missing secret reference(s): ${missing.join(', ')}`; }
+    if (missing.length && e.optional) { checks.push({ check: 'optional_not_configured', ok: true, detail: 'Optional integration not configured; platform is healthy without it.' }); }
     if (p === 'paypal') {
       const mode = (secrets.get('PAYPAL_MODE') || '').toLowerCase();
       if (mode.includes('sandbox') && e.environment === 'production') {

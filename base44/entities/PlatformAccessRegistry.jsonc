@@ -54,6 +54,11 @@
       ],
       "default": "production"
     },
+    "optional": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this integration is optional/unused \u2014 missing secrets do not make the platform unhealthy. Set for integrations that enhance capability but are not required for platform operation."
+    },
     "authorized_agents": {
       "type": "array",
       "items": {

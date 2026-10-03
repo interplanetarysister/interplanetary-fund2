@@ -1,1 +1,277 @@
-{"name":"FundraisingProviderCapability","type":"object","properties":{"platform":{"type":"string"},"display_name":{"type":"string"},"campaign_import":{"type":"boolean","default":false},"campaign_sync":{"type":"boolean","default":false},"balance_read":{"type":"boolean","default":false},"payout_model":{"type":"string","enum":["direct_to_connected_account","api_transfer","automatic_payout","authorized_interactive","user_action_required","observe_only"],"default":"observe_only"},"payout_destination_configurable":{"type":"boolean","default":false},"api_transfer":{"type":"boolean","default":false},"authenticated_browser":{"type":"boolean","default":false},"requires_transaction_authorization":{"type":"boolean","default":true},"supported_transports":{"type":"array","items":{"type":"string"}},"supported_currencies":{"type":"array","items":{"type":"string"}},"supported_countries":{"type":"array","items":{"type":"string"}},"capability_status":{"type":"string","enum":["verified","partial","research_required","unsupported"],"default":"research_required"},"evidence_url":{"type":"string"},"evidence_checked_at":{"type":"string","format":"date-time"},"notes":{"type":"string"}},"required":["platform","display_name","payout_model"],"rls":{"read":{},"create":{"user_condition":{"role":"admin"}},"update":{"user_condition":{"role":"admin"}},"delete":{"user_condition":{"role":"admin"}}}}
+{
+  "name": "FundraisingProviderCapability",
+  "type": "object",
+  "properties": {
+    "platform": {
+      "type": "string",
+      "description": "Stable provider key matching PlatformConnection.platform (e.g. 'gofundme', 'kofi')."
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Canonical human-readable provider name."
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Alternative names, former names, or common misspellings for lookup matching."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "crowdfunding",
+        "social",
+        "creator_support",
+        "donation",
+        "event",
+        "custom"
+      ],
+      "default": "crowdfunding",
+      "description": "Provider category for filtering and routing."
+    },
+    "domain": {
+      "type": "string",
+      "description": "Provider website URL (e.g. 'https://gofundme.com')."
+    },
+    "documentation_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Links to API docs, payout docs, or developer resources."
+    },
+    "campaign_import": {
+      "type": "boolean",
+      "default": false
+    },
+    "campaign_sync": {
+      "type": "boolean",
+      "default": false
+    },
+    "balance_read": {
+      "type": "boolean",
+      "default": false
+    },
+    "payout_model": {
+      "type": "string",
+      "enum": [
+        "direct_to_connected_account",
+        "api_transfer",
+        "automatic_payout",
+        "authorized_interactive",
+        "user_action_required",
+        "observe_only"
+      ],
+      "default": "observe_only"
+    },
+    "payout_destination_configurable": {
+      "type": "boolean",
+      "default": false
+    },
+    "api_transfer": {
+      "type": "boolean",
+      "default": false
+    },
+    "authenticated_browser": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether browser-driven automation is a viable connection transport."
+    },
+    "connection_strategy": {
+      "type": "string",
+      "enum": [
+        "oauth",
+        "api_key",
+        "browser",
+        "webhook",
+        "manual",
+        "observe_only"
+      ],
+      "default": "manual",
+      "description": "Primary connection method IFund should use for this provider."
+    },
+    "account_creation_capability": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether new accounts can be created on this provider."
+    },
+    "delegated_account_creation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether OBO/delegated account creation is permitted by provider terms."
+    },
+    "ownership_model": {
+      "type": "string",
+      "description": "How accounts are owned: individual, organization, team, or platform-owned."
+    },
+    "publishing_capabilities": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether content/campaign posts can be published to this provider."
+    },
+    "social_publishing": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether social media posts can be published."
+    },
+    "messaging_capability": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether direct messaging is supported."
+    },
+    "webhook_support": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the provider supports webhook event notifications."
+    },
+    "poll_support": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the provider supports polling for updates."
+    },
+    "withdrawal_initiation": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether IFund can initiate a withdrawal/payout via API."
+    },
+    "session_persistence": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether authenticated browser sessions can persist for automation."
+    },
+    "verification_requirements": {
+      "type": "string",
+      "description": "KYC, identity verification, or provider-specific verification steps required."
+    },
+    "restrictions": {
+      "type": "string",
+      "description": "Provider terms or restrictions relevant to integration."
+    },
+    "requires_transaction_authorization": {
+      "type": "boolean",
+      "default": true
+    },
+    "supported_transports": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supported_currencies": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "supported_countries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "capability_status": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "partial",
+        "research_required",
+        "unsupported"
+      ],
+      "default": "research_required"
+    },
+    "implementation_status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "implemented",
+        "blocked"
+      ],
+      "default": "not_started",
+      "description": "IFund software implementation state for this provider."
+    },
+    "test_status": {
+      "type": "string",
+      "enum": [
+        "untested",
+        "passing",
+        "failing"
+      ],
+      "default": "untested"
+    },
+    "adapter_reference": {
+      "type": "string",
+      "description": "Reference to the backend function or shared module implementing this provider's adapter."
+    },
+    "health_state": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "supported_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Verified actions IFund can perform with this provider."
+    },
+    "unsupported_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Actions IFund cannot perform with this provider."
+    },
+    "manual_required_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Actions that always require user intervention (CAPTCHA, identity verification, legal acceptance)."
+    },
+    "evidence_url": {
+      "type": "string"
+    },
+    "evidence_checked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_researched_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the Connection Discovery Agent last researched this provider."
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "platform",
+    "display_name",
+    "payout_model"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
