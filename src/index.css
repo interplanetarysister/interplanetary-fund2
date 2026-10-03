@@ -173,6 +173,17 @@
   .dark .border-neutral-400 {
     border-color: hsl(var(--border)) !important;
   }
+
+  /* DARK-MODE DIVIDER VISIBILITY: divide-* utilities create borders between
+     list items. Map light dividers to the theme border token. */
+  .dark .divide-stone-100 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-stone-200 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: hsl(var(--border)) !important;
+  }
 }
 
 @layer base {
