@@ -70,9 +70,11 @@ export default async function(req) {
           const hasDeps = (donations?.length || 0) + (finOps?.length || 0) + (posts?.length || 0) +
             (updates?.length || 0) + (conns?.length || 0) + (withdrawals?.length || 0) + (follows?.length || 0) > 0;
           if (hasDeps) {
-            // Preserve the campaign — it has user/financial content. Mark it
-            // as a duplicate but do not destroy it.
-            await sr.entities.Campaign.update(dup.campaign_id, { status: 'completed' }).catch(() => {});
+            // Preserve the campaign exactly as-is. A concurrency duplicate with
+            // dependencies is not evidence that the campaign is completed, and
+            // changing its lifecycle status would falsify user/business state.
+            // The canonical import remains authoritative for this connection;
+            // dependent duplicate content is retained for explicit reconciliation.
           } else {
             await sr.entities.Campaign.delete(dup.campaign_id).catch(() => {});
           }
