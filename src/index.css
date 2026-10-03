@@ -1,36 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
-
-/* Form clarity: text-entry surfaces should read as intentional, interactive controls
-   without changing component behavior or horizontal layout. */
-@layer base {
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  textarea {
-    @apply bg-white text-slate-950 border-slate-300 shadow-sm transition-[border-color,box-shadow,background-color] duration-150;
-    color: #020617 !important;
-    -webkit-text-fill-color: #020617 !important;
-    caret-color: #0891b2 !important;
-  }
-
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):hover,
-  textarea:hover {
-    @apply border-slate-400;
-  }
-
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
-  textarea:focus {
-    @apply border-primary ring-2 ring-primary/15 outline-none;
-  }
-
-  input::placeholder,
-  textarea::placeholder {
-    @apply text-slate-500;
-    color: #64748b !important;
-    -webkit-text-fill-color: #64748b !important;
-    opacity: 1;
-  }
-}
 @tailwind components;
 @tailwind utilities;
 
@@ -108,6 +78,100 @@
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 215 28% 20%;
     --sidebar-ring: 199 89% 48%;
+  }
+
+  /* ── DARK-MODE TEXT VISIBILITY ──────────────────────────────────────────
+     Pages use hardcoded dark text classes (text-stone-900, text-slate-950,
+     etc.) that were written for light mode. When the theme switches to dark,
+     --background turns dark but these classes stay dark → invisible text.
+     Map every hardcoded dark/medium text class to a theme-aware token so
+     headings, labels, body text, and muted text stay readable in dark mode
+     across every page, section, and component. */
+  .dark .text-stone-900,
+  .dark .text-slate-950,
+  .dark .text-slate-900,
+  .dark .text-stone-950,
+  .dark .text-gray-900,
+  .dark .text-zinc-900,
+  .dark .text-neutral-900,
+  .dark .text-stone-800,
+  .dark .text-slate-800,
+  .dark .text-gray-800,
+  .dark .text-zinc-800,
+  .dark .text-neutral-800 {
+    color: hsl(var(--foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  }
+
+  .dark .text-stone-700,
+  .dark .text-slate-700,
+  .dark .text-gray-700,
+  .dark .text-zinc-700,
+  .dark .text-neutral-700,
+  .dark .text-stone-600,
+  .dark .text-slate-600,
+  .dark .text-gray-600,
+  .dark .text-zinc-600,
+  .dark .text-neutral-600,
+  .dark .text-stone-500,
+  .dark .text-slate-500,
+  .dark .text-gray-500,
+  .dark .text-zinc-500,
+  .dark .text-neutral-500,
+  .dark .text-stone-400,
+  .dark .text-slate-400,
+  .dark .text-gray-400,
+  .dark .text-zinc-400,
+  .dark .text-neutral-400 {
+    color: hsl(var(--muted-foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--muted-foreground)) !important;
+  }
+
+  /* DARK-MODE SURFACE VISIBILITY: hardcoded light backgrounds (bg-white,
+     bg-stone-100, etc.) stay light in dark mode, creating jarring white
+     cards and causing light-text-on-light-background invisibility. Map
+     them to theme-aware card/muted tokens so surfaces and text stay
+     readable. */
+  .dark .bg-white,
+  .dark .bg-stone-50,
+  .dark .bg-slate-50,
+  .dark .bg-gray-50,
+  .dark .bg-zinc-50,
+  .dark .bg-neutral-50,
+  .dark .bg-stone-100,
+  .dark .bg-slate-100,
+  .dark .bg-gray-100,
+  .dark .bg-zinc-100,
+  .dark .bg-neutral-100 {
+    background-color: hsl(var(--card)) !important;
+  }
+
+  .dark .bg-stone-200,
+  .dark .bg-slate-200,
+  .dark .bg-gray-200,
+  .dark .bg-zinc-200,
+  .dark .bg-neutral-200 {
+    background-color: hsl(var(--muted)) !important;
+  }
+
+  /* DARK-MODE BORDER VISIBILITY: hardcoded light borders disappear on dark
+     surfaces. Map them to the theme border token. */
+  .dark .border-stone-200,
+  .dark .border-slate-200,
+  .dark .border-gray-200,
+  .dark .border-zinc-200,
+  .dark .border-neutral-200,
+  .dark .border-stone-300,
+  .dark .border-slate-300,
+  .dark .border-gray-300,
+  .dark .border-zinc-300,
+  .dark .border-neutral-300,
+  .dark .border-stone-400,
+  .dark .border-slate-400,
+  .dark .border-gray-400,
+  .dark .border-zinc-400,
+  .dark .border-neutral-400 {
+    border-color: hsl(var(--border)) !important;
   }
 }
 
@@ -270,15 +334,32 @@
     caret-color: #22d3ee !important;
   }
 
-  /* Android WebView readiness: kill default rubber-band / scroll-chaining on
-     the page and main scroll areas. PullToRefresh sets its own overscroll
-     inline on its container, so it keeps working. */
+  /* SINGLE-TOUCH SCROLL: one finger scrolls every part of the platform — web,
+     installed app, every viewport. No page-level rule requires a second finger
+     or a horizontal pan. PullToRefresh sets its own overscroll inline on its
+     container, so it keeps working. */
   html, body, #root {
     width: 100%;
     min-height: 100%;
     overflow-x: hidden;
-    overscroll-behavior-x: none;
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Every scrollable region scrolls with a single touch and never chains
+     scroll to its parent — the page scroll is always the fallback. */
+  [class*="overflow-y-auto"],
+  [class*="overflow-auto"],
+  [class*="overflow-y-scroll"],
+  [class*="overflow-scroll"],
+  [data-page-scroll],
+  nav[class*="overflow"],
+  [role="menu"],
+  [role="listbox"],
+  [role="log"] {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
   }
 
@@ -315,6 +396,38 @@
   button.bg-secondary, [role="button"].bg-secondary {
     color: hsl(var(--secondary-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--secondary-foreground)) !important;
+  }
+  button.bg-destructive, [role="button"].bg-destructive {
+    color: hsl(var(--destructive-foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--destructive-foreground)) !important;
+  }
+
+  /* Gradient and solid-color buttons: text must stay white on colored
+     backgrounds in every theme mode. Covers the brand gradient and all
+     solid color buttons used across the platform. */
+  button[class*="bg-gradient-to"], [role="button"][class*="bg-gradient-to"],
+  button[class*="from-cyan"], [role="button"][class*="from-cyan"],
+  button[class*="from-blue"], [role="button"][class*="from-blue"],
+  button[class*="from-violet"], [role="button"][class*="from-violet"],
+  button[class*="from-emerald"], [role="button"][class*="from-emerald"],
+  button[class*="from-red"], [role="button"][class*="from-red"],
+  button[class*="from-amber"], [role="button"][class*="from-amber"],
+  button.bg-cyan-400, [role="button"].bg-cyan-400,
+  button.bg-cyan-500, [role="button"].bg-cyan-500,
+  button.bg-blue-500, [role="button"].bg-blue-500,
+  button.bg-blue-600, [role="button"].bg-blue-600,
+  button.bg-violet-500, [role="button"].bg-violet-500,
+  button.bg-violet-600, [role="button"].bg-violet-600,
+  button.bg-emerald-500, [role="button"].bg-emerald-500,
+  button.bg-emerald-600, [role="button"].bg-emerald-600,
+  button.bg-red-500, [role="button"].bg-red-500,
+  button.bg-red-600, [role="button"].bg-red-600,
+  button.bg-amber-500, [role="button"].bg-amber-500,
+  button.bg-green-500, [role="button"].bg-green-500,
+  button.bg-green-600, [role="button"].bg-green-600,
+  a[class*="bg-gradient-to"] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
   }
 
   button:focus-visible, [role="button"]:focus-visible, [role="menuitem"]:focus-visible, [role="option"]:focus-visible {
@@ -490,12 +603,12 @@
     opacity: .72;
   }
 
-  button:disabled:not(.bg-primary):not(.bg-destructive):not(.bg-secondary),
-  [role="button"][aria-disabled="true"]:not(.bg-primary):not(.bg-destructive):not(.bg-secondary) {
-    color: #475569 !important;
-    -webkit-text-fill-color: #475569 !important;
-    background-color: #f8fafc !important;
-    border-color: #cbd5e1 !important;
+  button:disabled:not(.bg-primary):not(.bg-destructive):not(.bg-secondary):not([class*="bg-gradient"]),
+  [role="button"][aria-disabled="true"]:not(.bg-primary):not(.bg-destructive):not(.bg-secondary):not([class*="bg-gradient"]) {
+    color: hsl(var(--muted-foreground)) !important;
+    -webkit-text-fill-color: hsl(var(--muted-foreground)) !important;
+    background-color: hsl(var(--muted)) !important;
+    border-color: hsl(var(--border)) !important;
   }
 
   button svg,
