@@ -135,8 +135,12 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
 
             {connectedSocial.length === 0 && (
               <p className="text-xs text-slate-500 mt-2">
-                Connect social accounts in <a href="/connections" className="text-cyan-400 hover:underline">Connections</a> to enable cross-posting.
+                No connected platforms have a verified sharing path yet. <a href="/connections" className="text-cyan-400 hover:underline">Manage connections</a>
               </p>
+            )}
+
+            {crossPost.length > 0 && (
+              <p className="text-[11px] text-slate-500 mt-2">Selecting Publish authorizes this post to the selected destinations.</p>
             )}
 
             <DialogFooter className="mt-4">
