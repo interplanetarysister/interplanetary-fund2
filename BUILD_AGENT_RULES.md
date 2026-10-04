@@ -60,6 +60,14 @@ Every installed function, agent, workflow, page, and subsystem must have a verif
 
 Do not promote external platforms for their own sake. Platform-specific architecture, success patterns, and campaign-fit intelligence belong to specialist agents/internal routing unless the human specifically asks for that information.
 
+## Provider-tested publishing rule
+
+Connecting a platform establishes the provider permissions the human approved; it is not recurring permission to publish arbitrary content. For an individual post/share flow, the human's deliberate click on the final **Publish** control is the explicit authorization to publish that exact prepared content to the external destinations selected at that moment. Immediately before submission, show the connected destinations as selectable controls and allow the human to select/deselect them. Never publish to an unselected destination.
+
+A destination may be shown as directly publishable only when current verified IFund capability evidence confirms the exact action works for that provider/account/connection. Use IFund/platform-owned test accounts to pretest provider adapters and record the result in the canonical provider-capability registry so ordinary users are not the first production test. A connected destination whose direct publishing action is not verified must not silently fail or pretend to support publishing. Where provider rules permit a manual share and IFund has actually tested the workflow, offer the tested copy/paste or provider share handoff instead. Label unsupported/unverified actions internally and keep them out of the selectable direct-publish set.
+
+Provider testing must use legitimate provider-supported accounts, APIs, OAuth, share interfaces, and browser flows; respect provider terms, rate limits, CAPTCHA, identity checks, and other required human/provider controls. Never infer capability merely from having credentials or a successful login.
+
 ## Validation batching rule
 
 Do not run long production builds, runtime suites, or full validation after every small repository edit. Perform targeted source checks while repairing, accumulate coherent changes, and run full verification at meaningful checkpoints or before publish/release. A repository touch alone is not a reason to consume build/runtime resources.
