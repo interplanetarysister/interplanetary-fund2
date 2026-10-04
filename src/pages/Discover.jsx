@@ -59,7 +59,7 @@ export default function Discover() {
           <button key={c} onClick={() => setCategory(c)}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               category === c
-                ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-md shadow-blue-500/20"
+                ? "bg-blue-700 text-white shadow-md shadow-blue-500/20"
                 : "bg-white border border-stone-200 text-stone-600 hover:border-primary/40 hover:text-primary"
             }`}>
             {c === "all" ? "All" : categoryLabels[c]}
@@ -80,7 +80,7 @@ export default function Discover() {
         </p>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((c) => <div key={c.id} className="min-w-0"><CampaignCard campaign={c} /><button type="button" onClick={() => toggleCompare(c.id)} disabled={!compareIds.includes(c.id) && compareIds.length >= 3} aria-pressed={compareIds.includes(c.id)} className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 disabled:cursor-not-allowed disabled:opacity-40">{compareIds.includes(c.id) ? "Remove from comparison" : "Compare campaign"}</button></div>)}
+          {filtered.map((c) => <div key={c.id} className="min-w-0"><CampaignCard campaign={c} /><button type="button" onClick={() => toggleCompare(c.id)} disabled={!compareIds.includes(c.id) && compareIds.length >= 3} aria-pressed={compareIds.includes(c.id)} className="mt-2 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-medium text-stone-700 disabled:cursor-not-allowed disabled:opacity-70 disabled:bg-stone-100">{compareIds.includes(c.id) ? "Remove from comparison" : "Compare campaign"}</button></div>)}
         </div>
       )}
     </PullToRefresh>

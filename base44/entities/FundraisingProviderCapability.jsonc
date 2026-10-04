@@ -27,19 +27,16 @@
         "event",
         "custom"
       ],
-      "default": "crowdfunding",
-      "description": "Provider category for filtering and routing."
+      "default": "crowdfunding"
     },
     "domain": {
-      "type": "string",
-      "description": "Provider website URL (e.g. 'https://gofundme.com')."
+      "type": "string"
     },
     "documentation_urls": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Links to API docs, payout docs, or developer resources."
+      }
     },
     "campaign_import": {
       "type": "boolean",
@@ -75,8 +72,7 @@
     },
     "authenticated_browser": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether browser-driven automation is a viable connection transport."
+      "default": false
     },
     "connection_strategy": {
       "type": "string",
@@ -88,65 +84,74 @@
         "manual",
         "observe_only"
       ],
-      "default": "manual",
-      "description": "Primary connection method IFund should use for this provider."
+      "default": "manual"
     },
     "account_creation_capability": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether new accounts can be created on this provider."
+      "default": false
     },
     "delegated_account_creation": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether OBO/delegated account creation is permitted by provider terms."
+      "default": false
     },
     "ownership_model": {
-      "type": "string",
-      "description": "How accounts are owned: individual, organization, team, or platform-owned."
+      "type": "string"
     },
     "publishing_capabilities": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether content/campaign posts can be published to this provider."
+      "default": false
     },
     "social_publishing": {
       "type": "boolean",
+      "default": false
+    },
+    "direct_publish_verified": {
+      "type": "boolean",
       "default": false,
-      "description": "Whether social media posts can be published."
+      "description": "True only after IFund successfully exercises the provider's direct publishing action with an authorized IFund/platform-owned test account or equivalent provider test environment."
+    },
+    "manual_share_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only after IFund verifies a user-facing manual share/copy-paste handoff actually works for this provider."
+    },
+    "publish_tested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "publish_test_account_reference": {
+      "type": "string",
+      "description": "Non-secret reference to the IFund/platform-owned account or provider test environment used to verify publishing. Never store credentials here."
+    },
+    "manual_share_method": {
+      "type": "string",
+      "description": "Tested manual fallback such as copy_paste, provider_share_url, bio_link, or none."
     },
     "messaging_capability": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether direct messaging is supported."
+      "default": false
     },
     "webhook_support": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the provider supports webhook event notifications."
+      "default": false
     },
     "poll_support": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the provider supports polling for updates."
+      "default": false
     },
     "withdrawal_initiation": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether IFund can initiate a withdrawal/payout via API."
+      "default": false
     },
     "session_persistence": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether authenticated browser sessions can persist for automation."
+      "default": false
     },
     "verification_requirements": {
-      "type": "string",
-      "description": "KYC, identity verification, or provider-specific verification steps required."
+      "type": "string"
     },
     "restrictions": {
-      "type": "string",
-      "description": "Provider terms or restrictions relevant to integration."
+      "type": "string"
     },
     "requires_transaction_authorization": {
       "type": "boolean",
@@ -188,8 +193,7 @@
         "implemented",
         "blocked"
       ],
-      "default": "not_started",
-      "description": "IFund software implementation state for this provider."
+      "default": "not_started"
     },
     "test_status": {
       "type": "string",
@@ -201,8 +205,7 @@
       "default": "untested"
     },
     "adapter_reference": {
-      "type": "string",
-      "description": "Reference to the backend function or shared module implementing this provider's adapter."
+      "type": "string"
     },
     "health_state": {
       "type": "string",
@@ -218,22 +221,19 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Verified actions IFund can perform with this provider."
+      }
     },
     "unsupported_actions": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Actions IFund cannot perform with this provider."
+      }
     },
     "manual_required_actions": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Actions that always require user intervention (CAPTCHA, identity verification, legal acceptance)."
+      }
     },
     "evidence_url": {
       "type": "string"
@@ -244,8 +244,7 @@
     },
     "last_researched_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "When the Connection Discovery Agent last researched this provider."
+      "format": "date-time"
     },
     "notes": {
       "type": "string"

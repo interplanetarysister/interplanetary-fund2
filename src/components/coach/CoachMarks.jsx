@@ -127,7 +127,7 @@ export default function CoachMarks({ tourId }) {
         <h3 className="font-display text-lg text-foreground mb-1">{current.title}</h3>
         <p className="text-sm text-muted-foreground mb-4">{current.body}</p>
         <div className="flex items-center justify-between">
-          <button onClick={back} disabled={step === 0} className="text-sm text-muted-foreground disabled:opacity-40 flex items-center gap-1 min-h-[44px] px-2">
+          <button onClick={back} disabled={step === 0} className="text-sm text-muted-foreground disabled:opacity-70 flex items-center gap-1 min-h-[44px] px-2">
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
           <button onClick={next} className="rounded-xl bg-primary text-primary-foreground text-sm font-medium px-4 h-9 min-h-[44px] flex items-center gap-1">

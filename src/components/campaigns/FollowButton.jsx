@@ -85,7 +85,7 @@ export default function FollowButton({ campaign }) {
       disabled={busy}
       aria-pressed={active}
       aria-label={active ? "Unfollow campaign" : "Follow campaign"}
-      className="relative w-10 h-10 shrink-0 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:border-rose-200 transition-colors disabled:opacity-50"
+      className="relative w-10 h-10 shrink-0 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:border-rose-200 transition-colors disabled:opacity-70"
     >
       <motion.span
         initial={false}
