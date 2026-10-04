@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Unplug, Globe2, Rocket, RefreshCw, Stethoscope, ChevronDown, Download } from "lucide-react";
+import { ExternalLink, Unplug, Globe2, Rocket, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 import { useNavigate } from "react-router-dom";
@@ -21,7 +21,6 @@ const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fu
 export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
-  const [showDoctor, setShowDoctor] = useState(false);
 
   // Prefer the canonical lifecycle from resolveConnectionStatus; fall back to
   // the local record heuristic when the resolver result is not yet available.
@@ -84,15 +83,12 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
             )}
           </p>
           <p className="text-xs text-stone-400 mt-1">
-            {verified ? "Connected · Working" : failed ? "Needs attention" : "Disconnected"}
+            {verified ? "Connected" : failed ? "Needs reconnect" : "Not connected"}
             {connection.last_synced && (
               <> · checked {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>
             )}
           </p>
         </div>
-        <span className={`text-sm font-semibold shrink-0 ${failed ? "text-red-600" : "text-emerald-600"}`}>
-          {health.label}
-        </span>
       </div>
 
       {connection.kind === "crowdfunding" && (
@@ -120,9 +116,6 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
         {connection.kind === "crowdfunding" && IMPORTABLE_FUNDRAISING.has(connection.platform) && !connection.campaign_id && <Button size="sm" variant="outline" onClick={() => navigate(`/create?import_connection=${connection.id}`)} className="rounded-lg"><Download className="w-3.5 h-3.5" />Import campaign</Button>}
-                <Button size="sm" variant="outline" onClick={checkConnection} disabled={busy} className="rounded-lg">
-          <RefreshCw className={`w-3.5 h-3.5 ${busy ? "animate-spin" : ""}`} />Check
-        </Button>
         {connection.external_url && (
           <a href={connection.external_url} target="_blank" rel="noopener noreferrer">
             <Button size="sm" variant="outline" className="rounded-lg">
@@ -139,21 +132,8 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         >
           <Unplug className="w-3.5 h-3.5" />Disconnect
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setShowDoctor((v) => !v)}
-          className="rounded-lg ml-auto"
-          aria-expanded={showDoctor}
-        >
-          <Stethoscope className="w-3.5 h-3.5" />Diagnose
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showDoctor ? "rotate-180" : ""}`} />
-        </Button>
       </div>
 
-      {showDoctor && (
-        <ConnectionDoctor connection={connection} resolved={resolved} />
-      )}
     </div>
   );
 }
