@@ -174,10 +174,9 @@ export default function Connections() {
         </span>
         Connections
       </h1>
-      <p className="text-slate-300 mb-5">Turn platforms on here. If it says connected, it is ready. If it needs you, we’ll tell you what to do.</p>
+      <p className="text-slate-300 mb-5">Connect the platforms you already use. Connected means the connection is ready to use.</p>
       <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} working · {connections.length} saved</span>
-        <span className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5">Fundraising + social + apps in one place</span>
+        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} connected</span>
       </div>
       </div>
 
@@ -205,7 +204,7 @@ export default function Connections() {
           ) : (
             <p className="text-stone-700">
               {["success", "partial"].includes(syncResult.overall_status)
-                ? `Working. ${discoveredSummary ? `${discoveredSummary} found.` : "Your connected platforms were checked."}`
+                ? `${discoveredSummary ? `${discoveredSummary} found.` : "Your connected platforms were refreshed."}`
                 : syncResult.overall_status === "no_connections"
                   ? "Nothing is on yet. Turn on a platform below to get started."
                   : "One or more connections need attention. Use Fix Connection below."}
@@ -228,18 +227,17 @@ export default function Connections() {
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (
         <div className="mb-8">
-          <h2 className="font-display text-xl text-stone-900 mb-1">Platform-managed integrations</h2>
-          <p className="text-sm text-stone-500 mb-3">Managed by admins for everyone — you don't connect these yourself.</p>
+          <h2 className="font-display text-xl text-stone-900 mb-1">Included connections</h2>
           <div className="space-y-3">
             {sharedIntegrations.map((s) => (
               <div key={s.type} className="rounded-2xl border border-cyan-300/15 bg-white p-4 flex items-center gap-3">
                 <span className="text-xl w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0" aria-hidden="true">{s.icon}</span>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-stone-900">{s.name}</p>
-                  <p className="text-xs text-stone-500">{s.note}</p>
+                  {user?.role === "admin" && <p className="text-xs text-stone-500">Available to IFund.</p>}
                 </div>
                 {s.connected && s.verified ? (
-                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Working</span>
+                  <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Connected</span>
                 ) : s.connected ? (
                   <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">Needs attention</span>
                 ) : (
@@ -254,7 +252,7 @@ export default function Connections() {
       {connections.length > 0 && (
         <div className="mb-8">
           <h2 className="font-display text-xl text-stone-900 mb-1">Your platforms</h2>
-          <p className="text-sm text-stone-500 mb-3">A saved link needs a successful check before it can show as working.</p>
+          <p className="text-sm text-stone-500 mb-3">Manage the platforms you have connected to IFund.</p>
           <div className="space-y-3">
             {connections.map((c) => (
               <ConnectionCard
@@ -281,7 +279,7 @@ export default function Connections() {
 
       <div className="mb-8">
         <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
-        <p className="text-sm text-stone-500 mb-3">Search for the platform you want to connect. Interplanetary Fund handles the available connection method behind the scenes.</p>
+        <p className="text-sm text-stone-500 mb-3">Choose a platform you already use. IFund handles the connection behind the scenes.</p>
         <div className="relative">
           <button
             type="button"
@@ -293,7 +291,7 @@ export default function Connections() {
               <span className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0"><Search className="w-4 h-4 text-cyan-200" /></span>
               <span>
                 <span className="block font-semibold text-cyan-50">Choose a platform</span>
-                <span className="block text-xs text-slate-400">Fundraising, social, and apps</span>
+                <span className="block text-xs text-slate-400">Select one you use</span>
               </span>
             </span>
             <ChevronDown className={`w-5 h-5 text-cyan-200 transition-transform ${platformMenuOpen ? "rotate-180" : ""}`} />
@@ -324,7 +322,6 @@ export default function Connections() {
                     <span className="text-xl w-8 text-center shrink-0" aria-hidden="true">{p.icon || "✦"}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
-                      <span className="block text-xs text-slate-400 capitalize">{p.kind === "crowdfunding" ? "Fundraising" : p.kind === "app" ? "App" : "Social"}</span>
                     </span>
                     <span className="text-xs font-semibold text-cyan-200">Connect</span>
                   </button>
