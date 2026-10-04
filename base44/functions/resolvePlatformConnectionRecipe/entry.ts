@@ -1,26 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { staticRecipe, orderedTransports } from '../../shared/platformConnectionRecipes.ts';
 
-const TRANSPORT_PRIORITY = ['oauth','api','webhook','token','authenticated_browser','public_browser','manual'];
-const STATIC: Record<string, Record<string, any>> = {
-  linkedin:{connect:{preferred_transport:'oauth',connector_type:'linkedin'}},
-  facebook:{connect:{preferred_transport:'oauth',connector_type:'facebook_pages'}},
-  instagram:{connect:{preferred_transport:'oauth',connector_type:'instagram'}},
-  discord:{connect:{preferred_transport:'oauth',connector_type:'discord'}},
-  tiktok:{connect:{preferred_transport:'oauth',connector_type:'tiktok'}},
-  patreon:{connect:{preferred_transport:'oauth',connector_type:'patreon'}},
-  kofi:{connect:{preferred_transport:'webhook',worker_key:'kofiWebhook'}},
-  buymeacoffee:{connect:{preferred_transport:'token',worker_key:'buyMeACoffeeApi'}},
-  bluesky:{connect:{preferred_transport:'token',worker_key:'blueskyDirect'}},
-  mastodon:{connect:{preferred_transport:'token',worker_key:'mastodonDirect'}},
-  gofundme:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  kickstarter:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  indiegogo:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  fundrazr:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  givesendgo:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-  spotfund:{read_metrics:{preferred_transport:'public_browser',worker_key:'runBrowserConnection'}},
-};
-const seedFor=(platform:string,operation:string)=>STATIC[platform]?.[operation]||null;
-const order=(r:any)=>[...new Set([r?.preferred_transport,...(Array.isArray(r?.fallback_transports)?r.fallback_transports:[]),...TRANSPORT_PRIORITY].filter(Boolean))];
+const seedFor=(platform:string,operation:string)=>staticRecipe(platform,operation);
+const order=(r:any)=>orderedTransports(r);
 const clean=(v:unknown,max=300)=>String(v??'').replace(/[\r\n\t]+/g,' ').trim().slice(0,max);
 
 export default async function handler(req: Request) {
