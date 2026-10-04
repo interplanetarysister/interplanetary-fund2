@@ -16,7 +16,7 @@ const PLATFORM_LABELS = {
 // Share-to-Profile flow: user clicks "Share", an AI agent drafts a post, the
 // user reviews and approves, and it's posted to their feed + cross-posted to
 // their connected external accounts.
-export default function ShareToProfileDialog({ open, onClose, sourceType, sourceId, user, connections, onShared }) {
+export default function ShareToProfileDialog({ open, onClose, sourceType, sourceId, user, connections, providerCapabilities = [], onShared }) {
   const { toast } = useToast();
   const [draft, setDraft] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
@@ -39,7 +39,12 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
       .finally(() => setLoading(false));
   }, [open, sourceType, sourceId]);
 
-  const connectedSocial = (connections || []).filter((c) => isUsableConnection(c) && c.kind === "social");
+  const capabilityFor = (platform) => providerCapabilities.find((c) => String(c.platform).toLowerCase() === String(platform).toLowerCase());
+  const connectedSocial = (connections || []).filter((c) => {
+    if (!isUsableConnection(c) || c.kind !== "social") return false;
+    const cap = capabilityFor(c.platform);
+    return (cap?.direct_publish_verified === true && cap?.test_status === "passing" && cap?.implementation_status === "implemented") || cap?.manual_share_verified === true;
+  });
   const campaignId = sourceType === "campaign" ? sourceId : undefined;
 
   const handleShare = async () => {
@@ -63,7 +68,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
             const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });
             if (distributed?.ok !== true || !distributed?.post?.id) continue;
             const dp = distributed.post;
-            await base44.functions.invoke("publishPost", { post_id: dp.id });
+            await base44.functions.invoke("publishPost", { post_id: dp.id, user_publish_authorized: true });
           } catch { /* best-effort */ }
         }
       }
@@ -106,7 +111,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
             {connectedSocial.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
-                  <Link2 className="w-3 h-3" /> Cross-post to your connected accounts:
+                  <Link2 className="w-3 h-3" /> Publish to:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {connectedSocial.map((c) => (
@@ -138,7 +143,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
               <Button variant="ghost" onClick={onClose} className="text-slate-400">Cancel</Button>
               <Button onClick={handleShare} disabled={posting || !draft.trim()} className="bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
                 {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Approve & Share
+                Publish
               </Button>
             </DialogFooter>
           </>
