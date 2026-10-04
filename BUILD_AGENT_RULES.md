@@ -33,6 +33,12 @@ Base44/ifund2 is the authoritative application target. Legacy Convex/Vercel impl
 
 When a requested change spans application and supporting services, verify the current owning implementation before editing. Never duplicate state or business logic merely to make consolidation appear complete.
 
+## Provider-specific connection and publishing authorization
+
+Connection specialists must prepare each provider's supported authentication and human-verification path before the user presses Connect. Present one clear Connect action, use existing authorized sessions when available, and route passwords exclusively through provider-hosted login where supported. Do not retain provider passwords in ordinary app entities, frontend logs, agent memory, or prompts. Follow provider requirements for MFA, CAPTCHA, identity verification and terms; never bypass them. Present IFund's plain-language delegated-privileges acceptance/denial at an appropriate point without misrepresenting provider consent or interrupting a required provider-controlled flow. Record provider-specific scopes, verified capabilities, user consent version, timestamp, account identity and revocation path. Display Connected only after the actual promised capabilities are verified.
+
+Connection consent permits approved setup, account management, campaign preparation and other expressly granted OBO tasks; it is not publishing permission. Before any user-account publication, obtain separate explicit approval identifying campaign, content, destination account(s), and one-time or clearly scoped recurring permission. Server-side publishing gates must verify that approval at execution, reject missing/revoked/expired permissions, and audit outcomes. Never silently broaden consent. Keep all provider architecture and suitability research internal to specialist agents; the human-facing experience is Connect, Connected, Reconnect and optional How IFund uses this connection. Apply identically to web and app. Batch full builds and runtime verification with larger release sets rather than after every edit.
+
 ## Before every Base44 build
 
 1. Identify the exact Base44 capability being changed.
