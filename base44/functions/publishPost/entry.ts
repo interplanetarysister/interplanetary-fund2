@@ -4,6 +4,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
+import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 
 // Publishes an approved DistributedPost. Where the platform supports direct
 // posting with the owner's credentials (Bluesky, Mastodon), it publishes for
@@ -16,7 +17,7 @@ export default async function(req) {
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
 
-    const { post_id } = await req.json();
+    const { post_id, user_publish_authorized = false } = await req.json();
     if (!post_id) return Response.json({ error: 'Missing post_id' }, { status: 400 });
 
     const post = await base44.entities.DistributedPost.get(post_id).catch(() => null);
@@ -45,8 +46,19 @@ export default async function(req) {
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
     const consentOwner = user;
-    if (!hasAiPublishingConsent(consentOwner)) {
-      return Response.json({ error: 'AI OBO authorization is not active.' }, { status: 403 });
+    // A deliberate human Publish click authorizes this exact post/destination.
+    // Background/agent publishing still requires standing AI OBO consent.
+    const hasPerPostHumanAuthorization = user_publish_authorized === true;
+    if (!hasPerPostHumanAuthorization && !hasAiPublishingConsent(consentOwner)) {
+      return Response.json({ error: 'Publishing authorization is not active.' }, { status: 403 });
+    }
+    const capability = await resolveCapabilityForPlatform(sr, connection.platform);
+    const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
+    const manualShareVerified = capability?.manual_share_verified === true;
+    if (!directPublishVerified) {
+      const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
+      await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Direct publish is not IFund-verified for ${connection.platform}`, status: 'success' });
+      return Response.json({ manual: true, verified_manual: manualShareVerified, manual_share_method: capability?.manual_share_method || '', post: updated, profile_url: connection.external_url || '', reason: manualShareVerified ? 'Use the verified manual sharing method for this platform.' : 'IFund has not verified publishing for this platform yet.' });
     }
     // Auto-publishing to connected platforms requires an active outreach+
     // subscription. Without it, the post is saved as approved for manual posting.
