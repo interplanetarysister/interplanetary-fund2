@@ -297,6 +297,24 @@
     opacity: 1;
   }
 
+  /* Disabled and read-only fields still contain information a human may need
+     to read. Keep them visibly non-editable without fading their contents into
+     illegibility. */
+  input:disabled,
+  textarea:disabled,
+  select:disabled,
+  input[readonly],
+  textarea[readonly] {
+    color: hsl(var(--foreground));
+    -webkit-text-fill-color: hsl(var(--foreground));
+    opacity: .78;
+  }
+
+  select option {
+    color: hsl(var(--foreground));
+    background: hsl(var(--background));
+  }
+
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -413,32 +431,44 @@
     -webkit-text-fill-color: hsl(var(--destructive-foreground)) !important;
   }
 
-  /* Gradient and solid-color buttons: text must stay white on colored
-     backgrounds in every theme mode. Covers the brand gradient and all
-     solid color buttons used across the platform. */
-  button[class*="bg-gradient-to"], [role="button"][class*="bg-gradient-to"],
-  button[class*="from-cyan"], [role="button"][class*="from-cyan"],
-  button[class*="from-blue"], [role="button"][class*="from-blue"],
-  button[class*="from-violet"], [role="button"][class*="from-violet"],
-  button[class*="from-emerald"], [role="button"][class*="from-emerald"],
-  button[class*="from-red"], [role="button"][class*="from-red"],
-  button[class*="from-amber"], [role="button"][class*="from-amber"],
+  /* Colored controls must use the foreground that actually contrasts with
+     their background. Bright 400/500 tones need a dark foreground; blindly
+     forcing white made several buttons fail normal-text contrast. */
   button.bg-cyan-400, [role="button"].bg-cyan-400,
   button.bg-cyan-500, [role="button"].bg-cyan-500,
   button.bg-blue-500, [role="button"].bg-blue-500,
-  button.bg-blue-600, [role="button"].bg-blue-600,
   button.bg-violet-500, [role="button"].bg-violet-500,
-  button.bg-violet-600, [role="button"].bg-violet-600,
   button.bg-emerald-500, [role="button"].bg-emerald-500,
   button.bg-emerald-600, [role="button"].bg-emerald-600,
   button.bg-red-500, [role="button"].bg-red-500,
-  button.bg-red-600, [role="button"].bg-red-600,
   button.bg-amber-500, [role="button"].bg-amber-500,
   button.bg-green-500, [role="button"].bg-green-500,
-  button.bg-green-600, [role="button"].bg-green-600,
+  button.bg-green-600, [role="button"].bg-green-600 {
+    color: #020617 !important;
+    -webkit-text-fill-color: #020617 !important;
+  }
+
+  button.bg-blue-600, [role="button"].bg-blue-600,
+  button.bg-violet-600, [role="button"].bg-violet-600,
+  button.bg-red-600, [role="button"].bg-red-600 {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
+
+  /* Brand gradients are darkened slightly behind their labels so one readable
+     foreground works across the whole gradient instead of crossing from a
+     light endpoint into a dark endpoint. */
+  button[class*="bg-gradient-to"], [role="button"][class*="bg-gradient-to"],
   a[class*="bg-gradient-to"] {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
+    background-blend-mode: multiply;
+    background-color: rgb(15 23 42 / .28);
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    opacity: .72;
   }
 
   button:focus-visible, [role="button"]:focus-visible, [role="menuitem"]:focus-visible, [role="option"]:focus-visible {
