@@ -21,7 +21,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/social": "Social", "/connect": "Connect AI Assistant", "/admin/external-accounts": "External Accounts", "/admin/integrations": "Integrations",
+  "/social": "Social", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -74,8 +74,6 @@ const navSections = [
     label: "Settings",
     items: [
       { to: "/connections", label: "Connections", icon: Link2 },
-      { to: "/admin/external-accounts", label: "External Accounts", icon: Link2 },
-      { to: "/admin/integrations", label: "Integrations", icon: ShieldCheck },
       { to: "/platform", label: "Platform", icon: Server },
       { to: "/profile", label: "Profile", icon: User },
     ],
