@@ -29,9 +29,9 @@ Do not repeatedly rediscover or overwrite established product knowledge. Treat t
 
 Do not implement new user-facing application work in Vercel-only, legacy, duplicate, or historical repositories. Those repositories are evidence/migration sources only unless the owner explicitly reassigns ownership.
 
-This rule does **not** move authoritative Convex/backend runtime ownership into this repository. Backend/runtime work remains in `InterplanetaryFund` and must be consumed here through explicit verified interfaces/bridges.
+Base44/ifund2 is the authoritative application target. Legacy Convex/Vercel implementations are evidence or migration sources only unless the owner explicitly reassigns them. Do not create new user-facing dependencies on retired runtime architecture, and do not expose retired provider/runtime names to users.
 
-When a requested change spans application and backend, place each portion in its owning repository and verify the boundary. Never duplicate backend state or business logic merely to make consolidation appear complete.
+When a requested change spans application and supporting services, verify the current owning implementation before editing. Never duplicate state or business logic merely to make consolidation appear complete.
 
 ## Before every Base44 build
 
@@ -43,6 +43,20 @@ When a requested change spans application and backend, place each portion in its
 6. Verify backend/data ownership and API contracts.
 7. Check authentication, permissions, environment configuration, and deployment relationships.
 8. Only then implement.
+
+## Human-first prosperity rule
+
+Humans are the purpose of Interplanetary Fund. Users and admins must never be expected to understand internal software architecture in order to use the product successfully.
+
+Every visible word, control, button, field, menu, dialog, state, and workflow must remain readable and understandable before interaction, during hover/focus/selection, while text is being entered, after entry, when disabled/read-only, and in both supported appearance modes. Audit contrast color-by-color and state-by-state; repair noncompliance where it is found rather than masking it with explanatory text.
+
+Every installed function, agent, workflow, page, and subsystem must have a verified purpose that advances safe, lawful Interplanetary Fund success: helping people raise, receive, manage, share, understand, or administer funds and campaigns; improving trust, reliability, reach, accessibility, efficiency, or financial sustainability; or providing necessary platform/security operations. Internal complexity without a current purpose must be consolidated, retired, or kept only as an explicit compatibility tombstone when removal would be unsafe.
+
+Do not promote external platforms for their own sake. Platform-specific architecture, success patterns, and campaign-fit intelligence belong to specialist agents/internal routing unless the human specifically asks for that information.
+
+## Validation batching rule
+
+Do not run long production builds, runtime suites, or full validation after every small repository edit. Perform targeted source checks while repairing, accumulate coherent changes, and run full verification at meaningful checkpoints or before publish/release. A repository touch alone is not a reason to consume build/runtime resources.
 
 ## One-product rule
 
