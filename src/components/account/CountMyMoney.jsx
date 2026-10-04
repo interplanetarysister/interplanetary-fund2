@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Loader2, Coins, CheckCircle2, AlertTriangle, Info, Wifi, Clock } from "lucide-react";
+import { Loader2, Coins, AlertTriangle, Info, Wifi, Clock } from "lucide-react";
 
 // "Count My Money" — retrieves and reconciles available donation and fund
 // information from every connected, supported fundraising platform for every
