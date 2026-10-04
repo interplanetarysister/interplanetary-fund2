@@ -1,41 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
-
-// Inline minimal recipe registry (matches the established pattern in
-// resolvePlatformConnectionRecipe, which also inlines its own copy — the shared
-// base44/lib/platformConnectionRecipes.ts is not importable from functions).
-// This is non-secret linkage knowledge only: preferred transport + connector type.
-const TRANSPORT_PRIORITY = ['oauth', 'api', 'webhook', 'token', 'authenticated_browser', 'public_browser', 'manual'];
-const STATIC_RECIPES: Record<string, Record<string, { preferred_transport: string; connector_type?: string; shared?: boolean; worker_key?: string }>> = {
-  linkedin: { connect: { preferred_transport: 'oauth', connector_type: 'linkedin' } },
-  facebook: { connect: { preferred_transport: 'oauth', connector_type: 'facebook_pages' } },
-  instagram: { connect: { preferred_transport: 'oauth', connector_type: 'instagram' } },
-  discord: { connect: { preferred_transport: 'oauth', connector_type: 'discord' } },
-  tiktok: { connect: { preferred_transport: 'oauth', connector_type: 'tiktok' } },
-  patreon: { connect: { preferred_transport: 'oauth', connector_type: 'patreon' } },
-  eventbrite: { connect: { preferred_transport: 'oauth', connector_type: 'eventbrite' } },
-  kofi: { connect: { preferred_transport: 'webhook', worker_key: 'kofiWebhook' } },
-  buymeacoffee: { connect: { preferred_transport: 'token', worker_key: 'buyMeACoffeeApi' } },
-  bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },
-  mastodon: { connect: { preferred_transport: 'token', worker_key: 'mastodonDirect' } },
-  gofundme: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  kickstarter: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  indiegogo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  givesendgo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  spotfund: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
-  // SHARED (platform-managed) connector — builder's Wix site.
-  wix: { connect: { preferred_transport: 'oauth', connector_type: 'wix', shared: true } },
-};
-function staticRecipe(platform: string, operation = 'connect') {
-  return STATIC_RECIPES[platform]?.[operation] || null;
-}
-function orderedTransports(recipe: any) {
-  const preferred = recipe?.preferred_transport;
-  const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  return [...new Set([preferred, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))];
-}
+import { staticRecipe, orderedTransports } from '../../shared/platformConnectionRecipes.ts';
 
 // The canonical connection resolver consumed by every IFund connection surface.
 //
@@ -100,7 +66,7 @@ async function verifyShared(sr: any, connectorType: string) {
 // Transport-verified check for APP_USER OAuth connectors. Token presence proves
 // the OAuth transport; it does NOT prove any specific capability. Deep
 // capability testing is verifyPlatformConnection's job — the resolver only reports
-// what the transport itself guarantees, so a stale-but-issued token is not谎d as
+// what the transport itself guarantees, so a stale-but-issued token is not misrepresented as
 // a working capability.
 async function appUserOAuthTransport(sr: any, platform: string) {
   const envName = OAUTH_ENV[platform];
