@@ -62,7 +62,7 @@ export default function ActivityFeed() {
       </div>
       {hasMore && (
         <div className="flex justify-center mt-6">
-          <button onClick={loadMore} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50 min-h-[44px]">
+          <button onClick={loadMore} disabled={loadingMore} className="inline-flex items-center gap-2 rounded-xl border border-stone-200 px-5 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-70 disabled:bg-muted min-h-[44px]">
             {loadingMore ? <Loader2 className="w-4 h-4 animate-spin" /> : "Load more"}
           </button>
         </div>
