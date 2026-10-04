@@ -11,7 +11,7 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn", threads: "Threads", reddit: "Reddit", pinterest: "Pinterest",
 };
 
-export default function PostComposer({ user, connections, campaigns, onPosted }) {
+export default function PostComposer({ user, connections, campaigns, providerCapabilities = [], onPosted }) {
   const { toast } = useToast();
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -60,6 +60,13 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
     setCrossPost((prev) => (prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]));
   };
 
+  const capabilityFor = (platform) => providerCapabilities.find((c) => String(c.platform).toLowerCase() === String(platform).toLowerCase());
+  const publishableConnections = (connections || []).filter((c) => {
+    if (!isUsableConnection(c)) return false;
+    const cap = capabilityFor(c.platform);
+    return (cap?.direct_publish_verified === true && cap?.test_status === "passing" && cap?.implementation_status === "implemented") || cap?.manual_share_verified === true;
+  });
+
   const handlePost = async () => {
     if (!content.trim()) return;
     setLoading(true);
@@ -83,7 +90,7 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
             const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: content.trim() });
             if (distributed?.ok !== true || !distributed?.post?.id) continue;
             const dp = distributed.post;
-            await base44.functions.invoke("publishPost", { post_id: dp.id });
+            await base44.functions.invoke("publishPost", { post_id: dp.id, user_publish_authorized: true });
           } catch {
             // Cross-post failure doesn't block the native post.
           }
@@ -142,9 +149,10 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
       )}
 
       {connections?.length > 0 && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-slate-500 text-xs">Cross-post:</span>
-          {connections.filter(isUsableConnection).map((c) => (
+        <div className="mb-3">
+          <p className="text-slate-400 text-xs mb-2">Publish to:</p>
+          <div className="flex items-center gap-2 flex-wrap">
+          {publishableConnections.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -158,6 +166,9 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
               {PLATFORM_LABELS[c.platform] || c.platform}
             </button>
           ))}
+          {publishableConnections.length === 0 && <span className="text-slate-500 text-xs">No connected platforms have a verified sharing path yet.</span>}
+          </div>
+          {crossPost.length > 0 && <p className="text-slate-500 text-[11px] mt-2">Selecting Publish authorizes this post to the selected destinations.</p>}
         </div>
       )}
 
@@ -171,7 +182,7 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
         </Button>
         <Button onClick={handlePost} disabled={loading || !content.trim()} className="ml-auto bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          <span className="text-sm font-medium">Post</span>
+          <span className="text-sm font-medium">Publish</span>
         </Button>
       </div>
     </div>
