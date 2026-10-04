@@ -4,6 +4,7 @@ import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
+import ExternalPublishingResults from "@/components/social/ExternalPublishingResults";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok",
@@ -11,7 +12,7 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn", threads: "Threads", reddit: "Reddit", pinterest: "Pinterest",
 };
 
-export default function PostComposer({ user, connections, campaigns, onPosted }) {
+export default function PostComposer({ user, connections, campaigns, providerCapabilities = [], onPosted }) {
   const { toast } = useToast();
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
@@ -21,6 +22,8 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [externalResults, setExternalResults] = useState([]);
+  const [lastPublishedContent, setLastPublishedContent] = useState("");
   const fileRef = useRef(null);
 
   const handleAI = async () => {
@@ -60,10 +63,19 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
     setCrossPost((prev) => (prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]));
   };
 
+  const capabilityFor = (platform) => providerCapabilities.find((c) => String(c.platform).toLowerCase() === String(platform).toLowerCase());
+  const publishableConnections = (connections || []).filter((c) => {
+    if (!isUsableConnection(c)) return false;
+    const cap = capabilityFor(c.platform);
+    return cap?.direct_publish_eligible === true || cap?.manual_share_eligible === true;
+  });
+
   const handlePost = async () => {
     if (!content.trim()) return;
     setLoading(true);
+    setExternalResults([]);
     try {
+      const publishedContent = content.trim();
       const campaign = campaigns?.find((c) => c.id === selectedCampaign);
       const { data } = await base44.functions.invoke("createSocialPost", {
         content: content.trim(), media_url: mediaUrl || undefined, campaign_id: campaign?.id,
@@ -75,27 +87,45 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
       const newTier = data.banner_tier;
 
       // Cross-post to linked external platforms where a campaign is linked.
+      const results = [];
       if (campaign && crossPost.length > 0) {
         for (const platform of crossPost) {
           const conn = connections?.find((c) => c.platform === platform && isUsableConnection(c));
-          if (!conn) continue;
+          const label = PLATFORM_LABELS[platform] || platform;
+          if (!conn) {
+            results.push({ platform, label, status: "failed", reason: "The selected connection is no longer available." });
+            continue;
+          }
           try {
-            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: content.trim() });
-            if (distributed?.ok !== true || !distributed?.post?.id) continue;
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: publishedContent });
+            if (distributed?.ok !== true || !distributed?.post?.id) throw new Error("Distributed post creation rejected");
             const dp = distributed.post;
-            await base44.functions.invoke("publishPost", { post_id: dp.id });
+            const { data: outcome } = await base44.functions.invoke("publishPost", { post_id: dp.id });
+            if (outcome?.manual && outcome?.verified_manual === true) {
+              results.push({ platform, label, status: "manual", reason: outcome.reason || "Copy the post and finish sharing on the platform.", profile_url: outcome.profile_url || "", manual_share_method: outcome.manual_share_method || "" });
+            } else if (outcome?.manual) {
+              results.push({ platform, label, status: "failed", reason: outcome.reason || "No verified publishing path is available." });
+            } else if (outcome?.post?.status === "published") {
+              results.push({ platform, label, status: "published" });
+            } else {
+              results.push({ platform, label, status: "failed", reason: "Publishing was not confirmed." });
+            }
           } catch {
-            // Cross-post failure doesn't block the native post.
+            results.push({ platform, label, status: "failed", reason: "Publishing failed safely. Check the connection and try again." });
           }
         }
       }
+
+      setLastPublishedContent(publishedContent);
+      setExternalResults(results);
 
       setContent("");
       setMediaUrl("");
       setAiGenerated(false);
       setCrossPost([]);
       setSelectedCampaign("");
-      toast({ title: "Posted!", description: newTier !== (user.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points" });
+      const needsAttention = results.some((result) => result.status !== "published");
+      toast({ title: "Posted to Interplanetary Social", description: needsAttention ? "Review the external publishing results below." : newTier !== (user.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points" });
       onPosted?.(post, newScore, newTier);
     } catch {
       toast({ title: "Couldn't post", description: "Please try again.", variant: "destructive" });
@@ -142,9 +172,10 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
       )}
 
       {connections?.length > 0 && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-slate-500 text-xs">Cross-post:</span>
-          {connections.filter(isUsableConnection).map((c) => (
+        <div className="mb-3">
+          <p className="text-slate-400 text-xs mb-2">Publish to:</p>
+          <div className="flex items-center gap-2 flex-wrap">
+          {publishableConnections.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -158,8 +189,13 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
               {PLATFORM_LABELS[c.platform] || c.platform}
             </button>
           ))}
+          {publishableConnections.length === 0 && <span className="text-slate-500 text-xs">No connected platforms have a verified sharing path yet.</span>}
+          </div>
+          {crossPost.length > 0 && <p className="text-slate-500 text-[11px] mt-2">Selecting Publish authorizes this post to the selected destinations.</p>}
         </div>
       )}
+
+      <ExternalPublishingResults results={externalResults} content={lastPublishedContent} />
 
       <div className="flex items-center gap-2">
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
@@ -171,7 +207,7 @@ export default function PostComposer({ user, connections, campaigns, onPosted })
         </Button>
         <Button onClick={handlePost} disabled={loading || !content.trim()} className="ml-auto bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          <span className="text-sm font-medium">Post</span>
+          <span className="text-sm font-medium">Publish</span>
         </Button>
       </div>
     </div>

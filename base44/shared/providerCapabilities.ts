@@ -27,7 +27,9 @@ export const REGISTRY_VERSION = '2026-10-v1';
 // here only after its account-specific transfer implementation, idempotency,
 // settlement verification, and negative authorization tests are shipped.
 const IMPLEMENTED_TRANSFER_ADAPTERS = new Set<string>([]);
+const IMPLEMENTED_DIRECT_PUBLISH_ADAPTERS = new Set<string>(['bluesky']);
 const EVIDENCE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+const PUBLISH_EVIDENCE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 export function hasFreshCapabilityEvidence(capability, now = Date.now()) {
   if (capability?.capability_status !== 'verified' || !capability?.evidence_url || !capability?.evidence_checked_at) return false;
@@ -42,6 +44,28 @@ export function hasFreshCapabilityEvidence(capability, now = Date.now()) {
 
 export function hasImplementedTransferAdapter(capability, now = Date.now()) {
   return capability?.api_transfer === true && IMPLEMENTED_TRANSFER_ADAPTERS.has(String(capability.platform || '').toLowerCase()) && hasFreshCapabilityEvidence(capability, now);
+}
+
+export function hasFreshPublishEvidence(capability, now = Date.now()) {
+  if (!capability?.publish_tested_at || !String(capability?.publish_test_account_reference || '').trim()) return false;
+  const testedAt = new Date(capability.publish_tested_at).getTime();
+  return Number.isFinite(testedAt) && testedAt <= now && now - testedAt <= PUBLISH_EVIDENCE_MAX_AGE_MS;
+}
+
+export function hasImplementedDirectPublishAdapter(capability, now = Date.now()) {
+  const platform = String(capability?.platform || '').toLowerCase();
+  return capability?.direct_publish_verified === true &&
+    capability?.test_status === 'passing' &&
+    capability?.implementation_status === 'implemented' &&
+    IMPLEMENTED_DIRECT_PUBLISH_ADAPTERS.has(platform) &&
+    hasFreshPublishEvidence(capability, now);
+}
+
+export function hasVerifiedManualShare(capability, now = Date.now()) {
+  const method = String(capability?.manual_share_method || '').trim().toLowerCase();
+  return capability?.manual_share_verified === true &&
+    method !== '' && method !== 'none' &&
+    hasFreshPublishEvidence(capability, now);
 }
 
 // Fail-closed fallback for any platform not present in the SEED or storage.

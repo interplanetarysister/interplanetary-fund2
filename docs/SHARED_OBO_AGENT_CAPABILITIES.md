@@ -29,6 +29,8 @@ A verified OBO connection is available to all of the user's agents. Role purpose
 ## Execution
 The same capability layer serves both user-triggered and autonomous work. Automation ON permits authorized autonomous actions. User-triggered features invoke the same connection immediately. A provider limitation always wins over an internal request.
 
+An authenticated owner clicking **Publish** may authorize only the exact owner-bound post, campaign, and selected connection handled by that request. Do not accept a caller-supplied consent boolean as authority, and do not make this deliberate human action depend on standing AI/OBO consent. Background, scheduled, and agent actions remain separate paths that require fresh OBO and automation authorization at execution time. Both paths must also require a verified active connection, fresh provider evidence, and a shipped provider-specific adapter. A manual handoff is not a completed external publish: the UI must preserve the result, offer the verified copy/open step, and report failures instead of swallowing them.
+
 ## Fluid handoffs
 Agents are interfaces into Interplanetary Fund, not isolated chatbots. Preserve campaign/user context when routing between conversation and tools. Drafts and known selections should be pre-populated when supported. Example: Outreach drafts an update, then opens/routes to the campaign update flow with the draft and destination platform already selected.
 

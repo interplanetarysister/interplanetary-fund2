@@ -6,6 +6,7 @@ import { Sparkles, Send, Loader2, Check, Link2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
+import ExternalPublishingResults from "@/components/social/ExternalPublishingResults";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok",
@@ -16,19 +17,23 @@ const PLATFORM_LABELS = {
 // Share-to-Profile flow: user clicks "Share", an AI agent drafts a post, the
 // user reviews and approves, and it's posted to their feed + cross-posted to
 // their connected external accounts.
-export default function ShareToProfileDialog({ open, onClose, sourceType, sourceId, user, connections, onShared }) {
+export default function ShareToProfileDialog({ open, onClose, sourceType, sourceId, user, connections, providerCapabilities = [], onShared }) {
   const { toast } = useToast();
   const [draft, setDraft] = useState("");
   const [sourceTitle, setSourceTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [crossPost, setCrossPost] = useState([]);
+  const [externalResults, setExternalResults] = useState([]);
+  const [shared, setShared] = useState(false);
 
   useEffect(() => {
     if (!open || !sourceType || !sourceId) return;
     setLoading(true);
     setDraft("");
     setCrossPost([]);
+    setExternalResults([]);
+    setShared(false);
     base44.functions
       .invoke("draftSharePost", { source_type: sourceType, source_id: sourceId })
       .then((res) => {
@@ -39,10 +44,19 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
       .finally(() => setLoading(false));
   }, [open, sourceType, sourceId]);
 
-  const connectedSocial = (connections || []).filter((c) => isUsableConnection(c) && c.kind === "social");
+  const capabilityFor = (platform) => providerCapabilities.find((c) => String(c.platform).toLowerCase() === String(platform).toLowerCase());
+  const connectedSocial = (connections || []).filter((c) => {
+    if (!isUsableConnection(c) || c.kind !== "social") return false;
+    const cap = capabilityFor(c.platform);
+    return cap?.direct_publish_eligible === true || cap?.manual_share_eligible === true;
+  });
   const campaignId = sourceType === "campaign" ? sourceId : undefined;
 
   const handleShare = async () => {
+    if (shared) {
+      onClose();
+      return;
+    }
     if (!draft.trim()) return;
     setPosting(true);
     try {
@@ -55,22 +69,41 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
       const newTier = data.banner_tier;
 
       // Cross-post to linked external platforms
-      if (crossPost.length > 0) {
+      const results = [];
+      if (campaignId && crossPost.length > 0) {
         for (const platform of crossPost) {
           const conn = connectedSocial.find((c) => c.platform === platform);
-          if (!conn || !campaignId) continue;
+          const label = PLATFORM_LABELS[platform] || platform;
+          if (!conn) {
+            results.push({ platform, label, status: "failed", reason: "The selected connection is no longer available." });
+            continue;
+          }
           try {
             const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });
-            if (distributed?.ok !== true || !distributed?.post?.id) continue;
+            if (distributed?.ok !== true || !distributed?.post?.id) throw new Error("Distributed post creation rejected");
             const dp = distributed.post;
-            await base44.functions.invoke("publishPost", { post_id: dp.id });
-          } catch { /* best-effort */ }
+            const { data: outcome } = await base44.functions.invoke("publishPost", { post_id: dp.id });
+            if (outcome?.manual && outcome?.verified_manual === true) {
+              results.push({ platform, label, status: "manual", reason: outcome.reason || "Copy the post and finish sharing on the platform.", profile_url: outcome.profile_url || "", manual_share_method: outcome.manual_share_method || "" });
+            } else if (outcome?.manual) {
+              results.push({ platform, label, status: "failed", reason: outcome.reason || "No verified publishing path is available." });
+            } else if (outcome?.post?.status === "published") {
+              results.push({ platform, label, status: "published" });
+            } else {
+              results.push({ platform, label, status: "failed", reason: "Publishing was not confirmed." });
+            }
+          } catch {
+            results.push({ platform, label, status: "failed", reason: "Publishing failed safely. Check the connection and try again." });
+          }
         }
       }
 
-      toast({ title: "Shared to your profile!", description: newTier !== (user?.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points" });
+      const needsAttention = results.some((result) => result.status !== "published");
+      setExternalResults(results);
+      setShared(true);
+      toast({ title: "Shared to your Interplanetary profile", description: needsAttention ? "Review the external publishing results before closing." : newTier !== (user?.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points" });
       onShared?.(post, newScore, newTier);
-      onClose();
+      if (!needsAttention) onClose();
     } catch {
       toast({ title: "Couldn't share", variant: "destructive" });
     } finally {
@@ -103,10 +136,10 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
               placeholder="Your AI-drafted post will appear here…"
             />
 
-            {connectedSocial.length > 0 && (
+            {campaignId && connectedSocial.length > 0 && (
               <div className="mt-3">
                 <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
-                  <Link2 className="w-3 h-3" /> Cross-post to your connected accounts:
+                  <Link2 className="w-3 h-3" /> Publish to:
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {connectedSocial.map((c) => (
@@ -128,17 +161,23 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
               </div>
             )}
 
-            {connectedSocial.length === 0 && (
+            {campaignId && connectedSocial.length === 0 && (
               <p className="text-xs text-slate-500 mt-2">
-                Connect social accounts in <a href="/connections" className="text-cyan-400 hover:underline">Connections</a> to enable cross-posting.
+                No connected platforms have a verified sharing path yet. <a href="/connections" className="text-cyan-400 hover:underline">Manage connections</a>
               </p>
             )}
 
+            {campaignId && crossPost.length > 0 && (
+              <p className="text-[11px] text-slate-500 mt-2">Selecting Publish authorizes this post to the selected destinations.</p>
+            )}
+
+            <ExternalPublishingResults results={externalResults} content={draft.trim()} />
+
             <DialogFooter className="mt-4">
               <Button variant="ghost" onClick={onClose} className="text-slate-400">Cancel</Button>
-              <Button onClick={handleShare} disabled={posting || !draft.trim()} className="bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
+              <Button onClick={handleShare} disabled={posting || (!shared && !draft.trim())} className="bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
                 {posting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Approve & Share
+                {shared ? "Done" : "Publish"}
               </Button>
             </DialogFooter>
           </>

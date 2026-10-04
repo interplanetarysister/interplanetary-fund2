@@ -16,6 +16,7 @@ export default function Social() {
   const [user, setUser] = useState(null);
   const [connections, setConnections] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [providerCapabilities, setProviderCapabilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("social");
@@ -24,15 +25,17 @@ export default function Social() {
 
   const loadUser = useCallback(async () => {
     try {
-      const [u, connectionResponse, camps] = await Promise.all([
+      const [u, connectionResponse, camps, capabilityResponse] = await Promise.all([
         base44.auth.me(),
         base44.functions.invoke("listConnections", {}),
         base44.entities.Campaign.filter({}).catch(() => []),
+        base44.functions.invoke("listFundraisingProviderCapabilities", {}).catch(() => ({ data: { providers: [] } })),
       ]);
       const conns = connectionResponse.data?.connections || [];
       setUser(u);
       setConnections(Array.isArray(conns) ? conns : []);
       setCampaigns(Array.isArray(camps) ? camps.filter((c) => c.status === "active" || c.status === "draft") : []);
+      setProviderCapabilities(Array.isArray(capabilityResponse?.data?.providers) ? capabilityResponse.data.providers : []);
     } catch {
       setError("We couldn't load the social feed.");
     } finally {
@@ -109,6 +112,7 @@ export default function Social() {
                     user={user}
                     connections={userConnections}
                     campaigns={campaigns}
+                    providerCapabilities={providerCapabilities}
                     onPosted={handlePosted}
                   />
                 )}
@@ -202,6 +206,7 @@ export default function Social() {
           sourceId={shareTarget.sourceId}
           user={user}
           connections={userConnections}
+          providerCapabilities={providerCapabilities}
           onShared={handleShared}
         />
       )}

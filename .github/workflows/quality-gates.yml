@@ -108,6 +108,9 @@ jobs:
       - name: Server entitlement and connection OBO contract
         run: npm run verify:entitlement-obo
 
+      - name: Per-post authorization and publishing truth contract
+        run: npm run verify:publish-action-truth
+
       - name: Connection lifecycle and operational health contract
         run: npm run verify:connection-lifecycle
 

@@ -69,7 +69,8 @@
     "verify:frontend-shared-parity": "node scripts/verify-frontend-shared-parity.mjs",
     "verify:oauth-redirect": "node scripts/verify-oauth-redirect-contract.mjs",
     "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs",
-    "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs"
+    "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs",
+    "verify:publish-action-truth": "node scripts/verify-publish-action-truth-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.52",
