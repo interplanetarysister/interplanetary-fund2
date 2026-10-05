@@ -5,7 +5,7 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
-import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
+import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
 
 // Creates an idempotent PayPal v2 order for PayPal Buttons or Google Pay. All financially
 // meaningful values are encoded server-side into PayPal custom_id so capture
@@ -14,7 +14,8 @@ import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    if (PRELAUNCH_MODE) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. Current donations support Interplanetary Fund development and operations.' }, { status: 409 });
+    const paymentAccess = await campaignPaymentAccess(base44);
+    if (!paymentAccess.allowed) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. Current donations support Interplanetary Fund development and operations.' }, { status: 409 });
     if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
     const sr = base44.asServiceRole;
 
