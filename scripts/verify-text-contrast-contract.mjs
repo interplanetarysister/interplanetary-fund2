@@ -346,6 +346,21 @@ assert.doesNotMatch(
   /touch-action:\s*pan-y\s+pinch-zoom/i,
   'shared web/app surfaces must not reintroduce the two-finger pinch-zoom gesture into page scrolling'
 );
+assert.match(
+  layout,
+  /<main[^>]*data-page-scroll[^>]*overflow-y-auto/,
+  'the routed application must use an explicit one-finger vertical page scroll container'
+);
+assert.match(
+  css,
+  /#root[\s\S]{0,500}overflow-y:\s*auto/,
+  'public and unauthenticated pages must retain an explicit root vertical scroll surface'
+);
+assert.doesNotMatch(
+  css,
+  /html\s*,\s*body\s*,\s*#root\s*\{[\s\S]{0,500}overscroll-behavior:\s*none/,
+  'the global page scroll surface must not suppress vertical overscroll handling'
+);
 assert.doesNotMatch(
   pullToRefresh,
   /touchmove[\s\S]{0,1200}preventDefault\s*\(/,
