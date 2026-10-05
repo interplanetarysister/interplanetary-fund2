@@ -166,12 +166,18 @@ export async function getTransaction(transactionId) {
   if (!row) return null;
   const info = row.transaction_info || {};
   const amount = info.transaction_amount || {};
+  const fee = info.fee_amount || {};
+  const parsedAmount = Number.parseFloat(amount.value || '0');
+  const parsedFee = Math.abs(Number.parseFloat(fee.value || '0'));
   return {
     id: String(info.transaction_id || ''),
     status: String(info.transaction_status || ''),
-    amount: Number.parseFloat(amount.value || '0'),
+    amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
     currency: String(amount.currency_code || '').toUpperCase(),
+    feeAmount: Number.isFinite(parsedFee) ? parsedFee : 0,
+    feeCurrency: String(fee.currency_code || amount.currency_code || '').toUpperCase(),
     paypalAccountId: String(info.paypal_account_id || ''),
+    transactionEventCode: String(info.transaction_event_code || ''),
     transactionSubject: String(info.transaction_subject || ''),
     transactionNote: String(info.transaction_note || ''),
     transactionInitiationDate: info.transaction_initiation_date || '',
@@ -205,11 +211,19 @@ export async function listTransactions({ startDate, endDate, pageSize = 100 } = 
   return (Array.isArray(data?.transaction_details) ? data.transaction_details : []).map((row) => {
     const info = row?.transaction_info || {};
     const amount = info.transaction_amount || {};
+    const fee = info.fee_amount || {};
+    const parsedAmount = Number.parseFloat(amount.value || '0');
+    const parsedFee = Math.abs(Number.parseFloat(fee.value || '0'));
     return {
       id: String(info.transaction_id || ''),
       status: String(info.transaction_status || ''),
-      amount: Number.parseFloat(amount.value || '0'),
+      amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
       currency: String(amount.currency_code || '').toUpperCase(),
+      feeAmount: Number.isFinite(parsedFee) ? parsedFee : 0,
+      feeCurrency: String(fee.currency_code || amount.currency_code || '').toUpperCase(),
+      transactionEventCode: String(info.transaction_event_code || ''),
+      transactionSubject: String(info.transaction_subject || ''),
+      transactionNote: String(info.transaction_note || ''),
       transactionInitiationDate: info.transaction_initiation_date || '',
       transactionUpdatedDate: info.transaction_updated_date || '',
     };
