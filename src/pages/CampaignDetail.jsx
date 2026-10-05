@@ -24,6 +24,7 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 import PageError from "@/components/PageError";
+import { getFrontendIdentity } from "@/lib/adminBootstrap";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
@@ -72,6 +73,7 @@ export default function CampaignDetail() {
   // authenticated campaign owner or an admin (authorized manager). Never shown
   // on the public donation experience.
   const canManage = !!user && (campaign.created_by_id === user.id || user.role === "admin");
+  const prelaunchCampaignTest = PRELAUNCH_MODE && getFrontendIdentity(user).superAdminOwner;
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
@@ -104,7 +106,7 @@ export default function CampaignDetail() {
           </div>
           {/* Phones: funding progress + Donate Now sit directly under the title,
               so the primary action is visible without scrolling. */}
-          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="lg:hidden" />
+          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} prelaunchCampaignTest={prelaunchCampaignTest} className="lg:hidden" />
           {campaign.story && (
             <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
@@ -117,7 +119,7 @@ export default function CampaignDetail() {
 
         {/* Sidebar */}
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
-          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
+          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} prelaunchCampaignTest={prelaunchCampaignTest} className="hidden lg:block" />
 
           {canManage && <ShareCampaignKit campaign={campaign} />}
 
@@ -167,7 +169,7 @@ export default function CampaignDetail() {
         <span className="flex flex-col items-center leading-tight"><span className="flex items-center gap-2"><Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? "Support IF" : "Donate"}</span>{PRELAUNCH_MODE && <span className="text-[10px] font-medium opacity-90">Platform, not campaign</span>}</span>
       </button>
       )}
-      <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} />
+      <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} prelaunchCampaignTest={prelaunchCampaignTest} />
     </PullToRefresh>
   );
 }
