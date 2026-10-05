@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 const SUPER_ADMIN_OWNER_EMAILS=new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com']);
 const isSuperAdminOwner=(user)=>user?.role==='admin'&&SUPER_ADMIN_OWNER_EMAILS.has(String(user?.email||'').trim().toLowerCase());
 import { logAudit } from '../../shared/auditLog.ts';
-const ALLOWED=new Set(['chief_of_staff','builder_agent','admin_agent','review_agent','verification_agent']);
+const ALLOWED=new Set(['chief_of_staff','builder_agent','admin_agent','review_agent','verification_agent','connection_discovery_agent']);
 export default async function(req) {
   try {
     const base44=createClientFromRequest(req);
