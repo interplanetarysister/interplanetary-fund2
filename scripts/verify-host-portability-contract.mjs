@@ -30,7 +30,7 @@ assert.match(client, /runtimeContract\.appBaseUrl/);
 assert.match(client, /isNativeBase44Host/, "Client must distinguish native Base44 hosting from alternate hosts");
 assert.match(client, /base44\\\.app/, "Native Base44 host detection must target base44.app");
 assert.match(client, /if\s*\(!isNativeBase44Host\s*&&\s*appBaseUrl\)/, "Alternate hosts must explicitly route Base44 auth/API traffic to the canonical backend");
-assert.match(client, /clientConfig\\.serverUrl\\s*=\\s*appBaseUrl/, "Alternate hosts must set the canonical Base44 server URL");
+assert.match(client, /clientConfig\.serverUrl\s*=\s*appBaseUrl/, "Alternate hosts must set the canonical Base44 server URL");
 assert.doesNotMatch(client, /serverUrl:\\s*appBaseUrl[,:]/, "Native Base44 must not be forced through the alternate-host server override");
 assert.doesNotMatch(client, /serverUrl:\s*['\"]{2}/, "Hosted frontends must not use an empty same-origin Base44 server URL");
 assert.match(panel, /createAdminAgentSession/);
