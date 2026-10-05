@@ -43,7 +43,9 @@ expect('malformed package', (root) => writeFileSync(join(root, 'package.json'), 
 expect('malformed workflow rejected', (root) => writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs: [\n'), (errors) => errors.some((error) => error.startsWith('malformed:.github/workflows/quality.yml')));
 
 const runtimeGate = readFileSync(new URL('./require-node22.mjs', import.meta.url), 'utf8');
-assert.match(runtimeGate, /const SUPPORTED = \[20, 22\];/, 'runtime preflight must allow Node 20 and Node 22');
-assert.doesNotMatch(runtimeGate, /SUPPORTED\s*=\s*\[[^\]]*24/, 'runtime preflight must reject Node 24');
+assert.match(runtimeGate, /const MINIMUM_NODE_MAJOR = 20;/, 'runtime preflight must require Node 20 or newer');
+assert.match(runtimeGate, /const TESTED_NODE_MAJORS = \[20, 22\];/, 'runtime preflight must retain tested Node 20 and Node 22 lanes');
+assert.match(runtimeGate, /nodeMajor < MINIMUM_NODE_MAJOR/, 'runtime preflight must reject runtimes older than Node 20');
+assert.match(runtimeGate, /Continuing because IFund supports Node/, 'newer Node majors must warn and continue unless a concrete incompatibility is detected');
 
-console.log('Node 20/22 runtime contract negative cases passed.');
+console.log('Node 20+ runtime contract negative cases passed.');
