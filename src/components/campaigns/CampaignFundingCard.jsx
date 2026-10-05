@@ -9,7 +9,7 @@ import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 // The funding + Donate Now block. Rendered high on the page on phones (so the
 // donation action is above the fold) and in the sticky sidebar on desktop.
-export default function CampaignFundingCard({ campaign, onDonate, className = "" }) {
+export default function CampaignFundingCard({ campaign, onDonate, prelaunchCampaignTest = false, className = "" }) {
   const pct = Math.min(100, ((campaign.raised_amount || 0) / campaign.goal_amount) * 100);
   return (
     <div className={`bg-white rounded-2xl border border-stone-200/70 p-5 sm:p-6 shadow-sm ${className}`}>
@@ -27,21 +27,30 @@ export default function CampaignFundingCard({ campaign, onDonate, className = ""
         onClick={onDonate}
         className="w-full rounded-xl h-12 text-base font-semibold bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"
       >
-        <Heart className="w-5 h-5 mr-2" /> {PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Donate Now"}
+        <Heart className="w-5 h-5 mr-2" /> {PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Test Campaign Donation" : "Support Interplanetary Fund") : "Donate Now"}
       </Button>
       {PRELAUNCH_MODE ? (
-        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
-          <p className="text-xs font-semibold text-amber-900">Donate to the platform, not this campaign</p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">During prelaunch, this donation supports Interplanetary Fund development and operations. It is not credited to the campaign shown.</p>
-        </div>
+        prelaunchCampaignTest ? (
+          <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-center">
+            <p className="text-xs font-semibold text-cyan-950">Super-admin live payment test</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-cyan-900">This test uses the real tracked campaign checkout. A completed payment is credited to this campaign while public fundraising remains closed.</p>
+          </div>
+        ) : (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
+            <p className="text-xs font-semibold text-amber-900">Donate to the platform, not this campaign</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">During prelaunch, this donation supports Interplanetary Fund development and operations. It is not credited to the campaign shown.</p>
+          </div>
+        )
       ) : (
         <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400 mt-3">
-          <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" /> Secure payments via PayPal
+          <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" /> Secure tracked checkout via PayPal
         </p>
       )}
-      <div className="mt-4 pt-4 border-t border-stone-100">
-        <PayPalDonateButton label={PRELAUNCH_MODE ? "Support Interplanetary Fund" : "Support this campaign!"} />
-      </div>
+      {PRELAUNCH_MODE && !prelaunchCampaignTest && (
+        <div className="mt-4 pt-4 border-t border-stone-100">
+          <PayPalDonateButton label="Support Interplanetary Fund" />
+        </div>
+      )}
     </div>
   );
 }
