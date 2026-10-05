@@ -1,12 +1,17 @@
 import React from "react";
 import { generatePayPalLink } from "@/lib/paypalLink";
+import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 // The Interplanetary Fund one-time PayPal donate button. Builds the canonical
 // PayPal donate link for the campaign (business: interplanetarysister@gmail.com)
 // — the same link used across every Interplanetary Fund repo — and opens it in
 // a secure new tab. This is a ONE-TIME payment link; recurring (monthly)
 // donations are handled separately via the Stripe subscription checkout.
-export default function PayPalDonateButton({ campaignTitle = "Interplanetary Fund", amount, label = "Support this campaign!" }) {
+export default function PayPalDonateButton({ campaignTitle = "Interplanetary Fund", amount, label = "Support Interplanetary Fund" }) {
+  // Raw PayPal donation links are intentionally platform-support-only. Once
+  // campaign fundraising opens, campaign gifts must use the provider-backed
+  // IFund checkout so provider confirmation can update the campaign ledger.
+  if (!PRELAUNCH_MODE) return null;
   const href = generatePayPalLink(campaignTitle, amount);
   return (
     <div className="w-full flex flex-col items-center gap-2">
