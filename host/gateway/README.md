@@ -26,8 +26,10 @@ Configure these runtime values on the chosen free host:
 - `IFUND_AGENT_EXECUTE_URL`: canonical Base44 `executeAdminAgentRequest` function URL.
 - `IFUND_AUDIT_URL`: canonical Base44 `auditAdminAgentGateway` function URL.
 - `IFUND_ADMIN_AGENT_KEY`: protected admin development key; secret store only.
-- `IFUND_SERVICE_TOKEN`: protected service credential if the canonical backend requires it.
+- `IFUND_SERVICE_TOKEN`: optional protected service credential for non-user service calls; it is not the identity used to execute an administrator's development-agent request.
 
-The frontend gets only the deployed gateway URL as `VITE_ADMIN_AGENT_API_URL`.
+The frontend gets only the deployed gateway URL as `VITE_ADMIN_AGENT_API_URL`. For protected admin requests it also forwards the already-authenticated Base44 bearer credential. The Worker re-verifies that credential with `verifyAdminGateway`, requires canonical super-admin status, and forwards the same user credential to `executeAdminAgentRequest` and the audit boundary. The admin key remains an additional gate and is never exposed as frontend configuration.
 
-A provider/billing outage is reported as degraded. It does not make source builds fail. Requests that cannot execute remain recorded/pending rather than being reported as completed.
+Agent execution is asynchronous. `POST /v1/admin/agents/message` starts the approved Base44 agent conversation and returns an activity ID; `POST /v1/admin/agents/status` resolves that activity to the agent conversation and reports `processing`, `waiting_for_user_input`, `completed`, or `failed`. The corresponding `AgentActivity` record remains the durable audit trail.
+
+A provider/billing outage is reported as degraded. It does not make source builds fail, and the gateway must never report an unexecuted request as completed.
