@@ -1,10 +1,10 @@
 import assert from "node:assert/strict"; import fs from "node:fs";
 assert.equal(fs.existsSync("wrangler.jsonc"), false, "wrangler.jsonc must not coexist with canonical wrangler.toml; duplicate Wrangler configs can select a static-only deployment");
-const wrangler=fs.readFileSync("wrangler.toml","utf8"); const worker=fs.readFileSync("host/gateway/worker.js","utf8"); const workflow=fs.readFileSync(".github/workflows/deploy-cloudflare.yml","utf8");
+const wrangler=fs.readFileSync("wrangler.toml","utf8"); const worker=fs.readFileSync("host/gateway/worker.js","utf8"); const workflow=fs.readFileSync(".github/workflows/deploy-cloudflare.yml","utf8"); const manifest=JSON.parse(fs.readFileSync("public/manifest.json","utf8"));
 assert.match(wrangler,/^name\s*=\s*"interplanetary-fund2"\s*$/m); assert.match(wrangler,/main\s*=\s*"host\/gateway\/worker\.js"/); assert.match(wrangler,/directory\s*=\s*"\.\/dist"/); assert.match(wrangler,/binding\s*=\s*"ASSETS"/); assert.match(wrangler,/not_found_handling\s*=\s*"single-page-application"/); assert.match(wrangler,/run_worker_first\s*=\s*\["\/v1\/admin\/agents\/\*"\]/);
 assert.match(worker,/\/v1\/admin\/agents\/session/); assert.match(worker,/\/v1\/admin\/agents\/message/); assert.match(workflow,/npx --yes wrangler@4 deploy/); assert.match(workflow,/CLOUDFLARE_ACCESS_TOKEN/); assert.match(workflow,/deployment_url/); assert.match(workflow,/curl --fail/);
 assert.match(workflow, /environment:\s*production_if2/, "Cloudflare deployment must use the environment that owns production credentials");
 assert.match(workflow, /6a67a778342a8fe05ee79cba/, "Cloudflare build must retain the canonical Base44 app id fallback");
 assert.match(workflow, /https:\/\/interplanetaryfund\.base44\.app/, "Cloudflare build must retain the canonical Base44 backend fallback");
 assert.match(workflow, /test -n "\$VITE_BASE44_APP_BASE_URL"/, "Cloudflare build must fail closed without a Base44 backend URL");
-console.log("Cloudflare SPA, compute runtime, and deployment contract passed.");
+assert.equal(manifest.name, "Interplanetary Fund"); assert.equal(manifest.short_name, "IFund"); assert.equal(manifest.id, "/"); assert.equal(manifest.scope, "/");\nconsole.log("Cloudflare SPA, compute runtime, PWA identity, and deployment contract passed.");
