@@ -129,11 +129,13 @@ assert.doesNotMatch(syncConnections, /!post\.created_by_id \|\|/);
 assert.match(publishPost, /hasAiPublishingConsent\(consentOwner\)/);
 assert.match(publishPost, /post\.created_by_id === campaign\.created_by_id/);
 assert.match(publishPost, /connection\.created_by_id === campaign\.created_by_id/);
-assert.match(publishPost, /assertOboGrant/);
+assert.match(publishPost, /assertExternalAgentAction/);
+assert.match(publishPost, /assertPlatformAccess\(sr, 'social_publish'\)/);
 assert.match(broadcastPosts, /hasAiPublishingConsent\(consentOwner\)/);
 assert.match(broadcastPosts, /post\.created_by_id === campaign\.created_by_id/);
 assert.match(broadcastPosts, /connection\.created_by_id === campaign\.created_by_id/);
-assert.match(broadcastPosts, /assertOboGrant/);
+assert.match(broadcastPosts, /assertExternalAgentAction/);
+assert.match(broadcastPosts, /assertPlatformAccess\(sr, 'social_publish'\)/);
 
 assert.doesNotMatch(githubSync, /Deno\.Command/);
 assert.match(githubSync, /native GitHub synchronization control/);
