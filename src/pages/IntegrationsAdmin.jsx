@@ -4,6 +4,7 @@ import { Loader2, ShieldAlert, ShieldCheck, Activity, GitFork } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
+import PayPalReceiptRecoveryPanel from "@/components/admin/PayPalReceiptRecoveryPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE } from "@/lib/integrationRegistryUi";
 import { useToast } from "@/components/ui/use-toast";
@@ -187,6 +188,8 @@ export default function IntegrationsAdmin() {
           </ul>
         </div>
       )}
+
+      <PayPalReceiptRecoveryPanel user={user} />
 
       <div className="mt-6">
         <IntegrationsTable entries={visibleEntries} onRowClick={setSelected} />
