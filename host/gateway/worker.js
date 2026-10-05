@@ -3,7 +3,13 @@ const DEFAULT_BASE44_ORIGIN = "https://interplanetaryfund.base44.app";
 
 function json(body, status = 200, origin = "") {
   const headers = { "content-type": "application/json", "cache-control": "no-store" };
-  if (origin) { headers["access-control-allow-origin"] = origin; headers["access-control-allow-credentials"] = "true"; headers["vary"] = "Origin"; }
+  if (origin) {
+    headers["access-control-allow-origin"] = origin;
+    headers["access-control-allow-credentials"] = "true";
+    headers["access-control-allow-headers"] = "authorization, content-type";
+    headers["access-control-allow-methods"] = "POST, OPTIONS";
+    headers["vary"] = "Origin";
+  }
   return new Response(JSON.stringify(body), { status, headers });
 }
 function allowedOrigin(request, env) {
@@ -58,13 +64,19 @@ async function sameSecret(a,b) {
   const [ha,hb]=await Promise.all([crypto.subtle.sign("HMAC",key,aa),crypto.subtle.sign("HMAC",key,bb)]);
   const x=new Uint8Array(ha), y=new Uint8Array(hb); let diff=0; for(let i=0;i<x.length;i++) diff|=x[i]^y[i]; return diff===0;
 }
+function forwardedAdminAuth(request) {
+  const authorization = request.headers.get("authorization");
+  if (authorization) return { authorization };
+  const cookie = request.headers.get("cookie");
+  if (cookie) return { cookie };
+  return {};
+}
 async function verifyPlatformAdmin(request, env) {
-  const auth=request.headers.get("authorization") || request.headers.get("cookie") || "";
-  if (!auth || !env.IFUND_ADMIN_VERIFY_URL) return null;
-  const headerName=request.headers.get("authorization") ? "authorization" : "cookie";
-  const r=await fetch(env.IFUND_ADMIN_VERIFY_URL,{headers:{[headerName]:auth,accept:"application/json"}});
+  const auth = forwardedAdminAuth(request);
+  if (!Object.keys(auth).length || !env.IFUND_ADMIN_VERIFY_URL) return null;
+  const r=await fetch(env.IFUND_ADMIN_VERIFY_URL,{headers:{...auth,accept:"application/json"}});
   if(!r.ok) return null;
-  const user=await r.json(); return user?.role==="admin" ? user : null;
+  const user=await r.json(); return user?.role==="admin" && user?.super_admin===true ? user : null;
 }
 function b64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 async function sessionSignature(payload,env){
@@ -86,7 +98,30 @@ async function validSession(token,userId,env){
     return data.uid===userId&&Number(data.exp)>Date.now();
   }catch{return false;}
 }
-async function audit(env,event){if(!env.IFUND_AUDIT_URL)return;await fetch(env.IFUND_AUDIT_URL,{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${env.IFUND_SERVICE_TOKEN||""}`},body:JSON.stringify(event)}).catch(()=>{});}
+async function audit(env,event,request){
+  if(!env.IFUND_AUDIT_URL)return;
+  const auth=forwardedAdminAuth(request);
+  const headers={"content-type":"application/json",...auth};
+  if(!Object.keys(auth).length && env.IFUND_SERVICE_TOKEN) headers.authorization=`Bearer ${env.IFUND_SERVICE_TOKEN}`;
+  await fetch(env.IFUND_AUDIT_URL,{method:"POST",headers,body:JSON.stringify(event)}).catch(()=>{});
+}
+async function callAgentRuntime(env, request, payload) {
+  if(!env.IFUND_AGENT_EXECUTE_URL) {
+    return { response: json({error:"Development agent runtime is not configured on this host.",degraded:true},503), result:null };
+  }
+  const auth=forwardedAdminAuth(request);
+  if(!Object.keys(auth).length) {
+    return { response: json({error:"Administrator authorization required."},401), result:null };
+  }
+  const r=await fetch(env.IFUND_AGENT_EXECUTE_URL,{
+    method:"POST",
+    headers:{"content-type":"application/json",...auth},
+    body:JSON.stringify(payload),
+  });
+  const result=await r.json().catch(()=>({}));
+  return { response:r, result };
+}
+
 export default { async fetch(request, env) {
   const url=new URL(request.url);
   if(isMcpProxyPath(url.pathname)){
@@ -99,21 +134,72 @@ export default { async fetch(request, env) {
   if(!origin) return json({error:"Origin denied"},403);
   const user=await verifyPlatformAdmin(request,env);
   if(!user) return json({error:"Administrator authorization required."},403,origin);
+
   if(url.pathname==="/v1/admin/agents/session"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
-    if(!(await sameSecret(body.adminKey,env.IFUND_ADMIN_AGENT_KEY))){await audit(env,{type:"admin_agent_auth_failed",userId:user.id,at:new Date().toISOString()});return json({error:"Admin development key rejected."},403,origin);}
-    const sessionId=await newSession(user.id,env); await audit(env,{type:"admin_agent_session",userId:user.id,agent:"chief_of_staff",at:new Date().toISOString()}); return json({sessionId,expiresIn:900},200,origin);
+    if(!(await sameSecret(body.adminKey,env.IFUND_ADMIN_AGENT_KEY))){
+      await audit(env,{type:"admin_agent_auth_failed",userId:user.id,at:new Date().toISOString()},request);
+      return json({error:"Admin development key rejected."},403,origin);
+    }
+    const sessionId=await newSession(user.id,env);
+    await audit(env,{type:"admin_agent_session",userId:user.id,agent:String(body.agent||"chief_of_staff"),at:new Date().toISOString()},request);
+    return json({sessionId,expiresIn:900},200,origin);
   }
+
   if(url.pathname==="/v1/admin/agents/message"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
     if(!(await validSession(body.sessionId,user.id,env))) return json({error:"Admin development session expired."},401,origin);
     const allowed=new Set(["chief_of_staff","builder_agent","admin_agent","review_agent","verification_agent","connection_discovery_agent"]);
     if(!allowed.has(body.agent)) return json({error:"Agent is not approved for this gateway."},400,origin);
-    if(!env.IFUND_AGENT_EXECUTE_URL) return json({error:"Development agent runtime is not configured on this host.","degraded":true},503,origin);
-    const r=await fetch(env.IFUND_AGENT_EXECUTE_URL,{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${env.IFUND_SERVICE_TOKEN||""}`},body:JSON.stringify({agent:body.agent,content:String(body.content||""),adminUserId:user.id})});
-    const result=await r.json().catch(()=>({}));
-    await audit(env,{type:"admin_agent_message",userId:user.id,agent:body.agent,status:r.ok?"accepted":"failed",at:new Date().toISOString()});
-    return json(r.ok?{response:result.response||"Request accepted.",requestId:result.requestId}:{error:result.error||"Agent request failed."},r.status,origin);
+
+    const runtime=await callAgentRuntime(env,request,{
+      agent:body.agent,
+      content:String(body.content||""),
+      adminUserId:user.id,
+    });
+    if(runtime.response instanceof Response && runtime.result===null) {
+      const fallback=await runtime.response.json().catch(()=>({}));
+      return json(fallback,runtime.response.status,origin);
+    }
+
+    const result=runtime.result||{};
+    await audit(env,{type:"admin_agent_message",userId:user.id,agent:body.agent,status:runtime.response.ok?"accepted":"failed",requestId:result.requestId,at:new Date().toISOString()},request);
+    return json(runtime.response.ok?{
+      response:result.response||"Request accepted.",
+      requestId:result.requestId,
+      activityId:result.activityId,
+      conversationId:result.conversationId,
+      execution_status:result.execution_status,
+      degraded:result.degraded===true,
+      tool_call:result.tool_call,
+    }:{error:result.error||"Agent request failed."},runtime.response.status,origin);
   }
+
+  if(url.pathname==="/v1/admin/agents/status"&&request.method==="POST"){
+    const body=await request.json().catch(()=>({}));
+    if(!(await validSession(body.sessionId,user.id,env))) return json({error:"Admin development session expired."},401,origin);
+    const activityId=String(body.activityId||"").trim();
+    if(!activityId) return json({error:"Activity ID is required."},400,origin);
+
+    const runtime=await callAgentRuntime(env,request,{mode:"status",activityId,adminUserId:user.id});
+    if(runtime.response instanceof Response && runtime.result===null) {
+      const fallback=await runtime.response.json().catch(()=>({}));
+      return json(fallback,runtime.response.status,origin);
+    }
+
+    const result=runtime.result||{};
+    return json(runtime.response.ok?{
+      response:result.response||"Agent execution is in progress.",
+      requestId:result.requestId,
+      activityId:result.activityId||activityId,
+      conversationId:result.conversationId,
+      execution_status:result.execution_status,
+      degraded:result.degraded===true,
+      tool_call:result.tool_call,
+      tool_errors:result.tool_errors===true,
+    }:{error:result.error||"Agent status check failed."},runtime.response.status,origin);
+  }
+
   return json({error:"Not found"},404,origin);
 }};
+
