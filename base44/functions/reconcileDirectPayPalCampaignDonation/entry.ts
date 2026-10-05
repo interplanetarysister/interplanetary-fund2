@@ -44,8 +44,11 @@ export default async function(req) {
     if (!tx || tx.id !== transactionId || tx.status !== 'S') {
       return Response.json({ error: 'A settled PayPal receipt could not be verified.' }, { status: 409 });
     }
+    if (tx.transactionEventCode !== 'T0013') {
+      return Response.json({ error: 'Only PayPal donation-payment receipts can be recovered here.' }, { status: 409 });
+    }
     if (String(tx.currency || '').toUpperCase() !== 'USD' || !(Number(tx.amount) > 0)) {
-      return Response.json({ error: 'Only positive USD PayPal receipts can be recovered here.' }, { status: 409 });
+      return Response.json({ error: 'Only positive USD PayPal donation receipts can be recovered here.' }, { status: 409 });
     }
     if (Number(tx.feeAmount || 0) > 0 && String(tx.feeCurrency || tx.currency || '').toUpperCase() !== 'USD') {
       return Response.json({ error: 'PayPal fee currency does not match this USD receipt.' }, { status: 409 });
