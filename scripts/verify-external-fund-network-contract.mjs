@@ -40,7 +40,7 @@ assert.match(execute,/withdrawable_imported:0/);
 assert.doesNotMatch(connect,/permissionAccepted/);
 assert.doesNotMatch(connect,/browser_read_consent/);
 assert.match(registry,/if \(capability && !known\.has\(capability\)\)/);
-assert.match(registry,/connection\.automation_mode !== 'auto'/);
+assert.match(registry,/\(connection\.automation_mode \|\| 'manual'\) !== 'auto'/);
 assert.doesNotMatch(autopilot,/c\.obo_consent\?\.granted === true/);
 assert.doesNotMatch(connectionSync,/connectionAutomationAllowed/);
 assert.match(saveCredentials,/granted: unifiedObo/);
