@@ -34,12 +34,12 @@ const PLATFORM_RULES = {
   custom: 'Custom site update: general campaign update, gratitude and progress, 2-3 paragraphs.',
 };
 
-// Canonical PayPal donate link — matches src/lib/paypalLink.js and every
-// Interplanetary Fund repo. Appended to social posts so a give link travels
-// with the content. Business: interplanetarysister@gmail.com.
-const BUSINESS_EMAIL = 'interplanetarysister@gmail.com';
-function generateDonationBlock(campaignTitle) {
-  const link = `https://www.paypal.com/donate/?cmd=_donations&business=${encodeURIComponent(BUSINESS_EMAIL)}&item_name=${encodeURIComponent(`${campaignTitle} - Interplanetary Fund`)}&currency_code=USD`;
+// Campaign-facing distribution always returns supporters to IFund checkout.
+// Never send campaign traffic to a raw PayPal donation URL: direct provider
+// links cannot carry IFund's canonical campaign/payment identity.
+const PUBLIC_ORIGIN = 'https://interplanetaryfund.com';
+function generateDonationBlock(campaignId) {
+  const link = `${PUBLIC_ORIGIN}/campaign/${encodeURIComponent(campaignId)}?donate=true`;
   return `\n\n💛 Support this campaign: ${link}\nEvery donation makes a difference. Thank you! 🙏`;
 }
 
@@ -125,7 +125,7 @@ Return JSON only.`;
       // clickable give link travels with the content even when copy-pasted.
       // (Skipped for crowdfunding update posts, which link to the campaign page.)
       const content = conn.kind === 'social'
-        ? post.content + generateDonationBlock(campaign.title)
+        ? post.content + generateDonationBlock(campaign.id)
         : post.content;
       const record = await base44.entities.DistributedPost.create({
         campaign_id,
