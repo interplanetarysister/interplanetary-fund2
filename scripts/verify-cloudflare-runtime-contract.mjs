@@ -7,4 +7,8 @@ assert.match(workflow, /environment:\s*production_if2/, "Cloudflare deployment m
 assert.match(workflow, /6a67a778342a8fe05ee79cba/, "Cloudflare build must retain the canonical Base44 app id fallback");
 assert.match(workflow, /https:\/\/interplanetaryfund\.base44\.app/, "Cloudflare build must retain the canonical Base44 backend fallback");
 assert.match(workflow, /test -n "\$VITE_BASE44_APP_BASE_URL"/, "Cloudflare build must fail closed without a Base44 backend URL");
-assert.equal(manifest.name, "Interplanetary Fund"); assert.equal(manifest.short_name, "IFund"); assert.equal(manifest.id, "/"); assert.equal(manifest.scope, "/");\nconsole.log("Cloudflare SPA, compute runtime, PWA identity, and deployment contract passed.");
+assert.equal(manifest.name, "Interplanetary Fund");
+assert.equal(manifest.short_name, "IFund");
+assert.equal(manifest.id, "/");
+assert.equal(manifest.scope, "/");
+console.log("Cloudflare SPA, compute runtime, PWA identity, and deployment contract passed.");
