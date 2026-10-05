@@ -1,3 +1,5 @@
+import { ensureCanonicalCampaign, mirrorCanonicalCampaignTotal } from './base44Financial.ts';
+
 // Application-layer financial mirrors. Base44 FinancialOperation is the financial authority;
 // Base44 rows exist so current UI surfaces keep working. Every financial or
 // external-observation mirror is keyed by canonical_operation_id and converges
@@ -31,7 +33,21 @@ async function reconcileOne(entity, canonicalOperationId, data) {
 }
 
 export async function reconcileDonationMirror(sr, canonicalOperationId, data) {
-  return reconcileOne(sr.entities.Donation, canonicalOperationId, data);
+  const mirror = await reconcileOne(sr.entities.Donation, canonicalOperationId, data);
+
+  // Campaign totals are derived from verified Donation mirrors. Recompute only
+  // AFTER the donation row has converged; doing this before mirror creation
+  // writes the previous total back to Campaign and leaves successful provider
+  // payments invisible until some unrelated later repair.
+  const campaignId = String(data?.campaign_id || mirror?.campaign_id || '').trim();
+  if (campaignId) {
+    const campaign = await sr.entities.Campaign.get(campaignId).catch(() => null);
+    if (!campaign) throw new Error('Campaign not found while reconciling donation totals.');
+    const totals = await ensureCanonicalCampaign(sr, campaign);
+    await mirrorCanonicalCampaignTotal(sr, campaignId, totals);
+  }
+
+  return mirror;
 }
 
 export async function reconcileNotificationMirror(sr, canonicalOperationId, data) {
