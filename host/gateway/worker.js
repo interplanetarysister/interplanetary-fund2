@@ -39,7 +39,7 @@ async function proxyBase44Mcp(request, env) {
   headers.set("x-ifund-proxy", "cloudflare-mcp");
 
   const init = { method: request.method, headers, redirect: "manual" };
-  if (request.method !== "GET" && request.method !== "HEAD") init.body = request.body;
+  if (request.method !== "GET" && request.method !== "HEAD") init.body = await request.arrayBuffer();
 
   const upstream = await fetch(new Request(upstreamUrl.toString(), init));
   const responseHeaders = new Headers(upstream.headers);
