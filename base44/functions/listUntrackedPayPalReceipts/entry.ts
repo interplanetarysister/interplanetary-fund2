@@ -39,7 +39,12 @@ export default async function(req) {
     ]);
 
     const receipts = (transactions || [])
-      .filter((tx) => tx.status === 'S' && Number(tx.amount) > 0 && String(tx.currency || '').toUpperCase() === 'USD')
+      .filter((tx) =>
+        tx.status === 'S' &&
+        tx.transactionEventCode === 'T0013' &&
+        Number(tx.amount) > 0 &&
+        String(tx.currency || '').toUpperCase() === 'USD'
+      )
       .map((tx) => {
         const gross = round2(tx.amount);
         const fee = String(tx.feeCurrency || tx.currency || '').toUpperCase() === 'USD' ? round2(tx.feeAmount || 0) : 0;
