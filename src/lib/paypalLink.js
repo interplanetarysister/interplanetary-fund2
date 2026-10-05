@@ -1,7 +1,6 @@
-// Canonical PayPal donate link for the Interplanetary Fund — one source of
-// truth shared across every Interplanetary Fund repo. Builds a one-click
-// donate link that works anywhere (posts, emails, texts, bios); the donor
-// picks the amount if none is given. No SDK, no hosted button ID.
+// Prelaunch/platform-support PayPal link. This raw provider URL is never a
+// campaign fundraising path because it cannot create IFund's canonical
+// campaign/payment identity. Campaign donations must return to IFund checkout.
 //
 // Business account: interplanetarysister@gmail.com
 
@@ -9,11 +8,12 @@ import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 const BUSINESS_EMAIL = "interplanetarysister@gmail.com";
 
-export function generatePayPalLink(campaignTitle, amount) {
+export function generatePayPalLink(_campaignTitle, amount) {
+  if (!PRELAUNCH_MODE) return "https://interplanetaryfund.com/";
   const params = new URLSearchParams({
     cmd: "_donations",
     business: BUSINESS_EMAIL,
-    item_name: PRELAUNCH_MODE ? "Interplanetary Fund - Prelaunch Development & Operations" : `${campaignTitle} - Interplanetary Fund`,
+    item_name: "Interplanetary Fund - Prelaunch Development & Operations",
     currency_code: "USD",
   });
   if (amount) params.set("amount", String(amount));
@@ -22,16 +22,24 @@ export function generatePayPalLink(campaignTitle, amount) {
 
 // Full donation block appended to cross-posted campaign content so a
 // clickable PayPal link travels with the post even if copy-pasted.
-export function generateDonationBlock(campaignTitle, amount) {
-  const link = generatePayPalLink(campaignTitle, amount);
-  return PRELAUNCH_MODE
-    ? `\n\nSupport Interplanetary Fund during prelaunch: ${link}\nThis payment supports Interplanetary Fund development and operations, not the individual campaign shown.`
-    : `\n\n💛 Support this campaign: ${link}\nEvery donation makes a difference. Thank you! 🙏`;
+export function generateDonationBlock(campaignTitle, amount, campaignId) {
+  if (PRELAUNCH_MODE) {
+    const link = generatePayPalLink(campaignTitle, amount);
+    return `\n\nSupport Interplanetary Fund during prelaunch: ${link}\nThis payment supports Interplanetary Fund development and operations, not the individual campaign shown.`;
+  }
+  const link = campaignId
+    ? `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaignId)}?donate=true`
+    : "https://interplanetaryfund.com/discover";
+  return `\n\n💛 Support this campaign: ${link}\nEvery donation makes a difference. Thank you! 🙏`;
 }
 
 // Short version for character-limited platforms (X, etc.).
-export function generateShortDonationBlock(campaignTitle) {
-  return PRELAUNCH_MODE
-    ? `\nSupport Interplanetary Fund (prelaunch; not this campaign): ${generatePayPalLink(campaignTitle)}`
-    : `\n💛 Donate: ${generatePayPalLink(campaignTitle)}`;
+export function generateShortDonationBlock(campaignTitle, campaignId) {
+  if (PRELAUNCH_MODE) {
+    return `\nSupport Interplanetary Fund (prelaunch; not this campaign): ${generatePayPalLink(campaignTitle)}`;
+  }
+  const link = campaignId
+    ? `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaignId)}?donate=true`
+    : "https://interplanetaryfund.com/discover";
+  return `\n💛 Donate: ${link}`;
 }
