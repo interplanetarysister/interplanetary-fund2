@@ -6,7 +6,6 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import {
   ensureCanonicalCampaign,
   recordCanonicalDonation,
-  mirrorCanonicalCampaignTotal,
   reserveCanonicalWithdrawal,
   completeCanonicalWithdrawal,
   cancelCanonicalWithdrawal,
@@ -73,7 +72,6 @@ async function verifyPendingDonation(base44, sr, donation, adminUser) {
     await sr.entities.Donation.update(donation.id, { canonical_operation_id: String(canonical.operationId) });
   }
 
-  await mirrorCanonicalCampaignTotal(sr, campaign.id, canonical);
   const mirror = await reconcileDonationMirror(sr, canonical.operationId, {
     campaign_id: donation.campaign_id,
     campaign_title: donation.campaign_title || campaign.title,
