@@ -21,6 +21,10 @@ const files = {
   inboxSchema: read('base44/entities/InboxItem.jsonc'),
   withdrawalSchema: read('base44/entities/Withdrawal.jsonc'),
   webhookSchema: read('base44/entities/WebhookEvent.jsonc'),
+  paypalRecovery: read('base44/functions/reconcileDirectPayPalCampaignDonation/entry.ts'),
+  paypalRecoveryList: read('base44/functions/listUntrackedPayPalReceipts/entry.ts'),
+  paypalRawButton: read('src/components/payments/PayPalDonateButton.jsx'),
+  distribution: read('base44/functions/generateDistributionContent/entry.ts'),
 };
 
 const checks = [
@@ -47,6 +51,17 @@ const checks = [
   ['PayPal capture has stable provider request id', files.paypal.includes('PayPal-Request-Id') && files.paypal.includes('IF_CAPTURE')],
   ['PayPal payout sender batch is deterministic', files.paypal.includes("stableProviderKey('IFW', itemId") && !files.paypal.includes('IFW_${Date.now()}')],
   ['PayPal ambiguous transport result is explicit', files.paypal.includes('err.ambiguous = true')],
+  ['PayPal transaction reporting exposes processor fee for reconciliation', files.paypal.includes('fee_amount') && files.paypal.includes('feeAmount')],
+  ['verified Donation mirror is created before campaign totals are recomputed',
+    files.mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') >= 0 &&
+    files.mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') <
+    files.mirrors.indexOf('await mirrorCanonicalCampaignTotal(sr, campaignId, totals)')],
+  ['PayPal capture never mirrors stale campaign totals before donation convergence', !files.paypalCapture.includes('await mirrorCanonicalCampaignTotal')],
+  ['legacy PayPal recovery accepts only donation-payment T0013 receipts', files.paypalRecovery.includes("tx.transactionEventCode !== 'T0013'") && files.paypalRecoveryList.includes("tx.transactionEventCode === 'T0013'")],
+  ['legacy PayPal recovery deduplicates by provider transaction id', files.paypalRecovery.includes('provider_transaction_id: transactionId') && files.paypalRecovery.includes('existingAllocation')],
+  ['legacy PayPal recovery enters canonical donation boundary', files.paypalRecovery.includes('recordCanonicalDonation') && files.paypalRecovery.includes('reconcileDonationMirror')],
+  ['raw PayPal button fails closed outside prelaunch', files.paypalRawButton.includes('if (!PRELAUNCH_MODE) return null')],
+  ['campaign distribution never uses raw PayPal donate URLs', !files.distribution.includes('paypal.com/donate') && files.distribution.includes('?donate=true')],
 
   ['Stripe uses canonical donation boundary', files.stripe.includes('recordCanonicalDonation')],
   ['Stripe never directly creates Base44 Donation', !/entities\.Donation\.create/.test(files.stripe)],
