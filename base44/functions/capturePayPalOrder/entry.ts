@@ -5,7 +5,7 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { round2, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { ensureCanonicalCampaign, recordCanonicalDonation, mirrorCanonicalCampaignTotal } from '../../shared/base44Financial.ts';
+import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 import { PRELAUNCH_MODE } from '../../shared/prelaunch.js';
@@ -104,7 +104,6 @@ export default async function (req) {
       isRecurring: !!is_recurring,
     });
 
-    await mirrorCanonicalCampaignTotal(sr, campaign_id, canonical);
 
     // The designated Interplanetary Fund holding account is the business PayPal
     // account. A COMPLETED capture is provider evidence that this direct PayPal
