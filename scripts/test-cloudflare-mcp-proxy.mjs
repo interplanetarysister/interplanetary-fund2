@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import worker from "../host/gateway/worker.js";
+
+const originalFetch = globalThis.fetch;
+try {
+  let captured;
+  globalThis.fetch = async (request) => {
+    captured = {
+      url: request.url,
+      method: request.method,
+      authorization: request.headers.get("authorization"),
+      forwardedHost: request.headers.get("x-forwarded-host"),
+      proxyMarker: request.headers.get("x-ifund-proxy"),
+      body: request.method === "GET" || request.method === "HEAD" ? "" : await request.text(),
+    };
+    return new Response(JSON.stringify({ error: "authorization_required" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  const request = new Request("https://interplanetaryfund.com/api/mcp?probe=1", {
+    method: "POST",
+    headers: {
+      authorization: "Bearer test-token",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: "probe", method: "initialize", params: {} }),
+  });
+  const response = await worker.fetch(request, { IFUND_BASE44_ORIGIN: "https://interplanetaryfund.base44.app" });
+
+  assert.equal(response.status, 401);
+  assert.equal(response.headers.get("x-ifund-mcp-proxy"), "base44");
+  assert.equal(captured.url, "https://interplanetaryfund.base44.app/api/mcp?probe=1");
+  assert.equal(captured.method, "POST");
+  assert.equal(captured.authorization, "Bearer test-token");
+  assert.equal(captured.forwardedHost, "interplanetaryfund.com");
+  assert.equal(captured.proxyMarker, "cloudflare-mcp");
+  assert.match(captured.body, /"initialize"/);
+
+  captured = undefined;
+  const discovery = await worker.fetch(new Request("https://interplanetaryfund.com/.well-known/oauth-protected-resource"), {});
+  assert.equal(discovery.status, 401);
+  assert.equal(captured.url, "https://interplanetaryfund.base44.app/.well-known/oauth-protected-resource");
+
+  const admin = await worker.fetch(new Request("https://interplanetaryfund.com/v1/admin/agents/session", { method: "POST" }), {});
+  assert.equal(admin.status, 403, "Admin gateway must retain its separate origin/admin authorization boundary");
+
+  console.log("Cloudflare MCP proxy behavior passed.");
+} finally {
+  globalThis.fetch = originalFetch;
+}

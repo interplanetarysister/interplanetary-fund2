@@ -132,6 +132,9 @@ jobs:
       - name: Cloudflare SPA and compute runtime contract
         run: node scripts/verify-cloudflare-runtime-contract.mjs
 
+      - name: Cloudflare MCP proxy behavior
+        run: node scripts/test-cloudflare-mcp-proxy.mjs
+
       - name: Canonical admin authorization contract
         run: npm run verify:admin-authorization
 

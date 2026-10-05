@@ -245,7 +245,7 @@ assert.ok(
   'shared app main must explicitly pair background and foreground regardless of class order'
 );
 assert.ok(
-  ['min-h-screen', 'min-h-dvh'].some((heightClass) =>
+  ['h-screen', 'h-dvh', 'min-h-screen', 'min-h-dvh'].some((heightClass) =>
     hasStaticElementClasses(layout, 'div', [heightClass, 'bg-background', 'text-foreground'])
   ),
   'shared app shell must pair a viewport-height class with semantic background and foreground'

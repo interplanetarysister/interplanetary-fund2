@@ -1,4 +1,5 @@
 const enc = new TextEncoder();
+const DEFAULT_BASE44_ORIGIN = "https://interplanetaryfund.base44.app";
 
 function json(body, status = 200, origin = "") {
   const headers = { "content-type": "application/json", "cache-control": "no-store" };
@@ -9,6 +10,46 @@ function allowedOrigin(request, env) {
   const origin = request.headers.get("origin") || "";
   const allowed = String(env.IFUND_ALLOWED_ORIGINS || "").split(",").map(v=>v.trim()).filter(Boolean);
   return allowed.includes(origin) ? origin : "";
+}
+function base44Origin(env) {
+  const raw = String(env.IFUND_BASE44_ORIGIN || DEFAULT_BASE44_ORIGIN).trim().replace(/\/+$/, "");
+  const url = new URL(raw);
+  if (url.protocol !== "https:") throw new Error("IFUND_BASE44_ORIGIN must use HTTPS.");
+  return url.origin;
+}
+function isMcpProxyPath(pathname) {
+  return pathname === "/api/mcp"
+    || pathname.startsWith("/api/mcp/")
+    || /^\/api\/apps\/[^/]+\/mcp(?:\/|$)/.test(pathname)
+    || pathname === "/.well-known/oauth-protected-resource"
+    || pathname.startsWith("/.well-known/oauth-protected-resource/")
+    || pathname === "/.well-known/oauth-authorization-server"
+    || pathname.startsWith("/.well-known/oauth-authorization-server/")
+    || pathname === "/.well-known/openid-configuration";
+}
+async function proxyBase44Mcp(request, env) {
+  const incoming = new URL(request.url);
+  const upstreamOrigin = base44Origin(env);
+  const upstreamUrl = new URL(incoming.pathname + incoming.search, upstreamOrigin);
+  const headers = new Headers(request.headers);
+  headers.delete("host");
+  headers.delete("content-length");
+  headers.set("x-forwarded-host", incoming.host);
+  headers.set("x-forwarded-proto", incoming.protocol.replace(":", ""));
+  headers.set("x-ifund-proxy", "cloudflare-mcp");
+
+  const init = { method: request.method, headers, redirect: "manual" };
+  if (request.method !== "GET" && request.method !== "HEAD") init.body = await request.arrayBuffer();
+
+  const upstream = await fetch(new Request(upstreamUrl.toString(), init));
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.set("x-ifund-mcp-proxy", "base44");
+  responseHeaders.set("cache-control", "no-store");
+  return new Response(upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders,
+  });
 }
 async function sameSecret(a,b) {
   const aa=enc.encode(String(a||"")), bb=enc.encode(String(b||""));
@@ -47,10 +88,15 @@ async function validSession(token,userId,env){
 }
 async function audit(env,event){if(!env.IFUND_AUDIT_URL)return;await fetch(env.IFUND_AUDIT_URL,{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${env.IFUND_SERVICE_TOKEN||""}`},body:JSON.stringify(event)}).catch(()=>{});}
 export default { async fetch(request, env) {
+  const url=new URL(request.url);
+  if(isMcpProxyPath(url.pathname)){
+    try{return await proxyBase44Mcp(request,env);}
+    catch{return json({error:"Interplanetary Fund MCP backend is unavailable.",degraded:true},502);}
+  }
+
   const origin=allowedOrigin(request,env);
   if(request.method==="OPTIONS") return origin?json({},204,origin):json({error:"Origin denied"},403);
   if(!origin) return json({error:"Origin denied"},403);
-  const url=new URL(request.url);
   const user=await verifyPlatformAdmin(request,env);
   if(!user) return json({error:"Administrator authorization required."},403,origin);
   if(url.pathname==="/v1/admin/agents/session"&&request.method==="POST"){
