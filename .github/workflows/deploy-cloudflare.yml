@@ -61,3 +61,11 @@ jobs:
           grep -q 'https://interplanetaryfund.com/' /tmp/ifund-cloudflare.html
           curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/ -o /tmp/ifund-custom-domain.html
           grep -q 'id="root"' /tmp/ifund-custom-domain.html
+
+          MCP_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors -D /tmp/ifund-mcp.headers -o /tmp/ifund-mcp.body -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":"ifund-health","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ifund-deploy-check","version":"1.0.0"}}}' "$DEPLOYMENT_URL/api/mcp")"
+          grep -qi '^x-ifund-mcp-proxy: base44' /tmp/ifund-mcp.headers
+          test "$MCP_STATUS" != "404"
+          if grep -qi '<div id="root"' /tmp/ifund-mcp.body; then
+            echo "MCP endpoint incorrectly returned the SPA shell."
+            exit 1
+          fi
