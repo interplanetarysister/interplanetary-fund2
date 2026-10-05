@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync('base44/functions/stripeWebhook/entry.ts', 'utf8');
+const mirrors = readFileSync('base44/shared/financialMirrors.ts', 'utf8');
 const checks = [
   ['validates Stripe signature', source.includes("return Response.json({ error: 'Invalid signature' }, { status: 400 });")],
   ['rejects Stripe test-mode events from production financial state', /event\.livemode !== true/.test(source)],
@@ -13,7 +14,11 @@ const checks = [
   ['retains failed state for Stripe retry', source.includes("state: 'failed'")],
   ['does not delete webhook recovery record on failure', !/WebhookEvent\.delete\(claim\.id\)/.test(source)],
   ['routes financial value through the canonical Base44 financial boundary', source.includes('recordCanonicalDonation')],
-  ['sets Base44 campaign totals from canonical result', source.includes('mirrorCanonicalCampaignTotal')],
+  ['campaign totals are recomputed after Donation mirror convergence',
+    !source.includes('mirrorCanonicalCampaignTotal') &&
+    mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') >= 0 &&
+    mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') <
+    mirrors.indexOf('await mirrorCanonicalCampaignTotal(sr, campaignId, totals)')],
   ['repairs Donation mirror by canonical operation id', source.includes('reconcileDonationMirror')],
   ['repairs Notification mirror by canonical operation id', source.includes('reconcileNotificationMirror')],
   ['does not directly create Base44 Donation', !/entities\.Donation\.create/.test(source)],
