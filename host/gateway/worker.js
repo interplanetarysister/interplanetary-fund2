@@ -61,7 +61,7 @@ export default { async fetch(request, env) {
   if(url.pathname==="/v1/admin/agents/message"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
     if(!(await validSession(body.sessionId,user.id,env))) return json({error:"Admin development session expired."},401,origin);
-    const allowed=new Set(["chief_of_staff","builder_agent","admin_agent","review_agent","verification_agent"]);
+    const allowed=new Set(["chief_of_staff","builder_agent","admin_agent","review_agent","verification_agent","connection_discovery_agent"]);
     if(!allowed.has(body.agent)) return json({error:"Agent is not approved for this gateway."},400,origin);
     if(!env.IFUND_AGENT_EXECUTE_URL) return json({error:"Development agent runtime is not configured on this host.","degraded":true},503,origin);
     const r=await fetch(env.IFUND_AGENT_EXECUTE_URL,{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${env.IFUND_SERVICE_TOKEN||""}`},body:JSON.stringify({agent:body.agent,content:String(body.content||""),adminUserId:user.id})});
