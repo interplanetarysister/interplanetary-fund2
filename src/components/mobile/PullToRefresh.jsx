@@ -21,7 +21,7 @@ export default function PullToRefresh({ onRefresh, children, className = "" }) {
 
     const onStart = (e) => {
       if (refreshingRef.current) return;
-      const scrollEl = document.scrollingElement || document.documentElement;
+      const scrollEl = el.closest("[data-page-scroll]") || document.getElementById("root") || document.scrollingElement || document.documentElement;
       if (scrollEl.scrollTop > 0) { startYRef.current = null; return; }
       startYRef.current = e.touches[0].clientY;
       startXRef.current = e.touches[0].clientX;
