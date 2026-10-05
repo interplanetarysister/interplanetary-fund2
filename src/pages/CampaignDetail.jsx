@@ -80,7 +80,7 @@ export default function CampaignDetail() {
     <PullToRefresh onRefresh={load} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {justDonated && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
-          {PRELAUNCH_MODE ? "Thank you for supporting Interplanetary Fund during prelaunch. This payment is not credited to the displayed campaign." : "Thank you for your donation! It may take a moment to appear on the campaign."}
+          {PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Campaign payment test completed. The verified gift should now be reflected in this campaign." : "Thank you for supporting Interplanetary Fund during prelaunch. This payment is not credited to the displayed campaign.") : "Thank you for your donation! It may take a moment to appear on the campaign."}
         </div>
       )}
       {PRELAUNCH_MODE && <PrelaunchNotice className="mb-6" />}
@@ -164,9 +164,9 @@ export default function CampaignDetail() {
       <button
         onClick={() => setDonateOpen(true)}
         className="lg:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 h-14 px-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:scale-95 transition-transform"
-        aria-label={PRELAUNCH_MODE ? "Support Interplanetary Fund during prelaunch" : "Donate"}
+        aria-label={PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Test a real campaign donation" : "Support Interplanetary Fund during prelaunch") : "Donate"}
       >
-        <span className="flex flex-col items-center leading-tight"><span className="flex items-center gap-2"><Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? "Support IF" : "Donate"}</span>{PRELAUNCH_MODE && <span className="text-[10px] font-medium opacity-90">Platform, not campaign</span>}</span>
+        <span className="flex flex-col items-center leading-tight"><span className="flex items-center gap-2"><Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Test Donation" : "Support IF") : "Donate"}</span>{PRELAUNCH_MODE && <span className="text-[10px] font-medium opacity-90">{prelaunchCampaignTest ? "Real campaign test" : "Platform, not campaign"}</span>}</span>
       </button>
       )}
       <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} prelaunchCampaignTest={prelaunchCampaignTest} />
