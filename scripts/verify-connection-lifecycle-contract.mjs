@@ -9,6 +9,7 @@ const disconnect = fs.readFileSync('base44/functions/disconnectPlatformConnectio
 const card = fs.readFileSync('src/components/connections/ConnectionCard.jsx', 'utf8');
 const resolver = fs.readFileSync('base44/functions/resolveConnectionStatus/entry.ts', 'utf8');
 const recipe = fs.readFileSync('base44/entities/PlatformConnectionRecipe.jsonc', 'utf8');
+const recipeRouting = fs.readFileSync('base44/shared/platformConnectionRecipes.ts', 'utf8');
 
 assert.match(verify, /getCurrentAppUserConnection/);
 assert.match(provider, /com\.atproto\.server\.createSession/);
@@ -26,7 +27,7 @@ assert.match(card, /needsReauthorization \? "Reconnect"/);
 assert.match(card, /failed \? "Fix Connection"/);
 assert.match(card, /onClick=\{onManage\}/);
 
-assert.match(resolver, /TRANSPORT_PRIORITY/);
+assert.match(recipeRouting, /TRANSPORT_PRIORITY/);
 assert.match(resolver, /orderedTransports/);
 assert.match(resolver, /deriveLifecycle/);
 assert.match(resolver, /recoveryHint/);
@@ -34,7 +35,7 @@ for (const state of ['NOT_CONNECTED','AUTHORIZATION_REQUIRED','CONNECTED','RECON
   assert.match(resolver, new RegExp(state));
 }
 for (const transport of ['oauth','api','webhook','token','authenticated_browser','public_browser','manual']) {
-  assert.match(resolver + recipe, new RegExp(transport));
+  assert.match(resolver + recipe + recipeRouting, new RegExp(transport));
 }
 assert.match(resolver, /provider-verified provenance/);
 assert.match(resolver, /Configuration, recipes, saved credentials, or public URLs are NOT sufficient/);
