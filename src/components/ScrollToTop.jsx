@@ -11,6 +11,12 @@ const getHashId = (hash) => {
   }
 };
 
+const getScrollTarget = () =>
+  document.querySelector("[data-page-scroll]") ||
+  document.getElementById("root") ||
+  document.scrollingElement ||
+  document.documentElement;
+
 export default function ScrollToTop() {
   const { pathname, hash } = useLocation();
   const navigationType = useNavigationType();
@@ -26,7 +32,9 @@ export default function ScrollToTop() {
       return () => window.clearTimeout(timer);
     }
 
-    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const target = getScrollTarget();
+    if (target && "scrollTo" in target) target.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    else window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname, hash, navigationType]);
 
   return null;
