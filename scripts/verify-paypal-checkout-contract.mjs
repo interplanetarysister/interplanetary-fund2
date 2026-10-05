@@ -6,6 +6,14 @@ const button=read("src/components/payments/PayPalCheckoutButton.jsx");
 const scripts=read("src/components/payments/paypalScripts.js");
 const capture=read("base44/functions/capturePayPalOrder/entry.ts");
 const create=read("base44/functions/createPayPalOrder/entry.ts");
+const prelaunchAccess=read("base44/shared/prelaunchPayments.ts");
+const mirrors=read("base44/shared/financialMirrors.ts");
+const rawButton=read("src/components/payments/PayPalDonateButton.jsx");
+const fundingCard=read("src/components/campaigns/CampaignFundingCard.jsx");
+const distribution=read("base44/functions/generateDistributionContent/entry.ts");
+const recoveryList=read("base44/functions/listUntrackedPayPalReceipts/entry.ts");
+const recovery=read("base44/functions/reconcileDirectPayPalCampaignDonation/entry.ts");
+const paypal=read("base44/shared/paypal.ts");
 assert.match(dialog,/PayPalCheckoutButton/);
 assert.match(dialog,/Give with PayPal/);
 assert.match(dialog,/paypal\?\.api_live === true/);
@@ -23,4 +31,29 @@ assert.match(capture,/PAYPAL_MODE.*live/);
 assert.match(capture,/Google Pay/);
 assert.match(capture,/payment_method: paymentChannel/);
 assert.match(create,/payment_channel/);
+assert.match(create,/campaignPaymentAccess\(base44\)/);
+assert.match(capture,/campaignPaymentAccess\(base44\)/);
+assert.match(prelaunchAccess,/user\?\.role === 'admin'/);
+assert.match(prelaunchAccess,/SUPER_ADMIN_OWNER_EMAILS/);
+assert.match(prelaunchAccess,/interplanetarysister@gmail\.com/);
+assert.match(prelaunchAccess,/cuddlemeplatonically@gmail\.com/);
+assert.match(fundingCard,/prelaunchCampaignTest/);
+assert.match(dialog,/prelaunchCampaignTest/);
+assert.match(rawButton,/if \(!PRELAUNCH_MODE\) return null/);
+assert.doesNotMatch(distribution,/paypal\.com\/donate/,"campaign distribution must never bypass IFund checkout");
+assert.match(distribution,/\/campaign\/\$\{encodeURIComponent\(campaignId\)\}\?donate=true/);
+assert.match(mirrors,/const mirror = await reconcileOne\(sr\.entities\.Donation/);
+assert.ok(
+  mirrors.indexOf("const mirror = await reconcileOne(sr.entities.Donation") <
+  mirrors.indexOf("await mirrorCanonicalCampaignTotal(sr, campaignId, totals)"),
+  "campaign totals must be recomputed only after the verified Donation mirror exists"
+);
+assert.doesNotMatch(capture,/await mirrorCanonicalCampaignTotal/,"PayPal capture must not mirror stale totals before donation convergence");
+assert.match(recoveryList,/transactionEventCode === 'T0013'/);
+assert.match(recovery,/tx\.transactionEventCode !== 'T0013'/);
+assert.match(recovery,/paypal:legacy-direct:/);
+assert.match(recovery,/provider_transaction_id: transactionId/);
+assert.match(recovery,/reconcileDonationMirror/);
+assert.match(paypal,/feeAmount/);
+assert.match(paypal,/fee_amount/);
 console.log("PayPal campaign checkout contract verified.");
