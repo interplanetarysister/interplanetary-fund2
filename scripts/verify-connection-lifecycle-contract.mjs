@@ -20,8 +20,11 @@ assert.match(sync, /Scheduled provider verification succeeded/);
 assert.match(health, /verification_status === "verified"/);
 assert.match(disconnect, /shared_with_agents: false/);
 assert.match(disconnect, /automation_enabled: false/);
-assert.match(card, /verifyPlatformConnection/);
-assert.match(card, /\/>Check/);
+assert.match(card, /lifecycleHealth\(resolved\)/);
+assert.match(card, /connectionHealth\(connection\)/);
+assert.match(card, /needsReauthorization \? "Reconnect"/);
+assert.match(card, /failed \? "Fix Connection"/);
+assert.match(card, /onClick=\{onManage\}/);
 
 assert.match(resolver, /TRANSPORT_PRIORITY/);
 assert.match(resolver, /orderedTransports/);
