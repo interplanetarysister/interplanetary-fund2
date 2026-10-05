@@ -12,6 +12,7 @@ const DEVELOPMENT_AGENTS = [
   ["admin_agent", "Admin"],
   ["review_agent", "Reviewer"],
   ["verification_agent", "Verification"],
+  ["connection_discovery_agent", "Connection Discovery"],
 ];
 
 export default function AdminDevelopmentChat({ user }) {
