@@ -31,10 +31,11 @@ jobs:
         env:
           VITE_BASE44_APP_ID: ${{ vars.VITE_BASE44_APP_ID || '6a67a778342a8fe05ee79cba' }}
           VITE_BASE44_APP_BASE_URL: ${{ vars.VITE_BASE44_APP_BASE_URL || 'https://interplanetaryfund.base44.app' }}
-          VITE_ADMIN_AGENT_API_URL: ${{ vars.VITE_ADMIN_AGENT_API_URL }}
+          VITE_ADMIN_AGENT_API_URL: ${{ vars.VITE_ADMIN_AGENT_API_URL || 'https://interplanetaryfund.com' }}
         run: |
           test -n "$VITE_BASE44_APP_ID"
           test -n "$VITE_BASE44_APP_BASE_URL"
+          test -n "$VITE_ADMIN_AGENT_API_URL"
           npm run build
       - name: Deploy frontend and compute runtime to Cloudflare Workers
         id: deploy
