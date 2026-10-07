@@ -5,7 +5,7 @@ import { computeChargeTotal, MIN_DONATION } from "@/lib/fees";
 
 // Google Pay and PayPal Buttons deliberately share the same v5 PayPal SDK.
 // Only show this button when the wallet, device, and merchant are eligible.
-export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid }) {
+export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid, onReadyChange }) {
   const containerRef = useRef(null);
   const intentRef = useRef(crypto.randomUUID());
   const [state, setState] = useState("loading");
@@ -14,6 +14,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
 
   useEffect(() => {
     intentRef.current = crypto.randomUUID();
+    onReadyChange?.(false);
     let cancelled = false;
 
     async function init() {
@@ -118,6 +119,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
         if (cancelled) return;
         containerRef.current?.replaceChildren(button);
         setState("ready");
+        onReadyChange?.(true);
       } catch (_) {
         // No broken wallet section or false donation status when the merchant,
         // device, provider, or network does not support Google Pay.
