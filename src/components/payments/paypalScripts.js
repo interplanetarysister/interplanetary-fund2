@@ -1,6 +1,6 @@
-// Dynamically loads the PayPal JS SDK (with the Google Pay payments component)
-// and Google's own Pay button library. Both are idempotent/cached so repeated
-// renders of the Google Pay button don't re-add the scripts.
+// Use one consistent PayPal JavaScript SDK version for PayPal Buttons and Google Pay.
+// Both integrations below use v5: paypal.Buttons() and paypal.Googlepay().
+// Never mix this script with the v6 createInstance() interface.
 
 let gpayPromise = null;
 export function loadGooglePayScript() {
@@ -18,16 +18,27 @@ export function loadGooglePayScript() {
 }
 
 let ppPromise = null;
+let ppClientId = null;
 export function loadPayPalSdk(clientId) {
-  if (ppPromise) return ppPromise;
+  if (!clientId) return Promise.reject(new Error("PayPal client ID is required"));
+  if (ppPromise) {
+    if (ppClientId !== clientId) return Promise.reject(new Error("PayPal checkout configuration changed; reload the page"));
+    return ppPromise;
+  }
+  ppClientId = clientId;
   ppPromise = new Promise((resolve, reject) => {
-    if (window.paypal?.createInstance && window.paypal?.Buttons) return resolve();
-    const s = document.createElement("script");
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay-payments&intent=capture&currency=USD`;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => { ppPromise = null; reject(new Error("Failed to load PayPal SDK")); };
-    document.head.appendChild(s);
-  });
+    if (window.paypal?.Buttons && window.paypal?.Googlepay) return resolve();
+    const script = document.createElement("script");
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay&intent=capture&currency=USD`;
+    script.async = true;
+    script.onload = () => {
+      if (window.paypal?.Buttons && window.paypal?.Googlepay) resolve();
+      else reject(new Error("PayPal SDK did not provide required payment components"));
+    };
+    script.onerror = () => reject(new Error("Failed to load PayPal SDK"));
+    const resetOnFailure = () => { script.remove(); ppPromise = null; ppClientId = null; };
+    script.addEventListener("error", resetOnFailure, { once: true });
+    document.head.appendChild(script);
+  }).catch((error) => { ppPromise = null; ppClientId = null; throw error; });
   return ppPromise;
 }
