@@ -64,7 +64,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       // localStorage survives a provider redirect that returns in another web tab.
       // Only the same signed-in owner can resume; no provider tokens are stored here.
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
-        platform: platform.id, userId: me.id, sharedAgentConsent: aiAuthorized, startedAt: Date.now(),
+        platform: platform.id, userId: me.id, startedAt: Date.now(),
       }));
       window.location.assign(redirectUrl);
     } catch (e) {
