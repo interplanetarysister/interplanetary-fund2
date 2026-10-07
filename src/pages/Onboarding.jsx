@@ -32,6 +32,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       const updates = { full_name: data.full_name || undefined };
+      await base44.functions.invoke("setUnifiedOboConsent", { granted: !!data.delegated_operations_enabled });
       await base44.auth.updateMe({ ...updates, onboarding: data, onboarding_completed: true });
       navigate("/mission");
     } catch (e) {
