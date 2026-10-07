@@ -87,42 +87,42 @@
      Map every hardcoded dark/medium text class to a theme-aware token so
      headings, labels, body text, and muted text stay readable in dark mode
      across every page, section, and component. */
-  .dark .text-stone-900,
-  .dark .text-slate-950,
-  .dark .text-slate-900,
-  .dark .text-stone-950,
-  .dark .text-gray-900,
-  .dark .text-zinc-900,
-  .dark .text-neutral-900,
-  .dark .text-stone-800,
-  .dark .text-slate-800,
-  .dark .text-gray-800,
-  .dark .text-zinc-800,
-  .dark .text-neutral-800 {
+  .dark [class~="text-stone-900"],
+  .dark [class~="text-slate-950"],
+  .dark [class~="text-slate-900"],
+  .dark [class~="text-stone-950"],
+  .dark [class~="text-gray-900"],
+  .dark [class~="text-zinc-900"],
+  .dark [class~="text-neutral-900"],
+  .dark [class~="text-stone-800"],
+  .dark [class~="text-slate-800"],
+  .dark [class~="text-gray-800"],
+  .dark [class~="text-zinc-800"],
+  .dark [class~="text-neutral-800"] {
     color: hsl(var(--foreground)) !important;
     -webkit-text-fill-color: hsl(var(--foreground)) !important;
   }
 
-  .dark .text-stone-700,
-  .dark .text-slate-700,
-  .dark .text-gray-700,
-  .dark .text-zinc-700,
-  .dark .text-neutral-700,
-  .dark .text-stone-600,
-  .dark .text-slate-600,
-  .dark .text-gray-600,
-  .dark .text-zinc-600,
-  .dark .text-neutral-600,
-  .dark .text-stone-500,
-  .dark .text-slate-500,
-  .dark .text-gray-500,
-  .dark .text-zinc-500,
-  .dark .text-neutral-500,
-  .dark .text-stone-400,
-  .dark .text-slate-400,
-  .dark .text-gray-400,
-  .dark .text-zinc-400,
-  .dark .text-neutral-400 {
+  .dark [class~="text-stone-700"],
+  .dark [class~="text-slate-700"],
+  .dark [class~="text-gray-700"],
+  .dark [class~="text-zinc-700"],
+  .dark [class~="text-neutral-700"],
+  .dark [class~="text-stone-600"],
+  .dark [class~="text-slate-600"],
+  .dark [class~="text-gray-600"],
+  .dark [class~="text-zinc-600"],
+  .dark [class~="text-neutral-600"],
+  .dark [class~="text-stone-500"],
+  .dark [class~="text-slate-500"],
+  .dark [class~="text-gray-500"],
+  .dark [class~="text-zinc-500"],
+  .dark [class~="text-neutral-500"],
+  .dark [class~="text-stone-400"],
+  .dark [class~="text-slate-400"],
+  .dark [class~="text-gray-400"],
+  .dark [class~="text-zinc-400"],
+  .dark [class~="text-neutral-400"] {
     color: hsl(var(--muted-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--muted-foreground)) !important;
   }
@@ -132,45 +132,45 @@
      cards and causing light-text-on-light-background invisibility. Map
      them to theme-aware card/muted tokens so surfaces and text stay
      readable. */
-  .dark .bg-white,
-  .dark .bg-stone-50,
-  .dark .bg-slate-50,
-  .dark .bg-gray-50,
-  .dark .bg-zinc-50,
-  .dark .bg-neutral-50,
-  .dark .bg-stone-100,
-  .dark .bg-slate-100,
-  .dark .bg-gray-100,
-  .dark .bg-zinc-100,
-  .dark .bg-neutral-100 {
+  .dark [class~="bg-white"],
+  .dark [class~="bg-stone-50"],
+  .dark [class~="bg-slate-50"],
+  .dark [class~="bg-gray-50"],
+  .dark [class~="bg-zinc-50"],
+  .dark [class~="bg-neutral-50"],
+  .dark [class~="bg-stone-100"],
+  .dark [class~="bg-slate-100"],
+  .dark [class~="bg-gray-100"],
+  .dark [class~="bg-zinc-100"],
+  .dark [class~="bg-neutral-100"] {
     background-color: hsl(var(--card)) !important;
   }
 
-  .dark .bg-stone-200,
-  .dark .bg-slate-200,
-  .dark .bg-gray-200,
-  .dark .bg-zinc-200,
-  .dark .bg-neutral-200 {
+  .dark [class~="bg-stone-200"],
+  .dark [class~="bg-slate-200"],
+  .dark [class~="bg-gray-200"],
+  .dark [class~="bg-zinc-200"],
+  .dark [class~="bg-neutral-200"] {
     background-color: hsl(var(--muted)) !important;
   }
 
   /* DARK-MODE BORDER VISIBILITY: hardcoded light borders disappear on dark
      surfaces. Map them to the theme border token. */
-  .dark .border-stone-200,
-  .dark .border-slate-200,
-  .dark .border-gray-200,
-  .dark .border-zinc-200,
-  .dark .border-neutral-200,
-  .dark .border-stone-300,
-  .dark .border-slate-300,
-  .dark .border-gray-300,
-  .dark .border-zinc-300,
-  .dark .border-neutral-300,
-  .dark .border-stone-400,
-  .dark .border-slate-400,
-  .dark .border-gray-400,
-  .dark .border-zinc-400,
-  .dark .border-neutral-400 {
+  .dark [class~="border-stone-200"],
+  .dark [class~="border-slate-200"],
+  .dark [class~="border-gray-200"],
+  .dark [class~="border-zinc-200"],
+  .dark [class~="border-neutral-200"],
+  .dark [class~="border-stone-300"],
+  .dark [class~="border-slate-300"],
+  .dark [class~="border-gray-300"],
+  .dark [class~="border-zinc-300"],
+  .dark [class~="border-neutral-300"],
+  .dark [class~="border-stone-400"],
+  .dark [class~="border-slate-400"],
+  .dark [class~="border-gray-400"],
+  .dark [class~="border-zinc-400"],
+  .dark [class~="border-neutral-400"] {
     border-color: hsl(var(--border)) !important;
   }
 
