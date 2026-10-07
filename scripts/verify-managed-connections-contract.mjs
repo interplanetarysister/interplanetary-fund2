@@ -40,6 +40,10 @@ assert.match(command, /status:\s*nextStatus/);
 assert.match(command, /verifyPlatformConnection/);
 assert.match(command, /already_connected:\s*true/);
 assert.match(command, /executable_now:\s*false/);
+assert.doesNotMatch(command, /orderedTransports/);
+assert.match(command, /const supportedTransports = rediscoveryRequired/);
+assert.match(command, /effective\.preferred_transport/);
+assert.match(command, /effective\.fallback_transports/);
 assert.doesNotMatch(command, /password|cookie|mfa_seed|recovery_code/i);
 
 assert.match(registry, /return user\?\.ai_obo_consent\?\.granted === true/);
