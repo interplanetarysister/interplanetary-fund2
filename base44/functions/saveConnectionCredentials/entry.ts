@@ -1,7 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { mergeSecrets, redactCredentials, SECRET_FIELDS } from '../../shared/integrationRegistry.ts';
-import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
+import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -53,7 +52,7 @@ export default async function(req) {
     const consentOwner = existing && existing.created_by_id !== user.id
       ? await base44.asServiceRole.entities.User.get(existing.created_by_id).catch(() => null)
       : user;
-    if (effectiveAutomationMode !== 'manual' && !hasAiPublishingConsent(consentOwner)) {
+    if (effectiveAutomationMode !== 'manual' && !hasUnifiedOboConsent(consentOwner)) {
       return Response.json({ error: 'AI preparation and publishing authorization is required before an AI-assisted mode can be enabled.' }, { status: 403 });
     }
 
@@ -95,7 +94,7 @@ export default async function(req) {
     // Every connection inherits the owner's unified AI/OBO authorization.
     // Provider verification/capabilities still determine what the connection
     // can actually do; this removes a contradictory second IFund consent.
-    const unifiedObo = hasAiPublishingConsent(consentOwner);
+    const unifiedObo = hasUnifiedOboConsent(consentOwner);
     const currentConsent = existing?.obo_consent || {};
     data.obo_consent = {
       ...currentConsent,
