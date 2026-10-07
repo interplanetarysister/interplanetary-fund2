@@ -155,6 +155,17 @@ function normalizeOrderResult(data) {
   const given = data?.payer?.name?.given_name || data?.payment_source?.paypal?.name?.given_name;
   const sur = data?.payer?.name?.surname || data?.payment_source?.paypal?.name?.surname;
   const parsedAmount = Number.parseFloat(capture?.amount?.value || '0');
+  // PayPal returns actual merchant receivable and fees on completed captures.
+  // Estimates encoded at checkout are for preview, not final payout accounting.
+  const breakdown = capture?.seller_receivable_breakdown || {};
+  const captureCurrency = String(capture?.amount?.currency_code || '').toUpperCase();
+  const parseCaptureMoney = (row) => {
+    if (!row || String(row.currency_code || '').toUpperCase() !== captureCurrency) return null;
+    const value = Number(row.value);
+    return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) / 100 : null;
+  };
+  const providerFee = parseCaptureMoney(breakdown.paypal_fee);
+  const providerNet = parseCaptureMoney(breakdown.net_amount);
   return {
     status: String(data?.status || ''),
     capture_status: String(capture?.status || ''),
@@ -164,6 +175,8 @@ function normalizeOrderResult(data) {
     custom_id: String(unit?.custom_id || ''),
     capture_id: String(capture?.id || ''),
     currency: String(capture?.amount?.currency_code || unit?.amount?.currency_code || '').toUpperCase(),
+    provider_processing_fee: providerFee,
+    provider_receivable_amount: providerNet,
   };
 }
 
