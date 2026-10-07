@@ -11,7 +11,7 @@ import CredentialFields from "./CredentialFields";
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
-export default function ConnectDialog({ platform, existing, aiAuthorized, open, onOpenChange, onSaved }) {
+export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
   const usesProviderOAuth = platform.setupKind === "oauth";
   const canUseUnifiedProviderFlow = usesProviderOAuth;
@@ -20,6 +20,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [managedBusy, setManagedBusy] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -72,6 +73,19 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
       setError("We couldn’t open sign-in. Please try again.");
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const requestManagedAccountSetup = async () => {
+    if (!onManagedCreateAccount || managedBusy) return;
+    setManagedBusy(true);
+    setError("");
+    try {
+      await onManagedCreateAccount({ campaign_id: form.campaign_id || undefined });
+    } catch {
+      setError("IFund couldn't start managed account setup. Try again.");
+    } finally {
+      setManagedBusy(false);
     }
   };
 
@@ -167,6 +181,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, open, 
           ) : (
             <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
+            </Button>
+          )}
+          {!existing && managedAvailable && onManagedCreateAccount && platform.kind !== "app" && (
+            <Button type="button" variant="outline" onClick={requestManagedAccountSetup} disabled={managedBusy} className="w-full rounded-xl h-11">
+              {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to help set up a new account"}
             </Button>
           )}
         </div>
