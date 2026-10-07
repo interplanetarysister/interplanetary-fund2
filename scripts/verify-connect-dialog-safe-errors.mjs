@@ -65,7 +65,8 @@ assert.match(save, /verification_status: 'unverified'/);
 assert.match(save, /external_data_source: 'owner_reported'/);
 assert.doesNotMatch(save, /status: 'connected'/);
 assert.match(save, /effectiveAutomationMode !== 'manual'/);
-assert.match(save, /hasAiPublishingConsent\(consentOwner\)/);
+assert.match(save, /hasUnifiedOboConsent\(consentOwner\)/);
+assert.doesNotMatch(save, /hasAiPublishingConsent\(consentOwner\)/);
 assert.doesNotMatch(save, /existing\?\.external_currency \|\| 'USD'/);
 
 assert.match(entity, /"status":\s*\{[\s\S]*?"default":\s*"disconnected"/);
