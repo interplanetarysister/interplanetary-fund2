@@ -66,19 +66,13 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { platform, shared_agent_consent } = await req.json().catch(() => ({}));
+    const { platform } = await req.json().catch(() => ({}));
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
-    // Canonical IFund-wide OBO is the sole authorization decision. When it has
-    // been decided, it is decisive. Before the canonical decision exists, an
-    // explicit connection-flow choice (shared_agent_consent) may establish the
-    // initial grant — this is a per-action consent, not a competing stored
-    // preference. Legacy ai_publishing_consent / ai_connection_consent are no
-    // longer consulted; subsequent changes go through setUnifiedOboConsent.
-    const canonicalDecided = typeof user.ai_obo_consent?.granted === 'boolean';
-    const sharedAgentConsent = canonicalDecided
-      ? user.ai_obo_consent.granted === true
-      : shared_agent_consent === true;
+    // Canonical IFund-wide OBO is the sole authorization decision. Provider
+    // OAuth can still connect while IFund help is off, but delegated agent access
+    // remains disabled until setUnifiedOboConsent records an explicit grant.
+    const sharedAgentConsent = user.ai_obo_consent?.granted === true;
     const envName = OAUTH_ENV[key];
     const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
