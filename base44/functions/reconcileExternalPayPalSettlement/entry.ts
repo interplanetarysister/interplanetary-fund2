@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { getTransaction } from '../../shared/paypal.ts';
+import { getTransaction, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 
 const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCase());
 
@@ -89,7 +89,7 @@ export default async function (req) {
       state: 'settled',
       source_type: 'external_platform',
       source_provider: String(connection.platform || 'external'),
-      source_account_ref: 'interplanetary_business_paypal',
+      source_account_ref: IFUND_PAYPAL_ACCOUNT_REF,
       provider_transaction_id: paypalTx.id,
       campaign_id,
       beneficiary_user_id: campaign.created_by_id,
