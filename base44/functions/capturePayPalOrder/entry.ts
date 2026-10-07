@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
-import { captureOrder } from '../../shared/paypal.ts';
+import { captureOrder, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { round2, validateDonationAmount } from '../../shared/fees.js';
@@ -119,7 +119,7 @@ export default async function (req) {
         state: 'settled',
         source_type: 'payment_processor',
         source_provider: 'paypal',
-        source_account_ref: 'interplanetary_business_paypal',
+        source_account_ref: IFUND_PAYPAL_ACCOUNT_REF,
         provider_transaction_id: String(cap.capture_id || order_id),
         campaign_id,
         beneficiary_user_id: campaign.created_by_id || '',
