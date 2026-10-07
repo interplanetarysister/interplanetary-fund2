@@ -1,4 +1,5 @@
 import { secrets } from 'base44:runtime';
+import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, IFUND_PAYPAL_BUSINESS_EMAIL } from '../../shared/paypal.ts';
 
 // Public-safe PayPal capability snapshot. PayPal has two independent paths in
 // this app: the canonical paypal.com donation link and REST/SDK checkout.
@@ -19,5 +20,8 @@ export default async function (_req) {
     api_configured: apiConfigured,
     api_live: Boolean(apiConfigured && mode === 'live'),
     provider: 'paypal',
+    account_ref: IFUND_PAYPAL_ACCOUNT_REF,
+    account_type: IFUND_PAYPAL_ACCOUNT_TYPE,
+    business_email: IFUND_PAYPAL_BUSINESS_EMAIL,
   });
 }
