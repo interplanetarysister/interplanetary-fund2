@@ -38,5 +38,6 @@ run_worker_first = [
   "/api/mcp/*",
   "/api/apps/*/mcp",
   "/api/apps/*/mcp/*",
-  "/.well-known/oauth-*"
+  "/.well-known/oauth-*",
+  "/.well-known/openid-configuration"
 ]
