@@ -102,6 +102,89 @@ export async function verifyPublicCampaignConnection(connection: any) {
   throw new Error('Provider page redirected too many times.');
 }
 
+async function providerProbe(url: string, token: string, options: any = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        ...(options.headers || {}),
+      },
+      ...(options.body !== undefined ? { body: options.body } : {}),
+      signal: controller.signal,
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(`Provider verification failed (${response.status}).`);
+    if (typeof options.validate === 'function' && !options.validate(data)) {
+      throw new Error('Provider verification response was not valid.');
+    }
+    return data;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function verifyOAuthConnection(platform: string, oauth: any) {
+  const key = String(platform || '').toLowerCase();
+  const token = String(oauth?.accessToken || '').trim();
+  if (!token) throw new Error('Provider authorization needs to be renewed.');
+
+  if (key === 'github') return providerProbe('https://api.github.com/user', token, {
+    headers: { 'User-Agent': 'InterplanetaryFund' },
+  });
+  if (key === 'gitlab') return providerProbe('https://gitlab.com/api/v4/user', token);
+  if (key === 'slack') return providerProbe('https://slack.com/api/auth.test', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: '',
+    validate: (data: any) => data?.ok === true,
+  });
+  if (key === 'notion') return providerProbe('https://api.notion.com/v1/users/me', token, {
+    headers: { 'Notion-Version': '2022-06-28' },
+  });
+  if (key === 'dropbox') return providerProbe('https://api.dropboxapi.com/2/users/get_current_account', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: 'null',
+  });
+  if (['outlook', 'microsoft_teams', 'one_drive'].includes(key)) {
+    return providerProbe('https://graph.microsoft.com/v1.0/me?$select=id,displayName', token);
+  }
+  if (key === 'gmail') return providerProbe('https://gmail.googleapis.com/gmail/v1/users/me/profile', token);
+  if (key === 'googledrive') return providerProbe('https://www.googleapis.com/drive/v3/about?fields=user', token);
+  if (key === 'googlecalendar') return providerProbe('https://www.googleapis.com/calendar/v3/users/me/settings?maxResults=1', token);
+  if (key === 'google_contacts') return providerProbe('https://people.googleapis.com/v1/people/me?personFields=names', token);
+  if (key === 'googletasks') return providerProbe('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=1', token);
+
+  if (key === 'linkedin') return providerProbe('https://api.linkedin.com/v2/userinfo', token);
+  if (key === 'facebook') return providerProbe('https://graph.facebook.com/me?fields=id,name', token);
+  if (key === 'instagram') {
+    try {
+      return await providerProbe('https://graph.instagram.com/me?fields=id,username', token);
+    } catch (_) {
+      return providerProbe('https://graph.facebook.com/me?fields=id,name', token);
+    }
+  }
+  if (key === 'discord') return providerProbe('https://discord.com/api/v10/users/@me', token);
+  if (key === 'tiktok') return providerProbe('https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name', token, {
+    validate: (data: any) => data?.error?.code === 'ok' && !!data?.data?.user?.open_id,
+  });
+  if (key === 'threads') return providerProbe('https://graph.threads.net/v1.0/me?fields=id,username', token);
+  if (key === 'x') return providerProbe('https://api.x.com/2/users/me?user.fields=id,name,username', token);
+  if (key === 'pinterest') return providerProbe('https://api.pinterest.com/v5/user_account', token);
+  if (key === 'reddit') return providerProbe('https://oauth.reddit.com/api/v1/me', token, {
+    headers: { 'User-Agent': 'InterplanetaryFund/1.0' },
+  });
+  if (key === 'youtube') return providerProbe('https://www.googleapis.com/youtube/v3/channels?part=id&mine=true', token);
+  if (key === 'patreon') return providerProbe('https://www.patreon.com/api/oauth2/v2/identity', token);
+  if (key === 'eventbrite') return providerProbe('https://www.eventbriteapi.com/v3/users/me/', token);
+
+  throw new Error('Live provider verification is not implemented for this connector.');
+}
+
 export async function verifyManualConnection(connection: any) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') {
