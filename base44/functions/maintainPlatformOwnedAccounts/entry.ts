@@ -57,7 +57,7 @@ export default async function(req) {
         continue;
       }
       const connection = await sr.entities.PlatformConnection.get(account.connection_id).catch(()=>null);
-      if (!connection || connection.status !== 'connected') continue;
+      if (!connection || connection.status !== 'connected' || connection.verification_status !== 'verified') continue;
       const existingPost = (await sr.entities.DistributedPost.filter({ connection_id: connection.id }, '-created_date', 20))
         .find(p => p.campaign_id === 'platform-official' && ['draft','pending_approval','scheduled','published'].includes(p.status) && now.getTime()-new Date(p.created_date).getTime()<week);
       if (existingPost) continue;
