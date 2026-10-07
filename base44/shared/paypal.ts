@@ -133,6 +133,7 @@ function normalizeOrderResult(data) {
     capture_status: String(capture?.status || ''),
     amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
     payer_name: given ? `${given} ${sur || ''}`.trim() : '',
+    payer_email: String(data?.payer?.email_address || data?.payment_source?.paypal?.email_address || ''),
     custom_id: String(unit?.custom_id || ''),
     capture_id: String(capture?.id || ''),
     currency: String(capture?.amount?.currency_code || unit?.amount?.currency_code || '').toUpperCase(),
@@ -204,6 +205,47 @@ export async function captureOrder(orderId) {
 // Verify a transaction against the designated business PayPal account before
 // exterior funds are admitted to the custody ledger. This is intentionally a
 // read-only provider check; it does not create financial value by itself.
+export async function verifyWebhookSignature(rawEvent, headers) {
+  const webhookId = String(secrets.get('PAYPAL_WEBHOOK_ID') || '').trim();
+  if (!webhookId) throw new Error('PayPal webhook id is not configured.');
+  const transmissionId = String(headers?.get?.('paypal-transmission-id') || '').trim();
+  const transmissionTime = String(headers?.get?.('paypal-transmission-time') || '').trim();
+  const certUrl = String(headers?.get?.('paypal-cert-url') || '').trim();
+  const authAlgo = String(headers?.get?.('paypal-auth-algo') || '').trim();
+  const transmissionSig = String(headers?.get?.('paypal-transmission-sig') || '').trim();
+  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) return false;
+
+  // Preserve the webhook event object byte-for-byte inside PayPal's verification
+  // envelope. Their verification contract warns against parsing and re-stringifying
+  // webhook_event before verification.
+  const raw = String(rawEvent || '').trim();
+  if (!raw || !raw.startsWith('{') || !raw.endsWith('}')) return false;
+  const token = await getAccessToken();
+  const body = [
+    '{',
+    `"transmission_id":${JSON.stringify(transmissionId)},`,
+    `"transmission_time":${JSON.stringify(transmissionTime)},`,
+    `"cert_url":${JSON.stringify(certUrl)},`,
+    `"auth_algo":${JSON.stringify(authAlgo)},`,
+    `"transmission_sig":${JSON.stringify(transmissionSig)},`,
+    `"webhook_id":${JSON.stringify(webhookId)},`,
+    `"webhook_event":${raw}`,
+    '}',
+  ].join('');
+  const res = await fetch(`${apiBase()}/v1/notifications/verify-webhook-signature`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || `PayPal webhook verification failed (${res.status})`);
+  return String(data?.verification_status || '').toUpperCase() === 'SUCCESS';
+}
+
+
 export async function getTransaction(transactionId) {
   const id = String(transactionId || '').trim();
   if (!id) throw new Error('PayPal transaction id is required.');
