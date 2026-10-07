@@ -6,13 +6,13 @@
 
 import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
-const BUSINESS_EMAIL = "interplanetarysister@gmail.com";
+export const IFUND_PAYPAL_BUSINESS_EMAIL = "interplanetarysister@gmail.com";
 
 export function generatePayPalLink(_campaignTitle, amount) {
   if (!PRELAUNCH_MODE) return "https://interplanetaryfund.com/";
   const params = new URLSearchParams({
     cmd: "_donations",
-    business: BUSINESS_EMAIL,
+    business: IFUND_PAYPAL_BUSINESS_EMAIL,
     item_name: "Interplanetary Fund - Prelaunch Development & Operations",
     currency_code: "USD",
   });
