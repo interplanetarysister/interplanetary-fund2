@@ -393,9 +393,28 @@ export default function Connections() {
               const exists = prev.some((x) => x.id === saved.id);
               return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
             });
-            base44.functions.invoke("resolveConnectionStatus", { platform: saved.platform, connection_id: saved.id })
-              .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [saved.id]: data })))
-              .catch(() => {});
+            base44.functions.invoke("verifyPlatformConnection", { connection_id: saved.id })
+              .then(({ data }) => {
+                const checked = data?.connection || saved;
+                setConnections((prev) => prev.map((x) => (x.id === checked.id ? checked : x)));
+                if (data?.working) {
+                  setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and working.` });
+                } else if (data?.error) {
+                  setConnectionNotice({ ok: false, text: data.error });
+                }
+                return base44.functions.invoke("resolveConnectionStatus", {
+                  platform: checked.platform,
+                  connection_id: checked.id,
+                });
+              })
+              .then(({ data }) => {
+                if (data) setLifecycleMap((prev) => ({ ...prev, [saved.id]: data }));
+              })
+              .catch(() => {
+                base44.functions.invoke("resolveConnectionStatus", { platform: saved.platform, connection_id: saved.id })
+                  .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [saved.id]: data })))
+                  .catch(() => {});
+              });
           }}
         />
       )}
