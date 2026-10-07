@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { sendPayout } from '../../shared/paypal.ts';
+import { sendPayout, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { giftOf, round2, computeWithdrawal } from '../../shared/fees.js';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
@@ -152,7 +152,7 @@ async function markPaidAfterProvider(base44, sr, withdrawal, payout, actorId) {
       state: 'paid',
       source_type: 'withdrawal',
       source_provider: 'paypal',
-      source_account_ref: 'interplanetary_business_paypal',
+      source_account_ref: IFUND_PAYPAL_ACCOUNT_REF,
       provider_transaction_id: String(payout.payout_batch_id || payout.sender_batch_id),
       campaign_id: withdrawal.campaign_id,
       beneficiary_user_id: withdrawal.owner_user_id,
