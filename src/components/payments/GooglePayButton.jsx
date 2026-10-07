@@ -132,6 +132,6 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
     };
   }, [campaign?.id, amount, platformContribution]);
 
-  if (state !== "ready") return null;
-  return <div ref={containerRef} className="gpay-host [&_button]:w-full" aria-label="Google Pay checkout" />;
+  // Keep the host mounted while initializing so the SDK has a DOM node to attach to.
+  return <div className={state === "ready" ? "block" : "hidden"}><div ref={containerRef} className="gpay-host [&_button]:w-full" aria-label="Google Pay checkout" /></div>
 }
