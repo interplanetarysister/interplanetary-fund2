@@ -3,7 +3,7 @@ import AgentChat from "@/components/agents/AgentChat";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
 import { base44 } from "@/api/base44Client";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
-import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown, Compass } from "lucide-react";
+import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown, Compass, Link2 } from "lucide-react";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
 import { Navigate } from "react-router-dom";
 
@@ -18,6 +18,7 @@ const AGENTS = [
   { name: "finance_agent", label: "Finance", icon: Wallet, greeting: "I'm your Finance Agent. Ask me about raised amounts, clearing funds, fees, or payouts for any of your campaigns." },
   { name: "outreach_agent", label: "Outreach", icon: Megaphone, greeting: "I'm your Outreach Agent. I'll surface open recommendations and the autonomous agent's activity for your opted-in campaigns." },
   { name: "connection_discovery_agent", label: "Discovery", icon: Compass, greeting: "I'm your Connection Discovery Agent. I research fundraising and social platforms, verify their capabilities, and record what Interplanetary Fund can do with each one. Ask me about any platform or request a discovery scan." },
+  { name: "managed_connection_agent", label: "Managed Connections", icon: Link2, minLevel: 2, greeting: "I can help connect or repair eligible outside accounts under your IFund authorization. I will verify your entitlement and permission before any delegated action, and I will preserve any provider-required sign-in or verification step instead of pretending it is complete." },
 ];
 
 export default function Agents() {
@@ -30,6 +31,7 @@ export default function Agents() {
 
   if (loadingUser) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 text-muted-foreground">Loading AI Agents…</div>;
   if (!hasPlanLevel(user, 1)) return <Navigate to="/subscriptions" replace />;
+  const visibleAgents = AGENTS.filter((agent) => !agent.minLevel || hasPlanLevel(user, agent.minLevel));
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -37,7 +39,7 @@ export default function Agents() {
       <p className="text-muted-foreground mb-6">Always-on agents that work alongside you. Pick one to start a conversation.</p>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-hide">
-        {AGENTS.map((a) => {
+        {visibleAgents.map((a) => {
           const Icon = a.icon;
           const on = active.name === a.name;
           return (
