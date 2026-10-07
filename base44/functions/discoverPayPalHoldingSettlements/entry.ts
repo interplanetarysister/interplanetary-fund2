@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { listTransactions } from '../../shared/paypal.ts';
+import { listTransactions, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 
 const round2 = (v) => Math.round((Number(v) + Number.EPSILON) * 100) / 100;
@@ -62,7 +62,7 @@ export default async function(req) {
         state: 'settled',
         source_type: 'external_platform',
         source_provider: observation.provider,
-        source_account_ref: 'interplanetary_business_paypal',
+        source_account_ref: IFUND_PAYPAL_ACCOUNT_REF,
         provider_transaction_id: tx.id,
         campaign_id: observation.campaign_id,
         beneficiary_user_id: observation.beneficiary_user_id,
@@ -89,7 +89,7 @@ export default async function(req) {
       action: 'paypal_holding_receipt_discovery',
       actor_user_id: user.id,
       target_type: 'holding_account',
-      target_id: 'interplanetary_business_paypal',
+      target_id: IFUND_PAYPAL_ACCOUNT_REF,
       detail: `Scanned ${settledReceipts.length} settled PayPal receipts; auto-settled ${counts.settled || 0}; ambiguous ${counts.ambiguous || 0}; unmatched ${counts.unmatched || 0}.`,
       status: 'success',
       metadata: { lookback_hours: hours, counts },
