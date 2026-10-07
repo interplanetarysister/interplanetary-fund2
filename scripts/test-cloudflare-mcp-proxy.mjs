@@ -19,6 +19,18 @@ try {
     });
   };
 
+  const health = await worker.fetch(new Request("https://interplanetaryfund.com/api/health"), {});
+  assert.equal(health.status, 200);
+  assert.equal(health.headers.get("content-type"), "application/json");
+  assert.deepEqual(await health.json(), {
+    ok: true,
+    service: "interplanetary-fund",
+    runtime: "cloudflare-worker",
+    mcp_proxy: "base44",
+    status: "healthy",
+  });
+  assert.equal(captured, undefined, "health check must not depend on upstream Base44");
+
   const request = new Request("https://interplanetaryfund.com/api/mcp?probe=1", {
     method: "POST",
     headers: {
