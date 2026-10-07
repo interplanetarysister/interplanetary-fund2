@@ -34,7 +34,9 @@ export default function Onboarding() {
       const updates = { full_name: data.full_name || undefined };
       await base44.functions.invoke("setUnifiedOboConsent", { granted: !!data.delegated_operations_enabled });
       await base44.auth.updateMe({ ...updates, onboarding: data, onboarding_completed: true });
-      navigate("/mission");
+      const requestedReturn = sessionStorage.getItem("ifund_post_onboarding_return_to");
+      sessionStorage.removeItem("ifund_post_onboarding_return_to");
+      navigate(requestedReturn || "/mission");
     } catch (e) {
       console.error("Onboarding save failed", e);
       toast({ title: "Couldn't save setup", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
