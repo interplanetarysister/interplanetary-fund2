@@ -3,7 +3,7 @@ import { secrets } from 'base44:runtime';
 import { captureOrder, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
-import { round2, validateDonationAmount } from '../../shared/fees.js';
+import { round2, validateDonationAmount, computeContribution } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
@@ -72,16 +72,29 @@ export default async function (req) {
       return Response.json({ error: 'PayPal order financial metadata is invalid.' }, { status: 409 });
     }
 
-    const total = round2(donCents / 100);
-    const processingFee = round2(procCents / 100);
-    const contribution = round2(contributionCents / 100);
-    const amountCheck = validateDonationAmount(total);
-    if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
-
-    const expectedCharge = round2(total + processingFee);
+    const quotedDonation = round2(donCents / 100);
+    const quotedFee = round2(procCents / 100);
+    const expectedCharge = round2(quotedDonation + quotedFee);
     if (Math.abs(round2(cap.amount) - expectedCharge) > 0.01) {
       return Response.json({ error: 'Captured PayPal amount does not match the server-created order.' }, { status: 409 });
     }
+
+    // The quote is an estimate. PayPal's completed capture may report its
+    // actual fee and merchant receivable, which are authoritative for custody.
+    let total = quotedDonation;
+    let processingFee = quotedFee;
+    const received = Number(cap.provider_receivable_amount);
+    const actualFee = Number(cap.provider_processing_fee);
+    if (cap.provider_receivable_amount !== null && Number.isFinite(received) && received >= 0 && received <= cap.amount) {
+      total = round2(received);
+      processingFee = round2(cap.amount - total);
+    } else if (cap.provider_processing_fee !== null && Number.isFinite(actualFee) && actualFee >= 0 && actualFee < cap.amount) {
+      processingFee = round2(actualFee);
+      total = round2(cap.amount - processingFee);
+    }
+    let contribution = contributionCents > 0 ? computeContribution(total, true) : 0;
+    const amountCheck = validateDonationAmount(total);
+    if (!amountCheck.ok) return Response.json({ error: 'PayPal capture was completed, but the received amount needs manual reconciliation.' }, { status: 409 });
 
     await ensureCanonicalCampaign(sr, campaign);
     const displayName = donor_name || cap.payer_name || donor?.full_name || 'Anonymous';
@@ -105,6 +118,16 @@ export default async function (req) {
       isRecurring: !!is_recurring,
     });
 
+    // Retries must mirror the amounts saved in the FIRST canonical operation,
+    // not revise a real settled gift when a provider later enriches its receipt.
+    const savedOperation = await sr.entities.FinancialOperation.get(canonical.operationId).catch(() => null);
+    if (!savedOperation || savedOperation.campaign_id !== campaign_id ||
+        String(savedOperation.provider_transaction_id || '') !== String(cap.capture_id || order_id)) {
+      return Response.json({ error: 'Captured payment requires financial reconciliation.' }, { status: 409 });
+    }
+    total = round2(savedOperation.gross_amount);
+    processingFee = round2(savedOperation.processing_fee);
+    contribution = round2(savedOperation.platform_contribution);
 
     // The designated Interplanetary Fund holding account is the business PayPal
     // account. A COMPLETED capture is provider evidence that this direct PayPal
