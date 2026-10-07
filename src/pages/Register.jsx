@@ -55,7 +55,11 @@ export default function Register() {
           }
         }
       }
-      window.location.href = safeReturnTo();
+      const requestedReturn = safeReturnTo();
+      if (requestedReturn !== "/" && requestedReturn !== "/onboarding") {
+        sessionStorage.setItem("ifund_post_onboarding_return_to", requestedReturn);
+      }
+      window.location.href = "/onboarding";
     } catch (err) {
       setError(safeAuthErrorMessage("verify"));
     } finally {
@@ -147,7 +151,7 @@ export default function Register() {
         </>
       }
     >
-      <SocialButtons returnTo={safeReturnTo()} />
+      <SocialButtons returnTo="/onboarding" />
 
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">
