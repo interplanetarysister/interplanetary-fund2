@@ -25,7 +25,7 @@ assert.match(button,/data\?\.orderID/);
 assert.doesNotMatch(button,/\.message\b/,"provider exception messages must not reach PayPal UI");
 assert.match(scripts,/components=buttons,googlepay&/);
 assert.doesNotMatch(scripts,/googlepay-payments/, "v5 PayPal Buttons cannot load a v6 SDK component");
-assert.match(scripts,/window\.paypal\?\.Googlepay/);
+assert.match(scripts,/window\.paypal\?\.Buttons/);
 const wallet=read("src/components/payments/GooglePayButton.jsx");
 assert.match(wallet,/paypal\.Googlepay\(\)/);
 assert.match(wallet,/paypalGooglePay\.confirmOrder/);
