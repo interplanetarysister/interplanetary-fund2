@@ -426,19 +426,20 @@
 
   /* Buttons must remain legible even when page-specific utility classes drift.
      Keep semantic variants authoritative for text/background contrast. */
-  button.bg-primary, [role="button"].bg-primary {
+  button[class~="bg-primary"], [role="button"][class~="bg-primary"] {
     color: hsl(var(--primary-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--primary-foreground)) !important;
   }
-  button.border-input.bg-transparent, [role="button"].border-input.bg-transparent {
+  button[class~="border-input"][class~="bg-transparent"],
+  [role="button"][class~="border-input"][class~="bg-transparent"] {
     color: hsl(var(--foreground)) !important;
     -webkit-text-fill-color: hsl(var(--foreground)) !important;
   }
-  button.bg-secondary, [role="button"].bg-secondary {
+  button[class~="bg-secondary"], [role="button"][class~="bg-secondary"] {
     color: hsl(var(--secondary-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--secondary-foreground)) !important;
   }
-  button.bg-destructive, [role="button"].bg-destructive {
+  button[class~="bg-destructive"], [role="button"][class~="bg-destructive"] {
     color: hsl(var(--destructive-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--destructive-foreground)) !important;
   }
@@ -446,23 +447,23 @@
   /* Colored controls must use the foreground that actually contrasts with
      their background. Bright 400/500 tones need a dark foreground; blindly
      forcing white made several buttons fail normal-text contrast. */
-  button.bg-cyan-400, [role="button"].bg-cyan-400,
-  button.bg-cyan-500, [role="button"].bg-cyan-500,
-  button.bg-blue-500, [role="button"].bg-blue-500,
-  button.bg-violet-500, [role="button"].bg-violet-500,
-  button.bg-emerald-500, [role="button"].bg-emerald-500,
-  button.bg-emerald-600, [role="button"].bg-emerald-600,
-  button.bg-red-500, [role="button"].bg-red-500,
-  button.bg-amber-500, [role="button"].bg-amber-500,
-  button.bg-green-500, [role="button"].bg-green-500,
-  button.bg-green-600, [role="button"].bg-green-600 {
+  button[class~="bg-cyan-400"], [role="button"][class~="bg-cyan-400"],
+  button[class~="bg-cyan-500"], [role="button"][class~="bg-cyan-500"],
+  button[class~="bg-blue-500"], [role="button"][class~="bg-blue-500"],
+  button[class~="bg-violet-500"], [role="button"][class~="bg-violet-500"],
+  button[class~="bg-emerald-500"], [role="button"][class~="bg-emerald-500"],
+  button[class~="bg-emerald-600"], [role="button"][class~="bg-emerald-600"],
+  button[class~="bg-red-500"], [role="button"][class~="bg-red-500"],
+  button[class~="bg-amber-500"], [role="button"][class~="bg-amber-500"],
+  button[class~="bg-green-500"], [role="button"][class~="bg-green-500"],
+  button[class~="bg-green-600"], [role="button"][class~="bg-green-600"] {
     color: #020617 !important;
     -webkit-text-fill-color: #020617 !important;
   }
 
-  button.bg-blue-600, [role="button"].bg-blue-600,
-  button.bg-violet-600, [role="button"].bg-violet-600,
-  button.bg-red-600, [role="button"].bg-red-600 {
+  button[class~="bg-blue-600"], [role="button"][class~="bg-blue-600"],
+  button[class~="bg-violet-600"], [role="button"][class~="bg-violet-600"],
+  button[class~="bg-red-600"], [role="button"][class~="bg-red-600"] {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
   }
@@ -608,13 +609,13 @@
 .ifund-experience :where(.rounded-lg) { border-radius: .9rem; }
 .ifund-experience :where(.rounded-xl) { border-radius: 1rem; }
 .ifund-experience :where(.rounded-2xl) { border-radius: 1.25rem; }
-.ifund-experience :where(.bg-white) {
+.ifund-experience :where([class~="bg-white"]) {
   box-shadow: 0 10px 30px rgb(15 23 42 / .045);
 }
 .ifund-experience :where(h1, h2, h3) {
   text-wrap: balance;
 }
-.connections-hub .bg-white {
+.connections-hub [class~="bg-white"] {
   border-color: rgb(165 180 252 / .28);
   box-shadow: 0 12px 32px rgb(49 46 129 / .08);
 }
@@ -656,8 +657,8 @@
     opacity: .72;
   }
 
-  button:disabled:not(.bg-primary):not(.bg-destructive):not(.bg-secondary):not([class*="bg-gradient"]),
-  [role="button"][aria-disabled="true"]:not(.bg-primary):not(.bg-destructive):not(.bg-secondary):not([class*="bg-gradient"]) {
+  button:disabled:not([class~="bg-primary"]):not([class~="bg-destructive"]):not([class~="bg-secondary"]):not([class*="bg-gradient"]),
+  [role="button"][aria-disabled="true"]:not([class~="bg-primary"]):not([class~="bg-destructive"]):not([class~="bg-secondary"]):not([class*="bg-gradient"]) {
     color: hsl(var(--muted-foreground)) !important;
     -webkit-text-fill-color: hsl(var(--muted-foreground)) !important;
     background-color: hsl(var(--muted)) !important;
@@ -700,7 +701,7 @@
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 
-  .ifund-experience :where(.bg-white) {
+  .ifund-experience :where([class~="bg-white"]) {
     max-width: 100%;
   }
 }
