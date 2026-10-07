@@ -43,13 +43,15 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
   useEffect(() => {
     let cancelled = false;
-    if (!open) return undefined;
+    // Public prelaunch donations use only the separately labeled platform link;
+    // do not probe PayPal REST credentials for every preview visitor.
+    if (!open || (PRELAUNCH_MODE && !prelaunchCampaignTest)) return undefined;
     setCapabilityError(false);
     base44.functions.invoke("getPaymentCapabilities", {})
       .then(({ data }) => { if (!cancelled) setCapabilities(data || {}); })
       .catch(() => { if (!cancelled) { setCapabilities(null); setCapabilityError(true); } });
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, prelaunchCampaignTest]);
 
   const platformOnlyPrelaunch = PRELAUNCH_MODE && !prelaunchCampaignTest;
   const paypalApiAvailable = capabilities?.paypal?.api_live === true;
