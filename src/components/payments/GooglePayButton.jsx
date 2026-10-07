@@ -1,159 +1,137 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
-import { computeChargeTotal } from "@/lib/fees";
+import { computeChargeTotal, MIN_DONATION } from "@/lib/fees";
 
-// Google Pay donations processed through the platform's PayPal business
-// account (PayPal JS SDK v6 + Google Pay). Flow: create a PayPal order,
-// confirm it with the buyer's Google Pay payment data, then capture and
-// record the gift. The button only renders when Google Pay is available on
-// the buyer's device; otherwise it degrades silently to the PayPal/card
-// options already shown above it.
+// Google Pay and PayPal Buttons deliberately share the same v5 PayPal SDK.
+// Only show this button when the wallet, device, and merchant are eligible.
 export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid }) {
   const containerRef = useRef(null);
   const intentRef = useRef(crypto.randomUUID());
   const [state, setState] = useState("loading");
-  const [error, setError] = useState("");
-
-  // Volatile props (name/message/recurring/callback) are read via a ref so the
-  // Google Pay client is only rebuilt when the amount or campaign changes.
   const propsRef = useRef({ donorName, message, recurring, platformContribution, onPaid });
   useEffect(() => { propsRef.current = { donorName, message, recurring, platformContribution, onPaid }; });
 
   useEffect(() => {
+    intentRef.current = crypto.randomUUID();
     let cancelled = false;
-    let buttonEl = null;
 
     async function init() {
-      const value = parseFloat(amount);
-      if (!value || value <= 0) { setState("noamount"); return; }
-
-      let config;
-      try {
-        const { data } = await base44.functions.invoke("getPayPalConfig", {});
-        config = data;
-      } catch (e) {
-        if (!cancelled) { setState("error"); setError("Payment setup failed."); }
+      const value = Number(amount);
+      if (!campaign?.id || !Number.isFinite(value) || value < MIN_DONATION) {
+        setState("noamount");
         return;
       }
-      if (cancelled) return;
-      if (!config?.client_id) { setState("unavailable"); return; }
-
+      setState("loading");
       try {
+        const { data: config } = await base44.functions.invoke("getPayPalConfig", {});
+        if (cancelled) return;
+        if (config?.api_live !== true || !config?.client_id) {
+          setState("unavailable");
+          return;
+        }
         await Promise.all([loadPayPalSdk(config.client_id), loadGooglePayScript()]);
-      } catch (e) {
-        if (!cancelled) { setState("error"); setError("Couldn't load payment."); }
-        return;
-      }
-      if (cancelled) return;
+        if (cancelled) return;
+        if (!window.paypal?.Googlepay || !window.google?.payments?.api) {
+          setState("unavailable");
+          return;
+        }
 
-      const paypal = window.paypal;
-      const google = window.google;
-      if (!paypal?.createInstance || !google?.payments?.api) { setState("unavailable"); return; }
+        const paypalGooglePay = window.paypal.Googlepay();
+        const paymentConfig = await paypalGooglePay.config();
+        if (!paymentConfig?.allowedPaymentMethods?.length || !paymentConfig?.merchantInfo) {
+          setState("unavailable");
+          return;
+        }
 
-      let instance;
-      try {
-        instance = await paypal.createInstance({
-          clientId: config.client_id,
-          components: ["googlepay-payments"],
-          pageType: "checkout",
-        });
-      } catch (e) { if (!cancelled) setState("unavailable"); return; }
+        const paymentsClient = new window.google.payments.api.PaymentsClient({
+          environment: config.mode === "live" ? "PRODUCTION" : "TEST",
+          paymentDataCallbacks: {
+            onPaymentAuthorized: async (paymentData) => {
+              const failure = { transactionState: "ERROR", error: { intent: "PAYMENT_AUTHORIZATION", message: "Payment could not be confirmed. Please try again." } };
+              try {
+                const current = propsRef.current;
+                const { data: order } = await base44.functions.invoke("createPayPalOrder", {
+                  campaign_id: campaign.id,
+                  amount: value,
+                  platform_contribution: !!current.platformContribution,
+                  intent_id: intentRef.current,
+                  payment_channel: "googlepay",
+                });
+                if (!order?.id) return failure;
 
-      let methods;
-      try { methods = await instance.findEligibleMethods({ currencyCode: "USD" }); }
-      catch (e) { if (!cancelled) setState("unavailable"); return; }
-      if (!methods?.isEligible || !methods.isEligible("googlepay")) { setState("unavailable"); return; }
-      if (cancelled) return;
+                const confirmation = await paypalGooglePay.confirmOrder({
+                  orderId: order.id,
+                  paymentMethodData: paymentData.paymentMethodData,
+                });
+                if (confirmation?.status === "PAYER_ACTION_REQUIRED") {
+                  // Complete buyer authentication before attempting a capture.
+                  await paypalGooglePay.initiatePayerAction({ orderId: order.id });
+                } else if (confirmation?.status !== "APPROVED") {
+                  return failure;
+                }
 
-      const details = methods.getDetails("googlepay");
-      const session = instance.createGooglePayOneTimePaymentSession();
-      const gpayConfig = session.formatConfigForPaymentRequest(details.config);
-
-      const env = config.mode === "live" ? "PRODUCTION" : "TEST";
-      const paymentsClient = new google.payments.api.PaymentsClient({
-        environment: env,
-        paymentDataCallbacks: {
-          onPaymentAuthorized: async (paymentData) => {
-            try {
-              const p = propsRef.current;
-              // The optional platform-contribution choice is bound into the
-              // PayPal order's server-generated custom_id here. Capture does
-              // not trust a post-payment client value for financial allocation.
-              const { data: order } = await base44.functions.invoke("createPayPalOrder", {
-                campaign_id: campaign.id,
-                amount: value,
-                platform_contribution: !!p.platformContribution,
-                intent_id: intentRef.current,
-              payment_channel: "googlepay",
-              });
-              if (!order?.id || typeof order.id !== "string") return { transactionState: "ERROR", error: { message: "Unable to start payment." } };
-
-              const { status } = await session.confirmOrder({
-                orderId: order.id,
-                paymentMethodData: paymentData.paymentMethodData,
-              });
-
-              if (status !== "PAYER_ACTION_REQUIRED") {
-                const { data: cap } = await base44.functions.invoke("capturePayPalOrder", {
+                const { data: result } = await base44.functions.invoke("capturePayPalOrder", {
                   order_id: order.id,
                   campaign_id: campaign.id,
-                  donor_name: p.donorName || "Anonymous",
-                  message: p.message,
-                  is_recurring: !!p.recurring,
+                  donor_name: current.donorName || "Anonymous",
+                  message: current.message || "",
+                  is_recurring: false,
                 });
-                if (cap?.ok !== true || typeof cap?.canonical_operation_id !== "string") return { transactionState: "ERROR", error: { message: "Payment could not be confirmed safely." } };
-                if (!cancelled) p.onPaid?.(cap);
+                if (result?.ok !== true || !result.canonical_operation_id) return failure;
+                if (!cancelled) current.onPaid?.(result);
+                return { transactionState: "SUCCESS" };
+              } catch (_) {
+                return failure;
               }
-              return { transactionState: "SUCCESS" };
-            } catch (err) {
-              return { transactionState: "ERROR", error: { message: "Payment failed. Please try again." } };
-            }
-          },
-        },
-      });
-
-      const { result } = await paymentsClient.isReadyToPay({
-        allowedPaymentMethods: gpayConfig.allowedPaymentMethods,
-        apiVersion: gpayConfig.apiVersion,
-        apiVersionMinor: gpayConfig.apiVersionMinor,
-      });
-      if (!result || cancelled) { if (!cancelled) setState("unavailable"); return; }
-
-      buttonEl = paymentsClient.createButton({
-        onClick: () => {
-          paymentsClient.loadPaymentData({
-            ...gpayConfig,
-            transactionInfo: {
-              countryCode: gpayConfig.countryCode,
-              currencyCode: "USD",
-              totalPriceStatus: "FINAL",
-              totalPrice: computeChargeTotal(value).toFixed(2),
             },
-            callbackIntents: ["PAYMENT_AUTHORIZATION"],
-          });
-        },
-      });
-      if (cancelled) return;
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-        containerRef.current.appendChild(buttonEl);
+          },
+        });
+
+        const eligible = await paymentsClient.isReadyToPay({
+          apiVersion: 2,
+          apiVersionMinor: 0,
+          allowedPaymentMethods: paymentConfig.allowedPaymentMethods,
+        });
+        if (cancelled) return;
+        if (!eligible?.result) { setState("unavailable"); return; }
+
+        const button = paymentsClient.createButton({
+          onClick: () => {
+            paymentsClient.loadPaymentData({
+              apiVersion: 2,
+              apiVersionMinor: 0,
+              allowedPaymentMethods: paymentConfig.allowedPaymentMethods,
+              merchantInfo: paymentConfig.merchantInfo,
+              transactionInfo: {
+                countryCode: "US",
+                currencyCode: "USD",
+                totalPriceStatus: "FINAL",
+                totalPrice: computeChargeTotal(value).toFixed(2),
+              },
+              callbackIntents: ["PAYMENT_AUTHORIZATION"],
+            }).catch(() => {
+              // Google Pay can be cancelled by the buyer without a failed donation.
+            });
+          },
+        });
+        if (cancelled) return;
+        containerRef.current?.replaceChildren(button);
+        setState("ready");
+      } catch (_) {
+        // No broken wallet section or false donation status when the merchant,
+        // device, provider, or network does not support Google Pay.
+        if (!cancelled) setState("unavailable");
       }
-      setState("ready");
     }
 
     init();
     return () => {
       cancelled = true;
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      containerRef.current?.replaceChildren();
     };
-  }, [amount, campaign.id]);
+  }, [campaign?.id, amount, platformContribution]);
 
-  if (state === "noamount" || state === "loading" || state === "unavailable") return null;
-  return (
-    <div>
-      <div ref={containerRef} className="gpay-host [&_button]:w-full" />
-      {state === "error" && <p className="text-xs text-red-600 mt-2 text-center">{error}</p>}
-    </div>
-  );
+  if (state !== "ready") return null;
+  return <div ref={containerRef} className="gpay-host [&_button]:w-full" aria-label="Google Pay checkout" />;
 }
