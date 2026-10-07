@@ -64,7 +64,8 @@
     "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs",
     "verify:host-portability": "node scripts/verify-host-portability-contract.mjs",
     "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs",
-    "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs"
+    "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs",
+    "verify:managed-connections": "node scripts/verify-managed-connections-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
