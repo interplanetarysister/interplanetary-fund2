@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Unplug, Globe2, Rocket, Download } from "lucide-react";
+import { ExternalLink, Unplug, Globe2, Rocket, Download, Wrench } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 import { useNavigate } from "react-router-dom";
@@ -18,9 +18,10 @@ const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fu
 // - Otherwise the total is "owner reported" — entered by the campaign owner
 //   and informational only; it is never withdrawable from Interplanetary Fund.
 
-export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved }) {
+export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved, managedAvailable = false, onManagedRepair }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  const [managedBusy, setManagedBusy] = useState(false);
 
   // Prefer the canonical lifecycle from resolveConnectionStatus; fall back to
   // the local record heuristic when the resolver result is not yet available.
@@ -47,6 +48,12 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       console.error("Disconnect failed", e);
       setBusy(false);
     }
+  };
+
+  const managedRepair = async () => {
+    if (!onManagedRepair || managedBusy) return;
+    setManagedBusy(true);
+    try { await onManagedRepair(); } finally { setManagedBusy(false); }
   };
 
   // Data-source label used in the UI to distinguish provenance.
@@ -103,6 +110,11 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
+        {failed && managedAvailable && onManagedRepair && (
+          <Button size="sm" variant="outline" onClick={managedRepair} disabled={managedBusy} className="rounded-lg">
+            <Wrench className="w-3.5 h-3.5" />{managedBusy ? "Checking…" : "Let IFund repair"}
+          </Button>
+        )}
         {connection.kind === "crowdfunding" && IMPORTABLE_FUNDRAISING.has(connection.platform) && !connection.campaign_id && <Button size="sm" variant="outline" onClick={() => navigate(`/create?import_connection=${connection.id}`)} className="rounded-lg"><Download className="w-3.5 h-3.5" />Import campaign</Button>}
         {connection.external_url && (
           <a href={connection.external_url} target="_blank" rel="noopener noreferrer">
