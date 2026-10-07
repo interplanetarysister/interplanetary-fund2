@@ -376,6 +376,13 @@ assert.ok(
     css.includes('-webkit-text-fill-color: hsl(var(--foreground));'),
   'editable controls must preserve readable entered text'
 );
+assert.doesNotMatch(
+  css,
+  /(?:button|\[role="button"\])\.(?:bg|border)-[A-Za-z0-9_-]+/,
+  'global button contrast selectors must use exact class-token attributes so Tailwind cannot rewrite hover/state variants into invalid selectors'
+);
+assert.match(css, /button\[class~="bg-primary"\]/);
+assert.match(css, /\[role="button"\]\[class~="bg-secondary"\]/);
 
 const unsafeTextPairs = [
   /bg-slate-(?:900|950)[^"'\n]*text-(?:slate|gray|zinc|neutral)-(?:700|800|900)/g,
