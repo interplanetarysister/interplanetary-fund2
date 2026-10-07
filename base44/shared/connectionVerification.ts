@@ -33,10 +33,73 @@ export const OAUTH_ENV: Record<string, string> = {
 // platforms (bluesky/mastodon), and webhook platforms (kofi).
 const MANUAL_VERIFICATION_PLATFORMS = new Set(['bluesky', 'mastodon']);
 const WEBHOOK_VERIFICATION_PLATFORMS = new Set(['kofi']);
+const PUBLIC_LINK_HOSTS: Record<string, Set<string>> = {
+  gofundme: new Set(['gofundme.com', 'www.gofundme.com']),
+  kickstarter: new Set(['kickstarter.com', 'www.kickstarter.com']),
+  indiegogo: new Set(['indiegogo.com', 'www.indiegogo.com']),
+  fundrazr: new Set(['fundrazr.com', 'www.fundrazr.com']),
+  givesendgo: new Set(['givesendgo.com', 'www.givesendgo.com']),
+  spotfund: new Set(['spotfund.com', 'www.spotfund.com']),
+  buymeacoffee: new Set(['buymeacoffee.com', 'www.buymeacoffee.com']),
+};
 
 export function isLinkBasedPlatform(platform: string): boolean {
-  const key = String(platform || '').toLowerCase();
-  return !OAUTH_ENV[key] && !MANUAL_VERIFICATION_PLATFORMS.has(key) && !WEBHOOK_VERIFICATION_PLATFORMS.has(key);
+  return PUBLIC_LINK_HOSTS[String(platform || '').toLowerCase()] instanceof Set;
+}
+
+export async function verifyPublicCampaignConnection(connection: any) {
+  const key = String(connection?.platform || '').toLowerCase();
+  const allowed = PUBLIC_LINK_HOSTS[key];
+  if (!allowed) throw new Error('Public-page verification is not available for this platform.');
+  let current = new URL(String(connection?.external_url || ''));
+  if (
+    current.protocol !== 'https:' ||
+    current.username ||
+    current.password ||
+    (current.port && current.port !== '443') ||
+    !allowed.has(current.hostname.toLowerCase())
+  ) {
+    throw new Error('The linked campaign URL is not an approved provider URL.');
+  }
+
+  for (let hop = 0; hop < 3; hop++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    let response;
+    try {
+      response = await fetch(current.href, {
+        method: 'GET',
+        redirect: 'manual',
+        headers: {
+          Accept: 'text/html,application/xhtml+xml',
+          'User-Agent': 'InterplanetaryFund-ConnectionCheck/1.0',
+          Range: 'bytes=0-4095',
+        },
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (response.status >= 200 && response.status < 300) return;
+    if (response.status < 300 || response.status >= 400) {
+      throw new Error(`Provider page check failed (${response.status}).`);
+    }
+
+    const location = response.headers.get('location');
+    if (!location) throw new Error('Provider page redirected without a destination.');
+    current = new URL(location, current);
+    if (
+      current.protocol !== 'https:' ||
+      current.username ||
+      current.password ||
+      (current.port && current.port !== '443') ||
+      !allowed.has(current.hostname.toLowerCase())
+    ) {
+      throw new Error('Provider page redirected outside the approved provider domain.');
+    }
+  }
+  throw new Error('Provider page redirected too many times.');
 }
 
 export async function verifyManualConnection(connection: any) {
