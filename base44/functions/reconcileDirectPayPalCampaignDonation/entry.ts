@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { getTransaction } from '../../shared/paypal.ts';
+import { getTransaction, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { logAudit } from '../../shared/auditLog.ts';
@@ -115,7 +115,7 @@ export default async function(req) {
         state: 'settled',
         source_type: 'payment_processor',
         source_provider: 'paypal',
-        source_account_ref: 'interplanetary_business_paypal',
+        source_account_ref: IFUND_PAYPAL_ACCOUNT_REF,
         provider_transaction_id: transactionId,
         campaign_id: campaignId,
         beneficiary_user_id: campaign.created_by_id,
