@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk } from "./paypalScripts";
+import { computePayPalBreakdown, MIN_DONATION } from "@/lib/fees";
 
 export default function PayPalCheckoutButton({ campaign, amount, donorName, message, platformContribution, onPaid }) {
   const containerRef = useRef(null);
@@ -16,6 +17,10 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
     let cancelled = false;
     const node = containerRef.current;
     if (!node || !campaign?.id || !amount || Number(amount) <= 0) return undefined;
+    if (computePayPalBreakdown(amount, false).amount < MIN_DONATION) {
+      setError("Increase the total to cover PayPal processing. A $2.00 payment or more will work.");
+      return undefined;
+    }
 
     (async () => {
       try {
