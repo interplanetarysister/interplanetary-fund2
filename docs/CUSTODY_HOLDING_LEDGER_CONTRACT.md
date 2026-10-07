@@ -4,7 +4,7 @@ Interplanetary Fund is designed to present one platform balance while preserving
 
 ## Current holding account
 
-The current designated holding account is the **Interplanetary Fund business PayPal account**. The repository's canonical PayPal donation configuration currently identifies that business account as `interplanetarysister@gmail.com`.
+The current designated holding account is the **Interplanetary Fund business PayPal account**. The repository's canonical PayPal donation configuration identifies that business account as `interplanetarysister@gmail.com`. The same live PayPal Business REST credentials are authoritative for IFund donation orders, captures, transaction reporting/reconciliation, holding-account custody, and payouts. Consumer/personal account labels returned by external finance aggregators are diagnostic only and must never choose or override IFund's holding account.
 
 For the current implementation, “held / settled” therefore means funds whose receipt into that designated business PayPal account has been independently verified by PayPal. A donation observed on an exterior platform is not held merely because Interplanetary Fund can see it. Exterior funds must actually be transferred/payout-settled into the designated Interplanetary Fund business PayPal account, and the receiving PayPal transaction must be reconciled to the originating campaign/user ledger allocation.
 
