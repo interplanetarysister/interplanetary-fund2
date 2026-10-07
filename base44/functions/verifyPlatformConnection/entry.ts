@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
+import { OAUTH_ENV, verifyManualConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { redactCredentials } from '../../shared/integrationRegistry.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
@@ -33,7 +33,8 @@ export default async function(req) {
     const now = new Date().toISOString();
     const envName = OAUTH_ENV[connection.platform];
     try {
-      let providerVerified = false;
+      let connectionVerified = false;
+      let providerBacked = false;
       if (envName) {
         const connectorId = Deno.env.get(envName) || '';
         if (!connectorId) throw new Error('oauth_not_configured');
@@ -45,23 +46,29 @@ export default async function(req) {
         throw new Error('oauth_live_probe_unavailable');
       } else if (['bluesky', 'mastodon'].includes(connection.platform)) {
         await verifyManualConnection(connection);
-        providerVerified = true;
+        connectionVerified = true;
+        providerBacked = true;
       } else if (connection.platform === 'kofi') {
-        providerVerified = connection.verification_status === 'verified'
+        connectionVerified = connection.verification_status === 'verified'
           && connection.external_data_source === 'provider_verified';
-        if (!providerVerified) throw new Error('kofi_webhook_required');
+        providerBacked = connectionVerified;
+        if (!connectionVerified) throw new Error('kofi_webhook_required');
+      } else if (isLinkBasedPlatform(connection.platform)) {
+        // For public campaign trackers, a bounded read of the exact provider
+        // domain proves the saved link is reachable. It does NOT convert the
+        // owner-entered totals into provider-verified financial data.
+        await verifyPublicCampaignConnection(connection);
+        connectionVerified = true;
       } else {
-        // A pasted/public campaign URL is tracking configuration, not proof that
-        // the provider authenticated the owner or granted operational authority.
         throw new Error('provider_probe_unavailable');
       }
 
-      if (!providerVerified) throw new Error('provider_probe_unavailable');
+      if (!connectionVerified) throw new Error('provider_probe_unavailable');
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'connected', verification_status: 'verified', last_synced: now, last_error: '',
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
-      return Response.json({ working: true, provider_verified: true, connection: publicConnection(updated) });
+      return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
       const reauth = reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
