@@ -45,6 +45,12 @@ export default async function (req) {
 
     const processing = channel === 'googlepay' ? computePayPalWalletProcessingFee(totalCharge) : computePayPalProcessingFee(totalCharge);
     const value = round2(totalCharge - processing);
+    // Reject too-small charges BEFORE the provider order is created. Capture
+    // enforces the minimum on the credited donation, not the gross charge;
+    // otherwise a tiny order could be captured but rejected by the ledger.
+    if (!validateDonationAmount(value).ok) {
+      return Response.json({ error: 'This amount is too small after PayPal processing. Please enter at least $2.00.' }, { status: 400 });
+    }
     const contribution = computeContribution(value, !!platform_contribution);
     const order = await createOrder({
       amount: totalCharge,
