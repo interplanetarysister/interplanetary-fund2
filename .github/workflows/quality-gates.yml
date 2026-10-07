@@ -114,6 +114,9 @@ jobs:
       - name: Canonical PayPal Business account contract
         run: npm run verify:paypal-business
 
+      - name: Admin credential storage boundary
+        run: npm run verify:admin-credential-boundary
+
       - name: Connection catalog consistency contract
         run: node scripts/verify-connection-catalog-contract.mjs
 
