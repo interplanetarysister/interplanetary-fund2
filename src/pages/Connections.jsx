@@ -10,6 +10,7 @@ import ConnectDialog from "@/components/connections/ConnectDialog";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
+import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -152,6 +153,7 @@ export default function Connections() {
   }
 
   const aiAuthorized = user?.ai_obo_consent?.granted === true;
+  const managedAvailable = aiAuthorized && hasManagedConnections(user);
   const connectedIds = connections.map((c) => c.platform);
   // A connection is "working" when the canonical resolver says CONNECTED;
   // fall back to the local heuristic while the resolver is still loading.
@@ -172,6 +174,35 @@ export default function Connections() {
     setDialog({ platform });
     setPlatformSearch("");
     setPlatformMenuOpen(false);
+  };
+
+  const requestManagedAction = async ({ platform, action, connection = null, campaign_id }) => {
+    const platformId = typeof platform === "string" ? platform : platform?.id;
+    if (!platformId) throw new Error("Platform is required.");
+    try {
+      const { data } = await base44.functions.invoke("requestManagedConnectionAction", {
+        platform: platformId,
+        action,
+        connection_id: connection?.id,
+        campaign_id,
+      });
+      if (!data?.accepted) throw new Error("Managed Connections request was not accepted.");
+      const completed = data.state === "completed";
+      setConnectionNotice({
+        ok: completed,
+        text: data.message || (completed ? "IFund verified the connection." : "IFund saved this work and will continue from the next required provider step."),
+      });
+      if (completed) setReloadKey((key) => key + 1);
+      if (data.state === "waiting_user" && connection) {
+        const catalogPlatform = ALL_PLATFORMS.find((p) => p.id === platformId) || { id: platformId, name: platformId, kind: connection.kind, api: "" };
+        setDialog({ platform: catalogPlatform, existing: connection });
+      }
+      return data;
+    } catch (e) {
+      console.error("Managed Connections request failed:", e?.name || "UnknownError");
+      setConnectionNotice({ ok: false, text: "IFund couldn’t start that managed connection step. Check your IFund help permission and subscription, then try again." });
+      throw e;
+    }
   };
 
   return (
@@ -231,7 +262,7 @@ export default function Connections() {
       </div>
 
       <div className="mb-8">
-        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v, ai_publishing_consent: v, ai_connection_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v, ai_publishing_consent: v, ai_connection_consent: v }))} />
+        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v }))} />
       </div>
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (
@@ -270,6 +301,8 @@ export default function Connections() {
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
                 resolved={lifecycleMap[c.id]}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
+                managedAvailable={managedAvailable}
+                onManagedRepair={() => requestManagedAction({ platform: c.platform, action: "repair", connection: c })}
                 onRemoved={(id, updated) => {
                   setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id));
                   // After a provider check updates a connection, refresh its
@@ -348,6 +381,11 @@ export default function Connections() {
           platform={dialog.platform}
           existing={dialog.existing}
           aiAuthorized={aiAuthorized}
+          managedAvailable={managedAvailable}
+          onManagedCreateAccount={async ({ campaign_id }) => {
+            const data = await requestManagedAction({ platform: dialog.platform, action: "create_account", campaign_id });
+            if (data.state !== "waiting_user") setDialog(null);
+          }}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}
           onSaved={(saved) => {
