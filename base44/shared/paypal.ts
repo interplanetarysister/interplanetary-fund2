@@ -33,7 +33,7 @@ export async function isLivePayPalRestReady() {
       return ok;
     });
   restAccessProbe = { key, ok: false, until: 0, pending };
-  return pending;
+  return await pending;
 }
 
 async function getAccessToken() {
