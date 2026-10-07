@@ -30,6 +30,10 @@ export function effectiveSubscription(user) {
   };
 }
 
+export function hasManagedConnections(user) {
+  return hasPlanLevel(user, 2);
+}
+
 export function hasPlanLevel(user, minimumLevel) {
   const subscription = effectiveSubscription(user);
   return subscription.active && subscription.plan.level >= minimumLevel;
