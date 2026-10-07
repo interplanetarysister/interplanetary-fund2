@@ -27,13 +27,14 @@ export function loadPayPalSdk(clientId) {
   }
   ppClientId = clientId;
   ppPromise = new Promise((resolve, reject) => {
-    if (window.paypal?.Buttons && window.paypal?.Googlepay) return resolve();
+    // Google Pay may be ineligible for this merchant; PayPal Buttons must still work.
+    if (window.paypal?.Buttons) return resolve();
     const script = document.createElement("script");
     script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay&intent=capture&currency=USD`;
     script.async = true;
     script.onload = () => {
-      if (window.paypal?.Buttons && window.paypal?.Googlepay) resolve();
-      else reject(new Error("PayPal SDK did not provide required payment components"));
+      if (window.paypal?.Buttons) resolve();
+      else reject(new Error("PayPal SDK did not provide PayPal Buttons"));
     };
     script.onerror = () => reject(new Error("Failed to load PayPal SDK"));
     const resetOnFailure = () => { script.remove(); ppPromise = null; ppClientId = null; };
