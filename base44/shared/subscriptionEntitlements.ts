@@ -7,6 +7,8 @@ export const SUBSCRIPTION_LEVEL: Record<string, number> = {
   enterprise: 4,
 };
 
+export const MANAGED_CONNECTIONS_MIN_LEVEL = 2;
+
 export const TOP_SUBSCRIPTION_TIER = 'enterprise';
 export const TOP_SUBSCRIPTION_LEVEL = SUBSCRIPTION_LEVEL[TOP_SUBSCRIPTION_TIER];
 
@@ -28,6 +30,10 @@ export function effectiveSubscription(user: any) {
     active: status === 'active' || status === 'trialing',
     adminGranted: false,
   };
+}
+
+export function hasManagedConnections(user: any) {
+  return hasSubscriptionLevel(user, MANAGED_CONNECTIONS_MIN_LEVEL);
 }
 
 export function hasSubscriptionLevel(user: any, minimumLevel: number) {
