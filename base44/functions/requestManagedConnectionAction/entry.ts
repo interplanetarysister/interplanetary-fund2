@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { hasManagedConnections } from '../../shared/subscriptionEntitlements.ts';
-import { staticRecipe, orderedTransports } from '../../shared/platformConnectionRecipes.ts';
+import { staticRecipe } from '../../shared/platformConnectionRecipes.ts';
 
 const ACTIONS = new Set(['connect', 'create_account', 'repair', 'reauthorize']);
 const clean = (value: unknown, max = 300) =>
@@ -15,11 +15,18 @@ async function resolveRecipe(sr: any, platform: string, operation: string) {
     ? persisted
     : seed
       ? { platform, operation, status: 'probation', ...seed }
-      : { platform, operation, status: 'probation', preferred_transport: 'manual' };
+      : null;
+  const rediscoveryRequired = !effective || effective.status === 'stale';
+  const supportedTransports = rediscoveryRequired
+    ? []
+    : [...new Set([
+        effective.preferred_transport,
+        ...(Array.isArray(effective.fallback_transports) ? effective.fallback_transports : []),
+      ].filter((value) => value && value !== 'manual'))];
   return {
     recipe: effective,
-    transport_order: orderedTransports(effective),
-    rediscovery_required: effective.status === 'stale' || (!persisted && !seed),
+    transport_order: supportedTransports,
+    rediscovery_required: rediscoveryRequired,
   };
 }
 
