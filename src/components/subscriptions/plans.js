@@ -29,6 +29,7 @@ export const PLANS = [
     featured: true,
     features: [
       "Everything in Basic AI Assistant",
+      "Managed Connections — IFund can coordinate supported connection, repair, and account-setup steps under your authorization",
       "Autonomous campaign monitoring",
       "AI-generated outreach messages & social posts",
       "Audience & opportunity recommendations",
@@ -75,6 +76,7 @@ export const PLANS = [
     tagline: "Discounted full-power Outreach Agent for registered nonprofits.",
     features: [
       "Everything in AI Outreach Agent",
+      "Managed Connections",
       "Nonprofit pricing",
     ],
     monthly: { amount: 2900, stripe_price_id: "" },
