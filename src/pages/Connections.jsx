@@ -105,9 +105,18 @@ export default function Connections() {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
             platform: pending.platform, shared_agent_consent: pending.sharedAgentConsent === true,
           });
-          if (data?.connected) {
+          if (data?.authorization_present && data?.connection?.id) {
             localStorage.removeItem("ifund_pending_platform_connection");
-            setConnectionNotice({ ok: true, text: `${pending.platform} is connected.` });
+            try {
+              const verified = await base44.functions.invoke("verifyPlatformConnection", { connection_id: data.connection.id });
+              if (verified?.data?.working) {
+                setConnectionNotice({ ok: true, text: `${pending.platform} is connected and working.` });
+              } else {
+                setConnectionNotice({ ok: false, text: `${pending.platform} sign-in was saved, but the live provider check still needs attention.` });
+              }
+            } catch {
+              setConnectionNotice({ ok: false, text: `${pending.platform} sign-in was saved, but the live provider check still needs attention.` });
+            }
           } else {
             setConnectionNotice({ ok: false, text: `Finish connecting ${pending.platform}, then return here. If sign-in was cancelled, try again.` });
           }
