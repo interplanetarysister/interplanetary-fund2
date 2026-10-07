@@ -124,6 +124,18 @@ async function callAgentRuntime(env, request, payload) {
 
 export default { async fetch(request, env) {
   const url=new URL(request.url);
+
+  if(url.pathname==="/api/health" || url.pathname.startsWith("/api/health/")){
+    if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
+    return json({
+      ok:true,
+      service:"interplanetary-fund",
+      runtime:"cloudflare-worker",
+      mcp_proxy:"base44",
+      status:"healthy"
+    });
+  }
+
   if(isMcpProxyPath(url.pathname)){
     try{return await proxyBase44Mcp(request,env);}
     catch{return json({error:"Interplanetary Fund MCP backend is unavailable.",degraded:true},502);}
