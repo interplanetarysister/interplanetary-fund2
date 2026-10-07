@@ -16,7 +16,7 @@ function apiBase() {
 // Read-only API credential probe. A populated client ID is not proof that
 // PayPal will authenticate the connected live merchant. Cache briefly to avoid
 // repeated OAuth traffic when multiple checkout components mount together.
-let restAccessProbe = { key: '', until: 0, ok: false, pending: null };
+let restAccessProbe: { key: string; until: number; ok: boolean; pending: Promise<boolean> | null } = { key: '', until: 0, ok: false, pending: null };
 export async function isLivePayPalRestReady() {
   const id = String(secrets.get('PAYPAL_CLIENT_ID') || '').trim();
   const secret = String(secrets.get('PAYPAL_CLIENT_SECRET') || '').trim();
