@@ -121,31 +121,83 @@ export async function createOrder({ amount, description, customId, requestId }) 
   return { id: data.id };
 }
 
-export async function captureOrder(orderId) {
+function normalizeOrderResult(data) {
+  const unit = data?.purchase_units?.[0] || {};
+  const captures = Array.isArray(unit?.payments?.captures) ? unit.payments.captures : [];
+  const capture = captures.find((row) => String(row?.status || '').toUpperCase() === 'COMPLETED') || captures[0] || null;
+  const given = data?.payer?.name?.given_name || data?.payment_source?.paypal?.name?.given_name;
+  const sur = data?.payer?.name?.surname || data?.payment_source?.paypal?.name?.surname;
+  const parsedAmount = Number.parseFloat(capture?.amount?.value || '0');
+  return {
+    status: String(data?.status || ''),
+    capture_status: String(capture?.status || ''),
+    amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
+    payer_name: given ? `${given} ${sur || ''}`.trim() : '',
+    custom_id: String(unit?.custom_id || ''),
+    capture_id: String(capture?.id || ''),
+    currency: String(capture?.amount?.currency_code || unit?.amount?.currency_code || '').toUpperCase(),
+  };
+}
+
+export async function getOrder(orderId) {
+  const id = String(orderId || '').trim();
+  if (!id) throw new Error('PayPal order id is required.');
   const token = await getAccessToken();
-  const stableRequestId = stableProviderKey('IF_CAPTURE', orderId, 70);
-  const res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}/capture`, {
-    method: "POST",
+  const res = await fetch(`${apiBase()}/v2/checkout/orders/${encodeURIComponent(id)}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "PayPal-Request-Id": stableRequestId,
     },
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.message || `PayPal capture failed (${res.status})`);
-  const capture = data.purchase_units?.[0]?.payments?.captures?.[0];
-  const given = data.payer?.name?.given_name;
-  const sur = data.payer?.name?.surname;
-  const unit = data.purchase_units?.[0];
-  return {
-    status: data.status,
-    amount: capture ? parseFloat(capture.amount?.value || "0") : 0,
-    payer_name: given ? `${given} ${sur || ""}`.trim() : "",
-    custom_id: unit?.custom_id || "",
-    capture_id: capture?.id || "",
-    currency: capture?.amount?.currency_code || unit?.amount?.currency_code || "",
-  };
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.message || `PayPal order lookup failed (${res.status})`);
+  return normalizeOrderResult(data);
+}
+
+export async function captureOrder(orderId) {
+  const token = await getAccessToken();
+  const stableRequestId = stableProviderKey('IF_CAPTURE', orderId, 70);
+  let res;
+  let data = {};
+  let captureFailure = null;
+  try {
+    res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}/capture`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        "PayPal-Request-Id": stableRequestId,
+      },
+    });
+    data = await res.json().catch(() => ({}));
+    if (res.ok) return normalizeOrderResult(data);
+    captureFailure = new Error(data?.message || `PayPal capture failed (${res.status})`);
+  } catch (cause) {
+    captureFailure = new Error('PayPal capture response was not received.');
+    captureFailure.cause = cause;
+  }
+
+  // Capture is an irreversible provider action. If the response was lost, or a
+  // retry reaches PayPal after the order was already captured, recover the
+  // provider-authoritative order state instead of leaving real money outside
+  // IFund's ledger. A GET is read-only and succeeds only when PayPal itself
+  // reports a completed order with a completed capture.
+  try {
+    const recovered = await getOrder(orderId);
+    if (
+      recovered.status === 'COMPLETED' &&
+      recovered.capture_status === 'COMPLETED' &&
+      recovered.capture_id &&
+      recovered.amount > 0
+    ) {
+      return { ...recovered, recovered_after_capture_error: true };
+    }
+  } catch (_) {
+    // Preserve the original capture failure. A failed recovery lookup must not
+    // turn an unknown or declined payment into a successful donation.
+  }
+
+  throw captureFailure || new Error('PayPal capture failed.');
 }
 
 
