@@ -10,15 +10,24 @@ function publicConnection(row) {
   return { ...row, credentials, credentials_meta };
 }
 
-async function completeManagedRepairDelegations(base44, userId, connection, now) {
+async function completeManagedRepairDelegations(base44, user, connection, now) {
+  const consentVersion = String(user?.ai_obo_consent?.permission_version || '');
+  if (
+    user?.ai_obo_consent?.granted !== true ||
+    !consentVersion ||
+    connection?.obo_consent?.granted !== true ||
+    String(connection?.obo_consent?.permission_version || '') !== consentVersion
+  ) return;
+
   const delegations = await base44.entities.AgentDelegation.filter({
-    owner_user_id: userId,
+    owner_user_id: user.id,
     destination_agent: 'managed_connection_agent',
     status: { $in: ['assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review'] },
   }).catch(() => []);
 
   for (const delegation of delegations || []) {
     if (delegation?.continuation_state?.continuation_ref !== connection.id) continue;
+    if (String(delegation?.consent_version || '') !== consentVersion) continue;
     await base44.entities.AgentDelegation.update(delegation.id, {
       status: 'completed',
       result_summary: 'The connection passed live provider verification and is working.',
@@ -96,7 +105,7 @@ export default async function(req) {
         status: 'connected', verification_status: 'verified', last_synced: now, last_error: '',
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
-      await completeManagedRepairDelegations(base44, user.id, updated, now);
+      await completeManagedRepairDelegations(base44, user, updated, now);
       return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
