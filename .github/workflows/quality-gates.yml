@@ -105,6 +105,9 @@ jobs:
       - name: Connection lifecycle and operational health contract
         run: npm run verify:connection-lifecycle
 
+      - name: Managed Connections authorization and delegation contract
+        run: npm run verify:managed-connections
+
       - name: Connection catalog consistency contract
         run: node scripts/verify-connection-catalog-contract.mjs
 
