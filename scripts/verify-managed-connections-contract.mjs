@@ -18,6 +18,8 @@ const connectionsPage = read('src/pages/Connections.jsx');
 const connectDialog = read('src/components/connections/ConnectDialog.jsx');
 const connectionCard = read('src/components/connections/ConnectionCard.jsx');
 const finalizeOauth = read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
+const verifyConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
+const register = read('src/pages/Register.jsx');
 
 assert.match(entitlements, /MANAGED_CONNECTIONS_MIN_LEVEL\s*=\s*2/);
 assert.match(entitlements, /hasManagedConnections\(user/);
@@ -78,5 +80,13 @@ assert.doesNotMatch(connectDialog, /sharedAgentConsent/);
 assert.doesNotMatch(connectionsPage, /shared_agent_consent|sharedAgentConsent/);
 assert.doesNotMatch(finalizeOauth, /shared_agent_consent/);
 assert.match(finalizeOauth, /user\.ai_obo_consent\?\.granted === true/);
+assert.match(verifyConnection, /completeManagedRepairDelegations/);
+assert.match(verifyConnection, /user\?\.ai_obo_consent\?\.granted !== true/);
+assert.match(verifyConnection, /delegation\?\.consent_version/);
+assert.match(verifyConnection, /continuation_state\?\.continuation_ref !== connection\.id/);
+assert.match(connectionsPage, /verifyPlatformConnection/);
+assert.match(register, /window\.location\.href = "\/onboarding"/);
+assert.match(register, /ifund_post_onboarding_return_to/);
+assert.match(onboarding, /ifund_post_onboarding_return_to/);
 
 console.log('Managed Connections authorization and delegation contract verified.');
