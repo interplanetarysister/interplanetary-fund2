@@ -114,25 +114,25 @@ export default async function(req) {
         shared_with_agents: sharedAgentConsent,
         automation_enabled: sharedAgentConsent && (existing?.automation_mode || 'auto') === 'auto',
       },
-      status: 'connected',
-      verification_status: 'verified',
+      // OAuth token presence proves authorization material exists. A harmless
+      // provider call must still succeed before the connection is shown as working.
+      status: 'disconnected',
+      verification_status: 'unverified',
       capability_status: confirmed.length ? 'confirmed' : 'unknown',
-      // OAuth verifies the account connection, not crowdfunding totals/provenance.
       external_data_source: existing?.external_data_source || 'owner_reported',
-      last_synced: now,
-      last_error: '',
+      last_error: 'Provider authorization saved; live verification is still required.',
       history: [...(existing?.history || []), {
         at: now,
-        event: 'oauth_connected',
+        event: 'oauth_authorized',
         detail: confirmed.length
-          ? `Provider OAuth verified; ${confirmed.length} provider-reported capabilities recorded`
-          : 'Provider OAuth verified; detailed provider capabilities were not reported and remain unknown',
+          ? `Provider authorization saved; ${confirmed.length} provider-reported capabilities recorded; live verification required`
+          : 'Provider authorization saved; detailed provider capabilities were not reported and remain unknown; live verification required',
       }].slice(-30),
     };
     const saved = existing
       ? await base44.entities.PlatformConnection.update(existing.id, data)
       : await base44.entities.PlatformConnection.create(data);
-    return Response.json({ configured: true, connected: true, connection: saved });
+    return Response.json({ configured: true, authorization_present: true, connected: false, provider_verified: false, verification_required: true, connection: saved });
   } catch (error) {
     console.error('finalizeAppUserOAuthConnection error:', error?.message || error);
     return Response.json({ error: 'Unable to finish this connection.' }, { status: 500 });
