@@ -23,6 +23,7 @@ const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts,
 export function eligibleConnections(connections, campaign) {
   return (connections || []).filter((c) =>
     c.status === 'connected' &&
+    c.verification_status === 'verified' &&
     c.automation_mode !== 'manual' &&
     c.created_by_id === campaign.created_by_id &&
     (!c.campaign_id || c.campaign_id === campaign.id)
