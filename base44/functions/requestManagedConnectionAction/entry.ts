@@ -53,6 +53,13 @@ export default async function(req: Request) {
         { status: 403 },
       );
     }
+    const consentVersion = String(user.ai_obo_consent?.permission_version || '').trim();
+    if (!consentVersion) {
+      return Response.json(
+        { error: 'Review and renew your IFund help permission before Managed Connections acts for you.' },
+        { status: 403 },
+      );
+    }
 
     const body = await req.json().catch(() => ({}));
     const platform = clean(body.platform, 80).toLowerCase();
@@ -78,6 +85,15 @@ export default async function(req: Request) {
       connection = await sr.entities.PlatformConnection.get(connectionId).catch(() => null);
       if (!connection || connection.created_by_id !== user.id || connection.platform !== platform) {
         return Response.json({ error: 'Connection not found.' }, { status: 404 });
+      }
+      if (
+        connection.obo_consent?.granted !== true ||
+        String(connection.obo_consent?.permission_version || '') !== consentVersion
+      ) {
+        return Response.json(
+          { error: 'This connection needs the current IFund help authorization before delegated repair can run.' },
+          { status: 403 },
+        );
       }
     }
 
@@ -115,7 +131,6 @@ export default async function(req: Request) {
     const transports = resolved.transport_order.filter((t: string) => t && t !== 'manual');
     const nextTransport = transports[0] || null;
     const now = new Date().toISOString();
-    const consentVersion = String(user.ai_obo_consent?.permission_version || '');
 
     const delegation = await base44.entities.AgentDelegation.create({
       owner_user_id: user.id,
