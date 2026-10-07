@@ -3,7 +3,8 @@ import { secrets } from 'base44:runtime';
 import { captureOrder, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { logAudit } from '../../shared/auditLog.ts';
-import { round2, validateDonationAmount, computeContribution } from '../../shared/fees.js';
+import { round2 } from '../../shared/fees.js';
+import { resolvePayPalCaptureAllocation } from '../../shared/paypalAllocation.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
@@ -72,29 +73,22 @@ export default async function (req) {
       return Response.json({ error: 'PayPal order financial metadata is invalid.' }, { status: 409 });
     }
 
-    const quotedDonation = round2(donCents / 100);
-    const quotedFee = round2(procCents / 100);
-    const expectedCharge = round2(quotedDonation + quotedFee);
-    if (Math.abs(round2(cap.amount) - expectedCharge) > 0.01) {
-      return Response.json({ error: 'Captured PayPal amount does not match the server-created order.' }, { status: 409 });
+    const allocation = resolvePayPalCaptureAllocation({
+      chargedAmount: cap.amount,
+      quotedDonation: donCents / 100,
+      quotedFee: procCents / 100,
+      quotedContribution: contributionCents / 100,
+      providerReceivable: cap.provider_receivable_amount,
+      providerFee: cap.provider_processing_fee,
+    });
+    if (!allocation.ok) {
+      // The PayPal capture is already irreversible: do not retry another charge
+      // under a new order ID. Keep the receipt available for admin reconciliation.
+      return Response.json({ error: 'Captured payment requires financial reconciliation.' }, { status: 409 });
     }
-
-    // The quote is an estimate. PayPal's completed capture may report its
-    // actual fee and merchant receivable, which are authoritative for custody.
-    let total = quotedDonation;
-    let processingFee = quotedFee;
-    const received = Number(cap.provider_receivable_amount);
-    const actualFee = Number(cap.provider_processing_fee);
-    if (cap.provider_receivable_amount !== null && Number.isFinite(received) && received >= 0 && received <= cap.amount) {
-      total = round2(received);
-      processingFee = round2(cap.amount - total);
-    } else if (cap.provider_processing_fee !== null && Number.isFinite(actualFee) && actualFee >= 0 && actualFee < cap.amount) {
-      processingFee = round2(actualFee);
-      total = round2(cap.amount - processingFee);
-    }
-    let contribution = contributionCents > 0 ? computeContribution(total, true) : 0;
-    const amountCheck = validateDonationAmount(total);
-    if (!amountCheck.ok) return Response.json({ error: 'PayPal capture was completed, but the received amount needs manual reconciliation.' }, { status: 409 });
+    let total = allocation.amount;
+    let processingFee = allocation.processingFee;
+    let contribution = allocation.platformContribution;
 
     await ensureCanonicalCampaign(sr, campaign);
     const displayName = donor_name || cap.payer_name || donor?.full_name || 'Anonymous';
