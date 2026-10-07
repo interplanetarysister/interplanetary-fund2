@@ -32,6 +32,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-node22 --silent",
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/verify-production-build-output.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
@@ -65,7 +66,9 @@
     "verify:host-portability": "node scripts/verify-host-portability-contract.mjs",
     "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs",
     "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs",
-    "verify:managed-connections": "node scripts/verify-managed-connections-contract.mjs"
+    "verify:managed-connections": "node scripts/verify-managed-connections-contract.mjs",
+    "verify:route-code-splitting": "node scripts/verify-route-code-splitting.mjs",
+    "verify:production-build-output": "node scripts/verify-production-build-output.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
