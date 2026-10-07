@@ -7,13 +7,14 @@ const expectedAgents = [
   "connection_discovery_agent.jsonc",
   "finance_agent.jsonc",
   "growth_agent.jsonc",
+  "managed_connection_agent.jsonc",
   "outreach_agent.jsonc",
   "story_agent.jsonc",
   "strategy_agent.jsonc",
 ];
 const files = fs.readdirSync(dir).filter(n => n.endsWith(".jsonc")).sort();
 assert.deepEqual(files, expectedAgents,
-  "configured agents must match the reviewed eight-agent inventory; the deferred Builder must remain absent");
+  "configured agents must match the reviewed nine-agent inventory; the deferred Builder must remain absent");
 for (const file of files) {
   const cfg = JSON.parse(fs.readFileSync(new URL(file, dir), "utf8"));
   const i = cfg.instructions || "";
@@ -28,4 +29,4 @@ for (const n of ["chief_of_staff.jsonc","communications_agent.jsonc","finance_ag
  assert.ok(c.memory_config?.enabled, `${n}: memory must remain enabled`);
  assert.match(c.memory_config.instructions||"",/Learning expands knowledge and reasoning, never permissions/);
 }
-console.log("Agent reasoning coherence contract passed for all 8 configured agents");
+console.log("Agent reasoning coherence contract passed for all 9 configured agents");
