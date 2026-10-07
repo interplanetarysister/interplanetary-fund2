@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { OAUTH_ENV, verifyManualConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
+import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { redactCredentials } from '../../shared/integrationRegistry.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
@@ -40,10 +40,9 @@ export default async function(req) {
         if (!connectorId) throw new Error('oauth_not_configured');
         const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
         if (!oauth?.accessToken) throw new Error('oauth_reauthorization_required');
-        // A stored token proves an authorization transport exists; it does not
-        // prove the provider call this connection claims to perform still works.
-        // Fail closed until a provider-specific harmless live probe is available.
-        throw new Error('oauth_live_probe_unavailable');
+        await verifyOAuthConnection(connection.platform, oauth);
+        connectionVerified = true;
+        providerBacked = true;
       } else if (['bluesky', 'mastodon'].includes(connection.platform)) {
         await verifyManualConnection(connection);
         connectionVerified = true;
