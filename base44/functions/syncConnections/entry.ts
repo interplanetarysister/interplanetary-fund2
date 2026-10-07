@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
-import { OAUTH_ENV, verifyManualConnection } from '../../shared/connectionVerification.ts';
+import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -129,11 +129,14 @@ export default async function(req) {
           if (!connectorId) throw new Error('Provider sign-in is not configured yet.');
           const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
           if (!oauth?.accessToken) throw new Error('Provider authorization needs to be renewed.');
+          await verifyOAuthConnection(c.platform, oauth);
         } else if (['bluesky', 'mastodon'].includes(c.platform)) {
           await verifyManualConnection(c);
+        } else if (isLinkBasedPlatform(c.platform)) {
+          await verifyPublicCampaignConnection(c);
         } else {
-          // Ko-fi is verified by its webhook. Link-only platforms remain
-          // owner-reported and are not downgraded simply because no read API exists.
+          // Ko-fi is verified by signed provider webhook events; custom/unknown
+          // connections remain unverified until a real supported check exists.
           continue;
         }
         await sr.entities.PlatformConnection.update(c.id, {
@@ -145,7 +148,7 @@ export default async function(req) {
         const message = String(e?.message || 'Provider authorization needs attention').slice(0, 300);
         await sr.entities.PlatformConnection.update(c.id, {
           status: 'error', verification_status: 'unverified', last_error: message,
-          capability_status: OAUTH_ENV[c.platform] ? 'reauthorization_required' : (c.capability_status || 'unknown'),
+          capability_status: OAUTH_ENV[c.platform] ? (String(e?.message || '').includes('renewed') ? 'reauthorization_required' : 'unknown') : (c.capability_status || 'unknown'),
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
         });
         report.needs_attention++;
