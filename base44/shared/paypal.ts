@@ -5,8 +5,8 @@ import { secrets } from "base44:runtime";
 
 function apiBase() {
   return secrets.get("PAYPAL_MODE") === "live"
-    ? "https://api.paypal.com"
-    : "https://api.sandbox.paypal.com";
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com";
 }
 
 async function getAccessToken() {
