@@ -1,6 +1,27 @@
 name = "interplanetary-fund2"
 main = "host/gateway/worker.js"
 compatibility_date = "2026-09-29"
+workers_dev = true
+
+[[routes]]
+pattern = "interplanetaryfund.com/api/health*"
+zone_name = "interplanetaryfund.com"
+
+[[routes]]
+pattern = "interplanetaryfund.com/api/mcp*"
+zone_name = "interplanetaryfund.com"
+
+[[routes]]
+pattern = "interplanetaryfund.com/v1/admin/agents/*"
+zone_name = "interplanetaryfund.com"
+
+[[routes]]
+pattern = "interplanetaryfund.com/.well-known/oauth-*"
+zone_name = "interplanetaryfund.com"
+
+[[routes]]
+pattern = "interplanetaryfund.com/.well-known/openid-configuration*"
+zone_name = "interplanetaryfund.com"
 
 [vars]
 IFUND_BASE44_ORIGIN = "https://interplanetaryfund.base44.app"
@@ -11,6 +32,8 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = [
   "/v1/admin/agents/*",
+  "/api/health",
+  "/api/health/*",
   "/api/mcp",
   "/api/mcp/*",
   "/api/apps/*/mcp",
