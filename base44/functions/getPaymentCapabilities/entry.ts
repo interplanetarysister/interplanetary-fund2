@@ -1,4 +1,5 @@
 import { secrets } from 'base44:runtime';
+import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE } from '../../shared/paypal.ts';
 
 // Public-safe payment capability snapshot. UI must use this instead of
 // inferring provider availability from rendered components or repository code.
@@ -16,6 +17,8 @@ export default async function (_req) {
       api_configured: Boolean(paypalClientId && paypalClientSecret),
       api_live: Boolean(paypalClientId && paypalClientSecret && paypalMode === 'live'),
       mode: paypalMode,
+      account_ref: IFUND_PAYPAL_ACCOUNT_REF,
+      account_type: IFUND_PAYPAL_ACCOUNT_TYPE,
     },
     stripe: {
       configured: Boolean(stripeSecret),
