@@ -68,7 +68,8 @@
     "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs",
     "verify:managed-connections": "node scripts/verify-managed-connections-contract.mjs",
     "verify:route-code-splitting": "node scripts/verify-route-code-splitting.mjs",
-    "verify:production-build-output": "node scripts/verify-production-build-output.mjs"
+    "verify:production-build-output": "node scripts/verify-production-build-output.mjs",
+    "verify:paypal-business": "node scripts/verify-paypal-business-account-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
