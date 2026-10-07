@@ -62,6 +62,11 @@ jobs:
           curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/ -o /tmp/ifund-custom-domain.html
           grep -q 'id="root"' /tmp/ifund-custom-domain.html
 
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 "$DEPLOYMENT_URL/api/health" -o /tmp/ifund-worker-health.json
+          grep -q '"runtime":"cloudflare-worker"' /tmp/ifund-worker-health.json
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/api/health -o /tmp/ifund-custom-health.json
+          grep -q '"runtime":"cloudflare-worker"' /tmp/ifund-custom-health.json
+
           MCP_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors -D /tmp/ifund-mcp.headers -o /tmp/ifund-mcp.body -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":"ifund-health","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ifund-deploy-check","version":"1.0.0"}}}' "$DEPLOYMENT_URL/api/mcp")"
           grep -qi '^x-ifund-mcp-proxy: base44' /tmp/ifund-mcp.headers
           test "$MCP_STATUS" != "404"
@@ -69,3 +74,11 @@ jobs:
             echo "MCP endpoint incorrectly returned the SPA shell."
             exit 1
           fi
+
+          CUSTOM_MCP_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors -D /tmp/ifund-custom-mcp.headers -o /tmp/ifund-custom-mcp.body -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":"ifund-custom-domain-health","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ifund-deploy-check","version":"1.0.0"}}}' https://interplanetaryfund.com/api/mcp)"
+          grep -qi '^x-ifund-mcp-proxy: base44' /tmp/ifund-custom-mcp.headers
+          test "$CUSTOM_MCP_STATUS" != "404"
+
+          ADMIN_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 -o /tmp/ifund-admin-gateway.body -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' https://interplanetaryfund.com/v1/admin/agents/session)"
+          test "$ADMIN_STATUS" = "403"
+          grep -q 'Administrator authorization required' /tmp/ifund-admin-gateway.body
