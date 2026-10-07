@@ -34,13 +34,6 @@
     "content": {
       "type": "string"
     },
-    "credential_username": {
-      "type": "string"
-    },
-    "credential_secret": {
-      "type": "string",
-      "description": "Sensitive credential supplied by an admin for a requested account action. Admin-only; never include in logs, notifications, summaries, or agent-visible prose."
-    },
     "created_at": {
       "type": "string",
       "format": "date-time"
