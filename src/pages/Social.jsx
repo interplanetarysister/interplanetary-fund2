@@ -182,10 +182,10 @@ export default function Social() {
                         <div key={c.id} className="flex items-center justify-between text-xs">
                           <span className="text-slate-300">{c.display_name || c.platform}</span>
                           <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                            c.status === "connected" ? "bg-emerald-500/20 text-emerald-300" :
-                            c.status === "error" ? "bg-rose-500/20 text-rose-300" :
+                            isUsableConnection(c) ? "bg-emerald-500/20 text-emerald-300" :
+                            c.status === "error" || c.last_error ? "bg-rose-500/20 text-rose-300" :
                             "bg-slate-500/20 text-slate-400"
-                          }`}>{c.status}</span>
+                          }`}>{isUsableConnection(c) ? "connected" : c.status === "error" ? "needs attention" : "not verified"}</span>
                         </div>
                       ))
                     )}
