@@ -10,9 +10,11 @@ Cloudflare serves the React/Vite application, while Base44 remains the authorita
 - `/api/apps/*/mcp` and `/api/apps/*/mcp/*`
 - OAuth discovery under `/.well-known/oauth-*`
 
-The public MCP URL therefore remains host-relative. On the production domain it is:
+The production hostname remains on the existing Base44 origin for ordinary application traffic. Cloudflare path routes invoke this Worker only for the Worker-owned API surfaces: health, MCP/OAuth discovery, and the protected admin-agent gateway. The public MCP URL therefore remains host-relative:
 
 `https://interplanetaryfund.com/api/mcp`
+
+The Worker also exposes an unauthenticated, non-secret liveness probe at `https://interplanetaryfund.com/api/health`. A healthy response identifies the runtime as `cloudflare-worker`; returning the SPA shell is a deployment failure.
 
 MCP requests are forwarded to `IFUND_BASE44_ORIGIN`, currently `https://interplanetaryfund.base44.app`. The Worker does not duplicate Base44 authorization or tool permission logic; it preserves the canonical OAuth/user-permission boundary.
 
