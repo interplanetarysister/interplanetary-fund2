@@ -27,6 +27,10 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       const data = receiptResponse?.data || {};
       const rows = Array.isArray(data.receipts) ? data.receipts.filter((row) => row.tracked !== true) : [];
       setReceipts(rows);
+      setSelection((current) => ({
+        ...current,
+        ...Object.fromEntries(rows.filter((row) => row.repair_required && row.allocation_campaign_id).map((row) => [row.transaction_id, row.allocation_campaign_id])),
+      }));
       setCampaigns(Array.isArray(campaignRows) ? campaignRows : []);
     } catch (e) {
       console.error("PayPal receipt recovery load failed:", e?.name || "UnknownError");
@@ -56,7 +60,9 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       setReceipts((current) => current.filter((row) => row.transaction_id !== receipt.transaction_id));
       setMessage(data.duplicate
         ? "That PayPal receipt was already safely allocated."
-        : `Recovered $${Number(data.campaign_amount || 0).toFixed(2)} to the selected campaign.`);
+        : data.repaired
+          ? `Repaired the incomplete $${Number(data.campaign_gift ?? data.campaign_amount ?? 0).toFixed(2)} campaign allocation.`
+          : `Recovered $${Number(data.campaign_gift ?? data.campaign_amount ?? 0).toFixed(2)} to the selected campaign.`);
     } catch (e) {
       console.error("PayPal receipt recovery failed:", e?.name || "UnknownError");
       setError("That receipt could not be assigned safely. It was left unchanged.");
@@ -109,11 +115,14 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
                   {(receipt.subject || receipt.note) && (
                     <p className="mt-1 text-xs text-slate-600">{receipt.subject || receipt.note}</p>
                   )}
+                  {receipt.repair_required && !receipt.allocation_conflict && <p className="mt-1 text-xs font-medium text-amber-700">Incomplete local allocation found. Recovery will repair its missing records.</p>}
+                  {receipt.allocation_conflict && <p className="mt-1 text-xs font-medium text-red-700">Conflicting campaign allocations require manual financial review.</p>}
                 </div>
                 <select
                   aria-label="Campaign for PayPal receipt"
                   value={selection[receipt.transaction_id] || ""}
                   onChange={(event) => setSelection((current) => ({ ...current, [receipt.transaction_id]: event.target.value }))}
+                  disabled={receipt.allocation_conflict || !!receipt.allocation_campaign_id}
                   className="min-h-10 min-w-0 lg:w-72 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900"
                 >
                   <option value="">Choose campaign…</option>
@@ -125,11 +134,11 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
                 </select>
                 <Button
                   onClick={() => recover(receipt)}
-                  disabled={!selection[receipt.transaction_id] || !!busy}
+                  disabled={receipt.allocation_conflict || !selection[receipt.transaction_id] || !!busy}
                   className="rounded-xl shrink-0"
                 >
                   {busy === receipt.transaction_id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  Add to campaign
+                  {receipt.repair_required ? "Repair allocation" : "Add to campaign"}
                 </Button>
               </div>
             </div>

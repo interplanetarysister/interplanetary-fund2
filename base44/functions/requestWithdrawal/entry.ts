@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { sendPayout, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { giftOf, round2, computeWithdrawal } from '../../shared/fees.js';
 import { logAudit } from '../../shared/auditLog.ts';

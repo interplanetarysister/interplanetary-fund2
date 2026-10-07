@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { logAudit } from '../../shared/auditLog.ts';

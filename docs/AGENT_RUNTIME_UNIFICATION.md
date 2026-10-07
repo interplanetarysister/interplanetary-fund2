@@ -70,6 +70,10 @@ Raw secret values must not be copied into agent memory, prompts, delegation reco
 
 This preserves automated platform functionality without requiring users to repeatedly handle credentials and without turning the agent memory system into a credential store.
 
+Reusable external-account secrets are stored only through Browserbase's provider-managed encrypted secret boundary. Base44 stores non-secret `AdminCredentialReference` metadata so authorized admin workflows can select the right credential without receiving its value. All CRUD access to that reference entity is restricted to Base44's supported `admin` role; privileged backend operations may use the Base44 service role, which assumes the admin role and remains subject to entity RLS. Do not invent sentinel roles such as `__service_only__`—they are not a supported authorization boundary. If separate `super_admin` authorization is introduced later, it must first be implemented as a verified server-side authorization capability rather than assumed in an entity schema.
+
+Credential use must remain auditable without exposing the credential: log only the opaque reference, requesting agent/action, authorized account and platform, outcome, and timestamps. Never include secret material in audit detail, prompts, delegation state, errors, or frontend payloads.
+
 ## Safety
 
 Memory does not:
@@ -92,4 +96,3 @@ Memory is considered correctly configured when:
 4. Switching agents does not require a Convex/Vercel memory bridge.
 5. User-specific memory remains separate from generalized training.
 6. Current authoritative data and permissions override remembered information.
-

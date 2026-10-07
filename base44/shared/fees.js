@@ -117,14 +117,30 @@ export function computeRecipientNet(amount, optedIn) {
 
 // Full breakdown for the donor-facing UI.
 export function computeBreakdown(total, optedIn) {
+  return computeProcessorBreakdown(total, optedIn, computeProcessingFee);
+}
+
+// Rail-specific donor breakdown. The donor-entered total and 3% withdrawal
+// policy are identical across rails; only the processor's published fee model
+// varies. Keeping the fee function explicit prevents PayPal/Google Pay UI from
+// accidentally presenting Stripe estimates.
+export function computeProcessorBreakdown(total, optedIn, processingFeeForTotal) {
   const totalCharged = round2(Number(total) || 0);
-  const processing = computeProcessingFee(totalCharged);
+  const processing = round2(processingFeeForTotal(totalCharged));
   const a = round2(Math.max(0, totalCharged - processing));
   const contribution = computeContribution(a, optedIn);
   const gift = round2(a - contribution);
   const platformFee = computePlatformFee(a, optedIn);
   const recipientNet = round2(Math.max(0, gift - platformFee));
   return { amount: a, contribution, recipientGift: gift, processing, platformFee, recipientNet, totalCharged };
+}
+
+export function computePayPalBreakdown(total, optedIn) {
+  return computeProcessorBreakdown(total, optedIn, computePayPalProcessingFee);
+}
+
+export function computePayPalWalletBreakdown(total, optedIn) {
+  return computeProcessorBreakdown(total, optedIn, computePayPalWalletProcessingFee);
 }
 
 // Withdrawal math for a set of recipient gifts: the single 3% platform fee and

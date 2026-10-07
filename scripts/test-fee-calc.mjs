@@ -2,7 +2,7 @@
 // Pure runtime math — no network, no charges, no payouts.
 import {
   computeContribution, recipientGift, computePlatformFee, computeRecipientNet,
-  computeProcessingFee, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeBreakdown, computeWithdrawal, giftOf,
+  computeProcessingFee, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeBreakdown, computePayPalBreakdown, computePayPalWalletBreakdown, computeWithdrawal, giftOf,
   validateDonationAmount,
 } from '../base44/shared/fees.js';
 
@@ -30,6 +30,10 @@ eq('recipientNet on (100)', computeRecipientNet(100, true), 87.30);
 eq('Stripe processing fee derived from $100 total', computeProcessingFee(100), 3.11);
 eq('PayPal Checkout processing fee derived from $100 total', computePayPalProcessingFee(100), 3.85);
 eq('PayPal wallet processing fee derived from $100 total', computePayPalWalletProcessingFee(100), 3.10);
+eq('PayPal breakdown uses PayPal fee', computePayPalBreakdown(100, false).processing, 3.85);
+eq('Google Pay breakdown uses PayPal wallet fee', computePayPalWalletBreakdown(100, false).processing, 3.10);
+eq('PayPal $1 charge remains $1', computePayPalBreakdown(1, false).totalCharged, 1);
+eq('PayPal $1 charge leaves positive donation', computePayPalBreakdown(1, false).amount > 0, 1);
 
 // --- Optional contribution on/off edge cases ---
 eq('contribution on (0)', computeContribution(0, true), 0);

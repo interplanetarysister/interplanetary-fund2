@@ -2,6 +2,37 @@ import { giftOf, round2, computeWithdrawal } from './fees.js';
 
 const TERMINAL_STATES = ['completed', 'cancelled', 'failed'];
 
+function normalizePaymentChannel(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function donationAllocationIdentity(value, includePaymentChannel = true) {
+  return JSON.stringify({
+    operationType: String(value.operation_type || 'donation'),
+    campaignId: String(value.campaign_id || ''),
+    campaignOwnerUserId: String(value.campaign_owner_user_id || ''),
+    provider: String(value.provider || ''),
+    providerTransactionId: String(value.provider_transaction_id || ''),
+    grossAmount: round2(Number(value.gross_amount || 0)),
+    platformContribution: round2(Number(value.platform_contribution || 0)),
+    processingFee: round2(Number(value.processing_fee || 0)),
+    ...(includePaymentChannel ? { paymentChannel: normalizePaymentChannel(value.payment_channel) } : {}),
+  });
+}
+
+async function allocationFingerprint(identity) {
+  const bytes = new TextEncoder().encode(identity);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function flagAllocationConflict(sr, rows, operationKey) {
+  const note = `CONFLICT: immutable donation allocation differs for operation ${operationKey}. Manual reconciliation required.`;
+  await Promise.all((rows || []).map((row) =>
+    row?.id ? sr.entities.FinancialOperation.update(row.id, { note }).catch(() => {}) : null
+  ));
+}
+
 // Converge duplicate FinancialOperation records for the same operation_key.
 //
 // Ordering contract (defect A repair):
@@ -25,6 +56,16 @@ async function one(sr, operationKey) {
     return String(a.id || '').localeCompare(String(b.id || ''));
   });
   const canonical = ordered[0];
+
+  // An operation key may only describe one immutable donation allocation.
+  // Conflicting campaign/provider/amount evidence is retained and surfaced;
+  // it must never be merged or deleted as an ordinary duplicate.
+  const donationRows = ordered.filter((row) => row.operation_type === 'donation');
+  const donationChannels = new Set(donationRows.map((row) => String(row.payment_channel || '')).filter(Boolean));
+  if (donationRows.length && (donationRows.length !== ordered.length || new Set(donationRows.map(donationAllocationIdentity)).size > 1 || donationChannels.size > 1)) {
+    await flagAllocationConflict(sr, ordered, operationKey);
+    throw new Error('Conflicting immutable donation allocation requires manual reconciliation.');
+  }
 
   // Detect conflicting terminal states. Completed ≠ cancelled ≠ failed.
   // These represent materially different financial outcomes and must never be
@@ -86,22 +127,63 @@ export async function ensureCanonicalCampaign(sr, campaign) {
 }
 
 export async function recordCanonicalDonation(sr, args) {
-  const prior = await one(sr, args.operationKey);
-  if (prior) {
+  const allocation = {
+    operation_key: args.operationKey, operation_type: 'donation', state: 'applied',
+    campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
+    provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
+    payment_channel: normalizePaymentChannel(args.paymentMethod),
+    gross_amount: round2(Number(args.grossAmount || 0)), platform_contribution: round2(Number(args.platformContribution || 0)),
+    processing_fee: round2(Number(args.processingFee || 0))
+  };
+  const identity = donationAllocationIdentity(allocation);
+  const coreIdentity = donationAllocationIdentity(allocation, false);
+  const fingerprint = await allocationFingerprint(identity);
+
+  // Preserve legacy operations created before allocation_fingerprint existed,
+  // but reject any attempt to reuse their key for a different allocation.
+  const priorRows = await sr.entities.FinancialOperation.filter({ operation_key: args.operationKey }).catch(() => []);
+  if (priorRows?.length) {
+    // Legacy operations may predate payment_channel. Compare their immutable
+    // monetary core, then backfill the server-verified channel. Once present,
+    // channel participates in the full immutable identity and fingerprint.
+    if (priorRows.some((row) =>
+      row.operation_type !== 'donation' || donationAllocationIdentity(row, false) !== coreIdentity ||
+      (row.payment_channel && donationAllocationIdentity(row) !== identity)
+    )) {
+      await flagAllocationConflict(sr, priorRows, args.operationKey);
+      throw new Error('Donation operation key is already bound to a different allocation.');
+    }
+    const expectedChannel = normalizePaymentChannel(args.paymentMethod);
+    const channels = new Set(priorRows.map((row) => normalizePaymentChannel(row.payment_channel)).filter(Boolean));
+    if (channels.size > 1 || (channels.size === 1 && expectedChannel && !channels.has(expectedChannel))) {
+      await flagAllocationConflict(sr, priorRows, args.operationKey);
+      throw new Error('Donation operation key is already bound to a different payment channel.');
+    }
+    if (expectedChannel && priorRows.some((row) => !row.payment_channel)) {
+      await flagAllocationConflict(sr, priorRows, args.operationKey);
+      throw new Error('Legacy donation operation is missing immutable payment-channel evidence. Manual reconciliation required.');
+    }
+    const prior = await one(sr, args.operationKey);
     const campaign = await sr.entities.Campaign.get(args.campaignId);
     const totals = await ensureCanonicalCampaign(sr, campaign);
     return { operationId: prior.id, applied: false, ...totals };
   }
-  const op = await sr.entities.FinancialOperation.create({
-    operation_key: args.operationKey, operation_type: 'donation', state: 'applied',
-    campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
-    provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
-    gross_amount: Number(args.grossAmount || 0), platform_contribution: Number(args.platformContribution || 0),
-    processing_fee: Number(args.processingFee || 0)
-  });
+
+  // Base44's keyed upsert is the atomic claim. The compound immutable key lets
+  // equal retries converge while a concurrent conflicting allocation creates
+  // separate evidence that `one` detects and preserves for reconciliation.
+  const result = await sr.entities.FinancialOperation.upsert(
+    [{ ...allocation, allocation_fingerprint: fingerprint }],
+    { key: ['operation_key', 'allocation_fingerprint'] }
+  );
+  const written = result?.records?.[0] || null;
+  const op = await one(sr, args.operationKey);
+  if (!op || donationAllocationIdentity(op) !== identity) {
+    throw new Error('Canonical donation allocation could not be confirmed.');
+  }
   const campaign = await sr.entities.Campaign.get(args.campaignId);
   const totals = await ensureCanonicalCampaign(sr, campaign);
-  return { operationId: op.id, applied: true, ...totals };
+  return { operationId: op.id, applied: Number(result?.created || 0) > 0 && written?.id === op.id, ...totals };
 }
 
 export async function recordCanonicalExternalObservation(sr, args) {
@@ -158,4 +240,30 @@ export async function cancelCanonicalWithdrawal(sr, args) {
 export async function mirrorCanonicalCampaignTotal(sr, campaignId, canonical) {
   if (!canonical || !Number.isFinite(Number(canonical.raisedAmount)) || !Number.isFinite(Number(canonical.donorCount))) return;
   await sr.entities.Campaign.update(campaignId, { raised_amount: Number(canonical.raisedAmount), donor_count: Number(canonical.donorCount) });
+}
+
+export async function reconcileCanonicalCampaignProjection(sr, campaignId, maxAttempts = 5) {
+  if (!campaignId) throw new Error('Campaign is required for total reconciliation.');
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const campaign = await sr.entities.Campaign.get(campaignId).catch(() => null);
+    if (!campaign) throw new Error('Campaign not found while reconciling donation totals.');
+    const before = await ensureCanonicalCampaign(sr, campaign);
+    await mirrorCanonicalCampaignTotal(sr, campaignId, before);
+
+    // Re-read both source rows and projection after the write. If another
+    // donation raced this attempt, loop and project the newer authoritative
+    // total rather than allowing a stale write to remain successful.
+    const [persisted, after] = await Promise.all([
+      sr.entities.Campaign.get(campaignId).catch(() => null),
+      ensureCanonicalCampaign(sr, campaign),
+    ]);
+    if (
+      persisted &&
+      Number(persisted.raised_amount) === Number(after.raisedAmount) &&
+      Number(persisted.donor_count) === Number(after.donorCount) &&
+      Number(before.raisedAmount) === Number(after.raisedAmount) &&
+      Number(before.donorCount) === Number(after.donorCount)
+    ) return after;
+  }
+  throw new Error('Campaign total projection remained unstable after bounded reconciliation.');
 }

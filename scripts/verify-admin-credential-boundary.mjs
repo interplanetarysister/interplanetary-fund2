@@ -6,6 +6,7 @@ const account = read('base44/entities/PlatformOwnedAccount.jsonc');
 const messages = read('base44/entities/AdminActionMessage.jsonc');
 const queue = read('src/components/admin/AdminApprovalQueue.jsx');
 const refs = read('base44/entities/AdminCredentialReference.jsonc');
+const refsSchema = JSON.parse(refs);
 const bb = read('base44/shared/browserbaseSecrets.ts');
 
 assert.match(account, /"credential_reference"/);
@@ -18,6 +19,12 @@ assert.match(queue, /provider-hosted sign-in|protected Connections flow/i);
 assert.match(refs, /"browserbase_secret_id"/);
 assert.match(refs, /"browserbase_secret_key"/);
 assert.doesNotMatch(refs, /"secret_value"|"password"|"sign_in_secret"/i);
+assert.doesNotMatch(refs, /__service_only__|service_only/i,
+  'Base44 entity RLS must use supported roles, not an invented service-only sentinel');
+for (const operation of ['read', 'create', 'update', 'delete']) {
+  assert.deepEqual(refsSchema.rls?.[operation], { user_condition: { role: 'admin' } },
+    `AdminCredentialReference ${operation} must be restricted to Base44 admins`);
+}
 
 assert.match(bb, /\/v1\/secrets\/keypair/);
 assert.match(bb, /sealedSecretValue/);

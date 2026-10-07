@@ -1,28 +1,35 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
-import { computeChargeTotal, computePayPalBreakdown, MIN_DONATION } from "@/lib/fees";
+import { computeChargeTotal, computePayPalWalletBreakdown, MIN_DONATION } from "@/lib/fees";
 
 // Google Pay and PayPal Buttons deliberately share the same v5 PayPal SDK.
 // Only show this button when the wallet, device, and merchant are eligible.
 export default function GooglePayButton({ campaign, amount, donorName, message, recurring, platformContribution, onPaid, onReadyChange }) {
   const containerRef = useRef(null);
-  const intentRef = useRef(crypto.randomUUID());
+  const intentRef = useRef({ key: "", id: "" });
   const [state, setState] = useState("loading");
-  const propsRef = useRef({ donorName, message, recurring, platformContribution, onPaid });
-  useEffect(() => { propsRef.current = { donorName, message, recurring, platformContribution, onPaid }; });
+  const propsRef = useRef({ donorName, message, recurring, onPaid });
+  useEffect(() => { propsRef.current = { donorName, message, recurring, onPaid }; });
 
   useEffect(() => {
-    intentRef.current = crypto.randomUUID();
     onReadyChange?.(false);
     let cancelled = false;
 
     async function init() {
       const value = Number(amount);
-      if (!campaign?.id || !Number.isFinite(value) || computePayPalBreakdown(value, false, "googlepay").amount < MIN_DONATION) {
+      const selectedContribution = !!platformContribution;
+      const allocation = computePayPalWalletBreakdown(value, selectedContribution);
+      if (!campaign?.id || !Number.isFinite(value) || value < MIN_DONATION || !(allocation.recipientGift > 0)) {
         setState("noamount");
         return;
       }
+      const financialIntentKey = [campaign.id, value.toFixed(2), "googlepay", selectedContribution ? "1" : "0"].join("|");
+      if (intentRef.current.key !== financialIntentKey) {
+        intentRef.current = { key: financialIntentKey, id: crypto.randomUUID() };
+      }
+      const intentId = intentRef.current.id;
+
       setState("loading");
       try {
         const { data: config } = await base44.functions.invoke("getPayPalConfig", {});
@@ -55,8 +62,8 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                 const { data: order } = await base44.functions.invoke("createPayPalOrder", {
                   campaign_id: campaign.id,
                   amount: value,
-                  platform_contribution: !!current.platformContribution,
-                  intent_id: intentRef.current,
+                  platform_contribution: selectedContribution,
+                  intent_id: intentId,
                   payment_channel: "googlepay",
                 });
                 if (!order?.id) return failure;
@@ -66,7 +73,6 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   paymentMethodData: paymentData.paymentMethodData,
                 });
                 if (confirmation?.status === "PAYER_ACTION_REQUIRED") {
-                  // Complete buyer authentication before attempting a capture.
                   await paypalGooglePay.initiatePayerAction({ orderId: order.id });
                 } else if (confirmation?.status !== "APPROVED") {
                   return failure;
@@ -77,7 +83,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   campaign_id: campaign.id,
                   donor_name: current.donorName || "Anonymous",
                   message: current.message || "",
-                  is_recurring: false,
+                  is_recurring: !!current.recurring,
                 });
                 if (result?.ok !== true || !result.canonical_operation_id) return failure;
                 if (!cancelled) current.onPaid?.(result);
@@ -121,8 +127,6 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
         setState("ready");
         onReadyChange?.(true);
       } catch (_) {
-        // No broken wallet section or false donation status when the merchant,
-        // device, provider, or network does not support Google Pay.
         if (!cancelled) setState("unavailable");
       }
     }
@@ -132,8 +136,8 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
       cancelled = true;
       containerRef.current?.replaceChildren();
     };
-  }, [campaign?.id, amount, platformContribution]);
+  }, [campaign?.id, amount, platformContribution, onReadyChange]);
 
   // Keep the host mounted while initializing so the SDK has a DOM node to attach to.
-  return <div className={state === "ready" ? "block" : "hidden"}><div ref={containerRef} className="gpay-host [&_button]:w-full" aria-label="Google Pay checkout" /></div>
+  return <div className={state === "ready" ? "block" : "hidden"}><div ref={containerRef} className="gpay-host [&_button]:w-full" aria-label="Google Pay checkout" /></div>;
 }
