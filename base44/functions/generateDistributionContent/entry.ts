@@ -71,6 +71,7 @@ export default async function(req) {
     const targets = all.filter((c) =>
       connection_ids.includes(c.id) &&
       c.status === 'connected' &&
+      c.verification_status === 'verified' &&
       c.created_by_id === campaign.created_by_id &&
       (!c.campaign_id || c.campaign_id === campaign.id)
     );
