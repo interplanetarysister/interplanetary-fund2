@@ -102,7 +102,10 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
   }
   // Connection record present + status connected — refine by transport verification.
   if (recipe?.preferred_transport === 'oauth') {
-    return oauth?.transport_ok ? 'CONNECTED' : 'RECONNECT_REQUIRED';
+    if (!oauth?.transport_ok) return 'RECONNECT_REQUIRED';
+    return connection.status === 'connected' && connection.verification_status === 'verified'
+      ? 'CONNECTED'
+      : 'CONNECTING';
   }
   if (recipe?.preferred_transport === 'token') {
     // bluesky/mastodon: provider-verified at save time; stale credentials surface on next verify.
@@ -114,10 +117,10 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
       ? 'CONNECTED' : 'CONNECTING';
   }
   if (recipe?.preferred_transport === 'public_browser') {
-    // Link-based tracking: a pasted URL is the connection evidence. Owner-
-    // reported totals do not require AI OBO consent — that authorization is
-    // only for AI acting on the user's behalf, not for tracking a link.
-    return connection?.external_url ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
+    if (!connection?.external_url) return 'AUTHORIZATION_REQUIRED';
+    return connection.status === 'connected' && connection.verification_status === 'verified'
+      ? 'CONNECTED'
+      : 'CONNECTING';
   }
   return connection.status === 'connected' ? 'CONNECTED' : 'NOT_CONNECTED';
 }
@@ -186,12 +189,12 @@ export default async function(req) {
     const capabilities_verified: string[] = [];
     if (recipe?.shared && shared?.verified) capabilities_verified.push(...(shared.capabilities || []));
     if (!recipe?.shared) {
-      if (oauth?.transport_ok) capabilities_verified.push('oauth_transport_verified');
-      if (connection?.verification_status === 'verified') {
+      if (oauth?.transport_ok && lifecycle === 'CONNECTED') capabilities_verified.push('oauth_transport_verified');
+      if (connection?.verification_status === 'verified' && lifecycle === 'CONNECTED') {
         if (recipe?.preferred_transport === 'token') capabilities_verified.push('provider_verified');
         if (recipe?.preferred_transport === 'webhook' && connection.external_data_source === 'provider_verified') capabilities_verified.push('receive_donation_webhooks');
       }
-      if (recipe?.preferred_transport === 'public_browser' && connection?.external_url) {
+      if (recipe?.preferred_transport === 'public_browser' && lifecycle === 'CONNECTED' && connection?.external_url) {
         capabilities_verified.push('observe_external_metrics');
       }
     }
