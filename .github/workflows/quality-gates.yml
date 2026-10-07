@@ -53,6 +53,9 @@ jobs:
       - name: Verify shared text contrast and one-finger scroll contract
         run: node scripts/verify-text-contrast-contract.mjs
 
+      - name: Verify route code splitting contract
+        run: npm run verify:route-code-splitting
+
       - name: Verify Base44 sync contract
         run: node scripts/verify-base44-sync-contract.mjs
 
