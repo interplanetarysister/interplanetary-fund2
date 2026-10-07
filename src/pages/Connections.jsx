@@ -103,7 +103,7 @@ export default function Connections() {
       if (fresh) {
         try {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
-            platform: pending.platform, shared_agent_consent: pending.sharedAgentConsent === true,
+            platform: pending.platform,
           });
           if (data?.authorization_present && data?.connection?.id) {
             localStorage.removeItem("ifund_pending_platform_connection");
