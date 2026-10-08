@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIIns
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import MediaUpload from "@/components/media/MediaUpload";
 import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
+import { resolveGeneratedImageUrl, loadGeneratedImage } from "@/lib/generatedMedia";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download } from "lucide-react";
@@ -27,6 +28,8 @@ export default function CreateCampaign() {
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [draftNotice, setDraftNotice] = useState("");
+  const savingRef = useRef(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [regenCount, setRegenCount] = useState(0);
   const [form, setForm] = useState({
@@ -49,11 +52,12 @@ export default function CreateCampaign() {
         const draft = rows?.[0];
         if (!draft || draft.status !== "draft") throw new Error("Draft unavailable");
         if (!cancelled) setForm({
-          title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount || "", end_date: draft.end_date || "",
+          title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount > 0 ? draft.goal_amount : "", end_date: draft.end_date || "",
           summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "",
           location: draft.location || "", location_lat: draft.location_lat ?? null, location_lng: draft.location_lng ?? null,
           ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [],
         });
+        if (!cancelled) setStep(Math.min(3, Math.max(0, Number(draft.draft_step) || 0)));
       } catch {
         if (!cancelled) toast({ title: "Couldn't reopen that draft", description: "It may have been removed or you may not have access.", variant: "destructive" });
       } finally { if (!cancelled) setLoadingDraft(false); }
@@ -98,24 +102,65 @@ export default function CreateCampaign() {
     // image service is unavailable so creation never blocks.
     try {
       const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: form.story, regenCount });
-      const res = await base44.integrations.Core.GenerateImage({ prompt });
-      if (res?.url) {
-        set("cover_image_url", res.url);
-        setRegenCount((c) => c + 1);
-        return;
-      }
-      throw new Error("No image returned");
-    } catch {
-      const url = generateCampaignCoverDataUrl({ title: form.title, category: form.category, regenCount });
+      const res = await base44.functions.invoke("generateCampaignCover", { prompt });
+      const url = resolveGeneratedImageUrl(res?.data);
+      if (!url) throw new Error("Generator returned no image URL");
+      await loadGeneratedImage(url);
       set("cover_image_url", url);
       setRegenCount((c) => c + 1);
-      toast({ title: "Using a placeholder cover", description: "AI image generation was unavailable — a branded cover was created. You can upload your own or try regenerating.", variant: "default" });
+      toast({ title: "Cover created", description: "Your generated image is ready and visible below." });
+    } catch {
+      // Never represent a placeholder as a successful generated image.
+      // Preserve the old cover if the provider failed or the file does not load.
+      toast({ title: "Image could not be displayed", description: "The generated file did not load. Your previous image is unchanged. Try again, upload a picture, or choose the free cover.", variant: "destructive" });
     } finally {
       setGeneratingImage(false);
     }
   };
 
+  const useFreeCover = () => {
+    const url = generateCampaignCoverDataUrl({
+      title: form.title || "My Campaign", category: form.category, regenCount,
+    });
+    set("cover_image_url", url);
+    setRegenCount(c => c + 1);
+    toast({ title: "Free cover ready", description: "A branded cover is displayed. You can replace it anytime." });
+  };
+
+  const saveDraft = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setDraftNotice("");
+    try {
+      const { data } = await base44.functions.invoke("saveCampaign", {
+        campaign_id: draftId || undefined,
+        campaign: {
+          ...form,
+          goal_amount: form.goal_amount === "" ? 0 : Number(form.goal_amount),
+          status: "draft",
+          draft_step: step,
+          end_date: form.end_date || undefined,
+          location_lat: form.location_lat ?? undefined,
+          location_lng: form.location_lng ?? undefined,
+        },
+      });
+      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Draft save rejected");
+      // Keep the creator on the same step, with the same fields visible.
+      if (!draftId) navigate(`/create?draft=${encodeURIComponent(data.campaign.id)}`, { replace: true });
+      setDraftNotice("Draft saved. Your progress is private and you can continue later.");
+      toast({ title: "Draft saved", description: "All your current work is saved." });
+    } catch {
+      setDraftNotice("Couldn't save. Your changes are still on this page; try again.");
+      toast({ title: "Draft not saved", description: "Please retry before leaving this page.", variant: "destructive" });
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
   const launch = async (status) => {
+    if (status === "draft") return saveDraft();
     if (status === "active") {
       const missing = [];
       if (!form.title?.trim()) missing.push("title");
@@ -141,6 +186,7 @@ export default function CreateCampaign() {
         location_lat: form.location_lat || undefined,
         location_lng: form.location_lng || undefined,
         status,
+        draft_step: step,
       };
       const { data } = await base44.functions.invoke("saveCampaign", { campaign_id: draftId || undefined, campaign: payload });
       if (data?.ok !== true || !data?.campaign?.id) throw new Error("Campaign save rejected");
@@ -200,6 +246,7 @@ export default function CreateCampaign() {
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 min-w-0">
               <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}{form.cover_image_url ? "Regenerate cover" : "Generate cover"}</Button>
               <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => set("cover_image_url", url)} label="Upload your own photo" previewClassName="hidden" /></div>
+              <Button type="button" variant="outline" onClick={useFreeCover} className="quest-button w-full sm:w-auto">Use free branded cover</Button>
             </div>
             <p className="text-xs text-slate-400 break-words">Bring your own image or let Interplanetary Fund generate a fresh comic-space cover.</p>
           </div>
@@ -208,9 +255,16 @@ export default function CreateCampaign() {
         {step === 3 && <div className="space-y-4 min-w-0 text-slate-200">{form.cover_image_url && <Image src={form.cover_image_url} alt="Campaign cover" className="w-full max-h-[32rem] rounded-xl object-contain bg-slate-950" />}<div className="min-w-0"><p className="text-[11px] font-medium uppercase tracking-wider text-primary">{categoryLabels[form.category]}</p><h2 className="font-display text-2xl text-white break-words">{form.title}</h2>{form.summary && <p className="text-slate-300 mt-1 whitespace-pre-wrap break-words">{form.summary}</p>}</div><p className="text-sm text-slate-300 break-words">Goal: <span className="font-semibold text-cyan-200">${parseFloat(form.goal_amount || 0).toLocaleString()}</span>{form.end_date && ` · Ends ${form.end_date}`}</p>{form.story && <details className="rounded-2xl border border-white/10 bg-slate-950/35 p-4" open><summary className="cursor-pointer text-sm font-semibold text-cyan-200 mb-2">Campaign story</summary><p className="text-sm text-slate-300 whitespace-pre-wrap break-words">{form.story}</p></details>}</div>}
       </div>
 
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" onClick={saveDraft} disabled={saving} className="quest-button min-h-11">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Save draft
+        </Button>
+        <span role="status" className="text-xs text-slate-300">{draftNotice || "Save at any step. Your draft stays private until you publish it."}</span>
+      </div>
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 min-w-0">
         <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="quest-button"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
-        {step < 3 ? <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={!canNext} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button> : <div className="flex flex-col sm:flex-row gap-2 min-w-0"><Button type="button" variant="outline" onClick={() => launch("draft")} disabled={saving} className="quest-button">Save draft</Button><Button type="button" onClick={() => launch("active")} disabled={saving} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}</Button></div>}
+        {step < 3 ? <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={!canNext} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button> : <div className="flex flex-col sm:flex-row gap-2 min-w-0"><Button type="button" onClick={() => launch("active")} disabled={saving} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}</Button></div>}
       </div>
     </div>
   );
