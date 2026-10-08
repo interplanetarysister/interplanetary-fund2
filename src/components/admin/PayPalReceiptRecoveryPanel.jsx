@@ -77,7 +77,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       const data = response?.data || {};
       if (data.ok !== true) throw new Error("Recovery rejected");
       setReceipts((current) => current.filter((row) => row.transaction_id !== receipt.transaction_id));
-      const confirmedGift = Number(data.campaign_gift ?? data.campaign_amount);
+      const confirmedGift = Number(data.campaign_gift ?? data.campaign_amount ?? data.amount);
       const amountLabel = Number.isFinite(confirmedGift) && confirmedGift > 0
         ? `$${confirmedGift.toFixed(2)}`
         : "the verified PayPal receipt";
@@ -102,7 +102,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
             <WalletCards className="w-5 h-5 text-cyan-700" /> Untracked PayPal receipts
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-slate-700">
-            Recovery for settled PayPal donation-link payments that bypassed IFund checkout. Choose the campaign each verified receipt was intended for. A PayPal transaction can be allocated only once.
+            Find missing PayPal donations and completed IFund checkout payments. Select the campaign the provider receipt belongs to; checkout recovery independently checks the original PayPal order and capture. No new payment is created.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

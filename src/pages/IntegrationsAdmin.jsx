@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { Loader2, ShieldAlert, ShieldCheck, Activity, GitFork } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import IntegrationsTable from "@/components/admin/IntegrationsTable";
 import IntegrationDetailPanel from "@/components/admin/IntegrationDetailPanel";
 import PayPalReceiptRecoveryPanel from "@/components/admin/PayPalReceiptRecoveryPanel";
 import PageError from "@/components/PageError";
 import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, normalizeIntegrationStatus } from "@/lib/integrationRegistryUi";
-import { useToast } from "@/components/ui/use-toast";
+import Base44ReleaseStatus from "@/components/admin/Base44ReleaseStatus";
 
 const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry. Please try again.";
 const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Please try again.";
@@ -45,13 +45,7 @@ function isHealthResponse(value) {
   return Boolean(data && typeof data === "object" && data.ok === true && Number.isInteger(data.checked) && Array.isArray(data.report));
 }
 
-function isGitHubResponse(value) {
-  const data = value?.data || value;
-  return Boolean(data && typeof data === "object" && typeof data.ok === "boolean");
-}
-
 export default function IntegrationsAdmin() {
-  const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [entries, setEntries] = useState(null);
@@ -59,12 +53,10 @@ export default function IntegrationsAdmin() {
   const [healthError, setHealthError] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
-  const [verifyingGitHub, setVerifyingGitHub] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
   const healthLock = useRef(false);
-  const githubLock = useRef(false);
 
   const loadRegistry = useCallback(async () => {
     const generation = ++requestGeneration.current;
@@ -123,29 +115,6 @@ export default function IntegrationsAdmin() {
     }
   };
 
-  const verifyGitHubConnection = async () => {
-    const request = invokeWithLock(githubLock, () => base44.functions.invoke("syncGitHub", { direction: "both" }));
-    if (!request) return;
-    setVerifyingGitHub(true);
-    try {
-      const res = await request;
-      if (!isGitHubResponse(res)) throw new Error("Malformed GitHub response");
-      const data = res?.data || res;
-      if (data.ok === true) {
-        toast({ title: "GitHub verification completed", description: "The authenticated GitHub connection check completed." });
-      } else if (data.skipped) {
-        toast({ title: "GitHub verification unavailable", description: "GitHub integration is not active.", variant: "destructive" });
-      } else {
-        toast({ title: "GitHub verification issue", description: "Connection verification encountered an issue.", variant: "destructive" });
-      }
-    } catch (e) {
-      console.error("GitHub verification failed:", e?.name || "UnknownError");
-      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
-    } finally {
-      if (mounted.current) setVerifyingGitHub(false);
-    }
-  };
-
   if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   if (registryError) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={registryError} onRetry={() => { setRegistryError(null); reload(); }} /></div>;
@@ -167,7 +136,6 @@ export default function IntegrationsAdmin() {
   const visibleEntries = entries.filter((e) => String(e.platform || "").toLowerCase() !== "convex");
   const needsAttention = visibleEntries.filter((e) => e.status !== "ACTIVE");
   const counts = visibleEntries.reduce((acc, e) => { acc[e.status] = (acc[e.status] || 0) + 1; return acc; }, {});
-  const githubEntry = visibleEntries.find((e) => e.platform === "github");
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
@@ -177,13 +145,7 @@ export default function IntegrationsAdmin() {
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {githubEntry && (
-            <Button onClick={verifyGitHubConnection} disabled={verifyingGitHub || checking} variant="outline" className="rounded-xl border-blue-200 text-blue-700 hover:bg-blue-50">
-              {verifyingGitHub ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GitFork className="w-4 h-4 mr-2" />}
-              Verify GitHub connection
-            </Button>
-          )}
-          <Button onClick={runHealthCheck} disabled={checking || verifyingGitHub} className="rounded-xl" aria-busy={checking}>
+          <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl" aria-busy={checking}>
             {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
             {checking ? "Checking…" : "Run health check"}
           </Button>
@@ -218,6 +180,7 @@ export default function IntegrationsAdmin() {
         </div>
       )}
 
+      <Base44ReleaseStatus />
       <PayPalReceiptRecoveryPanel user={user} />
 
       <div className="mt-6">

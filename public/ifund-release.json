@@ -1,0 +1,7 @@
+{
+  "release_id": "ifund-20261008-paypal-receipts-base44-source-v2",
+  "source": "Base44",
+  "payment_recovery": "verified_paypal_order_or_donation_receipt",
+  "campaign_embed": "frame_free",
+  "requires_live_provider_verification": true
+}

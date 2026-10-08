@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
-import { Loader2, RefreshCw, ShieldOff, ShieldCheck, GitFork } from "lucide-react";
+import { Loader2, RefreshCw, ShieldOff, ShieldCheck } from "lucide-react";
 
 function Row({ label, children }) {
   return (
@@ -44,27 +44,6 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
     }
   };
 
-  const syncGitHub = async (direction) => {
-    if (operationLock.current) return;
-    operationLock.current = true;
-    setBusy(`github-sync-${direction}`);
-    try {
-      const res = await base44.functions.invoke("syncGitHub", { direction });
-      const data = res?.data || res;
-      if (data?.ok === true) {
-        toast({ title: "GitHub status verified", description: "The authenticated GitHub connection check completed." });
-      } else {
-        toast({ title: "GitHub verification issue", description: "GitHub connection verification did not succeed.", variant: "destructive" });
-      }
-    } catch (e) {
-      console.error("GitHub verification failed:", e?.name || "UnknownError");
-      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
-    } finally {
-      setBusy(null);
-      operationLock.current = false;
-    }
-  };
-
   return (
     <Dialog open={!!entry} onOpenChange={(o) => { if (!o) onClose(); }}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -93,27 +72,11 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
         </div>
 
         {entry.platform === "github" && (
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 mt-1">
-            <p className="text-xs font-medium text-blue-700 mb-2">GitHub source connection</p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => syncGitHub("pull")} disabled={!!busy} className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100">
-                {busy === "github-sync-pull" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <GitFork className="w-3.5 h-3.5 mr-1.5" />}
-                Verify GitHub source status
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => syncGitHub("push")} disabled={!!busy} className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100">
-                {busy === "github-sync-push" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />}
-                Verify GitHub destination status
-              </Button>
-              <Button size="sm" onClick={() => syncGitHub("both")} disabled={!!busy} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
-                {busy === "github-sync-both" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
-                Verify GitHub connection
-              </Button>
-            </div>
-            <p className="text-xs text-blue-500 mt-2">
-              These authenticated admin checks confirm connected GitHub access and the current remote HEAD.
-              They do not move files, create commits, or replace Base44’s native source synchronization.
-            </p>
-          </div>
+          <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+            GitHub-assisted syncing and workflow checks are paused. IFund development,
+            local validation and publication use Base44 directly. Connection tests
+            do not transfer source or publish the live app.
+          </p>
         )}
 
         <div className="flex flex-wrap gap-2 pt-2">
