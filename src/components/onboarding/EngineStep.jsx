@@ -9,7 +9,7 @@ export default function EngineStep() {
     <div className="max-w-lg mx-auto">
       <h2 className="font-display text-2xl text-stone-900 mb-2">Meet the AI Growth Engine</h2>
       <p className="text-stone-600 mb-6">
-        Mission Control is your central intelligence hub. It's a core feature of Crowdfund — not an optional tool —
+        Mission Control is your central intelligence hub. It's a core feature of Interplanetary Fund — not an optional tool —
         and it works across every campaign you run.
       </p>
       <div className="space-y-3">
