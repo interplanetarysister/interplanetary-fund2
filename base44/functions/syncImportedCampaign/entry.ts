@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { discoverPublicCampaignSnapshot } from '../../shared/publicCampaignSnapshot.ts';
+import { discoverPublicCampaignSnapshot } from './publicCampaignSnapshot.ts';
 
 const FIELDS=['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
 const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
