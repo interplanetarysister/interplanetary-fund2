@@ -1,8 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
+import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
@@ -68,6 +69,14 @@ export default async function(req) {
       }
 
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
+      const capability = await resolveCapabilityForPlatform(sr, connection.platform);
+      const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
+      if (!directPublishVerified) {
+        const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
+        results.manual++;
+        results.posts.push(updated);
+        continue;
+      }
 
       const obo = await assertExternalAgentAction(sr, {
         ownerUser: consentOwner,
@@ -77,7 +86,9 @@ export default async function(req) {
         capability: 'create_post',
         requireAutomation: false,
       });
-      if (!canAutoPublish(connection) || !aiConsentGranted || !obo.ok) {
+      const canCredentialPublish = canAutoPublish(connection);
+      const canConnectorPublish = canPublishViaConnector(connection.platform);
+      if ((!canCredentialPublish && !canConnectorPublish) || !aiConsentGranted || !obo.ok) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
@@ -85,7 +96,7 @@ export default async function(req) {
       }
 
       try {
-        const { url } = await publishThroughConnection(connection, text);
+        const { url } = await publishThroughConnection(connection, text, sr);
         const updated = await base44.entities.DistributedPost.update(post.id, {
           status: 'published',
           published_at: new Date().toISOString(),

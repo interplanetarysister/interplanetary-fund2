@@ -39,7 +39,22 @@ export function staticRecipe(platform: string, operation = 'connect') {
 }
 
 export function orderedTransports(recipe: any) {
+  const successful = recipe?.successful_route;
   const preferred = recipe?.preferred_transport;
+  const candidates = Array.isArray(recipe?.candidate_transports) ? recipe.candidate_transports : [];
   const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  return [...new Set([preferred, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))];
+  const blocked = new Set(Array.isArray(recipe?.blocked_routes) ? recipe.blocked_routes : []);
+  const priority = new Map(TRANSPORT_PRIORITY.map((transport, index) => [transport, index]));
+  const explicit = [...new Set([successful, preferred, ...candidates, ...fallbacks].filter(Boolean))];
+  return explicit
+    .filter((transport) => priority.has(transport) && !blocked.has(transport))
+    .sort((left, right) => priority.get(left)! - priority.get(right)!);
+}
+
+export function requiresRouteRediscovery(recipe: any, transports = orderedTransports(recipe)) {
+  const executable = transports.filter((transport: string) => transport !== 'manual');
+  return !recipe
+    || recipe.status === 'stale'
+    || recipe.discovery_state === 'exhausted'
+    || executable.length === 0;
 }

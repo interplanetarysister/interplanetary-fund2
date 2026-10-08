@@ -72,6 +72,10 @@ export default async function(req){
         record=canonical;
       }
     }
+    if(record?.status==='disabled') {
+      await sr.entities.ConnectedPayoutAccount.update(record.id,{status:'onboarding',last_error:''});
+      record={...record,status:'onboarding',last_error:''};
+    }
     const link=await stripe.accountLinks.create({
       account:accountId,
       refresh_url:`${origin}/withdrawals?connect=refresh`,
@@ -81,7 +85,7 @@ export default async function(req){
     await logAudit(base44,{action:'stripe_connect_onboarding_started',actor_user_id:user.id,target_type:'ConnectedPayoutAccount',target_id:record.id,detail:'Owner started Stripe Connect onboarding for an IFund-managed payout account.',status:'success',metadata:{provider:'stripe_connect'}});
     return Response.json({ok:true,url:link.url,account_status:record.status});
   }catch(error){
-    console.error('startStripeConnectOnboarding failed:',error?.message||error);
+    console.error('startStripeConnectOnboarding failed:',error?.name||'UnknownError');
     return Response.json({error:'Connected payout account onboarding could not be started.'},{status:500});
   }
 }

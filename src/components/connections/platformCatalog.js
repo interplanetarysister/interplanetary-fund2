@@ -220,14 +220,14 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#6364ff",
     icon: "🐘",
-    tagline: "Connect Mastodon to share campaign updates.",
+    tagline: "Connect Mastodon for campaign profile tracking and draft-ready sharing. Direct posting is not available yet in this runtime.",
     setupKind: "multi",
     steps: [
       { id: "instance", label: "Enter your Mastodon site",    hint: "For example: mastodon.social" },
       { id: "token",    label: "Get a Mastodon connection code",  hint: "In your Mastodon settings, create a connection for Interplanetary Fund and copy the code it gives you." },
-      { id: "auto",     label: "Choose how much help you want",         hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
+      { id: "auto",     label: "Choose how much help you want",         hint: "IFund can prepare drafts and keep the connection ready. Direct Mastodon posting stays off until the runtime can verify the instance safely." },
     ],
-    api: "Connect Mastodon to share updates from Interplanetary Fund.",
+    api: "Connect Mastodon for profile tracking and prepared drafts; direct publishing is currently disabled.",
   },
   {
     id: "facebook",

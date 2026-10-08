@@ -4,6 +4,7 @@ export const BRAND_NAME = "Interplanetary Fund";
 export const SLOGAN = "What If?";
 export const SLOGAN_LONG = "Where platforms once worlds apart become one universe of funding";
 export const TAGLINE = "The Universal Fundraising Operating System";
+export const BRAND_MARK = "/interplanetary-planet.svg";
 
 // Platform positioning — Interplanetary Fund is not just a crowdfunding site.
 export const POSITIONING = "The Universal Fundraising Operating System";

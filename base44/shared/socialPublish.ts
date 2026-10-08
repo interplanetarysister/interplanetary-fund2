@@ -1,6 +1,7 @@
-// Real posting integrations for platforms whose APIs work with user-supplied
-// credentials (no partner approval needed): Bluesky (app password), Mastodon
-// (instance access token), and LinkedIn (OAuth connector with w_member_social).
+// Real posting integrations for runtime-safe destinations: Bluesky (app
+// password) and LinkedIn (OAuth connector with w_member_social). Mastodon
+// remains fail-closed until arbitrary instance hosts can be reached through a
+// DNS-pinned, redirect-safe outbound transport.
 // Used by publishPost and the sync worker.
 
 // Platforms that can publish through a Base44 OAuth connector (shared mode).
@@ -22,7 +23,7 @@ export function hasAiPublishingConsent(user) {
 export function canAutoPublish(connection) {
   const c = connection?.credentials || {};
   if (connection?.platform === 'bluesky') return !!(c.bluesky_handle && c.bluesky_app_password);
-  if (connection?.platform === 'mastodon') return !!(c.mastodon_instance && c.mastodon_access_token);
+  if (connection?.platform === 'mastodon') return false;
   return false;
 }
 
@@ -51,15 +52,11 @@ export async function publishToBluesky(handle, appPassword, text) {
 }
 
 export async function publishToMastodon(instance, accessToken, text) {
-  const host = instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const res = await fetch(`https://${host}/api/v1/statuses`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-    body: JSON.stringify({ status: text.slice(0, 500) }),
-  });
-  if (!res.ok) throw new Error(`Mastodon post failed (${res.status}) — check instance and access token.`);
-  const out = await res.json();
-  return { url: out.url || `https://${host}` };
+  // Mastodon instances are owner-supplied arbitrary hosts. Until the Base44
+  // runtime provides a DNS-pinned, redirect-safe outbound transport, direct
+  // server publishing would create an SSRF boundary. Keep this fail-closed.
+  void instance; void accessToken; void text;
+  throw new Error('Live Mastodon publishing is unavailable in this runtime.');
 }
 
 // Publishes to LinkedIn using the OAuth connector access token. The
@@ -93,10 +90,7 @@ export async function publishToLinkedIn(accessToken, text) {
       visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
     }),
   });
-  if (!postRes.ok) {
-    const errBody = await postRes.text().catch(() => '');
-    throw new Error(`LinkedIn post failed (${postRes.status}). ${errBody.slice(0, 200)}`);
-  }
+  if (!postRes.ok) throw new Error(`LinkedIn post failed (${postRes.status}).`);
   const out = await postRes.json();
   const postId = out.id || '';
   return { url: `https://www.linkedin.com/feed/update/${postId}/` };

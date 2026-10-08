@@ -15,6 +15,7 @@
 import { hasSubscriptionLevel } from './subscriptionEntitlements.ts';
 import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from './socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from './integrationRegistry.ts';
+import { resolveCapabilityForPlatform } from './providerCapabilities.ts';
 
 const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts, names, or urgency; use only the provided campaign context; no spam; no false promises.`;
 
@@ -105,10 +106,14 @@ Return JSON only.`;
 
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
 
-    // Auto-publish only when subscription + consent + platform access + auto mode
-    // + the platform supports direct publishing (credentials or OAuth connector).
+    // Auto-publish only when subscription + consent + platform access + auto mode,
+    // a runtime adapter exists, and the canonical provider registry confirms an
+    // implemented, passing, directly verified publish path.
+    const capability = await resolveCapabilityForPlatform(sr, conn.platform);
+    const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
     const shouldAutoPublish = canAuto &&
       conn.automation_mode === 'auto' &&
+      directPublishVerified &&
       (canAutoPublish(conn) || canPublishViaConnector(conn.platform));
 
     if (shouldAutoPublish) {

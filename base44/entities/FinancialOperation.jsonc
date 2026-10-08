@@ -40,6 +40,14 @@
     "provider_transaction_id": {
       "type": "string"
     },
+    "allocation_fingerprint": {
+      "type": "string",
+      "description": "SHA-256 fingerprint of immutable donation campaign, provider, transaction, and allocation fields. Used with operation_key for atomic idempotency and conflict detection."
+    },
+    "payment_channel": {
+      "type": "string",
+      "description": "Server-verified checkout or verification channel retained for truthful recovery."
+    },
     "gross_amount": {
       "type": "number",
       "default": 0

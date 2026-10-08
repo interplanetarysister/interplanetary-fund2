@@ -41,17 +41,18 @@ export default async function(req){
         await sr.entities.ConnectedPayoutAccount.delete(dup.id).catch(()=>{});
       }
     }
-    if(!record) return Response.json({ok:true,configured:false,status:'not_started'});
+    if(!record) return Response.json({ok:true,configured:false,status:'not_started',provider_available:false});
     const key=secrets.get('STRIPE_SECRET_KEY');
-    if(!key||!String(key).startsWith('sk_live_')) return Response.json({ok:true,configured:true,status:record.status,payouts_enabled:false,provider_available:false});
+    if(record.status==='disabled') return Response.json({ok:true,configured:false,status:'disabled',payouts_enabled:false,provider_available:!!(key&&String(key).startsWith('sk_live_')),provider:'stripe_connect'});
+    if(!key||!String(key).startsWith('sk_live_')) return Response.json({ok:true,configured:true,status:'unavailable',payouts_enabled:false,provider_available:false,provider:'stripe_connect'});
     const stripe=new Stripe(key);
     const account=await stripe.accounts.retrieve(record.provider_account_id);
     const status=account.payouts_enabled&&account.details_submitted?'ready':account.details_submitted?'restricted':'onboarding';
     const patch={status,charges_enabled:!!account.charges_enabled,payouts_enabled:!!account.payouts_enabled,details_submitted:!!account.details_submitted,default_currency:String(account.default_currency||'').toUpperCase(),country:String(account.country||''),last_verified_at:new Date().toISOString(),last_error:''};
     await sr.entities.ConnectedPayoutAccount.update(record.id,patch);
-    return Response.json({ok:true,configured:true,status,...patch,provider:'stripe_connect'});
+    return Response.json({ok:true,configured:true,status,...patch,provider:'stripe_connect',provider_available:true});
   }catch(error){
-    console.error('getConnectedPayoutAccount failed:',error?.message||error);
+    console.error('getConnectedPayoutAccount failed:',error?.name||'UnknownError');
     return Response.json({error:'Connected payout account status could not be verified.'},{status:500});
   }
 }

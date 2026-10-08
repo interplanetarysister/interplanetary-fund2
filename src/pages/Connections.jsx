@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ export default function Connections() {
   // Canonical lifecycle from resolveConnectionStatus, keyed by connection id.
   // The local record heuristic is the fallback; the resolver is authoritative.
   const [lifecycleMap, setLifecycleMap] = useState({});
+  const requestGeneration = useRef(0);
+  const mountedRef = useRef(true);
 
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
@@ -41,15 +43,28 @@ export default function Connections() {
     setSyncResult(null);
     try {
       const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
-      setSyncResult(data);
+      if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Malformed sync response");
+      const safeResult = {
+        overall_status: typeof data.overall_status === "string" ? data.overall_status : "partial",
+        campaigns_covered: Number.isFinite(Number(data.campaigns_covered)) ? Number(data.campaigns_covered) : 0,
+        total_discovered: Number.isFinite(Number(data.total_discovered)) ? Number(data.total_discovered) : 0,
+        total_imported: Number.isFinite(Number(data.total_imported)) ? Number(data.total_imported) : 0,
+        discovered_totals: Array.isArray(data.discovered_totals) ? data.discovered_totals.filter((row) => row && /^[A-Z]{3}$/.test(String(row.currency || "")) && Number.isFinite(Number(row.amount))).map((row) => ({ currency: String(row.currency), amount: Number(row.amount) })) : [],
+      };
+      if (!mountedRef.current) return;
+      setSyncResult(safeResult);
       const r = await base44.functions.invoke("listConnections", { scope: "mine" });
-      setConnections(r.data.connections);
-      resolveLifecycles(r.data.connections);
+      const nextConnections = r?.data?.connections;
+      if (!Array.isArray(nextConnections)) throw new Error("Malformed connections response");
+      if (!mountedRef.current) return;
+      setConnections(nextConnections);
+      resolveLifecycles(nextConnections);
       setHistoryKey((k) => k + 1);
     } catch (e) {
-      setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
+      if (mountedRef.current) setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
+    } finally {
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
 
   // Fetch the canonical lifecycle for every saved connection in parallel.
@@ -92,9 +107,13 @@ export default function Connections() {
   };
 
   useEffect(() => {
+    mountedRef.current = true;
+    const requestId = ++requestGeneration.current;
     (async () => {
      try {
       const me = await base44.auth.me();
+      if (!me || typeof me !== "object" || !me.id) throw new Error("Malformed auth response");
+      if (!mountedRef.current || requestId !== requestGeneration.current) return;
       let pending = null;
       try {
         pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null");
@@ -127,8 +146,11 @@ export default function Connections() {
         }
       }
       const connRes = await base44.functions.invoke("listConnections", { scope: "mine" });
+      const nextConnections = connRes?.data?.connections;
+      if (!Array.isArray(nextConnections)) throw new Error("Malformed connections response");
+      if (!mountedRef.current || requestId !== requestGeneration.current) return;
       setUser(me);
-      setConnections(connRes.data.connections);
+      setConnections(nextConnections);
       // Platform-managed (SHARED) integrations have no PlatformConnection record
       // by design; surface their live status separately.
       base44.functions.invoke("getSharedConnectorStatus", {})
@@ -137,19 +159,24 @@ export default function Connections() {
       // Enrich each connection with the canonical lifecycle so the card, the
       // summary, and the resolver all agree on "working". Best-effort: a failed
       // resolve leaves the local heuristic in place.
-      resolveLifecycles(connRes.data.connections);
+      resolveLifecycles(nextConnections);
+      setError(null);
      } catch (e) {
        console.error("Connections load failed:", e?.name || "UnknownError");
-       setError("We couldn't load your connections. Please try again.");
+       if (mountedRef.current && requestId === requestGeneration.current) setError("We couldn't load your connections. Please try again.");
      }
     })();
+    return () => {
+      mountedRef.current = false;
+      requestGeneration.current += 1;
+    };
   }, [reloadKey]);
 
   if (error) {
     return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setConnections(null); setReloadKey((key) => key + 1); }} /></div>;
   }
   if (!connections) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading connections</span></div>;
   }
 
   const aiAuthorized = user?.ai_obo_consent?.granted === true;
@@ -238,7 +265,7 @@ export default function Connections() {
       </div>
       {wixSyncResult && <div className={`mb-4 rounded-xl border p-3 text-sm ${wixSyncResult.ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>{wixSyncResult.ok ? "Wix is synchronized." : "Wix sync needs attention. Existing IFund data was left unchanged."}</div>}
       {syncResult && (
-        <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm">
+        <div className="mb-6 rounded-xl border border-stone-200 p-3 text-sm" role="status" aria-live="polite">
           {syncResult.error ? (
             <p className="text-red-600">{syncResult.error}</p>
           ) : (

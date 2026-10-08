@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
+import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -53,6 +54,9 @@ export default async function(req) {
         ? await sr.entities.User.get(ownerUserId).catch(() => null)
         : null;
       const consentGranted = hasAiPublishingConsent(owner);
+      const capability = await resolveCapabilityForPlatform(sr, connection.platform);
+      const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
+      const runtimePublishAvailable = canAutoPublish(connection) || canPublishViaConnector(connection.platform);
       const actionAuthorization = owner && ownerUserId
         ? await assertExternalAgentAction(sr, {
             ownerUser: owner,
@@ -63,9 +67,9 @@ export default async function(req) {
             requireAutomation: true,
           })
         : { ok: false, reason: 'owner unavailable' };
-      if (connection.automation_mode === 'auto' && canAutoPublish(connection) && ownerChainMatches && consentGranted && access.ok && actionAuthorization.ok) {
+      if (connection.automation_mode === 'auto' && runtimePublishAvailable && directPublishVerified && ownerChainMatches && consentGranted && access.ok && actionAuthorization.ok) {
         try {
-          const { url } = await publishThroughConnection(connection, text);
+          const { url } = await publishThroughConnection(connection, text, sr);
           await sr.entities.DistributedPost.update(post.id, {
             status: 'published', published_at: now.toISOString(), external_post_url: url, error: '',
           });
@@ -101,10 +105,12 @@ export default async function(req) {
         // hand back to the owner instead of allowing an automated external side effect.
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
-          ...(connection.automation_mode === 'auto' && canAutoPublish(connection) && !ownerChainMatches
+          ...(connection.automation_mode === 'auto' && runtimePublishAvailable && directPublishVerified && !ownerChainMatches
             ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }
-            : connection.automation_mode === 'auto' && canAutoPublish(connection) && !consentGranted
+            : connection.automation_mode === 'auto' && runtimePublishAvailable && directPublishVerified && !consentGranted
               ? { error: 'Automatic publishing blocked: AI OBO authorization is not active.' }
+            : connection.automation_mode === 'auto' && runtimePublishAvailable && !directPublishVerified
+              ? { error: 'Automatic publishing is not provider-verified for this platform yet.' }
             : connection.automation_mode === 'auto' && !actionAuthorization.ok
               ? { error: `Automatic publishing blocked: ${actionAuthorization.reason}.` }
             : {}),

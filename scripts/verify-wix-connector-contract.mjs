@@ -12,7 +12,7 @@ assert.match(shared, /verified: true/);
 assert.match(shared, /connectorCapabilities/);
 assert.doesNotMatch(shared, /accessToken\) return \{ connected: true, verified: true/);
 assert.match(page, /s\.connected && s\.verified/);
-assert.match(page, />Working</);
+assert.match(page, />Connected</);
 assert.match(page, />Needs attention</);
 
 console.log('Wix shared connector contract passed.');

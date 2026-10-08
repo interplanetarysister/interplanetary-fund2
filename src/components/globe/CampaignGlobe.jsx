@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 const RADIUS = 2;
+const MOBILE_BREAKPOINT = 640;
+const MAX_PIXEL_RATIO = 2;
 
 function latLngToVector3(lat, lng, radius = RADIUS) {
   const phi = (90 - lat) * Math.PI / 180;
@@ -28,14 +30,14 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
     if (!container) return;
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     } catch (e) {
       setFailed(true);
       return;
     }
 
-    let width = container.clientWidth || 600;
-    let height = container.clientHeight || 420;
+    let width = Math.max(1, container.clientWidth || 600);
+    let height = Math.max(1, container.clientHeight || 420);
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x010207);
@@ -52,10 +54,15 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
     scene.add(new THREE.Points(starGeometry, new THREE.PointsMaterial({ color: 0xffffff, size: 0.018, transparent: true, opacity: 0.9 })));
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(0, 0, 5.35);
+    const setCameraDistance = () => camera.position.set(0, 0, width < MOBILE_BREAKPOINT ? 6.6 : 5.35);
+    setCameraDistance();
 
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(width, height);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+    renderer.setSize(width, height, false);
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
+    renderer.domElement.style.display = "block";
+    renderer.domElement.style.touchAction = "pan-y";
     container.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.65));
@@ -90,7 +97,7 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
     const pinMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee });
     const haloMat = new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.4 });
     (campaigns || []).forEach((c) => {
-      if (typeof c.location_lat !== "number" || typeof c.location_lng !== "number") return;
+      if (!Number.isFinite(c?.location_lat) || !Number.isFinite(c?.location_lng)) return;
       const pos = latLngToVector3(c.location_lat, c.location_lng, RADIUS * 1.01);
       const pin = new THREE.Mesh(new THREE.SphereGeometry(0.038, 12, 12), pinMat);
       pin.position.copy(pos);
@@ -104,18 +111,21 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
       globeGroup.add(pillar);
     });
 
-    const state = { dragging: false, lastX: 0, lastY: 0, moved: false, auto: true };
+    const state = { dragging: false, pointerId: null, lastX: 0, lastY: 0, moved: false, auto: true };
     const target = { x: 0.25, y: 0 };
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+    const resumeTimers = new Set();
 
     const onDown = (e) => {
-      state.dragging = true; state.auto = false; state.moved = false;
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      state.dragging = true; state.pointerId = e.pointerId; state.auto = false; state.moved = false;
       state.lastX = e.clientX; state.lastY = e.clientY;
+      renderer.domElement.setPointerCapture?.(e.pointerId);
     };
     const onMove = (e) => {
-      if (!state.dragging) return;
+      if (!state.dragging || e.pointerId !== state.pointerId) return;
       const dx = e.clientX - state.lastX;
       const dy = e.clientY - state.lastY;
       if (Math.abs(dx) + Math.abs(dy) > 3) state.moved = true;
@@ -123,30 +133,44 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
       target.x = Math.max(-1.2, Math.min(1.2, target.x + dy * 0.005));
       state.lastX = e.clientX; state.lastY = e.clientY;
     };
-    const onUp = (e) => {
-      if (!state.dragging) return;
+    const finishPointer = (e, allowSelect) => {
+      if (!state.dragging || e.pointerId !== state.pointerId) return;
+      const wasMoved = state.moved;
       state.dragging = false;
-      if (!state.moved) {
+      state.pointerId = null;
+      renderer.domElement.releasePointerCapture?.(e.pointerId);
+      if (allowSelect && !wasMoved) {
         const rect = renderer.domElement.getBoundingClientRect();
-        pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-        raycaster.setFromCamera(pointer, camera);
-        const hits = raycaster.intersectObjects(pinMeshes, false);
-        if (hits.length) onSelectRef.current?.(hits[0].object.userData.campaign);
+        if (rect.width > 0 && rect.height > 0) {
+          pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointer, camera);
+          const hits = raycaster.intersectObjects(pinMeshes, false);
+          if (hits.length) onSelectRef.current?.(hits[0].object.userData.campaign);
+        }
       }
-      setTimeout(() => { if (!state.dragging) state.auto = true; }, 2500);
+      const timer = window.setTimeout(() => {
+        resumeTimers.delete(timer);
+        if (!state.dragging) state.auto = true;
+      }, 2500);
+      resumeTimers.add(timer);
     };
+    const onPointerUp = (e) => finishPointer(e, true);
+    const onPointerCancel = (e) => finishPointer(e, false);
 
     renderer.domElement.addEventListener("pointerdown", onDown);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    renderer.domElement.addEventListener("pointermove", onMove);
+    renderer.domElement.addEventListener("pointerup", onPointerUp);
+    renderer.domElement.addEventListener("pointercancel", onPointerCancel);
 
     const resize = () => {
-      width = container.clientWidth || 600;
-      height = container.clientHeight || 420;
+      width = Math.max(1, container.clientWidth || 600);
+      height = Math.max(1, container.clientHeight || 420);
+      setCameraDistance();
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
+      renderer.setSize(width, height, false);
     };
     const ro = new ResizeObserver(resize);
     ro.observe(container);
@@ -163,10 +187,12 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      resumeTimers.forEach((timer) => window.clearTimeout(timer));
       ro.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
+      renderer.domElement.removeEventListener("pointermove", onMove);
+      renderer.domElement.removeEventListener("pointerup", onPointerUp);
+      renderer.domElement.removeEventListener("pointercancel", onPointerCancel);
       scene.traverse((obj) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) { Array.isArray(obj.material) ? obj.material.forEach((m) => m.dispose()) : obj.material.dispose(); }
@@ -178,11 +204,11 @@ export default function CampaignGlobe({ campaigns = [], onSelect }) {
 
   if (failed) {
     return (
-      <div className="w-full h-[60vh] min-h-[420px] flex items-center justify-center text-cyan-200/80 text-sm">
+      <div className="w-full h-[clamp(280px,52dvh,560px)] flex items-center justify-center px-4 text-center text-cyan-200/80 text-sm">
         3D globe isn't available on this device. See the list below instead.
       </div>
     );
   }
 
-  return <div ref={containerRef} className="w-full h-[60vh] min-h-[420px] cursor-grab active:cursor-grabbing touch-none" />;
+  return <div ref={containerRef} className="w-full max-w-full h-[clamp(280px,52dvh,560px)] overflow-hidden cursor-grab active:cursor-grabbing" aria-label="Interactive campaign globe" />;
 }

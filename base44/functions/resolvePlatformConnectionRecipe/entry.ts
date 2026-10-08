@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { staticRecipe, orderedTransports } from '../../shared/platformConnectionRecipes.ts';
+import { staticRecipe, orderedTransports, requiresRouteRediscovery } from '../../shared/platformConnectionRecipes.ts';
 
 const seedFor=(platform:string,operation:string)=>staticRecipe(platform,operation);
 const order=(r:any)=>orderedTransports(r);
@@ -23,8 +23,11 @@ export default async function handler(req: Request) {
     const seed=seedFor(platform,operation);
 
     if(!result){
-      const effective=recipe&&recipe.status!=='disabled'?recipe:seed?{platform,operation,status:'probation',...seed}:{platform,operation,status:'probation',preferred_transport:'manual'};
-      return Response.json({platform,operation,recipe:effective,transport_order:order(effective),rediscovery_required:effective.status==='stale'});
+      const effective=recipe&&recipe.status!=='disabled'?recipe:seed?{platform,operation,status:'probation',discovery_state:'probation',rediscovery_on_failure:true,...seed}:{platform,operation,status:'probation',discovery_state:'unknown',rediscovery_on_failure:true,preferred_transport:'manual'};
+      const transportOrder=order(effective);
+      const nextCandidate=transportOrder.find((candidate)=>candidate!=='manual')||null;
+      const rediscoveryRequired=requiresRouteRediscovery(effective,transportOrder);
+      return Response.json({platform,operation,recipe:effective,transport_order:transportOrder,next_candidate:nextCandidate,rediscovery_required:rediscoveryRequired});
     }
 
     // Recipe reads are available to authenticated users, but caller-supplied

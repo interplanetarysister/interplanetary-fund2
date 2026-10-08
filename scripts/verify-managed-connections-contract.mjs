@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import ts from 'typescript';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
 
@@ -20,6 +21,42 @@ const connectionCard = read('src/components/connections/ConnectionCard.jsx');
 const finalizeOauth = read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
 const verifyConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
 const register = read('src/pages/Register.jsx');
+const recipeSource = read('base44/shared/platformConnectionRecipes.ts');
+const recipeModule = await import(`data:text/javascript;base64,${Buffer.from(ts.transpileModule(
+  recipeSource,
+  { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },
+).outputText).toString('base64')}`);
+const { orderedTransports, requiresRouteRediscovery } = recipeModule;
+
+const webhookOnly = { preferred_transport: 'webhook' };
+assert.deepEqual(orderedTransports(webhookOnly), ['webhook']);
+assert.equal(requiresRouteRediscovery(webhookOnly), false);
+
+const tokenOnly = { candidate_transports: ['token', 'token'] };
+assert.deepEqual(orderedTransports(tokenOnly), ['token']);
+assert.equal(requiresRouteRediscovery(tokenOnly), false);
+
+const explicitPriorityOrder = {
+  successful_route: 'token',
+  preferred_transport: 'webhook',
+  candidate_transports: ['token', 'webhook'],
+};
+assert.deepEqual(orderedTransports(explicitPriorityOrder), ['webhook', 'token']);
+
+const blockedAll = { preferred_transport: 'oauth', blocked_routes: ['oauth'] };
+assert.deepEqual(orderedTransports(blockedAll), []);
+assert.equal(requiresRouteRediscovery(blockedAll), true);
+
+const exhausted = { preferred_transport: 'token', discovery_state: 'exhausted' };
+assert.deepEqual(orderedTransports(exhausted), ['token']);
+assert.equal(requiresRouteRediscovery(exhausted), true);
+
+const unknownTransport = { preferred_transport: 'unknown_transport' };
+assert.deepEqual(orderedTransports(unknownTransport), []);
+assert.equal(requiresRouteRediscovery(unknownTransport), true);
+
+assert.deepEqual(orderedTransports({}), []);
+assert.equal(requiresRouteRediscovery({}), true);
 
 assert.match(entitlements, /MANAGED_CONNECTIONS_MIN_LEVEL\s*=\s*2/);
 assert.match(entitlements, /hasManagedConnections\(user/);
@@ -42,11 +79,16 @@ assert.match(command, /status:\s*nextStatus/);
 assert.match(command, /verifyPlatformConnection/);
 assert.match(command, /already_connected:\s*true/);
 assert.match(command, /executable_now:\s*false/);
-assert.doesNotMatch(command, /orderedTransports/);
-assert.match(command, /const supportedTransports = rediscoveryRequired/);
-assert.match(command, /effective\.preferred_transport/);
-assert.match(command, /effective\.fallback_transports/);
+assert.match(command, /orderedTransports/);
+assert.match(command, /requiresRouteRediscovery\(effective, supportedTransports\)/);
+assert.match(command, /candidate_transports/);
 assert.doesNotMatch(command, /password|cookie|mfa_seed|recovery_code/i);
+
+assert.doesNotMatch(recipeSource, /\.\.\.TRANSPORT_PRIORITY/);
+assert.match(recipeSource, /priority\.has\(transport\)/);
+assert.match(recipeSource, /executable\.length === 0/);
+const resolver = read('base44/functions/resolvePlatformConnectionRecipe/entry.ts');
+assert.match(resolver, /requiresRouteRediscovery\(effective,transportOrder\)/);
 
 assert.match(registry, /return user\?\.ai_obo_consent\?\.granted === true/);
 assert.doesNotMatch(registry, /ai_publishing_consent.*\|\|.*ai_connection_consent/);

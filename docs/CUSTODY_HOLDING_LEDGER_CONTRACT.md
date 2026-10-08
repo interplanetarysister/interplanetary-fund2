@@ -10,6 +10,18 @@ For the current implementation, “held / settled” therefore means funds whose
 
 The holding-account designation is configuration, not proof of a transaction. Code must never mark funds settled solely because the configured PayPal account exists.
 
+## Verified PayPal donation reconciliation checklist
+
+- Validate the donor-entered provider charge and the complete post-processing allocation before creating an order. After a provider reports a successful capture, do not reapply the donor minimum to the smaller post-fee allocation; preserve the receipt and enter reconciliation on any genuine metadata conflict.
+- Claim a canonical donation with Base44's atomic keyed `upsert`. Bind the key to an immutable allocation fingerprint (campaign, owner, provider transaction, gross allocation, contribution, processor fee, and normalized payment channel). Equal retries converge; different allocations retain evidence and fail closed for review.
+- Treat `Campaign.raised_amount` and `donor_count` as projections of verified `Donation` mirrors. Re-read and rewrite with a bounded convergence loop after the mirror exists; fail explicitly when writes remain unstable.
+- A provider receipt is fully tracked only when its applied canonical operation, verified donation mirror, and settled holding entry all exist, agree on one campaign, and share the canonical operation id. Any same-campaign partial state is repairable and must remain visible to recovery. Cross-campaign or amount conflicts must not be reassigned automatically.
+- A PayPal holding entry is atomically claimed by `operation_key`, then re-read and accepted only when exactly one row matches the provider transaction, campaign, amount, processing fee, platform contribution, currency, and canonical operation. Recovery may converge duplicate holdings only when every immutable allocation field agrees.
+- Partial capture recovery inherits the immutable platform contribution and payment channel from consistent existing canonical/mirror/holding evidence. It defaults contribution to zero and channel to PayPal only when the receipt has no prior local allocation evidence.
+- Generic canonical donation recording must never fill a missing legacy payment channel from caller arguments. Legacy backfill is allowed only in the dedicated recovery path, after exactly one allowed channel is independently present in persisted Donation/Holding evidence and all provider, campaign, transaction, amount, fee, and contribution fields agree. Otherwise fail closed for manual review.
+- Bind every provider request identity to campaign, donor-entered total, payment channel, and optional platform-contribution choice. Rotate the identity whenever any bound field changes.
+- Donor-facing estimates must name the actual rail and use that rail's processor fee model. The Interplanetary Fund fee remains 3% of the campaign gift at withdrawal, never a checkout processor fee.
+
 ## Financial states
 
 1. **External observed** — money reported by a connected crowdfunding/provider account. This is informational and is not Interplanetary Fund-held or withdrawable.

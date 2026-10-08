@@ -18,7 +18,7 @@ const checks = [
     !source.includes('mirrorCanonicalCampaignTotal') &&
     mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') >= 0 &&
     mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') <
-    mirrors.indexOf('await mirrorCanonicalCampaignTotal(sr, campaignId, totals)')],
+    mirrors.indexOf('await reconcileCanonicalCampaignProjection(sr, campaignId)')],
   ['repairs Donation mirror by canonical operation id', source.includes('reconcileDonationMirror')],
   ['repairs Notification mirror by canonical operation id', source.includes('reconcileNotificationMirror')],
   ['does not directly create Base44 Donation', !/entities\.Donation\.create/.test(source)],

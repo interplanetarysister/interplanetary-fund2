@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -21,7 +21,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/social": "Social", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections",
+  "/social": "Social", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -37,6 +37,7 @@ const navSections = [
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/create", label: "New Campaign", icon: PlusCircle },
+      { to: "/donors", label: "Supporters", icon: Users },
       { to: "/discover", label: "Discover", icon: Compass },
       { to: "/globe", label: "Global Globe", icon: Globe2 },
     ],
@@ -47,6 +48,7 @@ const navSections = [
       { to: "/giving", label: "My Giving", icon: HeartHandshake },
       { to: "/following", label: "Following", icon: Heart },
       { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
+      { to: "/ledger", label: "Financial Ledger", icon: BookOpen },
       { to: "/subscriptions", label: "Plans", icon: CreditCard },
     ],
   },
@@ -68,6 +70,7 @@ const navSections = [
       { to: "/ops", label: "Ops Center", icon: Satellite },
       { to: "/analytics", label: "Command Center", icon: BarChart3 },
       { to: "/connect", label: "Connect Assistant", icon: Plug },
+      { to: "/admin/audit", label: "Audit Log", icon: Server },
     ],
   },
   {
@@ -111,7 +114,7 @@ export default function Layout() {
     "/discover": ["/discover", "/campaign", "/globe", "/create"],
     "/social": ["/social"],
     "/inbox": ["/inbox", "/communications", "/notifications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals"],
+    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/ledger"],
   };
   const owningRoot = (p) => {
     if (p === "/") return "/";

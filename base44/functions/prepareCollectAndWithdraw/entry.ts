@@ -23,7 +23,9 @@ export default async function(req) {
     const byPlatform = await resolveCapabilityMap(sr);
     const payoutAccounts = await sr.entities.ConnectedPayoutAccount.filter({ owner_user_id: user.id, provider: 'stripe_connect' }, '-updated_date', 5).catch(() => []);
     const payoutAccount = payoutAccounts[0] || null;
-    const payoutReady = payoutAccount?.status === 'ready' && payoutAccount?.payouts_enabled === true;
+    const payoutVerifiedAt = payoutAccount?.last_verified_at ? new Date(payoutAccount.last_verified_at).getTime() : 0;
+    const payoutVerificationFresh = payoutVerifiedAt > 0 && (Date.now() - payoutVerifiedAt) <= 15 * 60 * 1000;
+    const payoutReady = payoutAccount?.status === 'ready' && payoutAccount?.payouts_enabled === true && payoutVerificationFresh;
     const sources = connections.map((connection) => {
       const cap = byPlatform.get(String(connection.platform).toLowerCase());
       const currency = String(connection.external_currency || 'USD').toUpperCase();

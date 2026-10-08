@@ -1,26 +1,26 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk } from "./paypalScripts";
-import { computePayPalBreakdown, MIN_DONATION } from "@/lib/fees";
 
 export default function PayPalCheckoutButton({ campaign, amount, donorName, message, platformContribution, onPaid }) {
   const containerRef = useRef(null);
   const buttonsRef = useRef(null);
-  const intentRef = useRef(crypto.randomUUID());
+  const intentRef = useRef({ key: "", id: "" });
   const [error, setError] = useState("");
   const latestRef = useRef({ donorName, message, onPaid });
   useEffect(() => { latestRef.current = { donorName, message, onPaid }; });
 
   useEffect(() => {
-    // Changing a campaign, amount or contribution must use a new server order key.
-    intentRef.current = crypto.randomUUID();
     let cancelled = false;
     const node = containerRef.current;
     if (!node || !campaign?.id || !amount || Number(amount) <= 0) return undefined;
-    if (computePayPalBreakdown(amount, false).amount < MIN_DONATION) {
-      setError("Increase the total to cover PayPal processing. A $2.00 payment or more will work.");
-      return undefined;
+    const value = Number(amount);
+    const selectedContribution = !!platformContribution;
+    const financialIntentKey = [campaign.id, value.toFixed(2), "paypal", selectedContribution ? "1" : "0"].join("|");
+    if (intentRef.current.key !== financialIntentKey) {
+      intentRef.current = { key: financialIntentKey, id: crypto.randomUUID() };
     }
+    const intentId = intentRef.current.id;
 
     (async () => {
       try {
@@ -38,9 +38,9 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
           createOrder: async () => {
             const { data } = await base44.functions.invoke("createPayPalOrder", {
               campaign_id: campaign.id,
-              amount: Number(amount),
-              platform_contribution: !!platformContribution,
-              intent_id: intentRef.current,
+              amount: value,
+              platform_contribution: selectedContribution,
+              intent_id: intentId,
               payment_channel: "paypal",
             });
             if (!data?.id) throw new Error("Order creation failed");
