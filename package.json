@@ -8,6 +8,7 @@
   },
   "scripts": {
     "verify:fundraising-mode": "node scripts/verify-fundraising-mode.mjs",
+    "verify:campaign-creation": "node scripts/test-campaign-drafts-and-generated-media.mjs && node scripts/test-generate-campaign-cover.mjs",
     "verify:feature-flags": "node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/test-core-flag-routes.mjs",
     "verify:platform-oauth": "node scripts/test-oauth-delegation-flow.mjs && node scripts/verify-managed-connections-contract.mjs && node scripts/verify-connection-lifecycle-contract.mjs",
     "verify:runtime-node22": "node scripts/require-node22.mjs",
