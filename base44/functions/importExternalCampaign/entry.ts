@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import { discoverPublicCampaignSnapshot } from '../../shared/publicCampaignSnapshot.ts';
 
 const ALLOWED = ['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
 const clean = (v, n=12000) => typeof v === 'string' ? v.trim().slice(0,n) : v;
@@ -13,12 +14,17 @@ export default async function(req) {
     const connection = await base44.entities.PlatformConnection.get(body.connection_id).catch(() => null);
     if (!connection || connection.created_by_id !== user.id || connection.kind !== 'crowdfunding') return Response.json({ error: 'Connected fundraising account not found.' }, { status: 404 });
     const incoming = body.campaign && typeof body.campaign === 'object' ? body.campaign : {};
-    const payload:any = { status: 'draft' };
-    for (const key of ALLOWED) if (incoming[key] !== undefined && incoming[key] !== null) payload[key] = clean(incoming[key], key === 'story' ? 30000 : 4000);
-    payload.title = clean(payload.title || connection.display_name || ('Imported ' + connection.platform + ' campaign'), 200);
-    payload.goal_amount = Number(payload.goal_amount || 1);
-    if (!(payload.goal_amount > 0)) payload.goal_amount = 1;
-    if (!['medical','emergency','education','community','animals','business','memorial','disaster_relief','creative','other'].includes(payload.category)) payload.category = 'other';
+    const snapshot = await discoverPublicCampaignSnapshot(connection);
+    const payload:any = { status: 'draft', ...snapshot.campaign };
+    // Goal is required by the IFund Campaign schema, but public provider metadata
+    // is not a reliable source for it. Preserve a positive owner-supplied goal
+    // explicitly as owner input instead of fabricating one or attributing it to
+    // the provider page.
+    const ownerGoal = Number(incoming.goal_amount);
+    if (!(Number.isFinite(ownerGoal) && ownerGoal > 0)) {
+      return Response.json({ error: 'Enter a campaign goal before importing this fundraiser.' }, { status: 400 });
+    }
+    payload.goal_amount = ownerGoal;
 
     const sr = base44.asServiceRole;
     const existingImports = await sr.entities.ExternalCampaignImport.filter({ owner_user_id: user.id, connection_id: connection.id }, '-updated_date', 1).catch(() => []);
@@ -26,10 +32,19 @@ export default async function(req) {
 
     const campaign = await base44.entities.Campaign.create(payload);
     const provenance:any = {};
-    for (const key of ALLOWED) if (payload[key] !== undefined) provenance[key] = { source: connection.platform, connection_id: connection.id, imported_at: new Date().toISOString(), source_value: payload[key] };
+    const importedAt = new Date().toISOString();
+    for (const key of ALLOWED) {
+      if (payload[key] === undefined) continue;
+      provenance[key] = {
+        source: key === 'goal_amount' ? 'owner_supplied' : key === 'category' ? 'system_default' : snapshot.source,
+        connection_id: connection.id,
+        imported_at: importedAt,
+        source_value: payload[key],
+      };
+    }
     const imported = await base44.entities.ExternalCampaignImport.create({
       owner_user_id: user.id, connection_id: connection.id, platform: connection.platform,
-      external_campaign_id: String(body.external_campaign_id || ''), external_url: connection.external_url || '',
+      external_campaign_id: String(body.external_campaign_id || ''), external_url: snapshot.source_url,
       campaign_id: campaign.id, sync_enabled: body.sync_enabled !== false,
       last_imported_at: new Date().toISOString(), field_provenance: provenance, locally_locked_fields: [], status: 'imported'
     });
@@ -90,7 +105,7 @@ export default async function(req) {
     await logAudit(base44, { action: 'external_campaign_imported', actor_user_id: user.id, target_type: 'Campaign', target_id: campaign.id, detail: 'Created IFund draft from connected external fundraiser.', status: 'success', metadata: { platform: connection.platform, connection_id: connection.id, import_id: imported.id } });
     return Response.json({ ok: true, campaign, import_record: imported });
   } catch (error) {
-    console.error('importExternalCampaign failed:', error?.message || error);
+    console.error('importExternalCampaign failed:', error?.name || 'UnknownError');
     return Response.json({ error: 'External campaign could not be imported.' }, { status: 500 });
   }
 }
