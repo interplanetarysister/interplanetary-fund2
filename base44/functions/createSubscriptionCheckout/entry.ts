@@ -5,6 +5,8 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { subscriptionPrice } from '../../shared/subscriptionCatalog.js';
 import { stripeSubscriptionClient, resolveStripeSubscriptionPrice } from '../../shared/stripeSubscriptionCatalog.ts';
+import { effectiveSubscription } from '../../shared/subscriptionEntitlements.ts';
+import { PREMIUM_WELCOME_COUPON_ID, introductoryCouponIsValid } from '../../shared/premiumAccessCatalog.ts';
 
 // Starts a Stripe subscription checkout for an AI tier.
 export default async function(req) {
@@ -20,7 +22,7 @@ export default async function(req) {
       return Response.json({ error: 'Administrators already have permanent top-tier access.', admin_entitlement: true }, { status: 409 });
     }
 
-    const { tier, interval, price_id, origin, trial_days } = await req.json();
+    const { tier, interval, price_id, origin, trial_days, intro_discount } = await req.json();
     if (!tier || !price_id || !origin) {
       return Response.json({ error: 'Missing subscription details' }, { status: 400 });
     }
@@ -35,7 +37,7 @@ export default async function(req) {
         return Response.json({ error: 'IFund must verify nonprofit eligibility before discounted checkout.' }, { status: 403 });
       }
     }
-    if (user.subscription_status === 'active' || user.subscription_status === 'trialing' || user.subscription_status === 'past_due') {
+    if (effectiveSubscription(user).active || user.subscription_status === 'past_due') {
       return Response.json({ error: 'Manage your existing subscription before buying another plan.' }, { status: 409 });
     }
     let originUrl;
@@ -77,9 +79,24 @@ export default async function(req) {
         (enabled.has('*') || requiredEvents.every(name => enabled.has(name)));
     });
     if (!verifiedEndpoint) return Response.json({ error: 'Stripe billing webhook is not yet verified. No subscription started.' }, { status: 503 });
+    const welcomeEligible = !user.premium_trial_started_at && !user.trial_end &&
+      !user.stripe_customer_id && !user.paypal_subscription_id &&
+      tier === 'basic' && interval === 'monthly';
+    if (intro_discount === true && !welcomeEligible) {
+      return Response.json({ error: 'The welcome discount is for first-time monthly members only.' }, { status: 409 });
+    }
+    let discounts;
+    if (intro_discount === true) {
+      const coupon = await stripe.coupons.retrieve(PREMIUM_WELCOME_COUPON_ID);
+      if (!introductoryCouponIsValid(coupon)) {
+        return Response.json({ error: 'The first-month discount is not currently available.' }, { status: 503 });
+      }
+      discounts = [{ coupon: PREMIUM_WELCOME_COUPON_ID }];
+    }
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: price_id, quantity: 1 }],
+      ...(discounts ? { discounts } : {}),
       success_url: `${originUrl.origin}/subscriptions?subscribed=success`,
       cancel_url: `${originUrl.origin}/subscriptions`,
       metadata: {
