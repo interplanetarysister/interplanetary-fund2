@@ -10,6 +10,8 @@ const NEEDED_EVENTS = [
   'invoice.paid',
   'customer.subscription.updated',
   'customer.subscription.deleted',
+  'charge.refunded',
+  'charge.dispute.created',
 ];
 
 export default async function(req: Request) {
