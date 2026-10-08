@@ -35,7 +35,8 @@ export default async function(req) {
     await ensureCanonicalCampaign(sr, campaign);
 
     const creator = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
-    await emitActivityEvent(base44, {
+    const priorLaunchEvents = await sr.entities.ActivityEvent.filter({ type: 'campaign_created', campaign_id: campaign.id }).catch(() => []);
+    if (!priorLaunchEvents?.length) await emitActivityEvent(base44, {
       type: 'campaign_created',
       actor_user_id: campaign.created_by_id,
       actor_display_name: (creator && creator.full_name) || 'An organizer',
@@ -66,9 +67,10 @@ ${campaign.story ? `Story excerpt: ${campaign.story.slice(0, 500)}` : ''}
 Generate a launch announcement for each connected platform below.`;
       crosspost = await generateAndDistribute({
         base44, sr, user: creator || user, campaign, connections, prompt,
+        sourceUpdateId: `launch:${campaign.id}`,
       });
     } catch (crossPostError) {
-      console.error('Campaign launch cross-post failed:', crossPostError?.message || crossPostError);
+      console.error('Campaign launch cross-post failed:', crossPostError?.name || 'CrossPostError');
     }
 
     // Marketing KPI: campaign creation is the core activation event.
@@ -76,7 +78,7 @@ Generate a launch announcement for each connected platform below.`;
 
     return Response.json({ ok: true, canonical_registered: true, crosspost });
   } catch (error) {
-    console.error('recordCampaignCreated error:', error && error.message ? error.message : error);
+    console.error('recordCampaignCreated error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to publish campaign because the canonical backend could not be updated.' }, { status: 503 });
   }
 }
