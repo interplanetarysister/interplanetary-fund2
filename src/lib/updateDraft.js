@@ -1,4 +1,4 @@
-import { campaignPublicUrl } from "./campaignSharing";
+import { campaignPublicUrl } from "./campaignSharing.js";
 
 // Offline/credit-free template based solely on campaign information and notes
 // entered by the author. Never make up results, donations, beneficiaries,
