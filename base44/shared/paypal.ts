@@ -36,6 +36,27 @@ export async function isLivePayPalRestReady() {
   return await pending;
 }
 
+let payoutAccessProbe: { until: number; ok: boolean; pending: Promise<boolean> | null } = { until: 0, ok: false, pending: null };
+export async function isLivePayPalPayoutReady() {
+  if (secrets.get('PAYPAL_MODE') !== 'live') return false;
+  if (payoutAccessProbe.until > Date.now()) return payoutAccessProbe.ok;
+  if (payoutAccessProbe.pending) return payoutAccessProbe.pending;
+  const pending = getAccessToken()
+    .then(async (token) => {
+      const res = await fetch(`${apiBase()}/v1/payments/payouts/IFUND_READINESS_PROBE_DO_NOT_CREATE`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return ![401, 403].includes(res.status) && res.status < 500;
+    })
+    .catch(() => false)
+    .then((ok) => {
+      payoutAccessProbe = { ok, until: Date.now() + (ok ? 90000 : 20000), pending: null };
+      return ok;
+    });
+  payoutAccessProbe = { ok: false, until: 0, pending };
+  return await pending;
+}
+
 async function getAccessToken() {
   const id = secrets.get("PAYPAL_CLIENT_ID");
   const secret = secrets.get("PAYPAL_CLIENT_SECRET");
