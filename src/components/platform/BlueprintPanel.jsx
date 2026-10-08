@@ -79,7 +79,7 @@ export default function BlueprintPanel() {
         <h3 className="flex items-center gap-2 font-semibold text-sm text-stone-900">
           <Server className="w-4 h-4 text-primary" /> Managed by Base44
         </h3>
-        <p className="text-xs text-stone-400 mt-1 mb-3">Trusted infrastructure Crowdfund builds on rather than reimplements.</p>
+        <p className="text-xs text-stone-400 mt-1 mb-3">Trusted infrastructure Interplanetary Fund builds on rather than reimplements.</p>
         <div className="flex flex-wrap gap-1.5">
           {managedByBase44.map((m) => (
             <span key={m} className="text-xs rounded-md bg-stone-100 text-stone-600 px-2 py-0.5">{m}</span>
