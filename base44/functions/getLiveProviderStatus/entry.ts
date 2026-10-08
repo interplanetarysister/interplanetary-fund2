@@ -14,7 +14,15 @@ export default async function(req: Request) {
       client.asServiceRole.entities.FeatureFlag.list('-created_date', 200),
       client.asServiceRole.entities.PlatformAccessRegistry.list('-platform', 200).catch(() => []),
     ]);
-    return Response.json({ ok: true, providers, features: Object.keys(FEATURE_SCOPES).map(k => liveFeatureSnapshot(k, flags || [], providers, registry || [])), checked_at: new Date().toISOString() }, { headers: { 'Cache-Control': 'private, no-store' } });
+    const connections = (registry || []).map((row: any) => ({
+      platform: String(row.platform || ''),
+      state: String(row.status || 'DISCONNECTED'),
+      checked_at: String(row.last_verified || ''),
+      live_verified: row.status === 'ACTIVE' && !!row.last_successful_verification &&
+        Number.isFinite(Date.parse(row.last_successful_verification)) &&
+        Date.now() - Date.parse(row.last_successful_verification) < 86400000,
+    }));
+    return Response.json({ ok: true, providers, features: Object.keys(FEATURE_SCOPES).map(k => liveFeatureSnapshot(k, flags || [], providers, registry || [])), connections, checked_at: new Date().toISOString() }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (e) {
     console.error('getLiveProviderStatus failed:', e?.name || 'UnknownError');
     return Response.json({ error: 'Provider status unavailable' }, { status: 503 });
