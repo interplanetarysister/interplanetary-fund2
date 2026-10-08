@@ -51,7 +51,7 @@ export default async function (req) {
         subject: `${inviter} invited you to Interplanetary Fund`,
         body: `${inviter} invited you to join Interplanetary Fund. Create an account to connect with them and participate in the community.\\n\\nInterplanetary Fund\\nEndless possibilities start with one question: What if?`,
       });
-      await logAudit(base44, { action: 'friend_invitation_sent', actor_user_id: user.id, target_type: 'Invitation', target_id: email, detail: 'Friend invitation email sent', status: 'success' });
+      await logAudit(base44, { action: 'friend_invitation_sent', actor_user_id: user.id, target_type: 'Invitation', target_id: 'external_email_invitation', detail: 'Friend invitation email sent', status: 'success' });
       return Response.json({ ok: true, invited: true });
     }
 
@@ -93,7 +93,7 @@ export default async function (req) {
 
     return Response.json({ error: 'Unknown action.' }, { status: 400 });
   } catch (error) {
-    console.error('manageFriends error:', error.message);
+    console.error('manageFriends error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not complete that action.' }, { status: 500 });
   }
 }
