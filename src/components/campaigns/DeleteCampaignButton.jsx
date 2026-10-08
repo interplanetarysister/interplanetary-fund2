@@ -25,8 +25,9 @@ export default function DeleteCampaignButton({ campaign }) {
   const handleDelete = async () => {
     setBusy(true);
     try {
-      await base44.functions.invoke("deleteCampaign", { campaign_id: campaign.id });
-      toast({ title: "Campaign deleted", description: "Your campaign and its related data have been removed." });
+      const { data } = await base44.functions.invoke("deleteCampaign", { campaign_id: campaign.id });
+      if (data?.archived) toast({ title: "Campaign removed from public use", description: "Public campaign content was removed. Financial records were retained securely for payout and audit history." });
+      else toast({ title: "Campaign deleted", description: "Your campaign and its non-financial related data have been removed." });
       navigate("/dashboard", { replace: true });
     } catch (e) {
       toast({ variant: "destructive", title: "Could not delete", description: "Please try again or contact support." });
@@ -46,7 +47,7 @@ export default function DeleteCampaignButton({ campaign }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete "{campaign.title}"?</AlertDialogTitle>
           <AlertDialogDescription>
-            This permanently removes the campaign, its updates, posts, and agent activity. Financial records are preserved for audit. This cannot be undone.
+            This removes the campaign from public use along with its updates, posts, and agent activity. If the campaign has financial history, Interplanetary Fund keeps a private archived record so donations, payouts, and audit history remain intact. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -56,7 +57,7 @@ export default function DeleteCampaignButton({ campaign }) {
             disabled={busy}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {busy ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting…</> : "Delete permanently"}
+            {busy ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removing…</> : "Remove campaign"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
