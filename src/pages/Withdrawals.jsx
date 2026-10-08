@@ -32,6 +32,7 @@ export default function Withdrawals() {
   const [collectCampaign, setCollectCampaign] = useState(null);
   const [collectAll, setCollectAll] = useState(false);
   const [payoutAccount, setPayoutAccount] = useState(null);
+  const [payoutEnabled, setPayoutEnabled] = useState(false);
   const [payoutBusy, setPayoutBusy] = useState(false);
   const [payoutDisconnectBusy, setPayoutDisconnectBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -50,10 +51,13 @@ export default function Withdrawals() {
     try {
       const me = await base44.auth.me();
       setUser(me);
-      const payout = await base44.functions.invoke("getConnectedPayoutAccount", {}).catch(() => ({ data: null }));
+      const [payout, availability] = await Promise.all([
+        base44.functions.invoke("getConnectedPayoutAccount", {}).catch(() => ({ data: null })),
+        base44.functions.invoke("getFeatureAvailability", {}).catch(() => ({ data: null })),
+      ]);
       setPayoutAccount(payout?.data || null);
-      const all = await base44.entities.Campaign.filter({});
-      const owned = (all || []).filter((c) => c.created_by_id === me.id);
+      setPayoutEnabled(availability?.data?.available?.outbound_payout_execution === true);
+      const owned = await base44.entities.Campaign.filter({ created_by_id: me.id });
       const enriched = [];
       for (const c of owned) {
         const balanceRes = await base44.functions.invoke("getCampaignWithdrawalBalance", { campaign_id: c.id });
@@ -162,9 +166,11 @@ export default function Withdrawals() {
 
         <div className="flex items-start gap-2 text-xs text-stone-600 bg-white rounded-xl border border-stone-200/70 p-3">
           <ShieldCheck className="w-4 h-4 mt-0.5 text-cyan-600 shrink-0" />
-          <p>Fraud protection: a 7-day clearing hold on every donation, one withdrawal per day, payouts only to your verified PayPal email, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a quick manual review.</p>
+          <p>Fraud protection: a 7-day clearing hold on donations, one withdrawal per day without an active subscription, payouts only to the PayPal email you enter and confirm, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a manual review.</p>
         </div>
       </header>
+
+      {!payoutEnabled && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">New payouts are temporarily paused while the live PayPal payout route is being verified. Your cleared balance remains recorded and reserved for you; no funds are lost.</div>}
 
       <section className="rounded-2xl border border-stone-200/70 bg-white shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -223,8 +229,8 @@ export default function Withdrawals() {
                 </div>
                 <div className="flex flex-col gap-2 sm:self-center">
                   <Button onClick={() => setCollectCampaign(c)} variant="outline" className="rounded-xl">Collect & Withdraw</Button>
-                  <Button disabled={c.available <= 0} onClick={() => setActive(c)} className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">
-                    {c.available > 0 ? `Withdraw ${money(c.available)}` : "No settled funds"}
+                  <Button disabled={c.available <= 0 || !payoutEnabled} onClick={() => setActive(c)} className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">
+                    {!payoutEnabled ? "Payouts paused" : c.available > 0 ? `Withdraw ${money(c.available)}` : "No settled funds"}
                   </Button>
                 </div>
               </div>
@@ -248,7 +254,7 @@ export default function Withdrawals() {
                   <p className="text-xs text-stone-500">{w.campaign_title} · {fmtDate(w.created_date)}</p>
                   {w.review_note && <p className="text-xs text-amber-600 mt-1">{w.review_note}</p>}
                 </div>
-                <Button size="sm" onClick={() => approve(w.id)} className="rounded-xl">Approve & pay</Button>
+                <Button size="sm" disabled={!payoutEnabled} onClick={() => approve(w.id)} className="rounded-xl">{payoutEnabled ? "Approve & pay" : "Payouts paused"}</Button>
               </div>
             ))}
           </div>
