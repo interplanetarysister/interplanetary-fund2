@@ -12,8 +12,13 @@ const GENERAL_ROUTES = new Set([
   "/dashboard", "/create", "/connections", "/inbox", "/notifications",
   "/giving", "/ledger", "/withdrawals", "/subscriptions", "/mission",
   "/community", "/institutions", "/discover", "/profile", "/social",
-  "/communications", "/following",
+  "/communications", "/following", "/admin/integrations", "/admin/audit",
+  "/help", "/about", "/contact",
 ]);
+const DETAIL_ROUTES = [
+  /^\/community\/[a-zA-Z0-9_-]{1,128}$/,
+  /^\/institutions\/[a-zA-Z0-9_-]{1,128}$/,
+];
 
 export function safeActionRoute(value) {
   if (typeof value !== "string" || !value.startsWith("/") ||
@@ -22,7 +27,8 @@ export function safeActionRoute(value) {
   try {
     const url = new URL(value, "https://ifund.invalid");
     if (url.origin !== "https://ifund.invalid" || !url.pathname.startsWith("/")) return null;
-    if (GENERAL_ROUTES.has(url.pathname)) return url.pathname + url.search + url.hash;
+    if (GENERAL_ROUTES.has(url.pathname) || DETAIL_ROUTES.some(rule => rule.test(url.pathname)))
+      return url.pathname + url.search + url.hash;
     const detail = /^\/campaign\/([^/]+)$/.exec(url.pathname);
     if (detail && CAMPAIGN_ID.test(detail[1])) {
       const fragment = url.hash.replace(/^#/, "");
@@ -51,10 +57,20 @@ export function campaignActionSection(action = "") {
 
 export function campaignActionDestination({ campaignId, action, title, description, status } = {}) {
   const id = String(campaignId || "").trim();
-  const text = [action, title, description].filter(Boolean).join(" ");
+  const label = [action, title].filter(Boolean).join(" ");
+  const text = [label, description].filter(Boolean).join(" ");
   if (id && CAMPAIGN_ID.test(id)) {
     if (status === "draft") return "/create?draft=" + encodeURIComponent(id);
-    return "/campaign/" + encodeURIComponent(id) + "#" + campaignActionSection(text);
+    if (/\b(reply|respond|message|comment|question|inbox)\b/i.test(label)) {
+      return "/inbox?campaign=" + encodeURIComponent(id);
+    }
+    // The requested action has precedence over incidental words in the
+    // explanatory text. "Improve story" should not open outreach merely
+    // because its description happens to mention outreach.
+    const primary = campaignActionSection(label);
+    const section = primary === "campaign-health"
+      ? campaignActionSection(description) : primary;
+    return "/campaign/" + encodeURIComponent(id) + "#" + section;
   }
   if (/\b(create|start|draft|launch)\b.*\bcampaign\b/i.test(text)) return "/create";
   if (/\b(connect|reconnect)\b.*\b(platform|account)\b/i.test(text)) return "/connections";
