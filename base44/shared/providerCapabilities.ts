@@ -25,6 +25,11 @@ export const CAPABILITY_SEED = [
 
 export const REGISTRY_VERSION = '2026-10-v1';
 
+// Runtime-backed direct publishing adapters that are safe to execute in the
+// current Base44 build. Stored research rows may verify/test these adapters,
+// but cannot manufacture a direct-publish implementation for another platform.
+const DIRECT_PUBLISH_RUNTIME_PLATFORMS = new Set(['bluesky', 'linkedin']);
+
 // Fail-closed fallback for any platform not present in the SEED or storage.
 // Unknown capability must never be treated as verified.
 const FALLBACK_CAPABILITY = {
@@ -59,6 +64,7 @@ export async function resolveCapabilities(sr) {
     for (const key of ['campaign_import', 'campaign_sync', 'balance_read', 'api_transfer', 'authenticated_browser']) {
       merged[key] = Boolean(base[key]) && Boolean(merged[key]);
     }
+    merged.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS.has(String(row.platform || '').toLowerCase()) && merged.direct_publish_verified === true;
     map.set(row.platform, merged);
   }
   return [...map.values()];
