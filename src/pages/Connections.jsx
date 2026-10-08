@@ -214,6 +214,7 @@ export default function Connections() {
       const fresh = pending && pending.userId === me.id && Date.now() - pending.startedAt < 20 * 60 * 1000;
       if (pending && !fresh) localStorage.removeItem("ifund_pending_platform_connection");
       if (fresh && pending.step === "consent_pending" && pending.connectionId) {
+        setDialog(null);
         setPendingOAuthConsent(pending);
       } else if (fresh && pending.step !== "consent_pending") {
         try {
@@ -223,6 +224,7 @@ export default function Connections() {
           if (data?.authorization_present && data?.connection?.id) {
             const next = { ...pending, step: "consent_pending", connectionId: data.connection.id };
             localStorage.setItem("ifund_pending_platform_connection", JSON.stringify(next));
+            setDialog(null);
             setPendingOAuthConsent(next);
             setConnectionNotice(null);
           } else {
