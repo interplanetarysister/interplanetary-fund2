@@ -15,7 +15,7 @@ const update=generateCampaignUpdateDraft({id:'campaign23',title:'Community Repai
 assert.match(update.title,/Community Repairs/);
 assert.match(update.content,/Supplies have arrived/);
 assert.match(update.content,/https:\/\/interplanetaryfund\.com\/campaign\/campaign23/);
-assert.doesNotMatch(generateCampaignUpdateDraft({id:'campaign23',title:'Community Repairs'},'').content,/received \$|finished|raised \$/,i);
+assert.doesNotMatch(generateCampaignUpdateDraft({id:'campaign23',title:'Community Repairs'},'').content,/received \$|finished|raised \$/i);
 const oldNavigator=globalThis.navigator;
 try {
  Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard:{writeText:async()=>{}}}});
