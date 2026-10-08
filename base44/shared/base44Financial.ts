@@ -121,15 +121,103 @@ export async function recordCanonicalDonation(sr, args) {
 }
 
 export async function recordCanonicalExternalObservation(sr, args) {
-  const prior = await one(sr, args.operationKey);
-  if (prior) return { operationId: prior.id, created: false };
-  const op = await sr.entities.FinancialOperation.create({
-    operation_key: args.operationKey, operation_type: 'external_observation', state: 'applied',
-    campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
-    provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
-    gross_amount: Number(args.amount || args.grossAmount || 0)
-  });
-  return { operationId: op.id, created: true };
+  const amount = Number(args.amount || args.grossAmount || 0);
+  const currency = String(args.currency || '').trim().toUpperCase();
+  const connectionId = String(args.externalConnectionId || args.providerAccountId || '');
+  if (!(amount > 0)) throw new Error('External observation amount must be positive.');
+  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('External observation currency must be a valid ISO code.');
+  if (!connectionId) throw new Error('External observation requires a connection id.');
+
+  let op = await one(sr, args.operationKey);
+  const operationCreated = !op;
+  if (!op) {
+    op = await sr.entities.FinancialOperation.create({
+      operation_key: args.operationKey, operation_type: 'external_observation', state: 'applied',
+      campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
+      provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
+      gross_amount: amount,
+    });
+  } else {
+    const sameIdentity =
+      op.operation_type === 'external_observation' &&
+      String(op.campaign_id || '') === String(args.campaignId || '') &&
+      String(op.campaign_owner_user_id || '') === String(args.campaignOwnerUserId || '') &&
+      String(op.provider || '') === String(args.provider || '') &&
+      String(op.provider_transaction_id || '') === String(args.providerTransactionId || '') &&
+      Math.abs(Number(op.gross_amount || 0) - amount) < 0.01;
+    if (!sameIdentity) throw new Error('External observation idempotency conflict requires reconciliation.');
+  }
+
+  let mirrors = await sr.entities.ExternalFundObservation.filter({ operation_key: args.operationKey }).catch(() => []);
+  let observation = mirrors?.[0] || null;
+  if (!observation) {
+    observation = await sr.entities.ExternalFundObservation.create({
+      operation_key: args.operationKey,
+      provider: String(args.provider || ''),
+      provider_transaction_id: String(args.providerTransactionId || ''),
+      external_connection_id: connectionId,
+      campaign_id: String(args.campaignId || ''),
+      beneficiary_user_id: String(args.campaignOwnerUserId || ''),
+      amount,
+      currency,
+      observed_at: new Date().toISOString(),
+      settlement_state: 'external',
+      description: 'Provider-verified external observation. Not IFund-held or withdrawable until independently settled into the IFund holding account.',
+    });
+  } else {
+    const sameMirror =
+      String(observation.external_connection_id || '') === connectionId &&
+      String(observation.campaign_id || '') === String(args.campaignId || '') &&
+      String(observation.beneficiary_user_id || '') === String(args.campaignOwnerUserId || '') &&
+      String(observation.provider || '') === String(args.provider || '') &&
+      String(observation.provider_transaction_id || '') === String(args.providerTransactionId || '') &&
+      String(observation.currency || '').toUpperCase() === currency &&
+      Math.abs(Number(observation.amount || 0) - amount) < 0.01;
+    if (!sameMirror) throw new Error('External observation mirror conflict requires reconciliation.');
+  }
+
+  // Converge accidental duplicate mirrors only when they represent the exact
+  // same provider observation. Keep conflicting evidence for manual review.
+  if ((mirrors || []).length > 1) {
+    const ordered = [...mirrors].sort((a, b) => {
+      const at = new Date(a.created_date || 0).getTime();
+      const bt = new Date(b.created_date || 0).getTime();
+      if (at !== bt) return at - bt;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+    observation = ordered[0];
+    for (const duplicate of ordered.slice(1)) {
+      const same =
+        duplicate.external_connection_id === observation.external_connection_id &&
+        duplicate.campaign_id === observation.campaign_id &&
+        duplicate.beneficiary_user_id === observation.beneficiary_user_id &&
+        duplicate.provider === observation.provider &&
+        duplicate.provider_transaction_id === observation.provider_transaction_id &&
+        String(duplicate.currency || '').toUpperCase() === String(observation.currency || '').toUpperCase() &&
+        Math.abs(Number(duplicate.amount || 0) - Number(observation.amount || 0)) < 0.01;
+      if (same) await sr.entities.ExternalFundObservation.delete(duplicate.id).catch(() => {});
+    }
+  }
+
+  const connectionRows = await sr.entities.ExternalFundObservation.filter({
+    external_connection_id: connectionId,
+    campaign_id: String(args.campaignId || ''),
+    beneficiary_user_id: String(args.campaignOwnerUserId || ''),
+    currency,
+  }, '-created_date', 5000).catch(() => []);
+  if (connectionRows.length >= 5000) throw new Error('External observation history exceeds the safe batch size.');
+  const liveRows = connectionRows.filter((row) => row.settlement_state !== 'reversed');
+  const observedTotal = round2(liveRows.reduce((sum, row) => sum + Number(row.amount || 0), 0));
+  const observedCount = liveRows.length;
+
+  return {
+    operationId: op.id,
+    observationId: observation.id,
+    created: operationCreated,
+    observedTotal,
+    observedCount,
+    currency,
+  };
 }
 
 export async function reserveCanonicalWithdrawal(sr, args) {
