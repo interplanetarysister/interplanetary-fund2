@@ -8,6 +8,7 @@ import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shar
 import { reconcileCanonicalCampaignProjection } from '../../shared/base44Financial.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 import { resolveStripeSubscriptionPrice } from '../../shared/stripeSubscriptionCatalog.ts';
+import { PREMIUM_DAY_PASS_PRICE_ID, DAY_PASS_DURATION_MS, verifiedDayPassPrice } from '../../shared/premiumAccessCatalog.ts';
 
 function webhookOrder(rows) {
   return [...(rows || [])].sort((a, b) => {
@@ -238,6 +239,59 @@ export default async function(req) {
       const session = event.data.object;
       const m = session.metadata || {};
 
+      // Premium day-pass access is separate from campaign donations and subscriptions.
+      // Every entitlement must follow a signed, PAID Checkout event and a fresh
+      // provider GET. Delayed asynchronous payments are not credited prematurely.
+      if (m.ifund_purchase === 'premium_day_pass') {
+        if (session.mode !== 'payment' || session.livemode !== true ||
+            !m.user_id || session.client_reference_id !== m.user_id) {
+          throw new Error('Invalid IFund day-pass session ownership.');
+        }
+        const confirmed = await stripe.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] });
+        if (confirmed.payment_status !== 'paid') {
+          await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete',
+            processed_at: new Date().toISOString(), last_error: '' });
+          return Response.json({ received: true, payment_pending: true });
+        }
+        const items = await stripe.checkout.sessions.listLineItems(session.id, { limit: 10 });
+        const price = await stripe.prices.retrieve(PREMIUM_DAY_PASS_PRICE_ID);
+        const onlyLine = items.data?.length === 1 && !items.has_more && items.data[0];
+        const intent = typeof confirmed.payment_intent === 'object'
+          ? confirmed.payment_intent
+          : confirmed.payment_intent ? await stripe.paymentIntents.retrieve(confirmed.payment_intent) : null;
+        const matches = verifiedDayPassPrice(price) &&
+          confirmed.client_reference_id === m.user_id &&
+          confirmed.metadata?.ifund_purchase === 'premium_day_pass' &&
+          confirmed.metadata?.user_id === m.user_id &&
+          confirmed.currency === 'usd' && confirmed.amount_total === 100 &&
+          onlyLine?.price?.id === PREMIUM_DAY_PASS_PRICE_ID && onlyLine.quantity === 1 &&
+          intent?.livemode === true && intent?.status === 'succeeded' &&
+          intent?.currency === 'usd' && intent?.amount_received === 100 &&
+          intent?.metadata?.user_id === m.user_id &&
+          intent?.metadata?.ifund_purchase === 'premium_day_pass';
+        if (!matches) throw new Error('Day-pass payment or Stripe price could not be verified.');
+        const purchaser = await sr.entities.User.get(m.user_id).catch(() => null);
+        if (!purchaser || purchaser.role === 'admin' ||
+            purchaser.account_deletion_pending || purchaser.account_status === 'disabled') {
+          throw new Error('Day-pass account is not eligible for activation.');
+        }
+        if (purchaser.stripe_day_pass_checkout_id !== confirmed.id) {
+          const expiresAt = new Date(confirmed.created * 1000 + DAY_PASS_DURATION_MS).toISOString();
+          // Do not overwrite a later verified pass with an older delayed event.
+          const existingExpiry = Date.parse(String(purchaser.premium_day_pass_expires_at || '')) || 0;
+          if (Date.parse(expiresAt) > existingExpiry) {
+            await sr.entities.User.update(purchaser.id, {
+              premium_day_pass_expires_at: expiresAt,
+              stripe_day_pass_checkout_id: confirmed.id,
+              stripe_day_pass_payment_intent: intent.id,
+            });
+          }
+        }
+        await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete',
+          processed_at: new Date().toISOString(), last_error: '' });
+        return Response.json({ received: true, verified: true, purchase: 'premium_day_pass' });
+      }
+
       // AI plan checkout. This is not a campaign donation, so it remains a
       // non-financial application side effect for this particular integrity boundary.
       if (m.subscription_tier) {
@@ -329,6 +383,16 @@ export default async function(req) {
       }
       const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
       if (paymentIntentId && /^pi_[A-Za-z0-9]+$/.test(paymentIntentId)) {
+        // Refunded or disputed day passes lose access; never modify donations
+        // or a newer pass from an unrelated PaymentIntent.
+        const passHolders = await sr.entities.User.filter({ stripe_day_pass_payment_intent: paymentIntentId });
+        for (const holder of passHolders || []) {
+          if (holder.role !== 'admin' && holder.stripe_day_pass_payment_intent === paymentIntentId) {
+            await sr.entities.User.update(holder.id, {
+              premium_day_pass_expires_at: new Date().toISOString(),
+            });
+          }
+        }
         const holds = await sr.entities.StripeReversalHold.filter({ payment_intent_id: paymentIntentId });
         if (!(holds || []).length) {
           await sr.entities.StripeReversalHold.create({
