@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Joins or leaves a community. The membership record is written as the user so
 // the author owns it under RLS, and the community's member_count is updated as
@@ -7,8 +8,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Sign in to join or leave a community.' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { action, community_id } = await req.json();
     if (!community_id) return Response.json({ error: 'Missing community_id' }, { status: 400 });
