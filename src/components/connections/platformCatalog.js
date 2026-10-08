@@ -235,10 +235,11 @@ export const SOCIAL_PLATFORMS = [
     kind: "social",
     color: "#1877f2",
     icon: "👍",
-    tagline: "Sign in with Facebook to publish campaign updates to your page.",
+    tagline: "Connect a Facebook Page to publish campaign updates after Page permission is verified.",
     setupKind: "oauth",
+    integrationType: "facebook_pages",
     steps: [
-      { id: "oauth", label: "Sign in with Facebook", hint: "Facebook will ask you to sign in and approve the connection. We never see your password." },
+      { id: "oauth", label: "Connect Facebook Pages", hint: "Authorize a Page you manage and approve publishing permission. Facebook login alone does not grant IFund Page posting access." },
       { id: "auto",  label: "Choose how much help you want", hint: "Choose whether Interplanetary Fund may share for you, ask first, make drafts, or do nothing." },
     ],
     api: "Connect your account to share updates where available.",
