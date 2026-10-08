@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
+import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 const COMMON_IF_CAPABILITIES = [
   'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
@@ -104,25 +105,26 @@ export default async function(req) {
     const requestedDisplayName = String(body.display_name || pairedCampaign?.title || existing?.display_name || key).trim().slice(0, 200);
     const now = new Date().toISOString();
     const confirmed = providerCapabilities(oauth);
+    const unifiedObo = hasUnifiedOboConsent(user);
     const data = {
       platform: key,
       kind: cfg.kind,
       display_name: requestedDisplayName || key,
       external_url: existing?.external_url || '',
       campaign_id: requestedCampaignId || undefined,
-      automation_mode: 'manual',
+      automation_mode: unifiedObo ? 'auto' : 'manual',
       obo_consent: {
-        granted: false,
-        granted_at: null,
+        granted: unifiedObo,
+        granted_at: unifiedObo ? (user.ai_obo_consent?.decided_at || now) : null,
         permission_version: '2026-10-unified-obo-v1',
         requested_capabilities: cfg.requestedCapabilities,
-        // Never copy desired capabilities into granted/provider capabilities.
-        // Unknown remains unknown until the connector/provider reports it.
-        granted_capabilities: [],
+        // Provider-reported capabilities remain authoritative. Unified IFund
+        // authorization permits use of those capabilities but never invents them.
+        granted_capabilities: unifiedObo ? confirmed : [],
         provider_capabilities: confirmed,
       },
       agent_access: {
-        shared_with_agents: false,
+        shared_with_agents: unifiedObo,
         automation_enabled: false,
       },
       // OAuth token presence proves authorization material exists. A harmless
@@ -131,7 +133,7 @@ export default async function(req) {
       verification_status: 'unverified',
       capability_status: confirmed.length ? 'confirmed' : 'unknown',
       external_data_source: existing?.external_data_source || 'owner_reported',
-      last_error: 'Provider authorization received; AI permissions and a live provider check are pending.',
+      last_error: 'Provider authorization received; live provider verification is pending.',
       history: [...(existing?.history || []), {
         at: now,
         event: 'oauth_authorized',
@@ -146,7 +148,8 @@ export default async function(req) {
     return Response.json({
       configured: true, authorization_present: true, connected: false,
       provider_verified: false, verification_required: true,
-      ai_consent_required: true,
+      ai_consent_required: false,
+      ai_authorized: unifiedObo,
       // No credentials are returned to the client.
       connection: { id: saved.id, platform: saved.platform, status: saved.status, campaign_id: saved.campaign_id || '', display_name: saved.display_name || '' },
     });
