@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { subscriptionPrices, subscriptionPrice, providerPriceIsExact, CATALOG_VERSION } from '../../shared/subscriptionCatalog.js';
 import { paypalBillingRequest, IFUND_PAYPAL_ACCOUNT_REF, getPayPalBillingPlan } from '../../shared/paypalSubscriptions.ts';
 
@@ -7,8 +8,10 @@ import { paypalBillingRequest, IFUND_PAYPAL_ACCOUNT_REF, getPayPalBillingPlan } 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const admin = await base44.auth.me();
-    if (!admin || admin.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const admin = guard.user;
+    if (admin.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
     if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
     const sr = base44.asServiceRole;
     const catalog = subscriptionPrices();
