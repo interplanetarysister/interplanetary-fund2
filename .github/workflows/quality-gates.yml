@@ -159,6 +159,9 @@ jobs:
       - name: Payment and financial-integrity contracts
         run: npm run test:payments
 
+      - name: Stripe premium trial, day pass, and discount contracts
+        run: npm run verify:premium-access
+
       - name: PayPal campaign checkout contract
         run: node scripts/verify-paypal-checkout-contract.mjs
 

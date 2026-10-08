@@ -20,7 +20,7 @@ export const PLANS = [
       "On-demand AI coaching tips",
       "Single campaign at a time",
     ],
-    monthly: { amount: SUBSCRIPTION_PRICING.basic.monthly, stripe_price_id: "price_1Tz8iSEkntycHB4NlQlYd0Gs" },
+    monthly: { amount: SUBSCRIPTION_PRICING.basic.monthly, stripe_price_id: "price_1UOFDfGg5Dyxp347qGlvjDcY" },
     annual: { amount: SUBSCRIPTION_PRICING.basic.annual, stripe_price_id: "price_1Tz8iSEkntycHB4N8J7EXq42" },
   },
   {

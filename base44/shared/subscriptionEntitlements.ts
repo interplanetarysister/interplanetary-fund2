@@ -23,11 +23,16 @@ export function effectiveSubscription(user: any) {
     };
   }
   const status = String(user?.subscription_status || 'inactive');
+  const trialIsExpired = status === 'trialing' && Boolean(user?.premium_trial_started_at) &&
+    !(Date.parse(String(user?.trial_end || '')) > Date.now());
+  const recurringActive = status === 'active' || (status === 'trialing' && !trialIsExpired);
+  const dayPassActive = Date.parse(String(user?.premium_day_pass_expires_at || '')) > Date.now();
+  const tier = recurringActive ? String(user?.subscription_tier || 'free') : dayPassActive ? 'basic' : 'free';
   return {
-    tier: String(user?.subscription_tier || 'free'),
-    level: SUBSCRIPTION_LEVEL[String(user?.subscription_tier || 'free')] || 0,
-    status,
-    active: status === 'active' || status === 'trialing',
+    tier,
+    level: SUBSCRIPTION_LEVEL[tier] || 0,
+    status: recurringActive ? status : dayPassActive ? 'day_pass' : trialIsExpired ? 'expired' : status,
+    active: recurringActive || dayPassActive,
     adminGranted: false,
   };
 }

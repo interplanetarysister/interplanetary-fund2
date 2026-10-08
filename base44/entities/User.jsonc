@@ -130,6 +130,10 @@
     "stripe_customer_id": {
       "type": "string"
     },
+    "stripe_subscription_id": {
+      "type": "string",
+      "description": "Stripe subscription ID verified from Checkout, bound to this user for renewals and cancellation."
+    },
     "paypal_subscription_id": {
       "type": "string",
       "description": "Provider verified PayPal billing subscription. Never populated from a browser-only success redirect."
@@ -152,6 +156,24 @@
     "trial_end": {
       "type": "string",
       "format": "date-time"
+    },
+    "premium_trial_started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Permanent record that the one-time card-free introductory trial was redeemed."
+    },
+    "premium_day_pass_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Server-verified end of the 24-hour Stripe premium day pass."
+    },
+    "stripe_day_pass_checkout_id": {
+      "type": "string",
+      "description": "Most recently verified Stripe Checkout Session credited for a premium pass."
+    },
+    "stripe_day_pass_payment_intent": {
+      "type": "string",
+      "description": "PaymentIntent behind the current premium pass, for refund/dispute revocation."
     },
     "account_deletion_pending": {
       "type": "boolean",

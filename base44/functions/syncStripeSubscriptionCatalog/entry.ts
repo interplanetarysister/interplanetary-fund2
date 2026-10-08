@@ -25,8 +25,15 @@ export default async function(req: Request) {
       const original = stripePriceFor(expected.tier, expected.interval);
       if (saved?.plan_id || original) {
         const id = String(saved?.plan_id || original);
-        const price = await stripe.prices.retrieve(id);
-        if (!verifiedStripePrice(price, expected)) throw new Error('An existing Stripe price conflicts with published IFund pricing.');
+        // A legacy, hard-coded ID may belong to a different merchant account.
+        // Never trust an absent historical price, but do not let that stale ID
+        // prevent an admin from provisioning the correct IFund live catalog.
+        const price = await stripe.prices.retrieve(id).catch((error: any) => {
+          if (saved?.plan_id || error?.statusCode !== 404) throw error;
+          return null;
+        });
+        if (price && !verifiedStripePrice(price, expected)) throw new Error('An existing Stripe price conflicts with published IFund pricing.');
+        if (price) {
         const product = typeof price.product === 'string' ? price.product : price.product?.id;
         if (!product) throw new Error('Existing Stripe price has no product.');
         cachedProducts[expected.tier] = product;
@@ -39,6 +46,7 @@ export default async function(req: Request) {
         else await sr.entities.SubscriptionPlanMapping.create(mapping);
         result.push({ tier: expected.tier, interval: expected.interval, amount_cents: expected.amount_cents, status: 'reused_verified' });
         continue;
+        }
       }
       let productId = cachedProducts[expected.tier];
       if (!productId) {
