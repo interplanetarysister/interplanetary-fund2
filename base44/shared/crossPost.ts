@@ -21,11 +21,11 @@ const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts,
 
 // Filters a user's connections to those eligible for cross-posting for a given
 // campaign: same owner, campaign-scoped or global, not manual mode.
-export function eligibleConnections(connections, campaign) {
+export function eligibleConnections(connections, campaign, includeManual = false) {
   return (connections || []).filter((c) =>
     c.status === 'connected' &&
     c.verification_status === 'verified' &&
-    c.automation_mode !== 'manual' &&
+    (includeManual || c.automation_mode !== 'manual') &&
     c.created_by_id === campaign.created_by_id &&
     (!c.campaign_id || c.campaign_id === campaign.id)
   );
@@ -48,15 +48,15 @@ export async function autoPublishAuthorization(sr, user, campaign) {
 // Returns { generated, published, pending, drafts, failed, skipped, authorization_blocked }.
 export async function generateAndDistribute(opts) {
   const {
-    base44, sr, user, campaign, connections, prompt, sourceUpdateId,
+    base44, sr, user, campaign, connections, prompt, sourceUpdateId, explicitPublish = false,
   } = opts;
 
   const result = { generated: 0, published: 0, pending: 0, drafts: 0, failed: 0, skipped: 0, authorization_blocked: '' };
 
-  const targets = eligibleConnections(connections, campaign);
-  const blockedReason = await autoPublishAuthorization(sr, user, campaign);
-  const canAuto = !blockedReason;
-  result.authorization_blocked = canAuto ? '' : blockedReason;
+  const targets = eligibleConnections(connections, campaign, explicitPublish);
+  const blockedReason = explicitPublish ? null : await autoPublishAuthorization(sr, user, campaign);
+  const canAuto = explicitPublish || !blockedReason;
+  result.authorization_blocked = blockedReason || '';
 
   if (!targets.length) return result;
 
@@ -123,12 +123,12 @@ Return JSON only.`;
     const capability = await resolveCapabilityForPlatform(sr, conn.platform);
     const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
     const shouldAutoPublish = canAuto &&
-      conn.automation_mode === 'auto' &&
+      (explicitPublish || conn.automation_mode === 'auto') &&
       directPublishVerified &&
       (canAutoPublish(conn) || canPublishViaConnector(conn.platform));
 
     if (shouldAutoPublish) {
-      const obo = await assertExternalAgentAction(sr, {
+      const obo = explicitPublish ? { ok: true } : await assertExternalAgentAction(sr, {
         ownerUser: user,
         ownerUserId: campaign.created_by_id,
         campaign,
@@ -189,9 +189,9 @@ Return JSON only.`;
       source_update_id: sourceUpdateId || undefined,
       content: post.content,
       hashtags: post.hashtags || [],
-      status: conn.automation_mode === 'draft' ? 'draft' : 'pending_approval',
+      status: explicitPublish ? 'approved' : conn.automation_mode === 'draft' ? 'draft' : 'pending_approval',
     });
-    if (conn.automation_mode === 'draft') result.drafts++;
+    if (!explicitPublish && conn.automation_mode === 'draft') result.drafts++;
     else result.pending++;
   }
 
