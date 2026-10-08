@@ -6,7 +6,7 @@ import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "@/lib/prelaunch";
+import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 
@@ -32,12 +32,13 @@ const STORY = [
 ];
 
 export default function Home() {
+  const platformOnlyMode = !usePublicCampaignFundraising();
   const { isAuthenticated } = useAuth();
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div className="min-h-dvh bg-background">
-      {PRELAUNCH_MODE && (
+      {platformOnlyMode && (
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-4">
           <PrelaunchNotice />
         </div>
