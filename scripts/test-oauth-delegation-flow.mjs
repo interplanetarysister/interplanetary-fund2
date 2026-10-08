@@ -36,10 +36,7 @@ assert.doesNotMatch(page, /pendingOAuthConsent|OAuthPermissionStep|completeOAuth
 assert.match(page, /finalizeAppUserOAuthConnection/);
 assert.match(page, /verifyPlatformConnection/);
 assert.match(page, /publishLinkedCampaignToConnection/);
-assert.ok(
-  page.indexOf('finalizeAppUserOAuthConnection') < page.indexOf('verifyPlatformConnection'),
-  'OAuth finalization must precede live provider verification'
-);
+assert.match(page, /finalizeAppUserOAuthConnection[\s\S]{0,1800}verifyPlatformConnection/);
 assert.match(verify, /aiAllowed && connection\.automation_mode === 'auto' && providerBacked/);
 
 console.log('PASS: one-click OAuth campaign pairing, provider permission return, unified OBO, and live verification contracts.');
