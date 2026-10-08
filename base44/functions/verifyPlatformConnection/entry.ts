@@ -118,8 +118,11 @@ export default async function(req) {
       return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
-      const reauth = reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
-      const message = reauth ? 'Provider authorization needs attention.' : SAFE_UNAVAILABLE;
+      const permissionMissing = reason === 'facebook_page_publish_permission_required';
+      const reauth = permissionMissing || reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
+      const message = permissionMissing
+        ? 'Facebook Page publishing permission is missing. Reconnect and approve Page access.'
+        : reauth ? 'Provider authorization needs attention.' : SAFE_UNAVAILABLE;
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'error', verification_status: 'unverified', last_error: message,
         agent_access: {
