@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
@@ -13,6 +14,8 @@ import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const sr = base44.asServiceRole;
     let user = null;
     try { user = await base44.auth.me(); } catch (_) { /* service-to-service call: no user context */ }

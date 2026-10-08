@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Owner-scoped giving history. The browser never receives pending donations or
 // provider/ledger internals and therefore cannot use client filtering as an
@@ -6,6 +7,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Authentication required.' }, { status: 401 });
 

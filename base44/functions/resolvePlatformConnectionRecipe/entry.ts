@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { staticRecipe, orderedTransports, requiresRouteRediscovery } from '../../shared/platformConnectionRecipes.ts';
 
 const seedFor=(platform:string,operation:string)=>staticRecipe(platform,operation);
@@ -6,7 +7,7 @@ const order=(r:any)=>orderedTransports(r);
 const clean=(v:unknown,max=300)=>String(v??'').replace(/[\r\n\t]+/g,' ').trim().slice(0,max);
 
 export default async function handler(req: Request) {
-  const base44=createClientFromRequest(req);
+  const base44=createClientFromRequest(req); const activeAccount = await assertActiveAccount(base44); if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
   try {
     const user=await base44.auth.me();
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
