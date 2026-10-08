@@ -1,5 +1,5 @@
 import { secrets } from 'base44:runtime';
-import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady } from '../../shared/paypal.ts';
+import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady, isLivePayPalPayoutReady } from '../../shared/paypal.ts';
 
 // Public-safe payment capability snapshot. UI must use this instead of
 // inferring provider availability from rendered components or repository code.
@@ -10,6 +10,7 @@ export default async function (_req) {
   const stripeSecret = secrets.get('STRIPE_SECRET_KEY');
   const stripeWebhookSecret = secrets.get('STRIPE_WEBHOOK_SECRET');
   const paypalApiLive = Boolean(paypalClientId && paypalClientSecret && paypalMode === 'live' && await isLivePayPalRestReady());
+  const paypalPayoutLive = paypalApiLive && await isLivePayPalPayoutReady();
 
   return Response.json({
     paypal: {
@@ -18,6 +19,7 @@ export default async function (_req) {
       donation_link_available: true,
       api_configured: Boolean(paypalClientId && paypalClientSecret),
       api_live: paypalApiLive,
+      payout_api_live: paypalPayoutLive,
       mode: paypalMode,
       account_ref: IFUND_PAYPAL_ACCOUNT_REF,
       account_type: IFUND_PAYPAL_ACCOUNT_TYPE,
