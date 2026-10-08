@@ -8,6 +8,8 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Sign in to see subscription payments.' }, { status: 401 });
     const catalog = subscriptionPrices();
+    const approvals = await base44.asServiceRole.entities.NonprofitSubscriptionApproval.filter({ user_id: user.id }).catch(() => []);
+    const nonprofitApproved = (approvals || []).some(row => row.status === 'approved');
     const rows = await base44.asServiceRole.entities.SubscriptionPlanMapping.filter({
       provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF,
     }).catch(() => []);
@@ -21,11 +23,12 @@ export default async function(req) {
       provider: 'paypal',
       live_configured: live,
       webhook_configured: webhookReady,
+      nonprofit_approved: nonprofitApproved,
       plans: catalog.map(price => {
         const row = (rows || []).find(item => item.tier === price.tier && item.interval === price.interval &&
           item.catalog_version === price.version && item.amount_cents === price.amount_cents && item.currency === 'USD');
         return { tier: price.tier, interval: price.interval, amount_cents: price.amount_cents,
-          available: !!(live && webhookReady && row?.plan_id), currency: 'USD' };
+          available: !!(live && webhookReady && row?.plan_id && (price.tier !== 'nonprofit' || nonprofitApproved)), currency: 'USD' };
       }),
     });
   } catch (error) {
