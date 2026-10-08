@@ -6,11 +6,17 @@ import { readFileSync } from 'node:fs';
 
 const embed=buildCampaignEmbed({id:'campaign23',title:'People & Community <help>'},true);
 assert.equal(embed.url,'https://interplanetaryfund.com/campaign/campaign23');
-assert.match(embed.card,/iframe src="https:\/\/interplanetaryfund\.com\/embed\/campaign\/campaign23"/);
+assert.match(embed.card,/href="https:\/\/interplanetaryfund\.com\/campaign\/campaign23"/);
+assert.doesNotMatch(embed.card,/<iframe|<script/i,'Embeds must not require a frame-capable host');
 assert.match(embed.card,/People &amp; Community &lt;help&gt;/);
 assert.match(embed.button,/View campaign on Interplanetary Fund/);
 assert.doesNotMatch(embed.card,/src="http:\/\//);
 assert.equal(buildCampaignEmbed({id:'../unsafe'},true).card,'');
+assert.match(embed.card,/src="https:\/\/interplanetaryfund\.com\/ifund-logo.jpg"/);
+assert.doesNotMatch(buildCampaignEmbed({id:'safe',title:'<img src=x onerror=alert(1)>',cover_image_url:'javascript:alert(1)'},true).card,/<img src=x onerror/);
+assert.doesNotMatch(buildCampaignEmbed({id:'safe',cover_image_url:'javascript:alert(1)'},true).card,/src="javascript:/);
+assert.doesNotMatch(readFileSync(new URL('../src/components/campaigns/ShareCampaignKit.jsx',import.meta.url),'utf8'),/<iframe/i);
+
 const update=generateCampaignUpdateDraft({id:'campaign23',title:'Community Repairs',summary:'Working together'},'Supplies have arrived.');
 assert.match(update.title,/Community Repairs/);
 assert.match(update.content,/Supplies have arrived/);
