@@ -121,7 +121,15 @@ assert.match(connectDialog, /Ask IFund to help set up a new account/);
 assert.doesNotMatch(connectDialog, /sharedAgentConsent/);
 assert.doesNotMatch(connectionsPage, /shared_agent_consent|sharedAgentConsent/);
 assert.doesNotMatch(finalizeOauth, /shared_agent_consent/);
-assert.match(finalizeOauth, /user\.ai_obo_consent\?\.granted === true/);
+// Per-account AI consent is requested AFTER provider OAuth and not inferred
+// from an earlier global user grant.
+assert.doesNotMatch(finalizeOauth, /sharedAgentConsent/);
+assert.match(finalizeOauth, /ai_consent_required: true/);
+const oauthGrant = read('base44/functions/completeOAuthConnection/entry.ts');
+assert.match(oauthGrant, /typeof allowAi !== 'boolean'/);
+assert.match(oauthGrant, /getCurrentAppUserConnection/);
+assert.match(oauthGrant, /granted: allowAi/);
+assert.match(oauthGrant, /automation_enabled: false/);
 assert.match(verifyConnection, /completeManagedRepairDelegations/);
 assert.match(verifyConnection, /user\?\.ai_obo_consent\?\.granted !== true/);
 assert.match(verifyConnection, /delegation\?\.consent_version/);
