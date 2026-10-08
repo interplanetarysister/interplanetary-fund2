@@ -85,6 +85,25 @@ export default function Subscriptions() {
     }
   };
 
+  const cancelPayPal = async () => {
+    if (!window.confirm("Cancel this PayPal subscription? Your paid IFund plan will end when PayPal confirms cancellation.")) return;
+    setError("");
+    setSubscribing("cancel");
+    try {
+      const { data } = await base44.functions.invoke("cancelPayPalSubscription", {});
+      if (data?.ok) {
+        setNotice("PayPal confirmed that your subscription is canceled.");
+        await refresh();
+      } else {
+        setNotice("Cancellation is being confirmed by PayPal. Check your status again shortly.");
+      }
+    } catch {
+      setError("Cancellation was not confirmed. Check your PayPal account before trying again.");
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
   const setupBusinessBilling = async () => {
     setError("");
     setNotice("");
@@ -151,6 +170,12 @@ export default function Subscriptions() {
           <div>
             <p className="text-sm text-stone-500">Your current plan</p>
             <p className="font-display text-lg text-stone-900">{current.name}</p>
+            {user.subscription_provider === "paypal" && (
+              <button type="button" onClick={cancelPayPal} disabled={subscribing !== null}
+                className="mt-2 text-sm text-red-700 underline underline-offset-2 disabled:opacity-50">
+                Cancel PayPal subscription
+              </button>
+            )}
           </div>
           <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-white">{subscription.adminGranted ? "Admin · permanent" : subscription.status}</Badge>
         </div>
