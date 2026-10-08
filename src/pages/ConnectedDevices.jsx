@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ShieldOff, Smartphone } from "lucide-react";
+import DevicePairingSelfTest from "@/components/devices/DevicePairingSelfTest";
 
 const DESCRIPTIONS = {
   "identity:read": "IFund identity",
@@ -54,6 +55,7 @@ export default function ConnectedDevices() {
           <RefreshCw className="mr-1 h-4 w-4" /> Refresh
         </Button>
       </div>
+      <DevicePairingSelfTest onChanged={reload} />
       {error && <p role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
       {notice && <p role="status" className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{notice}</p>}
       {loading ? <p className="mt-6 text-slate-600">Loading your devices…</p> : devices.length===0 ? (
