@@ -46,6 +46,7 @@ export function campaignActionSection(action = "") {
   const text = String(action || "").toLowerCase();
   if (/\b(update|progress|milestone|announcement|news|supporter update)\b/.test(text)) return "campaign-updates";
   if (/\b(outreach|engagement|audience|donor discovery|contact supporters)\b/.test(text)) return "campaign-outreach";
+  if (/\b(share link|embed|qr code|copy link|share campaign)\b/.test(text)) return "campaign-share";
   if (/\b(post|posting|publish to|social|cross.platform|distribution|broadcast|share|promot)\b/.test(text))
     return "campaign-distribution";
   if (/\b(donation|funding|fundraiser|payment|raise funds|donor count)\b/.test(text)) return "campaign-funding";
