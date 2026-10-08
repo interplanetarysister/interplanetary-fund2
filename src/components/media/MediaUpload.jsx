@@ -49,6 +49,7 @@ export default function MediaUpload({
     setError("");
     try {
       const result = await improveUploadedPhoto(base44, source);
+      if (!originalUrl) setOriginalUrl(source);
       setIfundUrl(result.url);
       onChange(result.url);
     } catch {
