@@ -47,6 +47,10 @@ export default function SocialButtons({ returnTo, label = "Continue with" }) {
           Facebook
         </Button>
       </div>
+      <p className="text-xs text-muted-foreground text-center">
+        Social sign-in opens your IFund account. To publish to Facebook Pages,
+        connect Facebook separately after signing in.
+      </p>
     </div>
   );
 }
