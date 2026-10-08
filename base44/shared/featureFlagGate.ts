@@ -4,7 +4,7 @@
 export const FEATURE_SCOPES: Record<string, string> = {
   public_campaign_fundraising: 'global',
   payment_checkout_enabled: 'global',
-  paypal_checkout: 'global', // Respect current existing administrator record.
+  paypal_checkout: 'beta', // Canonical scope, normalized from historical record.
   stripe_checkout: 'beta',
   google_pay_checkout: 'beta',
   recurring_donations: 'beta',
@@ -58,3 +58,19 @@ export function featureUnavailable(name = 'This feature'): Response {
     code: 'feature_not_available',
   }, { status: 409 });
 }
+
+
+// Backend flows that currently enforce these keys. Being wired does NOT
+// establish provider readiness; existing consent, entitlements, external
+// verification and required preflight tests still apply.
+export const CODE_CONNECTED_FEATURES = [
+  'public_campaign_fundraising',
+  'payment_checkout_enabled',
+  'paypal_checkout', 'stripe_checkout', 'google_pay_checkout',
+  'recurring_donations', 'subscription_checkout',
+  'outbound_payout_execution',
+  'ai_campaign_assistant', 'ai_outreach_agent', 'social_autopilot',
+  'cross_platform_publishing', 'managed_connections',
+  'external_campaign_import', 'external_fund_collection',
+  'external_feed_mirroring', 'community_creation', 'institution_programs',
+];

@@ -8,7 +8,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { logPlatformEvent } from "./logPlatformEvent";
 import { Loader2, Plus } from "lucide-react";
 
-const WIRED_FLAGS = new Set(["public_campaign_fundraising"]);
+// Based on exact backend feature-gate call sites. Connection alone does not
+// certify a live external provider, payout route or AI execution capability.
+const WIRED_FLAGS = new Set([
+  "public_campaign_fundraising", "payment_checkout_enabled",
+  "paypal_checkout", "stripe_checkout", "google_pay_checkout",
+  "recurring_donations", "subscription_checkout",
+  "outbound_payout_execution", "ai_campaign_assistant",
+  "ai_outreach_agent", "social_autopilot", "cross_platform_publishing",
+  "managed_connections", "external_campaign_import",
+  "external_fund_collection", "external_feed_mirroring",
+  "community_creation", "institution_programs",
+]);
+const ALWAYS_AVAILABLE = new Set([
+  "new_campaign_publishing", "public_campaign_publishing",
+  "paypal_donation_reconciliation",
+]);
+const NEEDS_EXTERNAL_VERIFICATION = new Set([
+  "public_campaign_fundraising", "payment_checkout_enabled",
+  "paypal_checkout", "stripe_checkout", "google_pay_checkout",
+  "recurring_donations", "subscription_checkout",
+  "outbound_payout_execution", "ai_campaign_assistant",
+  "ai_outreach_agent", "social_autopilot", "cross_platform_publishing",
+  "managed_connections", "external_campaign_import",
+  "external_fund_collection", "external_feed_mirroring",
+]);
+const RETIRED_FLAGS = new Set(["outbound_payout_executiin", "ai_campaign_asisstant"]);
 
 export default function FeatureFlagsPanel() {
   const [flags, setFlags] = useState(null);
@@ -51,7 +76,9 @@ export default function FeatureFlagsPanel() {
   };
 
   const toggle = async (flag, enabled) => {
-    if (!WIRED_FLAGS.has(flag.key)) return;
+    if (!WIRED_FLAGS.has(flag.key) || ALWAYS_AVAILABLE.has(flag.key) || RETIRED_FLAGS.has(flag.key)) return;
+    if (enabled && NEEDS_EXTERNAL_VERIFICATION.has(flag.key) &&
+        !window.confirm("This capability needs live provider or workflow testing before public use. Enable only after reviewing verified results. Continue?")) return;
     if (flag.key === "public_campaign_fundraising" && enabled &&
         !window.confirm("Enable live campaign donations for all eligible published campaigns? Only do this after payment, accounting, and payout verification.")) return;
     setError("");
@@ -67,7 +94,7 @@ export default function FeatureFlagsPanel() {
         details: "Changed by administrator — reversible at any time.",
       }).catch(() => {});
     } catch {
-      setError("Could not change the fundraising setting. Previous setting remains in effect.");
+      setError("Could not change this setting. Its previous state remains in effect.");
     } finally {
       setSaving(false);
     }
@@ -119,10 +146,14 @@ export default function FeatureFlagsPanel() {
                 </div>
                 <p className="text-xs font-mono text-stone-400 mt-0.5">{f.key}</p>
                 {f.description && <p className="text-xs text-stone-500 mt-1">{f.description}</p>}
-                {!WIRED_FLAGS.has(f.key) && <p className="text-xs text-amber-700 mt-1">Not connected to runtime yet — switch unavailable.</p>}
+                {ALWAYS_AVAILABLE.has(f.key) && <p className="text-xs text-emerald-700 mt-1">Always available — not controlled by a feature flag. Financial reconciliation must keep running.</p>}
+                {RETIRED_FLAGS.has(f.key) && <p className="text-xs text-amber-700 mt-1">Retired duplicate; do not enable. Use the corrected flag.</p>}
+                {!WIRED_FLAGS.has(f.key) && !ALWAYS_AVAILABLE.has(f.key) && !RETIRED_FLAGS.has(f.key) && <p className="text-xs text-amber-700 mt-1">Execution not verified — switch unavailable.</p>}
+                {WIRED_FLAGS.has(f.key) && NEEDS_EXTERNAL_VERIFICATION.has(f.key) && <p className="text-xs text-amber-700 mt-1">Code connected; live provider / end-to-end verification required before enabling.</p>}
+                {WIRED_FLAGS.has(f.key) && !NEEDS_EXTERNAL_VERIFICATION.has(f.key) && <p className="text-xs text-emerald-700 mt-1">Backend gate connected; functional testing still required before public rollout.</p>}
                 {f.key === "public_campaign_fundraising" && <p className="text-xs text-emerald-700 mt-1">{f.enabled ? "Public campaign donations enabled" : "Platform-support-only donations; published campaigns remain online"}</p>}
               </div>
-              <Switch checked={f.enabled} disabled={saving || !WIRED_FLAGS.has(f.key)} onCheckedChange={(v) => toggle(f, v)} aria-label={`Toggle ${f.label || f.key}`} />
+              <Switch checked={f.enabled} disabled={saving || !WIRED_FLAGS.has(f.key) || ALWAYS_AVAILABLE.has(f.key) || RETIRED_FLAGS.has(f.key)} onCheckedChange={(v) => toggle(f, v)} aria-label={`Toggle ${f.label || f.key}`} />
             </div>
           ))}
         </div>
