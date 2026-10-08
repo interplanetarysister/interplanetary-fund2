@@ -149,7 +149,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {!platformOnlyMode && !recurring && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
 
-            {!recurring && <CryptoDonateOption campaign={campaign} />}
+            {!recurring && <CryptoDonateOption campaign={campaign} amount={amount}
+              donorName={name} message={message} platformContribution={platformContribution} />
             {error && <p className="text-sm text-red-600">{error}</p>}
             <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400"><Lock className="w-3 h-3" /> Only payment choices that are ready will appear here.</p>
           </div>
