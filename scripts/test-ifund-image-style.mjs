@@ -5,6 +5,7 @@ import ts from 'typescript';
 import { campaignPublicUrl } from '../src/lib/campaignSharing.js';
 
 const read = name => fs.readFileSync(new URL('../'+name, import.meta.url),'utf8');
+const APP_ID = '6a67a778342a8fe05ee79cba';
 const backend = read('base44/functions/renderInterplanetaryPhoto/entry.ts');
 const styles = read('base44/shared/ifundSignatureStyle.ts');
 function mockHandler({ authenticated = true, openaiKey = null, providerResponse = null } = {}) {
@@ -17,10 +18,11 @@ function mockHandler({ authenticated = true, openaiKey = null, providerResponse 
   };
   const base44={
     auth:{me:async()=>authenticated ? {id:'test-user',role:'user'} : null},
-    integrations:{Core:{ UploadFile:async()=>({file_url:'https://media.base44.com/images/public/test/edited.png'}) }},
+    integrations:{Core:{ UploadFile:async()=>({file_url:`https://base44.app/api/apps/${APP_ID}/files/mp/public/test/edited.png`}) }},
   };
   const stubReq=name=>{
     if(name.includes('base44/sdk'))return {createClientFromRequest:()=>base44};
+    if(name.endsWith('accountGuard.ts'))return {assertActiveAccount:async()=>({ok:true})};
     if(name.endsWith('ifundSignatureStyle.ts'))return {
       IFUND_PHOTO_EDIT_STYLE:'Keep original image and restyle in authentic IFund style',
     };
@@ -33,7 +35,8 @@ function mockHandler({ authenticated = true, openaiKey = null, providerResponse 
   return {fn:exports.default,calls};
 }
 const req = url => ({json:async()=>({source_url:url})});
-const original='https://media.base44.com/images/public/test/myphoto.jpg';
+const original=`https://media.base44.com/images/public/${APP_ID}/myphoto.jpg`;
+const appUpload=`https://base44.app/api/apps/${APP_ID}/files/mp/public/asset/photo.png`;
 {
  const {fn,calls}=mockHandler();const res=await fn(req(original));
  assert.equal(res.status,200);
@@ -45,11 +48,19 @@ const original='https://media.base44.com/images/public/test/myphoto.jpg';
 {
  const {fn}=mockHandler({authenticated:false});const r=await fn(req(original));assert.equal(r.status,401);
 }
+{
+ const {fn}=mockHandler();const r=await fn(req(appUpload));
+ assert.equal(r.status,200);
+ assert.equal((await r.json()).source_url,appUpload);
+}
 for(const source of [
  'https://random.test/image.jpg','http://media.base44.com/images/public/photo.jpg',
  'https://media.base44.com.evil.test/images/public/image.jpg',
  'https://media.base44.com@evil.test/images/public/image.jpg',
- 'https://media.base44.com/private/anything','javascript:alert(1)'
+ 'https://media.base44.com/private/anything',
+ 'https://media.base44.com/images/public/other_app/photo.png',
+ 'https://base44.app/api/apps/other_app/files/mp/public/photo.png',
+ 'javascript:alert(1)'
 ]){
  const {fn}=mockHandler();
  const res=await fn(req(source));
@@ -100,4 +111,4 @@ assert.equal(campaignPublicUrl('c123'),'https://interplanetaryfund.com/campaign/
 const reference=fs.readFileSync(new URL('../public/ifund-logo.jpg',import.meta.url));
 assert.equal(reference.length,102603);
 assert.equal(crypto.createHash('sha256').update(reference).digest('hex'),'468ed782bacfa2e70c5ec524dae7d2ecebadf18c5ebce9b1fa849722d4d06d3e');
-console.log('PASS: 11 photo restyling endpoint scenarios, original-input API, credit-free fallback, universal UI, IFund signature, authoritative logo/watermark.');
+console.log('PASS: both IFund-owned Base44 image storage addresses, provider edit, mocked no-charge fallback, invalid URL denial, logo and shared style.');
