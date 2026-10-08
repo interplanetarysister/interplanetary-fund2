@@ -9,6 +9,10 @@ function handler(path,base44) {
  const exports={};
  const require=(name)=>{
   if(name.startsWith('npm:@base44/sdk'))return{createClientFromRequest:()=>base44};
+  if(name==='../../shared/accountGuard.ts')return{assertActiveAccount:async(client)=>{
+    const user=await client.auth.me();
+    return user?{ok:true,user}:{ok:false,status:401,error:'Authentication required'};
+  }};
   throw Error('Unknown dependency '+name);
  };
  new Function('require','exports','Response','console',js)(require,exports,Response,console);
