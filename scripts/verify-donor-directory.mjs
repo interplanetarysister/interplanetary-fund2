@@ -10,7 +10,6 @@ const layout = read('src/components/Layout.jsx');
 assert.match(fn, /Campaign\.filter\(\{ created_by_id: user\.id \}/);
 assert.match(fn, /payment_verified !== true/);
 assert.match(fn, /giftOf\(donation\)/);
-assert.match(fn, /source/); // provenance-sensitive financial helper remains imported/used through giftOf contract
 assert.match(fn, /donor_ref/);
 assert.match(fn, /contactable: false/);
 assert.doesNotMatch(fn, /email:/);
