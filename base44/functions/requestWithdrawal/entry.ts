@@ -370,16 +370,18 @@ export default async function(req) {
       { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ''] } },
       { $set: { withdrawal_id: withdrawal.id } }
     );
-    await sr.entities.HoldingLedgerEntry.updateMany(
-      {
-        id: { $in: availableExternal.map((entry) => entry.id) },
-        withdrawal_id: { $in: [null, ''] },
-        source_type: 'external_platform',
-        direction: 'in',
-        state: 'settled',
-      },
-      { $set: { withdrawal_id: withdrawal.id } }
-    ).catch(() => {});
+    if (availableExternal.length) {
+      await sr.entities.HoldingLedgerEntry.updateMany(
+        {
+          id: { $in: availableExternal.map((entry) => entry.id) },
+          withdrawal_id: { $in: [null, ''] },
+          source_type: 'external_platform',
+          direction: 'in',
+          state: 'settled',
+        },
+        { $set: { withdrawal_id: withdrawal.id } }
+      ).catch(() => {});
+    }
 
     const reChecked = await sr.entities.Donation.filter({ withdrawal_id: withdrawal.id });
     const reservedIds = (reChecked || []).map((d) => d.id);
@@ -413,6 +415,7 @@ export default async function(req) {
         requestedGross: gross,
         payoutMethod: 'paypal',
         payoutDestination: paypal_email,
+        withdrawalId: withdrawal.id,
       });
     } catch (reserveErr) {
       await releaseDonationMirrors(sr, withdrawal.id);
