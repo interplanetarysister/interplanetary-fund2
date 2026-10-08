@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { paypalBillingRequest, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypalSubscriptions.ts';
 const SUB_EVENTS = [
   'BILLING.SUBSCRIPTION.ACTIVATED', 'BILLING.SUBSCRIPTION.UPDATED',
@@ -10,8 +11,10 @@ const URL = 'https://interplanetaryfund.base44.app/functions/payPalSubscriptionW
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const admin = await base44.auth.me();
-    if (!admin || admin.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const admin = guard.user;
+    if (admin.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
     if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
     // Don't register a callback pointing at a landing page/404. Require
     // actual deployed function to confirm its routing identity first.
