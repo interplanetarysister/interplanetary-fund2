@@ -21,7 +21,7 @@ export default function ConstitutionPanel() {
       <div className="bg-slate-900 rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-3">
           <ScrollText className="w-5 h-5 text-primary" />
-          <p className="font-display text-2xl text-white">Crowdfund Platform Constitution</p>
+          <p className="font-display text-2xl text-white">Interplanetary Fund Platform Constitution</p>
           <Badge className="ml-1 bg-primary text-primary-foreground hover:bg-primary/90">v{charter.version}</Badge>
         </div>
         <p className="text-sm text-stone-400">{charter.status}</p>
