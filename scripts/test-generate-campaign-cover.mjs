@@ -8,7 +8,15 @@ function make({authenticated=true,result={url:'https://media.base44.com/g/cover.
   const sdk={auth:{me:async()=>authenticated?{id:'user'}:null},
     integrations:{Core:{GenerateImage:async({prompt})=>{if(error)throw Error('provider unavailable');return result;}}}};
   new Function('require','exports','Response','console',js)(
-    ()=>({createClientFromRequest:()=>sdk}),exports,Response,{error:()=>{}}
+    name => {
+      if (name.includes('base44/sdk')) return {createClientFromRequest:()=>sdk};
+      if (name.endsWith('accountGuard.ts')) return {
+        assertActiveAccount:async()=>authenticated
+          ? {ok:true,user:{id:'user'}} : {ok:false,status:401,error:'Authentication required'},
+      };
+      if (name.endsWith('ifundSignatureStyle.ts')) return {IFUND_SIGNATURE_STYLE:'IFund cosmic graphic-novel signature style'};
+      throw Error('Unknown import '+name);
+    },exports,Response,{error:()=>{}}
   );
   return exports.default;
 }
