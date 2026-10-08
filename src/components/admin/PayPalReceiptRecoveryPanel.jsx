@@ -63,10 +63,17 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
     setError("");
     setMessage("");
     try {
-      const response = await base44.functions.invoke("reconcileDirectPayPalCampaignDonation", {
-        paypal_transaction_id: receipt.transaction_id,
-        campaign_id: campaignId,
-      });
+      const response = receipt.recovery_method === "ifund_checkout_order"
+        ? await base44.functions.invoke("capturePayPalOrder", {
+            reconcile_only: true,
+            order_id: receipt.paypal_order_id,
+            paypal_transaction_id: receipt.transaction_id,
+            campaign_id: campaignId,
+          })
+        : await base44.functions.invoke("reconcileDirectPayPalCampaignDonation", {
+            paypal_transaction_id: receipt.transaction_id,
+            campaign_id: campaignId,
+          });
       const data = response?.data || {};
       if (data.ok !== true) throw new Error("Recovery rejected");
       setReceipts((current) => current.filter((row) => row.transaction_id !== receipt.transaction_id));
@@ -153,6 +160,11 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
                   <p className="mt-1 text-xs text-slate-500 break-all">
                     {receipt.occurred_at ? new Date(receipt.occurred_at).toLocaleString() : "Date unavailable"} · PayPal fee ${Number(receipt.fee_amount || 0).toFixed(2)} · {receipt.transaction_id}
                   </p>
+                  {receipt.recovery_method === "ifund_checkout_order" && (
+                    <p className="mt-1 text-xs font-medium text-blue-800">
+                      Completed PayPal checkout payment. Verify the original IFund order and capture before restoring campaign credit. No new payment is made.
+                    </p>
+                  )}
                   {(receipt.subject || receipt.note) && (
                     <p className="mt-1 text-xs text-slate-600">{receipt.subject || receipt.note}</p>
                   )}
@@ -179,7 +191,9 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
                   className="rounded-xl shrink-0"
                 >
                   {busy === receipt.transaction_id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                  {receipt.repair_required ? "Repair allocation" : "Add to campaign"}
+                  {receipt.recovery_method === "ifund_checkout_order"
+                    ? "Verify & restore payment"
+                    : receipt.repair_required ? "Repair allocation" : "Add to campaign"}
                 </Button>
               </div>
             </div>

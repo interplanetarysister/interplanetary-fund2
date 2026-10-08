@@ -52,12 +52,16 @@ export default async function(req) {
     const donationsByTransaction = byTransaction([...paypalDonations, ...googlePayDonations]);
     const holdingsByTransaction = byTransaction(paypalHoldings);
 
+    const recoverableCheckoutEvents = new Set(['T0000','T0005','T0006','T0007','T0011']);
     const receipts = (transactions || [])
       .filter((tx) =>
         tx.status === 'S' &&
-        tx.transactionEventCode === 'T0013' &&
         Number(tx.amount) > 0 &&
-        String(tx.currency || '').toUpperCase() === 'USD'
+        String(tx.currency || '').toUpperCase() === 'USD' &&
+        (tx.transactionEventCode === 'T0013' ||
+          (recoverableCheckoutEvents.has(tx.transactionEventCode) &&
+            tx.paypalReferenceIdType === 'ODR' &&
+            /^[A-Za-z0-9_-]{8,90}$/.test(String(tx.paypalReferenceId || ''))))
       )
       .map((tx) => {
         const gross = round2(tx.amount);
@@ -108,6 +112,8 @@ export default async function(req) {
           recoverable_amount: recovered,
           currency: 'USD',
           transaction_event_code: tx.transactionEventCode || '',
+          recovery_method: tx.transactionEventCode === 'T0013' ? 'donation_receipt' : 'ifund_checkout_order',
+          paypal_order_id: tx.transactionEventCode === 'T0013' ? '' : String(tx.paypalReferenceId || ''),
           subject: String(tx.transactionSubject || '').slice(0, 250),
           note: String(tx.transactionNote || '').slice(0, 500),
           occurred_at: tx.transactionUpdatedDate || tx.transactionInitiationDate || '',
@@ -124,7 +130,10 @@ export default async function(req) {
     const otherSettledPaymentCount = transactions.filter((tx) =>
       tx.status === 'S' && Number(tx.amount) > 0 &&
       String(tx.currency || '').toUpperCase() === 'USD' &&
-      ['T0000','T0002','T0005','T0006','T0007','T0011','T0022'].includes(tx.transactionEventCode)
+      ['T0000','T0002','T0005','T0006','T0007','T0011','T0022'].includes(tx.transactionEventCode) &&
+      !(recoverableCheckoutEvents.has(tx.transactionEventCode) &&
+        tx.paypalReferenceIdType === 'ODR' &&
+        /^[A-Za-z0-9_-]{8,90}$/.test(String(tx.paypalReferenceId || '')))
     ).length;
 
     return Response.json({
