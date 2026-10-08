@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Check, ExternalLink, Sparkles, Loader2, Copy } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { platformName } from "@/components/connections/platformCatalog";
+import { contextualNotificationDestination, safeActionRoute } from "@/lib/actionDestinations";
 
 const typeColors = {
   donation: "bg-emerald-100 text-emerald-700",
@@ -23,6 +24,13 @@ const typeColors = {
 // AI draft response for review, and mark-complete.
 export default function InboxItemCard({ item, onChanged }) {
   const navigate = useNavigate();
+  const notificationDestination = item.notification_id
+    ? contextualNotificationDestination({
+      link: item.link, title: item.notification_title, body: item.notification_body,
+      type: item.notification_type, campaign_id: item.campaign_id,
+    })
+    : safeActionRoute(item.link);
+  const externalOriginal = typeof item.link === "string" && /^https:\/\//i.test(item.link);
   const [draft, setDraft] = useState(item.ai_draft || "");
   const [drafting, setDrafting] = useState(false);
   const [showDraft, setShowDraft] = useState(!!item.ai_draft);
@@ -73,13 +81,13 @@ export default function InboxItemCard({ item, onChanged }) {
         <Button size="sm" variant="outline" onClick={generateDraft} disabled={drafting} className="rounded-lg text-primary">
           {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />} Draft reply
         </Button>
-        {item.link && (
-          item.link.startsWith("http") ? (
+        {(notificationDestination || externalOriginal) && (
+          externalOriginal ? (
             <a href={item.link} target="_blank" rel="noopener noreferrer">
               <Button size="sm" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open original</Button>
             </a>
           ) : (
-            <Button size="sm" variant="outline" onClick={() => navigate(item.link)} className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open</Button>
+            <Button size="sm" variant="outline" onClick={() => navigate(notificationDestination)} className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open action</Button>
           )
         )}
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,14 +15,18 @@ import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
 // interactions (InboxItems, e.g. live Ko-fi gifts), Interplanetary Fund
 // donations to your campaigns, and your notifications.
 export default function Inbox() {
+  const [searchParams] = useSearchParams();
+  const requestedCampaign = searchParams.get("campaign") || "all";
   const [items, setItems] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("open");
   const [platform, setPlatform] = useState("all");
-  const [campaignFilter, setCampaignFilter] = useState("all");
+  const [campaignFilter, setCampaignFilter] = useState(requestedCampaign);
   const [search, setSearch] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => { setCampaignFilter(requestedCampaign); }, [requestedCampaign]);
 
   useEffect(() => {
     (async () => {
@@ -55,6 +60,11 @@ export default function Inbox() {
           key: `n-${n.id}`, notification_id: n.id, platform: "interplanetary", type: n.type === "donation" ? "donation" : "system",
           author: "", content: `${n.title}${n.body ? ` — ${n.body}` : ""}`, link: n.link,
           status: n.read ? "done" : "open", date: n.created_date,
+          campaign_id: n.campaign_id ||
+            /^\/campaign\/([a-zA-Z0-9_-]{1,128})(?:[?#]|$)/.exec(String(n.link || ""))?.[1] || "",
+          campaign_title: myCampaigns.find(c => c.id === (n.campaign_id ||
+            /^\/campaign\/([a-zA-Z0-9_-]{1,128})(?:[?#]|$)/.exec(String(n.link || ""))?.[1]))?.title,
+          notification_title: n.title, notification_body: n.body, notification_type: n.type,
         })),
       ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
