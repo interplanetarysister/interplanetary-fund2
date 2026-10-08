@@ -74,4 +74,5 @@ export const CODE_CONNECTED_FEATURES = [
   'cross_platform_publishing', 'managed_connections',
   'external_campaign_import', 'external_fund_collection',
   'external_feed_mirroring', 'community_creation', 'institution_programs',
+  'crypto_donations',
 ];
