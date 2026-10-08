@@ -37,11 +37,14 @@ export default defineConfig({
           if (id.includes('@reown/appkit-ui') || id.includes('@reown/appkit-scaffold-ui')) return 'reown-ui';
           if (id.includes('@reown/appkit-controllers')) return 'reown-controllers';
           if (id.includes('@reown/appkit')) return 'reown-core';
-          if (id.includes('@base/')) return 'base-wallet';
+          if (id.includes('@coinbase/wallet-sdk') || id.includes('@cbhq/')) return 'coinbase-wallet';
+          if (id.includes('@base-org/') || id.includes('@base/')) return 'base-wallet';
           if (id.includes('/viem/_esm/chains') || id.includes('/viem/_esm/constants')) return 'viem-chains';
           if (id.includes('/viem/_esm/accounts') || id.includes('/viem/_esm/account-abstraction')) return 'viem-accounts';
           if (id.includes('/viem/_esm/actions')) return 'viem-actions';
           if (id.includes('/viem/_esm/clients')) return 'viem-clients';
+          if (id.includes('/viem/_esm/ens') || id.includes('/viem/_esm/experimental')) return 'viem-extras';
+          if (id.includes('/viem/_esm/utils') || id.includes('/viem/_esm/errors')) return 'viem-utils';
           if (id.includes('viem') || id.includes('ox-') || id.includes('@noble/')) return 'viem-core';
           if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
           if (id.includes('react-router') || id.includes('@remix-run')) return 'react-router';
