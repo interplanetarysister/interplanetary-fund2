@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 import { PLANS } from "@/components/subscriptions/plans";
 import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 
 export default function Subscriptions() {
+  const checkoutEnabled = useFeatureEnabled("subscription_checkout");
   const [user, setUser] = useState(null);
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(null);
@@ -16,6 +18,7 @@ export default function Subscriptions() {
   useEffect(() => { base44.auth.me().then(setUser).catch(() => {}); }, []);
 
   const subscribe = async (plan) => {
+    if (!checkoutEnabled) { setError("New subscriptions are not available yet."); return; }
     setError("");
     const price = annual ? plan.annual : plan.monthly;
     if (!price?.stripe_price_id) { setError("This plan isn't available for purchase yet."); return; }
@@ -115,7 +118,7 @@ export default function Subscriptions() {
               ) : isCurrent ? (
                 <Button disabled className="rounded-xl bg-stone-100 text-stone-500">Current plan</Button>
               ) : available ? (
-                <Button onClick={() => subscribe(plan)} disabled={subscribing === plan.id} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button onClick={() => subscribe(plan)} disabled={!checkoutEnabled || subscribing !== null} disabled={subscribing === plan.id} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">
                   {subscribing === plan.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Subscribe {annual ? "yearly" : "monthly"}
                 </Button>

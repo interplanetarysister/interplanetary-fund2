@@ -10,8 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { communityTypes } from "./communityTypes";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 
 export default function CreateCommunityDialog() {
+  const available = useFeatureEnabled("community_creation");
   const [open, setOpen] = useUrlDialog("newCommunity");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -26,6 +28,8 @@ export default function CreateCommunityDialog() {
     if (data?.ok !== true || !data?.community?.id) throw new Error("Community creation rejected");
     navigate(`/community/${data.community.id}`);
   };
+
+  if (!available) return <span className="text-sm text-muted-foreground">Community creation is not available yet. Existing communities remain open.</span>;
 
   return (
     <ResponsiveDialog

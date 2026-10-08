@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { institutionTypes } from "./institutionTypes";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 
 const empty = {
   name: "", type: "business", mission: "", industry: "", location: "", website: "",
@@ -19,6 +20,7 @@ const empty = {
 };
 
 export default function CreateInstitutionDialog() {
+  const available = useFeatureEnabled("institution_programs");
   const [open, setOpen] = useUrlDialog("newInstitution");
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -32,6 +34,8 @@ export default function CreateInstitutionDialog() {
     if (data?.ok !== true || !data?.institution?.id) throw new Error("Institution registration rejected");
     navigate(`/institutions/${data.institution.id}`);
   };
+
+  if (!available) return <span className="text-sm text-muted-foreground">New institution registration is not available yet. Existing programs remain visible.</span>;
 
   return (
     <ResponsiveDialog
