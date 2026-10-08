@@ -1,5 +1,6 @@
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Submits a grant application. Creates the GrantApplication as the user and
 // increments the opportunity's application_count as the service role
