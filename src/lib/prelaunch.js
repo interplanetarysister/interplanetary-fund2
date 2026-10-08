@@ -1,10 +1,6 @@
-// Frontend copy of prelaunch constants. The canonical source lives at
-// base44/shared/prelaunch.js for backend functions; this copy keeps the
-// frontend bundle clean (no cross-boundary imports from base44/).
-// Keep these values in sync with base44/shared/prelaunch.js.
-
-export const PRELAUNCH_MODE = true;
-
-export const PRELAUNCH_HEADLINE = "PRELAUNCH PREVIEW — NOT YET OPEN FOR PUBLIC FUNDRAISING";
-export const PRELAUNCH_NOTICE = "Interplanetary Fund is currently in development. This site is a preview. Any donations currently accepted support the development and operation of Interplanetary Fund itself and are not donations to individual campaigns.";
-export const PRELAUNCH_PAYMENT_NOTICE = "Prelaunch donation: this payment supports the development and operation of Interplanetary Fund itself. It does not fund or get credited to the displayed individual campaign.";
+// Public notice copy for the platform-support-only donation mode.
+// This does not control publishing or determine the actual fundraising state.
+// The live mode is read from the backend through useFundraisingMode.js.
+export const PRELAUNCH_HEADLINE = "CAMPAIGN DONATIONS ARE CURRENTLY PAUSED";
+export const PRELAUNCH_NOTICE = "Interplanetary Fund is live. You can create, publish, browse, and share campaigns now. Individual campaigns cannot accept donations while this notice is shown. Separate donations to Interplanetary Fund support operation of the platform only.";
+export const PRELAUNCH_PAYMENT_NOTICE = "This payment supports Interplanetary Fund itself. It does not go to the campaign on this page or increase its fundraising total.";
