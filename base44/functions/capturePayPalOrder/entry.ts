@@ -19,7 +19,7 @@ export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
     const paymentAccess = await campaignPaymentAccess(base44);
-    if (!paymentAccess.allowed) return Response.json({ error: 'Public campaign fundraising is not open during prelaunch. This campaign payment was not captured.' }, { status: 409 });
+    if (!paymentAccess.allowed) return Response.json({ error: 'Campaign donations are currently paused. This campaign payment was not captured.' }, { status: 409 });
     if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
     const sr = base44.asServiceRole;
 

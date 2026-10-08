@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Copy, Check, Code2, QrCode, Download } from "lucide-react";
-import { PRELAUNCH_MODE } from "@/lib/prelaunch";
+import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 
 // The Universal Donation Button — the campaign's permanent Interplanetary Fund
 // URL packaged as a branded button anyone can embed on websites, blogs, forums,
 // and articles. Includes copy link, HTML embed, QR code, share, and a live preview.
 export default function ShareCampaignKit({ campaign }) {
+  const platformOnlyMode = !usePublicCampaignFundraising();
   const [copied, setCopied] = useState("");
   const url = `${window.location.origin}/campaign/${campaign.id}`;
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=${encodeURIComponent(url)}`;
 
-  const embedHtml = `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);">&#128640; ${PRELAUNCH_MODE ? "Campaign Preview" : "Donate &mdash; Interplanetary Fund"}</a>`;
+  const embedHtml = `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);">&#128640; ${platformOnlyMode ? "View Campaign" : "Donate &mdash; Interplanetary Fund"}</a>`;
 
-  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="440" style="border:0;border-radius:16px;overflow:hidden" loading="lazy" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"><a href="${window.location.origin}/campaign/${campaign.id}" target="_blank" rel="noopener">${PRELAUNCH_MODE ? `Preview ${campaign.title || "this campaign"} — prelaunch donations support Interplanetary Fund, not this campaign` : `Support ${campaign.title || "this campaign"}`}</a></iframe>`;
+  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="440" style="border:0;border-radius:16px;overflow:hidden" loading="lazy" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"><a href="${window.location.origin}/campaign/${campaign.id}" target="_blank" rel="noopener">${platformOnlyMode ? `Preview ${campaign.title || "this campaign"} — campaign donations are paused; platform support does not fund this campaign` : `Support ${campaign.title || "this campaign"}`}</a></iframe>`;
 
   const copy = async (what, text) => {
     await navigator.clipboard.writeText(text);
@@ -32,16 +33,16 @@ export default function ShareCampaignKit({ campaign }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
       <h3 className="flex items-center gap-2 font-display text-lg text-stone-900 mb-1">
-        <Share2 className="w-4 h-4 text-primary" /> {PRELAUNCH_MODE ? "Universal Campaign Preview" : "Universal Donation Button"}
+        <Share2 className="w-4 h-4 text-primary" /> {platformOnlyMode ? "Universal View Campaign" : "Universal Donation Button"}
       </h3>
       <p className="text-xs text-stone-500 mb-4">
-        {PRELAUNCH_MODE ? "Campaign sharing remains available during prelaunch. Embedded links open the preview; any current donations support Interplanetary Fund itself, not the campaign." : "One permanent campaign URL. Embed the button anywhere — every click opens this donation page."}
+        {platformOnlyMode ? "Your campaign is live and shareable. Campaign donations are currently paused; separate platform support donations never count toward this campaign." : "One permanent campaign URL. Embed the button anywhere — every click opens this donation page."}
       </p>
 
       {/* Live preview */}
       <div className="rounded-xl bg-slate-50 border border-stone-200 p-4 flex justify-center mb-3">
         <a href={url} className="inline-flex items-center gap-2 bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-600 text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-lg shadow-blue-500/30">
-          🚀 {PRELAUNCH_MODE ? "Campaign Preview" : "Donate — Interplanetary Fund"}
+          🚀 {platformOnlyMode ? "View Campaign" : "Donate — Interplanetary Fund"}
         </a>
       </div>
 

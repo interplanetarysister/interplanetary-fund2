@@ -1,22 +1,9 @@
-import { PRELAUNCH_MODE } from './prelaunch.js';
+import { isPublicCampaignFundraisingEnabled } from './fundraisingMode.ts';
 
-const SUPER_ADMIN_OWNER_EMAILS = new Set([
-  'cuddlemeplatonically@gmail.com',
-  'interplanetarysister@gmail.com',
-]);
-
-function isSuperAdminOwner(user) {
-  return user?.role === 'admin' &&
-    SUPER_ADMIN_OWNER_EMAILS.has(String(user?.email || '').trim().toLowerCase());
-}
-
-// Public campaign fundraising remains closed while PRELAUNCH_MODE is active.
-// The authenticated platform owners may run real provider-backed campaign
-// payments so the complete ledger/custody/UI path can be verified before launch.
-export async function campaignPaymentAccess(base44) {
-  if (!PRELAUNCH_MODE) return { allowed: true, prelaunchTest: false, user: null };
-
-  const user = await base44.auth.me().catch(() => null);
-  const allowed = isSuperAdminOwner(user);
-  return { allowed, prelaunchTest: allowed, user };
+// Public campaign payments are enabled only when the administrator has
+// explicitly enabled the GLOBAL fundraising flag. No privileged bypass:
+ // while off, even administrators must use the separate platform-support path.
+export async function campaignPaymentAccess(base44: any) {
+  const allowed = await isPublicCampaignFundraisingEnabled(base44);
+  return { allowed, prelaunchTest: false, user: null };
 }

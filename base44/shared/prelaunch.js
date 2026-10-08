@@ -1,8 +1,5 @@
-// Single source of truth for temporary prelaunch fundraising behavior.
-// Set PRELAUNCH_MODE to false when Interplanetary Fund officially opens public
-// campaign fundraising. Payment functions and public UI both consume this flag.
-export const PRELAUNCH_MODE = true;
-
-export const PRELAUNCH_HEADLINE = "PRELAUNCH PREVIEW — NOT YET OPEN FOR PUBLIC FUNDRAISING";
-export const PRELAUNCH_NOTICE = "Interplanetary Fund is currently in development. This site is a preview. Any donations currently accepted support the development and operation of Interplanetary Fund itself and are not donations to individual campaigns.";
-export const PRELAUNCH_PAYMENT_NOTICE = "Prelaunch donation: this payment supports the development and operation of Interplanetary Fund itself. It does not fund or get credited to the displayed individual campaign.";
+// Legacy notice copy retained for server-side templates. Platform publishing
+// is always live; campaign-payment eligibility comes from fundraisingMode.ts.
+export const PRELAUNCH_HEADLINE = "CAMPAIGN DONATIONS ARE CURRENTLY PAUSED";
+export const PRELAUNCH_NOTICE = "Interplanetary Fund is live. You can create, publish, browse, and share campaigns now. Individual campaigns cannot accept donations while this notice is shown. Separate donations to Interplanetary Fund support operation of the platform only.";
+export const PRELAUNCH_PAYMENT_NOTICE = "This payment supports Interplanetary Fund itself. It does not go to the campaign on this page or increase its fundraising total.";

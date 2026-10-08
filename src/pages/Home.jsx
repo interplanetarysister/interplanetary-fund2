@@ -6,7 +6,8 @@ import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "@/lib/prelaunch";
+import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
+import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 
@@ -32,12 +33,13 @@ const STORY = [
 ];
 
 export default function Home() {
+  const platformOnlyMode = !usePublicCampaignFundraising();
   const { isAuthenticated } = useAuth();
   const [expanded, setExpanded] = useState(false);
 
   return (
     <div className="min-h-dvh bg-background">
-      {PRELAUNCH_MODE && (
+      {platformOnlyMode && (
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-4">
           <PrelaunchNotice />
         </div>
@@ -102,6 +104,11 @@ export default function Home() {
         <div className="mt-12 flex flex-wrap items-center justify-center gap-3">
           <Link to="/discover"><Button variant="outline" className="rounded-xl"><Compass className="w-4 h-4 mr-2" /> Explore causes</Button></Link>
           <Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90"><Sparkles className="w-4 h-4 mr-2" /> Start your own fund</Button></Link>
+          <div className="max-w-sm mx-auto mt-9 rounded-2xl border border-border p-4 text-center">
+            <p className="text-sm font-medium text-foreground mb-2">Support Interplanetary Fund itself</p>
+            <p className="text-xs text-muted-foreground mb-3">This donation helps operate the platform. It is not credited to any individual campaign.</p>
+            <PayPalDonateButton label="Donate to Interplanetary Fund" />
+          </div>
         </div>
       </section>
     </div>
