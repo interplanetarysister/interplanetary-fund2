@@ -3,7 +3,8 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
-import { stripePriceFor, subscriptionPrice } from '../../shared/subscriptionCatalog.js';
+import { subscriptionPrice } from '../../shared/subscriptionCatalog.js';
+import { stripeSubscriptionClient, resolveStripeSubscriptionPrice } from '../../shared/stripeSubscriptionCatalog.ts';
 
 // Starts a Stripe subscription checkout for an AI tier.
 export default async function(req) {
@@ -25,8 +26,14 @@ export default async function(req) {
     }
     // Bind the exact Stripe price to the chosen tier and interval. Matching
     // some unrelated allowed ID must NEVER grant a more expensive tier.
-    if (!subscriptionPrice(tier, interval) || stripePriceFor(tier, interval) !== price_id) {
+    if (!subscriptionPrice(tier, interval)) {
       return Response.json({ error: 'Invalid subscription plan or billing interval.' }, { status: 400 });
+    }
+    if (tier === 'nonprofit') {
+      const approval = await base44.asServiceRole.entities.NonprofitSubscriptionApproval.filter({ user_id: user.id });
+      if (!(approval || []).some(row => row.status === 'approved')) {
+        return Response.json({ error: 'IFund must verify nonprofit eligibility before discounted checkout.' }, { status: 403 });
+      }
     }
     if (user.subscription_status === 'active' || user.subscription_status === 'trialing' || user.subscription_status === 'past_due') {
       return Response.json({ error: 'Manage your existing subscription before buying another plan.' }, { status: 409 });
@@ -55,7 +62,21 @@ export default async function(req) {
     if (!stripeSecret || !String(stripeSecret).startsWith('sk_live_') || !stripeWebhookSecret) {
       return Response.json({ error: 'Subscription checkout is not currently available.' }, { status: 503 });
     }
-    const stripe = new Stripe(stripeSecret);
+    const { stripe, accountId } = await stripeSubscriptionClient();
+    const found = await resolveStripeSubscriptionPrice(base44.asServiceRole, stripe, accountId, tier, interval);
+    if (!found || found.id !== price_id) {
+      return Response.json({ error: 'Stripe price is not a verified IFund subscription price.' }, { status: 409 });
+    }
+    const hooks = await stripe.webhookEndpoints.list({ limit: 100 });
+    const requiredEvents = ['checkout.session.completed','invoice.paid','customer.subscription.updated','customer.subscription.deleted'];
+    const verifiedEndpoint = (hooks.data || []).some(row => {
+      const enabled = new Set(row.enabled_events || []);
+      const url = String(row.url || '').toLowerCase();
+      return row.livemode && row.status === 'enabled' && url.includes('stripewebhook') &&
+        (url.includes('interplanetaryfund') || url.includes('6a67a778342a8fe05ee79cba')) &&
+        (enabled.has('*') || requiredEvents.every(name => enabled.has(name)));
+    });
+    if (!verifiedEndpoint) return Response.json({ error: 'Stripe billing webhook is not yet verified. No subscription started.' }, { status: 503 });
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: price_id, quantity: 1 }],
