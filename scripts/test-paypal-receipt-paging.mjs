@@ -93,4 +93,6 @@ assert.match(panel,/option value=\{90\}/);
 assert.match(panel,/scan did not complete/i);
 const backend=fs.readFileSync(new URL('../base44/functions/listUntrackedPayPalReceipts/entry.ts',import.meta.url),'utf8');
 assert.match(backend,/checked_transactions: transactions\.length/);
+assert.match(backend,/other_settled_payment_count: otherSettledPaymentCount/);
+assert.match(panel,/otherSettledPayments > 0/);
 console.log('PASS: PayPal reports across 30/60/90-day windows, all pages, deduplication, no money writes, scanner error truth.');

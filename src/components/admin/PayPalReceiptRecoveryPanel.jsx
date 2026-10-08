@@ -10,6 +10,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
   const [lookbackDays, setLookbackDays] = useState(30);
   const [scanned, setScanned] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
+  const [otherSettledPayments, setOtherSettledPayments] = useState(0);
   const [campaigns, setCampaigns] = useState([]);
   const [selection, setSelection] = useState({});
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       const rows = data.receipts.filter((row) => row.tracked !== true);
       setReceipts(rows);
       setScannedCount(Number(data.checked_transactions) || 0);
+      setOtherSettledPayments(Number(data.other_settled_payment_count) || 0);
       setScanned(true);
       setSelection((current) => ({
         ...current,
@@ -120,6 +122,12 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
         <p role="status" className="mt-3 text-xs text-slate-600">
           Scan complete: {scannedCount} provider transaction{scannedCount === 1 ? "" : "s"} reviewed across {lookbackDays} days.
           Only verified settled donation receipts can be allocated.
+          {otherSettledPayments > 0 && (
+            <span className="block mt-1 text-amber-800">
+              {otherSettledPayments} other settled PayPal payment{otherSettledPayments === 1 ? "" : "s"} found.
+              These may require manual payment-channel investigation and are not automatically credited to campaigns.
+            </span>
+          )}
         </p>
       )}
       {loading ? (

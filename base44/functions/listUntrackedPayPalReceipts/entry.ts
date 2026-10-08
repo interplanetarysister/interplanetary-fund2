@@ -119,10 +119,19 @@ export default async function(req) {
       })
       .sort((a, b) => String(b.occurred_at).localeCompare(String(a.occurred_at)));
 
+    // A PayPal checkout may be classified under a non-donation event code.
+    // Surface the review count, never silently count those as IFund gifts.
+    const otherSettledPaymentCount = transactions.filter((tx) =>
+      tx.status === 'S' && Number(tx.amount) > 0 &&
+      String(tx.currency || '').toUpperCase() === 'USD' &&
+      ['T0000','T0002','T0005','T0006','T0007','T0011','T0022'].includes(tx.transactionEventCode)
+    ).length;
+
     return Response.json({
       ok: true,
       lookback_days: days,
       receipts,
+      other_settled_payment_count: otherSettledPaymentCount,
       checked_transactions: transactions.length,
       eligible_settled_receipts: receipts.length,
       untracked_count: receipts.filter((row) => !row.tracked).length,
