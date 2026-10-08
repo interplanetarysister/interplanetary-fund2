@@ -37,7 +37,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     setCredentials(existing?.credentials || {});
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
-      .then(setCampaigns)
+      .then((rows) => setCampaigns((rows || []).filter((campaign) => campaign.status === "active" || campaign.id === existing?.campaign_id)))
       .catch(() => setCampaigns([]));
   }, [open, existing]);
 
@@ -162,7 +162,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           </div>}
           {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
           <div className="space-y-1.5">
-            <Label>Linked Interplanetary Fund campaign</Label>
+            <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Campaign to publish first"}</Label>
             <Select value={form.campaign_id} onValueChange={selectCampaign}>
               <SelectTrigger><SelectValue placeholder={platform.kind === "app" ? "Optional — pick a campaign" : "Pick the campaign to publish first"} /></SelectTrigger>
               <SelectContent>
