@@ -25,17 +25,20 @@ export default async function() {
       stripe.accounts.retrieve(),
       stripe.webhookEndpoints.list({ limit: 100 }),
     ]);
-    const expected = (endpoints.data || []).filter((endpoint) => {
+    const rows = endpoints.data || [];
+    const expected = rows.filter((endpoint) => {
       const url = String(endpoint.url || '').toLowerCase();
       return endpoint.status === 'enabled' && (
         (url.includes('6a67a778342a8fe05ee79cba') && url.includes('stripewebhook')) ||
         (url.includes('interplanetaryfund') && url.includes('stripewebhook'))
       );
     });
-    const requiredEventsCovered = expected.some((endpoint) => {
+    const coversRequired = (endpoint) => {
       const events = new Set(endpoint.enabled_events || []);
       return events.has('*') || [...REQUIRED_EVENTS].every((event) => events.has(event));
-    });
+    };
+    const requiredEventsCovered = expected.some(coversRequired);
+    const requiredEventEndpoints = rows.filter(coversRequired);
 
     const result = {
       ok: true,
@@ -44,6 +47,13 @@ export default async function() {
       account_reachable: !!account?.id,
       webhook_endpoint_verified: expected.length > 0,
       required_events_covered: requiredEventsCovered,
+      webhook_endpoint_count: rows.length,
+      enabled_endpoint_count: rows.filter((endpoint) => endpoint.status === 'enabled').length,
+      required_event_endpoint_count: requiredEventEndpoints.length,
+      matching_disabled_endpoint_count: rows.filter((endpoint) => {
+        const url = String(endpoint.url || '').toLowerCase();
+        return endpoint.status !== 'enabled' && ((url.includes('6a67a778342a8fe05ee79cba') && url.includes('stripewebhook')) || (url.includes('interplanetaryfund') && url.includes('stripewebhook')));
+      }).length,
     };
     cache = { until: Date.now() + 60000, result };
     return Response.json(result);
