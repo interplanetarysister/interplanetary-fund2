@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { ACTIVE_MANAGED_DELEGATION_STATUSES } from '../../shared/managedConnectionContinuation.ts';
 
 const VERSION = '2026-10-unified-obo-v1';
 
@@ -64,25 +65,22 @@ export default async function(req) {
     // pauses in-flight delegations (waiting_user) rather than silently cancelling
     // them — the user may re-grant consent and resume. Grant propagates the
     // current consent version so future execution can verify freshness.
-    try {
-      const delegations = await base44.entities.AgentDelegation.filter({
-        owner_user_id: user.id,
-        status: { $in: ['assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review'] },
-      });
-      for (const d of delegations || []) {
-        const patch = { consent_version: granted ? VERSION : null };
-        if (!granted && ['assigned', 'in_progress'].includes(d.status)) {
-          patch.status = 'waiting_user';
-          patch.continuation_state = {
-            ...(d.continuation_state || {}),
-            pending_step: d.continuation_state?.pending_step || 'resume_after_reauthorization',
-            external_requirement: 'OBO consent was revoked. Re-authorize AI to resume.',
-          };
-        }
-        await base44.entities.AgentDelegation.update(d.id, patch).catch(() => {});
+    const delegations = await base44.entities.AgentDelegation.filter({
+      owner_user_id: user.id,
+      destination_agent: 'managed_connection_agent',
+    });
+    for (const d of delegations || []) {
+      if (!ACTIVE_MANAGED_DELEGATION_STATUSES.includes(d.status)) continue;
+      const patch = { consent_version: granted ? VERSION : null };
+      if (!granted) {
+        patch.status = 'waiting_user';
+        patch.continuation_state = {
+          ...(d.continuation_state || {}),
+          pending_step: d.continuation_state?.pending_step || 'resume_after_reauthorization',
+          external_requirement: 'OBO consent was revoked. Re-authorize AI to resume.',
+        };
       }
-    } catch (e) {
-      console.error('AgentDelegation consent propagation failed:', e?.message || e);
+      await base44.entities.AgentDelegation.update(d.id, patch);
     }
 
     return Response.json({ ok: true, consent: canonical, connections: results });

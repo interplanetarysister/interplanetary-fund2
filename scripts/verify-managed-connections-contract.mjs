@@ -22,11 +22,24 @@ const finalizeOauth = read('base44/functions/finalizeAppUserOAuthConnection/entr
 const verifyConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
 const register = read('src/pages/Register.jsx');
 const recipeSource = read('base44/shared/platformConnectionRecipes.ts');
+const continuationSource = read('base44/shared/managedConnectionContinuation.ts');
 const recipeModule = await import(`data:text/javascript;base64,${Buffer.from(ts.transpileModule(
   recipeSource,
   { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },
 ).outputText).toString('base64')}`);
 const { orderedTransports, requiresRouteRediscovery } = recipeModule;
+const continuationModule = await import(`data:text/javascript;base64,${Buffer.from(ts.transpileModule(
+  continuationSource,
+  { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } },
+).outputText).toString('base64')}`);
+const {
+  managedConnectionRequestKey,
+  verifiedAccountCreationTransport,
+  reusableManagedDelegation,
+  validateManagedRequestIdentity,
+  validateManagedResume,
+  completionDelegation,
+} = continuationModule;
 
 const webhookOnly = { preferred_transport: 'webhook' };
 assert.deepEqual(orderedTransports(webhookOnly), ['webhook']);
@@ -58,6 +71,52 @@ assert.equal(requiresRouteRediscovery(unknownTransport), true);
 assert.deepEqual(orderedTransports({}), []);
 assert.equal(requiresRouteRediscovery({}), true);
 
+const request = {
+  ownerUserId: 'owner-a', platform: 'eventbrite', action: 'create_account', campaignId: 'campaign-a', consentVersion: 'v1',
+};
+assert.equal(managedConnectionRequestKey(request), managedConnectionRequestKey({ ...request }));
+assert.notEqual(managedConnectionRequestKey(request), managedConnectionRequestKey({ ...request, ownerUserId: 'owner-b' }));
+assert.notEqual(managedConnectionRequestKey(request), managedConnectionRequestKey({ ...request, campaignId: 'campaign-b' }));
+
+assert.equal(verifiedAccountCreationTransport({ preferred_transport: 'oauth' }, ['oauth']), null);
+assert.equal(verifiedAccountCreationTransport({ status: 'proven', successful_route: 'token' }, ['token']), null);
+assert.equal(verifiedAccountCreationTransport({ status: 'proven', successful_route: 'oauth' }, ['oauth']), 'oauth');
+
+const activeRows = [
+  { id: 'newer', request_key: 'rk', status: 'waiting_user', created_at: '2026-10-08T00:00:02.000Z' },
+  { id: 'older', request_key: 'rk', status: 'waiting_user', created_at: '2026-10-08T00:00:01.000Z' },
+  { id: 'done', request_key: 'rk', status: 'completed', created_at: '2026-10-08T00:00:00.000Z' },
+];
+assert.equal(reusableManagedDelegation(activeRows, 'rk').id, 'older');
+
+const resumeDelegation = {
+  id: 'delegation-a', owner_user_id: 'owner-a', request_key: 'rk', status: 'waiting_user', consent_version: 'v1',
+  campaign_id: 'campaign-a', destination_agent: 'managed_connection_agent',
+  continuation_state: { platform: 'eventbrite', requested_action: 'create_account', continuation_ref: 'connection-a' },
+};
+const validIdentity = {
+  requestKey: 'rk', ownerUserId: 'owner-a', platform: 'eventbrite', action: 'create_account', campaignId: 'campaign-a', consentVersion: 'v1',
+};
+assert.equal(validateManagedRequestIdentity(resumeDelegation, validIdentity), null);
+assert.equal(validateManagedRequestIdentity(resumeDelegation, { ...validIdentity, campaignId: 'campaign-b' }), 'campaign_mismatch');
+assert.equal(validateManagedRequestIdentity(resumeDelegation, { ...validIdentity, ownerUserId: 'owner-b' }), 'owner_mismatch');
+const validResume = {
+  delegation: resumeDelegation, ownerUserId: 'owner-a', consentGranted: true, consentVersion: 'v1', requestKey: 'rk',
+  platform: 'eventbrite', action: 'create_account',
+};
+assert.equal(validateManagedResume(validResume), null);
+assert.equal(validateManagedResume({ ...validResume, ownerUserId: 'owner-b' }), 'owner_mismatch');
+assert.equal(validateManagedResume({ ...validResume, consentGranted: false }), 'consent_revoked');
+assert.equal(validateManagedResume({ ...validResume, consentVersion: 'v2' }), 'consent_mismatch');
+
+const completionRows = [
+  resumeDelegation,
+  { ...resumeDelegation, id: 'delegation-b', created_at: '2026-10-08T00:00:02.000Z' },
+];
+assert.equal(completionDelegation(completionRows, 'delegation-b', 'connection-a', 'v1').id, 'delegation-b');
+assert.equal(completionDelegation(completionRows, 'missing', 'connection-a', 'v1'), null);
+assert.equal(completionDelegation(completionRows, 'delegation-b', 'connection-a', 'v2'), null);
+
 assert.match(entitlements, /MANAGED_CONNECTIONS_MIN_LEVEL\s*=\s*2/);
 assert.match(entitlements, /hasManagedConnections\(user/);
 assert.match(command, /hasManagedConnections\(user\)/);
@@ -82,6 +141,20 @@ assert.match(command, /executable_now:\s*false/);
 assert.match(command, /orderedTransports/);
 assert.match(command, /requiresRouteRediscovery\(effective, supportedTransports\)/);
 assert.match(command, /candidate_transports/);
+assert.match(command, /managedConnectionRequestKey/);
+assert.match(command, /reusableManagedDelegation/);
+assert.match(command, /validateManagedRequestIdentity/);
+assert.match(command, /AgentDelegation\.upsert\(\[delegationData\], \{ key: 'request_key' \}\)/);
+assert.doesNotMatch(command, /AgentDelegation\.create\(/);
+assert.match(command, /if \(activeClaim\) return Response\.json\(publicDelegationResult\(activeClaim/);
+assert.match(command, /\['failed', 'cancelled', 'superseded'\]\.includes/);
+assert.match(command, /if \(!retryableTerminal\)/);
+assert.match(command, /retry_count: priorClaim \? Number\(priorClaim\.retry_count \|\| 0\) \+ 1 : 0/);
+assert.doesNotMatch(command, /status:\s*\{\s*\$in/);
+assert.doesNotMatch(command, /AgentDelegation\.filter[\s\S]{0,200}\.catch/);
+assert.match(command, /verifiedAccountCreationTransport/);
+assert.match(command, /state: 'unsupported'/);
+assert.match(command, /No account or background task was created/);
 assert.doesNotMatch(command, /password|cookie|mfa_seed|recovery_code/i);
 
 assert.doesNotMatch(recipeSource, /\.\.\.TRANSPORT_PRIORITY/);
@@ -122,10 +195,28 @@ assert.doesNotMatch(connectDialog, /sharedAgentConsent/);
 assert.doesNotMatch(connectionsPage, /shared_agent_consent|sharedAgentConsent/);
 assert.doesNotMatch(finalizeOauth, /shared_agent_consent/);
 assert.match(finalizeOauth, /user\.ai_obo_consent\?\.granted === true/);
-assert.match(verifyConnection, /completeManagedRepairDelegations/);
+assert.match(verifyConnection, /completeManagedDelegation/);
 assert.match(verifyConnection, /user\?\.ai_obo_consent\?\.granted !== true/);
-assert.match(verifyConnection, /delegation\?\.consent_version/);
-assert.match(verifyConnection, /continuation_state\?\.continuation_ref !== connection\.id/);
+assert.match(verifyConnection, /completionDelegation/);
+assert.match(verifyConnection, /requestedDelegationId/);
+assert.match(verifyConnection, /hasManagedConnections\(user\)/);
+assert.match(verifyConnection, /Managed Connections completion requires an active eligible subscription/);
+assert.doesNotMatch(verifyConnection, /status:\s*\{\s*\$in/);
+assert.doesNotMatch(consent, /status:\s*\{\s*\$in/);
+assert.doesNotMatch(verifyConnection, /AgentDelegation\.filter[\s\S]{0,200}\.catch/);
+assert.doesNotMatch(consent, /AgentDelegation\.filter[\s\S]{0,200}\.catch/);
+assert.match(finalizeOauth, /validateManagedResume/);
+assert.match(finalizeOauth, /hasManagedConnections\(user\)/);
+assert.match(finalizeOauth, /resume_after_subscription/);
+assert.match(finalizeOauth, /resumeDelegation\?\.campaign_id/);
+assert.match(finalizeOauth, /campaign_id: resumeCampaignId \|\| existing\?\.campaign_id/);
+assert.match(finalizeOauth, /already linked to a different campaign/);
+assert.match(finalizeOauth, /continuation_ref: saved\.id/);
+assert.match(finalizeOauth, /managed_resume: Boolean\(resumeDelegation\)/);
+assert.match(connectionsPage, /delegation_id: pending\.delegationId/);
+assert.match(connectionsPage, /delegation_id: data\.delegation_id/);
+assert.match(connectDialog, /delegationId: managedResume\?\.delegation_id/);
+assert.match(consent, /if \(!granted\) \{/);
 assert.match(connectionsPage, /verifyPlatformConnection/);
 assert.match(register, /window\.location\.href = "\/onboarding"/);
 assert.match(register, /ifund_post_onboarding_return_to/);

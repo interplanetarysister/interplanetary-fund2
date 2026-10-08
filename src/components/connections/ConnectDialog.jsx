@@ -43,7 +43,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const connectWithProvider = async () => {
+  const connectWithProvider = async (managedResume = null) => {
     setConnecting(true);
     setError("");
     try {
@@ -65,7 +65,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       // localStorage survives a provider redirect that returns in another web tab.
       // Only the same signed-in owner can resume; no provider tokens are stored here.
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
-        platform: platform.id, userId: me.id, startedAt: Date.now(),
+        platform: platform.id,
+        userId: me.id,
+        startedAt: Date.now(),
+        delegationId: managedResume?.delegation_id || null,
+        consentVersion: managedResume?.consent_version || null,
+        requestKey: managedResume?.request_key || null,
+        requestedAction: managedResume?.action || null,
       }));
       window.location.assign(redirectUrl);
     } catch (e) {
@@ -81,7 +87,14 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     setManagedBusy(true);
     setError("");
     try {
-      await onManagedCreateAccount({ campaign_id: form.campaign_id || undefined });
+      const result = await onManagedCreateAccount({ campaign_id: form.campaign_id || undefined });
+      if (result?.state === "unsupported") {
+        setError(result.message || "IFund does not have a verified account-creation route for this platform.");
+        return;
+      }
+      if (result?.state === "waiting_user" && result?.next_transport === "oauth") {
+        await connectWithProvider(result);
+      }
     } catch {
       setError("IFund couldn't start managed account setup. Try again.");
     } finally {
@@ -175,7 +188,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           {usesProviderOAuth && (!existing || existing?.capability_status === "reauthorization_required") ? (
-            <Button onClick={connectWithProvider} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+            <Button onClick={() => connectWithProvider()} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>
           ) : (

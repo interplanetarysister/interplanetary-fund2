@@ -1,6 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { redactCredentials } from '../../shared/integrationRegistry.ts';
+import { ACTIVE_MANAGED_DELEGATION_STATUSES, completionDelegation } from '../../shared/managedConnectionContinuation.ts';
+import { hasManagedConnections } from '../../shared/subscriptionEntitlements.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
 const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
@@ -10,7 +12,7 @@ function publicConnection(row) {
   return { ...row, credentials, credentials_meta };
 }
 
-async function completeManagedRepairDelegations(base44, user, connection, now) {
+async function completeManagedDelegation(base44, user, connection, now, requestedDelegationId = '') {
   const consentVersion = String(user?.ai_obo_consent?.permission_version || '');
   if (
     user?.ai_obo_consent?.granted !== true ||
@@ -22,12 +24,27 @@ async function completeManagedRepairDelegations(base44, user, connection, now) {
   const delegations = await base44.entities.AgentDelegation.filter({
     owner_user_id: user.id,
     destination_agent: 'managed_connection_agent',
-    status: { $in: ['assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review'] },
-  }).catch(() => []);
+  });
 
-  for (const delegation of delegations || []) {
-    if (delegation?.continuation_state?.continuation_ref !== connection.id) continue;
-    if (String(delegation?.consent_version || '') !== consentVersion) continue;
+  // One successful verification completes at most one delegation. A requested
+  // callback identity wins; otherwise the oldest matching active repair is used.
+  const delegation = completionDelegation(delegations, requestedDelegationId, connection.id, consentVersion);
+  if (delegation) {
+    if (!hasManagedConnections(user)) {
+      await base44.entities.AgentDelegation.update(delegation.id, {
+        status: 'waiting_user',
+        updated_at: now,
+        result_summary: 'Live verification succeeded, but Managed Connections completion requires an active eligible subscription.',
+        continuation_state: {
+          ...(delegation.continuation_state || {}),
+          pending_step: 'resume_after_subscription',
+          external_requirement: 'Restore an eligible subscription to complete Managed Connections setup.',
+          return_route: '/connections',
+          continuation_ref: connection.id,
+        },
+      });
+      return;
+    }
     await base44.entities.AgentDelegation.update(delegation.id, {
       status: 'completed',
       result_summary: 'The connection passed live provider verification and is working.',
@@ -44,7 +61,7 @@ async function completeManagedRepairDelegations(base44, user, connection, now) {
         return_route: '/connections',
         continuation_ref: connection.id,
       },
-    }).catch(() => {});
+    });
   }
 }
 
@@ -53,7 +70,7 @@ export default async function(req) {
   try {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    const { connection_id } = await req.json().catch(() => ({}));
+    const { connection_id, delegation_id } = await req.json().catch(() => ({}));
     const ownerVisible = connection_id
       ? await base44.entities.PlatformConnection.get(connection_id).catch(() => null)
       : null;
@@ -105,7 +122,7 @@ export default async function(req) {
         status: 'connected', verification_status: 'verified', last_synced: now, last_error: '',
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
-      await completeManagedRepairDelegations(base44, user, updated, now);
+      await completeManagedDelegation(base44, user, updated, now, String(delegation_id || ''));
       return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
