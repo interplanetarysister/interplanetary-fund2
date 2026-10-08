@@ -72,7 +72,8 @@ export default async function(req) {
     // Canonical IFund-wide OBO is the sole authorization decision. Provider
     // OAuth can still connect while IFund help is off, but delegated agent access
     // remains disabled until setUnifiedOboConsent records an explicit grant.
-    const sharedAgentConsent = user.ai_obo_consent?.granted === true;
+    // A new provider sign-in is NOT a per-connection AI authorization.
+    // The user must affirm delegation after returning from the provider.
     const envName = OAUTH_ENV[key];
     const connectorId = cfg && envName ? (Deno.env.get(envName) || '') : '';
     if (!cfg || !connectorId) return Response.json({ configured: false, connected: false });
@@ -93,20 +94,20 @@ export default async function(req) {
       kind: cfg.kind,
       display_name: existing?.display_name || key,
       external_url: existing?.external_url || '',
-      automation_mode: sharedAgentConsent ? (existing?.automation_mode || 'auto') : 'manual',
+      automation_mode: 'manual',
       obo_consent: {
-        granted: sharedAgentConsent,
-        granted_at: sharedAgentConsent ? now : null,
+        granted: false,
+        granted_at: null,
         permission_version: '2026-10-unified-obo-v1',
         requested_capabilities: cfg.requestedCapabilities,
         // Never copy desired capabilities into granted/provider capabilities.
         // Unknown remains unknown until the connector/provider reports it.
-        granted_capabilities: sharedAgentConsent ? confirmed : [],
+        granted_capabilities: [],
         provider_capabilities: confirmed,
       },
       agent_access: {
-        shared_with_agents: sharedAgentConsent,
-        automation_enabled: sharedAgentConsent && (existing?.automation_mode || 'auto') === 'auto',
+        shared_with_agents: false,
+        automation_enabled: false,
       },
       // OAuth token presence proves authorization material exists. A harmless
       // provider call must still succeed before the connection is shown as working.
@@ -114,7 +115,7 @@ export default async function(req) {
       verification_status: 'unverified',
       capability_status: confirmed.length ? 'confirmed' : 'unknown',
       external_data_source: existing?.external_data_source || 'owner_reported',
-      last_error: 'Provider authorization saved; live verification is still required.',
+      last_error: 'Provider authorization received; AI permissions and a live provider check are pending.',
       history: [...(existing?.history || []), {
         at: now,
         event: 'oauth_authorized',
@@ -126,7 +127,13 @@ export default async function(req) {
     const saved = existing
       ? await base44.entities.PlatformConnection.update(existing.id, data)
       : await base44.entities.PlatformConnection.create(data);
-    return Response.json({ configured: true, authorization_present: true, connected: false, provider_verified: false, verification_required: true, connection: saved });
+    return Response.json({
+      configured: true, authorization_present: true, connected: false,
+      provider_verified: false, verification_required: true,
+      ai_consent_required: true,
+      // No credentials are returned to the client.
+      connection: { id: saved.id, platform: saved.platform, status: saved.status },
+    });
   } catch (error) {
     console.error('finalizeAppUserOAuthConnection error:', error?.message || error);
     return Response.json({ error: 'Unable to finish this connection.' }, { status: 500 });

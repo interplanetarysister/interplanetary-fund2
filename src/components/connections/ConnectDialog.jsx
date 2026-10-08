@@ -56,16 +56,23 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         setError("This connection is not ready yet. Please try again later.");
         return;
       }
-      // The IF consent and provider grant are one continuous connection event.
-      // Persist only non-secret resume context; the connector owns OAuth state
-      // and credentials. Provider authorization starts immediately after consent.
+      // OAuth sign-in happens first. After returning, IFund separately asks
+      // for revocable per-connection AI delegation and verifies live access.
+      // The connector owns OAuth state, refresh tokens and provider credentials.
       const me = await base44.auth.me();
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
       if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
+      const destination = new URL(String(redirectUrl));
+      if (destination.protocol !== "https:" || destination.username || destination.password) {
+        throw new Error("Provider sign-in URL is not secure.");
+      }
       // localStorage survives a provider redirect that returns in another web tab.
       // Only the same signed-in owner can resume; no provider tokens are stored here.
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
         platform: platform.id, userId: me.id, startedAt: Date.now(),
+        step: "oauth_pending",
+        // App-internal only. Never accept a full origin or untrusted redirect URL.
+        returnPath: window.location.pathname + window.location.search + window.location.hash,
       }));
       window.location.assign(redirectUrl);
     } catch (e) {
@@ -170,7 +177,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
               <p className="text-sm font-semibold text-foreground">Connect {platform.name}</p>
-              <p className="text-xs text-muted-foreground">Your existing IFund AI authorization already includes OBO access for platforms you connect. {platform.name} will separately show the provider permissions it supports during sign-in.</p>
+              <p className="text-xs text-muted-foreground">First sign in securely on {platform.name}. When you return, choose whether to let IFund AI act on your behalf. Only permissions the provider actually grants can be used.</p>
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
