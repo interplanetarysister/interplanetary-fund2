@@ -25,6 +25,7 @@ const STATE_LABELS = {
   switch_missing: "Switch not set up",
   setup_needed: "Provider needs setup",
   not_implemented: "Not yet connected to a live backend",
+  configuration_conflict: "Existing switch needs scope or duplicate repair",
 };
 export default function LiveProvidersPanel() {
   const [snapshot, setSnapshot] = useState(null);
@@ -117,7 +118,7 @@ export default function LiveProvidersPanel() {
           ? <Switch checked={f.enabled} onCheckedChange={v => toggle(f, v)}
               disabled={!!busy || (loading && !snapshot) || (!f.provider_ready && !f.enabled)}
               aria-label={`Live ${f.label}`} />
-          : !f.flag_id && f.code_connected
+          : !f.flag_id && f.code_connected && f.state === "switch_missing"
             ? <Button size="sm" variant="outline" disabled={!!busy || loading} onClick={() => createSwitch(f)}>
                 {busy === f.key ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add off switch"}
               </Button>
