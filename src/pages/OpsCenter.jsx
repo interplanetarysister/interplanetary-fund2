@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RefreshCw, Loader2, ShieldAlert } from "lucide-react";
@@ -8,7 +8,6 @@ import TreasurySummary from "@/components/ops/TreasurySummary";
 import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 import PendingDonationReview from "@/components/ops/PendingDonationReview";
-import { IN_APP_AGENTS } from "@/components/ops/inAppAgentRoster";
 import PageError from "@/components/PageError";
 
 // Ops Center — Base44-native operational view. Data is read directly from
@@ -24,15 +23,21 @@ export default function OpsCenter() {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
+  const [providerState, setProviderState] = useState("unknown");
+  const requestGeneration = useRef(0);
+  const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
+    const generation = ++requestGeneration.current;
     try {
       const me = await base44.auth.me();
+      if (!mountedRef.current || generation !== requestGeneration.current) return false;
       setUser(me || null);
       setAuthReady(true);
       if (me?.role !== "admin") {
         setLoading(false);
-        return;
+        setProviderState("unavailable");
+        return true;
       }
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
@@ -40,30 +45,47 @@ export default function OpsCenter() {
         base44.entities.TreasurySnapshot.list("-created_date", 1),
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
+      if (![a, c, t, r].every(Array.isArray)) throw new Error("Malformed Ops Center response");
+      if (!mountedRef.current || generation !== requestGeneration.current) return false;
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
       setReports(r);
+      setProviderState("available");
+      setError(null);
+      return true;
     } catch (e) {
+      if (!mountedRef.current || generation !== requestGeneration.current) return false;
       setAuthReady(true);
+      setProviderState("unavailable");
       setError("We couldn't load Ops Center data.");
+      return false;
     } finally {
-      setLoading(false);
+      if (mountedRef.current && generation === requestGeneration.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => {
+      mountedRef.current = false;
+      requestGeneration.current += 1;
+    };
+  }, [load]);
 
   const syncNow = async () => {
     setSyncing(true);
     setSyncError("");
     try {
-      await load();
+      const ok = await load();
+      if (!ok && mountedRef.current) setSyncError("Refresh failed — showing the last loaded data.");
     } catch (e) {
       console.error("Ops Center refresh failed:", e?.name || "UnknownError");
-      setSyncError("Refresh failed — showing the last loaded data.");
+      if (mountedRef.current) setSyncError("Refresh failed — showing the last loaded data.");
+    } finally {
+      if (mountedRef.current) setSyncing(false);
     }
-    setSyncing(false);
   };
 
   if (!authReady) {
@@ -80,9 +102,8 @@ export default function OpsCenter() {
     );
   }
 
-  const displayAgents = agents.length ? agents : IN_APP_AGENTS.map((a, i) => ({ ...a, id: `local-${i}` }));
-  const activeAgents = displayAgents.filter((a) => (a.status || "").toLowerCase() === "active").length;
-  const usingFallbackAgents = agents.length === 0;
+  const activeAgents = agents.filter((a) => (a.status || "").toLowerCase() === "active").length;
+  const hasAgentData = providerState === "available";
 
   return (
     <div className="min-h-dvh bg-slate-950 text-slate-100">
@@ -90,7 +111,7 @@ export default function OpsCenter() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl text-slate-100">Ops Center</h1>
-            <p className="text-xs text-slate-500">{activeAgents}/{displayAgents.length} agents active{usingFallbackAgents ? " · showing in-app agent roster" : " · Base44 live data"}</p>
+            <p className="text-xs text-slate-500">{hasAgentData ? `${activeAgents}/${agents.length} agents active · Base44 live data` : "Agent status unavailable · no synthetic agent data shown"}</p>
           </div>
           <button
             onClick={syncNow}
@@ -101,12 +122,12 @@ export default function OpsCenter() {
             {syncing ? "Syncing…" : "Sync Now"}
           </button>
         </div>
-        {syncError && <p className="mt-2 text-xs text-rose-400">{syncError}</p>}
+        {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>
 
         {error ? (
           <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
         ) : loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>
+          <div className="flex justify-center py-20" role="status" aria-live="polite"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /><span className="sr-only">Loading Ops Center</span></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
             <TabsList className="w-full grid grid-cols-3 sm:grid-cols-6 bg-white/5 border border-white/10 rounded-xl h-11">
@@ -118,8 +139,9 @@ export default function OpsCenter() {
               <TabsTrigger value="reports" className="text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300 rounded-lg">Reports</TabsTrigger>
             </TabsList>
             <TabsContent value="agents" className="mt-4 space-y-3">
-              {usingFallbackAgents && <p className="text-xs text-amber-400/80 text-center py-3">No persisted agent records are available — showing the platform's in-app agent roster.</p>}
-              {displayAgents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
+              {!hasAgentData && <p className="text-xs text-amber-400/80 text-center py-3">Agent status is currently unavailable. No synthetic agent data is shown.</p>}
+              {hasAgentData && agents.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No operational agents were returned.</p>}
+              {agents.map((a) => <OpsAgentCard key={a.id} agent={a} />)}
             </TabsContent>
             <TabsContent value="campaigns" className="mt-4 space-y-3">
               {campaigns.length === 0 && <p className="text-sm text-slate-500 text-center py-10">No campaigns synced yet — tap Sync Now.</p>}
