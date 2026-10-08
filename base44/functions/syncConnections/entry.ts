@@ -77,17 +77,19 @@ export default async function(req) {
           });
           report.published++;
         } catch (e) {
+          console.error('syncConnections publish failed:', e?.name || 'UnknownError');
           const retries = (post.retry_count || 0) + 1;
+          const safePublishError = 'Publishing could not be completed. Review the connection and try again.';
           await sr.entities.DistributedPost.update(post.id, {
             status: retries >= MAX_RETRIES ? 'failed' : post.status === 'failed' ? 'failed' : 'scheduled',
-            error: e.message,
+            error: safePublishError,
             retry_count: retries,
           });
           if (retries >= MAX_RETRIES) {
             await sr.entities.Notification.create({
               user_id: post.created_by_id,
               title: 'Post could not be published',
-              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts: ${e.message}`,
+              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts. Review the connection before retrying.`,
               type: 'system',
               link: `/campaign/${post.campaign_id}`,
             });
@@ -145,10 +147,13 @@ export default async function(req) {
         });
         report.verified++;
       } catch (e) {
-        const message = String(e?.message || 'Provider authorization needs attention').slice(0, 300);
+        console.error('syncConnections provider verification failed:', e?.name || 'UnknownError');
+        const reason = String(e?.message || '');
+        const reauth = reason === 'Provider authorization needs to be renewed.' || reason === 'Provider sign-in is not configured yet.';
+        const message = reauth ? 'Provider authorization needs attention.' : 'Live provider verification could not be completed.';
         await sr.entities.PlatformConnection.update(c.id, {
           status: 'error', verification_status: 'unverified', last_error: message,
-          capability_status: OAUTH_ENV[c.platform] ? (String(e?.message || '').includes('renewed') ? 'reauthorization_required' : 'unknown') : (c.capability_status || 'unknown'),
+          capability_status: OAUTH_ENV[c.platform] ? (reauth ? 'reauthorization_required' : 'unknown') : (c.capability_status || 'unknown'),
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
         });
         report.needs_attention++;
@@ -157,7 +162,7 @@ export default async function(req) {
 
     return Response.json(report);
   } catch (error) {
-    console.error('syncConnections error:', error.message);
+    console.error('syncConnections error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Synchronization encountered a problem and could not finish.' }, { status: 500 });
   }
 }
