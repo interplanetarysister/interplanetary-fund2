@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, validateDonationAmount } from '../../shared/fees.js';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';

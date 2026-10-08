@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { hasManagedConnections } from '../../shared/subscriptionEntitlements.ts';
-import { staticRecipe, orderedTransports } from '../../shared/platformConnectionRecipes.ts';
+import { staticRecipe, orderedTransports, requiresRouteRediscovery } from '../../shared/platformConnectionRecipes.ts';
 
 const ACTIONS = new Set(['connect', 'create_account', 'repair', 'reauthorize']);
 const clean = (value: unknown, max = 300) =>
@@ -19,7 +19,7 @@ async function resolveRecipe(sr: any, platform: string, operation: string) {
   const supportedTransports = effective
     ? orderedTransports(effective).filter((value: string) => value && value !== 'manual')
     : [];
-  const rediscoveryRequired = !effective || effective.status === 'stale' || effective.discovery_state === 'exhausted' || (!supportedTransports.length && effective.rediscovery_on_failure !== false);
+  const rediscoveryRequired = requiresRouteRediscovery(effective, supportedTransports);
   return {
     recipe: effective,
     transport_order: supportedTransports,

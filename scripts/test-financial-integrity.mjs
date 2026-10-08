@@ -30,6 +30,10 @@ const files = {
 const checks = [
   ['Base44 financial boundary uses FinancialOperation', files.bridge.includes('sr.entities.FinancialOperation')],
   ['Base44 financial boundary records donations', files.bridge.includes("operation_type: 'donation'")],
+  ['canonical donations use atomic immutable keyed upsert', files.bridge.includes('FinancialOperation.upsert') && files.bridge.includes("key: ['operation_key', 'allocation_fingerprint']")],
+  ['canonical donation fingerprint includes normalized payment channel', files.bridge.includes('paymentChannel: normalizePaymentChannel(value.payment_channel)')],
+  ['legacy channel-less canonical operations reject caller-driven backfill', files.bridge.includes('Legacy donation operation is missing immutable payment-channel evidence')],
+  ['conflicting immutable donation allocations fail closed', files.bridge.includes('Conflicting immutable donation allocation')],
   ['Base44 financial boundary reserves withdrawals', files.bridge.includes("operation_type: 'withdrawal_reservation'")],
   ['Base44 financial boundary completes reserved withdrawals', files.bridge.includes("op.state !== 'reserved'") && files.bridge.includes("state: 'completed'")],
   ['Base44 financial boundary cancels withdrawals', files.bridge.includes("state: 'cancelled'")],
@@ -48,6 +52,7 @@ const checks = [
 
   ['PayPal capture uses canonical donation boundary', files.paypalCapture.includes('recordCanonicalDonation')],
   ['PayPal capture does not increment Base44 campaign money', !/\$inc\s*:\s*\{[^}]*raised_amount/.test(files.paypalCapture)],
+  ['PayPal capture atomically claims and verifies one holding entry', files.paypalCapture.includes('HoldingLedgerEntry.upsert') && files.paypalCapture.includes("{ key: 'operation_key' }") && files.paypalCapture.includes('persistedHoldings.length !== 1')],
   ['PayPal capture has stable provider request id', files.paypal.includes('PayPal-Request-Id') && files.paypal.includes('IF_CAPTURE')],
   ['PayPal payout sender batch is deterministic', files.paypal.includes("stableProviderKey('IFW', itemId") && !files.paypal.includes('IFW_${Date.now()}')],
   ['PayPal ambiguous transport result is explicit', files.paypal.includes('err.ambiguous = true')],
@@ -55,11 +60,17 @@ const checks = [
   ['verified Donation mirror is created before campaign totals are recomputed',
     files.mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') >= 0 &&
     files.mirrors.indexOf('const mirror = await reconcileOne(sr.entities.Donation') <
-    files.mirrors.indexOf('await mirrorCanonicalCampaignTotal(sr, campaignId, totals)')],
+    files.mirrors.indexOf('await reconcileCanonicalCampaignProjection(sr, campaignId)')],
+  ['campaign total projection uses bounded convergence', files.bridge.includes('reconcileCanonicalCampaignProjection') && files.bridge.includes('remained unstable after bounded reconciliation')],
   ['PayPal capture never mirrors stale campaign totals before donation convergence', !files.paypalCapture.includes('await mirrorCanonicalCampaignTotal')],
   ['legacy PayPal recovery accepts only donation-payment T0013 receipts', files.paypalRecovery.includes("tx.transactionEventCode !== 'T0013'") && files.paypalRecoveryList.includes("tx.transactionEventCode === 'T0013'")],
   ['legacy PayPal recovery deduplicates by provider transaction id', files.paypalRecovery.includes('provider_transaction_id: transactionId') && files.paypalRecovery.includes('existingAllocation')],
   ['legacy PayPal recovery enters canonical donation boundary', files.paypalRecovery.includes('recordCanonicalDonation') && files.paypalRecovery.includes('reconcileDonationMirror')],
+  ['partial PayPal receipt state remains repairable', files.paypalRecoveryList.includes('repair_required: hasLocalEvidence && !complete') && files.paypalRecovery.includes('repaired: !wasComplete')],
+  ['PayPal partial recovery preserves immutable contribution and channel', files.paypalRecovery.includes('platform_contribution: platformContribution') && files.paypalRecovery.includes('payment_method: paymentMethod')],
+  ['PayPal legacy channel backfill requires persisted mirror evidence', files.paypalRecovery.includes('persistedMirrorChannels.size !== 1') && files.paypalRecovery.includes('independently persisted payment-channel evidence')],
+  ['PayPal receipt completion requires one holding', files.paypalRecoveryList.includes('holdings.length === 1')],
+  ['PayPal recovery duplicate status requires exactly one complete operation/mirror/holding', files.paypalRecovery.includes('allocation.ops.length !== 1') && files.paypalRecovery.includes('allocation.donations.length !== 1') && files.paypalRecovery.includes('allocation.holdings.length !== 1')],
   ['raw PayPal button fails closed outside prelaunch', files.paypalRawButton.includes('if (!PRELAUNCH_MODE) return null')],
   ['campaign distribution never uses raw PayPal donate URLs', !files.distribution.includes('paypal.com/donate') && files.distribution.includes('?donate=true')],
 

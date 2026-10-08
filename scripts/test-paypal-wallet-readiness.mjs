@@ -17,7 +17,7 @@ const wallet = read("src/components/payments/GooglePayButton.jsx");
 
 for (const channel of ["paypal", "googlepay"]) {
   for (const optIn of [true, false]) {
-    for (const charged of [2, 25, 50, 100, 250]) {
+    for (const charged of [1, 2, 25, 50, 100, 250]) {
       const b = computePayPalBreakdown(charged, optIn, channel);
       const expected = channel === "googlepay"
         ? computePayPalWalletProcessingFee(charged)
@@ -27,7 +27,9 @@ for (const channel of ["paypal", "googlepay"]) {
       assert.equal(Math.round((b.amount + b.processing) * 100), Math.round(charged * 100));
       assert.equal(Math.round((b.recipientGift + b.contribution) * 100), Math.round(b.amount * 100));
       assert.equal(Math.round((b.recipientNet + b.platformFee) * 100), Math.round(b.recipientGift * 100));
-      assert.ok(b.amount >= MIN_DONATION);
+      assert.ok(charged >= MIN_DONATION);
+      assert.ok(b.amount > 0);
+      assert.ok(b.recipientGift > 0);
     }
   }
 }
@@ -70,10 +72,40 @@ assert.equal(invalidCharge.reason, "order_mismatch");
 const tooSmall = resolvePayPalCaptureAllocation({
   chargedAmount: 1, quotedDonation: .70, quotedFee: .30, quotedContribution: 0,
 });
-assert.equal(tooSmall.ok, false);
-assert.equal(tooSmall.reason, "amount_below_minimum");
+assert.equal(tooSmall.ok, true);
+assert.equal(tooSmall.amount, .70);
 
-assert.match(create, /validateDonationAmount\(value\)/);
+const oneDollarActual = resolvePayPalCaptureAllocation({
+  chargedAmount: 1, quotedDonation: .48, quotedFee: .52,
+  quotedContribution: .05, providerReceivable: .47, providerFee: .53,
+});
+assert.equal(oneDollarActual.ok, true);
+assert.equal(oneDollarActual.amount, .47);
+assert.ok(oneDollarActual.amount - oneDollarActual.platformContribution > 0);
+
+const contradictoryBreakdown = resolvePayPalCaptureAllocation({
+  chargedAmount: 25, quotedDonation: 23.68, quotedFee: 1.32,
+  quotedContribution: 0, providerReceivable: 23.64, providerFee: 2,
+});
+assert.equal(contradictoryBreakdown.ok, false);
+assert.equal(contradictoryBreakdown.reason, "provider_breakdown_mismatch");
+
+// The first canonical allocation wins. A later enriched PayPal response and
+// concurrent same-order retries must reuse it rather than revise settled money.
+const quoteAllocation = resolvePayPalCaptureAllocation({
+  chargedAmount: 25, quotedDonation: 23.68, quotedFee: 1.32, quotedContribution: 0,
+});
+const enrichedAllocation = resolvePayPalCaptureAllocation({
+  chargedAmount: 25, quotedDonation: 23.68, quotedFee: 1.32,
+  quotedContribution: 0, providerReceivable: 23.64, providerFee: 1.36,
+});
+const freezeFirst = (current, candidate) => current || candidate;
+const first = freezeFirst(null, quoteAllocation);
+assert.equal(freezeFirst(first, enrichedAllocation), first);
+assert.equal([quoteAllocation, enrichedAllocation].reduce(freezeFirst, null), quoteAllocation);
+
+assert.match(create, /validateDonationAmount\(amount\)/);
+assert.doesNotMatch(create, /validateDonationAmount\(value\)/);
 assert.match(paypal, /isLivePayPalRestReady\(\)/);
 assert.match(capabilities, /isLivePayPalRestReady\(\)/);
 assert.match(sdk, /components=buttons,googlepay&/);
@@ -82,5 +114,8 @@ assert.match(wallet, /paypal\.Googlepay\(\)/);
 assert.match(wallet, /result\?\.ok !== true/);
 const capture = read("base44/functions/capturePayPalOrder/entry.ts");
 assert.match(capture, /resolvePayPalCaptureAllocation/);
+assert.ok(capture.indexOf("existingOperations.length") < capture.indexOf("resolvePayPalCaptureAllocation({"));
+assert.ok(capture.indexOf("existingOperations.length") < capture.indexOf("recordCanonicalDonation(sr"));
+assert.match(capture, /saved\.payment_channel/);
 assert.match(capture, /savedOperation\.gross_amount/);
 console.log("PayPal/Google Pay fee, readiness, and SDK contracts verified.");

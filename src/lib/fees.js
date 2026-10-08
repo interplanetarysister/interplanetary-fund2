@@ -91,14 +91,22 @@ export function computeRecipientNet(amount, optedIn) {
 }
 
 export function computeBreakdown(total, optedIn) {
+  return computeProcessorBreakdown(total, optedIn, computeProcessingFee);
+}
+
+export function computeProcessorBreakdown(total, optedIn, processingFeeForTotal) {
   const totalCharged = round2(Number(total) || 0);
-  const processing = computeProcessingFee(totalCharged);
+  const processing = round2(processingFeeForTotal(totalCharged));
   const a = round2(Math.max(0, totalCharged - processing));
   const contribution = computeContribution(a, optedIn);
   const gift = round2(a - contribution);
   const platformFee = computePlatformFee(a, optedIn);
   const recipientNet = round2(Math.max(0, gift - platformFee));
   return { amount: a, contribution, recipientGift: gift, processing, platformFee, recipientNet, totalCharged };
+}
+
+export function computePayPalWalletBreakdown(total, optedIn) {
+  return computePayPalBreakdown(total, optedIn, "googlepay");
 }
 
 export function computeWithdrawal(giftsTotal) {

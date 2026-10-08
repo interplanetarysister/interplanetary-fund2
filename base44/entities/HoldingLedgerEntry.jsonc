@@ -75,6 +75,14 @@
       "type": "number",
       "default": 0
     },
+    "payment_channel": {
+      "type": "string",
+      "enum": [
+        "paypal",
+        "googlepay"
+      ],
+      "description": "PayPal-backed checkout channel. Preserved so partial capture recovery cannot silently relabel Google Pay as PayPal."
+    },
     "withdrawal_id": {
       "type": "string"
     },

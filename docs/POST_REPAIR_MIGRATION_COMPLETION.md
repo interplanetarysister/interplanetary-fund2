@@ -18,6 +18,7 @@ Historical PRs and stale branches are evidence only. Their code is migrated sele
 - `agent1/feature-10-platform-foundation`: the old Convex event bridge is not migrated because active Convex runtime is intentionally absent. Current Base44 `PlatformEvent` / `logPlatformEvent` remains the native path.
 - `fix/complete-existing-feature-boundaries`: superseded where current main already has owner-safe inbox/notification functions and later security work; no stale wholesale merge.
 - `base44-intake`: retired as stale evidence; never merge into current main.
+- PR #492 payment integrity: migrated only the still-applicable Base44 payment invariants into the repaired architecture. PayPal and Google Pay now bind campaign, donor charge, contribution choice and rail to stable request identities; completed captures freeze one canonical allocation/payment channel; atomic canonical and holding claims reject conflicts; partial receipt recovery requires exactly one consistent operation, donation mirror and settled holding; provider fee/net evidence must reconcile to the charge; valid $1 donor charges remain supported; Stripe, PayPal and Google Pay disclosures remain rail-specific. The current managed-connection and external-settlement implementations were retained rather than replaced by the historical branch.
 
 ## Completion rules
 
@@ -29,6 +30,9 @@ Historical PRs and stale branches are evidence only. Their code is migrated sele
 6. Platform fee remains 3% at withdrawal.
 7. No raw reusable admin/platform passwords are stored in Base44 entities.
 8. No active Convex runtime is reintroduced.
+9. The canonical donation identity includes its payment channel and immutable allocation fingerprint; legacy channel evidence fails closed when it cannot be uniquely established.
+10. The donor-entered amount remains the charged total, and the platform fee remains exactly 3% at withdrawal rather than being stacked into checkout.
+11. Raw credential-vault entities remain absent; only admin-restricted provider-managed credential references are permitted.
 
 ## External blockers that cannot be truthfully implemented from source alone
 
