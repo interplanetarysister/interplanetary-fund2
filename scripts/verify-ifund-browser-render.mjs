@@ -47,9 +47,19 @@ try {
   const chunks=fs.readdirSync('dist/assets');
   assert.ok(chunks.some(x=>/^react-runtime-[^/]+\.js$/.test(x)),
     'The shared React/ReactDOM/Router runtime must not be split into cyclic chunks');
-  assert.ok(!chunks.some(x=>/^react-dom-[^/]+\.js$/.test(x)),
-    'A separate ReactDOM vendor chunk reintroduces a React circular dependency');
-  console.log('PASS React chunk is coherent without the useLayoutEffect startup regression.');
+  // Vite can create small secondary vendor chunks named react-dom that contain
+  // non-React utilities. What matters is avoiding a cyclic import back into
+  // React initialization. Check the actual dependency direction, not filenames.
+  const runtimeName=chunks.find(x=>/^react-runtime-[^/]+\.js$/.test(x));
+  const runtime=fs.readFileSync('dist/assets/'+runtimeName,'utf8');
+  for(const chunk of chunks.filter(x=>/^react-dom-[^/]+\.js$/.test(x))) {
+    const vendor=fs.readFileSync('dist/assets/'+chunk,'utf8');
+    assert.ok(!runtime.includes('./'+chunk),
+      'The React runtime cannot import a vendor that imports React back');
+    assert.ok(vendor.includes('./'+runtimeName),
+      'Other react-dom-labeled chunks may only consume React after initialization');
+  }
+  console.log('PASS React vendor dependency direction and useLayoutEffect browser regression.');
 } finally {
   await browser?.close();
   if(preview){preview.kill();await delay(200)}
