@@ -10,7 +10,8 @@ export default async function(req) {
 
     // Centralized access gate: email delivery runs through the platform-managed
     // Core integration, but it is still gated by the email registry entry so an
-    // admin can revoke it centrally. Fails open only on a transient read error.
+    // admin can revoke it centrally. If registry verification is unavailable,
+    // delivery fails closed rather than guessing that email is usable.
     const emailAccess = await assertPlatformAccess(base44.asServiceRole, 'email');
     if (!emailAccess.ok) return Response.json({ error: 'Email delivery is not available right now.' }, { status: 503 });
 
