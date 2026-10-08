@@ -98,7 +98,7 @@ export default function WithdrawalDialog({ campaign, open, onOpenChange, onDone 
 
             <div className="flex items-start gap-2 text-xs text-slate-400 bg-white/5 rounded-lg p-3 border border-white/10">
               <ShieldCheck className="w-4 h-4 mt-0.5 text-cyan-400 shrink-0" />
-              <p>Funds are sent from our verified business PayPal account. Only donations that have cleared the 7-day holding period can be withdrawn, and you can withdraw once per day.</p>
+              <p>Funds are sent from our verified business PayPal account. Only provider-verified IFund donations that have cleared the hold, plus external-platform funds independently verified as settled into the IFund holding account, can be withdrawn. Without an active subscription, you can withdraw once per day.</p>
             </div>
 
             {error && (
