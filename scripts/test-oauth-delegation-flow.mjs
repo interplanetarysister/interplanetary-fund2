@@ -74,6 +74,31 @@ function fixture(opts={}) {
  assert.equal(x.calls.created[0].obo_consent.granted,false);
  assert.equal(x.calls.created[0].agent_access.automation_enabled,false);
 }
+{
+ const x=fixture();
+ const res=await handler('base44/functions/revokeConnectionAiConsent/entry.ts',x.sdk)(
+   req({connection_id:'connection123'})
+ );
+ assert.equal(res.status,200);
+ assert.equal(x.calls.connectionUpdates[0].obo_consent.granted,false);
+ assert.equal(x.calls.connectionUpdates[0].agent_access.automation_enabled,false);
+ assert.equal(x.calls.connectionUpdates[0].automation_mode,'manual');
+ assert.equal(x.calls.connectionUpdates[0].status,undefined,
+   'Revoking AI cannot silently disconnect the user from the provider');
+}
+{
+ const x=fixture({otherOwner:true});
+ const res=await handler('base44/functions/revokeConnectionAiConsent/entry.ts',x.sdk)(
+   req({connection_id:'connection123'})
+ );
+ assert.equal(res.status,404);
+ assert.equal(x.calls.connectionUpdates.length,0);
+}
+assert.match(read('base44/functions/setUnifiedOboConsent/entry.ts'),/approvedForAccount = granted && currentObo.granted === true/);
+assert.match(read('base44/functions/saveConnectionCredentials/entry.ts'),/accountAiConsent = unifiedObo && currentConsent.granted === true/);
+assert.match(read('src/components/connections/ConnectDialog.jsx'),/window.open\("about:blank"/);
+assert.match(read('src/App.jsx'),/ifund-provider-oauth-returned/);
+assert.match(read('src/pages/Connections.jsx'),/window.addEventListener\("message", resume\)/);
 const ui=read('src/pages/Connections.jsx');
 assert.match(ui,/pendingOAuthConsent/);
 assert.match(ui,/step: "consent_pending"/);
@@ -87,4 +112,4 @@ assert.match(connect,/returnPath: window.location.pathname/);
 assert.match(connect,/destination.protocol !== "https:"/);
 assert.match(read('base44/functions/verifyPlatformConnection/entry.ts'),/aiAllowed && connection.automation_mode === 'auto' && providerBacked/);
 
-console.log('PASS: OAuth staged login, 6 consent/denial/security scenarios, strict verification and safe return contracts.');
+console.log('PASS: OAuth staged login, 8 consent/denial/security scenarios, strict verification and safe return contracts.');
