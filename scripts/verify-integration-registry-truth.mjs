@@ -88,7 +88,8 @@ expect(!providerCapabilities.includes('balance_read:true'), 'runtime registry mu
 expect(providerCapabilities.includes("platform:'custom', display_name:'Custom Campaign URL', category:'custom', campaign_import:false"), 'custom URLs must not advertise provider-backed import support');
 expect(publicCampaignSnapshot.includes("redirect: 'manual'"), 'provider snapshot discovery must inspect redirects');
 expect(publicCampaignSnapshot.includes("declaredLength > 2_000_000"), 'provider snapshot discovery must bound declared page size');
-expect(publicCampaignSnapshot.includes("await response.text()"), 'provider snapshot body must be read while the request timeout is active');
+expect(publicCampaignSnapshot.includes("await readTextLimited(response, 2_000_000)"), 'provider snapshot body must be stream-bounded while the request timeout is active');
+expect(publicCampaignSnapshot.includes("if (total > maxBytes) throw new Error('provider_page_too_large')"), 'provider snapshot stream must stop above the size limit');
 expect(publicCampaignSnapshot.includes("contentType.includes('text/html')"), 'provider snapshot discovery must require HTML-compatible content');
 expect(discoverSnapshotLocal === publicCampaignSnapshot, 'discover function-local snapshot helper must match canonical helper');
 expect(importSnapshotLocal === publicCampaignSnapshot, 'import function-local snapshot helper must match canonical helper');
