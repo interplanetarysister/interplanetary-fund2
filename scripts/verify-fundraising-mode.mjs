@@ -33,7 +33,10 @@ assert.match(platformButton, /generatePayPalLink/);
 assert.doesNotMatch(platformButton, /PRELAUNCH_MODE/);
 assert.match(link, /Platform Support/);
 assert.ok(checkout.every((code) => code.includes("isPublicCampaignFundraisingEnabled")));
-assert.ok(paypalPaths.every((code) => code.includes("campaignPaymentAccess(base44)")));
+assert.match(paypalPaths[0], /campaignPaymentAccess\(base44\)/);
+assert.match(paypalPaths[0], /areFeaturesEnabled\(base44/);
+assert.doesNotMatch(paypalPaths[1], /campaignPaymentAccess\(base44\)/);
+assert.match(paypalPaths[1], /recordCanonicalDonation\(sr/);
 assert.ok([
   "src/pages/Home.jsx",
   "src/pages/CampaignDetail.jsx",

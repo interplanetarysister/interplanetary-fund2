@@ -54,7 +54,9 @@ assert.match(capture,/persistedHoldings\.length !== 1/);
 assert.match(create,/payment_channel/);
 assert.doesNotMatch(create,/validateDonationAmount\(value\)/);
 assert.match(create,/campaignPaymentAccess\(base44\)/);
-assert.match(capture,/campaignPaymentAccess\(base44\)/);
+// A previously created order is finalized even if new checkouts are switched off.
+assert.doesNotMatch(capture,/campaignPaymentAccess\(base44\)/);
+assert.match(capture,/recordCanonicalDonation\(sr/);
 assert.match(prelaunchAccess,/isPublicCampaignFundraisingEnabled/);
 assert.doesNotMatch(prelaunchAccess,/SUPER_ADMIN_OWNER_EMAILS/);
 assert.match(fundingCard,/usePublicCampaignFundraising/);
