@@ -8,6 +8,7 @@ import CampaignFundingCard from "@/components/campaigns/CampaignFundingCard";
 import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
+import CryptoCampaignSettings from "@/components/campaigns/CryptoCampaignSettings";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
 import ImportedCampaignSync from "@/components/campaigns/ImportedCampaignSync";
 import AICoach from "@/components/campaigns/AICoach";
@@ -169,6 +170,7 @@ export default function CampaignDetail() {
 
           {isOwner && <ImportedCampaignSync campaign={campaign} onSynced={load} />}
           {isOwner && <CashAppSettings campaign={campaign} onSaved={load} />}
+          {canManage && <CryptoCampaignSettings campaign={campaign} onSaved={load} />}
           {canManage && <div id="campaign-settings" tabIndex={-1} className="scroll-mt-24">
             <EditCampaignDetailsDialog campaign={campaign} onSaved={load} />
           </div>}
