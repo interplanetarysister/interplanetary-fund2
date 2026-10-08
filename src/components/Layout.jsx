@@ -166,7 +166,11 @@ export default function Layout() {
         <div key={section.label}>
           <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
           <div className="flex flex-col gap-0.5">
-            {section.items.filter(({ to }) => (to === "/agents" ? hasAiAgents : isAdmin || !["/analytics", "/connect"].includes(to) && !to.startsWith("/admin/"))).map(({ to, label, icon: Icon }) => (
+            {section.items.filter(({ to }) => {
+              if (to === "/agents") return hasAiAgents;
+              const adminOnly = ["/analytics", "/connect", "/ops", "/platform"].includes(to) || to.startsWith("/admin/");
+              return isAdmin || !adminOnly;
+            }).map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
                 to={to}
