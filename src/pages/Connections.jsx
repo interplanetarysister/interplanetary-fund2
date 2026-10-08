@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
+import OAuthPermissionStep from "@/components/connections/OAuthPermissionStep";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
@@ -16,6 +18,10 @@ import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
 // crowdfunding platform and social network Interplanetary Fund can reach,
 // managed from a single place.
 export default function Connections() {
+  const navigate = useNavigate();
+  const [pendingOAuthConsent, setPendingOAuthConsent] = useState(null);
+  const [oauthConsentBusy, setOauthConsentBusy] = useState(false);
+  const [oauthConsentError, setOauthConsentError] = useState("");
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
   const [dialog, setDialog] = useState(null); // { platform, existing }
@@ -84,6 +90,43 @@ export default function Connections() {
   };
 
 
+  const decideOAuthPermission = async (allowAi) => {
+    const pending = pendingOAuthConsent;
+    if (!pending || oauthConsentBusy) return;
+    setOauthConsentBusy(true);
+    setOauthConsentError("");
+    try {
+      const current = await base44.auth.me();
+      if (!current || current.id !== pending.userId) throw new Error("User session changed");
+      const { data } = await base44.functions.invoke("completeOAuthConnection", {
+        connection_id: pending.connectionId, allow_ai: allowAi,
+      });
+      if (data?.ok !== true) throw new Error("Consent was not saved");
+      const verified = await base44.functions.invoke("verifyPlatformConnection", {
+        connection_id: pending.connectionId,
+      });
+      const working = verified?.data?.working === true;
+      localStorage.removeItem("ifund_pending_platform_connection");
+      setPendingOAuthConsent(null);
+      setConnectionNotice(working
+        ? { ok: true, text: allowAi
+            ? pending.platform + " is connected. IFund AI may perform only verified, provider-permitted actions."
+            : pending.platform + " is connected without AI access." }
+        : { ok: false, text: pending.platform + " authorization was saved but the live provider check needs attention. Reconnect or check permissions." });
+      setReloadKey(key => key + 1);
+      const back = typeof pending.returnPath === "string" ? pending.returnPath : "/connections";
+      if (working && back.startsWith("/") && !back.startsWith("//") &&
+          !back.includes("\\") && back !== "/connections" &&
+          !back.startsWith("/connections?")) {
+        navigate(back, { replace: true });
+      }
+    } catch {
+      setOauthConsentError("Could not save permissions and verify this connection. Please retry.");
+    } finally {
+      setOauthConsentBusy(false);
+    }
+  };
+
   const syncWix = async () => {
     setWixSyncing(true);
     setWixSyncResult(null);
@@ -120,29 +163,24 @@ export default function Connections() {
       } catch { localStorage.removeItem("ifund_pending_platform_connection"); }
       const fresh = pending && pending.userId === me.id && Date.now() - pending.startedAt < 20 * 60 * 1000;
       if (pending && !fresh) localStorage.removeItem("ifund_pending_platform_connection");
-      if (fresh) {
+      if (fresh && pending.step === "consent_pending" && pending.connectionId) {
+        setPendingOAuthConsent(pending);
+      } else if (fresh && pending.step !== "consent_pending") {
         try {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
             platform: pending.platform,
           });
           if (data?.authorization_present && data?.connection?.id) {
-            localStorage.removeItem("ifund_pending_platform_connection");
-            try {
-              const verified = await base44.functions.invoke("verifyPlatformConnection", { connection_id: data.connection.id });
-              if (verified?.data?.working) {
-                setConnectionNotice({ ok: true, text: `${pending.platform} is connected and working.` });
-              } else {
-                setConnectionNotice({ ok: false, text: `${pending.platform} sign-in was saved, but the live provider check still needs attention.` });
-              }
-            } catch {
-              setConnectionNotice({ ok: false, text: `${pending.platform} sign-in was saved, but the live provider check still needs attention.` });
-            }
+            const next = { ...pending, step: "consent_pending", connectionId: data.connection.id };
+            localStorage.setItem("ifund_pending_platform_connection", JSON.stringify(next));
+            setPendingOAuthConsent(next);
+            setConnectionNotice(null);
           } else {
-            setConnectionNotice({ ok: false, text: `Finish connecting ${pending.platform}, then return here. If sign-in was cancelled, try again.` });
+            localStorage.removeItem("ifund_pending_platform_connection");
+            setConnectionNotice({ ok: false, text: pending.platform + " authorization was not completed. Use Connect to try again." });
           }
-        } catch (oauthError) {
-          console.error("OAuth connection finalization failed:", oauthError);
-          setConnectionNotice({ ok: false, text: "We couldn’t finish the connection. Try again." });
+        } catch {
+          setConnectionNotice({ ok: false, text: "We could not finish provider sign-in. Use Connect to retry." });
         }
       }
       const connRes = await base44.functions.invoke("listConnections", { scope: "mine" });
@@ -402,6 +440,15 @@ export default function Connections() {
           )}
         </div>
       </div>
+
+      {pendingOAuthConsent && (
+        <OAuthPermissionStep
+          pending={pendingOAuthConsent}
+          busy={oauthConsentBusy}
+          error={oauthConsentError}
+          onDecide={decideOAuthPermission}
+        />
+      )}
 
       {dialog && (
         <ConnectDialog
