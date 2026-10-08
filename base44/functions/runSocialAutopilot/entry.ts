@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { canAutoPublish, hasAiPublishingConsent } from '../../shared/socialPublish.ts';
@@ -41,6 +42,7 @@ function buildContext(campaign) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'social_autopilot'))) return Response.json({ skipped: true, flag: 'social_autopilot', reason: 'disabled' });
     const sr = base44.asServiceRole;
     const report = { campaigns_processed: 0, posts_staged: 0, skipped: [] };
 

@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
@@ -46,6 +47,7 @@ function generateDonationBlock(campaignId) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'ai_campaign_assistant'))) return featureUnavailable('AI distribution content');
     const guard = await assertActiveAccount(base44);
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;

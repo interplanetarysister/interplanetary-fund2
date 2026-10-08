@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
@@ -13,6 +14,7 @@ import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'cross_platform_publishing'))) return featureUnavailable('Cross-platform publishing');
     const guard = await assertActiveAccount(base44);
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;

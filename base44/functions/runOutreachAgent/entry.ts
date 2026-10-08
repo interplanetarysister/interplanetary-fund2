@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
@@ -39,6 +40,7 @@ function buildContext(campaign, donationsCount, updatesCount) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'ai_outreach_agent'))) return Response.json({ skipped: true, flag: 'ai_outreach_agent', reason: 'disabled' });
     const sr = base44.asServiceRole;
 
     const campaigns = await sr.entities.Campaign.filter({ outreach_enabled: true });

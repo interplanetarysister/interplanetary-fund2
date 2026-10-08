@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 // Publishes a grant/funding opportunity for an institution. Verifies the caller
@@ -7,6 +8,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'institution_programs'))) return featureUnavailable('New institution opportunities');
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Sign in to publish an opportunity.' }, { status: 401 });
 

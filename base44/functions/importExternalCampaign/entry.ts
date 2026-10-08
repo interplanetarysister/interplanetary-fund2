@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { discoverPublicCampaignSnapshot } from './publicCampaignSnapshot.ts';
@@ -8,6 +9,7 @@ const clean = (v, n=12000) => typeof v === 'string' ? v.trim().slice(0,n) : v;
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'external_campaign_import'))) return featureUnavailable('External campaign import');
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json().catch(() => ({}));

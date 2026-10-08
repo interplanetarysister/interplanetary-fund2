@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertExternalAgentAction } from '../../shared/integrationRegistry.ts';
 
@@ -69,6 +70,7 @@ function platformReadResult(connection) {
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'external_feed_mirroring'))) return Response.json({ skipped: true, flag: 'external_feed_mirroring', reason: 'disabled' });
     const sr = base44.asServiceRole;
     const report = { mirrored: 0, duplicates_skipped: 0, skipped: 0, platforms: {} };
 

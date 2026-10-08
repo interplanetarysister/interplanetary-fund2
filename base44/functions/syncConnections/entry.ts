@@ -1,3 +1,4 @@
+import { isFeatureEnabled } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
@@ -31,7 +32,8 @@ export default async function(req) {
       ...failed.filter((p) => (p.retry_count || 0) < MAX_RETRIES),
     ];
 
-    for (const post of queue) {
+    const publishingEnabled = await isFeatureEnabled(base44, 'cross_platform_publishing');
+    for (const post of publishingEnabled ? queue : []) {
       const connection = await sr.entities.PlatformConnection.get(post.connection_id).catch(() => null);
       if (!connection) {
         await sr.entities.DistributedPost.update(post.id, { status: 'failed', error: 'Connection was removed', retry_count: MAX_RETRIES });
