@@ -203,7 +203,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
               <p className="text-sm font-semibold text-foreground">Connect {platform.name}</p>
-              <p className="text-xs text-muted-foreground">First sign in securely on {platform.name}. When you return, choose whether to let IFund AI act on your behalf. Only permissions the provider actually grants can be used.</p>
+              <p className="text-xs text-muted-foreground">Choose the Interplanetary Fund campaign first, then use the one-click link below. You’ll sign in on {platform.name}, approve the provider permissions, and return here automatically. Your existing IFund AI authorization applies without a second permission screen.</p>
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -212,8 +212,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCampaign && platform.kind !== "app" ? `Link ${selectedCampaign.title} to ${platform.name}` : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>
           ) : (
-            <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : "Connect"}
+            <Button onClick={save} disabled={saving || (platform.kind !== "app" && !selectedCampaign)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCampaign && platform.kind !== "app" ? `Link ${selectedCampaign.title} to ${platform.name}` : existing ? "Save changes" : "Connect"}
             </Button>
           )}
           {!existing && managedAvailable && onManagedCreateAccount && platform.kind !== "app" && (
