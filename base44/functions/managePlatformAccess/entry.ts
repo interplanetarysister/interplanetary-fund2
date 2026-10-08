@@ -3,11 +3,9 @@ import { logAudit } from '../../shared/auditLog.ts';
 
 // Admin-only management of the Platform Access Registry. Every mutation is
 // audit-logged. Never accepts or stores secret values — only reference names.
-// Actions: upsert, authorize_agent, revoke_agent, reauthorize, revoke,
-// change_credential_ref. Admins only (403 otherwise) — this is the single
-// place credential references, agent permissions, and integration status are
-// changed, per least-privilege.
-
+// Configuration changes never manufacture provider verification: new entries
+// start DISCONNECTED and reauthorization requests remain pending until a
+// provider-backed health check proves the integration is active.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -43,8 +41,11 @@ export default async function(req) {
         admin_owner: String(body.admin_owner || entry?.admin_owner || user.email || ''),
       };
       let saved;
-      if (entry) { saved = await sr.entities.PlatformAccessRegistry.update(entry.id, data); }
-      else { saved = await sr.entities.PlatformAccessRegistry.create({ ...data, status: 'ACTIVE' }); }
+      if (entry) {
+        saved = await sr.entities.PlatformAccessRegistry.update(entry.id, data);
+      } else {
+        saved = await sr.entities.PlatformAccessRegistry.create({ ...data, status: 'DISCONNECTED' });
+      }
       await audit({ action: 'integration_upserted', detail: `upserted ${platform}`, metadata: { platform, auth_type: data.auth_type } });
       return Response.json({ ok: true, entry: saved });
     }
@@ -54,33 +55,36 @@ export default async function(req) {
       if (!agent) return Response.json({ error: 'agent_name required' }, { status: 400 });
       const list = entry.authorized_agents || [];
       const next = action === 'authorize_agent' ? (list.includes(agent) ? list : [...list, agent]) : list.filter((a) => a !== agent);
-      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, { authorized_agents: next });
+      await sr.entities.PlatformAccessRegistry.update(entry.id, { authorized_agents: next });
       await audit({ action: 'agent_permission_change', detail: `${action} ${agent} on ${platform}`, status: 'success', metadata: { platform, agent, action } });
       return Response.json({ ok: true, authorized_agents: next });
     }
 
     if (action === 'reauthorize') {
-      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, { status: 'ACTIVE', last_failure: '', auth_failures: 0 });
-      await audit({ action: 'reauthorization', detail: `reauthorized ${platform}`, metadata: { platform } });
-      return Response.json({ ok: true, status: 'ACTIVE' });
+      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, {
+        status: 'REAUTH_REQUIRED',
+        last_failure: 'Provider verification required before activation.',
+      });
+      await audit({ action: 'reauthorization_requested', detail: `reauthorization requested for ${platform}`, metadata: { platform } });
+      return Response.json({ ok: true, status: saved.status, verification_required: true });
     }
 
     if (action === 'revoke') {
-      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, { status: 'REVOKED' });
+      await sr.entities.PlatformAccessRegistry.update(entry.id, { status: 'REVOKED' });
       await audit({ action: 'revocation', detail: `revoked ${platform}`, metadata: { platform } });
       return Response.json({ ok: true, status: 'REVOKED' });
     }
 
     if (action === 'change_credential_ref') {
       const refs = Array.isArray(body.secret_refs) ? body.secret_refs.map(String) : [];
-      const saved = await sr.entities.PlatformAccessRegistry.update(entry.id, { secret_refs: refs });
+      await sr.entities.PlatformAccessRegistry.update(entry.id, { secret_refs: refs });
       await audit({ action: 'credential_reference_change', detail: `updated secret refs for ${platform}: ${refs.join(', ') || '(none)'}`, metadata: { platform, secret_refs: refs } });
       return Response.json({ ok: true, secret_refs: refs });
     }
 
     return Response.json({ error: `unknown action "${action}"` }, { status: 400 });
   } catch (error) {
-    console.error('managePlatformAccess error:', error.message);
+    console.error('managePlatformAccess error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not update the integration registry.' }, { status: 500 });
   }
 }
