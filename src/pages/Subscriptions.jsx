@@ -120,6 +120,32 @@ export default function Subscriptions() {
     } finally { setProvisioning(false); }
   };
 
+  const verifyProvidedBasicPayPalPlan = async () => {
+    setError("");
+    setNotice("");
+    setProvisioning(true);
+    try {
+      const { data: plan } = await base44.functions.invoke("verifyOwnerPayPalBasicPlan", {});
+      if (!plan?.ok || plan.tier !== "basic" || plan.interval !== "monthly" || plan.amount_cents !== 1200) {
+        throw new Error("The supplied $12 PayPal plan was not verified.");
+      }
+      const { data: hook } = await base44.functions.invoke("setupPayPalSubscriptionWebhook", {});
+      if (!hook?.webhook_registered) throw new Error("The subscription webhook is not yet verified.");
+      const { data: enabled } = await base44.functions.invoke("activateSubscriptionCheckout", {});
+      if (!enabled?.enabled || !enabled.webhook_verified || enabled.matched_paypal_prices < 1) {
+        throw new Error("Live subscription checkout was not enabled.");
+      }
+      await refresh();
+      setNotice("The existing $12/month PayPal plan was verified and linked to Basic AI Assistant. No charge or duplicate plan was created.");
+      window.dispatchEvent(new Event("ifund:fundraising-mode-changed"));
+    } catch {
+      await refresh().catch(() => {});
+      setError("The provided $12 PayPal plan could not be fully connected. Confirm this plan belongs to the configured live business PayPal account and that IFund's subscription webhook is published. No charge was created.");
+    } finally {
+      setProvisioning(false);
+    }
+  };
+
   const setupBusinessBilling = async () => {
     setError("");
     setNotice("");
@@ -176,6 +202,10 @@ export default function Subscriptions() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={provisioning} onClick={verifyProvidedBasicPayPalPlan}>
+              {provisioning && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Verify existing $12 PayPal plan (no charge)
+            </Button>
             <Button type="button" variant="outline" disabled={provisioning} onClick={mirrorStripePricing}>Mirror Stripe pricing (no charge)</Button>
           <Button type="button" variant="outline" disabled={provisioning} onClick={setupBusinessBilling}>
             {provisioning && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
