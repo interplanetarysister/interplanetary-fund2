@@ -126,6 +126,16 @@ export default function Profile() {
         )}
       </div>
 
+      <div className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+        <h2 className="font-semibold text-slate-900">Authorized devices</h2>
+        <p className="mt-1 text-sm text-slate-700">
+          Approve IFund devices using a temporary code, review their access, or revoke it at any time.
+        </p>
+        <Link to="/devices"><Button type="button" variant="outline" className="mt-3">
+          Manage devices and approvals
+        </Button></Link>
+      </div>
+
       <div className="mt-6">
         <FriendsPanel />
       </div>
