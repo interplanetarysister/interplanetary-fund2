@@ -1,6 +1,6 @@
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { sendPayout, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
+import { sendPayout, IFUND_PAYPAL_ACCOUNT_REF, isLivePayPalPayoutReady } from '../../shared/paypal.ts';
 import { giftOf, round2, computeWithdrawal } from '../../shared/fees.js';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
@@ -231,9 +231,10 @@ export default async function(req) {
     // An emergency payout pause applies BEFORE new reservations or approvals.
     // Historical payout reconciliation, donation verification, provider status
     // resolution, and safe reservation release must always remain available.
-    if ((action === 'request' || action === 'approve') &&
-        !(await isFeatureEnabled(base44, 'outbound_payout_execution')))
-      return featureUnavailable('New payouts');
+    if (action === 'request' || action === 'approve') {
+      if (!(await isFeatureEnabled(base44, 'outbound_payout_execution'))) return featureUnavailable('New payouts');
+      if (!(await isLivePayPalPayoutReady())) return Response.json({ error: 'New PayPal payouts are temporarily unavailable while provider access is being verified.' }, { status: 503 });
+    }
 
     if (action === 'clear') {
       if (user.role !== 'admin') return Response.json({ error: 'Admin only.' }, { status: 403 });
