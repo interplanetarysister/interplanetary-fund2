@@ -3,6 +3,7 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
+import { stripePriceFor, subscriptionPrice } from '../../shared/subscriptionCatalog.js';
 
 // Starts a Stripe subscription checkout for an AI tier.
 export default async function(req) {
@@ -22,16 +23,13 @@ export default async function(req) {
     if (!tier || !price_id || !origin) {
       return Response.json({ error: 'Missing subscription details' }, { status: 400 });
     }
-    // Allowlist the Stripe price ids that match our published plans — prevents
-    // a caller from checking out an arbitrary price from another account/tier.
-    const ALLOWED_PRICE_IDS = new Set([
-      'price_1Tz8iSEkntycHB4NlQlYd0Gs', // basic monthly
-      'price_1Tz8iSEkntycHB4N8J7EXq42', // basic annual
-      'price_1Tz8iSEkntycHB4NESNtjyOx', // outreach monthly
-      'price_1Tz8iSEkntycHB4N5iujmlJZ', // outreach annual
-    ]);
-    if (!ALLOWED_PRICE_IDS.has(price_id)) {
-      return Response.json({ error: 'Invalid subscription plan.' }, { status: 400 });
+    // Bind the exact Stripe price to the chosen tier and interval. Matching
+    // some unrelated allowed ID must NEVER grant a more expensive tier.
+    if (!subscriptionPrice(tier, interval) || stripePriceFor(tier, interval) !== price_id) {
+      return Response.json({ error: 'Invalid subscription plan or billing interval.' }, { status: 400 });
+    }
+    if (user.subscription_status === 'active' || user.subscription_status === 'trialing' || user.subscription_status === 'past_due') {
+      return Response.json({ error: 'Manage your existing subscription before buying another plan.' }, { status: 409 });
     }
     let originUrl;
     try {
@@ -48,9 +46,9 @@ export default async function(req) {
     if (originUrl.protocol !== 'https:' || !allowedOrigins.has(originUrl.origin)) {
       return Response.json({ error: 'Invalid subscription origin' }, { status: 400 });
     }
-    if (trial_days != null && (Number(trial_days) <= 0 || Number(trial_days) > 365)) {
-      return Response.json({ error: 'Invalid subscription details' }, { status: 400 });
-    }
+    // Trials are a merchant-controlled offer, never an arbitrary number of
+    // free days submitted by a buyer.
+    if (trial_days != null) return Response.json({ error: 'Trial offers are not available for this checkout.' }, { status: 400 });
 
     const stripeSecret = secrets.get('STRIPE_SECRET_KEY');
     const stripeWebhookSecret = secrets.get('STRIPE_WEBHOOK_SECRET');
@@ -69,9 +67,7 @@ export default async function(req) {
         subscription_tier: tier,
         subscription_interval: interval || 'monthly',
       },
-      ...(trial_days
-        ? { subscription_data: { trial_period_days: trial_days, metadata: { subscription_tier: tier, user_id: user.id } } }
-        : {}),
+      subscription_data: { metadata: { subscription_tier: tier, subscription_interval: interval, user_id: user.id } },
     });
 
     return Response.json({ url: session.url });
