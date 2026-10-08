@@ -1,9 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 
 export default async function(req){
  try{
-  const base44=createClientFromRequest(req);const user=await base44.auth.me();if(!user)return Response.json({error:'Authentication required'},{status:401});
+  const base44=createClientFromRequest(req); const activeAccount = await assertActiveAccount(base44); if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });const user=await base44.auth.me();if(!user)return Response.json({error:'Authentication required'},{status:401});
   const b=await req.json().catch(()=>({}));const campaignId=String(b?.campaign_id||'').trim(),connectionId=String(b?.connection_id||'').trim(),content=String(b?.content||'').trim();
   if(!campaignId||!connectionId||!content||content.length>10000)return Response.json({error:'Invalid post request'},{status:400});
   const [campaigns,connections]=await Promise.all([base44.asServiceRole.entities.Campaign.filter({id:campaignId}),base44.asServiceRole.entities.PlatformConnection.filter({id:connectionId})]);

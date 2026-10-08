@@ -1,5 +1,6 @@
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { hasManagedConnections } from '../../shared/subscriptionEntitlements.ts';
 import { staticRecipe, orderedTransports, requiresRouteRediscovery } from '../../shared/platformConnectionRecipes.ts';
@@ -43,6 +44,8 @@ function waitingRequirement(action: string, transport: string | null) {
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     if (!(await isFeatureEnabled(base44, 'managed_connections'))) return featureUnavailable('New managed connections');
     const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });

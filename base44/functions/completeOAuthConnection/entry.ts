@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 
 // Explicit second step: completed OAuth login -> optional AI delegation.
@@ -8,6 +9,8 @@ const CONSENT_VERSION = '2026-10-unified-obo-v1';
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const user = await base44.auth.me();
     if (!user?.id) return Response.json({ error: 'Sign in to finish your connection.' }, { status: 401 });
 

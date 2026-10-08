@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { getTransaction, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 
@@ -12,6 +13,8 @@ const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCas
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const sr = base44.asServiceRole;
     const user = await base44.auth.me().catch(() => null);
     if (!user || user.role !== 'admin') {

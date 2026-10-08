@@ -1,10 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Revokes only this account's delegated operations; keeps the provider login
 // intact for manual use. Provider tokens and stored balances are unchanged.
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const user = await base44.auth.me();
     if (!user?.id) return Response.json({ error: 'Sign in required.' }, { status: 401 });
     const { connection_id } = await req.json().catch(() => ({}));

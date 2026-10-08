@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { IFUND_PHOTO_EDIT_STYLE } from '../../shared/ifundSignatureStyle.ts';
 
 const SOURCE_HOST = 'media.base44.com';
@@ -18,6 +19,8 @@ function validatedImageUrl(value: unknown): string {
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const user = await base44.auth.me().catch(() => null);
     if (!user?.id) return Response.json({ error: 'Sign in to restyle a photo.' }, { status: 401 });
     const body = await req.json().catch(() => ({}));

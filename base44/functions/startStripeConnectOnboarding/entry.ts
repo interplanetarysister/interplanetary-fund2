@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { logAudit } from '../../shared/auditLog.ts';
@@ -13,7 +14,7 @@ const allowedOrigins=()=>new Set([
 
 export default async function(req){
   try{
-    const base44=createClientFromRequest(req);
+    const base44=createClientFromRequest(req); const activeAccount = await assertActiveAccount(base44); if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const user=await base44.auth.me().catch(()=>null);
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
     const body=await req.json().catch(()=>({}));
