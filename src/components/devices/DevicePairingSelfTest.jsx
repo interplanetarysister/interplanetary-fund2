@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
+import { runtimeContract } from "@/lib/runtimeContract";
 import { Button } from "@/components/ui/button";
 import { Copy, KeyRound, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 
 // A browser-based diagnostic client for the SAME first-party device-code grant
 // used by external IFund clients. Never put device secrets or access tokens in
 // localStorage, browser URLs, React rendered text, logs, or user-visible output.
-const BACKEND = "/api/apps/" + encodeURIComponent(appParams.appId) + "/functions/deviceAuthorization";
+const BACKEND = "/api/apps/" + encodeURIComponent(runtimeContract.appId || appParams.appId) + "/functions/deviceAuthorization";
 const DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 const STATUSES = {
   waiting: "Waiting for approval. Open the link below and approve the limited access request.",
@@ -45,6 +46,7 @@ export default function DevicePairingSelfTest({ onChanged }) {
   const [test,setTest] = useState(null);
   const [status,setStatus] = useState("idle");
   const [busy,setBusy] = useState(false);
+  const [verifying,setVerifying] = useState(false);
   const [error,setError] = useState("");
 
   const begin = async () => {
@@ -95,11 +97,14 @@ export default function DevicePairingSelfTest({ onChanged }) {
         });
         if (!active) return;
         if (reply.access_token && reply.token_type === "Bearer") {
-          setStatus("checking");
+          // Keep status=waiting until verification and revocation finish so
+          // React does not clean up this active polling effect prematurely.
+          setVerifying(true);
           const read = await invokeDevice({mode:"resource",action:"identity"},reply.access_token);
           if (!active) return;
           if (read.ok !== true || !read.identity?.id) {
             setError("Device authorization succeeded, but an authorized identity read failed.");
+            setVerifying(false);
             setStatus("cleanup");
             return;
           }
@@ -121,6 +126,7 @@ export default function DevicePairingSelfTest({ onChanged }) {
           }
           if (active) {
             secretRef.current = "";
+            setVerifying(false);
             setStatus(revoked ? "verified" : "cleanup");
             onChanged?.();
           }
@@ -182,7 +188,7 @@ export default function DevicePairingSelfTest({ onChanged }) {
           {status === "verified"
             ? <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
             : <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />}
-          {STATUSES[status]}
+          {verifying ? "Verifying IFund's read-only access and revoking the test grant…" : STATUSES[status]}
         </p>
       )}
       {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
