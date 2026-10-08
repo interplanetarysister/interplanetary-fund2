@@ -16,8 +16,36 @@ export default defineConfig({
     }),
     react(),
   ],
-  // The wallet is loaded only after an explicit Connect click.
-  // Do not force Reown into Vite's initial dependency optimizer: the sandbox
-  // may start before optional wallet packages have been restored, causing
-  // a dev-server import-resolution failure for the entire payment page.
+  optimizeDeps: {
+    include: [
+      '@reown/appkit/react',
+      '@reown/appkit-adapter-ethers',
+      '@reown/appkit-adapter-solana/react',
+      '@reown/appkit-adapter-bitcoin',
+      '@reown/appkit/networks',
+    ],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('@reown') || id.includes('viem') || id.includes('ethers') || id.includes('ox-')) return 'reown';
+          if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
+          if (id.includes('react-router') || id.includes('@remix-run')) return 'react-router';
+          if (id.includes('three')) return 'three';
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory')) return 'recharts';
+          if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) return 'framer';
+          if (id.includes('@radix-ui')) return 'radix';
+          if (id.includes('date-fns')) return 'date-fns';
+          if (id.includes('lodash')) return 'lodash';
+          if (id.includes('react-leaflet') || id.includes('leaflet')) return 'leaflet';
+          if (id.includes('@tanstack')) return 'tanstack';
+          if (id.includes('@hello-pangea')) return 'dnd';
+          if (id.includes('html2canvas') || id.includes('jspdf')) return 'pdf';
+          if (id.includes('@reown/appkit') || id.includes('@reown')) return 'reown';
+        },
+      },
+    },
+  },
 });
