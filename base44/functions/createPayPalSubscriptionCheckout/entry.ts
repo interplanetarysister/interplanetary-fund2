@@ -17,6 +17,12 @@ export default async function(req) {
     const approvedOrigin = permittedPayPalCheckoutOrigin(origin);
     if (!approvedOrigin) return Response.json({ error: 'Invalid return location.' }, { status: 400 });
     const sr = base44.asServiceRole;
+    const webhookRows = await sr.entities.PayPalBillingWebhook.filter({
+      provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF,
+    }).catch(() => []);
+    if (!(webhookRows || []).some(row => row.webhook_id && row.url)) {
+      return Response.json({ error: 'PayPal subscription notifications are not configured.' }, { status: 503 });
+    }
     const verified = await verifiedPayPalPlan(sr, String(tier || ''), String(interval || ''));
     if (!verified) return Response.json({ error: 'This PayPal subscription price is not yet configured or verified.' }, { status: 503 });
     // Intent is recorded BEFORE contacting PayPal so a provider callback can
