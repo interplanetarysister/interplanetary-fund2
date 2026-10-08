@@ -58,7 +58,7 @@ export default async function(req: Request) {
     // Avoid streaming an oversized encoded image through an invocation result.
     // Save original-size edits on Base44's managed storage if possible.
     try {
-      const fileBytes = Uint8Array.fromBase64(b64);
+      const fileBytes = Uint8Array.from(atob(b64), byte => byte.charCodeAt(0));
       const file = new File([fileBytes], `ifund-photo-edit-${Date.now()}.png`, { type: 'image/png' });
       const saved = await base44.integrations.Core.UploadFile({ file });
       const url = validatedImageUrl(saved?.file_url);
