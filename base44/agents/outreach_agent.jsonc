@@ -31,6 +31,10 @@
     {
       "function_name": "repairStripeWebhookEvents",
       "description": "For an authenticated IFund administrator requesting no-charge Stripe integration maintenance, repair event subscriptions only on the unique existing IFund Stripe webhook. No new merchant accounts, purchases, charges, paid products, API-key rotations, tax ID updates, transfers or payouts."
+    },
+    {
+      "function_name": "syncStripeSubscriptionCatalog",
+      "description": "For authenticated IFund admin only, reuse or create the five Stripe subscription products and ten monthly/annual price records matching the IFund catalog. Product/Price API operations do not create a customer, checkout, subscription or charge. Verify idempotently; never enable purchases unless the billing webhook is verified."
     }
   ],
   "context_files": [],
