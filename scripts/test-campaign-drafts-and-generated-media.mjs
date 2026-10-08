@@ -92,6 +92,6 @@ assert.match(image,/main image MUST participate in layout/i);
 assert.match(image,/"block w-full h-auto"/);
 assert.match(image,/setUseOriginal\(true\)/);
 assert.match(read('src/pages/CreateCampaign.jsx'),/brandAndUploadGeneratedImage\(base44, url\)/);
-assert.match(read('src/components/media/MediaUpload.jsx'),/brandAndUploadGeneratedImage\(base44, url\)/);
+assert.match(read('src/components/media/MediaUpload.jsx'),/improveUploadedPhoto\(base44, source\)/);
 assert.match(read('base44/functions/generateSocialContent/entry.ts'),/if \(typeof mediaUrl !== 'string'/);
 console.log('PASS: 5 draft handler cases; schema, resume, generated media URL/load/error, intrinsic image sizing and raw fallback.');
