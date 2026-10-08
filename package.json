@@ -85,7 +85,7 @@
     "verify:paypal-receipt-paging": "node scripts/test-paypal-receipt-paging.mjs",
     "test:paypal-checkout-recovery": "node scripts/test-paypal-checkout-recovery.mjs && node scripts/test-paypal-scanner-classification.mjs && node scripts/test-paypal-receipt-paging.mjs",
     "verify:base44-release": "node scripts/test-base44-release.mjs",
-    "test:device-authorization": "node scripts/test-ifund-device-authorization.mjs"
+    "test:device-authorization": "node scripts/test-ifund-device-authorization.mjs && node scripts/test-ifund-device-browser-flow.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",

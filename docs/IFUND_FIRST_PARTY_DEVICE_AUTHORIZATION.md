@@ -70,3 +70,19 @@ permissions until those checks are proven.
 Local test: node scripts/test-ifund-device-authorization.mjs
 
 No additional agents, paid APIs or payment charges are required for tests.
+
+## Browser-guided live verification
+
+The Connected Devices page now includes a Start connection test option.
+It creates a new read-only pairing request under a random browser-test
+label and opens the IFund activation page in another tab.
+
+This uses the real backend start, inspect, decide, poll, read-resource,
+list, and revoke operations. The browser holds the random device code
+only in memory. The derived bearer is used only for an identity check.
+On success, the test client finds its unique labeled grant and revokes
+it from the signed-in user account. If revocation cannot be confirmed,
+the UI instructs the user to revoke access from the devices list.
+
+An active IFund account and explicit human approval are required.
+No headless program should simulate or bypass a human approval.
