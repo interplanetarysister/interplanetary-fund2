@@ -16,9 +16,10 @@ import CoachMarks from "@/components/coach/CoachMarks";
 import PageTips from "@/components/coach/PageTips";
 import { DollarSign, Users, Flame, PlusCircle, Sparkles } from "lucide-react";
 import PageError from "@/components/PageError";
-import { PRELAUNCH_MODE } from "@/lib/prelaunch";
+import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 
 export default function Dashboard() {
+  const platformOnlyMode = !usePublicCampaignFundraising();
   const [campaigns, setCampaigns] = useState(null);
   const [user, setUser] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -52,7 +53,7 @@ export default function Dashboard() {
       <div className="mb-6"><TreasurySnapshotCard /></div>
       <FeaturedCarousel key={`featured-${refreshKey}`} />
       <SuccessStories key={`success-${refreshKey}`} />
-      <div className="grid lg:grid-cols-3 gap-6"><div className="lg:col-span-2"><h2 className="font-display text-xl text-stone-900 mb-4">Your campaigns</h2>{campaigns.length === 0 ? <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center"><p className="font-display text-lg text-stone-700 mb-1">What if you started today?</p><p className="text-sm text-stone-500 mb-5">{PRELAUNCH_MODE ? "Create and preview your Interplanetary Fund now. Public campaign fundraising is not open yet." : "Open your Interplanetary Fund and start receiving support now."}</p><Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90">Start your own Interplanetary Fund</Button></Link></div> : <CampaignTabs campaigns={campaigns} />}</div><div><FollowFeed /><div data-coach="mission-control"><MissionControl campaigns={campaigns} /></div></div></div>
+      <div className="grid lg:grid-cols-3 gap-6"><div className="lg:col-span-2"><h2 className="font-display text-xl text-stone-900 mb-4">Your campaigns</h2>{campaigns.length === 0 ? <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center"><p className="font-display text-lg text-stone-700 mb-1">What if you started today?</p><p className="text-sm text-stone-500 mb-5">{platformOnlyMode ? "Create, publish and share your campaign now. Campaign donations are temporarily paused." : "Open your Interplanetary Fund and start receiving support now."}</p><Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90">Start your own Interplanetary Fund</Button></Link></div> : <CampaignTabs campaigns={campaigns} />}</div><div><FollowFeed /><div data-coach="mission-control"><MissionControl campaigns={campaigns} /></div></div></div>
       <CoachMarks tourId="dashboard" />
     </PullToRefresh>
   );
