@@ -110,23 +110,16 @@ const ResponsiveImage = React.forwardRef(
       quality,
     }
 
-    // Both layers render only once the container is measured, so the first
-    // URL the browser ever fetches is already the right size — never a
-    // DEFAULT_TRANSFORM_WIDTH guess that gets replaced a frame later (a
-    // wasted full-size download per image). useSize measures in
-    // useLayoutEffect, so nothing is lost: measurement lands before the
-    // first paint.
+    // The main image MUST participate in layout. An absolutely positioned
+    // image in an aspect-ratio-less span has zero intrinsic height, so valid
+    // generated covers and social images were loading but could not render.
+    // Keep blur-up only for an explicitly dimensioned container.
     return (
       <ImageWrapper ref={wrapperRef} aspectRatio={aspectRatio} className={className} style={style}>
-        {/* Tiny blurred placeholder (a few hundred bytes) covering the main
-            image's load time. Same crop shape and focal anchor as the main
-            image — fp_ is relative to the crop box, so a square or centered
-            placeholder would blur-preview a different region. */}
-        {options && !loaded && (
+        {options && aspectRatio && !loaded && (
           <img
             src={buildTransformUrl(parsed, {
-              ...options,
-              width: 20,
+              ...options, width: 20,
               height: options.height
                 ? Math.max(1, Math.round((20 * options.height) / options.width))
                 : undefined,
@@ -137,8 +130,7 @@ const ResponsiveImage = React.forwardRef(
             className="w-full h-full inset-0 absolute"
             style={{
               objectFit: fittingType === "fit" ? "contain" : "cover",
-              filter: "blur(10px)",
-              transform: "scale(1.1)",
+              filter: "blur(10px)", transform: "scale(1.1)",
             }}
           />
         )}
@@ -149,7 +141,8 @@ const ResponsiveImage = React.forwardRef(
             srcSet={buildSrcSet(parsed, options)}
             loading="lazy"
             className={cn(
-              "w-full h-full inset-0 absolute",
+              "block w-full h-auto",
+              className,
               fittingType === "fit" ? "object-contain" : "object-cover"
             )}
             onLoad={(e) => {
@@ -187,14 +180,27 @@ const Image = React.forwardRef(
     ref
   ) => {
     const [imgSrc, setImgSrc] = React.useState(src)
+    const [useOriginal, setUseOriginal] = React.useState(false)
 
     React.useEffect(() => {
       setImgSrc(src)
+      setUseOriginal(false)
     }, [src])
 
     const imageProps = {
       ...props,
-      onError: () => setImgSrc(FALLBACK_IMAGE_URL),
+      onError: () => {
+        // If Wix's resize transform fails, retry the untransformed original
+        // before showing a fallback. The original may still load correctly.
+        const wix = !useOriginal && parseWixMediaUrl(imgSrc)
+        if (wix) {
+          setUseOriginal(true)
+          setImgSrc(wix.baseUrl)
+        } else if (imgSrc !== FALLBACK_IMAGE_URL) {
+          setImgSrc(FALLBACK_IMAGE_URL)
+        }
+        props.onError?.()
+      },
     }
 
     if (!src) {
@@ -207,7 +213,7 @@ const Image = React.forwardRef(
 
     // The fallback renders as a plain <img> so a broken upload can't cascade
     // into a second (transformed) failing request.
-    const parsed = imgSrc === FALLBACK_IMAGE_URL ? null : parseWixMediaUrl(imgSrc)
+    const parsed = imgSrc === FALLBACK_IMAGE_URL || useOriginal ? null : parseWixMediaUrl(imgSrc)
 
     if (!parsed) {
       const isErrorUrl = imgSrc === FALLBACK_IMAGE_URL
