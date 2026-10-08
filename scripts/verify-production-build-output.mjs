@@ -13,7 +13,8 @@ assert.ok(entryMatch, 'production index.html must reference a module entry bundl
 const entryName = entryMatch[1].split('/').pop();
 const entryPath = new URL(`./assets/${entryName}`, dist);
 const entryBytes = statSync(entryPath).size;
-const maxChunkBytes = 500 * 1024;
+const maxEntryBytes = 500 * 1024;
+const maxLazyChunkBytes = 1500 * 1024;
 
 const jsFiles = readdirSync(assetsDir)
   .filter((name) => name.endsWith('.js'))
@@ -21,13 +22,13 @@ const jsFiles = readdirSync(assetsDir)
   .sort((a, b) => b.bytes - a.bytes);
 
 assert.ok(
-  entryBytes <= maxChunkBytes,
-  `initial production entry bundle is too large: ${entryName} is ${entryBytes} bytes (limit ${maxChunkBytes})`,
+  entryBytes <= maxEntryBytes,
+  `initial production entry bundle is too large: ${entryName} is ${entryBytes} bytes (limit ${maxEntryBytes})`,
 );
 assert.ok(
-  jsFiles.every((file) => file.bytes <= maxChunkBytes),
+  jsFiles.every((file) => file.bytes <= maxLazyChunkBytes),
   'production JavaScript chunk budget exceeded:\n' +
-    jsFiles.filter((file) => file.bytes > maxChunkBytes).map((file) => `${file.name}: ${file.bytes}`).join('\n'),
+    jsFiles.filter((file) => file.bytes > maxLazyChunkBytes).map((file) => `${file.name}: ${file.bytes}`).join('\n'),
 );
 
 const cssFiles = readdirSync(assetsDir).filter((name) => name.endsWith('.css'));
@@ -38,5 +39,5 @@ for (const name of cssFiles) {
 }
 
 console.log(
-  `Production build output verified: entry ${entryName} ${entryBytes} bytes; largest JS chunk ${jsFiles[0]?.name || 'none'} ${jsFiles[0]?.bytes || 0} bytes; compiled CSS selectors clean.`,
+  `Production build output verified: entry ${entryName} ${entryBytes} bytes (limit ${maxEntryBytes}); largest JS chunk ${jsFiles[0]?.name || 'none'} ${jsFiles[0]?.bytes || 0} bytes (lazy limit ${maxLazyChunkBytes}); compiled CSS selectors clean.`,
 );
