@@ -2,15 +2,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { IFUND_PHOTO_EDIT_STYLE } from '../../shared/ifundSignatureStyle.ts';
 
-const SOURCE_HOST = 'media.base44.com';
+const APP_ID = '6a67a778342a8fe05ee79cba';
 
+// Base44 returns both media CDN URLs and public, app-scoped upload URLs.
+// Accept only files hosted by THIS IFund app; never fetch arbitrary third-party URLs.
 function validatedImageUrl(value: unknown): string {
   if (typeof value !== 'string') return '';
   try {
     const url = new URL(value.trim());
-    if (url.protocol !== 'https:' || url.hostname !== SOURCE_HOST ||
-        url.username || url.password || !url.pathname.startsWith('/images/')) return '';
-    return url.href;
+    if (url.protocol !== 'https:' || url.username || url.password) return '';
+    const onCdn = url.hostname === 'media.base44.com' &&
+      url.pathname.startsWith(`/images/public/${APP_ID}/`);
+    const onAppHost = url.hostname === 'base44.app' &&
+      url.pathname.startsWith(`/api/apps/${APP_ID}/files/mp/public/`);
+    return onCdn || onAppHost ? url.href : '';
   } catch { return ''; }
 }
 
