@@ -46,13 +46,10 @@ export default defineConfig({
           if (id.includes('@reown/appkit')) return 'reown-core';
           if (id.includes('@coinbase/wallet-sdk') || id.includes('@cbhq/')) return 'coinbase-wallet';
           if (id.includes('@base-org/') || id.includes('@base/')) return 'base-wallet';
-          if (id.includes('/viem/_esm/chains') || id.includes('/viem/_esm/constants')) return 'viem-chains';
-          if (id.includes('/viem/_esm/accounts') || id.includes('/viem/_esm/account-abstraction')) return 'viem-accounts';
-          if (id.includes('/viem/_esm/actions')) return 'viem-actions';
-          if (id.includes('/viem/_esm/clients')) return 'viem-clients';
-          if (id.includes('/viem/_esm/ens') || id.includes('/viem/_esm/experimental')) return 'viem-extras';
-          if (id.includes('/viem/_esm/utils') || id.includes('/viem/_esm/errors')) return 'viem-utils';
-          if (id.includes('viem') || id.includes('ox-') || id.includes('@noble/')) return 'viem-core';
+          // Do not split viem's own interdependent ESM graph into separate
+          // chunks: it causes circular imports and TDZ runtime crashes on
+          // campaign discovery. One crypto core chunk initializes atomically.
+          if (id.includes('viem') || id.includes('ox-') || id.includes('@noble/')) return 'viem-runtime';
           if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
           if (id.includes('react-router') || id.includes('@remix-run')) return 'react-router';
           if (id.includes('three')) return 'three';
