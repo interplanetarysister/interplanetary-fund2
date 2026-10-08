@@ -71,7 +71,10 @@ export default function CampaignDetail() {
     const targetId = location.hash.slice(1);
     if (!/^campaign-[a-z-]+$/.test(targetId)) return;
     const frame = window.requestAnimationFrame(() => {
-      const section = document.getElementById(targetId);
+      const responsiveId = targetId === "campaign-funding"
+        ? (window.matchMedia("(min-width: 1024px)").matches ? "campaign-funding-desktop" : "campaign-funding-mobile")
+        : targetId;
+      const section = document.getElementById(responsiveId);
       if (section) {
         section.scrollIntoView({ behavior: "smooth", block: "start" });
         if (targetId !== "campaign-settings") section.focus({ preventScroll: true });
@@ -121,7 +124,7 @@ export default function CampaignDetail() {
           </div>
           {/* Phones: funding progress + Donate Now sit directly under the title,
               so the primary action is visible without scrolling. */}
-          <div id="campaign-funding" tabIndex={-1} className="scroll-mt-24 lg:hidden">
+          <div id="campaign-funding-mobile" tabIndex={-1} className="scroll-mt-24 lg:hidden">
             <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
           </div>
           {campaign.story && (
@@ -140,7 +143,9 @@ export default function CampaignDetail() {
 
         {/* Sidebar */}
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
-          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
+          <div id="campaign-funding-desktop" tabIndex={-1} className="scroll-mt-24 hidden lg:block">
+            <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
+          </div>
 
           {canManage && <div id="campaign-share" tabIndex={-1} className="scroll-mt-24">
             <ShareCampaignKit campaign={campaign} />
