@@ -134,7 +134,7 @@ export default function CampaignDetail() {
             </div>
           )}
           <section id="campaign-updates" tabIndex={-1} className="scroll-mt-24">
-            <UpdatesSection campaignId={campaign.id} updates={updates} isOwner={isOwner} onPosted={load} />
+            <UpdatesSection campaign={campaign} campaignId={campaign.id} updates={updates} isOwner={isOwner} onPosted={load} />
           </section>
           {isOwner && <section id="campaign-distribution" tabIndex={-1} className="scroll-mt-24">
             <DistributionPanel campaign={campaign} />
