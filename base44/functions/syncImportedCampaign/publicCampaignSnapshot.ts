@@ -39,6 +39,27 @@ function readTitle(html: string) {
   return readMeta(html, 'og:title') || decode(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() || '');
 }
 
+async function readTextLimited(response: Response, maxBytes = 2_000_000) {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let total = 0;
+  let text = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) throw new Error('provider_page_too_large');
+      text += decoder.decode(value, { stream: true });
+    }
+    text += decoder.decode();
+    return text;
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 function assertAllowedUrl(platform: string, url: URL) {
   if (
     url.protocol !== 'https:' ||
@@ -77,7 +98,7 @@ export async function discoverPublicCampaignSnapshot(connection: any) {
         if (Number.isFinite(declaredLength) && declaredLength > 2_000_000) {
           throw new Error('provider_page_too_large');
         }
-        html = (await response.text()).slice(0, 2_000_000);
+        html = await readTextLimited(response, 2_000_000);
         break;
       }
 
