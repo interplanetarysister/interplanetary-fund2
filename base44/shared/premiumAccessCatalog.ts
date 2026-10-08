@@ -20,5 +20,5 @@ export function introductoryCouponIsValid(coupon: any): boolean {
   return Boolean(coupon && coupon.id === PREMIUM_WELCOME_COUPON_ID &&
     coupon.valid === true && coupon.livemode === true &&
     coupon.duration === 'once' && Number(coupon.percent_off) === 50 &&
-    Array.isArray(products) && products.includes('prod_VP3KJb28HZaO5P'));
+    Array.isArray(products) && (products.length === 0 || products.includes('prod_VP3KJb28HZaO5P')));
 }
