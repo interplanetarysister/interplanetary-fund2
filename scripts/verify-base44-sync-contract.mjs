@@ -487,23 +487,12 @@ const liveCallers = sourceFiles
   .map(([path, source]) => [path, analyzeSource(source, path)])
   .filter(([, analysis]) => analysis.invokedFunctions.includes('syncGitHub'));
 
-assert.ok(
-  liveCallers.some(([path]) => path === 'src/pages/IntegrationsAdmin.jsx'),
-  'IntegrationsAdmin must remain covered as a live caller'
-);
-assert.ok(
-  liveCallers.some(([path]) => path === 'src/components/admin/IntegrationDetailPanel.jsx'),
-  'IntegrationDetailPanel must remain covered as a live caller'
-);
-for (const [path, analysis] of liveCallers) {
-  assertNoFalseSourceMovementClaims(analysis.humanText, path);
-  assert.ok(
-    analysis.humanText.some((text) =>
-      /Verify GitHub|GitHub (?:status )?verifi|connection verification/i.test(text)
-    ),
-    path + ' must describe the operation as GitHub connection verification'
-  );
-}
+// During the GitHub Actions freeze, UI must never invoke the historical
+// GitHub connectivity endpoint. Native Base44 release checks replace these.
+assert.equal(liveCallers.length, 0,
+  'Admin UI must not invoke GitHub connection checks while workflows are paused');
+assert.match(read('src/pages/IntegrationsAdmin.jsx'), /<Base44ReleaseStatus/);
+assert.match(read('src/components/admin/Base44ReleaseStatus.jsx'), /IFUND_RELEASE_ID/);
 
 assertNoFalseSourceMovementClaims(
   runbook.split(/\n\s*\n/),
@@ -514,4 +503,4 @@ assert.match(runbook, /caller-supplied[\s\S]*initiator_type/i);
 assert.match(runbook, /authenticated\s+administrator/i);
 assert.match(runbook, /server-verifiable workflow identity/i);
 
-console.log('Base44 GitHub verification AST authorization and truthfulness contract passed.');
+console.log('Base44 source checks remain authorization-safe; GitHub UI calls paused; release status native to Base44.');
