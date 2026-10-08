@@ -24,6 +24,12 @@ export default async function (req) {
     const c = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!c) return Response.json({ error: 'Campaign not found' }, { status: 404 });
 
+    // Private drafts may be saved at any stage: no artificial AI profile,
+    // outreach, publishing or completion requirements until launch.
+    if (c.status === 'draft') {
+      return Response.json({ ok: true, updated: [], issues: [] });
+    }
+
     const updates = {};
     const issues = [];
 
