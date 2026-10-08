@@ -9,7 +9,6 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
-import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
 
 // Captures a PayPal/Google Pay order and applies the resulting donation through
 // Base44's canonical transactional financial boundary. Provider capture idempotency + the
@@ -18,8 +17,8 @@ import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
-    const paymentAccess = await campaignPaymentAccess(base44);
-    if (!paymentAccess.allowed) return Response.json({ error: 'Campaign donations are currently paused. This campaign payment was not captured.' }, { status: 409 });
+    // Finalize an already initiated provider order even if the admin has since
+    // paused NEW donations. Never strand an authorized order or its ledger.
     if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
     const sr = base44.asServiceRole;
 

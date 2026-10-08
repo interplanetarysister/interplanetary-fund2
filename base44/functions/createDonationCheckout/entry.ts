@@ -6,6 +6,7 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computeProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 import { isPublicCampaignFundraisingEnabled } from '../../shared/fundraisingMode.ts';
+import { areFeaturesEnabled, isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 
 export default async function(req) {
   try {
@@ -16,6 +17,8 @@ export default async function(req) {
     const donor = donorGuard.donor;
 
     const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution } = await req.json();
+    if (!(await areFeaturesEnabled(base44, ['payment_checkout_enabled','stripe_checkout']))) return featureUnavailable('Card checkout');
+    if (is_recurring && !(await isFeatureEnabled(base44, 'recurring_donations'))) return featureUnavailable('New recurring donations');
     const amountCheck = validateDonationAmount(amount);
     if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
     if (!campaign_id || !origin) return Response.json({ error: 'Invalid donation request' }, { status: 400 });

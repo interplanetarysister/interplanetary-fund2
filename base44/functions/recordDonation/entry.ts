@@ -6,6 +6,7 @@ import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror } from '../../shared/financialMirrors.ts';
 import { isPublicCampaignFundraisingEnabled } from '../../shared/fundraisingMode.ts';
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 
 // Records a supporter-reported manual PayPal/Cash App gift as PENDING only.
 // There is no provider-side proof on this path, so it must never increment the
@@ -15,6 +16,7 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     if (!(await isPublicCampaignFundraisingEnabled(base44))) return Response.json({ error: 'Campaign donations are currently paused. The platform remains open for campaigns and sharing.' }, { status: 409 });
+    if (!(await isFeatureEnabled(base44, 'payment_checkout_enabled'))) return featureUnavailable('New campaign payments');
     const sr = base44.asServiceRole;
 
     const donorGuard = await assertActiveAccountIfSignedIn(base44);

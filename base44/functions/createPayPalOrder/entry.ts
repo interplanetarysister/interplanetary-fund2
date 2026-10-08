@@ -6,6 +6,7 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { validateDonationAmount, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
+import { areFeaturesEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 
 // Creates an idempotent PayPal v2 order for PayPal Buttons or Google Pay. All financially
 // meaningful values are encoded server-side into PayPal custom_id so capture
@@ -29,6 +30,7 @@ export default async function (req) {
     if (!intent_id || !/^[A-Za-z0-9_-]{16,100}$/.test(String(intent_id))) return Response.json({ error: 'A stable payment intent is required' }, { status: 400 });
     const channel = payment_channel === 'googlepay' ? 'googlepay' : payment_channel === 'paypal' ? 'paypal' : '';
     if (!channel) return Response.json({ error: 'A supported payment channel is required' }, { status: 400 });
+    if (!(await areFeaturesEnabled(base44, ['payment_checkout_enabled', channel === 'googlepay' ? 'google_pay_checkout' : 'paypal_checkout']))) return featureUnavailable('This payment method');
     const totalCharge = round2(Number(amount));
 
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();

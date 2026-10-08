@@ -2,11 +2,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 
 // Starts a Stripe subscription checkout for an AI tier.
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
+    if (!(await isFeatureEnabled(base44, 'subscription_checkout'))) return featureUnavailable('New paid subscriptions');
     const guard = await assertActiveAccount(base44);
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
