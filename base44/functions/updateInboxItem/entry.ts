@@ -1,9 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 export default async function(req) {
   try {
-    const base44=createClientFromRequest(req); const user=await base44.auth.me();
-    if(!user) return Response.json({error:'Authentication required'},{status:401});
+    const base44=createClientFromRequest(req); const guard=await assertActiveAccount(base44);
+    if(!guard.ok) return Response.json({error:guard.error},{status:guard.status}); const user=guard.user;
     const body=await req.json().catch(()=>({})); const id=String(body?.item_id||'').trim();
     const rows=await base44.asServiceRole.entities.InboxItem.filter({id}); const item=rows?.[0];
     if(!item) return Response.json({error:'Inbox item not found'},{status:404});
