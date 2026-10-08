@@ -13,6 +13,7 @@ export default function Subscriptions() {
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(null);
   const [paypal, setPaypal] = useState({ plans: [], live_configured: false, webhook_configured: false });
+  const [stripe, setStripe] = useState({ plans: [], webhook_configured: false });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [provisioning, setProvisioning] = useState(false);
@@ -20,11 +21,13 @@ export default function Subscriptions() {
   const stripeReturned = query.get("subscribed") === "success";
 
   const refresh = useCallback(async () => {
-    const [{ data }, currentUser] = await Promise.all([
+    const [{ data }, stripeResult, currentUser] = await Promise.all([
       base44.functions.invoke("getPayPalSubscriptionOptions", {}).catch(() => ({ data: null })),
+      base44.functions.invoke("getStripeSubscriptionOptions", {}).catch(() => ({ data: null })),
       base44.auth.me().catch(() => null),
     ]);
     if (data?.plans) setPaypal(data);
+    if (stripeResult?.data?.plans) setStripe(stripeResult.data);
     if (currentUser) setUser(currentUser);
   }, []);
 
@@ -65,14 +68,15 @@ export default function Subscriptions() {
     setNotice("");
     const interval = annual ? "annual" : "monthly";
     const price = plan[interval];
-    if (provider === "stripe" && !price?.stripe_price_id) { setError("This Stripe price is not yet available."); return; }
+    const stripePlan = stripe.plans.find(row => row.tier === plan.id && row.interval === interval && row.available);
+    if (provider === "stripe" && !stripePlan?.price_id) { setError("This Stripe price is not yet verified."); return; }
     const paypalAvailable = paypal.plans.some(row => row.tier === plan.id && row.interval === interval && row.available);
     if (provider === "paypal" && !paypalAvailable) { setError("PayPal billing is not fully configured for this plan yet."); return; }
     setSubscribing(plan.id + ":" + provider);
     try {
       const { data } = provider === "paypal"
         ? await base44.functions.invoke("createPayPalSubscriptionCheckout", { tier: plan.id, interval, origin: window.location.origin })
-        : await base44.functions.invoke("createSubscriptionCheckout", { tier: plan.id, interval, price_id: price.stripe_price_id, origin: window.location.origin });
+        : await base44.functions.invoke("createSubscriptionCheckout", { tier: plan.id, interval, price_id: stripePlan.price_id, origin: window.location.origin });
       if (data?.url && /^https:\/\//.test(data.url)) {
         window.location.assign(data.url);
         return;
@@ -102,6 +106,18 @@ export default function Subscriptions() {
     } finally {
       setSubscribing(null);
     }
+  };
+
+  const mirrorStripePricing = async () => {
+    setError(""); setNotice(""); setProvisioning(true);
+    try {
+      const { data } = await base44.functions.invoke("syncStripeSubscriptionCatalog", {});
+      if (!data?.ok || data.prices?.length !== 10) throw new Error("Stripe price verification is incomplete.");
+      await refresh();
+      setNotice("Stripe now has ten verified recurring price mappings. No subscriptions, charges or payouts were created.");
+    } catch {
+      setError("Stripe catalog synchronization is incomplete. No payments were initiated.");
+    } finally { setProvisioning(false); }
   };
 
   const setupBusinessBilling = async () => {
@@ -159,10 +175,13 @@ export default function Subscriptions() {
               {paypal.plans.filter(row => row.available).length}/10 verified PayPal prices · {paypal.webhook_configured ? "Webhook registered" : "Webhook not registered"}
             </p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={provisioning} onClick={mirrorStripePricing}>Mirror Stripe pricing (no charge)</Button>
           <Button type="button" variant="outline" disabled={provisioning} onClick={setupBusinessBilling}>
             {provisioning && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {provisioning ? "Checking PayPal" : "Set up / verify PayPal plans"}
           </Button>
+          </div>
         </div>
       )}
       {active && current.id !== "free" && (
@@ -192,7 +211,7 @@ export default function Subscriptions() {
           const interval = annual ? "annual" : "monthly";
           const price = plan[interval];
           const paypalAvailable = !!paypal.plans.find(row => row.tier === plan.id && row.interval === interval && row.available);
-          const stripeAvailable = !!price?.stripe_price_id;
+          const stripeAvailable = stripe.plans.some(row => row.tier === plan.id && row.interval === interval && row.available);
           const isCurrent = active && subscription.tier === plan.id;
           const existingPaid = active && !subscription.adminGranted;
           return (
