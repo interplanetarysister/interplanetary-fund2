@@ -50,7 +50,7 @@ export default async function(req){
     const status=account.payouts_enabled&&account.details_submitted?'ready':account.details_submitted?'restricted':'onboarding';
     const patch={status,charges_enabled:!!account.charges_enabled,payouts_enabled:!!account.payouts_enabled,details_submitted:!!account.details_submitted,default_currency:String(account.default_currency||'').toUpperCase(),country:String(account.country||''),last_verified_at:new Date().toISOString(),last_error:''};
     await sr.entities.ConnectedPayoutAccount.update(record.id,patch);
-    return Response.json({ok:true,configured:true,status,...patch,provider:'stripe_connect'});
+    return Response.json({ok:true,configured:true,status,...patch,provider:'stripe_connect',provider_available:true});
   }catch(error){
     console.error('getConnectedPayoutAccount failed:',error?.name||'UnknownError');
     return Response.json({error:'Connected payout account status could not be verified.'},{status:500});
