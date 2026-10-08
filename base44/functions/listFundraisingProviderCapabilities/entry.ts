@@ -12,7 +12,7 @@ export default async function(req) {
     const providers = await resolveCapabilities(sr);
     return Response.json({ providers, registry_version: REGISTRY_VERSION });
   } catch (error) {
-    console.error('listFundraisingProviderCapabilities failed:', error?.message || error);
+    console.error('listFundraisingProviderCapabilities failed:', error?.name || 'UnknownError');
     return Response.json({ error:'Could not load fundraising provider capabilities.' }, { status:500 });
   }
 }
