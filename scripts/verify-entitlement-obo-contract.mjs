@@ -22,16 +22,24 @@ assert.match(discover, /effectiveSubscription\(user\)\.active/);
 assert.match(registry, /hasUnifiedOboConsent/);
 assert.match(registry, /ai_obo_consent/);
 assert.match(registry, /connection\.verification_status === 'verified'/);
-assert.match(finalize, /shared_with_agents: false/);
+
+assert.match(finalize, /hasUnifiedOboConsent/);
+assert.match(finalize, /shared_with_agents: unifiedObo/);
 assert.match(finalize, /automation_enabled: false/);
-assert.match(oauthComplete, /shared_with_agents: allowAi/);
+assert.match(finalize, /ai_consent_required: false/);
+assert.match(oauthComplete, /hasUnifiedOboConsent/);
+assert.match(oauthComplete, /deprecated_per_connection_prompt: true/);
+assert.doesNotMatch(oauthComplete, /typeof allowAi|granted: allowAi|shared_with_agents: allowAi/);
 assert.match(oauthComplete, /automation_enabled: false/);
+
 assert.match(publish, /assertExternalAgentAction/);
 assert.match(broadcast, /assertExternalAgentAction/);
 assert.match(update, /generateAndDistribute/);
 assert.match(update, /campaign\.created_by_id !== user\.id/);
+assert.match(update, /explicitPublish: true/);
 assert.match(crossPost, /assertExternalAgentAction/);
 assert.match(crossPost, /hasAiPublishingConsent\(user\)/);
 assert.match(crossPost, /assertPlatformAccess\(sr, 'social_publish'\)/);
+assert.match(crossPost, /explicitPublish \? \{ ok: true \} : await assertExternalAgentAction/);
 
-console.log('Server entitlement and unified owner OBO contract verified.');
+console.log('Server entitlement, explicit publish, and unified owner OBO contract verified.');
