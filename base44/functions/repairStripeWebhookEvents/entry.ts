@@ -4,6 +4,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 const REQUIRED = [
   'checkout.session.completed','checkout.session.async_payment_succeeded',
   'invoice.paid','customer.subscription.updated','customer.subscription.deleted',
+  'charge.refunded','charge.dispute.created',
 ];
 // No billing, spending, account duplication, or key replacement.
 // This changes ONLY an existing IFund endpoint's event subscriptions and
