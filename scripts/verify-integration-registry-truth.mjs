@@ -86,6 +86,10 @@ expect(!syncExternalFunds.includes("last_error: String(err?.message"), 'external
 expect(providerCapabilities.includes("merged[key] = Boolean(base[key]) && Boolean(merged[key])"), 'stored capability rows must not manufacture unsupported runtime capabilities');
 expect(!providerCapabilities.includes('balance_read:true'), 'runtime registry must not advertise an unimplemented balance-read adapter');
 expect(providerCapabilities.includes("platform:'custom', display_name:'Custom Campaign URL', category:'custom', campaign_import:false"), 'custom URLs must not advertise provider-backed import support');
+for (const platform of ['kickstarter','indiegogo','fundrazr','givesendgo','buymeacoffee','patreon','spotfund','eventbrite']) {
+  expect(providerCapabilities.includes(`platform:'${platform}'`) && providerCapabilities.includes("adapter_reference:'discoverExternalCampaignSnapshot'"), `${platform} must reference the implemented public-page metadata adapter`);
+}
+expect(providerCapabilities.includes("implementation_status:'in_progress'"), 'partially implemented providers must remain explicitly in progress until live verification is complete');
 expect(publicCampaignSnapshot.includes("redirect: 'manual'"), 'provider snapshot discovery must inspect redirects');
 expect(publicCampaignSnapshot.includes("declaredLength > 2_000_000"), 'provider snapshot discovery must bound declared page size');
 expect(publicCampaignSnapshot.includes("await readTextLimited(response, 2_000_000)"), 'provider snapshot body must be stream-bounded while the request timeout is active');
