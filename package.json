@@ -81,7 +81,8 @@
     "verify:admin-credential-boundary": "node scripts/verify-admin-credential-boundary.mjs",
     "verify:contextual-actions": "node scripts/test-contextual-action-navigation.mjs",
     "verify:ifund-images": "node scripts/test-ifund-image-style.mjs && node scripts/test-ifund-photo-canvas.mjs && node scripts/test-generate-campaign-cover.mjs",
-    "verify:campaign-copy": "node scripts/test-ifund-campaign-copy.mjs"
+    "verify:campaign-copy": "node scripts/test-ifund-campaign-copy.mjs",
+    "verify:paypal-receipt-paging": "node scripts/test-paypal-receipt-paging.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
