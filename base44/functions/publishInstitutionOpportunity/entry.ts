@@ -1,5 +1,6 @@
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Publishes a grant/funding opportunity for an institution. Verifies the caller
 // owns the institution, creates the opportunity as the user (owner = creator,
