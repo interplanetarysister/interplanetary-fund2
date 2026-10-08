@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { IFUND_SIGNATURE_STYLE } from '../../shared/ifundSignatureStyle.ts';
 
 // Server-backed campaign image generation. Do not claim that a returned asset
@@ -16,8 +17,9 @@ function generatedUrl(result: any): string {
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me().catch(() => null);
-    if (!user?.id) return Response.json({ error: 'Sign in before generating a cover.' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
     const body = await req.json().catch(() => ({}));
     const prompt = String(body?.prompt || '').trim();
     if (!prompt || prompt.length > 9000) return Response.json({ error: 'Invalid image description.' }, { status: 400 });
