@@ -18,9 +18,9 @@ export default defineConfig({
   ],
   optimizeDeps: {
     include: [
-      '@reown/appkit/react',
+      '@reown/appkit',
       '@reown/appkit-adapter-ethers',
-      '@reown/appkit-adapter-solana/react',
+      '@reown/appkit-adapter-solana',
       '@reown/appkit-adapter-bitcoin',
       '@reown/appkit/networks',
     ],
