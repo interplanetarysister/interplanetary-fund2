@@ -5,7 +5,8 @@ import { secrets } from 'base44:runtime';
 // Crypto checkout is only usable when the *existing* IFund Stripe merchant has
 // Stripe's stablecoin method activated and its money-mirror webhook connected.
 let cached: { until: number; result: any } = { until: 0, result: null };
-const EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+const EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded',
+  'charge.refunded', 'charge.dispute.created'];
 
 export async function stripeCryptoGatewayReadiness(force = false) {
   if (!force && cached.result && cached.until > Date.now()) return cached.result;
