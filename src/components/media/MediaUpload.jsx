@@ -5,6 +5,7 @@ import { Image } from "@/components/ui/image";
 import { Loader2, Sparkles, UploadCloud, X } from "lucide-react";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
+import { createIfundPhotoTreatment } from "@/lib/ifundPhotoTreatment";
 
 // Uploads pictures or video to the platform and reports the URL back. For
 // photos, users can keep the original or render the same photo in the
@@ -49,14 +50,26 @@ export default function MediaUpload({
     setRendering(true);
     setError("");
     try {
-      const res = await base44.functions.invoke("renderInterplanetaryPhoto", { source_url: source });
-      const url = resolveGeneratedImageUrl(res?.data || res);
-      if (!url) throw new Error("No rendered image returned");
-      const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
-      setIfundUrl(brandedUrl);
-      onChange(brandedUrl);
+      const response = await base44.functions.invoke("renderInterplanetaryPhoto", { source_url: source })
+        .catch(() => null);
+      const aiUrl = response?.data?.mode === "ai_photo_edit"
+        ? resolveGeneratedImageUrl(response?.data) : "";
+      let imageSource = aiUrl || source;
+      let objectUrl = null;
+      try {
+        if (!aiUrl) {
+          const treated = await createIfundPhotoTreatment(source);
+          objectUrl = URL.createObjectURL(treated);
+          imageSource = objectUrl;
+        }
+        const brandedUrl = await brandAndUploadGeneratedImage(base44, imageSource);
+        setIfundUrl(brandedUrl);
+        onChange(brandedUrl);
+      } finally {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      }
     } catch {
-      setError("Couldn't render the Interplanetary Fund version. Your original photo is still available.");
+      setError("Couldn't improve the photo right now. Your original photo is unchanged; retry when ready.");
     } finally {
       setRendering(false);
     }
@@ -92,11 +105,11 @@ export default function MediaUpload({
         </div>
       )}
 
-      {photoSelected && originalAvailable && (
+      {photoSelected && (
         <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3">
           <p className="text-xs font-semibold text-violet-100 mb-2">Choose your photo look</p>
           <div className="flex flex-wrap gap-2">
-            <Button
+            {originalAvailable && <Button
               type="button"
               variant="outline"
               size="sm"
@@ -105,7 +118,7 @@ export default function MediaUpload({
               className="rounded-xl"
             >
               Use original
-            </Button>
+            </Button>}
             {ifundUrl ? (
               <Button
                 type="button"
@@ -128,12 +141,12 @@ export default function MediaUpload({
                 className="rounded-xl"
               >
                 {rendering ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
-                {rendering ? "Rendering…" : "Make IFund version"}
+                {rendering ? "Improving photo…" : "Generate IFund-style improvement"}
               </Button>
             )}
           </div>
           <p className="mt-2 text-[11px] text-slate-300">
-            IFund identity preservation means the same person's face and distinguishing features must remain recognizable—not a similar-looking replacement. The style is applied around the original identity.
+            Applies the IFund cyberpunk, interstellar, space-comic and restrained steampunk look to this actual photo. The original person and scene stay intact. Your upload remains available.
           </p>
         </div>
       )}
