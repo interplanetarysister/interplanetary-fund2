@@ -9,6 +9,15 @@ export const SUBSCRIPTION_PRICING = Object.freeze({
   enterprise:   { name: 'Enterprise', monthly: 19900, annual: 191000 },
   nonprofit:    { name: 'Nonprofit', monthly: 2900,  annual: 28000 },
 });
+// These existing Stripe IDs are available as an alternative payment method.
+// Do not infer a plan's price from an untrusted client-submitted price ID.
+export const SUBSCRIPTION_STRIPE_PRICES = Object.freeze({
+  basic: { monthly: 'price_1Tz8iSEkntycHB4NlQlYd0Gs', annual: 'price_1Tz8iSEkntycHB4N8J7EXq42' },
+  outreach: { monthly: 'price_1Tz8iSEkntycHB4NESNtjyOx', annual: 'price_1Tz8iSEkntycHB4N5iujmlJZ' },
+});
+export function stripePriceFor(tier, interval) {
+  return SUBSCRIPTION_STRIPE_PRICES[tier]?.[interval] || null;
+}
 export function subscriptionPrice(tier, interval) {
   const price = SUBSCRIPTION_PRICING[String(tier || '')];
   if (!price || !['monthly', 'annual'].includes(interval)) return null;
