@@ -8,6 +8,7 @@
   },
   "scripts": {
     "verify:fundraising-mode": "node scripts/verify-fundraising-mode.mjs",
+    "verify:feature-flags": "node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/test-core-flag-routes.mjs",
     "verify:runtime-node22": "node scripts/require-node22.mjs",
     "preinstall": "npm run verify:runtime-node22 --silent",
     "predev": "npm run verify:runtime-node22 --silent",
