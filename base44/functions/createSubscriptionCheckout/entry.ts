@@ -52,7 +52,12 @@ export default async function(req) {
       return Response.json({ error: 'Invalid subscription details' }, { status: 400 });
     }
 
-    const stripe = new Stripe(secrets.get('STRIPE_SECRET_KEY'));
+    const stripeSecret = secrets.get('STRIPE_SECRET_KEY');
+    const stripeWebhookSecret = secrets.get('STRIPE_WEBHOOK_SECRET');
+    if (!stripeSecret || !String(stripeSecret).startsWith('sk_live_') || !stripeWebhookSecret) {
+      return Response.json({ error: 'Subscription checkout is not currently available.' }, { status: 503 });
+    }
+    const stripe = new Stripe(stripeSecret);
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: price_id, quantity: 1 }],
@@ -71,7 +76,7 @@ export default async function(req) {
 
     return Response.json({ url: session.url });
   } catch (error) {
-    console.error('createSubscriptionCheckout error:', error.message);
+    console.error('createSubscriptionCheckout error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not start your subscription. Please try again.' }, { status: 500 });
   }
 }
