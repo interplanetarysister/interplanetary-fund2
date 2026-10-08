@@ -7,6 +7,7 @@ const page=read('src/pages/Connections.jsx');
 const finalize=read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
 const publish=read('base44/functions/publishLinkedCampaignToConnection/entry.ts');
 const cross=read('base44/shared/crossPost.ts');
+const update=read('base44/functions/postCampaignUpdate/entry.ts');
 
 assert.match(dialog,/display_name: selected\?\.title/);
 assert.match(dialog,/Campaign to publish first/);
@@ -39,6 +40,10 @@ assert.match(publish,/status: 'approved'/);
 assert.match(publish,/publishThroughConnection/);
 
 assert.match(cross,/!c\.campaign_id \|\| c\.campaign_id === campaign\.id/);
-assert.match(cross,/conn\.automation_mode === 'auto'/);
+assert.match(cross,/includeManual \|\| c\.automation_mode !== 'manual'/);
+assert.match(cross,/explicitPublish \|\| conn\.automation_mode === 'auto'/);
+assert.match(cross,/explicitPublish \? \{ ok: true \} : await assertExternalAgentAction/);
+assert.match(update,/explicitPublish: true/);
+assert.match(update,/explicitly checked Cross-post and clicked Post update/);
 
 console.log('campaign-paired connection one-click publish contract: PASS');
