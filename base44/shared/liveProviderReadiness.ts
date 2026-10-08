@@ -131,6 +131,7 @@ export function liveFeatureSnapshot(key: string, flags: any[], providers: Awaite
     provider_ready: ready.ready,
     detail: ready.explanation,
     state: !CODE_CONNECTED_FEATURES.includes(key) ? 'not_implemented' :
+      matching.length && !flag ? 'configuration_conflict' :
       !flag ? 'switch_missing' : !ready.ready ? 'setup_needed' :
       flag.enabled === true ? 'live_enabled' : 'ready_off',
   };
