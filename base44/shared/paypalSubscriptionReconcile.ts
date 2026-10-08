@@ -32,7 +32,10 @@ export async function reconcilePayPalSubscription(sr: any, subscriptionId: strin
     // or PayPal subscription.
     if (user.subscription_status === 'active' && user.subscription_provider &&
       user.subscription_provider !== 'paypal') throw new Error('An active subscription from another provider exists.');
-    if (user.paypal_subscription_id && !isCurrent) throw new Error('A different PayPal subscription is already linked.');
+    if (user.paypal_subscription_id && !isCurrent &&
+        ['active', 'trialing', 'past_due'].includes(user.subscription_status)) {
+      throw new Error('A different PayPal subscription is already linked.');
+    }
     await sr.entities.User.update(user.id, {
       subscription_provider: 'paypal', paypal_subscription_id: subscriptionId,
       paypal_subscription_plan_id: subscription.plan_id,
