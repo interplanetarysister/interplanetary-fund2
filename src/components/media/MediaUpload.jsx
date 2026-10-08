@@ -3,9 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import { Loader2, Sparkles, UploadCloud, X } from "lucide-react";
-import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
-import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
-import { createIfundPhotoTreatment } from "@/lib/ifundPhotoTreatment";
+import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
 
 // Uploads pictures or video to the platform and reports the URL back. For
 // photos, users can keep the original or render the same photo in the
@@ -50,24 +48,9 @@ export default function MediaUpload({
     setRendering(true);
     setError("");
     try {
-      const response = await base44.functions.invoke("renderInterplanetaryPhoto", { source_url: source })
-        .catch(() => null);
-      const aiUrl = response?.data?.mode === "ai_photo_edit"
-        ? resolveGeneratedImageUrl(response?.data) : "";
-      let imageSource = aiUrl || source;
-      let objectUrl = null;
-      try {
-        if (!aiUrl) {
-          const treated = await createIfundPhotoTreatment(source);
-          objectUrl = URL.createObjectURL(treated);
-          imageSource = objectUrl;
-        }
-        const brandedUrl = await brandAndUploadGeneratedImage(base44, imageSource);
-        setIfundUrl(brandedUrl);
-        onChange(brandedUrl);
-      } finally {
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-      }
+      const result = await improveUploadedPhoto(base44, source);
+      setIfundUrl(result.url);
+      onChange(result.url);
     } catch {
       setError("Couldn't improve the photo right now. Your original photo is unchanged; retry when ready.");
     } finally {
