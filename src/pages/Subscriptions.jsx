@@ -118,7 +118,7 @@ export default function Subscriptions() {
               ) : isCurrent ? (
                 <Button disabled className="rounded-xl bg-stone-100 text-stone-500">Current plan</Button>
               ) : available ? (
-                <Button onClick={() => subscribe(plan)} disabled={!checkoutEnabled || subscribing !== null} disabled={subscribing === plan.id} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">
+                <Button onClick={() => subscribe(plan)} disabled={!checkoutEnabled || subscribing !== null} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground">
                   {subscribing === plan.id ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Subscribe {annual ? "yearly" : "monthly"}
                 </Button>
