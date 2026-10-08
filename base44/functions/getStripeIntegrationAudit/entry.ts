@@ -1,7 +1,8 @@
 import Stripe from 'npm:stripe@17.7.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { SUBSCRIPTION_STRIPE_PRICES, subscriptionPrice } from '../../shared/subscriptionCatalog.js';
+import { subscriptionPrices } from '../../shared/subscriptionCatalog.js';
+import { resolveStripeSubscriptionPrice } from '../../shared/stripeSubscriptionCatalog.ts';
 import { stripeCryptoGatewayReadiness } from '../../shared/stripeCryptoReadiness.ts';
 
 const NEEDED_EVENTS = [
@@ -33,23 +34,12 @@ export default async function(req: Request) {
       stripe.paymentMethodConfigurations.list({ limit: 100 }),
       stripeCryptoGatewayReadiness(true),
     ]);
-    const configuredPrices = Object.entries(SUBSCRIPTION_STRIPE_PRICES).flatMap(([tier, intervals]: any) =>
-      Object.entries(intervals).map(([interval, id]) => ({ tier, interval, id: String(id) })));
-    const priceResults = await Promise.all(configuredPrices.map(async (p) => {
-      try {
-        const remote = await stripe.prices.retrieve(p.id);
-        const expected = subscriptionPrice(p.tier, p.interval);
-        return {
-          tier: p.tier, interval: p.interval, price_id: p.id,
-          active: remote.active, currency: remote.currency,
-          amount_cents: remote.unit_amount, recurring: remote.recurring?.interval || null,
-          matches_ifund: !!expected && remote.livemode && remote.active &&
-            remote.unit_amount === expected.amount_cents && remote.currency === 'usd' &&
-            remote.recurring?.interval === (p.interval === 'annual' ? 'year' : 'month'),
-        };
-      } catch {
-        return { tier: p.tier, interval: p.interval, price_id: p.id, active: false, matches_ifund: false };
-      }
+    const priceResults = await Promise.all(subscriptionPrices().map(async (expected) => {
+      const found = await resolveStripeSubscriptionPrice(base44.asServiceRole, stripe, account.id, expected.tier, expected.interval);
+      return { tier: expected.tier, interval: expected.interval,
+        price_id: found?.id || null,
+        active: found?.price?.active === true, currency: 'usd',
+        amount_cents: expected.amount_cents, matches_ifund: !!found };
     }));
     const expectedUrls = [
       'https://interplanetaryfund.base44.app/functions/stripeWebhook',
