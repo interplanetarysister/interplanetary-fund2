@@ -89,6 +89,11 @@
       "type": "boolean",
       "default": false,
       "description": "True when this post was created or synced by the autonomous social media agent."
+    },
+    "image_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Media image was newly generated or transformed and branded on Interplanetary Fund."
     }
   },
   "required": [

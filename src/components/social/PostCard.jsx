@@ -40,7 +40,7 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onShare 
           <p className="text-slate-300 text-sm mt-2 whitespace-pre-wrap break-words">{post.content}</p>
           {hasMedia && (
             <div className="mt-3 rounded-xl overflow-hidden border border-white/10">
-              {post.ai_generated ? (
+              {post.image_generated || (post.ai_generated && post.author_username === "interplanetaryfund") ? (
                 <a href="https://interplanetaryfund.com" target="_blank" rel="noopener noreferrer"
                   aria-label="Visit Interplanetary Fund, source of this generated image">
                   <Image src={post.media_url} alt="Generated on Interplanetary Fund"

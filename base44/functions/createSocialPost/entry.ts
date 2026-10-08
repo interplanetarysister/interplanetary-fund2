@@ -17,6 +17,8 @@ export default async function(req){
    content,media_url:b?.media_url?String(b.media_url):undefined,campaign_id:campaign?.id,campaign_title:campaign?.title,
    is_top_post:tier==='gold'||tier==='platinum',crosspost_platforms:Array.isArray(b?.crosspost_platforms)?b.crosspost_platforms.map(String).slice(0,20):[],
    ai_generated:b?.ai_generated===true,
+   image_generated:b?.image_generated===true && typeof b?.media_url==='string' &&
+     b.media_url.startsWith('https://media.base44.com/'),
   });
   await base44.auth.updateMe({social_score:score,banner_tier:tier});
   return Response.json({ok:true,post,social_score:score,banner_tier:tier});

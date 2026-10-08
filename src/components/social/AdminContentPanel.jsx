@@ -47,6 +47,7 @@ export default function AdminContentPanel({ onGenerated }) {
         media_url: mediaUrl,
         is_top_post: true,
         ai_generated: true,
+        image_generated: true,
         crosspost_platforms: [],
       });
       if (!post?.id) throw new Error("Branded post was not saved");
