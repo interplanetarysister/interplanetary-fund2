@@ -6,6 +6,8 @@ const expect = (ok, message) => { if (!ok) throw new Error(message); };
 const financial = read('base44/shared/base44Financial.ts');
 const withdrawal = read('base44/functions/requestWithdrawal/entry.ts');
 const schema = read('base44/entities/Withdrawal.jsonc');
+const balanceFunction = read('base44/functions/getCampaignWithdrawalBalance/entry.ts');
+const withdrawalsPage = read('src/pages/Withdrawals.jsx');
 
 expect(financial.includes("source_type: 'external_platform'"), 'canonical balance must include only verified external-platform settlements');
 expect(financial.includes("state: 'settled'"), 'external custody must be settled before becoming available');
@@ -19,5 +21,9 @@ expect(withdrawal.includes("withdrawalId: withdrawal.id"), 'canonical reservatio
 expect(withdrawal.includes('Donations and external funds become withdrawable only after verification and settlement.'), 'user copy must preserve custody truth');
 
 expect(schema.includes('"covered_holding_entry_ids"'), 'withdrawal schema must persist covered settlement entries');
+expect(balanceFunction.includes("external_settled_available"), 'owner balance endpoint must expose settled external availability');
+expect(balanceFunction.includes("beneficiary_user_id: campaign.created_by_id"), 'owner balance endpoint must scope external custody to the campaign beneficiary');
+expect(withdrawalsPage.includes('getCampaignWithdrawalBalance'), 'withdrawals UI must use the server-authoritative balance summary');
+expect(withdrawalsPage.includes('settled external funds'), 'withdrawals UI must identify included external settlements truthfully');
 
 console.log('settled external withdrawal contract: PASS');
