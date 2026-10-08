@@ -68,6 +68,11 @@
     "cashapp_tag": {
       "type": "string"
     },
+    "accept_crypto_donations": {
+      "type": "boolean",
+      "default": false,
+      "description": "Creator opts into cryptocurrency giving. Checkout requires independently verified settlement readiness; opt-in alone never activates transfers."
+    },
     "ai_profile": {
       "type": "object",
       "properties": {
