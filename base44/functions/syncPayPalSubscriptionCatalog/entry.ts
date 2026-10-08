@@ -53,7 +53,6 @@ export default async function(req) {
           product_id: productId,
           name: expected.name + ' — ' + (expected.interval === 'monthly' ? 'Monthly' : 'Annual'),
           description: 'Interplanetary Fund ' + expected.name + ' subscription (' + expected.interval + ')',
-          status: 'ACTIVE',
           billing_cycles: [{
             frequency: { interval_unit: expected.interval === 'monthly' ? 'MONTH' : 'YEAR', interval_count: 1 },
             tenure_type: 'REGULAR', sequence: 1, total_cycles: 0,
