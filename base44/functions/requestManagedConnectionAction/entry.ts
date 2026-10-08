@@ -2,6 +2,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.53';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { hasManagedConnections } from '../../shared/subscriptionEntitlements.ts';
 import { staticRecipe, orderedTransports, requiresRouteRediscovery } from '../../shared/platformConnectionRecipes.ts';
+import {
+  managedConnectionRequestKey,
+  reusableManagedDelegation,
+  validateManagedRequestIdentity,
+  verifiedAccountCreationTransport,
+} from '../../shared/managedConnectionContinuation.ts';
 
 const ACTIONS = new Set(['connect', 'create_account', 'repair', 'reauthorize']);
 const clean = (value: unknown, max = 300) =>
@@ -37,6 +43,28 @@ function waitingRequirement(action: string, transport: string | null) {
   if (transport === 'public_browser') return 'A valid provider campaign URL is required before IFund can verify the public connection.';
   if (transport === 'authenticated_browser') return 'A protected provider session is required before IFund can continue.';
   return 'A supported provider connection step is required before IFund can continue.';
+}
+
+function publicDelegationResult(delegation: any, platform: string, action: string, transports: string[], nextTransport: string) {
+  return {
+    accepted: true,
+    reused: true,
+    state: delegation.status,
+    platform,
+    action,
+    connection_id: delegation?.continuation_state?.continuation_ref || null,
+    delegation_id: delegation.id,
+    request_key: delegation.request_key,
+    consent_version: delegation.consent_version,
+    candidate_transports: transports,
+    next_transport: nextTransport,
+    rediscovery_required: false,
+    executable_now: false,
+    next_route: '/connections',
+    message: delegation?.result_summary
+      || delegation?.continuation_state?.external_requirement
+      || waitingRequirement(action, nextTransport),
+  };
 }
 
 export default async function(req: Request) {
@@ -133,11 +161,63 @@ export default async function(req: Request) {
     const operation = action === 'create_account' ? 'account_create' : 'connect';
     const resolved = await resolveRecipe(sr, platform, operation);
     const transports = resolved.transport_order.filter((t: string) => t && t !== 'manual');
-    const nextTransport = transports[0] || null;
+    const nextTransport = action === 'create_account'
+      ? verifiedAccountCreationTransport(resolved.recipe, transports)
+      : transports[0] || null;
     const now = new Date().toISOString();
 
-    const delegation = await base44.entities.AgentDelegation.create({
+    // Account setup is only offered when a provider-backed recipe has already
+    // completed through the exact OAuth route. A candidate or documentation-only
+    // route is not executable evidence and must not create an orphan delegation.
+    if (action === 'create_account' && !nextTransport) {
+      return Response.json({
+        accepted: false,
+        state: 'unsupported',
+        platform,
+        action,
+        candidate_transports: transports,
+        next_transport: null,
+        rediscovery_required: true,
+        executable_now: false,
+        message: 'IFund does not have a verified account-creation route for this platform. No account or background task was created.',
+      });
+    }
+
+    const requestKey = managedConnectionRequestKey({
+      ownerUserId: user.id,
+      platform,
+      action,
+      connectionId,
+      campaignId: campaign?.id || connection?.campaign_id || '',
+      consentVersion,
+    });
+    const ownerDelegations = await base44.entities.AgentDelegation.filter({
       owner_user_id: user.id,
+      destination_agent: 'managed_connection_agent',
+    });
+    const existingClaims = (ownerDelegations || []).filter((row: any) => row?.request_key === requestKey);
+    if (existingClaims.length > 1) throw new Error('Managed Connections request identity is not unique.');
+    if (existingClaims.length === 1) {
+      const identityError = validateManagedRequestIdentity(existingClaims[0], {
+        requestKey,
+        ownerUserId: user.id,
+        platform,
+        action,
+        campaignId: String(campaign?.id || connection?.campaign_id || ''),
+        consentVersion,
+      });
+      if (identityError) throw new Error('Managed Connections request identity conflict.');
+      const activeClaim = reusableManagedDelegation(existingClaims, requestKey);
+      if (activeClaim) return Response.json(publicDelegationResult(activeClaim, platform, action, transports, nextTransport));
+      const retryableTerminal = ['failed', 'cancelled', 'superseded'].includes(existingClaims[0]?.status);
+      if (!retryableTerminal) {
+        return Response.json(publicDelegationResult(existingClaims[0], platform, action, transports, nextTransport));
+      }
+    }
+    const priorClaim = existingClaims[0] || null;
+    const delegationData = {
+      owner_user_id: user.id,
+      request_key: requestKey,
       campaign_id: campaign?.id || connection?.campaign_id || undefined,
       campaign_title_snapshot: campaign?.title || '',
       source_agent: 'user',
@@ -159,13 +239,39 @@ export default async function(req: Request) {
         completed_steps: ['authorization_checked', 'ownership_checked', 'route_resolved'],
         external_requirement: '',
         return_route: '/connections',
+        platform,
+        requested_action: action,
+        request_key: requestKey,
       },
-      retry_count: 0,
+      retry_count: priorClaim ? Number(priorClaim.retry_count || 0) + 1 : 0,
       max_retries: 3,
+      result_summary: '',
+      verification: '',
+      superseded_by_delegation_id: '',
+      completed_at: null,
       last_attempt_at: now,
-      created_at: now,
+      created_at: priorClaim?.created_at || now,
       updated_at: now,
+    };
+
+    // Base44's keyed upsert is the repository's canonical atomic claim boundary.
+    // request_key already includes owner, platform, action, resource and consent
+    // identities, so concurrent retries converge on one AgentDelegation record.
+    await base44.entities.AgentDelegation.upsert([delegationData], { key: 'request_key' });
+    const claimedRows = await base44.entities.AgentDelegation.filter({ request_key: requestKey });
+    if (claimedRows.length !== 1) {
+      throw new Error('Managed Connections request identity did not resolve uniquely.');
+    }
+    const delegation = claimedRows[0];
+    const identityError = validateManagedRequestIdentity(delegation, {
+      requestKey,
+      ownerUserId: user.id,
+      platform,
+      action,
+      campaignId: String(campaign?.id || connection?.campaign_id || ''),
+      consentVersion,
     });
+    if (identityError) throw new Error('Managed Connections request identity conflict.');
 
     if (connection && (action === 'connect' || action === 'repair')) {
       const verification = await base44.functions.invoke('verifyPlatformConnection', {
@@ -184,6 +290,9 @@ export default async function(req: Request) {
             completed_steps: ['authorization_checked', 'ownership_checked', 'route_resolved', 'provider_verified'],
             external_requirement: '',
             return_route: '/connections',
+            platform,
+            requested_action: action,
+            request_key: requestKey,
           },
         });
         return Response.json({
@@ -215,7 +324,10 @@ export default async function(req: Request) {
         completed_steps: ['authorization_checked', 'ownership_checked', 'route_resolved'],
         external_requirement: externalRequirement,
         return_route: '/connections',
-        continuation_ref: connection?.id || delegation.id,
+        continuation_ref: connection?.id || '',
+        platform,
+        requested_action: action,
+        request_key: requestKey,
       },
     });
 
@@ -226,6 +338,7 @@ export default async function(req: Request) {
       action,
       connection_id: connection?.id || null,
       delegation_id: delegation.id,
+      request_key: requestKey,
       consent_version: consentVersion,
       candidate_transports: transports,
       next_transport: nextTransport,

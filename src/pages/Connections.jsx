@@ -124,11 +124,18 @@ export default function Connections() {
         try {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
             platform: pending.platform,
+            delegation_id: pending.delegationId || undefined,
+            consent_version: pending.consentVersion || undefined,
+            request_key: pending.requestKey || undefined,
+            requested_action: pending.requestedAction || undefined,
           });
           if (data?.authorization_present && data?.connection?.id) {
             localStorage.removeItem("ifund_pending_platform_connection");
             try {
-              const verified = await base44.functions.invoke("verifyPlatformConnection", { connection_id: data.connection.id });
+              const verified = await base44.functions.invoke("verifyPlatformConnection", {
+                connection_id: data.connection.id,
+                delegation_id: data.delegation_id || undefined,
+              });
               if (verified?.data?.working) {
                 setConnectionNotice({ ok: true, text: `${pending.platform} is connected and working.` });
               } else {
@@ -213,7 +220,12 @@ export default function Connections() {
         connection_id: connection?.id,
         campaign_id,
       });
-      if (!data?.accepted) throw new Error("Managed Connections request was not accepted.");
+      if (!data || typeof data !== "object") throw new Error("Managed Connections returned an invalid response.");
+      if (data.accepted === false) {
+        setConnectionNotice({ ok: false, text: data.message || "This managed connection action is not currently supported." });
+        return data;
+      }
+      if (!data.accepted) throw new Error("Managed Connections request was not accepted.");
       const completed = data.state === "completed";
       setConnectionNotice({
         ok: completed,
@@ -412,6 +424,7 @@ export default function Connections() {
           onManagedCreateAccount={async ({ campaign_id }) => {
             const data = await requestManagedAction({ platform: dialog.platform, action: "create_account", campaign_id });
             if (data.state !== "waiting_user") setDialog(null);
+            return data;
           }}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}

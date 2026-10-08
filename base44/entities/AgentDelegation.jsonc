@@ -6,6 +6,10 @@
       "type": "string",
       "description": "User who owns this delegated work."
     },
+    "request_key": {
+      "type": "string",
+      "description": "Deterministic owner-scoped identity for retry-safe delegation reuse. Contains no credentials or provider authorization material."
+    },
     "campaign_id": {
       "type": "string",
       "description": "Optional authoritative campaign ID. Campaign-specific context must not be reused for a different campaign."
@@ -112,6 +116,18 @@
         "continuation_ref": {
           "type": "string",
           "description": "Opaque reference linking this delegation to a pending OAuth/callback flow."
+        },
+        "platform": {
+          "type": "string",
+          "description": "Stable provider key that this continuation is allowed to resume."
+        },
+        "requested_action": {
+          "type": "string",
+          "description": "Managed Connections action that this continuation is allowed to resume."
+        },
+        "request_key": {
+          "type": "string",
+          "description": "Copy of the owner-scoped request identity used to validate callback resume context."
         }
       }
     },
