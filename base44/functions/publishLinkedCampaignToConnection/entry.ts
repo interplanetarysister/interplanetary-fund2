@@ -58,7 +58,7 @@ export default async function(req) {
       (canAutoPublish(connection) || canPublishViaConnector(connection.platform));
 
     if (!directVerified) {
-      const prepared = await sr.entities.DistributedPost.create({
+      const prepared = await base44.entities.DistributedPost.create({
         campaign_id: campaign.id,
         campaign_title: campaign.title,
         connection_id: connection.id,
@@ -79,7 +79,7 @@ export default async function(req) {
 
     try {
       const published = await publishThroughConnection(connection, content, sr);
-      const post = await sr.entities.DistributedPost.create({
+      const post = await base44.entities.DistributedPost.create({
         campaign_id: campaign.id,
         campaign_title: campaign.title,
         connection_id: connection.id,
@@ -108,7 +108,7 @@ export default async function(req) {
         external_post_url: published?.url || '',
       });
     } catch (_) {
-      const failed = await sr.entities.DistributedPost.create({
+      const failed = await base44.entities.DistributedPost.create({
         campaign_id: campaign.id,
         campaign_title: campaign.title,
         connection_id: connection.id,
