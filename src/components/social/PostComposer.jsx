@@ -4,6 +4,7 @@ import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
+import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok",
@@ -15,6 +16,9 @@ export default function PostComposer({ user, connections, campaigns, providerCap
   const { toast } = useToast();
   const [content, setContent] = useState("");
   const [mediaUrl, setMediaUrl] = useState("");
+  const [originalMediaUrl, setOriginalMediaUrl] = useState("");
+  const [improvedMediaUrl, setImprovedMediaUrl] = useState("");
+  const [improvingImage, setImprovingImage] = useState(false);
   const [aiGenerated, setAiGenerated] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState("");
   const [crossPost, setCrossPost] = useState([]);
@@ -49,11 +53,27 @@ export default function PostComposer({ user, connections, campaigns, providerCap
     try {
       const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
       setMediaUrl(file_url);
+      setOriginalMediaUrl(file_url);
+      setImprovedMediaUrl("");
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
     } finally {
       setUploading(false);
     }
+  };
+
+  const improvePostPhoto = async () => {
+    const source = originalMediaUrl || mediaUrl;
+    if (!source || improvingImage) return;
+    setImprovingImage(true);
+    try {
+      const { url } = await improveUploadedPhoto(base44, source);
+      setImprovedMediaUrl(url);
+      setMediaUrl(url);
+      toast({ title: "Photo improved", description: "An IFund-styled version of your original photo is ready. You can still use the original." });
+    } catch {
+      toast({ title: "Couldn't improve photo", description: "Your original photo is unchanged. Try again later.", variant: "destructive" });
+    } finally { setImprovingImage(false); }
   };
 
   const toggleCrossPost = (platform) => {
@@ -99,6 +119,8 @@ export default function PostComposer({ user, connections, campaigns, providerCap
 
       setContent("");
       setMediaUrl("");
+      setOriginalMediaUrl("");
+      setImprovedMediaUrl("");
       setAiGenerated(false);
       setCrossPost([]);
       setSelectedCampaign("");
@@ -129,9 +151,29 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       {mediaUrl && (
         <div className="relative mb-3 rounded-xl overflow-hidden border border-white/10">
           <img src={mediaUrl} alt="upload" className="w-full max-h-64 object-cover" />
-          <button onClick={() => setMediaUrl("")} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white">
+          <button onClick={() => { setMediaUrl(""); setOriginalMediaUrl(""); setImprovedMediaUrl(""); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white">
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {mediaUrl && (
+        <div className="mb-3 flex items-center gap-2 flex-wrap">
+          <Button type="button" variant="outline" size="sm" disabled={improvingImage || uploading}
+            onClick={improvePostPhoto} className="rounded-lg">
+            {improvingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {improvingImage ? "Improving photo…" : "Generate IFund-style improvement"}
+          </Button>
+          {originalMediaUrl && improvedMediaUrl && mediaUrl !== originalMediaUrl && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setMediaUrl(originalMediaUrl)}>
+              Use original photo
+            </Button>
+          )}
+          {improvedMediaUrl && mediaUrl !== improvedMediaUrl && (
+            <Button type="button" variant="outline" size="sm" onClick={() => setMediaUrl(improvedMediaUrl)}>
+              Use IFund version
+            </Button>
+          )}
         </div>
       )}
 
