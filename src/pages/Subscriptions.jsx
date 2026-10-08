@@ -94,8 +94,13 @@ export default function Subscriptions() {
       if (!catalog?.ok || catalog.prices?.length !== 10) throw new Error("PayPal product/price setup was not verified.");
       const { data: hook } = await base44.functions.invoke("setupPayPalSubscriptionWebhook", {});
       if (!hook?.webhook_registered) throw new Error("PayPal prices are saved; the live webhook still needs deployment and verification.");
+      const { data: enabled } = await base44.functions.invoke("activateSubscriptionCheckout", {});
+      if (!enabled?.enabled || enabled.matched_paypal_prices !== 10 || !enabled.webhook_verified) {
+        throw new Error("PayPal plans and webhook must pass the final live readiness check before checkout is enabled.");
+      }
       await refresh();
-      setNotice("PayPal business subscriptions: all five products, ten prices and the billing webhook were verified.");
+      setNotice("All five PayPal products, ten recurring prices and the billing webhook are verified. Subscription checkout is enabled.");
+      window.setTimeout(() => window.location.reload(), 650);
     } catch (e) {
       await refresh().catch(() => {});
       setError(e?.message || "PayPal business subscription setup is not complete.");
