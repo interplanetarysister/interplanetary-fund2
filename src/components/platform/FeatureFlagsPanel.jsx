@@ -8,14 +8,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { logPlatformEvent } from "./logPlatformEvent";
 import { Loader2, Plus } from "lucide-react";
 
+const WIRED_FLAGS = new Set(["public_campaign_fundraising"]);
+
 export default function FeatureFlagsPanel() {
   const [flags, setFlags] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ key: "", label: "", description: "", scope: "global" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    base44.entities.FeatureFlag.list("-created_date", 100).then(setFlags);
+    base44.entities.FeatureFlag.list("-created_date", 100).then(setFlags).catch(() => { setFlags([]); setError("Could not load feature flags. Reload and retry."); });
   }, []);
 
   if (!flags) {
@@ -24,35 +27,56 @@ export default function FeatureFlagsPanel() {
 
   const create = async () => {
     setSaving(true);
-    const { data } = await base44.functions.invoke("manageFeatureFlag", form);
-    const flag = data?.flag;
-    if (!flag) { setSaving(false); return; }
-    await logPlatformEvent({
-      action: "Feature flag created",
-      category: "configuration",
-      affected_resource: flag.key,
-      details: `Scope: ${flag.scope}`,
-    });
-    setFlags((prev) => [flag, ...prev]);
-    setForm({ key: "", label: "", description: "", scope: "global" });
-    setShowForm(false);
-    setSaving(false);
+    setError("");
+    try {
+      if (form.key.trim().toLowerCase() === "public_campaign_fundraising" && form.scope !== "global") {
+        setError("Public campaign fundraising must use Global scope.");
+        return;
+      }
+      const { data } = await base44.functions.invoke("manageFeatureFlag", form);
+      if (!data?.flag) throw new Error("Flag was not saved");
+      const flag = data.flag;
+      setFlags((prev) => [flag, ...prev]);
+      setForm({ key: "", label: "", description: "", scope: "global" });
+      setShowForm(false);
+      await logPlatformEvent({
+        action: "Feature flag created", category: "configuration",
+        affected_resource: flag.key, details: `Scope: ${flag.scope}`,
+      }).catch(() => {});
+    } catch {
+      setError("Could not create this flag. Check for an existing key and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggle = async (flag, enabled) => {
-    setFlags((prev) => prev.map((f) => (f.id === flag.id ? { ...f, enabled } : f)));
-    const { data } = await base44.functions.invoke("manageFeatureFlag", { id: flag.id, enabled });
-    if (!data?.flag) setFlags((prev) => prev.map((f) => (f.id === flag.id ? flag : f)));
-    await logPlatformEvent({
-      action: `Feature flag ${enabled ? "enabled" : "disabled"}`,
-      category: "configuration",
-      affected_resource: flag.key,
-      details: `Changed by administrator — reversible at any time.`,
-    });
+    if (!WIRED_FLAGS.has(flag.key)) return;
+    if (flag.key === "public_campaign_fundraising" && enabled &&
+        !window.confirm("Enable live campaign donations for all eligible published campaigns? Only do this after payment, accounting, and payout verification.")) return;
+    setError("");
+    setSaving(true);
+    try {
+      const { data } = await base44.functions.invoke("manageFeatureFlag", { id: flag.id, enabled });
+      if (!data?.flag || data.flag.enabled !== enabled) throw new Error("Flag change was not saved");
+      setFlags((prev) => prev.map((f) => f.id === flag.id ? { ...f, enabled } : f));
+      window.dispatchEvent(new Event("ifund:fundraising-mode-changed"));
+      await logPlatformEvent({
+        action: `Feature flag ${enabled ? "enabled" : "disabled"}`,
+        category: "configuration", affected_resource: flag.key,
+        details: "Changed by administrator — reversible at any time.",
+      }).catch(() => {});
+    } catch {
+      setError("Could not change the fundraising setting. Previous setting remains in effect.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-stone-600">The site and published campaigns stay online in both fundraising modes. The Public Campaign Fundraising switch only controls accepting new campaign donations; platform-support donations remain available.</p>
+      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       {!showForm && (
         <Button onClick={() => setShowForm(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl">
           <Plus className="w-4 h-4" /> New flag
@@ -95,8 +119,10 @@ export default function FeatureFlagsPanel() {
                 </div>
                 <p className="text-xs font-mono text-stone-400 mt-0.5">{f.key}</p>
                 {f.description && <p className="text-xs text-stone-500 mt-1">{f.description}</p>}
+                {!WIRED_FLAGS.has(f.key) && <p className="text-xs text-amber-700 mt-1">Not connected to runtime yet — switch unavailable.</p>}
+                {f.key === "public_campaign_fundraising" && <p className="text-xs text-emerald-700 mt-1">{f.enabled ? "Public campaign donations enabled" : "Platform-support-only donations; published campaigns remain online"}</p>}
               </div>
-              <Switch checked={f.enabled} onCheckedChange={(v) => toggle(f, v)} aria-label={`Toggle ${f.label || f.key}`} />
+              <Switch checked={f.enabled} disabled={saving || !WIRED_FLAGS.has(f.key)} onCheckedChange={(v) => toggle(f, v)} aria-label={`Toggle ${f.label || f.key}`} />
             </div>
           ))}
         </div>
