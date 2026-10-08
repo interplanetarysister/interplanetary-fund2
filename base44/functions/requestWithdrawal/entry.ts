@@ -26,6 +26,10 @@ async function releaseDonationMirrors(sr, withdrawalId) {
     { withdrawal_id: withdrawalId },
     { $set: { withdrawal_id: '' } }
   ).catch(() => {});
+  await sr.entities.HoldingLedgerEntry.updateMany(
+    { withdrawal_id: withdrawalId, source_type: 'external_platform', direction: 'in', state: 'settled' },
+    { $set: { withdrawal_id: '' } }
+  ).catch(() => {});
 }
 
 async function verifyPendingDonation(base44, sr, donation, adminUser) {
@@ -326,8 +330,22 @@ export default async function(req) {
       if (d.payment_verified !== true || d.is_institutional) return false;
       return new Date(d.created_date) <= cutoff;
     });
-    let gross = round2(available.reduce((s, d) => s + giftOf(d), 0));
-    if (gross <= 0) return Response.json({ error: 'No cleared funds are available yet. Donations become withdrawable after verification and the applicable clearing period.' }, { status: 400 });
+    const settledExternal = await sr.entities.HoldingLedgerEntry.filter({
+      campaign_id,
+      beneficiary_user_id: user.id,
+      source_type: 'external_platform',
+      direction: 'in',
+      state: 'settled',
+    }, '-created_date', 5000).catch(() => []);
+    if (settledExternal.length >= 5000) {
+      return Response.json({ error: 'External settlement history is too large for a safe single withdrawal. Contact support.' }, { status: 409 });
+    }
+    const availableExternal = settledExternal.filter((entry) => !entry.withdrawal_id && Number(entry.amount || 0) > 0);
+    let gross = round2(
+      available.reduce((s, d) => s + giftOf(d), 0) +
+      availableExternal.reduce((s, entry) => s + Number(entry.amount || 0), 0)
+    );
+    if (gross <= 0) return Response.json({ error: 'No cleared funds are available yet. Donations and external funds become withdrawable only after verification and settlement.' }, { status: 400 });
 
     let { fee, net } = computeWithdrawal(gross);
     const withdrawal = await sr.entities.Withdrawal.create({
@@ -340,6 +358,7 @@ export default async function(req) {
       net_amount: net,
       paypal_email,
       covered_donation_ids: available.map((d) => d.id),
+      covered_holding_entry_ids: availableExternal.map((entry) => entry.id),
       status: 'reserving',
     });
     const operationKey = operationKeyFor(withdrawal.id);
@@ -351,12 +370,33 @@ export default async function(req) {
       { id: { $in: available.map((d) => d.id) }, withdrawal_id: { $in: [null, ''] } },
       { $set: { withdrawal_id: withdrawal.id } }
     );
+    await sr.entities.HoldingLedgerEntry.updateMany(
+      {
+        id: { $in: availableExternal.map((entry) => entry.id) },
+        withdrawal_id: { $in: [null, ''] },
+        source_type: 'external_platform',
+        direction: 'in',
+        state: 'settled',
+      },
+      { $set: { withdrawal_id: withdrawal.id } }
+    ).catch(() => {});
+
     const reChecked = await sr.entities.Donation.filter({ withdrawal_id: withdrawal.id });
     const reservedIds = (reChecked || []).map((d) => d.id);
-    const reservedGross = round2(reservedIds.reduce((s, id) => {
-      const d = available.find((a) => a.id === id);
-      return s + (d ? giftOf(d) : 0);
-    }, 0));
+    const reCheckedHolding = await sr.entities.HoldingLedgerEntry.filter({ withdrawal_id: withdrawal.id }).catch(() => []);
+    const reservedHoldingIds = (reCheckedHolding || [])
+      .filter((entry) => entry.source_type === 'external_platform' && entry.direction === 'in' && entry.state === 'settled')
+      .map((entry) => entry.id);
+    const reservedGross = round2(
+      reservedIds.reduce((s, id) => {
+        const d = available.find((a) => a.id === id);
+        return s + (d ? giftOf(d) : 0);
+      }, 0) +
+      reservedHoldingIds.reduce((s, id) => {
+        const entry = availableExternal.find((candidate) => candidate.id === id);
+        return s + (entry ? Number(entry.amount || 0) : 0);
+      }, 0)
+    );
 
     if (reservedGross <= 0) {
       await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Funds were claimed by another withdrawal. Please try again.' });
@@ -388,6 +428,7 @@ export default async function(req) {
       platform_fee: fee,
       net_amount: net,
       covered_donation_ids: reservedIds,
+      covered_holding_entry_ids: reservedHoldingIds,
       canonical_reservation_id: String(reservation.reservationId),
       canonical_ledger_entry_id: String(reservation.ledgerEntryId || ''),
       status: net > REVIEW_THRESHOLD ? 'under_review' : 'processing',
