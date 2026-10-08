@@ -108,7 +108,7 @@ export default function Subscriptions() {
     setError(""); setNotice(""); setSubscribing("daypass");
     try {
       const { data } = await base44.functions.invoke("createPremiumDayPassCheckout", { origin: window.location.origin });
-      if (!data?.url || !/^https:\\/\\//.test(data.url)) throw new Error(data?.error || "Day-pass checkout is unavailable.");
+      if (!data?.url || !data.url.startsWith("https://")) throw new Error(data?.error || "Day-pass checkout is unavailable.");
       window.location.assign(data.url);
     } catch (e) { setError(e?.message || "Could not open day-pass checkout."); }
     finally { setSubscribing(null); }
