@@ -3,29 +3,22 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, ArrowRightLeft, Plus, X, CheckCircle2, AlertCircle } from "lucide-react";
 
-const PAYOUT_OPTIONS = [
-  { method: "cashapp", destination: "$unrewound", label: "CashApp", hint: "$unrewound" },
-  { method: "paypal", destination: "interplanetarysister@gmail.com", label: "PayPal", hint: "interplanetarysister@gmail.com" },
-  { method: "bitcoin", destination: "bc1qfgwz5fasnkml0f2z7ynvw5lk6v77ez66fql3pz", label: "Bitcoin", hint: "bc1qfgwz5fasnkml0f2z7ynvw5lk6v77ez66fql3pz" },
-];
-
 const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const emptyEntry = () => ({ campaignId: "", campaignTitle: "", sourcePlatform: "GoFundMe", grossAmount: "" });
 
-// Fund Migration Dashboard — record withdrawals from external platforms,
-// apply the IF fee schedule, and route net funds to the campaign owner.
-// Uses Base44 entities; no Convex / AI credits required.
+// Fund Migration Dashboard — records admin-attested external amounts for
+// reconciliation. It never chooses a payout destination or represents an
+// external balance as IFund-held money. The campaign owner withdraws only after
+// a verified settlement reaches the IFund holding account.
 export default function FundMigrationDashboard() {
   const [campaigns, setCampaigns] = useState([]);
   const [pending, setPending] = useState([]);
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [campaignSearch, setCampaignSearch] = useState("");
 
-  const [step, setStep] = useState("entries"); // entries | payout | confirm | result
+  const [step, setStep] = useState("entries"); // entries | confirm | result
   const [migrations, setMigrations] = useState([emptyEntry()]);
-  const [payoutMethod, setPayoutMethod] = useState("cashapp");
-  const [payoutDest, setPayoutDest] = useState(PAYOUT_OPTIONS[0].destination);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -98,7 +91,6 @@ export default function FundMigrationDashboard() {
   // by Interplanetary Fund and shown for transparency only — never deducted from
   // the recipient's net, matching the approved fee policy.
   const totalPlatformFee = totalGross * 0.03;
-  const totalProcessingFee = totalGross * 0.029 + billable.length * 0.3;
   const totalNet = totalGross - totalPlatformFee;
 
   const handleSubmit = async () => {
@@ -120,8 +112,6 @@ export default function FundMigrationDashboard() {
           campaign_id: m.campaignId,
           source_platform: m.sourcePlatform,
           gross_amount: Number(m.grossAmount),
-          payout_method: payoutMethod,
-          payout_destination: payoutDest,
           request_id: requestId,
         });
         if (data?.ok !== true) throw new Error("Migration could not be recorded safely.");
@@ -168,48 +158,17 @@ export default function FundMigrationDashboard() {
           ))}
           <div className="pt-2 border-t border-white/10 space-y-1">
             <div className="flex justify-between text-xs text-slate-400"><span>Interplanetary Fund fee (3%)</span><span>− {fmt(totalPlatformFee)}</span></div>
-            <div className="flex justify-between text-xs text-slate-400"><span>Processing (2.9% + $0.30/item, covered by Interplanetary Fund)</span><span>{fmt(totalProcessingFee)}</span></div>
             <div className="flex justify-between font-bold text-slate-100"><span>Net to owner</span><span>{fmt(totalNet)}</span></div>
           </div>
           <div className="pt-2 border-t border-white/10 text-xs text-slate-400">
-            Payout via <span className="text-cyan-300">{payoutMethod}</span> to <span className="text-cyan-300">{payoutDest}</span>
+            Reconciliation record only. No payout destination is stored or selected here. The campaign owner uses the normal withdrawal flow after IFund independently verifies settlement.
           </div>
         </div>
         {error && <p className="text-xs text-rose-400 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{error}</p>}
         <div className="flex gap-2">
-          <Button variant="ghost" className="flex-1 text-slate-400" onClick={() => setStep("payout")} disabled={submitting}>Back</Button>
+          <Button variant="ghost" className="flex-1 text-slate-400" onClick={() => setStep("entries")} disabled={submitting}>Back</Button>
           <Button className="flex-1 bg-cyan-400/20 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/30" onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Queue for reconciliation"}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === "payout") {
-    return (
-      <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-100">Select Payout Method</h3>
-        <div className="space-y-2">
-          {PAYOUT_OPTIONS.map((opt) => (
-            <button
-              key={opt.method}
-              onClick={() => { setPayoutMethod(opt.method); setPayoutDest(opt.destination); }}
-              className={`w-full rounded-xl border p-3 text-left transition-colors ${
-                payoutMethod === opt.method
-                  ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-300"
-                  : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
-              }`}
-            >
-              <span className="font-semibold">{opt.label}</span>
-              <span className="ml-2 text-xs opacity-70">{opt.hint}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2 pt-2">
-          <Button variant="ghost" className="flex-1 text-slate-400" onClick={() => setStep("entries")}>Back</Button>
-          <Button className="flex-1 bg-cyan-400/20 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/30" onClick={() => setStep("confirm")}>
-            Review →
           </Button>
         </div>
       </div>
@@ -327,10 +286,10 @@ export default function FundMigrationDashboard() {
 
           <Button
             className="w-full bg-cyan-400/20 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-400/30 rounded-xl h-11"
-            onClick={() => setStep("payout")}
+            onClick={() => setStep("confirm")}
             disabled={totalGross <= 0}
           >
-            Continue to payout →
+            Review reconciliation record →
           </Button>
         </>
       )}
