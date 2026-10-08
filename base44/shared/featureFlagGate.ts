@@ -21,6 +21,7 @@ export const FEATURE_SCOPES: Record<string, string> = {
   community_creation: 'global',
   institution_programs: 'beta',
   admin_agent_execution: 'beta',
+  crypto_donations: 'global',
 };
 
 export const NEVER_SWITCH_OFF = [
