@@ -106,7 +106,7 @@ const slow=await call({
 assert.equal(slow.json.error,'slow_down');
 
 currentUser={id:'u1',role:'user',username:'pixie'};
-assert.equal((await call({mode:'inspect',user_code:'WRONG-23456'})).status,404);
+assert.equal((await call({mode:'inspect',user_code:'ABCDH-23456'})).status,404);
 const info=await call({mode:'inspect',user_code:user_code.toLowerCase()});
 assert.equal(info.status,200);
 assert.deepEqual(info.json.scopes,scope);
