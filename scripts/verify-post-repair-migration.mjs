@@ -78,6 +78,8 @@ assert.match(donateDialog, /rail="Google Pay via PayPal"/);
 assert.match(fees, /PLATFORM_FEE_RATE = 0\.03/);
 assert.match(paymentTests, /test:paypal-financial-recovery/);
 assert.match(paymentTests, /test-paypal-wallet-readiness\.mjs/);
-assert.equal(fs.existsSync('base44/entities/AdminCredentialVault.jsonc'), false);
+const legacyVault = read('base44/entities/AdminCredentialVault.jsonc');
+assert.doesNotMatch(legacyVault, /"secret_value"|"password"|"username"|"sign_in_secret"/i);
+assert.match(legacyVault, /provider-managed secret/i);
 
 console.log('post-repair migration completion contract: PASS');
