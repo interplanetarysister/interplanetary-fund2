@@ -17,7 +17,7 @@ import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
-import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download, Wallet } from "lucide-react";
 
 const steps = ["Your Details", "Basics", "Campaign Story", "Launch"];
 
@@ -37,7 +37,7 @@ export default function CreateCampaign() {
     title: "", category: "other", goal_amount: "", end_date: "",
     summary: "", story: "", cover_image_url: "",
     location: "", location_lat: null, location_lng: null,
-    ai_profile: emptyAiProfile, story_versions: [],
+    ai_profile: emptyAiProfile, story_versions: [], accept_crypto_donations: false,
   });
   const [locating, setLocating] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(!!draftId);
@@ -57,6 +57,7 @@ export default function CreateCampaign() {
           summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "",
           location: draft.location || "", location_lat: draft.location_lat ?? null, location_lng: draft.location_lng ?? null,
           ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [],
+          accept_crypto_donations: draft.accept_crypto_donations === true,
         });
         if (!cancelled) setStep(Math.min(3, Math.max(0, Number(draft.draft_step) || 0)));
       } catch {
@@ -240,6 +241,7 @@ export default function CreateCampaign() {
             <div className="space-y-2 min-w-0"><Label className="quest-label">What kind?</Label><Select value={form.category} onValueChange={(v) => set("category", v)}><SelectTrigger className="quest-input"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(categoryLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2 min-w-0"><Label className="quest-label flex items-center gap-1"><Coins className="w-3.5 h-3.5" /> Goal</Label><Input className="quest-input" type="number" min="1" placeholder="$5,000" value={form.goal_amount} onChange={(e) => set("goal_amount", e.target.value)} /></div>
           </div>
+          <label className="flex items-start gap-3 rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 cursor-pointer"><input type="checkbox" checked={form.accept_crypto_donations} onChange={(e) => set("accept_crypto_donations", e.target.checked)} className="mt-1 accent-cyan-400" /><span className="text-sm text-slate-100"><span className="flex gap-2 items-center font-semibold"><Wallet className="w-4 h-4" /> Allow cryptocurrency donations</span><span className="block text-xs text-slate-300 mt-1">Optional. Wallet connection and receiving will appear when IFund completes secure crypto settlement setup. No coins are accepted before verification is ready.</span></span></label>
           <details className="rounded-2xl border border-violet-400/25 bg-violet-500/10 overflow-hidden group"><summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-sm font-semibold text-violet-100"><span className="flex items-center gap-2"><Wand2 className="w-4 h-4 text-cyan-300" /> Add extras <span className="font-normal text-slate-400">(optional)</span></span><span className="text-cyan-300 group-open:rotate-45 transition-transform">+</span></summary><div className="px-4 pb-4 pt-1 space-y-4 border-t border-white/10"><div className="space-y-2"><Label className="quest-label">Deadline</Label><Input className="quest-input" type="date" value={form.end_date} onChange={(e) => set("end_date", e.target.value)} /></div><div className="space-y-2"><Label className="quest-label">Where is this happening?</Label><div className="flex gap-2 min-w-0"><Input className="quest-input flex-1 min-w-0" placeholder="City, state" value={form.location} onChange={(e) => set("location", e.target.value)} onBlur={locate} /><Button type="button" variant="outline" onClick={locate} disabled={locating || !form.location} className="quest-button shrink-0">{locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}<span className="hidden sm:inline ml-1">Find</span></Button></div></div></div></details>
         </div>)}
 
