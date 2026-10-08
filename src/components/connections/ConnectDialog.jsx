@@ -44,51 +44,41 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const connectWithProvider = async () => {
-    // Open synchronously from a real click to avoid popup blockers. If the
-    // browser forbids popups (common in mobile WebViews), redirect in this tab.
-    const popup = window.open("about:blank", "ifund-provider-sign-in",
-      "popup=yes,width=560,height=760,scrollbars=yes,resizable=yes");
+    if (connecting) return;
     setConnecting(true);
     setError("");
     try {
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
-        popup?.close();
         setError("This platform does not offer verified provider sign-in through IFund yet.");
         return;
       }
       if (!data?.configured || !data?.connector_id) {
-        popup?.close();
-        setError("This connection needs provider setup before sign-in can open.");
+        setError("Facebook Pages and other publishing connections require an IFund provider connector. Sign-in alone cannot grant posting access; setup is not finished yet.");
         return;
       }
-      // OAuth sign-in happens first. After returning, IFund separately asks
-      // for revocable per-connection AI delegation and verifies live access.
-      // The connector owns OAuth state, refresh tokens and provider credentials.
       const me = await base44.auth.me();
+      if (!me?.id) throw new Error("Sign in to IFund first.");
+      // Persist the resume hint BEFORE asking the SDK for an authorization URL:
+      // an SDK may immediately navigate away. Never store codes or tokens here.
+      localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
+        platform: platform.id, userId: me.id, startedAt: Date.now(),
+        step: "oauth_pending",
+        returnPath: window.location.pathname + window.location.search + window.location.hash,
+      }));
+      // A single-tab flow preserves the IFund origin/session on mobile and
+      // avoids popup callbacks landing in an unrelated Base44 editor window.
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
       if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
       const destination = new URL(String(redirectUrl));
       if (destination.protocol !== "https:" || destination.username || destination.password) {
         throw new Error("Provider sign-in URL is not secure.");
       }
-      // localStorage survives a provider redirect that returns in another web tab.
-      // Only the same signed-in owner can resume; no provider tokens are stored here.
-      localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
-        platform: platform.id, userId: me.id, startedAt: Date.now(),
-        step: "oauth_pending",
-        // App-internal only. Never accept a full origin or untrusted redirect URL.
-        returnPath: window.location.pathname + window.location.search + window.location.hash,
-      }));
-      if (popup && !popup.closed) {
-        popup.location.replace(destination.href);
-      } else {
-        window.location.assign(destination.href);
-      }
+      window.location.assign(destination.href);
     } catch (e) {
-      popup?.close();
-      console.error("Provider OAuth start failed:", e);
-      setError("We couldn’t open sign-in. Please try again.");
+      localStorage.removeItem("ifund_pending_platform_connection");
+      console.error("Provider OAuth start failed:", e?.name || "ProviderConnectionError");
+      setError("The provider connection could not start. Try Connect again for a fresh authorization link.");
     } finally {
       setConnecting(false);
     }
