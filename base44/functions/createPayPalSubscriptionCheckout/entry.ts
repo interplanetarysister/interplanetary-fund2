@@ -17,6 +17,12 @@ export default async function(req) {
     const approvedOrigin = permittedPayPalCheckoutOrigin(origin);
     if (!approvedOrigin) return Response.json({ error: 'Invalid return location.' }, { status: 400 });
     const sr = base44.asServiceRole;
+    if (tier === 'nonprofit') {
+      const approvals = await sr.entities.NonprofitSubscriptionApproval.filter({ user_id: user.id });
+      if (!(approvals || []).some(row => row.status === 'approved')) {
+        return Response.json({ error: 'The nonprofit discount requires IFund to verify your nonprofit registration.' }, { status: 403 });
+      }
+    }
     const webhookRows = await sr.entities.PayPalBillingWebhook.filter({
       provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF,
     }).catch(() => []);
