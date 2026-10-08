@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { subscriptionPrices } from '../../shared/subscriptionCatalog.js';
 import { verifiedPayPalPlan, paypalBillingRequest, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypalSubscriptions.ts';
 const NEEDED_EVENTS = [
@@ -10,8 +11,10 @@ const NEEDED_EVENTS = [
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user || user.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
+    if (user.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
     if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
     const sr = base44.asServiceRole;
     for (const price of subscriptionPrices()) {
