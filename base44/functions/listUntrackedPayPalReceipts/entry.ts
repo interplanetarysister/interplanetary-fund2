@@ -43,10 +43,10 @@ export default async function(req) {
     const transactions = await listTransactions({ startDate: start, endDate: end, pageSize: 500 });
 
     const [paypalOps, paypalDonations, googlePayDonations, paypalHoldings] = await Promise.all([
-      sr.entities.FinancialOperation.filter({ provider: 'paypal' }, '-created_date', 5000).catch(() => []),
-      sr.entities.Donation.filter({ payment_method: 'paypal' }, '-created_date', 5000).catch(() => []),
-      sr.entities.Donation.filter({ payment_method: 'googlepay' }, '-created_date', 5000).catch(() => []),
-      sr.entities.HoldingLedgerEntry.filter({ source_provider: 'paypal' }, '-created_date', 5000).catch(() => []),
+      sr.entities.FinancialOperation.filter({ provider: 'paypal' }, '-created_date', 5000),
+      sr.entities.Donation.filter({ payment_method: 'paypal' }, '-created_date', 5000),
+      sr.entities.Donation.filter({ payment_method: 'googlepay' }, '-created_date', 5000),
+      sr.entities.HoldingLedgerEntry.filter({ source_provider: 'paypal' }, '-created_date', 5000),
     ]);
     const opsByTransaction = byTransaction(paypalOps);
     const donationsByTransaction = byTransaction([...paypalDonations, ...googlePayDonations]);

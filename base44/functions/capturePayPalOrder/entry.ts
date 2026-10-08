@@ -55,17 +55,19 @@ export default async function (req) {
     try {
       cap = recovering ? await getOrder(order_id) : await captureOrder(order_id);
     } catch (capErr) {
-      console.error('capturePayPalOrder capture error:', capErr?.message || capErr);
+      console.error(recovering ? 'capturePayPalOrder verification error:' : 'capturePayPalOrder capture error:', capErr?.name || 'PayPalError');
       const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
       if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
       await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: 'Capture failed', status: 'failure' });
-      return Response.json({ error: 'Unable to complete your donation. Please try again or contact support.' }, { status: 502 });
+      return Response.json({ error: recovering
+        ? 'PayPal could not verify the original order without charging. No records were changed.'
+        : 'Unable to complete your donation. Please try again or contact support.' }, { status: 502 });
     }
     if (cap.status !== 'COMPLETED' || cap.capture_status !== 'COMPLETED' || !cap.capture_id) {
       const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
       if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
       await logAudit(base44, {
-        action: 'capture_failed',
+        action: recovering ? 'paypal_receipt_verification_failed' : 'capture_failed',
         target_type: 'campaign',
         target_id: campaign_id,
         detail: `Capture not completed (order=${cap.status || 'unknown'}, capture=${cap.capture_status || 'missing'})`,
