@@ -16,13 +16,8 @@ export default defineConfig({
     }),
     react(),
   ],
-  optimizeDeps: {
-    include: [
-      '@reown/appkit/react',
-      '@reown/appkit-adapter-ethers',
-      '@reown/appkit-adapter-solana/react',
-      '@reown/appkit-adapter-bitcoin',
-      '@reown/appkit/networks',
-    ],
-  },
+  // The wallet is loaded only after an explicit Connect click.
+  // Do not force Reown into Vite's initial dependency optimizer: the sandbox
+  // may start before optional wallet packages have been restored, causing
+  // a dev-server import-resolution failure for the entire payment page.
 });
