@@ -9,13 +9,17 @@ import DistributedPostCard from "./DistributedPostCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import { isUsableConnection } from "@/lib/connectionHealth";
 
-const directReady = (c) => {
+const directReady = (c, capabilityMap) => {
+  const capability = capabilityMap[c.platform] || null;
+  const verifiedDirect = capability?.direct_publish_verified === true && capability?.test_status === "passing" && capability?.implementation_status === "implemented";
+  if (!verifiedDirect) return false;
   const cr = c.credentials || {};
-  return (c.platform === "bluesky" && cr.bluesky_handle && cr.bluesky_app_password) ||
-    (c.platform === "mastodon" && cr.mastodon_instance && cr.mastodon_access_token);
+  if (c.platform === "bluesky") return !!(cr.bluesky_handle && cr.bluesky_app_password);
+  if (c.platform === "linkedin") return true;
+  return false;
 };
 const aiReady = (c, aiAuthorized) => aiAuthorized && isUsableConnection(c) && c.automation_mode !== "manual";
-const approvedReady = (c, aiAuthorized) => aiAuthorized && isUsableConnection(c) && directReady(c);
+const approvedReady = (c, aiAuthorized, capabilityMap) => aiAuthorized && isUsableConnection(c) && directReady(c, capabilityMap);
 
 function DestinationGroup({ title, hint, icon: Icon, connections, selected, setSelected }) {
   if (!connections.length) return null;
@@ -29,13 +33,13 @@ function DestinationGroup({ title, hint, icon: Icon, connections, selected, setS
 }
 
 export default function DistributionPanel({ campaign }) {
-  const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]), [aiAuthorized,setAiAuthorized]=useState(false);
+  const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]), [aiAuthorized,setAiAuthorized]=useState(false), [capabilityMap,setCapabilityMap]=useState({});
   const [generating,setGenerating]=useState(false), [broadcasting,setBroadcasting]=useState(false), [error,setError]=useState("");
   const {toast}=useToast();
-  useEffect(()=>{(async()=>{const [r,p,me]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me()]);const authorized=me?.ai_obo_consent?.granted===true;const cs=(r.data?.connections||[]).filter(c=>!c.campaign_id||c.campaign_id===campaign.id);setAiAuthorized(authorized);setConnections(cs);setSelected(cs.filter(c=>aiReady(c,authorized)).map(c=>c.id));setPosts(p)})()},[campaign.id]);
+  useEffect(()=>{(async()=>{try{const [r,p,me,capRes]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me(),base44.functions.invoke("listFundraisingProviderCapabilities",{})]);const authorized=me?.ai_obo_consent?.granted===true;const allConnections=Array.isArray(r?.data?.connections)?r.data.connections:[];const cs=allConnections.filter(c=>!c.campaign_id||c.campaign_id===campaign.id);const providers=Array.isArray(capRes?.data?.providers)?capRes.data.providers:[];const caps=Object.fromEntries(providers.map(cap=>[String(cap.platform||"").toLowerCase(),cap]));setAiAuthorized(authorized);setCapabilityMap(caps);setConnections(cs);setSelected(cs.filter(c=>aiReady(c,authorized)).map(c=>c.id));setPosts(Array.isArray(p)?p:[])}catch(e){console.error("Distribution load failed:",e?.name||"UnknownError");setConnections([]);setPosts([]);setCapabilityMap({})}})()},[campaign.id]);
   if(!connections)return null;
   const pending=posts.filter(p=>["pending_approval","draft","approved","failed"].includes(p.status));
-  const ai=connections.filter(c=>aiReady(c,aiAuthorized)), approved=connections.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,aiAuthorized)), copy=connections.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,aiAuthorized));
+  const ai=connections.filter(c=>aiReady(c,aiAuthorized)), approved=connections.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,aiAuthorized,capabilityMap)), copy=connections.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,aiAuthorized,capabilityMap));
   const generate=async()=>{setGenerating(true);setError("");try{const {data}=await base44.functions.invoke("generateDistributionContent",{campaign_id:campaign.id,connection_ids:selected});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else setPosts(prev=>[...(data.posts||[]),...prev])}catch(e){console.error("Distribution generation failed:",e?.name||"UnknownError");setError("Couldn't prepare the posts. Please try again.")}setGenerating(false)};
   const broadcast=async()=>{setBroadcasting(true);setError("");try{const {data}=await base44.functions.invoke("broadcastPosts",{campaign_id:campaign.id});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else{const m=new Map(posts.map(p=>[p.id,p]));for(const u of(data.posts||[]))m.set(u.id,u);setPosts([...m.values()].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)));toast({title:"Posts prepared",description:`${data.published} sent · ${data.manual} ready for you to copy and post${data.failed?` · ${data.failed} need attention`:""}.`})}}catch(e){console.error("Distribution broadcast failed:",e?.name||"UnknownError");setError("Couldn't send the posts. Please try again.")}setBroadcasting(false)};
   return <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
