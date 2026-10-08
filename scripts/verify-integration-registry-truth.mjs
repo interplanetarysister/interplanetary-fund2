@@ -24,6 +24,9 @@ const saveConnectionCredentials = read('base44/functions/saveConnectionCredentia
 const syncExternalFunds = read('base44/functions/syncExternalFunds/entry.ts');
 const providerCapabilities = read('base44/shared/providerCapabilities.ts');
 const publicCampaignSnapshot = read('base44/shared/publicCampaignSnapshot.ts');
+const discoverSnapshotLocal = read('base44/functions/discoverExternalCampaignSnapshot/publicCampaignSnapshot.ts');
+const importSnapshotLocal = read('base44/functions/importExternalCampaign/publicCampaignSnapshot.ts');
+const syncSnapshotLocal = read('base44/functions/syncImportedCampaign/publicCampaignSnapshot.ts');
 const prepareCollectAndWithdraw = read('base44/functions/prepareCollectAndWithdraw/entry.ts');
 
 expect(manage.includes("create({ ...data, status: 'DISCONNECTED' })"), 'new registry entries must start DISCONNECTED');
@@ -87,6 +90,9 @@ expect(publicCampaignSnapshot.includes("redirect: 'manual'"), 'provider snapshot
 expect(publicCampaignSnapshot.includes("declaredLength > 2_000_000"), 'provider snapshot discovery must bound declared page size');
 expect(publicCampaignSnapshot.includes("await response.text()"), 'provider snapshot body must be read while the request timeout is active');
 expect(publicCampaignSnapshot.includes("contentType.includes('text/html')"), 'provider snapshot discovery must require HTML-compatible content');
+expect(discoverSnapshotLocal === publicCampaignSnapshot, 'discover function-local snapshot helper must match canonical helper');
+expect(importSnapshotLocal === publicCampaignSnapshot, 'import function-local snapshot helper must match canonical helper');
+expect(syncSnapshotLocal === publicCampaignSnapshot, 'sync function-local snapshot helper must match canonical helper');
 expect(prepareCollectAndWithdraw.includes("cap?.api_transfer === true"), 'collect flow must require an implemented API-transfer capability');
 expect(prepareCollectAndWithdraw.includes("startsWith('transfer:')"), 'collect flow must require a provider-specific transfer adapter');
 expect(prepareCollectAndWithdraw.includes('No connected provider currently has a verified IFund-initiated transfer route.'), 'collect flow must not imply an unsupported transfer when no executable route exists');
