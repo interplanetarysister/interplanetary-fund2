@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import ImportedCampaignSync from "@/components/campaigns/ImportedCampaignSync";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
 import EditAIInstructionsDialog from "@/components/campaigns/EditAIInstructionsDialog";
+import EditCampaignDetailsDialog from "@/components/campaigns/EditCampaignDetailsDialog";
 import DeleteCampaignButton from "@/components/campaigns/DeleteCampaignButton";
 import OutreachAgentPanel from "@/components/campaigns/OutreachAgentPanel";
 import DistributionPanel from "@/components/distribution/DistributionPanel";
@@ -30,6 +31,7 @@ const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 export default function CampaignDetail() {
   const platformOnlyMode = !usePublicCampaignFundraising();
   const { id } = useParams();
+  const location = useLocation();
   const [campaign, setCampaign] = useState(null);
   const [updates, setUpdates] = useState([]);
   const [donations, setDonations] = useState([]);
@@ -63,6 +65,20 @@ export default function CampaignDetail() {
     load();
     base44.auth.me().then(setUser).catch(() => {});
   }, [load]);
+
+  useEffect(() => {
+    if (!campaign || !location.hash) return;
+    const targetId = location.hash.slice(1);
+    if (!/^campaign-[a-z-]+$/.test(targetId)) return;
+    const frame = window.requestAnimationFrame(() => {
+      const section = document.getElementById(targetId);
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (targetId !== "campaign-settings") section.focus({ preventScroll: true });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [campaign?.id, location.hash, location.key]);
 
   if (error) return <PageError message={error} onRetry={load} />;
   if (notFound) return <div className="text-center py-24 text-stone-500">Campaign not found.</div>;
@@ -105,22 +121,30 @@ export default function CampaignDetail() {
           </div>
           {/* Phones: funding progress + Donate Now sit directly under the title,
               so the primary action is visible without scrolling. */}
-          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="lg:hidden" />
+          <div id="campaign-funding" tabIndex={-1} className="scroll-mt-24 lg:hidden">
+            <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
+          </div>
           {campaign.story && (
-            <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
+            <div id="campaign-story" tabIndex={-1} className="scroll-mt-24 bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
               <p className="text-stone-600 leading-relaxed whitespace-pre-wrap">{campaign.story}</p>
             </div>
           )}
-          <UpdatesSection campaignId={campaign.id} updates={updates} isOwner={isOwner} onPosted={load} />
-          {isOwner && <DistributionPanel campaign={campaign} />}
+          <section id="campaign-updates" tabIndex={-1} className="scroll-mt-24">
+            <UpdatesSection campaignId={campaign.id} updates={updates} isOwner={isOwner} onPosted={load} />
+          </section>
+          {isOwner && <section id="campaign-distribution" tabIndex={-1} className="scroll-mt-24">
+            <DistributionPanel campaign={campaign} />
+          </section>}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
           <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
 
-          {canManage && <ShareCampaignKit campaign={campaign} />}
+          {canManage && <div id="campaign-share" tabIndex={-1} className="scroll-mt-24">
+            <ShareCampaignKit campaign={campaign} />
+          </div>}
 
           {isOwner && <CrossPlatformTotals campaign={campaign} />}
 
@@ -140,10 +164,21 @@ export default function CampaignDetail() {
 
           {isOwner && <ImportedCampaignSync campaign={campaign} onSynced={load} />}
           {isOwner && <CashAppSettings campaign={campaign} onSaved={load} />}
-          {isOwner && <EditAIInstructionsDialog campaign={campaign} onSaved={load} />}
-          {isOwner && <OutreachAgentPanel campaign={campaign} />}
-          {isOwner && <CampaignHealth campaign={campaign} updatesCount={updates.length} />}
-          {isOwner && <AICoach campaign={campaign} updatesCount={updates.length} />}
+          {canManage && <div id="campaign-settings" tabIndex={-1} className="scroll-mt-24">
+            <EditCampaignDetailsDialog campaign={campaign} onSaved={load} />
+          </div>}
+          {isOwner && <div id="campaign-instructions" tabIndex={-1} className="scroll-mt-24">
+            <EditAIInstructionsDialog campaign={campaign} onSaved={load} />
+          </div>}
+          {isOwner && <div id="campaign-outreach" tabIndex={-1} className="scroll-mt-24">
+            <OutreachAgentPanel campaign={campaign} />
+          </div>}
+          {isOwner && <div id="campaign-health" tabIndex={-1} className="scroll-mt-24">
+            <CampaignHealth campaign={campaign} updatesCount={updates.length} />
+          </div>}
+          {isOwner && <div id="campaign-ai" tabIndex={-1} className="scroll-mt-24">
+            <AICoach campaign={campaign} updatesCount={updates.length} />
+          </div>}
           {isOwner && <DeleteCampaignButton campaign={campaign} />}
         </div>
       </div>
