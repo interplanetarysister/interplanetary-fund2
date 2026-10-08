@@ -285,7 +285,7 @@ export default async function(req) {
         await logAudit(base44, { action: 'withdrawal_approved', target_type: 'withdrawal', target_id: w.id, detail: `Approved net $${w.net_amount} paid`, status: 'success', metadata: { actor: user.id } });
         return Response.json({ ok: true, status: 'paid', payout_batch_id: payout.payout_batch_id });
       } catch (err) {
-        console.error('requestWithdrawal approve payout error:', err?.message || err);
+        console.error('requestWithdrawal approve payout error:', err?.name || 'PayoutError');
         const state = await handleProviderFailure(base44, sr, w, err, user.id);
         if (state.ambiguous) return Response.json({ ok: true, status: 'provider_status_unknown', withdrawal_id: w.id }, { status: 202 });
         return Response.json({ error: state.released ? `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` : SAFE_PAYOUT_ERROR }, { status: 500 });
@@ -420,7 +420,7 @@ export default async function(req) {
     } catch (reserveErr) {
       await releaseDonationMirrors(sr, withdrawal.id);
       await sr.entities.Withdrawal.update(withdrawal.id, { status: 'failed', review_note: 'Canonical balance reservation failed.' });
-      console.error('canonical withdrawal reservation failed:', reserveErr?.message || reserveErr);
+      console.error('canonical withdrawal reservation failed:', reserveErr?.name || 'ReservationError');
       return Response.json({ error: 'Funds could not be reserved safely. Please try again.' }, { status: 409 });
     }
 
@@ -449,13 +449,13 @@ export default async function(req) {
       await logAudit(base44, { action: 'withdrawal_paid', target_type: 'withdrawal', target_id: withdrawal.id, detail: `Net $${net} paid after canonical reservation`, status: 'success', metadata: { canonical_reservation_id: String(reservation.reservationId), payout_batch_id: payout.payout_batch_id || '' } });
       return Response.json({ ok: true, status: 'paid', withdrawal_id: withdrawal.id, gross, fee, net, payout_batch_id: payout.payout_batch_id });
     } catch (err) {
-      console.error('requestWithdrawal payout error:', err?.message || err);
+      console.error('requestWithdrawal payout error:', err?.name || 'PayoutError');
       const state = await handleProviderFailure(base44, sr, currentWithdrawal, err, user.id);
       if (state.ambiguous) return Response.json({ ok: true, status: 'provider_status_unknown', withdrawal_id: withdrawal.id, gross, fee, net }, { status: 202 });
       return Response.json({ error: state.released ? `${SAFE_PAYOUT_ERROR} Your funds were released back to your available balance.` : SAFE_PAYOUT_ERROR }, { status: 500 });
     }
   } catch (error) {
-    console.error('requestWithdrawal error:', error?.message || error);
+    console.error('requestWithdrawal error:', error?.name || 'UnknownError');
     return Response.json({ error: SAFE_WITHDRAWAL_ERROR }, { status: 500 });
   }
 }
