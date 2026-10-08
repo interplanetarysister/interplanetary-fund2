@@ -32,8 +32,19 @@ assert.match(bb, /DhkemX25519HkdfSha256/);
 assert.match(bb, /Aes256Gcm/);
 assert.match(bb, /deleteBrowserbaseSecret/);
 
-assert.equal(fs.existsSync('base44/entities/AdminCredentialVault.jsonc'), false,
-  'raw credential vault entity must not exist');
+const legacyVault = read('base44/entities/AdminCredentialVault.jsonc');
+const legacyVaultSchema = JSON.parse(legacyVault);
+assert.match(legacyVault, /Deprecated reference-only compatibility entity/);
+assert.doesNotMatch(legacyVault, /"secret_value"|"password"|"username"|"sign_in_secret"/i,
+  'deprecated credential-vault compatibility schema must remain reference-only');
+assert.match(legacyVault, /"browserbase_secret_id"/);
+assert.match(legacyVault, /"browserbase_secret_key"/);
+assert.doesNotMatch(legacyVault, /__service_only__|service_only/i,
+  'compatibility entity RLS must use supported Base44 roles');
+for (const operation of ['read', 'create', 'update', 'delete']) {
+  assert.deepEqual(legacyVaultSchema.rls?.[operation], { user_condition: { role: 'admin' } },
+    `AdminCredentialVault ${operation} must be restricted to Base44 admins`);
+}
 assert.equal(fs.existsSync('base44/functions/storeAdminPlatformCredential/entry.ts'), false,
   'IFund must not accept reusable raw platform passwords until the provider-managed secret/function boundary is active');
 
