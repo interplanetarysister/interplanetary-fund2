@@ -59,6 +59,7 @@ export default function Subscriptions() {
         <p className="text-stone-500">Choose the AI assistant that matches your fundraising ambitions.</p>
       </div>
 
+      {!checkoutEnabled && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 text-center">New paid subscriptions are temporarily paused while the live Stripe webhook is being verified. Existing plan access is unchanged.</div>}
       {justSubscribed && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 text-center">
           Thank you! Your subscription is activating — it may take a moment to reflect on your account.
@@ -131,7 +132,7 @@ export default function Subscriptions() {
       </div>
 
       <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400 mt-8">
-        <ShieldCheck className="w-4 h-4" /> Secure billing via Stripe. Cancel anytime. Prices in USD.
+        <ShieldCheck className="w-4 h-4" /> {checkoutEnabled ? "Secure billing via Stripe. Cancel anytime. Prices in USD." : "Stripe billing will reopen after live webhook verification is complete."}
       </p>
     </div>
   );
