@@ -20,12 +20,19 @@
   "selected_skill_names": [],
   "selected_workspace_skill_ids": [],
   "model": "automatic",
+  "whatsapp_greeting": null,
+  "telegram_greeting": null,
+  "line_greeting": null,
   "memory_config": {
     "enabled": true,
     "scope": "both",
     "include_other_conversation_context": true,
     "instructions": "Remember only non-secret reusable connection workflow facts and the user's explicit high-level preferences. Treat current provider state, current subscription, current OBO authorization, current connection ownership, and current campaign records as authoritative on every consequential action. Never store credentials, tokens, cookies, MFA material, recovery codes, banking data, or challenge answers."
   },
+  "voice_config": {
+    "voice_id": null
+  },
+  "emails_settings": null,
   "allow_anonymous_access": false,
   "name": "managed_connection_agent"
 }
