@@ -1,6 +1,7 @@
-// Real posting integrations for platforms whose APIs work with user-supplied
-// credentials (no partner approval needed): Bluesky (app password), Mastodon
-// (instance access token), and LinkedIn (OAuth connector with w_member_social).
+// Real posting integrations for runtime-safe destinations: Bluesky (app
+// password) and LinkedIn (OAuth connector with w_member_social). Mastodon
+// remains fail-closed until arbitrary instance hosts can be reached through a
+// DNS-pinned, redirect-safe outbound transport.
 // Used by publishPost and the sync worker.
 
 // Platforms that can publish through a Base44 OAuth connector (shared mode).
