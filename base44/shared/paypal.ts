@@ -266,8 +266,8 @@ export async function captureOrder(orderId) {
 // Verify a transaction against the designated business PayPal account before
 // exterior funds are admitted to the custody ledger. This is intentionally a
 // read-only provider check; it does not create financial value by itself.
-export async function verifyWebhookSignature(rawEvent, headers) {
-  const webhookId = String(secrets.get('PAYPAL_WEBHOOK_ID') || '').trim();
+export async function verifyWebhookSignature(rawEvent, headers, verifiedBillingWebhookId = '') {
+  const webhookId = String(verifiedBillingWebhookId || secrets.get('PAYPAL_WEBHOOK_ID') || '').trim();
   if (!webhookId) throw new Error('PayPal webhook id is not configured.');
   const transmissionId = String(headers?.get?.('paypal-transmission-id') || '').trim();
   const transmissionTime = String(headers?.get?.('paypal-transmission-time') || '').trim();
