@@ -8,7 +8,7 @@ import MediaUpload from "@/components/media/MediaUpload";
 import { useToast } from "@/components/ui/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
-import { Megaphone, Loader2, Share2, Copy, Sparkles, Save, Check } from "lucide-react";
+import { Megaphone, Loader2, Share2, Copy, Sparkles, Save } from "lucide-react";
 import { generateCampaignUpdateDraft } from "@/lib/updateDraft";
 import { copyText } from "@/lib/copyText";
 
