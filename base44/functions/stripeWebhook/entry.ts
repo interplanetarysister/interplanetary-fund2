@@ -81,6 +81,7 @@ async function applyStripeDonation({
   currency,
   isRecurring,
   donorEmail,
+  paymentRail = 'card',
 }) {
   if (String(currency || '').toLowerCase() !== 'usd') throw new Error('Stripe currency mismatch.');
   if (providerObjectKind !== 'session' && providerObjectKind !== 'invoice') throw new Error('Unsupported Stripe financial object.');
@@ -119,7 +120,7 @@ async function applyStripeDonation({
     ...(donorEmail ? { donorEmail } : {}),
     ...(metadata?.donor_user_id ? { donorUserId: metadata.donor_user_id } : {}),
     message: metadata?.message || '',
-    paymentMethod: 'stripe',
+    paymentMethod: paymentRail === 'stripe_crypto' ? 'stripe_crypto' : 'stripe',
     paymentVerified: true,
     source: isRenewal ? 'stripe_invoice_webhook' : 'stripe_checkout_webhook',
     isRecurring: !!isRecurring,
@@ -142,7 +143,7 @@ async function applyStripeDonation({
     is_recurring: !!isRecurring,
     ...(isRecurring ? { recurring_status: 'active' } : {}),
     ...(metadata?.donor_user_id ? { donor_user_id: metadata.donor_user_id } : {}),
-    payment_method: 'stripe',
+    payment_method: paymentRail === 'stripe_crypto' ? 'stripe_crypto' : 'stripe',
     payment_verified: true,
     cleared: false,
     stripe_session_id: providerObjectId,
@@ -264,10 +265,28 @@ export default async function(req) {
           await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString(), last_error: '' });
           return Response.json({ received: true, payment_pending: true });
         }
+        if (m.payment_rail === 'stripe_crypto') {
+          // Signed Stripe events are necessary but not sufficient. Confirm
+          // the actual successful charge came through the crypto method;
+          // a browser success URL or altered metadata never credits funds.
+          if (!session.payment_intent || session.mode !== 'payment' || session.livemode !== true) {
+            throw new Error('Crypto payment is missing a live Stripe PaymentIntent.');
+          }
+          const intent = await stripe.paymentIntents.retrieve(session.payment_intent, {
+            expand: ['latest_charge'],
+          });
+          const charge = typeof intent.latest_charge === 'object' ? intent.latest_charge : null;
+          if (intent.status !== 'succeeded' || intent.currency !== 'usd' ||
+              charge?.paid !== true || charge?.payment_method_details?.type !== 'crypto' ||
+              Number(intent.amount_received || 0) !== Number(session.amount_total || 0)) {
+            throw new Error('Crypto donation charge is not confirmed by the payment provider.');
+          }
+        }
         await applyStripeDonation({
           base44,
           sr,
           webhookRecord,
+          paymentRail: m.payment_rail === 'stripe_crypto' ? 'stripe_crypto' : 'card',
           campaignId: m.campaign_id,
           metadata: m,
           providerObjectId: session.id,
