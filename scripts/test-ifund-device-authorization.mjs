@@ -172,4 +172,24 @@ unhealthyAccount=true;
 assert.equal((await call({mode:'resource',action:'identity'},{'x-ifund-device-token':bearer3})).status,403);
 unhealthyAccount=false;
 assert.ok(commands.filter(x=>x==='start').length>=3);
+const fresh = await call({mode:'start',client_id:'ifund-cli-v1',device_label:'Expiring device',scopes:['identity:read']});
+assert.equal(fresh.status,200);
+const last = rows.at(-1);
+last.expires_at = new Date(Date.now()-1000).toISOString();
+currentUser={id:'u1'};
+assert.equal((await call({mode:'inspect',user_code:fresh.json.user_code})).status,404);
+currentUser=null;
+assert.equal((await call({mode:'poll',grant_type:'urn:ietf:params:oauth:grant-type:device_code',device_code:fresh.json.device_code})).json.error,'expired_token');
+
+const ui = fs.readFileSync(new URL('../src/pages/DeviceActivation.jsx',import.meta.url),'utf8');
+const manager = fs.readFileSync(new URL('../src/pages/ConnectedDevices.jsx',import.meta.url),'utf8');
+const routes = fs.readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
+const profile = fs.readFileSync(new URL('../src/pages/Profile.jsx',import.meta.url),'utf8');
+assert.match(routes,/path="\\/activate"/);
+assert.match(routes,/path="\\/devices"/);
+assert.match(ui,/mode:"inspect"/);
+assert.match(ui,/mode:"decide"/);
+assert.match(manager,/mode:"revoke"/);
+assert.match(profile,/Manage devices and approvals/);
+
 console.log('PASS: device code start, human approval/deny, scoped token exchange, read-only resources, revocation, account guard and fail-closed limits.');
