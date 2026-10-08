@@ -28,7 +28,8 @@ export function Toaster() {
                 <ToastDescription>{description}</ToastDescription>
               )}
             </div>
-            {destination ? (
+            {action}
+            {destination && (
               <button
                 type="button"
                 className="shrink-0 rounded-lg border border-current/30 px-3 py-2 text-xs font-semibold hover:bg-primary/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
@@ -37,7 +38,7 @@ export function Toaster() {
               >
                 {actionLabel || "Open action"}
               </button>
-            ) : action}
+            )}
             <ToastClose onClick={() => dismiss(id)} />
           </Toast>
         );

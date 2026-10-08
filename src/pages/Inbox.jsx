@@ -20,13 +20,16 @@ export default function Inbox() {
   const [items, setItems] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState("open");
+  const [tab, setTab] = useState(requestedCampaign === "all" ? "open" : "all");
   const [platform, setPlatform] = useState("all");
   const [campaignFilter, setCampaignFilter] = useState(requestedCampaign);
   const [search, setSearch] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => { setCampaignFilter(requestedCampaign); }, [requestedCampaign]);
+  useEffect(() => {
+    setCampaignFilter(requestedCampaign);
+    if (requestedCampaign !== "all") setTab("all");
+  }, [requestedCampaign]);
 
   useEffect(() => {
     (async () => {
