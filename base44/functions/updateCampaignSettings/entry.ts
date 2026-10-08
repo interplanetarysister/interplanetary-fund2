@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 const CASHTAG = /^[A-Za-z0-9_]{1,20}$/;
-const ALLOWED = new Set(['cashapp_tag','outreach_enabled','outreach_paused','ai_profile']);
+const ALLOWED = new Set(['cashapp_tag','outreach_enabled','outreach_paused','ai_profile','accept_crypto_donations']);
 
 export default async function(req) {
   try {
@@ -34,6 +34,7 @@ export default async function(req) {
       if (tag && !CASHTAG.test(tag)) return Response.json({ error: 'Invalid Cashtag' }, { status: 400 });
       safe.cashapp_tag = tag;
     }
+    if ('accept_crypto_donations' in patch) safe.accept_crypto_donations = patch.accept_crypto_donations === true;
     if ('outreach_enabled' in patch) safe.outreach_enabled = patch.outreach_enabled === true;
     if ('outreach_paused' in patch) safe.outreach_paused = patch.outreach_paused === true;
     if ('ai_profile' in patch) {
