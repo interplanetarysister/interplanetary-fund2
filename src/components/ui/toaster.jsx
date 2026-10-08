@@ -22,12 +22,21 @@ export function Toaster() {
           : campaignActionDestination(actionContext);
         return (
           <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
+            {destination ? (
+              <button type="button" className="min-w-0 flex-1 text-left rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                onClick={() => { dismiss(id); navigate(destination); }}
+                aria-label={actionLabel || "Open related campaign action"}>
+                <span className="grid gap-1">
+                  {title && <ToastTitle>{title}</ToastTitle>}
+                  {description && <ToastDescription>{description}</ToastDescription>}
+                </span>
+              </button>
+            ) : (
+              <div className="grid gap-1">
+                {title && <ToastTitle>{title}</ToastTitle>}
+                {description && <ToastDescription>{description}</ToastDescription>}
+              </div>
+            )}
             {action}
             {destination && (
               <button
