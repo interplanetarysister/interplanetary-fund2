@@ -3,7 +3,8 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import { Loader2, Sparkles, UploadCloud, X } from "lucide-react";
-import { resolveGeneratedImageUrl, loadGeneratedImage } from "@/lib/generatedMedia";
+import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
+import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 
 // Uploads pictures or video to the platform and reports the URL back. For
 // photos, users can keep the original or render the same photo in the
@@ -51,9 +52,9 @@ export default function MediaUpload({
       const res = await base44.functions.invoke("renderInterplanetaryPhoto", { source_url: source });
       const url = resolveGeneratedImageUrl(res?.data || res);
       if (!url) throw new Error("No rendered image returned");
-      await loadGeneratedImage(url);
-      setIfundUrl(url);
-      onChange(url);
+      const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
+      setIfundUrl(brandedUrl);
+      onChange(brandedUrl);
     } catch {
       setError("Couldn't render the Interplanetary Fund version. Your original photo is still available.");
     } finally {

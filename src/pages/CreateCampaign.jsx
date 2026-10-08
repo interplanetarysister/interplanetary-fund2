@@ -13,7 +13,8 @@ import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIIns
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import MediaUpload from "@/components/media/MediaUpload";
 import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
-import { resolveGeneratedImageUrl, loadGeneratedImage } from "@/lib/generatedMedia";
+import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
+import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download } from "lucide-react";
@@ -105,8 +106,8 @@ export default function CreateCampaign() {
       const res = await base44.functions.invoke("generateCampaignCover", { prompt });
       const url = resolveGeneratedImageUrl(res?.data);
       if (!url) throw new Error("Generator returned no image URL");
-      await loadGeneratedImage(url);
-      set("cover_image_url", url);
+      const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
+      set("cover_image_url", brandedUrl);
       setRegenCount((c) => c + 1);
       toast({ title: "Cover created", description: "Your generated image is ready and visible below." });
     } catch {
@@ -118,13 +119,19 @@ export default function CreateCampaign() {
     }
   };
 
-  const useFreeCover = () => {
-    const url = generateCampaignCoverDataUrl({
-      title: form.title || "My Campaign", category: form.category, regenCount,
-    });
-    set("cover_image_url", url);
-    setRegenCount(c => c + 1);
-    toast({ title: "Free cover ready", description: "A branded cover is displayed. You can replace it anytime." });
+  const useFreeCover = async () => {
+    setGeneratingImage(true);
+    try {
+      const url = generateCampaignCoverDataUrl({
+        title: form.title || "My Campaign", category: form.category, regenCount,
+      });
+      const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
+      set("cover_image_url", brandedUrl);
+      setRegenCount(c => c + 1);
+      toast({ title: "Free cover ready", description: "Your logo-watermarked cover was saved. You can replace it anytime." });
+    } catch {
+      toast({ title: "Could not save free cover", description: "No unbranded image was substituted. Please retry.", variant: "destructive" });
+    } finally { setGeneratingImage(false); }
   };
 
   const saveDraft = async () => {
