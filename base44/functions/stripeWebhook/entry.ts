@@ -276,7 +276,7 @@ export default async function(req) {
           throw new Error('Day-pass account is not eligible for activation.');
         }
         if (purchaser.stripe_day_pass_checkout_id !== confirmed.id) {
-          const expiresAt = new Date(confirmed.created * 1000 + DAY_PASS_DURATION_MS).toISOString();
+          const expiresAt = new Date(event.created * 1000 + DAY_PASS_DURATION_MS).toISOString();
           // Do not overwrite a later verified pass with an older delayed event.
           const existingExpiry = Date.parse(String(purchaser.premium_day_pass_expires_at || '')) || 0;
           if (Date.parse(expiresAt) > existingExpiry) {
