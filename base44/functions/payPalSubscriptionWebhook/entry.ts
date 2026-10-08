@@ -7,6 +7,7 @@ const EVENTS = new Set([
   'BILLING.SUBSCRIPTION.ACTIVATED', 'BILLING.SUBSCRIPTION.UPDATED',
   'BILLING.SUBSCRIPTION.SUSPENDED', 'BILLING.SUBSCRIPTION.CANCELLED',
   'BILLING.SUBSCRIPTION.EXPIRED', 'BILLING.SUBSCRIPTION.PAYMENT.FAILED',
+  'PAYMENT.SALE.COMPLETED', 'PAYMENT.SALE.REFUNDED', 'PAYMENT.SALE.REVERSED',
 ]);
 export default async function(req) {
   // Public, no-credential route probe for provisioning. Never claims
@@ -44,6 +45,16 @@ export default async function(req) {
       record = await sr.entities.WebhookEvent.create({ source: 'paypal_subscriptions', event_key: key, event_type: type, state: 'claimed' });
     }
     try {
+      if (type === 'PAYMENT.SALE.REFUNDED' || type === 'PAYMENT.SALE.REVERSED') {
+        const intents = await sr.entities.PayPalSubscriptionIntent.filter({ paypal_subscription_id: subscriptionId });
+        for (const intent of intents || []) {
+          if (intent.account_ref === IFUND_PAYPAL_ACCOUNT_REF) {
+            await sr.entities.PayPalSubscriptionIntent.update(intent.id, {
+              last_reversal_at: String(event.create_time || new Date().toISOString()),
+            });
+          }
+        }
+      }
       // The provider GET is authoritative, not the event payload/status.
       // A late CANCELLED event cannot overwrite a newly ACTIVE subscription.
       const result = await reconcilePayPalSubscription(sr, subscriptionId);
