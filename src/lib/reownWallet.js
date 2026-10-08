@@ -9,9 +9,9 @@ export async function openReownWallet() {
   if (!modalPromise) {
     modalPromise = (async () => {
       const [{ createAppKit }, { EthersAdapter }, { SolanaAdapter }, { BitcoinAdapter }, networks] = await Promise.all([
-        import("@reown/appkit/react"),
+        import("@reown/appkit"),
         import("@reown/appkit-adapter-ethers"),
-        import("@reown/appkit-adapter-solana/react"),
+        import("@reown/appkit-adapter-solana"),
         import("@reown/appkit-adapter-bitcoin"),
         import("@reown/appkit/networks"),
       ]);
