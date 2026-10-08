@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 // Signs the current user up for a volunteer opportunity. Creates the
 // VolunteerSignup as the user and increments the opportunity's volunteer_count
@@ -7,8 +8,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Sign in to volunteer.' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const { opportunity_id } = await req.json();
     if (!opportunity_id) return Response.json({ error: 'Missing opportunity_id' }, { status: 400 });
