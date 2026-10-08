@@ -29,25 +29,24 @@ export default async function(req) {
     for (const connection of connections || []) {
       const currentObo = connection.obo_consent || {};
       const currentAgent = connection.agent_access || {};
+      // A global authorization cannot silently override an account-specific
+      // refusal. Users must opt in separately to each outside provider.
+      const approvedForAccount = granted && currentObo.granted === true;
       const patch = {
         obo_consent: {
           ...currentObo,
-          granted,
-          granted_at: granted ? now : null,
+          granted: approvedForAccount,
+          granted_at: approvedForAccount ? (currentObo.granted_at || now) : null,
           permission_version: VERSION,
-          // Revocation removes IFund's action authorization but does not invent
-          // or erase provider-reported capabilities.
-          granted_capabilities: granted
+          granted_capabilities: approvedForAccount
             ? (currentObo.provider_capabilities || currentObo.granted_capabilities || [])
             : [],
         },
         agent_access: {
           ...currentAgent,
-          shared_with_agents: granted,
-          // OBO authorization and automation preference are independent. A
-          // grant restores agent access but does not silently convert a user's
-          // Ask/Draft/Manual preference into autonomous execution.
-          automation_enabled: granted && (connection.automation_mode || 'manual') === 'auto',
+          shared_with_agents: approvedForAccount,
+          automation_enabled: approvedForAccount && connection.verification_status === 'verified'
+            && (connection.automation_mode || 'manual') === 'auto',
         },
         automation_mode: connection.automation_mode || 'manual',
       };
