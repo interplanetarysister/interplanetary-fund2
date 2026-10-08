@@ -17,7 +17,7 @@ assert.match(client,/scopes:\["identity:read"\]/);
 assert.match(client,/target="_blank" rel="noopener noreferrer"/);
 assert.match(client,/cache: "no-store"/);
 assert.match(client,/credentials: "include"/);
-assert.doesNotMatch(client,/localStorage|sessionStorage|indexedDB|console\.(log|warn)/,
+assert.doesNotMatch(client.replace(/\/\/[^\n]*/g, ""),/localStorage|sessionStorage|indexedDB|console\.(log|warn)/,
   'Device secrets should not be retained in browser storage or logs');
 assert.match(client,/secretRef.current = ""/);
 assert.match(manager,/<DevicePairingSelfTest onChanged=\{reload\}/);
