@@ -160,7 +160,31 @@ export async function verifyOAuthConnection(platform: string, oauth: any) {
   if (key === 'googletasks') return providerProbe('https://tasks.googleapis.com/tasks/v1/users/@me/lists?maxResults=1', token);
 
   if (key === 'linkedin') return providerProbe('https://api.linkedin.com/v2/userinfo', token);
-  if (key === 'facebook') return providerProbe('https://graph.facebook.com/me?fields=id,name', token);
+  if (key === 'facebook' || key === 'facebook_pages') {
+    // Profile identity alone does not permit Page publishing. Check the
+    // provider's actual permissions and the Page-specific creation task.
+    const permissionResult = await providerProbe('https://graph.facebook.com/v26.0/me/permissions', token);
+    const grants = new Set(
+      (Array.isArray(permissionResult?.data) ? permissionResult.data : [])
+        .filter((item: any) => item?.status === 'granted')
+        .map((item: any) => String(item.permission || '')),
+    );
+    if (!['pages_show_list', 'pages_read_engagement', 'pages_manage_posts']
+      .every((permission) => grants.has(permission))) {
+      throw new Error('facebook_page_publish_permission_required');
+    }
+    const accountResult = await providerProbe(
+      'https://graph.facebook.com/v26.0/me/accounts?fields=id,name,tasks&limit=100', token,
+    );
+    const pages = Array.isArray(accountResult?.data) ? accountResult.data : [];
+    const publishablePages = pages.filter((page: any) =>
+      !!page?.id && Array.isArray(page.tasks) &&
+      page.tasks.some((task: string) => ['CREATE_CONTENT', 'MANAGE'].includes(task)),
+    );
+    if (!publishablePages.length) throw new Error('facebook_page_publish_permission_required');
+    // IDs/names only. Never return Page tokens to the IFund frontend.
+    return { pages: publishablePages.map((page: any) => ({ id: page.id, name: page.name })) };
+  }
   if (key === 'instagram') {
     try {
       return await providerProbe('https://graph.instagram.com/me?fields=id,username', token);
