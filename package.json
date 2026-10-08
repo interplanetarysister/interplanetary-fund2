@@ -82,7 +82,9 @@
     "verify:contextual-actions": "node scripts/test-contextual-action-navigation.mjs",
     "verify:ifund-images": "node scripts/test-ifund-image-style.mjs && node scripts/test-ifund-photo-canvas.mjs && node scripts/test-generate-campaign-cover.mjs",
     "verify:campaign-copy": "node scripts/test-ifund-campaign-copy.mjs",
-    "verify:paypal-receipt-paging": "node scripts/test-paypal-receipt-paging.mjs"
+    "verify:paypal-receipt-paging": "node scripts/test-paypal-receipt-paging.mjs",
+    "test:paypal-checkout-recovery": "node scripts/test-paypal-checkout-recovery.mjs && node scripts/test-paypal-scanner-classification.mjs && node scripts/test-paypal-receipt-paging.mjs",
+    "verify:base44-release": "node scripts/test-base44-release.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
