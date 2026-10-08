@@ -30,7 +30,7 @@ assert.match(auth,/if \(error.status === 401 \|\| error.status === 403\)/);
 assert.match(auth,/localStorage\.removeItem\('base44_access_token'\)/);
 assert.match(auth,/localStorage\.removeItem\('token'\)/);
 assert.match(auth,/window\.location\.reload\(\)/);
-assert.doesNotMatch(auth.slice(auth.indexOf('if (error.status === 401 || error.status === 403)'),auth.indexOf('} else {',auth.indexOf('if (error.status === 401 || error.status === 403)'))),/base44\.auth\.logout/);
+assert.doesNotMatch(auth.slice(auth.indexOf('if (error.status === 401 || error.status === 403)'),auth.indexOf('} else {',auth.indexOf('if (error.status === 401 || error.status === 403)'))).replace(/\/\/[^\n]*/g, ''),/base44\.auth\.logout/);
 
 const login=get('src/pages/Login.jsx');
 assert.match(login,/fetch\("\/api\/apps\/"/);
