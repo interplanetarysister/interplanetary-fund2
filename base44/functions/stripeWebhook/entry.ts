@@ -7,7 +7,7 @@ import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/b
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { reconcileCanonicalCampaignProjection } from '../../shared/base44Financial.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
-import { stripePriceFor } from '../../shared/subscriptionCatalog.js';
+import { resolveStripeSubscriptionPrice } from '../../shared/stripeSubscriptionCatalog.ts';
 
 function webhookOrder(rows) {
   return [...(rows || [])].sort((a, b) => {
@@ -243,7 +243,9 @@ export default async function(req) {
       if (m.subscription_tier) {
         // A completed redirect is not proof of an active paid subscription.
         // Verify the recurring price and owner against Stripe itself.
-        const expectedPrice = stripePriceFor(m.subscription_tier, m.subscription_interval);
+        const account = await stripe.accounts.retrieve();
+        const verifiedMapping = await resolveStripeSubscriptionPrice(sr, stripe, account.id, m.subscription_tier, m.subscription_interval);
+        const expectedPrice = verifiedMapping?.id || null;
         const sub = session.subscription ? await stripe.subscriptions.retrieve(session.subscription) : null;
         const selectedPrice = sub?.items?.data?.[0]?.price?.id;
         const matches = session.mode === 'subscription' &&
