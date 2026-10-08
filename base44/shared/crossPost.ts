@@ -102,6 +102,17 @@ Return JSON only.`;
   for (const post of posts) {
     const conn = targets.find((c) => c.platform === post.platform);
     if (!conn || !post.content) continue;
+    if (sourceUpdateId) {
+      const prior = await sr.entities.DistributedPost.filter({
+        campaign_id: campaign.id,
+        connection_id: conn.id,
+        source_update_id: sourceUpdateId,
+      }).catch(() => []);
+      if (prior?.length) {
+        result.skipped++;
+        continue;
+      }
+    }
     result.generated++;
 
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
