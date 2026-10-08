@@ -49,7 +49,8 @@ export default defineConfig({
           // Do not split viem's own interdependent ESM graph into separate
           // chunks: it causes circular imports and TDZ runtime crashes on
           // campaign discovery. One crypto core chunk initializes atomically.
-          if (id.includes('viem') || id.includes('ox-') || id.includes('@noble/')) return 'viem-runtime';
+          if (id.includes('@noble/') || id.includes('ox-')) return 'crypto-primitives';
+          if (id.includes('viem')) return 'viem-runtime';
           if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
           if (id.includes('react-router') || id.includes('@remix-run')) return 'react-router';
           if (id.includes('three')) return 'three';
