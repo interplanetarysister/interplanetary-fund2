@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { discoverPublicCampaignSnapshot } from '../../shared/publicCampaignSnapshot.ts';
+import { discoverPublicCampaignSnapshot } from './publicCampaignSnapshot.ts';
 
 export default async function(req) {
   try {
