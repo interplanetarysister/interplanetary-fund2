@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
+import CryptoDonateOption from "@/components/payments/CryptoDonateOption";
 import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
@@ -118,6 +119,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             <PrelaunchNotice payment />
             <p className="text-sm text-stone-600">This campaign is live and shareable, but it cannot accept donations while campaign fundraising is paused. Use the separate button below to support the platform instead.</p>
             <PayPalDonateButton label="Donate to Interplanetary Fund" />
+            <CryptoDonateOption platformSupport />
           </div>
         ) : confirmed ? (
           <div className="text-center py-6"><CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" /><p className="font-display text-lg text-stone-900 mb-1">Thank you.</p><p className="text-sm text-stone-500">Your gift has been added to this campaign.</p></div>
@@ -147,7 +149,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {!platformOnlyMode && !recurring && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {!recurring && <CryptoDonateOption campaign={campaign} />}
+            {error && <p className="text-sm text-red-600">{error}</p>
             <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400"><Lock className="w-3 h-3" /> Only payment choices that are ready will appear here.</p>
           </div>
         )}
