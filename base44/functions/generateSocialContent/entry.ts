@@ -124,20 +124,10 @@ export default async function(req) {
     if (typeof mediaUrl !== 'string' || !/^https:\/\//i.test(mediaUrl))
       return Response.json({ error: 'The generated image was not available. Please retry.' }, { status: 502 });
 
-    // Create the SocialPost as an official IF post
-    const post = await base44.entities.SocialPost.create({
-      author_user_id: user.id,
-      author_username: 'interplanetaryfund',
-      author_name: 'Interplanetary Fund',
-      author_banner_tier: 'platinum',
-      content: textRes.post_text,
-      media_url: mediaUrl,
-      is_top_post: true,
-      ai_generated: true,
-      crosspost_platforms: [],
-    });
-
-    return Response.json({ post, topic: topic.feature });
+    // Return an unpublished draft. The client must bake the official logo
+    // and domain watermark into the image and save it before publication.
+    if (!textRes?.post_text) return Response.json({ error: 'No post text generated.' }, { status: 502 });
+    return Response.json({ draft: { content: textRes.post_text, generated_image_url: mediaUrl }, topic: topic.feature, watermark_required: true });
   } catch (error) {
     console.error('generateSocialContent error:', error.message);
     return Response.json({ error: 'Unable to generate social content. Please try again.' }, { status: 500 });
