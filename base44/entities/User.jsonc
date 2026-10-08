@@ -130,6 +130,21 @@
     "stripe_customer_id": {
       "type": "string"
     },
+    "paypal_subscription_id": {
+      "type": "string",
+      "description": "Provider verified PayPal billing subscription. Never populated from a browser-only success redirect."
+    },
+    "paypal_subscription_plan_id": {
+      "type": "string"
+    },
+    "subscription_provider": {
+      "type": "string",
+      "enum": [
+        "paypal",
+        "stripe",
+        "admin"
+      ]
+    },
     "subscription_renews_at": {
       "type": "string",
       "format": "date-time"
