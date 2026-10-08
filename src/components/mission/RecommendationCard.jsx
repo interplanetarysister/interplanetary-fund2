@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ConfidenceBadge from "./ConfidenceBadge";
-import { ChevronDown, ChevronUp, Check, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Check, X, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { campaignActionDestination } from "@/lib/actionDestinations";
 
 const agentLabels = {
   strategy: "Strategy Agent",
@@ -15,6 +17,10 @@ const agentLabels = {
 export default function RecommendationCard({ rec, onStatus }) {
   const [expanded, setExpanded] = useState(false);
   const isOpen = rec.status === "open";
+  const actionPath = campaignActionDestination({
+    campaignId: rec.campaign_id, title: rec.title,
+    description: rec.description, action: rec.action || rec.recommended_action,
+  });
 
   return (
     <div className={`bg-white rounded-2xl border shadow-sm p-5 ${isOpen ? "border-stone-200/70" : "border-stone-100 opacity-70"}`}>
@@ -42,7 +48,12 @@ export default function RecommendationCard({ rec, onStatus }) {
         </div>
       )}
 
-      <div className="flex items-center gap-2 mt-4">
+      <div className="flex items-center gap-2 mt-4 flex-wrap">
+        {actionPath && (
+          <Button asChild size="sm" variant="outline" className="rounded-lg">
+            <Link to={actionPath}><ArrowUpRight className="w-3.5 h-3.5" /> Go to action</Link>
+          </Button>
+        )}
         {isOpen ? (
           <>
             <Button size="sm" onClick={() => onStatus(rec, "accepted")} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">

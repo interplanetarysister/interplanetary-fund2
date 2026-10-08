@@ -96,6 +96,6 @@ const AuthenticatedApp = () => {
 
 function App() {
   useEffect(() => { const mq = window.matchMedia("(prefers-color-scheme: dark)"); const apply = (e) => document.documentElement.classList.toggle("dark", e.matches); apply(mq); mq.addEventListener("change", apply); return () => mq.removeEventListener("change", apply); }, []);
-  return <ErrorBoundary><AuthProvider><QueryClientProvider client={queryClientInstance}><Router><ScrollToTop /><TermsAcceptance><AuthenticatedApp /></TermsAcceptance></Router><Toaster /></QueryClientProvider></AuthProvider></ErrorBoundary>;
+  return <ErrorBoundary><AuthProvider><QueryClientProvider client={queryClientInstance}><Router><ScrollToTop /><TermsAcceptance><AuthenticatedApp /></TermsAcceptance><Toaster /></Router></QueryClientProvider></AuthProvider></ErrorBoundary>;
 }
 export default App;

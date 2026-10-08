@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
+import { campaignActionDestination } from "@/lib/actionDestinations";
 
 const priorityStyles = {
   high: "bg-red-50 text-red-700 border-red-200",
@@ -38,6 +39,8 @@ export default function MissionControl({ campaigns }) {
       title: item.title,
       reason: item.description,
       priority: item.priority,
+      action: item.action,
+      campaignId: item.campaignId,
     }));
     setInsights(recommendations);
     setLoading(false);
@@ -73,6 +76,12 @@ export default function MissionControl({ campaigns }) {
                 <Badge variant="outline" className={`shrink-0 capitalize ${priorityStyles[r.priority] || priorityStyles.low}`}>{r.priority}</Badge>
               </div>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{r.reason}</p>
+              {campaignActionDestination({ campaignId: r.campaignId, action: r.action, title: r.title }) && (
+                <Link to={campaignActionDestination({ campaignId: r.campaignId, action: r.action, title: r.title })}
+                  className="inline-flex items-center mt-3 rounded-lg border border-cyan-400/40 px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-500/10">
+                  {r.action || "Go to action"} →
+                </Link>
+              )}
             </li>
           ))}
         </ul>

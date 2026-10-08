@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Bell, Loader2, CheckCheck, ChevronRight } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { Button } from "@/components/ui/button";
+import { contextualNotificationDestination } from "@/lib/actionDestinations";
 
 export default function Notifications() {
   const navigate = useNavigate();
@@ -63,7 +64,8 @@ export default function Notifications() {
         if (mountedRef.current) setError("We couldn't update this notification. Please try again.");
       });
     }
-    if (n.link) navigate(n.link);
+    const destination = contextualNotificationDestination(n);
+    if (destination) navigate(destination);
   };
 
   if (!items) {
@@ -98,7 +100,8 @@ export default function Notifications() {
       ) : (
         <div className="space-y-2">
           {items.map((n) => {
-            const clickable = !!n.link;
+            const destination = contextualNotificationDestination(n);
+            const clickable = !!destination;
             const Card = clickable ? "button" : "div";
             return (
               <Card
@@ -111,7 +114,11 @@ export default function Notifications() {
                   <p className="font-medium text-stone-800 text-sm">{n.title}</p>
                   {n.body && <p className="text-sm text-stone-500">{n.body}</p>}
                 </div>
-                {clickable && <ChevronRight className="w-4 h-4 text-stone-400 shrink-0 self-center" />}
+                {clickable && (
+                  <span className="text-xs text-primary font-semibold shrink-0 self-center flex items-center gap-1">
+                    Open action <ChevronRight className="w-4 h-4" />
+                  </span>
+                )}
               </Card>
             );
           })}

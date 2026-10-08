@@ -102,24 +102,28 @@ export function generateMissionRecommendations(campaigns = []) {
     description: "This campaign is at least 75% funded. Publish a concise progress update with the remaining amount and a specific share request.",
     priority: "high",
     action: "Post progress update",
+    campaignId: nearGoal.id,
   });
   if (stalled) recommendations.push({
     title: `Refresh outreach for ${clean(stalled.title, "an active campaign")}`,
     description: "Funding is below 25% of goal. Re-share the strongest impact statement, explain the next concrete milestone, and ask existing supporters to forward the campaign.",
     priority: "high",
     action: "Refresh outreach",
+    campaignId: stalled.id,
   });
   if (noStory) recommendations.push({
     title: "Strengthen a campaign story",
     description: `Add who the campaign helps, why the need matters now, how funds will be used, and what changes when the goal is reached${noStory?.title ? ` for ${noStory.title}` : ""}.`,
     priority: "medium",
     action: "Improve story",
+    campaignId: noStory.id,
   });
   if (noImage) recommendations.push({
     title: "Add a clear campaign cover",
     description: "A recognizable cover makes campaign links easier to understand and share. Use an owned campaign graphic or uploaded image.",
     priority: "medium",
     action: "Add cover image",
+    campaignId: noImage.id,
   });
   if (!recommendations.length) recommendations.push({
     title: "Publish a supporter update",
