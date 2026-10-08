@@ -180,7 +180,7 @@ export default function ComposeMessage({ onSent }) {
         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         Send message
       </Button>
-      <p className="text-xs text-stone-400">Emails reach supporters registered on Crowdfund. Recipient consent preferences are always respected.</p>
+      <p className="text-xs text-stone-400">Emails reach supporters registered on Interplanetary Fund. Recipient consent preferences are always respected.</p>
     </div>
   );
 }
