@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 const CASHTAG = /^[A-Za-z0-9_]{1,20}$/;
 const ALLOWED = new Set(['cashapp_tag','outreach_enabled','outreach_paused','ai_profile']);
@@ -6,8 +7,9 @@ const ALLOWED = new Set(['cashapp_tag','outreach_enabled','outreach_paused','ai_
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
 
     const body = await req.json().catch(() => ({}));
     const campaignId = String(body?.campaign_id || '').trim();
