@@ -20,6 +20,6 @@ export async function emitActivityEvent(base44, event) {
       metadata: event.metadata || undefined,
     });
   } catch (e) {
-    console.error('emitActivityEvent failed:', e && e.message ? e.message : e);
+    console.error('emitActivityEvent failed:', e?.name || 'UnknownError');
   }
 }
