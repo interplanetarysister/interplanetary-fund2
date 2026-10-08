@@ -44,15 +44,17 @@ export function safeActionRoute(value) {
 
 export function campaignActionSection(action = "") {
   const text = String(action || "").toLowerCase();
+  // Specific edit requests take precedence over the generic verb "update".
+  if (/\b(ai profile|ai instruction)\b/.test(text)) return "campaign-instructions";
+  if (/\b(campaign coach|ai coach)\b/.test(text)) return "campaign-ai";
+  if (/\b(story|summary|cover|image|photo|headline|goal|campaign details|campaign description)\b/.test(text))
+    return "campaign-settings";
   if (/\b(update|progress|milestone|announcement|news|supporter update)\b/.test(text)) return "campaign-updates";
   if (/\b(outreach|engagement|audience|donor discovery|contact supporters)\b/.test(text)) return "campaign-outreach";
   if (/\b(share link|embed|qr code|copy link|share campaign)\b/.test(text)) return "campaign-share";
   if (/\b(post|posting|publish to|social|cross.platform|distribution|broadcast|share|promot)\b/.test(text))
     return "campaign-distribution";
   if (/\b(donation|funding|fundraiser|payment|raise funds|donor count)\b/.test(text)) return "campaign-funding";
-  if (/\b(ai profile|ai instruction|campaign coach|ai coach|story generator)\b/.test(text)) return "campaign-instructions";
-  if (/\b(story|summary|cover|image|photo|headline|goal|campaign details|campaign description)\b/.test(text))
-    return "campaign-settings";
   return "campaign-health";
 }
 
