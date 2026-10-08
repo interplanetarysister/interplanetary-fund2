@@ -40,14 +40,14 @@ async function verifyShared(sr: any, connectorType: string) {
       });
       const auth = await res.json();
       if (auth.ok) return { connected: true, verified: true, identity: { team: auth.team || null, bot_user_id: auth.user_id || null }, capabilities: ['read_identity', 'post_messages'] };
-      return { connected: true, verified: false, identity: null, capabilities: [], last_error: String(auth.error || 'auth.test failed').slice(0, 200) };
+      return { connected: true, verified: false, identity: null, capabilities: [], last_error: 'Shared connector verification failed.' };
     }
     if (connectorType === 'wix') {
       const res = await fetch('https://www.wixapis.com/site-properties/v4/properties', {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${conn.accessToken}` },
       });
-      if (!res.ok) return { connected: true, verified: false, identity: null, capabilities: [], last_error: `site-properties ${res.status}` };
+      if (!res.ok) return { connected: true, verified: false, identity: null, capabilities: [], last_error: 'Shared connector verification failed.' };
       const body = await res.json().catch(() => ({}));
       return {
         connected: true, verified: true,
@@ -57,9 +57,9 @@ async function verifyShared(sr: any, connectorType: string) {
         capabilities: ['read_site_data', 'manage_content'],
       };
     }
-    return { connected: true, verified: true, identity: null, capabilities: [] };
+    return { connected: true, verified: false, identity: null, capabilities: [], last_error: 'Live provider verification is unavailable for this shared connector.' };
   } catch (e) {
-    return { connected: false, verified: false, identity: null, capabilities: [], last_error: String(e?.message || e).slice(0, 200) };
+    return { connected: false, verified: false, identity: null, capabilities: [], last_error: 'Shared connector verification could not complete.' };
   }
 }
 
@@ -213,12 +213,12 @@ export default async function(req) {
         legacy_grant_count: grants.length,
       },
       last_verified: shared?.verified ? shared?.verified_at : connection?.last_synced || null,
-      last_error: shared?.last_error || connection?.last_error || null,
+      last_error: shared?.last_error ? 'Shared connector verification needs attention.' : connection?.last_error ? 'This connection needs attention.' : null,
       recovery_hint: recoveryHint(lifecycle, recipe, oauth, key),
       // Sanitized: no tokens, no credentials, no raw provider responses.
     });
   } catch (error) {
-    console.error('resolveConnectionStatus error:', error?.message || error);
+    console.error('resolveConnectionStatus error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not resolve this connection.' }, { status: 500 });
   }
 }

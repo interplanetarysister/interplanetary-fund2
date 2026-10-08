@@ -1,160 +1,150 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { assertExternalAgentAction } from '../../shared/integrationRegistry.ts';
 
-// External Feed Mirroring worker (invoked by the "External Feed Mirroring"
-// workflow, no user context — service-scoped). Pulls the latest posts from the
-// connected social platforms (Bluesky and Mastodon public APIs, Discord via the
-// authorized shared connector) and mirrors them into the internal Interplanetary
-// Social feed as SocialPost records — deduplicated by the external post id.
-// Platforms without a readable API (facebook, instagram, tiktok, linkedin) are
-// reported as no_read_api and never faked.
-
-const DISCORD_API = 'https://discord.com/api/v10';
-
-function stripHtml(html) {
-  return (html || '')
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-    .replace(/[ \t]+/g, ' ')
-    .trim();
-}
+// External Feed Mirroring is a service-scoped workflow, so every read/write
+// must be authorized from the owner record and the exact owner-bound connection.
+// Shared connectors are not fanned out across owners. Unsupported network paths
+// fail closed and perform zero external requests.
 
 async function fetchBlueskyPosts(connection) {
   const handle = connection.credentials?.bluesky_handle;
   if (!handle) return { error: 'credentials_required' };
-  const res = await fetch(`https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=20`);
-  if (!res.ok) return { error: `bluesky read failed (${res.status})` };
-  const data = await res.json();
-  const posts = (data.feed || []).map((item) => {
-    const post = item.post || {};
-    const uri = post.uri || '';
-    const rkey = uri.split('/').pop();
-    const did = (uri.replace('at://', '').split('/'))[0];
-    return {
-      external_post_id: uri,
-      external_url: did && rkey ? `https://bsky.app/profile/${did}/post/${rkey}` : connection.external_url || '',
-      content: (post.record?.text || '').trim(),
-    };
-  }).filter((p) => p.content);
-  return { posts };
-}
 
-async function fetchMastodonPosts(connection) {
-  const c = connection.credentials || {};
-  if (!c.mastodon_instance || !c.mastodon_access_token) return { error: 'credentials_required' };
-  const host = c.mastodon_instance.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  const headers = { Authorization: `Bearer ${c.mastodon_access_token}` };
-  const meRes = await fetch(`https://${host}/api/v1/accounts/verify_credentials`, { headers });
-  if (!meRes.ok) return { error: `mastodon auth failed (${meRes.status})` };
-  const me = await meRes.json();
-  const feedRes = await fetch(`https://${host}/api/v1/accounts/${me.id}/statuses?limit=20`, { headers });
-  if (!feedRes.ok) return { error: `mastodon read failed (${feedRes.status})` };
-  const statuses = await feedRes.json();
-  const posts = (statuses || []).map((s) => ({
-    external_post_id: `${host}:${s.id}`,
-    external_url: s.url || '',
-    content: stripHtml(s.content),
-  })).filter((p) => p.content);
-  return { posts };
-}
-
-async function fetchDiscordPosts(base44) {
-  let token;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const conn = await base44.asServiceRole.connectors.getConnection('discord');
-    token = conn.accessToken;
-  } catch (e) {
-    return { error: 'discord connector not authorized' };
+    const res = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(handle)}&limit=20`,
+      { signal: controller.signal },
+    );
+    if (!res.ok) return { error: 'read_unavailable' };
+    const data = await res.json().catch(() => null);
+    if (!data || !Array.isArray(data.feed)) return { error: 'read_unavailable' };
+
+    const posts = data.feed.map((item) => {
+      const post = item?.post || {};
+      const uri = String(post.uri || '');
+      const rkey = uri.split('/').pop();
+      const did = uri.replace('at://', '').split('/')[0];
+      return {
+        external_post_id: uri,
+        external_url: did && rkey ? `https://bsky.app/profile/${did}/post/${rkey}` : '',
+        content: String(post.record?.text || '').trim(),
+      };
+    }).filter((post) => post.external_post_id && post.content);
+
+    return { posts };
+  } catch (_) {
+    return { error: 'read_unavailable' };
+  } finally {
+    clearTimeout(timeout);
   }
-  const headers = { Authorization: `Bearer ${token}`, 'User-Agent': 'InterplanetaryFund/1.0 (feed mirroring)' };
-  const guildsRes = await fetch(`${DISCORD_API}/users/@me/guilds`, { headers });
-  if (!guildsRes.ok) return { error: `discord guilds failed (${guildsRes.status})` };
-  const guilds = await guildsRes.json();
-  const posts = [];
-  for (const guild of (guilds || []).slice(0, 3)) {
-    const channelsRes = await fetch(`${DISCORD_API}/guilds/${guild.id}/channels`, { headers });
-    if (!channelsRes.ok) continue;
-    const channels = await channelsRes.json();
-    const textChannels = (channels || []).filter((ch) => ch.type === 0).slice(0, 5);
-    for (const channel of textChannels) {
-      const msgsRes = await fetch(`${DISCORD_API}/channels/${channel.id}/messages?limit=10`, { headers });
-      if (!msgsRes.ok) continue;
-      const msgs = await msgsRes.json();
-      for (const m of (msgs || [])) {
-        const content = (m.content || '').trim();
-        if (!content || m.author?.bot) continue;
-        posts.push({
-          external_post_id: m.id,
-          external_url: `https://discord.com/channels/${guild.id}/${channel.id}/${m.id}`,
-          content,
-          author_name: m.author?.global_name || m.author?.username || '',
-        });
-      }
-    }
+}
+
+function platformReadResult(connection) {
+  switch (connection.platform) {
+    case 'mastodon':
+      // Owner-supplied instance hosts require DNS-pinned, redirect-safe
+      // transport before the service may contact them.
+      return { error: 'safe_transport_unavailable' };
+    case 'discord':
+      // The available Discord connector is shared. Until a provider API can
+      // bind messages to this exact owner's connection, fan-out is forbidden.
+      return { error: 'owner_bound_connector_unavailable' };
+    case 'facebook':
+    case 'instagram':
+    case 'tiktok':
+    case 'linkedin':
+    case 'x':
+    case 'threads':
+    case 'youtube':
+    case 'pinterest':
+    case 'reddit':
+      return { error: 'no_read_api' };
+    default:
+      return null;
   }
-  return { posts };
 }
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    const report = { mirrored: 0, duplicates_skipped: 0, platforms: {} };
+    const report = { mirrored: 0, duplicates_skipped: 0, skipped: 0, platforms: {} };
 
-    const connections = await sr.entities.PlatformConnection.filter({ kind: 'social', status: 'connected' }, '-updated_date', 200);
-    const byPlatform = {};
-    for (const c of connections) {
-      byPlatform[c.platform] = byPlatform[c.platform] || [];
-      byPlatform[c.platform].push(c);
-    }
+    const connections = await sr.entities.PlatformConnection.filter(
+      { kind: 'social', status: 'connected' },
+      '-updated_date',
+      200,
+    );
 
-    // Build one plan: platform -> list of { ownerUserId, authorName, posts }
-    const plan = [];
-    if (byPlatform.bluesky) {
-      for (const c of byPlatform.bluesky) {
-        const r = await fetchBlueskyPosts(c);
-        if (r.error) { plan.push({ platform: 'bluesky', error: r.error }); continue; }
-        plan.push({ platform: 'bluesky', ownerUserId: c.created_by_id, authorName: c.display_name || c.credentials?.bluesky_handle || 'Bluesky', posts: r.posts });
-      }
-    }
-    if (byPlatform.mastodon) {
-      for (const c of byPlatform.mastodon) {
-        const r = await fetchMastodonPosts(c);
-        if (r.error) { plan.push({ platform: 'mastodon', error: r.error }); continue; }
-        plan.push({ platform: 'mastodon', ownerUserId: c.created_by_id, authorName: c.display_name || 'Mastodon', posts: r.posts });
-      }
-    }
-    if (byPlatform.discord) {
-      const r = await fetchDiscordPosts(base44);
-      if (r.error) { plan.push({ platform: 'discord', error: r.error }); }
-      else {
-        for (const c of byPlatform.discord) {
-          plan.push({ platform: 'discord', ownerUserId: c.created_by_id, authorName: c.display_name || 'Discord', posts: r.posts });
-        }
-      }
-    }
-    for (const platform of ['facebook', 'instagram', 'tiktok', 'linkedin', 'x', 'threads', 'youtube', 'pinterest', 'reddit']) {
-      if (byPlatform[platform]) plan.push({ platform, error: 'no_read_api' });
-    }
+    for (const connection of connections || []) {
+      const platform = String(connection.platform || '').toLowerCase();
+      const stat = report.platforms[platform] || { mirrored: 0, duplicates: 0, skipped: 0 };
+      const ownerUserId = connection.created_by_id;
+      const owner = ownerUserId ? await sr.entities.User.get(ownerUserId).catch(() => null) : null;
 
-    for (const entry of plan) {
-      const stat = report.platforms[entry.platform] || { mirrored: 0, duplicates: 0 };
-      if (entry.error) {
-        stat.error = entry.error;
-        report.platforms[entry.platform] = stat;
+      const authorization = owner
+        ? await assertExternalAgentAction(sr, {
+            ownerUser: owner,
+            ownerUserId,
+            connection,
+            capability: null,
+            requireAutomation: true,
+          })
+        : { ok: false, reason: 'owner unavailable' };
+
+      if (!authorization.ok) {
+        stat.skipped += 1;
+        stat.status = 'authorization_required';
+        report.skipped += 1;
+        report.platforms[platform] = stat;
         continue;
       }
-      // Dedupe against everything already mirrored for this platform.
-      const existing = await sr.entities.SocialPost.filter({ source_platform: entry.platform }, '-created_date', 200).catch(() => []);
-      const seen = new Set((existing || []).map((p) => p.external_post_id).filter(Boolean));
-      for (const post of entry.posts) {
-        if (!post.content || seen.has(post.external_post_id)) { stat.duplicates++; continue; }
+
+      const blocked = platformReadResult(connection);
+      if (blocked) {
+        stat.skipped += 1;
+        stat.status = blocked.error;
+        report.skipped += 1;
+        report.platforms[platform] = stat;
+        continue;
+      }
+
+      let result;
+      if (platform === 'bluesky') {
+        result = await fetchBlueskyPosts(connection);
+      } else {
+        result = { error: 'no_read_api' };
+      }
+
+      if (result.error) {
+        stat.skipped += 1;
+        stat.status = result.error;
+        report.skipped += 1;
+        report.platforms[platform] = stat;
+        continue;
+      }
+
+      // Owner-scoped dedupe prevents one owner's mirrored records from
+      // suppressing or being attributed to another owner.
+      const existing = await sr.entities.SocialPost.filter(
+        { source_platform: platform, author_user_id: ownerUserId },
+        '-created_date',
+        200,
+      ).catch(() => []);
+      const seen = new Set((existing || []).map((post) => post.external_post_id).filter(Boolean));
+
+      for (const post of result.posts || []) {
+        if (!post.content || !post.external_post_id || seen.has(post.external_post_id)) {
+          stat.duplicates += 1;
+          continue;
+        }
         await sr.entities.SocialPost.create({
-          author_user_id: entry.ownerUserId,
-          author_name: post.author_name || entry.authorName,
+          author_user_id: ownerUserId,
+          author_name: connection.display_name || connection.credentials?.bluesky_handle || 'External account',
           content: post.content,
-          source_platform: entry.platform,
+          source_platform: platform,
           external_post_id: post.external_post_id,
           external_url: post.external_url || '',
           agent_managed: true,
@@ -163,17 +153,18 @@ export default async function(req) {
           reposts_count: 0,
           comments_count: 0,
         });
-        stat.mirrored++;
-        report.mirrored++;
+        stat.mirrored += 1;
+        report.mirrored += 1;
         seen.add(post.external_post_id);
       }
+
       report.duplicates_skipped += stat.duplicates;
-      report.platforms[entry.platform] = stat;
+      report.platforms[platform] = stat;
     }
 
     return Response.json(report);
   } catch (error) {
-    console.error('mirrorExternalPosts error:', error.message);
+    console.error('mirrorExternalPosts error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Feed mirroring hit a problem and could not finish this run.' }, { status: 500 });
   }
 }

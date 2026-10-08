@@ -29,9 +29,14 @@ export default async function(req) {
       const currency = String(connection.external_currency || 'USD').toUpperCase();
       const amount = Number(connection.external_total || 0);
       const payoutModel = cap?.payout_model || 'observe_only';
+      // "Collect & Withdraw" may only advertise an executable route when the
+      // current Base44 build has a verified provider-specific transfer adapter.
+      // A provider's direct/automatic payout model describes provider behavior;
+      // it is not evidence that IFund can initiate that payout.
       const technicallyEligible = connection.status === 'connected' && connection.verification_status === 'verified' &&
         amount > 0 && cap?.capability_status === 'verified' &&
-        !['observe_only','user_action_required','authorized_interactive'].includes(payoutModel);
+        cap?.api_transfer === true &&
+        String(cap?.adapter_reference || '').startsWith('transfer:');
       const eligible = technicallyEligible && payoutReady;
       // Observation freshness: never represent stale owner-reported balances as
       // freshly verified. The owner sees when the balance was last observed and
@@ -57,10 +62,13 @@ export default async function(req) {
       consent_snapshot: JSON.stringify({ campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', sources: sources.map(({connection_id,campaign_id,platform,amount,currency,payout_model,observed_at,data_source,observation_stale}) => ({connection_id,campaign_id,platform,amount,currency,payout_model,observed_at,data_source,observation_stale})) }),
     });
     await logAudit(base44, { action: 'collect_withdraw_prepared', actor_user_id: user.id, target_type: 'ExternalCollectionAuthorization', target_id: authorization.id, detail: 'Prepared external collection authorization; no money moved.', status: 'success', metadata: { operation_id, campaign_id: campaign?.id || '', scope: campaign ? 'campaign' : 'all_owned_campaigns', source_count: sources.length } });
+    const hasExecutableSource = sources.some((source) => source.status === 'ready_for_authorization');
     return Response.json({ ok: true, authorization_id: authorization.id, operation_id, expires_at: authorization.expires_at, payout_account_ready: payoutReady, sources,
-      confirmation: 'Allow Interplanetary Fund to initiate withdrawal of available funds from the connected platforms listed here and combine successfully transferred funds into this withdrawal?' });
+      confirmation: hasExecutableSource
+        ? 'Allow Interplanetary Fund to initiate the verified transfer routes listed here and combine only successfully settled funds into this withdrawal?'
+        : 'No connected provider currently has a verified IFund-initiated transfer route. Follow the provider-controlled payout steps shown for each source.' });
   } catch (error) {
-    console.error('prepareCollectAndWithdraw failed:', error?.message || error);
+    console.error('prepareCollectAndWithdraw failed:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not prepare connected-platform collection.' }, { status: 500 });
   }
 }

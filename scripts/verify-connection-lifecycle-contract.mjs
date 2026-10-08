@@ -13,7 +13,8 @@ const recipeRouting = fs.readFileSync('base44/shared/platformConnectionRecipes.t
 
 assert.match(verify, /getCurrentAppUserConnection/);
 assert.match(provider, /com\.atproto\.server\.createSession/);
-assert.match(provider, /api\/v1\/accounts\/verify_credentials/);
+assert.match(provider, /Live Mastodon verification is unavailable in this runtime/);
+assert.doesNotMatch(provider, /api\/v1\/accounts\/verify_credentials/);
 assert.match(verify, /verification_status: 'verified'/);
 assert.match(verify, /verification_status: 'unverified'/);
 assert.match(sync, /reauthorization_required/);

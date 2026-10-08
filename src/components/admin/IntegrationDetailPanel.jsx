@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
+import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, AUTH_TYPE_LABEL, ENV_LABEL } from "@/lib/integrationRegistryUi";
 import { Loader2, RefreshCw, ShieldOff, ShieldCheck, GitFork } from "lucide-react";
 
 function Row({ label, children }) {
@@ -18,44 +18,51 @@ function Row({ label, children }) {
 export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
   const { toast } = useToast();
   const [busy, setBusy] = useState(null);
+  const operationLock = useRef(false);
   if (!entry) return null;
-  const badge = STATUS_BADGE[entry.status] || STATUS_BADGE.ACTIVE;
+  const badge = STATUS_BADGE[entry.status] || UNKNOWN_STATUS_BADGE;
 
   const run = async (action, payload = {}) => {
+    if (operationLock.current) return;
+    operationLock.current = true;
     setBusy(action);
     try {
       await base44.functions.invoke("managePlatformAccess", { action, platform: entry.platform, ...payload });
-      toast({ title: "Updated", description: `${entry.platform}: ${action}` });
+      toast({
+        title: action === "reauthorize" ? "Verification required" : "Updated",
+        description: action === "reauthorize"
+          ? `${entry.platform} will remain inactive until provider verification succeeds.`
+          : `${entry.platform}: ${action}`,
+      });
       onUpdated?.();
     } catch (e) {
       console.error("Integration update failed:", e?.name || "UnknownError");
       toast({ title: "Couldn't update", description: "The integration update could not be completed safely.", variant: "destructive" });
+    } finally {
+      setBusy(null);
+      operationLock.current = false;
     }
-    setBusy(null);
   };
 
   const syncGitHub = async (direction) => {
+    if (operationLock.current) return;
+    operationLock.current = true;
     setBusy(`github-sync-${direction}`);
     try {
       const res = await base44.functions.invoke("syncGitHub", { direction });
       const data = res?.data || res;
-      if (data?.ok) {
-        const details = Object.entries(data.results || {})
-          .map(([k, v]) => `${k}: ${v.detail}`)
-          .join(" · ");
-        toast({ title: "GitHub status verified", description: details || "GitHub connection verified." });
+      if (data?.ok === true) {
+        toast({ title: "GitHub status verified", description: "The authenticated GitHub connection check completed." });
       } else {
-        const reason =
-          data?.reason ||
-          Object.values(data?.results || {}).find((r) => !r.ok)?.detail ||
-          "GitHub connection verification failed.";
-        toast({ title: "GitHub verification issue", description: reason, variant: "destructive" });
+        toast({ title: "GitHub verification issue", description: "GitHub connection verification did not succeed.", variant: "destructive" });
       }
     } catch (e) {
       console.error("GitHub verification failed:", e?.name || "UnknownError");
-      toast({ title: "GitHub verification failed", description: "GitHub verification could not be completed. Review secured integration diagnostics before retrying.", variant: "destructive" });
+      toast({ title: "GitHub verification failed", description: "Could not verify the GitHub connection.", variant: "destructive" });
+    } finally {
+      setBusy(null);
+      operationLock.current = false;
     }
-    setBusy(null);
   };
 
   return (
@@ -80,55 +87,25 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
           <Row label="Admin owner">{entry.admin_owner || "unassigned"}</Row>
           <Row label="Last verified">{entry.last_verified ? new Date(entry.last_verified).toLocaleString() : "never"}</Row>
           <Row label="Last success">{entry.last_successful_verification ? new Date(entry.last_successful_verification).toLocaleString() : "—"}</Row>
-          {entry.last_failure ? <Row label="Last failure"><span className="text-red-600">{entry.last_failure}</span></Row> : null}
+          {entry.last_failure ? <Row label="Last failure"><span className="text-red-600">Provider verification requires attention.</span></Row> : null}
           {(entry.cleanup_flags || []).length ? <Row label="Flags">{entry.cleanup_flags.join(", ")}</Row> : null}
           {entry.reauth_instructions ? <Row label="Reauth steps">{entry.reauth_instructions}</Row> : null}
         </div>
 
-        {/* GitHub source-connection controls. Actual source application is handled by Base44’s native GitHub sync, not by deployed app code. */}
         {entry.platform === "github" && (
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 mt-1">
             <p className="text-xs font-medium text-blue-700 mb-2">GitHub source connection</p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => syncGitHub("pull")}
-                disabled={!!busy}
-                className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100"
-              >
-                {busy === "github-sync-pull" ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <GitFork className="w-3.5 h-3.5 mr-1.5" />
-                )}
+              <Button size="sm" variant="outline" onClick={() => syncGitHub("pull")} disabled={!!busy} className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100">
+                {busy === "github-sync-pull" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <GitFork className="w-3.5 h-3.5 mr-1.5" />}
                 Verify GitHub source status
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => syncGitHub("push")}
-                disabled={!!busy}
-                className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100"
-              >
-                {busy === "github-sync-push" ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />
-                )}
+              <Button size="sm" variant="outline" onClick={() => syncGitHub("push")} disabled={!!busy} className="rounded-lg border-blue-200 text-blue-700 hover:bg-blue-100">
+                {busy === "github-sync-push" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <GitFork className="w-3.5 h-3.5 mr-1.5 rotate-180" />}
                 Verify GitHub destination status
               </Button>
-              <Button
-                size="sm"
-                onClick={() => syncGitHub("both")}
-                disabled={!!busy}
-                className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {busy === "github-sync-both" ? (
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                )}
+              <Button size="sm" onClick={() => syncGitHub("both")} disabled={!!busy} className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
+                {busy === "github-sync-both" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
                 Verify GitHub connection
               </Button>
             </div>
@@ -141,14 +118,14 @@ export default function IntegrationDetailPanel({ entry, onClose, onUpdated }) {
 
         <div className="flex flex-wrap gap-2 pt-2">
           <Button size="sm" variant="outline" onClick={() => run("reauthorize")} disabled={!!busy} className="rounded-lg">
-            {busy === "reauthorize" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}Mark reauthorized
+            {busy === "reauthorize" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}Request reauthorization
           </Button>
           <Button size="sm" variant="outline" onClick={() => run("revoke")} disabled={!!busy} className="rounded-lg text-red-600 hover:text-red-700">
             {busy === "revoke" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <ShieldOff className="w-3.5 h-3.5 mr-1.5" />}Revoke access
           </Button>
           {entry.status === "REVOKED" && (
             <Button size="sm" onClick={() => run("reauthorize")} disabled={!!busy} className="rounded-lg">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />Restore
+              <ShieldCheck className="w-3.5 h-3.5 mr-1.5" />Restore and verify
             </Button>
           )}
         </div>

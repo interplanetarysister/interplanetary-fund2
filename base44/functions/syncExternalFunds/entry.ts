@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
 import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
-import { isLinkBasedPlatform } from '../../shared/connectionVerification.ts';
+import { isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 
 // Centralized external-fund synchronization engine used by scheduled sync,
 // Count My Money, Sync Linked Platforms, and Migrate Funds discovery.
@@ -171,9 +171,10 @@ export default async function (req) {
             update.external_donor_count = Number(lastObservation.observedCount || 0);
             update.external_currency = observedCurrency;
           } else if (isLinkBasedPlatform(conn.platform) && conn.external_url) {
-            // Link-based platforms have no provider API to pull from. Keep
-            // them connected with owner-reported totals so they don't regress
-            // to "needs attention" after a sync run.
+            // A saved URL alone is configuration, not verification. A bounded
+            // provider-domain read may verify that the linked campaign page is
+            // reachable, while monetary totals remain explicitly owner-reported.
+            await verifyPublicCampaignConnection(conn);
             update.status = 'connected';
             update.verification_status = 'verified';
             update.external_data_source = 'owner_reported';
@@ -200,9 +201,12 @@ export default async function (req) {
             note: result.note,
           });
         } catch (err) {
+          console.error('syncExternalFunds provider sync failed:', err?.name || 'UnknownError');
+          const safeError = 'This external connection could not be synchronized safely.';
           await sr.entities.PlatformConnection.update(conn.id, {
             status: 'error',
-            last_error: String(err?.message || 'sync failed').slice(0, 500),
+            verification_status: 'unverified',
+            last_error: safeError,
           }).catch(() => {});
           providerResults.push({
             provider: conn.platform,
@@ -214,7 +218,7 @@ export default async function (req) {
             transaction_ids: [],
             external_only: true,
             withdrawable_imported: 0,
-            error: err?.message || 'sync failed',
+            error: safeError,
             note: '',
           });
         }
@@ -286,7 +290,7 @@ export default async function (req) {
       provider_results: providerResults,
     });
   } catch (error) {
-    console.error('syncExternalFunds error:', error.message);
+    console.error('syncExternalFunds error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Synchronization could not complete.' }, { status: 500 });
   }
 }

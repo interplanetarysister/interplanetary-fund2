@@ -22,15 +22,6 @@ export default async function(req) {
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
-    const reportedTotal = Number(external_total ?? 0);
-    const reportedDonors = Number(external_donor_count ?? 0);
-    if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
-      return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
-    }
-    if (!Number.isInteger(reportedDonors) || reportedDonors < 0) {
-      return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
-    }
-
     let existing = null;
     if (connection_id) {
       existing = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
@@ -38,6 +29,19 @@ export default async function(req) {
       if (existing.created_by_id !== user.id && user.role !== 'admin') {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
+    }
+
+    const reportedTotal = external_total === undefined || external_total === null
+      ? Number(existing?.external_total ?? 0)
+      : Number(external_total);
+    const reportedDonors = external_donor_count === undefined || external_donor_count === null
+      ? Number(existing?.external_donor_count ?? 0)
+      : Number(external_donor_count);
+    if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
+      return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
+    }
+    if (!Number.isInteger(reportedDonors) || reportedDonors < 0) {
+      return Response.json({ error: 'external_donor_count must be a non-negative integer' }, { status: 400 });
     }
 
     const effectiveKind = kind || existing?.kind || 'crowdfunding';
@@ -131,7 +135,7 @@ export default async function(req) {
     const { credentials: redactedCreds, credentials_meta } = redactCredentials(saved.credentials);
     return Response.json({ connection: { ...saved, credentials: redactedCreds, credentials_meta } });
   } catch (error) {
-    console.error('saveConnectionCredentials error:', error.message);
+    console.error('saveConnectionCredentials error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not save connection.' }, { status: 500 });
   }
 }

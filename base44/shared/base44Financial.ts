@@ -74,15 +74,31 @@ async function one(sr, operationKey) {
   return canonical;
 }
 
-export async function ensureCanonicalCampaign(sr, campaign) {
+export async function ensureCanonicalCampaign(sr, campaign, currentWithdrawalId = '') {
   if (!campaign?.id) throw new Error('Campaign is required for financial registration.');
   const rows = await sr.entities.Donation.filter({ campaign_id: campaign.id }, '-created_date', 5000).catch(() => []);
   if (rows.length >= 5000) throw new Error('Campaign financial baseline exceeds the safe batch size.');
   const verified = rows.filter((d) => d.payment_verified === true && (!d.is_institutional || d.cleared === true));
   const raisedAmount = round2(verified.reduce((s,d) => s + giftOf(d), 0));
   const donorCount = verified.length;
-  const availableBalance = round2(verified.filter((d) => !d.withdrawal_id).reduce((s,d) => s + giftOf(d), 0));
-  return { campaignId: campaign.id, raisedAmount, donorCount, availableBalance, needsLegacyBaseline: false };
+  const donationAvailable = round2(verified.filter((d) => !d.withdrawal_id || d.withdrawal_id === currentWithdrawalId).reduce((s,d) => s + giftOf(d), 0));
+  // Verified external-platform settlements that have actually arrived in the
+  // Interplanetary holding account are available for withdrawal too. Restrict
+  // this to source_type=external_platform so direct IFund PayPal donations are
+  // not double-counted (those are already represented by Donation rows).
+  const settledExternal = await sr.entities.HoldingLedgerEntry.filter({
+    campaign_id: campaign.id,
+    beneficiary_user_id: campaign.created_by_id,
+    source_type: 'external_platform',
+    direction: 'in',
+    state: 'settled',
+  }, '-created_date', 5000).catch(() => []);
+  if (settledExternal.length >= 5000) throw new Error('Campaign external settlement baseline exceeds the safe batch size.');
+  const externalAvailable = round2(settledExternal
+    .filter((entry) => !entry.withdrawal_id || entry.withdrawal_id === currentWithdrawalId)
+    .reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
+  const availableBalance = round2(donationAvailable + externalAvailable);
+  return { campaignId: campaign.id, raisedAmount, donorCount, availableBalance, donationAvailable, externalAvailable, needsLegacyBaseline: false };
 }
 
 export async function recordCanonicalDonation(sr, args) {
@@ -105,15 +121,103 @@ export async function recordCanonicalDonation(sr, args) {
 }
 
 export async function recordCanonicalExternalObservation(sr, args) {
-  const prior = await one(sr, args.operationKey);
-  if (prior) return { operationId: prior.id, created: false };
-  const op = await sr.entities.FinancialOperation.create({
-    operation_key: args.operationKey, operation_type: 'external_observation', state: 'applied',
-    campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
-    provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
-    gross_amount: Number(args.amount || args.grossAmount || 0)
-  });
-  return { operationId: op.id, created: true };
+  const amount = Number(args.amount || args.grossAmount || 0);
+  const currency = String(args.currency || '').trim().toUpperCase();
+  const connectionId = String(args.externalConnectionId || args.providerAccountId || '');
+  if (!(amount > 0)) throw new Error('External observation amount must be positive.');
+  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('External observation currency must be a valid ISO code.');
+  if (!connectionId) throw new Error('External observation requires a connection id.');
+
+  let op = await one(sr, args.operationKey);
+  const operationCreated = !op;
+  if (!op) {
+    op = await sr.entities.FinancialOperation.create({
+      operation_key: args.operationKey, operation_type: 'external_observation', state: 'applied',
+      campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
+      provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
+      gross_amount: amount,
+    });
+  } else {
+    const sameIdentity =
+      op.operation_type === 'external_observation' &&
+      String(op.campaign_id || '') === String(args.campaignId || '') &&
+      String(op.campaign_owner_user_id || '') === String(args.campaignOwnerUserId || '') &&
+      String(op.provider || '') === String(args.provider || '') &&
+      String(op.provider_transaction_id || '') === String(args.providerTransactionId || '') &&
+      Math.abs(Number(op.gross_amount || 0) - amount) < 0.01;
+    if (!sameIdentity) throw new Error('External observation idempotency conflict requires reconciliation.');
+  }
+
+  let mirrors = await sr.entities.ExternalFundObservation.filter({ operation_key: args.operationKey }).catch(() => []);
+  let observation = mirrors?.[0] || null;
+  if (!observation) {
+    observation = await sr.entities.ExternalFundObservation.create({
+      operation_key: args.operationKey,
+      provider: String(args.provider || ''),
+      provider_transaction_id: String(args.providerTransactionId || ''),
+      external_connection_id: connectionId,
+      campaign_id: String(args.campaignId || ''),
+      beneficiary_user_id: String(args.campaignOwnerUserId || ''),
+      amount,
+      currency,
+      observed_at: new Date().toISOString(),
+      settlement_state: 'external',
+      description: 'Provider-verified external observation. Not IFund-held or withdrawable until independently settled into the IFund holding account.',
+    });
+  } else {
+    const sameMirror =
+      String(observation.external_connection_id || '') === connectionId &&
+      String(observation.campaign_id || '') === String(args.campaignId || '') &&
+      String(observation.beneficiary_user_id || '') === String(args.campaignOwnerUserId || '') &&
+      String(observation.provider || '') === String(args.provider || '') &&
+      String(observation.provider_transaction_id || '') === String(args.providerTransactionId || '') &&
+      String(observation.currency || '').toUpperCase() === currency &&
+      Math.abs(Number(observation.amount || 0) - amount) < 0.01;
+    if (!sameMirror) throw new Error('External observation mirror conflict requires reconciliation.');
+  }
+
+  // Converge accidental duplicate mirrors only when they represent the exact
+  // same provider observation. Keep conflicting evidence for manual review.
+  if ((mirrors || []).length > 1) {
+    const ordered = [...mirrors].sort((a, b) => {
+      const at = new Date(a.created_date || 0).getTime();
+      const bt = new Date(b.created_date || 0).getTime();
+      if (at !== bt) return at - bt;
+      return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+    observation = ordered[0];
+    for (const duplicate of ordered.slice(1)) {
+      const same =
+        duplicate.external_connection_id === observation.external_connection_id &&
+        duplicate.campaign_id === observation.campaign_id &&
+        duplicate.beneficiary_user_id === observation.beneficiary_user_id &&
+        duplicate.provider === observation.provider &&
+        duplicate.provider_transaction_id === observation.provider_transaction_id &&
+        String(duplicate.currency || '').toUpperCase() === String(observation.currency || '').toUpperCase() &&
+        Math.abs(Number(duplicate.amount || 0) - Number(observation.amount || 0)) < 0.01;
+      if (same) await sr.entities.ExternalFundObservation.delete(duplicate.id).catch(() => {});
+    }
+  }
+
+  const connectionRows = await sr.entities.ExternalFundObservation.filter({
+    external_connection_id: connectionId,
+    campaign_id: String(args.campaignId || ''),
+    beneficiary_user_id: String(args.campaignOwnerUserId || ''),
+    currency,
+  }, '-created_date', 5000).catch(() => []);
+  if (connectionRows.length >= 5000) throw new Error('External observation history exceeds the safe batch size.');
+  const liveRows = connectionRows.filter((row) => row.settlement_state !== 'reversed');
+  const observedTotal = round2(liveRows.reduce((sum, row) => sum + Number(row.amount || 0), 0));
+  const observedCount = liveRows.length;
+
+  return {
+    operationId: op.id,
+    observationId: observation.id,
+    created: operationCreated,
+    observedTotal,
+    observedCount,
+    currency,
+  };
 }
 
 export async function reserveCanonicalWithdrawal(sr, args) {
@@ -124,7 +228,7 @@ export async function reserveCanonicalWithdrawal(sr, args) {
   }
   const campaign = await sr.entities.Campaign.get(args.campaignId);
   if (!campaign || campaign.created_by_id !== args.campaignOwnerUserId) throw new Error('Campaign ownership mismatch.');
-  const totals = await ensureCanonicalCampaign(sr, campaign);
+  const totals = await ensureCanonicalCampaign(sr, campaign, args.withdrawalId || '');
   const gross = round2(Number(args.requestedGross || 0));
   if (!(gross > 0) || gross > totals.availableBalance) throw new Error('Insufficient verified available balance.');
   const { fee, net } = computeWithdrawal(gross);

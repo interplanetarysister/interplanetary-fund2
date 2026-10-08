@@ -197,13 +197,13 @@ export async function verifyManualConnection(connection: any) {
     return;
   }
   if (connection.platform === 'mastodon') {
-    const host = String(c.mastodon_instance || '').replace(/^https?:\/\//, '').replace(/\/$/, '');
-    if (!host || !c.mastodon_access_token) throw new Error('Connection details are incomplete.');
-    const res = await fetch(`https://${host}/api/v1/accounts/verify_credentials`, {
-      headers: { Authorization: `Bearer ${c.mastodon_access_token}` },
-    });
-    if (!res.ok) throw new Error('Mastodon could not verify this connection.');
-    return;
+    // The instance hostname is owner supplied. Until Base44 provides a
+    // DNS-pinned, redirect-safe outbound transport for arbitrary Mastodon
+    // instances, do not issue a server-side request to that hostname.
+    // This preserves the connection record without creating an SSRF path or
+    // falsely claiming provider verification.
+    if (!c.mastodon_instance || !c.mastodon_access_token) throw new Error('Connection details are incomplete.');
+    throw new Error('Live Mastodon verification is unavailable in this runtime.');
   }
   throw new Error('This connection cannot be provider-verified by direct credentials.');
 }

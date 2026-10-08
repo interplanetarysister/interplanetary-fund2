@@ -53,15 +53,18 @@ export default function Withdrawals() {
       setPayoutAccount(payout?.data || null);
       const all = await base44.entities.Campaign.filter({});
       const owned = (all || []).filter((c) => c.created_by_id === me.id);
-      const cutoff = Date.now() - CLEARING_DAYS * 86400000;
       const enriched = [];
       for (const c of owned) {
-        const dRes = await base44.functions.invoke("getCampaignDonations", { campaign_id: c.id });
-      const donations = (dRes.data && dRes.data.donations) || [];
-        const avail = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() <= cutoff).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        const clearing = donations.filter((d) => !d.withdrawal_id && new Date(d.created_date).getTime() > cutoff).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        const withdrawn = donations.filter((d) => d.withdrawal_id).reduce((s, d) => s + ((d.amount || 0) - (d.platform_contribution || 0)), 0);
-        enriched.push({ ...c, available: Math.round(avail * 100) / 100, inClearing: Math.round(clearing * 100) / 100, withdrawn: Math.round(withdrawn * 100) / 100 });
+        const balanceRes = await base44.functions.invoke("getCampaignWithdrawalBalance", { campaign_id: c.id });
+        const balance = balanceRes?.data || {};
+        enriched.push({
+          ...c,
+          available: Number(balance.available || 0),
+          inClearing: Number(balance.in_clearing || 0),
+          withdrawn: Number(balance.withdrawn || 0),
+          ifundAvailable: Number(balance.ifund_donations_available || 0),
+          externalSettledAvailable: Number(balance.external_settled_available || 0),
+        });
       }
       setCampaigns(enriched);
 
@@ -179,6 +182,7 @@ export default function Withdrawals() {
                     <div>
                       <p className="text-stone-400">Available</p>
                       <p className="text-emerald-600 font-semibold">{money(c.available)}</p>
+                      {c.externalSettledAvailable > 0 && <p className="text-[10px] text-cyan-600">Includes {money(c.externalSettledAvailable)} settled external funds</p>}
                     </div>
                     <div>
                       <p className="text-stone-400">In clearing</p>
@@ -193,7 +197,7 @@ export default function Withdrawals() {
                 <div className="flex flex-col gap-2 sm:self-center">
                   <Button onClick={() => setCollectCampaign(c)} variant="outline" className="rounded-xl">Collect & Withdraw</Button>
                   <Button disabled={c.available <= 0} onClick={() => setActive(c)} className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0">
-                    {c.available > 0 ? `Withdraw IFund ${money(c.available)}` : "No IFund-held funds"}
+                    {c.available > 0 ? `Withdraw ${money(c.available)}` : "No settled funds"}
                   </Button>
                 </div>
               </div>
