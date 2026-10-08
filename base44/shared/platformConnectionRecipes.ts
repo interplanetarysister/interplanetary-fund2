@@ -39,7 +39,11 @@ export function staticRecipe(platform: string, operation = 'connect') {
 }
 
 export function orderedTransports(recipe: any) {
+  const successful = recipe?.successful_route;
   const preferred = recipe?.preferred_transport;
+  const candidates = Array.isArray(recipe?.candidate_transports) ? recipe.candidate_transports : [];
   const fallbacks = Array.isArray(recipe?.fallback_transports) ? recipe.fallback_transports : [];
-  return [...new Set([preferred, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))];
+  const blocked = new Set(Array.isArray(recipe?.blocked_routes) ? recipe.blocked_routes : []);
+  return [...new Set([successful, preferred, ...candidates, ...fallbacks, ...TRANSPORT_PRIORITY].filter(Boolean))]
+    .filter((transport) => !blocked.has(transport));
 }
