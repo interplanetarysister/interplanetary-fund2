@@ -12,7 +12,7 @@ export default async function(req) {
     // Core integration, but it is still gated by the email registry entry so an
     // admin can revoke it centrally. Fails open only on a transient read error.
     const emailAccess = await assertPlatformAccess(base44.asServiceRole, 'email');
-    if (!emailAccess.ok) return Response.json({ error: `Email integration is not available: ${emailAccess.reason}` }, { status: 403 });
+    if (!emailAccess.ok) return Response.json({ error: 'Email delivery is not available right now.' }, { status: 503 });
 
     const { campaign_id, subject, content, comm_type, audience, channels, ai_generated } = await req.json();
     if (!subject || !content || !channels || channels.length === 0) {
@@ -44,7 +44,10 @@ export default async function(req) {
 
     // Resolve audience
     const donations = await base44.asServiceRole.entities.Donation.filter({ campaign_id: { $in: campaignIds } });
-    let pool = donations;
+    // Supporter communications must come only from financially verified gifts.
+    // Pending/manual reports are not evidence that someone is a donor and must
+    // never place that person into a campaign messaging audience.
+    let pool = (donations || []).filter((d) => d.payment_verified === true);
     if (audience === 'recurring_donors') {
       pool = donations.filter((d) => d.is_recurring && (d.recurring_status || 'active') === 'active');
     }
@@ -68,7 +71,7 @@ export default async function(req) {
           });
           emailCount++;
         } catch (e) {
-          console.error('Email delivery failed for recipient:', e.message);
+          console.error('Email delivery failed for recipient:', e?.name || 'DeliveryError');
         }
       }
       if (channels.includes('in_app') && prefs.in_app_updates !== false) {
@@ -111,7 +114,7 @@ export default async function(req) {
       message_id: message.id,
     });
   } catch (error) {
-    console.error('sendCommunication error:', error.message);
+    console.error('sendCommunication error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to send your message. Please try again.' }, { status: 500 });
   }
 }
