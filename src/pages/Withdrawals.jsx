@@ -51,12 +51,13 @@ export default function Withdrawals() {
     try {
       const me = await base44.auth.me();
       setUser(me);
-      const [payout, availability] = await Promise.all([
+      const [payout, availability, paymentCapabilities] = await Promise.all([
         base44.functions.invoke("getConnectedPayoutAccount", {}).catch(() => ({ data: null })),
         base44.functions.invoke("getFeatureAvailability", {}).catch(() => ({ data: null })),
+        base44.functions.invoke("getPaymentCapabilities", {}).catch(() => ({ data: null })),
       ]);
       setPayoutAccount(payout?.data || null);
-      setPayoutEnabled(availability?.data?.available?.outbound_payout_execution === true);
+      setPayoutEnabled(availability?.data?.available?.outbound_payout_execution === true && paymentCapabilities?.data?.paypal?.payout_api_live === true);
       const owned = await base44.entities.Campaign.filter({ created_by_id: me.id });
       const enriched = [];
       for (const c of owned) {
