@@ -185,8 +185,8 @@ const ui = fs.readFileSync(new URL('../src/pages/DeviceActivation.jsx',import.me
 const manager = fs.readFileSync(new URL('../src/pages/ConnectedDevices.jsx',import.meta.url),'utf8');
 const routes = fs.readFileSync(new URL('../src/App.jsx',import.meta.url),'utf8');
 const profile = fs.readFileSync(new URL('../src/pages/Profile.jsx',import.meta.url),'utf8');
-assert.match(routes,/path="\\/activate"/);
-assert.match(routes,/path="\\/devices"/);
+assert.ok(routes.includes('path="/activate"'));
+assert.ok(routes.includes('path="/devices"'));
 assert.match(ui,/mode:"inspect"/);
 assert.match(ui,/mode:"decide"/);
 assert.match(manager,/mode:"revoke"/);
