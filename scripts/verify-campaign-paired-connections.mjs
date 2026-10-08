@@ -1,0 +1,44 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const read=(p)=>fs.readFileSync(p,'utf8');
+const dialog=read('src/components/connections/ConnectDialog.jsx');
+const page=read('src/pages/Connections.jsx');
+const finalize=read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
+const publish=read('base44/functions/publishLinkedCampaignToConnection/entry.ts');
+const cross=read('base44/shared/crossPost.ts');
+
+assert.match(dialog,/display_name: selected\?\.title/);
+assert.match(dialog,/Campaign to publish first/);
+assert.match(dialog,/Link \$\{selectedCampaign\.title\} to \$\{platform\.name\}/);
+assert.match(dialog,/campaignId: form\.campaign_id/);
+assert.match(dialog,/publishInitial: platform\.kind !== "app"/);
+assert.match(dialog,/returnPath: "\/connections"/);
+assert.match(dialog,/approve the provider permissions, and return here automatically/);
+assert.doesNotMatch(page,/OAuthPermissionStep|pendingOAuthConsent|completeOAuthConnection/);
+
+assert.match(page,/finalizeAppUserOAuthConnection/);
+assert.match(page,/campaign_id: pending\.campaignId/);
+assert.match(page,/publishLinkedCampaignToConnection/);
+assert.match(page,/future campaign updates can use this paired connection/);
+
+assert.match(finalize,/requestedCampaignId/);
+assert.match(finalize,/pairedCampaign\.created_by_id !== user\.id/);
+assert.match(finalize,/display_name: requestedDisplayName/);
+assert.match(finalize,/campaign_id: requestedCampaignId/);
+assert.match(finalize,/hasUnifiedOboConsent/);
+assert.match(finalize,/automation_mode: unifiedObo \? 'auto' : 'manual'/);
+assert.match(finalize,/ai_consent_required: false/);
+
+assert.match(publish,/connection\.campaign_id/);
+assert.match(publish,/connection\.status !== 'connected'/);
+assert.match(publish,/campaign\.status !== 'active'/);
+assert.match(publish,/connection-launch:/);
+assert.match(publish,/direct_publish_verified === true/);
+assert.match(publish,/status: 'approved'/);
+assert.match(publish,/publishThroughConnection/);
+
+assert.match(cross,/!c\.campaign_id \|\| c\.campaign_id === campaign\.id/);
+assert.match(cross,/conn\.automation_mode === 'auto'/);
+
+console.log('campaign-paired connection one-click publish contract: PASS');
