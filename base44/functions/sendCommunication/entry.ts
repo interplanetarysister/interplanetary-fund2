@@ -49,7 +49,7 @@ export default async function(req) {
     // never place that person into a campaign messaging audience.
     let pool = (donations || []).filter((d) => d.payment_verified === true);
     if (audience === 'recurring_donors') {
-      pool = donations.filter((d) => d.is_recurring && (d.recurring_status || 'active') === 'active');
+      pool = pool.filter((d) => d.is_recurring && (d.recurring_status || 'active') === 'active');
     }
     const donorIds = [...new Set(pool.map((d) => d.donor_user_id).filter(Boolean))].filter((id) => id !== user.id);
     const recipients = donorIds.length
