@@ -79,7 +79,9 @@
     "verify:owner-paypal-basic": "node scripts/verify-owner-paypal-basic-plan.mjs",
     "verify:premium-access": "node scripts/verify-premium-access-contract.mjs",
     "verify:admin-credential-boundary": "node scripts/verify-admin-credential-boundary.mjs",
-    "verify:contextual-actions": "node scripts/test-contextual-action-navigation.mjs"
+    "verify:contextual-actions": "node scripts/test-contextual-action-navigation.mjs",
+    "verify:ifund-images": "node scripts/test-ifund-image-style.mjs && node scripts/test-ifund-photo-canvas.mjs && node scripts/test-generate-campaign-cover.mjs",
+    "verify:campaign-copy": "node scripts/test-ifund-campaign-copy.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
