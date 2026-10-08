@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen, House, CircleHelp } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
@@ -86,6 +86,14 @@ const navSections = [
 // Flat list kept for backward-compatible lookups (e.g. mobile menu).
 const navItems = navSections.flatMap((s) => s.items);
 
+const publicNavItems = [
+  { to: "/", label: "Home", icon: House },
+  { to: "/discover", label: "Discover", icon: Compass },
+  { to: "/globe", label: "Global Globe", icon: Globe2 },
+  { to: "/community", label: "Community", icon: Users },
+  { to: "/help", label: "Help", icon: CircleHelp },
+];
+
 const bottomNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/discover", label: "Campaigns", icon: Compass },
@@ -162,7 +170,18 @@ export default function Layout() {
 
   const nav = (
     <nav className="flex min-h-0 flex-1 flex-col gap-3 px-3 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
-      {navSections.map((section) => (
+      {!user ? (
+        <div>
+          <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">Explore</p>
+          <div className="flex flex-col gap-0.5">
+            {publicNavItems.map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"}`}>
+                <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} /><span className="truncate">{label}</span>
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      ) : navSections.map((section) => (
         <div key={section.label}>
           <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
           <div className="flex flex-col gap-0.5">
@@ -197,7 +216,7 @@ export default function Layout() {
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
-            <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
+            <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
             <NotificationBell />
@@ -215,7 +234,7 @@ export default function Layout() {
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
-          <Link to="/dashboard" className="min-w-0 cursor-pointer" aria-label="Go to dashboard">
+          <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
             <BrandLogo size="sm" showName={isRoot} nameClassName="text-slate-100 text-[15px] truncate" />
           </Link>
           {!isRoot && <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>}
@@ -236,7 +255,7 @@ export default function Layout() {
       )}
 
       <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
-        {bottomNavItems.map(({ to, label, icon: Icon }) => {
+        {(user ? bottomNavItems : publicNavItems).map(({ to, label, icon: Icon }) => {
           const active = isTabActive(to);
           return (
             <button
