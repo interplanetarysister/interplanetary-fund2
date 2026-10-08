@@ -76,6 +76,7 @@
     "verify:route-code-splitting": "node scripts/verify-route-code-splitting.mjs",
     "verify:production-build-output": "node scripts/verify-production-build-output.mjs",
     "verify:paypal-business": "node scripts/verify-paypal-business-account-contract.mjs",
+    "verify:owner-paypal-basic": "node scripts/verify-owner-paypal-basic-plan.mjs",
     "verify:admin-credential-boundary": "node scripts/verify-admin-credential-boundary.mjs",
     "verify:contextual-actions": "node scripts/test-contextual-action-navigation.mjs"
   },
