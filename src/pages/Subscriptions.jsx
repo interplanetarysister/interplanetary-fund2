@@ -233,7 +233,11 @@ export default function Subscriptions() {
                       Subscribe with card / Stripe
                     </Button>
                   )}
-                  {!paypalAvailable && !stripeAvailable && <Button disabled className="w-full rounded-xl">Billing setup in progress</Button>}
+                  {!paypalAvailable && !stripeAvailable && (
+                    <Button disabled className="w-full rounded-xl">
+                      {plan.id === "nonprofit" && !paypal.nonprofit_approved ? "Nonprofit verification required" : "Billing setup in progress"}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
