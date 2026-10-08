@@ -21,7 +21,7 @@ export default async function (req) {
       const q = String(body.query || '').trim().toLowerCase();
       if (!q) return Response.json({ error: 'Enter an email or handle.' }, { status: 400 });
       const users = await sr.entities.User.list(undefined, 500).catch(() => []);
-      const found = users.find((u) => (u.email || '').toLowerCase() === q || (u.handle || '').toLowerCase() === q);
+      const found = users.find((u) => (u.email || '').toLowerCase() === q || (u.username || u.handle || '').toLowerCase() === q);
       if (!found || found.id === user.id) return Response.json({ found: false, can_invite: /^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(q) });
       return Response.json({ found: true, user_id: found.id, display_name: found.full_name || 'Interplanetary Fund member' });
     }
