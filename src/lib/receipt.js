@@ -4,7 +4,7 @@ import { format } from "date-fns";
 export function downloadReceipt(donation) {
   const doc = new jsPDF();
   doc.setFontSize(20);
-  doc.text("Crowdfund — Donation Receipt", 20, 25);
+  doc.text("Interplanetary Fund — Donation Receipt", 20, 25);
   doc.setDrawColor(14, 165, 233);
   doc.setLineWidth(0.8);
   doc.line(20, 30, 190, 30);
@@ -30,5 +30,5 @@ export function downloadReceipt(donation) {
   doc.setFontSize(9);
   doc.setTextColor(120);
   doc.text("Thank you for your generosity. Keep this receipt for your records.", 20, y + 10);
-  doc.save(`crowdfund-receipt-${donation.id}.pdf`);
+  doc.save(`interplanetary-fund-receipt-${donation.id}.pdf`);
 }
