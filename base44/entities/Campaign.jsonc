@@ -28,7 +28,7 @@
     },
     "goal_amount": {
       "type": "number",
-      "minimum": 1
+      "minimum": 0
     },
     "raised_amount": {
       "type": "number",
@@ -155,12 +155,15 @@
     "outreach_paused": {
       "type": "boolean",
       "default": false
+    },
+    "draft_step": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3,
+      "description": "Last step reached in the private campaign creation wizard."
     }
   },
-  "required": [
-    "title",
-    "goal_amount"
-  ],
+  "required": [],
   "rls": {
     "create": {
       "created_by_id": "{{user.id}}"

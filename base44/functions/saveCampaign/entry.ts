@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
-const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng']);
+const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step']);
 const STATUSES = new Set(['draft','active','paused','completed']);
 
 export default async function(req) {
@@ -14,11 +14,22 @@ export default async function(req) {
     if (!input || Object.keys(input).some((k) => !ALLOWED.has(k))) return Response.json({ error: 'Invalid campaign payload' }, { status: 400 });
 
     const title = String(input.title || '').trim();
-    const goal = Number(input.goal_amount);
+    const goal = input.goal_amount === '' || input.goal_amount == null ? 0 : Number(input.goal_amount);
     const status = String(input.status || 'draft');
-    if (!title || !Number.isFinite(goal) || goal <= 0 || !STATUSES.has(status)) return Response.json({ error: 'Campaign title, goal, or status is invalid' }, { status: 400 });
-    if (status === 'active' && !String(input.story || input.summary || '').trim()) return Response.json({ error: 'Campaign story is required to launch' }, { status: 400 });
+    if (!STATUSES.has(status) || !Number.isFinite(goal) || goal < 0 ||
+        typeof input.ai_profile !== 'undefined' &&
+          (!input.ai_profile || typeof input.ai_profile !== 'object' || Array.isArray(input.ai_profile)) ||
+        typeof input.story_versions !== 'undefined' &&
+          (!Array.isArray(input.story_versions) || input.story_versions.length > 50) ||
+        typeof input.draft_step !== 'undefined' &&
+          (!Number.isInteger(input.draft_step) || input.draft_step < 0 || input.draft_step > 3))
+      return Response.json({ error: 'Invalid campaign information' }, { status: 400 });
+    if (status !== 'draft' && (!title || goal <= 0 || !String(input.story || input.summary || '').trim()))
+      return Response.json({ error: 'Add a campaign title, funding goal, and story before publishing.' }, { status: 400 });
 
+    // Blank title and zero goal are valid PRIVATE drafts, not published campaigns.
+    // Persist AI instructions/story versions and wizard position along with the
+    // visible fields so saving early never discards another step's work.
     const safe = { ...input, title, goal_amount: goal, status };
     if (campaignId) {
       const rows = await base44.asServiceRole.entities.Campaign.filter({ id: campaignId });

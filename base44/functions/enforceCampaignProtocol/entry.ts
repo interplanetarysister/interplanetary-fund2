@@ -9,7 +9,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 //      platforms),
 //   4. opens a single follow-up Recommendation for any incomplete campaign.
 // Idempotent + deduped so the entity trigger can't loop.
-const ACTIVE_REQUIRED = ['title', 'summary', 'story', 'category', 'cover_image_url', 'end_date'];
+const ACTIVE_REQUIRED = ['title', 'category', 'cover_image_url'];
 const AI_PROFILE_REQUIRED = ['tone', 'ideal_donors', 'interested_orgs', 'platforms'];
 const FLAG_TITLE = 'Campaign Protocol — action needed';
 
@@ -37,6 +37,7 @@ export default async function (req) {
         return v == null || (typeof v === 'string' && v.trim() === '');
       });
       if (!(c.goal_amount > 0) && !missing.includes('goal_amount')) missing.push('goal_amount');
+      if (!String(c.story || c.summary || '').trim()) missing.push('campaign story');
       if (missing.length) {
         updates.status = 'draft';
         issues.push(`Reverted to draft — missing required fields for active status: ${missing.join(', ')}.`);
