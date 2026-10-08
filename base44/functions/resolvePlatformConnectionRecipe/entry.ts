@@ -27,26 +27,20 @@ export default async function handler(req: Request) {
       return Response.json({platform,operation,recipe:effective,transport_order:order(effective),rediscovery_required:effective.status==='stale'});
     }
 
-    if(user.role!=='admin') return Response.json({error:'Admin required to update shared connection recipes'},{status:403});
-    if(!new Set(['success','failure','stale']).has(result)||!transport) return Response.json({error:'Valid result and transport are required'},{status:400});
-
-    const now=new Date().toISOString();
-    const evidence=[...(recipe?.evidence||[]),{at:now,result,transport,detail}].slice(-25);
-    const successCount=Number(recipe?.success_count||0)+(result==='success'?1:0);
-    const failures=result==='success'?0:Number(recipe?.consecutive_failure_count||0)+1;
-    const nextStatus=result==='stale'||failures>=3?'stale':result==='success'?'proven':(recipe?.status||'probation');
-    const data:any={
-      platform,operation,recipe_version:Number(recipe?.recipe_version||1),status:nextStatus,
-      preferred_transport:result==='success'?transport:(recipe?.preferred_transport||seed?.preferred_transport||transport),
-      fallback_transports:recipe?.fallback_transports||[],connector_type:recipe?.connector_type||seed?.connector_type||'',
-      worker_key:recipe?.worker_key||seed?.worker_key||'',required_capabilities:recipe?.required_capabilities||[],
-      success_count:successCount,consecutive_failure_count:failures,last_verified_at:now,evidence,notes:recipe?.notes||'',
-    };
-    if(result==='success') data.last_success_at=now; else data.last_failure_at=now;
-    const saved=recipe?await base44.asServiceRole.entities.PlatformConnectionRecipe.update(recipe.id,data):await base44.asServiceRole.entities.PlatformConnectionRecipe.create(data);
-    return Response.json({platform,operation,learned:true,recipe:saved,transport_order:order(saved),rediscovery_required:saved.status==='stale'});
+    // Recipe reads are available to authenticated users, but caller-supplied
+    // success/failure assertions are not provider evidence. Keep recipe learning
+    // server-owned until a verified transport can write evidence internally.
+    if (result) {
+      if (user.role !== 'admin') {
+        return Response.json({ error: 'Admin required to update shared connection recipes' }, { status: 403 });
+      }
+      return Response.json({
+        error: 'Connection recipe evidence must come from a verified server-side check.',
+        code: 'provider_evidence_required',
+      }, { status: 409 });
+    }
   } catch(error) {
-    console.error('resolvePlatformConnectionRecipe error:',error?.message||error);
+    console.error('resolvePlatformConnectionRecipe error:', error?.name || 'UnknownError');
     return Response.json({error:'Could not resolve platform connection recipe.'},{status:500});
   }
 }
