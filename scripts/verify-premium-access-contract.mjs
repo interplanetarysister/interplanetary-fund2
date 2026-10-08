@@ -40,7 +40,7 @@ assert.match(webhook, /confirmed\.payment_status !== 'paid'/);
 assert.match(webhook, /stripe\.checkout\.sessions\.listLineItems/);
 assert.match(webhook, /intent\?\.status === 'succeeded'/);
 assert.match(webhook, /verifiedDayPassPrice\(price\)/);
-assert.match(webhook, /confirmed\.created \* 1000 \+ DAY_PASS_DURATION_MS/);
+assert.match(webhook, /event\.created \* 1000 \+ DAY_PASS_DURATION_MS/);
 assert.match(webhook, /stripe_day_pass_payment_intent: intent\.id/);
 assert.match(webhook, /passHolders/);
 assert.match(webhook, /u\.stripe_subscription_id === sub\.id/);
