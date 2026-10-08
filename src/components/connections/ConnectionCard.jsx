@@ -18,10 +18,11 @@ const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fu
 // - Otherwise the total is "owner reported" — entered by the campaign owner
 //   and informational only; it is never withdrawable from Interplanetary Fund.
 
-export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved, managedAvailable = false, onManagedRepair }) {
+export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved, onUpdated, managedAvailable = false, onManagedRepair }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [managedBusy, setManagedBusy] = useState(false);
+  const [revokeBusy, setRevokeBusy] = useState(false);
 
   // Prefer the canonical lifecycle from resolveConnectionStatus; fall back to
   // the local record heuristic when the resolver result is not yet available.
@@ -48,6 +49,24 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       console.error("Disconnect failed", e);
       setBusy(false);
     }
+  };
+
+  const revokeAi = async () => {
+    setRevokeBusy(true);
+    try {
+      const { data } = await base44.functions.invoke("revokeConnectionAiConsent", {
+        connection_id: connection.id,
+      });
+      if (data?.ok !== true) throw new Error("Revocation was not saved");
+      onUpdated?.({
+        ...connection,
+        obo_consent: { ...(connection.obo_consent || {}), granted: false, granted_capabilities: [] },
+        agent_access: { ...(connection.agent_access || {}), shared_with_agents: false, automation_enabled: false },
+        automation_mode: "manual",
+      });
+    } catch {
+      // Keep existing display until the server confirms the permission changed.
+    } finally { setRevokeBusy(false); }
   };
 
   const managedRepair = async () => {
@@ -104,6 +123,15 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
           {health.reason}
         </p>
+      )}
+
+      {connection.obo_consent?.granted === true && (
+        <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-cyan-950">AI account access authorized (provider capabilities still apply)</span>
+          <Button type="button" size="sm" variant="outline" onClick={revokeAi} disabled={revokeBusy}>
+            {revokeBusy ? "Saving…" : "Turn off AI for this account"}
+          </Button>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-2 mt-3">

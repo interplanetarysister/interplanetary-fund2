@@ -368,6 +368,7 @@ export default function Connections() {
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
                 managedAvailable={managedAvailable}
                 onManagedRepair={() => requestManagedAction({ platform: c.platform, action: "repair", connection: c })}
+                onUpdated={(updated) => setConnections(prev => prev.map(item => item.id === updated.id ? updated : item))}
                 onRemoved={(id, updated) => {
                   setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id));
                   // After a provider check updates a connection, refresh its
