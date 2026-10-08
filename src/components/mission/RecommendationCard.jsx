@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import ConfidenceBadge from "./ConfidenceBadge";
 import { ChevronDown, ChevronUp, Check, X, ArrowUpRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { campaignActionDestination } from "@/lib/actionDestinations";
 
 const agentLabels = {
@@ -16,11 +16,24 @@ const agentLabels = {
 
 export default function RecommendationCard({ rec, onStatus }) {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+  const [accepting, setAccepting] = useState(false);
   const isOpen = rec.status === "open";
   const actionPath = campaignActionDestination({
     campaignId: rec.campaign_id, title: rec.title,
     description: rec.description, action: rec.action || rec.recommended_action,
   });
+
+  const acceptAndOpen = async () => {
+    if (accepting) return;
+    setAccepting(true);
+    try {
+      const accepted = await onStatus(rec, "accepted");
+      // Acceptance records the user's choice; opening an edit/publish surface
+      // does not automatically post, message, or modify the campaign.
+      if (accepted !== false && actionPath) navigate(actionPath);
+    } finally { setAccepting(false); }
+  };
 
   return (
     <div className={`bg-white rounded-2xl border shadow-sm p-5 ${isOpen ? "border-stone-200/70" : "border-stone-100 opacity-70"}`}>
@@ -56,8 +69,9 @@ export default function RecommendationCard({ rec, onStatus }) {
         )}
         {isOpen ? (
           <>
-            <Button size="sm" onClick={() => onStatus(rec, "accepted")} className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">
-              <Check className="w-3.5 h-3.5" /> Accept
+            <Button size="sm" onClick={acceptAndOpen} disabled={accepting}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg">
+              <Check className="w-3.5 h-3.5" /> {actionPath ? "Accept & open" : "Accept"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => onStatus(rec, "dismissed")} className="rounded-lg">
               <X className="w-3.5 h-3.5" /> Dismiss

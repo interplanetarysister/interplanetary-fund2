@@ -33,17 +33,20 @@ export default function UpdatesSection({ campaignId, updates, isOwner, onPosted 
         cross_post: crossPost,
       });
       if (data?.error) {
-        toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive" });
+        toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive",
+          actionContext: { campaignId, action: "post update" }, actionLabel: "Return to updates" });
       } else {
         const cp = data?.crosspost || {};
         const summary = crossPost && (cp.published || cp.pending || cp.drafts || cp.failed)
           ? ` Published ${cp.published} · ${cp.pending} awaiting approval · ${cp.drafts} draft${cp.drafts === 1 ? "" : "s"}${cp.failed ? ` · ${cp.failed} failed` : ""}. Notified ${data.followers_notified} follower${data.followers_notified === 1 ? "" : "s"}.`
           : ` Notified ${data.followers_notified || 0} follower${(data.followers_notified || 0) === 1 ? "" : "s"}.`;
-        toast({ title: "Update posted", description: summary });
+        toast({ title: "Update posted", description: summary,
+          actionContext: { campaignId, action: "post update" }, actionLabel: "View campaign updates" });
       }
     } catch (e) {
       console.error("Campaign update failed:", e?.name || "UnknownError");
-      toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't post update", description: "The update could not be posted safely. Please try again.", variant: "destructive",
+          actionContext: { campaignId, action: "post update" }, actionLabel: "Return to updates" });
     }
     setTitle(""); setContent(""); setMediaUrl("");
     setSaving(false);
