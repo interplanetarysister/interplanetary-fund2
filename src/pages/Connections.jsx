@@ -487,33 +487,45 @@ export default function Connections() {
           }}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}
-          onSaved={(saved) => {
+          onSaved={async (saved) => {
             setConnections((prev) => {
               const exists = prev.some((x) => x.id === saved.id);
               return exists ? prev.map((x) => (x.id === saved.id ? saved : x)) : [saved, ...prev];
             });
-            base44.functions.invoke("verifyPlatformConnection", { connection_id: saved.id })
-              .then(({ data }) => {
-                const checked = data?.connection || saved;
-                setConnections((prev) => prev.map((x) => (x.id === checked.id ? checked : x)));
-                if (data?.working) {
-                  setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and working.` });
-                } else if (data?.error) {
-                  setConnectionNotice({ ok: false, text: data.error });
+            try {
+              const verified = await base44.functions.invoke("verifyPlatformConnection", { connection_id: saved.id });
+              const checked = verified?.data?.connection || saved;
+              setConnections((prev) => prev.map((x) => (x.id === checked.id ? checked : x)));
+
+              if (verified?.data?.working && saved.campaign_id && dialog.platform.kind !== "app") {
+                try {
+                  const first = await base44.functions.invoke("publishLinkedCampaignToConnection", { connection_id: saved.id });
+                  if (first?.data?.direct_published) {
+                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected. ${saved.display_name || "The paired campaign"} was published there, and future updates can use this connection.` });
+                  } else if (first?.data?.manual_required) {
+                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and paired with ${saved.display_name || "the campaign"}. A first post is prepared because this provider does not currently expose a verified direct-publish route.` });
+                  } else {
+                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and paired with ${saved.display_name || "the campaign"}.` });
+                  }
+                } catch {
+                  setConnectionNotice({ ok: false, text: `${dialog.platform.name} is connected, but the first campaign post needs attention. The campaign pairing is saved.` });
                 }
-                return base44.functions.invoke("resolveConnectionStatus", {
-                  platform: checked.platform,
-                  connection_id: checked.id,
-                });
-              })
-              .then(({ data }) => {
-                if (data) setLifecycleMap((prev) => ({ ...prev, [saved.id]: data }));
-              })
-              .catch(() => {
-                base44.functions.invoke("resolveConnectionStatus", { platform: saved.platform, connection_id: saved.id })
-                  .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [saved.id]: data })))
-                  .catch(() => {});
+              } else if (verified?.data?.working) {
+                setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and working.` });
+              } else if (verified?.data?.error) {
+                setConnectionNotice({ ok: false, text: verified.data.error });
+              }
+
+              const resolved = await base44.functions.invoke("resolveConnectionStatus", {
+                platform: checked.platform,
+                connection_id: checked.id,
               });
+              if (resolved?.data) setLifecycleMap((prev) => ({ ...prev, [saved.id]: resolved.data }));
+            } catch {
+              base44.functions.invoke("resolveConnectionStatus", { platform: saved.platform, connection_id: saved.id })
+                .then(({ data }) => setLifecycleMap((prev) => ({ ...prev, [saved.id]: data })))
+                .catch(() => {});
+            }
           }}
         />
       )}
