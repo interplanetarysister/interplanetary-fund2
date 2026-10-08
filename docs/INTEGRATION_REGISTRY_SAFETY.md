@@ -24,6 +24,7 @@ This runbook records the production truth boundary for Interplanetary Fund integ
 - Editing connection settings must preserve existing owner-reported totals/donor counts when those fields are omitted; configuration edits must not silently zero financial observations.
 - Link-based fundraising connections become verified only after an approved provider-domain page check succeeds. The page check verifies reachability, not monetary totals; totals remain `owner_reported` unless a provider-backed transaction path proves them.
 - Fundraising capability flags describe IFund's currently implemented Base44 behavior, not theoretical provider features. Stored/admin capability rows may disable a runtime feature but cannot enable one that the build does not implement.
+- Approved public-page campaign metadata import/sync may be marked `in_progress` when the Base44 adapter exists but live provider testing or payout capability remains incomplete. `in_progress` never implies balance-read or payout support.
 - `Collect & Withdraw` may offer IFund-initiated transfer only when the current build has both a verified `api_transfer` capability and a provider-specific `transfer:` adapter. Provider-managed automatic/direct payout models are not executable IFund transfer routes.
 
 ## Future Convex/Vercel restoration knowledge
