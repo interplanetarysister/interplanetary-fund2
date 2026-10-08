@@ -112,7 +112,7 @@ export default async function(req) {
       await logAudit(base44, { action: 'post_published', target_type: 'distributed_post', target_id: post_id, detail: `Published to ${connection.platform}`, status: 'success' });
       return Response.json({ manual: false, post: updated });
     } catch (pubError) {
-      console.error('publishPost publish error:', pubError && pubError.message ? pubError.message : pubError);
+      console.error('publishPost publish error:', pubError?.name || 'PublishError');
       await base44.entities.DistributedPost.update(post_id, {
         status: 'failed',
         error: 'Publishing failed.',
@@ -122,7 +122,7 @@ export default async function(req) {
       return Response.json({ error: 'Publishing failed. Try again or post manually on the platform.' }, { status: 502 });
     }
   } catch (error) {
-    console.error('publishPost error:', error.message);
+    console.error('publishPost error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to publish this post. Please try again.' }, { status: 500 });
   }
 }
