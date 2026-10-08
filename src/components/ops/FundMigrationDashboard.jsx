@@ -53,7 +53,7 @@ export default function FundMigrationDashboard() {
 
         const [c, w] = await Promise.all([
           base44.entities.Campaign.list("-raised_amount", 100),
-          base44.entities.Withdrawal.filter({ status: "pending" }),
+          base44.entities.ExternalFundMigrationRecord.filter({ state: "recorded" }),
         ]);
         setCampaigns(c || []);
         setPending(w || []);
@@ -131,8 +131,8 @@ export default function FundMigrationDashboard() {
         <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
         <p className="font-display text-lg text-slate-100 mb-1">Migration queued for reconciliation</p>
         <p className="text-sm text-slate-400">
-          {result.created} migration record{result.created !== 1 ? "s" : ""} created ·{" "}
-          {fmt(result.totalGross)} gross → {fmt(result.totalNet)} net after fees
+          {result.created} reconciliation record{result.created !== 1 ? "s" : ""} created ·{" "}
+          {fmt(result.totalGross)} reported · prospective net {fmt(result.totalNet)} only if later verified, settled, and withdrawn
         </p>
         <Button
           variant="ghost"
@@ -148,7 +148,7 @@ export default function FundMigrationDashboard() {
   if (step === "confirm") {
     return (
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-100">Confirm Migration</h3>
+        <h3 className="text-sm font-semibold text-slate-100">Review reconciliation record</h3>
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2 text-sm">
           {migrations.filter((m) => parseFloat(m.grossAmount) > 0).map((m, i) => (
             <div key={i} className="flex justify-between text-slate-300">
@@ -184,7 +184,7 @@ export default function FundMigrationDashboard() {
             <ArrowRightLeft className="w-4 h-4 text-cyan-400" /> Fund Migration
           </h3>
           <p className="text-[11px] text-slate-500 mt-0.5">
-            Withdraw from external platforms → IF processes fees → net to campaign owner
+            Record an external amount → independently reconcile it → only verified settled funds enter IFund custody
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={reconcile} disabled={reconciling} className="rounded-lg border-white/10 text-slate-200 shrink-0">
@@ -202,7 +202,7 @@ export default function FundMigrationDashboard() {
       {pending.length > 0 && (
         <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
           <p className="text-xs font-semibold text-amber-300">
-            {pending.length} pending withdrawal{pending.length > 1 ? "s" : ""} awaiting action
+            {pending.length} external reconciliation record{pending.length > 1 ? "s" : ""} awaiting independent matching
           </p>
         </div>
       )}
@@ -214,7 +214,7 @@ export default function FundMigrationDashboard() {
           {migrations.map((m, i) => (
             <div key={i} className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-semibold text-slate-300">Withdrawal #{i + 1}</span>
+                <span className="text-xs font-semibold text-slate-300">External record #{i + 1}</span>
                 {migrations.length > 1 && (
                   <button onClick={() => removeRow(i)} className="text-rose-400 hover:text-rose-300 p-1">
                     <X className="w-3 h-3" />
@@ -261,7 +261,7 @@ export default function FundMigrationDashboard() {
               </div>
               {parseFloat(m.grossAmount) > 0 && (
                 <p className="text-[11px] text-slate-500">
-                  Net ≈ {fmt(parseFloat(m.grossAmount) * 0.97)} after 3% (processing covered by Interplanetary Fund)
+                  Prospective net ≈ {fmt(parseFloat(m.grossAmount) * 0.97)} after the 3% IFund withdrawal fee, only if this amount later becomes verified settled funds.
                 </p>
               )}
             </div>
@@ -278,7 +278,7 @@ export default function FundMigrationDashboard() {
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs space-y-1">
               <div className="flex justify-between text-slate-300"><span>Total gross</span><span className="font-semibold">{fmt(totalGross)}</span></div>
               <div className="flex justify-between text-slate-500"><span>Interplanetary Fund fee (3%)</span><span>− {fmt(totalPlatformFee)}</span></div>
-              <div className="flex justify-between text-emerald-400 font-bold"><span>Net to owner</span><span>{fmt(totalNet)}</span></div>
+              <div className="flex justify-between text-emerald-400 font-bold"><span>Prospective net if later withdrawn</span><span>{fmt(totalNet)}</span></div>
             </div>
           )}
 
