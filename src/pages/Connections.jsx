@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,6 @@ import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
-import OAuthPermissionStep from "@/components/connections/OAuthPermissionStep";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
@@ -18,10 +16,6 @@ import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
 // crowdfunding platform and social network Interplanetary Fund can reach,
 // managed from a single place.
 export default function Connections() {
-  const navigate = useNavigate();
-  const [pendingOAuthConsent, setPendingOAuthConsent] = useState(null);
-  const [oauthConsentBusy, setOauthConsentBusy] = useState(false);
-  const [oauthConsentError, setOauthConsentError] = useState("");
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
   const [dialog, setDialog] = useState(null); // { platform, existing }
@@ -113,43 +107,6 @@ export default function Connections() {
   };
 
 
-  const decideOAuthPermission = async (allowAi) => {
-    const pending = pendingOAuthConsent;
-    if (!pending || oauthConsentBusy) return;
-    setOauthConsentBusy(true);
-    setOauthConsentError("");
-    try {
-      const current = await base44.auth.me();
-      if (!current || current.id !== pending.userId) throw new Error("User session changed");
-      const { data } = await base44.functions.invoke("completeOAuthConnection", {
-        connection_id: pending.connectionId, allow_ai: allowAi,
-      });
-      if (data?.ok !== true) throw new Error("Consent was not saved");
-      const verified = await base44.functions.invoke("verifyPlatformConnection", {
-        connection_id: pending.connectionId,
-      });
-      const working = verified?.data?.working === true;
-      localStorage.removeItem("ifund_pending_platform_connection");
-      setPendingOAuthConsent(null);
-      setConnectionNotice(working
-        ? { ok: true, text: allowAi
-            ? pending.platform + " is connected. IFund AI may perform only verified, provider-permitted actions."
-            : pending.platform + " is connected without AI access." }
-        : { ok: false, text: pending.platform + " authorization was saved but the live provider check needs attention. Reconnect or check permissions." });
-      setReloadKey(key => key + 1);
-      const back = typeof pending.returnPath === "string" ? pending.returnPath : "/connections";
-      if (working && back.startsWith("/") && !back.startsWith("//") &&
-          !back.includes("\\") && back !== "/connections" &&
-          !back.startsWith("/connections?")) {
-        navigate(back, { replace: true });
-      }
-    } catch {
-      setOauthConsentError("Could not save permissions and verify this connection. Please retry.");
-    } finally {
-      setOauthConsentBusy(false);
-    }
-  };
-
   const refreshStaleOAuthConnections = async (rows) => {
     const hour = 60 * 60 * 1000;
     // Authenticated app-user refresh only. Shared/admin connectors and
@@ -213,20 +170,40 @@ export default function Connections() {
       } catch { localStorage.removeItem("ifund_pending_platform_connection"); }
       const fresh = pending && pending.userId === me.id && Date.now() - pending.startedAt < 20 * 60 * 1000;
       if (pending && !fresh) localStorage.removeItem("ifund_pending_platform_connection");
-      if (fresh && pending.step === "consent_pending" && pending.connectionId) {
-        setDialog(null);
-        setPendingOAuthConsent(pending);
-      } else if (fresh && pending.step !== "consent_pending") {
+      if (fresh) {
         try {
           const { data } = await base44.functions.invoke("finalizeAppUserOAuthConnection", {
             platform: pending.platform,
+            campaign_id: pending.campaignId || undefined,
+            display_name: pending.displayName || pending.campaignTitle || undefined,
           });
           if (data?.authorization_present && data?.connection?.id) {
-            const next = { ...pending, step: "consent_pending", connectionId: data.connection.id };
-            localStorage.setItem("ifund_pending_platform_connection", JSON.stringify(next));
             setDialog(null);
-            setPendingOAuthConsent(next);
-            setConnectionNotice(null);
+            const connectionId = data.connection.id;
+            const verified = await base44.functions.invoke("verifyPlatformConnection", { connection_id: connectionId });
+            const working = verified?.data?.working === true;
+            let firstPublish = null;
+            if (working && pending.publishInitial === true && pending.campaignId) {
+              try {
+                firstPublish = (await base44.functions.invoke("publishLinkedCampaignToConnection", {
+                  connection_id: connectionId,
+                }))?.data || null;
+              } catch {
+                firstPublish = { ok: false, error: "The account connected, but the first campaign post needs attention." };
+              }
+            }
+            localStorage.removeItem("ifund_pending_platform_connection");
+            if (!working) {
+              setConnectionNotice({ ok: false, text: pending.platform + " authorization was saved, but the live provider check needs attention." });
+            } else if (firstPublish?.direct_published === true) {
+              setConnectionNotice({ ok: true, text: `${pending.platform} is connected. ${pending.campaignTitle || "Your campaign"} was published there, and future campaign updates can use this paired connection.` });
+            } else if (firstPublish?.manual_required === true) {
+              setConnectionNotice({ ok: true, text: `${pending.platform} is connected and paired with ${pending.campaignTitle || "your campaign"}. This provider does not currently have a verified direct-publish route, so the first post is prepared for manual publishing.` });
+            } else if (firstPublish?.ok === false) {
+              setConnectionNotice({ ok: false, text: `${pending.platform} is connected, but the first campaign post could not be published. The connection remains paired for retry and future updates.` });
+            } else {
+              setConnectionNotice({ ok: true, text: `${pending.platform} is connected${pending.campaignTitle ? ` and paired with ${pending.campaignTitle}` : ""}.` });
+            }
           } else {
             localStorage.removeItem("ifund_pending_platform_connection");
             setConnectionNotice({ ok: false, text: pending.platform + " authorization was not completed. Use Connect to try again." });
@@ -497,15 +474,6 @@ export default function Connections() {
           )}
         </div>
       </div>
-
-      {pendingOAuthConsent && (
-        <OAuthPermissionStep
-          pending={pendingOAuthConsent}
-          busy={oauthConsentBusy}
-          error={oauthConsentError}
-          onDecide={decideOAuthPermission}
-        />
-      )}
 
       {dialog && (
         <ConnectDialog
