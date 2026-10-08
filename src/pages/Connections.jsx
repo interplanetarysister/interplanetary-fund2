@@ -150,6 +150,33 @@ export default function Connections() {
     }
   };
 
+  const refreshStaleOAuthConnections = async (rows) => {
+    const hour = 60 * 60 * 1000;
+    // Authenticated app-user refresh only. Shared/admin connectors and
+    // public-page trackers have separate health paths.
+    const candidates = rows.filter(c =>
+      c.status === "connected" &&
+      ALL_PLATFORMS.some(p => p.id === c.platform && p.setupKind === "oauth") &&
+      (!Number.isFinite(Date.parse(c.last_synced)) ||
+        Date.now() - Date.parse(c.last_synced) >= hour)
+    ).slice(0, 8);
+    if (!candidates.length) return;
+    const checked = await Promise.all(candidates.map(c =>
+      base44.functions.invoke("verifyPlatformConnection", { connection_id: c.id })
+        .then(({ data }) => data?.connection || null).catch(() => null)
+    ));
+    if (!mountedRef.current) return;
+    const updates = new Map(checked.filter(Boolean).map(c => [c.id, c]));
+    if (updates.size) {
+      setConnections(old => old?.map(c => updates.get(c.id) || c) || old);
+      setLifecycleMap(old => {
+        const next = { ...old };
+        for (const id of updates.keys()) delete next[id];
+        return next;
+      });
+    }
+  };
+
   const syncWix = async () => {
     setWixSyncing(true);
     setWixSyncResult(null);
@@ -221,6 +248,10 @@ export default function Connections() {
       // summary, and the resolver all agree on "working". Best-effort: a failed
       // resolve leaves the local heuristic in place.
       resolveLifecycles(nextConnections);
+      // Where the Base44 provider connector supports refresh credentials, the
+      // next owner visit renews the health probe without another password entry.
+      // A revoked provider grant still requires the provider's own sign-in.
+      refreshStaleOAuthConnections(nextConnections).catch(() => {});
       setError(null);
      } catch (e) {
        console.error("Connections load failed:", e?.name || "UnknownError");

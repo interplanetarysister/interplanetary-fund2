@@ -7,7 +7,9 @@ const COMMON_IF_CAPABILITIES = [
   'read_interactions', 'comment', 'reply_comment', 'read_messages', 'reply_message',
   'discover', 'follow', 'join', 'read_analytics',
   'read_donations', 'read_payments', 'read_transactions', 'read_balance',
-  'subscribe_events', 'reconcile_external_funds', 'settlement_status', 'transfer_or_payout',
+  // Transferring or paying out money requires separate explicit financial
+  // authorization and is never included in ordinary AI/social delegation.
+  'subscribe_events', 'reconcile_external_funds', 'settlement_status',
 ];
 
 const CONFIG: Record<string, { kind: string; requestedCapabilities: string[] }> = {

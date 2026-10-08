@@ -63,7 +63,9 @@ const AuthenticatedApp = () => {
   useEffect(() => {
     if (isLoadingAuth || isLoadingPublicSettings || authError || checkedReturn.current) return;
     checkedReturn.current = true;
-    if (pathname === "/connections") return;
+    // A popup callback may land directly on /connections. Only the main tab
+    // stays here; a popup informs its opener and closes after provider return.
+    if (pathname === "/connections" && !window.opener) return;
     let pending = null;
     try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* Invalid resume data is ignored. */ }
     if (!pending || Date.now() - pending.startedAt >= 20 * 60 * 1000) return;
