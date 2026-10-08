@@ -101,8 +101,17 @@ export default async function(req) {
       }
 
       if (!connectionVerified) throw new Error('provider_probe_unavailable');
+      const aiAllowed = user.ai_obo_consent?.granted === true &&
+        connection.obo_consent?.granted === true &&
+        String(connection.obo_consent?.permission_version || '') ===
+        String(user.ai_obo_consent?.permission_version || '');
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'connected', verification_status: 'verified', last_synced: now, last_error: '',
+        agent_access: {
+          ...(connection.agent_access || {}),
+          shared_with_agents: aiAllowed,
+          automation_enabled: aiAllowed && connection.automation_mode === 'auto' && providerBacked,
+        },
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
       await completeManagedRepairDelegations(base44, user, updated, now);
@@ -113,6 +122,9 @@ export default async function(req) {
       const message = reauth ? 'Provider authorization needs attention.' : SAFE_UNAVAILABLE;
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'error', verification_status: 'unverified', last_error: message,
+        agent_access: {
+          ...(connection.agent_access || {}), automation_enabled: false,
+        },
         capability_status: reauth ? 'reauthorization_required' : 'unknown',
         history: [...(connection.history || []), { at: now, event: 'health_check_failed', detail: message }].slice(-30),
       });
