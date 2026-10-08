@@ -123,6 +123,8 @@ export default async function(req) {
       ok: true,
       lookback_days: days,
       receipts,
+      checked_transactions: transactions.length,
+      eligible_settled_receipts: receipts.length,
       untracked_count: receipts.filter((row) => !row.tracked).length,
     });
   } catch (error) {

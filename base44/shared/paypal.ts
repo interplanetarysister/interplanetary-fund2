@@ -344,43 +344,78 @@ export async function getTransaction(transactionId) {
 // Lists recent transactions visible to the designated business PayPal account.
 // Used only for custody discovery; callers must still reconcile each candidate
 // against an exterior observation before creating held value.
+// PayPal Reporting API date windows are limited. Read *all* pages of each
+// bounded interval, rather than silently treating page one as the ledger.
+// This function is read-only. It never captures, refunds or sends money.
 export async function listTransactions({ startDate, endDate, pageSize = 100 } = {}) {
-  const token = await getAccessToken();
   const end = endDate ? new Date(endDate) : new Date();
   const start = startDate ? new Date(startDate) : new Date(end.getTime() - 24 * 60 * 60 * 1000);
-  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end) {
-    throw new Error('Invalid PayPal transaction search window.');
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end ||
+      end.getTime() - start.getTime() > 90 * 24 * 60 * 60 * 1000) {
+    throw new Error('PayPal transaction search must cover a valid interval of at most 90 days.');
   }
+
+  const token = await getAccessToken();
   const size = Math.max(1, Math.min(500, Number(pageSize) || 100));
-  const params = new URLSearchParams({
-    start_date: start.toISOString(),
-    end_date: end.toISOString(),
-    fields: 'all',
-    page_size: String(size),
-  });
-  const res = await fetch(`${apiBase()}/v1/reporting/transactions?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.message || `PayPal transaction search failed (${res.status})`);
-  return (Array.isArray(data?.transaction_details) ? data.transaction_details : []).map((row) => {
-    const info = row?.transaction_info || {};
-    const amount = info.transaction_amount || {};
-    const fee = info.fee_amount || {};
-    const parsedAmount = Number.parseFloat(amount.value || '0');
-    const parsedFee = Math.abs(Number.parseFloat(fee.value || '0'));
-    return {
-      id: String(info.transaction_id || ''),
-      status: String(info.transaction_status || ''),
-      amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
-      currency: String(amount.currency_code || '').toUpperCase(),
-      feeAmount: Number.isFinite(parsedFee) ? parsedFee : 0,
-      feeCurrency: String(fee.currency_code || amount.currency_code || '').toUpperCase(),
-      transactionEventCode: String(info.transaction_event_code || ''),
-      transactionSubject: String(info.transaction_subject || ''),
-      transactionNote: String(info.transaction_note || ''),
-      transactionInitiationDate: info.transaction_initiation_date || '',
-      transactionUpdatedDate: info.transaction_updated_date || '',
-    };
-  }).filter((tx) => tx.id);
+  const maxWindowMs = 30 * 24 * 60 * 60 * 1000;
+  const maxPagesPerWindow = 25;
+  const resultsById = new Map();
+  const endpoint = `${apiBase()}/v1/reporting/transactions`;
+
+  for (let from = start.getTime(); from < end.getTime();) {
+    const until = Math.min(from + maxWindowMs, end.getTime());
+    const params = new URLSearchParams({
+      start_date: new Date(from).toISOString(),
+      end_date: new Date(until).toISOString(),
+      fields: 'all',
+      page_size: String(size),
+    });
+    let complete = false;
+    for (let page = 1; page <= maxPagesPerWindow; page++) {
+      params.set('page', String(page));
+      const res = await fetch(`${endpoint}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`PayPal transaction search failed (${res.status}).`);
+      if (!Array.isArray(data?.transaction_details)) {
+        throw new Error('PayPal transaction search returned an invalid page.');
+      }
+      for (const row of data.transaction_details) {
+        const info = row?.transaction_info || {};
+        const id = String(info.transaction_id || '');
+        if (!id) continue;
+        const amount = info.transaction_amount || {};
+        const fee = info.fee_amount || {};
+        const parsedAmount = Number.parseFloat(amount.value || '0');
+        const parsedFee = Math.abs(Number.parseFloat(fee.value || '0'));
+        const entry = {
+          id,
+          status: String(info.transaction_status || ''),
+          amount: Number.isFinite(parsedAmount) ? parsedAmount : 0,
+          currency: String(amount.currency_code || '').toUpperCase(),
+          feeAmount: Number.isFinite(parsedFee) ? parsedFee : 0,
+          feeCurrency: String(fee.currency_code || amount.currency_code || '').toUpperCase(),
+          transactionEventCode: String(info.transaction_event_code || ''),
+          transactionSubject: String(info.transaction_subject || ''),
+          transactionNote: String(info.transaction_note || ''),
+          transactionInitiationDate: info.transaction_initiation_date || '',
+          transactionUpdatedDate: info.transaction_updated_date || '',
+        };
+        // Boundary-day and cross-page duplicates are never counted twice.
+        resultsById.set(id, entry);
+      }
+      const pages = Number(data.total_pages);
+      if (Number.isSafeInteger(pages) && pages >= 1) {
+        if (page >= pages) { complete = true; break; }
+      } else if (data.transaction_details.length < size) {
+        complete = true;
+        break;
+      }
+    }
+    // An incomplete provider scan is not an empty or successful result.
+    if (!complete) throw new Error('PayPal reporting exceeds safe page limit; narrow the scan window.');
+    from = until;
+  }
+  return [...resultsById.values()];
 }

@@ -7,6 +7,9 @@ import { getFrontendIdentity } from "@/lib/adminBootstrap";
 export default function PayPalReceiptRecoveryPanel({ user }) {
   const superAdmin = getFrontendIdentity(user).superAdminOwner;
   const [receipts, setReceipts] = useState([]);
+  const [lookbackDays, setLookbackDays] = useState(30);
+  const [scanned, setScanned] = useState(false);
+  const [scannedCount, setScannedCount] = useState(0);
   const [campaigns, setCampaigns] = useState([]);
   const [selection, setSelection] = useState({});
   const [loading, setLoading] = useState(false);
@@ -19,14 +22,20 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
     setLoading(true);
     setError("");
     setMessage("");
+    setScanned(false);
     try {
       const [receiptResponse, campaignRows] = await Promise.all([
-        base44.functions.invoke("listUntrackedPayPalReceipts", { lookback_days: 30 }),
+        base44.functions.invoke("listUntrackedPayPalReceipts", { lookback_days: lookbackDays }),
         base44.entities.Campaign.list("-created_date", 300),
       ]);
       const data = receiptResponse?.data || {};
-      const rows = Array.isArray(data.receipts) ? data.receipts.filter((row) => row.tracked !== true) : [];
+      if (data.ok !== true || !Array.isArray(data.receipts)) {
+        throw new Error("PayPal scan did not confirm a complete result");
+      }
+      const rows = data.receipts.filter((row) => row.tracked !== true);
       setReceipts(rows);
+      setScannedCount(Number(data.checked_transactions) || 0);
+      setScanned(true);
       setSelection((current) => ({
         ...current,
         ...Object.fromEntries(rows.filter((row) => row.repair_required && row.allocation_campaign_id).map((row) => [row.transaction_id, row.allocation_campaign_id])),
@@ -34,11 +43,12 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       setCampaigns(Array.isArray(campaignRows) ? campaignRows : []);
     } catch (e) {
       console.error("PayPal receipt recovery load failed:", e?.name || "UnknownError");
-      setError("Untracked PayPal receipts could not be loaded.");
+      setReceipts([]);
+      setError("PayPal could not confirm the receipt scan. No conclusion about missing donations can be drawn; please retry when the business account is available.");
     } finally {
       setLoading(false);
     }
-  }, [superAdmin]);
+  }, [superAdmin, lookbackDays]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -58,11 +68,15 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       const data = response?.data || {};
       if (data.ok !== true) throw new Error("Recovery rejected");
       setReceipts((current) => current.filter((row) => row.transaction_id !== receipt.transaction_id));
+      const confirmedGift = Number(data.campaign_gift ?? data.campaign_amount);
+      const amountLabel = Number.isFinite(confirmedGift) && confirmedGift > 0
+        ? `$${confirmedGift.toFixed(2)}`
+        : "the verified PayPal receipt";
       setMessage(data.duplicate
         ? "That PayPal receipt was already safely allocated."
         : data.repaired
-          ? `Repaired the incomplete $${Number(data.campaign_gift ?? data.campaign_amount ?? 0).toFixed(2)} campaign allocation.`
-          : `Recovered $${Number(data.campaign_gift ?? data.campaign_amount ?? 0).toFixed(2)} to the selected campaign.`);
+          ? `Repaired the incomplete allocation for ${amountLabel}.`
+          : `Recovered ${amountLabel} to the selected campaign.`);
     } catch (e) {
       console.error("PayPal receipt recovery failed:", e?.name || "UnknownError");
       setError("That receipt could not be assigned safely. It was left unchanged.");
@@ -82,21 +96,40 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
             Recovery for settled PayPal donation-link payments that bypassed IFund checkout. Choose the campaign each verified receipt was intended for. A PayPal transaction can be allocated only once.
           </p>
         </div>
-        <Button variant="outline" onClick={load} disabled={loading || !!busy} className="rounded-xl">
-          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCcw className="w-4 h-4 mr-2" />}
-          Scan PayPal
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="paypal-recovery-range" className="text-xs font-semibold text-slate-700">Review period</label>
+          <select id="paypal-recovery-range" className="min-h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950"
+            value={lookbackDays} disabled={loading || !!busy}
+            onChange={event => setLookbackDays(Number(event.target.value))}>
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={60}>Last 60 days</option>
+            <option value={90}>Last 90 days</option>
+          </select>
+          <Button variant="outline" onClick={load} disabled={loading || !!busy} className="rounded-xl">
+            {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCcw className="w-4 h-4 mr-2" />}
+            Scan PayPal
+          </Button>
+        </div>
       </div>
 
       {error && <p className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {message && <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{message}</p>}
 
+      {!error && scanned && !loading && (
+        <p role="status" className="mt-3 text-xs text-slate-600">
+          Scan complete: {scannedCount} provider transaction{scannedCount === 1 ? "" : "s"} reviewed across {lookbackDays} days.
+          Only verified settled donation receipts can be allocated.
+        </p>
+      )}
       {loading ? (
         <div className="py-8 flex items-center justify-center text-sm text-slate-600">
           <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Checking settled donation receipts…
         </div>
+      ) : error ? (
+        <p className="py-4 text-sm text-slate-600">The scan did not complete. Please retry to check provider receipts.</p>
       ) : receipts.length === 0 ? (
-        <p className="py-6 text-sm text-slate-600">No untracked settled PayPal donation receipts were found in the last 30 days.</p>
+        <p className="py-6 text-sm text-slate-600">No untracked settled PayPal donation receipts matching the supported recovery criteria were found during this {lookbackDays}-day scan.</p>
       ) : (
         <div className="mt-4 space-y-3">
           {receipts.map((receipt) => (
