@@ -5,6 +5,10 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
 import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
+import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
+import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
+import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
+import { buildCoverPrompt } from "@/lib/coverPrompt";
 
 const PLATFORM_LABELS = {
   facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok",
@@ -19,6 +23,8 @@ export default function PostComposer({ user, connections, campaigns, providerCap
   const [originalMediaUrl, setOriginalMediaUrl] = useState("");
   const [improvedMediaUrl, setImprovedMediaUrl] = useState("");
   const [improvingImage, setImprovingImage] = useState(false);
+  const [imageGenerating, setImageGenerating] = useState(false);
+  const [imageGenerationCount, setImageGenerationCount] = useState(0);
   const [aiGenerated, setAiGenerated] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState("");
   const [crossPost, setCrossPost] = useState([]);
@@ -62,6 +68,38 @@ export default function PostComposer({ user, connections, campaigns, providerCap
     }
   };
 
+  const generatePostImage = async () => {
+    if (imageGenerating) return;
+    setImageGenerating(true);
+    try {
+      const campaign = campaigns?.find(c => c.id === selectedCampaign);
+      const title = campaign?.title || content.trim().slice(0, 90) || "Interplanetary Fund";
+      const category = campaign?.category || "community";
+      let source = "";
+      try {
+        const prompt = buildCoverPrompt({
+          title, category, story: content, regenCount: imageGenerationCount,
+        });
+        const result = await base44.functions.invoke("generateCampaignCover", { prompt });
+        source = resolveGeneratedImageUrl(result?.data);
+      } catch { /* Credit-free signature image remains available. */ }
+      const usedCredits = !!source;
+      if (!source) source = generateCampaignCoverDataUrl({
+        title, category, regenCount: imageGenerationCount,
+      });
+      const branded = await brandAndUploadGeneratedImage(base44, source);
+      setMediaUrl(branded);
+      setOriginalMediaUrl("");
+      setImprovedMediaUrl(branded);
+      setImageGenerationCount(c => c + 1);
+      toast({ title: "IFund image created",
+        description: usedCredits ? "The generated image is ready with the planet watermark." :
+          "A credit-free IFund-style image is ready with the planet watermark." });
+    } catch {
+      toast({ title: "Image creation failed", description: "The image could not be saved. Please try again.", variant: "destructive" });
+    } finally { setImageGenerating(false); }
+  };
+
   const improvePostPhoto = async () => {
     const source = originalMediaUrl || mediaUrl;
     if (!source || improvingImage) return;
@@ -95,6 +133,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       const { data } = await base44.functions.invoke("createSocialPost", {
         content: content.trim(), media_url: mediaUrl || undefined, campaign_id: campaign?.id,
         crosspost_platforms: crossPost, ai_generated: aiGenerated,
+        image_generated: Boolean(improvedMediaUrl && mediaUrl === improvedMediaUrl),
       });
       if (data?.ok !== true || !data?.post) throw new Error("Social post creation rejected");
       const post = data.post;
@@ -121,6 +160,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       setMediaUrl("");
       setOriginalMediaUrl("");
       setImprovedMediaUrl("");
+      setImageGenerationCount(0);
       setAiGenerated(false);
       setCrossPost([]);
       setSelectedCampaign("");
@@ -159,7 +199,8 @@ export default function PostComposer({ user, connections, campaigns, providerCap
 
       {mediaUrl && (
         <div className="mb-3 flex items-center gap-2 flex-wrap">
-          <Button type="button" variant="outline" size="sm" disabled={improvingImage || uploading}
+          <Button type="button" variant="outline" size="sm"
+            disabled={improvingImage || uploading || imageGenerating || !originalMediaUrl}
             onClick={improvePostPhoto} className="rounded-lg">
             {improvingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             {improvingImage ? "Improving photo…" : "Generate IFund-style improvement"}
@@ -214,7 +255,13 @@ export default function PostComposer({ user, connections, campaigns, providerCap
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={generatePostImage}
+          disabled={imageGenerating || uploading || improvingImage}
+          className="rounded-lg">
+          {imageGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+          {imageGenerating ? "Generating…" : "Generate IFund image"}
+        </Button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         <Button variant="ghost" size="icon" onClick={() => fileRef.current?.click()} disabled={uploading} className="text-slate-400 hover:text-cyan-300">
           {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImagePlus className="w-5 h-5" />}

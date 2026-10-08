@@ -219,7 +219,7 @@ export default function Layout() {
             <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
-            <NotificationBell />
+            {user && <NotificationBell />}
           </div>
           <p className="mt-3 font-display text-lg brand-gradient-text">{SLOGAN}</p>
         </div>
@@ -240,7 +240,7 @@ export default function Layout() {
           {!isRoot && <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <NotificationBell />
+          {user && <NotificationBell />}
           <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
