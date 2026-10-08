@@ -1,29 +1,81 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { IFUND_PHOTO_EDIT_STYLE } from '../../shared/ifundSignatureStyle.ts';
 
-const IDENTITY_PRESERVATION = `Identity preservation is different from thematic similarity. "Keep identity" means the rendered person's facial identity must remain the same individual as the uploaded photograph: preserve face geometry, eye shape and spacing, nose, mouth, jawline, skin tone, hairline/hair, age, body proportions, expression, pose, and other distinguishing traits. Do not invent a lookalike, substitute a different face, beautify into a different person, or merely preserve demographic traits. For people, fidelity to the source photo takes priority over the IFund art style. If a style choice would alter identity, omit that style choice. Preserve the source crop/composition and all people.\n\n`;
+const SOURCE_HOST = 'media.base44.com';
 
-const SIGNATURE_STYLE = `Interplanetary Fund signature art direction: cyberpunk, steampunk, afropunk/afrofuturist, interstellar science fiction, celestial imagery, and space-comic/graphic-novel energy. Blend cinematic realism with selective ink, halftone, retro-futurist machinery, brass/copper mechanical detail, analog gauges, gears, pipes, tactile switches, luminous circuitry, orbital architecture, cosmic scale, sophisticated cyan/teal/violet/slate lighting, and hopeful human-centered storytelling. Steampunk is part of the vocabulary, not a requirement to cover every image in gears. Preserve the original subject, people, identity, pose, composition, setting, and important factual details. Do not change apparent race, age, body, facial identity, number of people, objects, location, event, or factual meaning. Apply the signature look as a photo treatment and environmental/art-direction layer rather than replacing the photo with a different scene. Do not add readable text, watermarks, or logos.`;
+function validatedImageUrl(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:' || url.hostname !== SOURCE_HOST ||
+        url.username || url.password || !url.pathname.startsWith('/images/')) return '';
+    return url.href;
+  } catch { return ''; }
+}
 
-export default async function(req) {
+// Image-to-image uses a real image input. The text-only Base44 GenerateImage
+// API MUST NEVER be used to pretend a photograph has been edited.
+export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
-
+    const user = await base44.auth.me().catch(() => null);
+    if (!user?.id) return Response.json({ error: 'Sign in to restyle a photo.' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
-    const sourceUrl = typeof body.source_url === 'string' ? body.source_url.trim() : '';
-    if (!sourceUrl) return Response.json({ error: 'A source photo is required' }, { status: 400 });
+    const sourceUrl = validatedImageUrl(body.source_url);
+    if (!sourceUrl) return Response.json({ error: 'Upload a photo to IFund first.' }, { status: 400 });
 
-    const prompt = `Transform the user-supplied photo at this source URL into an Interplanetary Fund version while keeping it recognizably the same photo: ${sourceUrl}
+    // With no securely configured edit-capable provider, explicitly request
+    // the faithful local treatment. No fabricated AI edit results or charges.
+    const key = Deno.env.get('OPENAI_API_KEY');
+    if (!key) return Response.json({
+      ok: true, mode: 'photo_treatment', source_url: sourceUrl,
+      message: 'Original-photo IFund styling is available without AI credits.',
+    });
 
-${IDENTITY_PRESERVATION}\n${SIGNATURE_STYLE}\n\nThis is an edit/restyle request, not a request for a new unrelated image. The original uploaded photo is authoritative for subject identity and factual content. Treat the source image itself as the visual reference, not just the URL text. Identity fidelity is a hard constraint, not a suggestion.`;
+    const response = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-image-2',
+        images: [{ image_url: sourceUrl }],
+        prompt: IFUND_PHOTO_EDIT_STYLE,
+        quality: 'medium',
+        size: 'auto',
+      }),
+      signal: AbortSignal.timeout(75000),
+    });
 
-    const imageRes = await base44.integrations.Core.GenerateImage({ prompt });
-    const imageUrl = imageRes?.url || imageRes?.image_url || imageRes?.images?.[0]?.url;
-    if (typeof imageUrl !== 'string' || !/^https:\/\//i.test(imageUrl)) throw new Error('No usable image returned');
-    return Response.json({ url: imageUrl, source_url: sourceUrl, style: 'interplanetary_fund' });
+    if (!response.ok) {
+      console.warn('Image edit provider unavailable', response.status);
+      return Response.json({ ok: true, mode: 'photo_treatment', source_url: sourceUrl });
+    }
+    const result = await response.json();
+    const b64 = result?.data?.[0]?.b64_json || result?.image?.b64_json || '';
+    if (typeof b64 !== 'string' || !/^[a-zA-Z0-9+/=]+$/.test(b64)) {
+      return Response.json({ ok: true, mode: 'photo_treatment', source_url: sourceUrl });
+    }
+
+    // Avoid streaming an oversized encoded image through an invocation result.
+    // Save original-size edits on Base44's managed storage if possible.
+    try {
+      const fileBytes = Uint8Array.fromBase64(b64);
+      const file = new File([fileBytes], `ifund-photo-edit-${Date.now()}.png`, { type: 'image/png' });
+      const saved = await base44.integrations.Core.UploadFile({ file });
+      const url = validatedImageUrl(saved?.file_url);
+      if (url) return Response.json({
+        ok: true, mode: 'ai_photo_edit', url, source_url: sourceUrl,
+        style: 'interplanetary_fund',
+      });
+    } catch {
+      // The UI still provides a real, faithful treatment of the original.
+    }
+
+    return Response.json({ ok: true, mode: 'photo_treatment', source_url: sourceUrl });
   } catch (error) {
-    console.error('renderInterplanetaryPhoto error:', error?.message || error);
-    return Response.json({ error: 'Unable to render the Interplanetary Fund version. Your original photo is unchanged.' }, { status: 500 });
+    console.error('renderInterplanetaryPhoto failed:', error instanceof Error ? error.name : 'UnknownError');
+    return Response.json({
+      ok: false, error: 'AI photo editing is unavailable; keep your original or apply the local IFund treatment.',
+      code: 'image_edit_unavailable',
+    }, { status: 503 });
   }
 }
