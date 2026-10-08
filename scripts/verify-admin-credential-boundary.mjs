@@ -25,8 +25,11 @@ assert.match(bb, /DhkemX25519HkdfSha256/);
 assert.match(bb, /Aes256Gcm/);
 assert.match(bb, /deleteBrowserbaseSecret/);
 
-assert.equal(fs.existsSync('base44/entities/AdminCredentialVault.jsonc'), false,
-  'raw credential vault entity must not exist');
+const legacyVault = read('base44/entities/AdminCredentialVault.jsonc');
+assert.doesNotMatch(legacyVault, /"secret_value"|"password"|"username"|"sign_in_secret"/i,
+  'deprecated vault compatibility schema must remain reference-only');
+assert.match(legacyVault, /"browserbase_secret_id"/);
+assert.match(legacyVault, /provider-managed secret/i);
 assert.equal(fs.existsSync('base44/functions/storeAdminPlatformCredential/entry.ts'), false,
   'IFund must not accept reusable raw platform passwords until the provider-managed secret/function boundary is active');
 
