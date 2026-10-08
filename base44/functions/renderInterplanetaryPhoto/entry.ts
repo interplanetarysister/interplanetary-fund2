@@ -19,8 +19,9 @@ export default async function(req) {
 ${IDENTITY_PRESERVATION}\n${SIGNATURE_STYLE}\n\nThis is an edit/restyle request, not a request for a new unrelated image. The original uploaded photo is authoritative for subject identity and factual content. Treat the source image itself as the visual reference, not just the URL text. Identity fidelity is a hard constraint, not a suggestion.`;
 
     const imageRes = await base44.integrations.Core.GenerateImage({ prompt });
-    if (!imageRes?.url) throw new Error('No image returned');
-    return Response.json({ url: imageRes.url, source_url: sourceUrl, style: 'interplanetary_fund' });
+    const imageUrl = imageRes?.url || imageRes?.image_url || imageRes?.images?.[0]?.url;
+    if (typeof imageUrl !== 'string' || !/^https:\/\//i.test(imageUrl)) throw new Error('No usable image returned');
+    return Response.json({ url: imageUrl, source_url: sourceUrl, style: 'interplanetary_fund' });
   } catch (error) {
     console.error('renderInterplanetaryPhoto error:', error?.message || error);
     return Response.json({ error: 'Unable to render the Interplanetary Fund version. Your original photo is unchanged.' }, { status: 500 });

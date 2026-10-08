@@ -119,6 +119,11 @@ export default async function(req) {
       prompt: `${topic.image_prompt}. ${SIGNATURE_STYLE}`,
     });
 
+    // Never create a media post with a broken or missing generator result.
+    const mediaUrl = imageRes?.url || imageRes?.image_url || imageRes?.images?.[0]?.url;
+    if (typeof mediaUrl !== 'string' || !/^https:\/\//i.test(mediaUrl))
+      return Response.json({ error: 'The generated image was not available. Please retry.' }, { status: 502 });
+
     // Create the SocialPost as an official IF post
     const post = await base44.entities.SocialPost.create({
       author_user_id: user.id,
@@ -126,7 +131,7 @@ export default async function(req) {
       author_name: 'Interplanetary Fund',
       author_banner_tier: 'platinum',
       content: textRes.post_text,
-      media_url: imageRes.url,
+      media_url: mediaUrl,
       is_top_post: true,
       ai_generated: true,
       crosspost_platforms: [],

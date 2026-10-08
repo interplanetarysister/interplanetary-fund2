@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import { Loader2, Sparkles, UploadCloud, X } from "lucide-react";
+import { resolveGeneratedImageUrl, loadGeneratedImage } from "@/lib/generatedMedia";
 
 // Uploads pictures or video to the platform and reports the URL back. For
 // photos, users can keep the original or render the same photo in the
@@ -29,6 +30,7 @@ export default function MediaUpload({
     setError("");
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      if (!file_url) throw new Error("Upload did not return an asset URL");
       setOriginalUrl(file_url);
       setIfundUrl("");
       onChange(file_url);
@@ -47,8 +49,9 @@ export default function MediaUpload({
     setError("");
     try {
       const res = await base44.functions.invoke("renderInterplanetaryPhoto", { source_url: source });
-      const url = res?.data?.url || res?.url;
+      const url = resolveGeneratedImageUrl(res?.data || res);
       if (!url) throw new Error("No rendered image returned");
+      await loadGeneratedImage(url);
       setIfundUrl(url);
       onChange(url);
     } catch {
