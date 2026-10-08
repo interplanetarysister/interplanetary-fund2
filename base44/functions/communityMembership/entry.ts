@@ -21,6 +21,7 @@ export default async function(req) {
       const members = await sr.entities.CommunityMember.filter({ community_id, user_id: user.id });
       const m = members && members[0];
       if (!m) return Response.json({ error: 'You are not a member of this community.' }, { status: 400 });
+      if (m.role === 'owner' || community.created_by_id === user.id) return Response.json({ error: 'The community owner cannot leave without transferring or closing the community first.' }, { status: 409 });
       await base44.entities.CommunityMember.delete(m.id);
       // Atomic decrement — avoids the read-modify-write race on concurrent
       // leaves. The member-existence check above prevents going below zero
@@ -38,7 +39,7 @@ export default async function(req) {
     await base44.entities.CommunityMember.create({
       community_id,
       user_id: user.id,
-      user_name: user.full_name || user.email,
+      user_name: user.full_name || user.username || user.handle || 'Interplanetary Fund member',
       role: 'member',
     });
     // Atomic increment — avoids the read-modify-write race on concurrent joins.
@@ -48,7 +49,7 @@ export default async function(req) {
     );
     return Response.json({ ok: true });
   } catch (error) {
-    console.error('communityMembership error:', error.message);
+    console.error('communityMembership error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to update your community membership. Please try again.' }, { status: 500 });
   }
 }
