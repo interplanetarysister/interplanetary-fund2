@@ -13,9 +13,19 @@ export async function reconcilePayPalSubscription(sr: any, subscriptionId: strin
   const user = await sr.entities.User.get(intent.user_id).catch(() => null);
   if (!user || user.role === 'admin') throw new Error('Subscription owner is not eligible.');
   const rawStatus = String(subscription.status || '').toUpperCase();
-  const status = rawStatus === 'ACTIVE' ? 'active' :
-    rawStatus === 'SUSPENDED' ? 'past_due' :
-    ['CANCELLED', 'EXPIRED'].includes(rawStatus) ? 'canceled' : 'pending';
+  const payment = subscription.billing_info?.last_payment;
+  const paidCents = Math.round(Number(payment?.amount?.value) * 100);
+  const hasVerifiedPayment = payment?.amount?.currency_code === 'USD' &&
+    Number.isFinite(paidCents) && paidCents === verified.expected.amount_cents &&
+    !!payment?.time && new Date(payment.time).getTime() >= new Date(intent.created_at).getTime() &&
+    (!intent.last_reversal_at || new Date(payment.time).getTime() > new Date(intent.last_reversal_at).getTime());
+  const failedPayments = Number(subscription.billing_info?.failed_payments_count || 0);
+  // PayPal can report ACTIVE before the first payment settles. A recurring
+  // approval alone cannot grant paid access. Also withhold access after a
+  // failed/returned payment until a new provider-confirmed billing succeeds.
+  const status = ['CANCELLED', 'EXPIRED'].includes(rawStatus) ? 'canceled' :
+    rawStatus === 'SUSPENDED' || (rawStatus === 'ACTIVE' && (failedPayments > 0 || !!intent.last_reversal_at && !hasVerifiedPayment)) ? 'past_due' :
+    rawStatus === 'ACTIVE' && hasVerifiedPayment ? 'active' : 'pending';
   const isCurrent = user.paypal_subscription_id === subscriptionId;
   if (status === 'active') {
     // Prevent an old unlinked PayPal subscription from overriding a new Stripe
