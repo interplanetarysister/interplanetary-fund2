@@ -12,9 +12,15 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Sign in to publish an opportunity.' }, { status: 401 });
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { institution_id, title, category, description, award_amount, eligibility, requirements, deadline } = body;
-    if (!institution_id || !title) return Response.json({ error: 'A title is required.' }, { status: 400 });
+    const safeTitle = String(title || '').trim();
+    if (!institution_id || !safeTitle || safeTitle.length > 200) return Response.json({ error: 'A valid title is required.' }, { status: 400 });
+    const safeCategory = String(category || 'grant').slice(0, 80);
+    const safeDescription = String(description || '').slice(0, 10000);
+    const safeAward = String(award_amount || '').slice(0, 300);
+    const safeEligibility = String(eligibility || '').slice(0, 5000);
+    const safeRequirements = String(requirements || '').slice(0, 5000);
 
     const sr = base44.asServiceRole;
     const institution = await sr.entities.Institution.get(institution_id).catch(() => null);
@@ -26,12 +32,12 @@ export default async function(req) {
     const opportunity = await base44.entities.InstitutionOpportunity.create({
       institution_id,
       institution_name: institution.name,
-      title,
-      category: category || 'grant',
-      description,
-      award_amount,
-      eligibility,
-      requirements,
+      title: safeTitle,
+      category: safeCategory,
+      description: safeDescription,
+      award_amount: safeAward,
+      eligibility: safeEligibility,
+      requirements: safeRequirements,
       deadline: deadline || undefined,
       status: 'open',
     });
@@ -42,7 +48,7 @@ export default async function(req) {
     );
     return Response.json({ opportunity });
   } catch (error) {
-    console.error('publishInstitutionOpportunity error:', error.message);
+    console.error('publishInstitutionOpportunity error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to publish the opportunity. Please try again.' }, { status: 500 });
   }
 }
