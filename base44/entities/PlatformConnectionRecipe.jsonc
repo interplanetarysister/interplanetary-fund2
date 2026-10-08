@@ -42,6 +42,39 @@
         "type": "string"
       }
     },
+    "candidate_transports": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Provider-permitted routes still eligible for this operation. Documentation alone does not make them proven."
+    },
+    "blocked_routes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Routes excluded by verified failure, provider policy, or unavailable runtime capability."
+    },
+    "successful_route": {
+      "type": "string",
+      "description": "Last route that completed and passed provider verification for this exact operation."
+    },
+    "discovery_state": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "researched",
+        "probation",
+        "proven",
+        "exhausted"
+      ],
+      "default": "unknown"
+    },
+    "rediscovery_on_failure": {
+      "type": "boolean",
+      "default": true
+    },
     "connector_type": {
       "type": "string",
       "description": "Base44 connector type when OAuth/native connector is the proven transport."
