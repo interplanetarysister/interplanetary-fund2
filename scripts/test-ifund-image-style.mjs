@@ -85,7 +85,7 @@ assert.doesNotMatch(backend,/Core\.GenerateImage\(/,'Never pretend a text prompt
 const media=read('src/components/media/MediaUpload.jsx');
 assert.match(media,/improveUploadedPhoto\(base44, source\)/);
 const photoService = read('src/lib/ifundPhotoService.js');
-assert.match(photoService,/createIfundPhotoTreatment\(originalUrl\)/);
+assert.match(photoService,/createIfundPhotoTreatment\(originalUrl, serverUrl \|\| null\)/);
 assert.match(photoService,/brandAndUploadGeneratedImage\(base44, brandedSource\)/);
 assert.match(read('src/components/social/PostComposer.jsx'),/improveUploadedPhoto\(base44, source\)/);
 assert.match(media,/photoSelected && \(/,'Available for all uploaded photos');
