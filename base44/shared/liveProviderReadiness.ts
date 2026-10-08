@@ -2,6 +2,7 @@ import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { FEATURE_SCOPES, CODE_CONNECTED_FEATURES } from './featureFlagGate.ts';
 import { isLivePayPalRestReady, isLivePayPalPayoutReady } from './paypal.ts';
+import { stripeCryptoGatewayReadiness } from './stripeCryptoReadiness.ts';
 
 // A connection, secret, or administrative toggle alone never means that real
 // donations, payouts, posting, or agent execution are operational.
@@ -70,10 +71,12 @@ export async function probeLiveProviders() {
   const nowpaymentsConfigured = !!(secrets.get('NOWPAYMENTS_API_KEY') && secrets.get('NOWPAYMENTS_IPN_SECRET'));
   const reownConfigured = !!secrets.get('REOWN_PROJECT_ID');
   const openaiConfigured = !!secrets.get('OPENAI_API_KEY');
+  const stablecoin = await stripeCryptoGatewayReadiness();
   return {
     paypal_checkout: settled(paypal, paypal ? 'Verified live PayPal REST account' : 'Live PayPal account verification required'),
     paypal_payouts: settled(payouts, payouts ? 'Verified PayPal payouts' : 'PayPal payouts must be verified separately'),
     stripe_checkout: settled(stripe, stripe ? 'Live Stripe account and signed webhook verified' : 'Stripe live account and matching webhook required'),
+    crypto_gateway: settled(stablecoin.ready, stablecoin.reason),
     nowpayments: settled(false, nowpaymentsConfigured ? 'Credentials present; merchant approval, IPN and settlement are not verified' : 'NOWPayments merchant account, API key and IPN setup required'),
     reown: settled(false, reownConfigured ? 'Server-side project reference exists; website allowlist and client configuration unverified' : 'Reown Project ID and allowed website origins required'),
     openai: settled(false, openaiConfigured ? 'API key configured; agent execution not independently verified' : 'An authorized AI execution provider and runtime test are required'),
@@ -112,7 +115,7 @@ export function assessFeatureReadiness(key: string, providers: Awaited<ReturnTyp
     community_creation: settled(true, 'Native IFund capability; administrator can control availability'),
     institution_programs: settled(true, 'Native IFund capability; administrator can control availability'),
     admin_agent_execution: settled(false, 'Admin agent runtime not confirmed end to end'),
-    crypto_donations: settled(false, 'Approved cryptocurrency receiving, confirmations and settlement are not connected'),
+    crypto_donations: settled(p.crypto_gateway.ready, p.crypto_gateway.explanation),
   };
   return known[key] || settled(false, 'Not mapped to a live backend implementation');
 }
