@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
+import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 
 const TOPICS = [
   { id: "universal_donation_button", label: "Universal Donation Button" },
@@ -30,12 +31,27 @@ export default function AdminContentPanel({ onGenerated }) {
       const res = await base44.functions.invoke("generateSocialContent", {
         topic_id: selectedTopic || undefined,
       });
-      if (res?.data?.post) {
-        toast({ title: "AI post generated!", description: `Feature: ${res.data.topic}` });
-        onGenerated?.(res.data.post);
-      } else if (res?.data?.error) {
-        toast({ title: "Generation failed", description: "The content request could not be completed safely.", variant: "destructive" });
-      }
+      const draft = res?.data?.draft;
+      if (!draft?.generated_image_url || !draft?.content) throw new Error("Unusable generated post");
+      // Never publish an unwatermarked provider image. This upload physically
+      // embeds the exact Copy-app logo and domain before the post exists.
+      const mediaUrl = await brandAndUploadGeneratedImage(base44, draft.generated_image_url);
+      const me = await base44.auth.me();
+      if (me?.role !== "admin") throw new Error("Admin access required");
+      const post = await base44.entities.SocialPost.create({
+        author_user_id: me.id,
+        author_username: "interplanetaryfund",
+        author_name: "Interplanetary Fund",
+        author_banner_tier: "platinum",
+        content: draft.content,
+        media_url: mediaUrl,
+        is_top_post: true,
+        ai_generated: true,
+        crosspost_platforms: [],
+      });
+      if (!post?.id) throw new Error("Branded post was not saved");
+      toast({ title: "Branded AI post generated!", description: `Feature: ${res.data.topic}` });
+      onGenerated?.(post);
     } catch {
       toast({ title: "Generation failed", variant: "destructive" });
     } finally {
