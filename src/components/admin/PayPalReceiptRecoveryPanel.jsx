@@ -11,6 +11,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
   const [scanned, setScanned] = useState(false);
   const [scannedCount, setScannedCount] = useState(0);
   const [otherSettledPayments, setOtherSettledPayments] = useState(0);
+  const [otherPayments, setOtherPayments] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [selection, setSelection] = useState({});
   const [loading, setLoading] = useState(false);
@@ -37,6 +38,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
       setReceipts(rows);
       setScannedCount(Number(data.checked_transactions) || 0);
       setOtherSettledPayments(Number(data.other_settled_payment_count) || 0);
+      setOtherPayments(Array.isArray(data.other_payments) ? data.other_payments : []);
       setScanned(true);
       setSelection((current) => ({
         ...current,
@@ -46,6 +48,7 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
     } catch (e) {
       console.error("PayPal receipt recovery load failed:", e?.name || "UnknownError");
       setReceipts([]);
+      setOtherPayments([]);
       setError("PayPal could not confirm the receipt scan. No conclusion about missing donations can be drawn; please retry when the business account is available.");
     } finally {
       setLoading(false);
@@ -199,6 +202,29 @@ export default function PayPalReceiptRecoveryPanel({ user }) {
             </div>
           ))}
         </div>
+      )}
+      {!loading && !error && otherPayments.length > 0 && (
+        <details className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-amber-900">
+            {otherPayments.length} other settled merchant payment{otherPayments.length === 1 ? "" : "s"} — review only
+          </summary>
+          <p className="mt-2 text-xs text-amber-900">
+            These may be sales, subscriptions, or donations made through unrelated links.
+            They cannot be credited to a campaign without independent provider evidence.
+          </p>
+          <div className="mt-3 space-y-2">
+            {otherPayments.map((payment) => (
+              <div key={payment.transaction_id} className="rounded-lg border border-amber-200 bg-white p-3 text-xs text-slate-800">
+                <span className="font-semibold">{"$" + Number(payment.gross_amount || 0).toFixed(2)}</span>
+                <span className="ml-2">Type: {payment.transaction_event_code || "Unknown"}</span>
+                <p className="mt-1 break-all text-slate-600">
+                  {payment.transaction_id} · {payment.occurred_at ? new Date(payment.occurred_at).toLocaleString() : "Date unavailable"}
+                </p>
+                {payment.subject && <p className="mt-1 break-words text-slate-600">{payment.subject}</p>}
+              </div>
+            ))}
+          </div>
+        </details>
       )}
     </section>
   );

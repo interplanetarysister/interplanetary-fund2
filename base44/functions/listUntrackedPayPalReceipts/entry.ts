@@ -136,10 +136,28 @@ export default async function(req) {
         /^[A-Za-z0-9_-]{8,90}$/.test(String(tx.paypalReferenceId || '')))
     ).length;
 
+    // Unmatched positive merchant payments are review-only. Do not credit
+    // any beneficiary without an original IFund order or donation receipt.
+    const knownReceiptIds = new Set(receipts.map((row) => String(row.transaction_id)));
+    const otherPayments = transactions.filter((tx) =>
+      tx.status === 'S' && Number(tx.amount) > 0 &&
+      String(tx.currency || '').toUpperCase() === 'USD' &&
+      !knownReceiptIds.has(String(tx.id))
+    ).map((tx) => ({
+      transaction_id: String(tx.id),
+      gross_amount: round2(tx.amount),
+      transaction_event_code: String(tx.transactionEventCode || ''),
+      subject: String(tx.transactionSubject || '').slice(0, 250),
+      occurred_at: String(tx.transactionUpdatedDate || tx.transactionInitiationDate || ''),
+      review_required: true,
+      assignable_to_campaign: false,
+    })).sort((a, b) => String(b.occurred_at).localeCompare(String(a.occurred_at)));
+
     return Response.json({
       ok: true,
       lookback_days: days,
       receipts,
+      other_payments: otherPayments,
       other_settled_payment_count: otherSettledPaymentCount,
       checked_transactions: transactions.length,
       eligible_settled_receipts: receipts.length,
