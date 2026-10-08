@@ -8,7 +8,8 @@ an authorized real account for its first end-to-end test.
 ## Customer journey
 
 1. Connect on a listed platform opens its authorized provider OAuth sign-in
-   in a separate browser popup when allowed, or this tab when blocked.
+   in the same browser tab. IFund saves a short-lived resume hint before any
+   redirect so mobile browsers and provider callbacks cannot race that save.
 2. The provider owns password, MFA, OAuth state and tokens. IFund localStorage
    stores only a non-secret, short-lived resume hint: platform, signed-in IFund
    user ID, start time, flow step and a relative same-site return path.
@@ -61,8 +62,12 @@ an authorized real account for its first end-to-end test.
 - Verify real read-only provider identity, capability reports and then each
   promised post/edit/message ability under an owner-authorized test account.
 - Verify posts do not run after AI revoke, disconnect or provider revocation.
-- Confirm return-route behavior on Android/mobile WebView and desktop popups,
-  including popup blocked and callback origin differences.
+- Confirm return-route behavior on Android/mobile WebView and desktop,
+  including browser back, expired callbacks, and cross-origin redirects.
+- For Facebook specifically, an IFund account sign-in is separate from
+  Facebook Pages authorization. Require Meta Page grants for pages_show_list,
+  pages_read_engagement, and pages_manage_posts and a Page creation task before
+  showing posting access as verified. Personal profiles are not Page targets.
 - Verify Base44/host provider refresh behavior with real expiring tokens.
 - Test release with no provider secrets or user passwords exposed in logs,
   frontend state or response payloads.
