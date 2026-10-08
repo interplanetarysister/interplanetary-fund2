@@ -81,7 +81,7 @@ export default function CampaignDetail() {
       }
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [campaign?.id, location.hash, location.key]);
+  }, [campaign?.id, user?.id, location.hash, location.key]);
 
   if (error) return <PageError message={error} onRetry={load} />;
   if (notFound) return <div className="text-center py-24 text-stone-500">Campaign not found.</div>;
