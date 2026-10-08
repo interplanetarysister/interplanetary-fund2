@@ -83,8 +83,11 @@ assert.match(read('base44/functions/generateCampaignCover/entry.ts'),/IFUND_SIGN
 assert.match(read('base44/functions/generateSocialContent/entry.ts'),/IFUND_SIGNATURE_STYLE/);
 assert.doesNotMatch(backend,/Core\.GenerateImage\(/,'Never pretend a text prompt sees uploaded photos');
 const media=read('src/components/media/MediaUpload.jsx');
-assert.match(media,/createIfundPhotoTreatment\(source\)/);
-assert.match(media,/brandAndUploadGeneratedImage\(base44, imageSource\)/);
+assert.match(media,/improveUploadedPhoto\(base44, source\)/);
+const photoService = read('src/lib/ifundPhotoService.js');
+assert.match(photoService,/createIfundPhotoTreatment\(originalUrl\)/);
+assert.match(photoService,/brandAndUploadGeneratedImage\(base44, brandedSource\)/);
+assert.match(read('src/components/social/PostComposer.jsx'),/improveUploadedPhoto\(base44, source\)/);
 assert.match(media,/photoSelected && \(/,'Available for all uploaded photos');
 assert.match(read('src/lib/ifundPhotoTreatment.js'),/ctx.drawImage\(image, 0, 0, width, height\)/);
 assert.match(read('src/lib/ifundPhotoTreatment.js'),/cyan|211,238|34,211,238/);
