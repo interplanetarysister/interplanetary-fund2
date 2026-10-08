@@ -25,11 +25,8 @@ export default function Contact() {
     setError("");
     try {
       const { base44 } = await import("@/api/base44Client");
-      await base44.integrations.Core.SendEmail({
-        to: CONTACT_EMAIL,
-        subject: `Contact form message from ${form.name}`,
-        body: `Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`,
-      });
+      const { data } = await base44.functions.invoke("sendPublicContactMessage", form);
+      if (data?.ok !== true) throw new Error("Contact send not confirmed");
       setSubmitted(true);
     } catch (err) {
       setError("We couldn't send your message right now. Please email us directly using the address below.");
