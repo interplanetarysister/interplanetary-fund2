@@ -44,16 +44,22 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const connectWithProvider = async () => {
+    // Open synchronously from a real click to avoid popup blockers. If the
+    // browser forbids popups (common in mobile WebViews), redirect in this tab.
+    const popup = window.open("about:blank", "ifund-provider-sign-in",
+      "popup=yes,width=560,height=760,scrollbars=yes,resizable=yes");
     setConnecting(true);
     setError("");
     try {
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
-        setError("This platform can’t be connected this way yet.");
+        popup?.close();
+        setError("This platform does not offer verified provider sign-in through IFund yet.");
         return;
       }
       if (!data?.configured || !data?.connector_id) {
-        setError("This connection is not ready yet. Please try again later.");
+        popup?.close();
+        setError("This connection needs provider setup before sign-in can open.");
         return;
       }
       // OAuth sign-in happens first. After returning, IFund separately asks
@@ -74,8 +80,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         // App-internal only. Never accept a full origin or untrusted redirect URL.
         returnPath: window.location.pathname + window.location.search + window.location.hash,
       }));
-      window.location.assign(redirectUrl);
+      if (popup && !popup.closed) {
+        popup.location.replace(destination.href);
+      } else {
+        window.location.assign(destination.href);
+      }
     } catch (e) {
+      popup?.close();
       console.error("Provider OAuth start failed:", e);
       setError("We couldn’t open sign-in. Please try again.");
     } finally {

@@ -67,6 +67,17 @@ const AuthenticatedApp = () => {
     let pending = null;
     try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch { /* Invalid resume data is ignored. */ }
     if (!pending || Date.now() - pending.startedAt >= 20 * 60 * 1000) return;
+    // In a script-opened OAuth window, tell its same-origin opener to resume
+    // and close the small window. OAuth state and tokens stay with the provider.
+    if (window.opener && pending.step === "oauth_pending") {
+      try {
+        window.opener.postMessage({
+          type: "ifund-provider-oauth-returned", platform: pending.platform,
+        }, window.location.origin);
+        window.close();
+        return;
+      } catch { /* If opener is severed, resume through the regular page. */ }
+    }
     import("@/api/base44Client").then(({ base44 }) => base44.auth.me())
       .then((me) => { if (me?.id === pending.userId) navigate("/connections", { replace: true }); })
       .catch(() => {});

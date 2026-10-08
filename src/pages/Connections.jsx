@@ -42,6 +42,29 @@ export default function Connections() {
   const requestGeneration = useRef(0);
   const mountedRef = useRef(true);
 
+  // Resume either a provider popup or the same-tab OAuth redirect. The caller
+  // is never trusted merely because it sent a message: the backend rechecks
+  // the authenticated owner and provider credential before recording anything.
+  useEffect(() => {
+    const resume = event => {
+      if (event?.type === "message") {
+        if (event.origin !== window.location.origin ||
+            event.data?.type !== "ifund-provider-oauth-returned") return;
+        let pending = null;
+        try { pending = JSON.parse(localStorage.getItem("ifund_pending_platform_connection") || "null"); } catch {}
+        if (!pending || pending.platform !== event.data.platform) return;
+      } else if (event?.type === "storage" &&
+                 event.key !== "ifund_pending_platform_connection") return;
+      setReloadKey(key => key + 1);
+    };
+    window.addEventListener("message", resume);
+    window.addEventListener("storage", resume);
+    return () => {
+      window.removeEventListener("message", resume);
+      window.removeEventListener("storage", resume);
+    };
+  }, []);
+
   // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
   // centralized syncExternalFunds engine — never a separate implementation.
   const syncAll = async () => {
