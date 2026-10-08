@@ -16,15 +16,18 @@ export function effectiveSubscription(user) {
     };
   }
 
-  const plan = getPlan(user?.subscription_tier);
-  const active =
-    user?.subscription_status === "active" ||
-    user?.subscription_status === "trialing";
-
+  const status = String(user?.subscription_status || "inactive");
+  const trialIsExpired = status === "trialing" && Boolean(user?.premium_trial_started_at) &&
+    !(Date.parse(String(user?.trial_end || "")) > Date.now());
+  const recurringActive = status === "active" || (status === "trialing" && !trialIsExpired);
+  const dayPassActive = Date.parse(String(user?.premium_day_pass_expires_at || "")) > Date.now();
+  const active = recurringActive || dayPassActive;
+  const tier = recurringActive ? user?.subscription_tier : dayPassActive ? "basic" : "free";
+  const plan = getPlan(tier);
   return {
     plan,
     tier: plan.id,
-    status: user?.subscription_status || "inactive",
+    status: recurringActive ? status : dayPassActive ? "day_pass" : trialIsExpired ? "expired" : status,
     active,
     adminGranted: false,
   };
