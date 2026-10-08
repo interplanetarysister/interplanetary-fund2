@@ -34,7 +34,7 @@ function captureHandler({role='admin',email='interplanetarysister@gmail.com',act
   const calls={captured:0,orders:0,receipts:0,canonical:0};
   const base44={
     auth:{me:async()=>({id:'admin-user',email,role})},
-    asServiceRole:{entities:{Campaign:{get:async()=>({id:campaignId,created_by_id:'campaign-owner',status:'active',title:'Test'})}}},
+    asServiceRole:{entities:{Campaign:{get:async()=>({id:campaignId,created_by_id:'campaign-owner',status:'active',title:'Test'})},FinancialOperation:{filter:async()=>[]}}},
   };
   const handler=moduleFrom('base44/functions/capturePayPalOrder/entry.ts',{
     'npm:@base44/sdk':{createClientFromRequest:()=>base44},
@@ -94,6 +94,6 @@ function captureHandler({role='admin',email='interplanetarysister@gmail.com',act
  assert.equal(res.status,503,'The financial-boundary stub intentionally rejects at the canonical write');
  assert.equal(calls.captured,0,'Read-only receipt recovery must never POST a new PayPal capture');
  assert.equal(calls.orders,1);assert.equal(calls.receipts,1);
- console.log('last recovery result',await res.json(),calls); assert.equal(calls.canonical,1,'Only verified completed order and settled receipt reach canonical ledger logic');
+ assert.equal(calls.canonical,1,'Only verified completed order and settled receipt reach canonical ledger logic');
 }
 console.log('PASS: Admin-only PayPal read-only recovery, receipt/order matching, immutable campaign evidence, no second capture.');
