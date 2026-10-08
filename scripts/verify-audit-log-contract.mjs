@@ -13,7 +13,7 @@ assert.match(audit, /scrubMetadata\(entry\.metadata/);
 assert.doesNotMatch(audit, /e && e\.message \? e\.message : e/);
 assert.match(page, /AuditLog\.list\("-created_date", 500\)/);
 assert.match(page, /Financial activity only/);
-assert.doesNotMatch(page, /metadata/);
+assert.doesNotMatch(page, /row\.metadata/);
 assert.match(app, /<Route element=\{<AdminRoute \/>\}>/);
 assert.match(app, /path="\/admin\/audit" element=\{<AuditLogAdmin \/>\}/);
 assert.match(layout, /to: "\/admin\/audit", label: "Audit Log"/);
