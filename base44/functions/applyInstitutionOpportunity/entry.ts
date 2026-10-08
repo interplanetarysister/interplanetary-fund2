@@ -14,7 +14,7 @@ export default async function(req) {
 
     const body = await req.json();
     const { opportunity_id, institution_id, campaign_id, campaign_title, narrative, requested_amount } = body;
-    if (!opportunity_id || !institution_id || !campaign_id || !narrative || !narrative.trim()) {
+    if (!opportunity_id || !institution_id || !campaign_id || typeof narrative !== 'string' || !narrative.trim()) {
       return Response.json({ error: 'Missing application details' }, { status: 400 });
     }
 
