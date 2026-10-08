@@ -17,10 +17,16 @@ export default async function(req) {
     if (user.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
     if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
     const sr = base44.asServiceRole;
+    // Only offer plans independently verified against live PayPal pricing.
+    // One owner-provided plan can be activated without forcing creation of
+    // nine unrelated PayPal plans. Each checkout re-verifies its chosen plan.
+    let verifiedCount = 0;
     for (const price of subscriptionPrices()) {
-      const found = await verifiedPayPalPlan(sr, price.tier, price.interval);
-      if (!found) return Response.json({ error: 'Subscription checkout remains disabled until all ten live PayPal prices match IFund pricing.' }, { status: 503 });
+      if (await verifiedPayPalPlan(sr, price.tier, price.interval)) verifiedCount++;
     }
+    if (verifiedCount === 0) return Response.json({
+      error: 'Subscription checkout remains disabled until at least one live PayPal price is verified.',
+    }, { status: 503 });
     const hooks = await sr.entities.PayPalBillingWebhook.filter({ provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF });
     const hook = (hooks || []).find(row => row.webhook_id && row.url);
     if (!hook) return Response.json({ error: 'A live PayPal billing webhook must be installed first.' }, { status: 503 });
@@ -37,9 +43,9 @@ export default async function(req) {
     const selected = (flags || [])[0];
     if (selected) await sr.entities.FeatureFlag.update(selected.id, { enabled: true, scope: 'global' });
     else await sr.entities.FeatureFlag.create({ key: 'subscription_checkout', label: 'Subscription checkout', enabled: true, scope: 'global' });
-    return Response.json({ ok: true, enabled: true, matched_paypal_prices: 10, webhook_verified: true });
+    return Response.json({ ok: true, enabled: true, matched_paypal_prices: verifiedCount, webhook_verified: true });
   } catch (error) {
     console.error('activateSubscriptionCheckout:', error?.name || 'UnknownError');
-    return Response.json({ error: 'Subscription checkout remains disabled. The PayPal live billing checks did not all pass.' }, { status: 503 });
+    return Response.json({ error: 'Subscription checkout remains disabled. The PayPal live billing and webhook checks did not pass.' }, { status: 503 });
   }
 }
