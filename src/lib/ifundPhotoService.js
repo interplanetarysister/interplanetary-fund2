@@ -15,16 +15,12 @@ export async function improveUploadedPhoto(base44, originalUrl) {
     }).catch(() => null);
     const serverUrl = response?.data?.mode === "ai_photo_edit"
       ? resolveGeneratedImageUrl(response.data) : "";
-    if (serverUrl) {
-      brandedSource = serverUrl;
-      mode = "ai_photo_edit";
-    } else {
-      // No compatible provider (or its authorization expired). Stylize THIS
-      // image's actual pixels instead of generating a new unrelated person.
-      const image = await createIfundPhotoTreatment(originalUrl);
-      temporaryUrl = URL.createObjectURL(image);
-      brandedSource = temporaryUrl;
-    }
+    // Always use the user's actual photo as the full-opacity base.
+    // A provider-generated edit contributes only gentle visual accents.
+    const image = await createIfundPhotoTreatment(originalUrl, serverUrl || null);
+    temporaryUrl = URL.createObjectURL(image);
+    brandedSource = temporaryUrl;
+    if (serverUrl) mode = "ai_photo_edit";
     const url = await brandAndUploadGeneratedImage(base44, brandedSource);
     return { url, mode };
   } finally {
