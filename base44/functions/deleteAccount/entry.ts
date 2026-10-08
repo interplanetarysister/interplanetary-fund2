@@ -60,8 +60,13 @@ export default async function(req) {
     }
     const ownedCampaigns = await sr.entities.Campaign.filter({ created_by_id: user.id }).catch(() => []);
     for (const campaign of ownedCampaigns || []) {
-      const financial = await ensureCanonicalCampaign(sr, campaign).catch(() => null);
-      if (financial && Number(financial.availableBalance || 0) > 0) {
+      let financial;
+      try {
+        financial = await ensureCanonicalCampaign(sr, campaign);
+      } catch (_) {
+        return Response.json({ error: 'We could not safely verify that this campaign has no remaining funds. Resolve the campaign balance before deleting the account.' }, { status: 409 });
+      }
+      if (Number(financial.availableBalance || 0) > 0) {
         return Response.json({ error: 'Your account still has campaign funds available to withdraw. Withdraw or resolve those funds before deleting the account.' }, { status: 409 });
       }
     }
@@ -86,7 +91,11 @@ export default async function(req) {
 
     await runStep('provider_billing', async () => {
       const stripeKey = String(secrets.get('STRIPE_SECRET_KEY') || '');
-      if (!stripeKey.startsWith('sk_live_')) return;
+      const hasProviderBilling = !!fresh.stripe_customer_id || fresh.subscription_status === 'active' || fresh.subscription_status === 'trialing' || fresh.subscription_status === 'past_due';
+      if (!stripeKey.startsWith('sk_live_')) {
+        if (hasProviderBilling) throw new Error('Live billing access is unavailable; provider subscriptions cannot be safely cancelled.');
+        return;
+      }
       const stripe = new Stripe(stripeKey);
 
       // Cancel the user's IFund plan subscriptions, if any.
