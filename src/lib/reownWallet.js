@@ -29,7 +29,7 @@ export async function openReownWallet() {
           name: "Interplanetary Fund",
           description: "Connect a wallet to Interplanetary Fund",
           url: window.location.origin,
-          icons: [new URL("/favicon.ico", window.location.origin).href],
+          icons: [new URL("/icon-192.jpg", window.location.origin).href],
         },
         themeMode: "dark",
         themeVariables: { "--w3m-z-index": 3000 },
