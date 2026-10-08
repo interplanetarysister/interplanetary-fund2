@@ -39,9 +39,9 @@ async function checkSlackBot(sr: any) {
         verified_at: new Date().toISOString(),
       };
     }
-    return { connected: true, verified: false, last_error: String(auth.error || 'auth.test failed').slice(0, 200) };
+    return { connected: true, verified: false, last_error: 'Slack verification failed.' };
   } catch (e) {
-    return { connected: false, verified: false, last_error: String(e?.message || e).slice(0, 200) };
+    return { connected: false, verified: false, last_error: 'Slack verification could not complete.' };
   }
 }
 
@@ -67,7 +67,7 @@ async function checkWix(sr: any) {
         connected: true,
         verified: false,
         capabilities: connectorCapabilities(conn),
-        last_error: `Wix verification failed (${res.status})`,
+        last_error: 'Wix verification failed.',
       };
     }
 
@@ -90,7 +90,7 @@ async function checkWix(sr: any) {
       connected: false,
       verified: false,
       capabilities: [],
-      last_error: String(e?.message || e).slice(0, 200),
+      last_error: 'Wix verification could not complete.',
     };
   }
 }
@@ -108,7 +108,7 @@ export default async function(req: Request) {
     }
     return Response.json({ shared: results });
   } catch (error) {
-    console.error('getSharedConnectorStatus error:', error?.message || error);
+    console.error('getSharedConnectorStatus error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Could not check platform integrations.' }, { status: 500 });
   }
 }
