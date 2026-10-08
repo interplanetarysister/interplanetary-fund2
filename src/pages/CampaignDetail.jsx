@@ -22,13 +22,13 @@ import CampaignCard, { categoryLabels } from "@/components/campaigns/CampaignCar
 import { Loader2, Heart, MapPin } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
-import { PRELAUNCH_MODE } from "@/lib/prelaunch";
+import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 import PageError from "@/components/PageError";
-import { getFrontendIdentity } from "@/lib/adminBootstrap";
 
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
 export default function CampaignDetail() {
+  const platformOnlyMode = !usePublicCampaignFundraising();
   const { id } = useParams();
   const [campaign, setCampaign] = useState(null);
   const [updates, setUpdates] = useState([]);
@@ -73,17 +73,16 @@ export default function CampaignDetail() {
   // authenticated campaign owner or an admin (authorized manager). Never shown
   // on the public donation experience.
   const canManage = !!user && (campaign.created_by_id === user.id || user.role === "admin");
-  const prelaunchCampaignTest = PRELAUNCH_MODE && getFrontendIdentity(user).superAdminOwner;
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
     <PullToRefresh onRefresh={load} className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       {justDonated && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800">
-          {PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Campaign payment test completed. The verified gift should now be reflected in this campaign." : "Thank you for supporting Interplanetary Fund during prelaunch. This payment is not credited to the displayed campaign.") : "Thank you for your donation! It may take a moment to appear on the campaign."}
+          "Thank you. Verified campaign donations are reflected in the campaign total; separate platform-support donations are not credited to this campaign."
         </div>
       )}
-      {PRELAUNCH_MODE && <PrelaunchNotice className="mb-6" />}
+      {platformOnlyMode && <PrelaunchNotice className="mb-6" />}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
@@ -106,7 +105,7 @@ export default function CampaignDetail() {
           </div>
           {/* Phones: funding progress + Donate Now sit directly under the title,
               so the primary action is visible without scrolling. */}
-          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} prelaunchCampaignTest={prelaunchCampaignTest} className="lg:hidden" />
+          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="lg:hidden" />
           {campaign.story && (
             <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
@@ -119,7 +118,7 @@ export default function CampaignDetail() {
 
         {/* Sidebar */}
         <div className="space-y-5 lg:sticky lg:top-8 self-start">
-          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} prelaunchCampaignTest={prelaunchCampaignTest} className="hidden lg:block" />
+          <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} className="hidden lg:block" />
 
           {canManage && <ShareCampaignKit campaign={campaign} />}
 
@@ -164,12 +163,12 @@ export default function CampaignDetail() {
       <button
         onClick={() => setDonateOpen(true)}
         className="lg:hidden fixed right-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-30 h-14 px-6 rounded-full bg-gradient-to-r from-cyan-400 to-blue-600 text-white font-semibold shadow-lg shadow-blue-500/30 flex items-center gap-2 active:scale-95 transition-transform"
-        aria-label={PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Test a real campaign donation" : "Support Interplanetary Fund during prelaunch") : "Donate"}
+        aria-label={platformOnlyMode ? "Support Interplanetary Fund (not this campaign)" : "Donate"}
       >
-        <span className="flex flex-col items-center leading-tight"><span className="flex items-center gap-2"><Heart className="w-5 h-5" /> {PRELAUNCH_MODE ? (prelaunchCampaignTest ? "Test Donation" : "Support IF") : "Donate"}</span>{PRELAUNCH_MODE && <span className="text-[10px] font-medium opacity-90">{prelaunchCampaignTest ? "Real campaign test" : "Platform, not campaign"}</span>}</span>
+        <span className="flex flex-col items-center leading-tight"><span className="flex items-center gap-2"><Heart className="w-5 h-5" /> {platformOnlyMode ? "Support IF" : "Donate"}</span>{platformOnlyMode && <span className="text-[10px] font-medium opacity-90">Platform, not campaign</span>}</span>
       </button>
       )}
-      <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} prelaunchCampaignTest={prelaunchCampaignTest} />
+      <DonateDialog campaign={campaign} onDonated={load} hideTrigger open={donateOpen} onOpenChange={setDonateOpen} />
     </PullToRefresh>
   );
 }
