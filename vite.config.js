@@ -16,21 +16,18 @@ export default defineConfig({
     }),
     react(),
   ],
-  optimizeDeps: {
-    include: [
-      '@reown/appkit/react',
-      '@reown/appkit-adapter-ethers',
-      '@reown/appkit-adapter-solana/react',
-      '@reown/appkit-adapter-bitcoin',
-      '@reown/appkit/networks',
-    ],
-  },
+  // Reown is intentionally opened lazily by the wallet button; don't preload
+  // obsolete React entrypoints via Vite's dependency optimizer.
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
-          if (id.includes('@reown') || id.includes('viem') || id.includes('ethers') || id.includes('ox-')) return 'reown';
+          if (id.includes('@reown/appkit-adapter-ethers') || id.includes('/ethers/')) return 'reown-ethers';
+          if (id.includes('@reown/appkit-adapter-solana') || id.includes('@solana/')) return 'reown-solana';
+          if (id.includes('@reown/appkit-adapter-bitcoin')) return 'reown-bitcoin';
+          if (id.includes('@reown/appkit') || id.includes('@reown/appkit-controllers') || id.includes('@reown/ui')) return 'reown-core';
+          if (id.includes('viem') || id.includes('ox-')) return 'reown-viem';
           if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
           if (id.includes('react-router') || id.includes('@remix-run')) return 'react-router';
           if (id.includes('three')) return 'three';
@@ -42,8 +39,8 @@ export default defineConfig({
           if (id.includes('react-leaflet') || id.includes('leaflet')) return 'leaflet';
           if (id.includes('@tanstack')) return 'tanstack';
           if (id.includes('@hello-pangea')) return 'dnd';
-          if (id.includes('html2canvas') || id.includes('jspdf')) return 'pdf';
-          if (id.includes('@reown/appkit') || id.includes('@reown')) return 'reown';
+          if (id.includes('html2canvas')) return 'html2canvas';
+          if (id.includes('jspdf')) return 'jspdf';
         },
       },
     },
