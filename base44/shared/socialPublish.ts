@@ -89,10 +89,7 @@ export async function publishToLinkedIn(accessToken, text) {
       visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
     }),
   });
-  if (!postRes.ok) {
-    const errBody = await postRes.text().catch(() => '');
-    throw new Error(`LinkedIn post failed (${postRes.status}). ${errBody.slice(0, 200)}`);
-  }
+  if (!postRes.ok) throw new Error(`LinkedIn post failed (${postRes.status}).`);
   const out = await postRes.json();
   const postId = out.id || '';
   return { url: `https://www.linkedin.com/feed/update/${postId}/` };
