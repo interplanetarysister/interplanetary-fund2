@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { secrets } from 'base44:runtime';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { IFUND_PHOTO_EDIT_STYLE } from '../../shared/ifundSignatureStyle.ts';
 
@@ -34,7 +35,7 @@ export default async function(req: Request) {
 
     // With no securely configured edit-capable provider, explicitly request
     // the faithful local treatment. No fabricated AI edit results or charges.
-    const key = Deno.env.get('OPENAI_API_KEY');
+    const key = String(secrets.get('OPENAI_API_KEY') || '').trim();
     if (!key) return Response.json({
       ok: true, mode: 'photo_treatment', source_url: sourceUrl,
       message: 'Original-photo IFund styling is available without AI credits.',

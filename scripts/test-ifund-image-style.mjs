@@ -22,14 +22,15 @@ function mockHandler({ authenticated = true, openaiKey = null, providerResponse 
   };
   const stubReq=name=>{
     if(name.includes('base44/sdk'))return {createClientFromRequest:()=>base44};
+    if(name === 'base44:runtime')return {secrets:{get:(key)=>key==='OPENAI_API_KEY'?openaiKey:null}};
     if(name.endsWith('accountGuard.ts'))return {assertActiveAccount:async()=>({ok:true})};
     if(name.endsWith('ifundSignatureStyle.ts'))return {
       IFUND_PHOTO_EDIT_STYLE:'Keep original image and restyle in authentic IFund style',
     };
     throw Error('Unexpected import '+name);
   };
-  new Function('require','exports','Deno','fetch','Response','console','AbortSignal',source)(
-    stubReq,exports,{env:{get:()=>openaiKey}},fetch,Response,
+  new Function('require','exports','fetch','Response','console','AbortSignal',source)(
+    stubReq,exports,fetch,Response,
     {error:()=>{},warn:()=>{}},AbortSignal,
   );
   return {fn:exports.default,calls};
