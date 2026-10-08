@@ -56,7 +56,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
           environment: config.mode === "live" ? "PRODUCTION" : "TEST",
           paymentDataCallbacks: {
             onPaymentAuthorized: async (paymentData) => {
-              const failure = { transactionState: "ERROR", error: { intent: "PAYMENT_AUTHORIZATION", message: "Payment could not be confirmed. Please try again." } };
+              const failure = { transactionState: "ERROR", error: { intent: "PAYMENT_AUTHORIZATION", message: "Payment could not be confirmed safely. Please try again." } };
               try {
                 const current = propsRef.current;
                 const { data: order } = await base44.functions.invoke("createPayPalOrder", {
@@ -66,7 +66,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                   intent_id: intentId,
                   payment_channel: "googlepay",
                 });
-                if (!order?.id) return failure;
+                if (!order?.id || typeof order.id !== "string") return failure;
 
                 const confirmation = await paypalGooglePay.confirmOrder({
                   orderId: order.id,
