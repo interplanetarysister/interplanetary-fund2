@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
-import { discoverPublicCampaignSnapshot } from '../../shared/publicCampaignSnapshot.ts';
+import { discoverPublicCampaignSnapshot } from './publicCampaignSnapshot.ts';
 
 const ALLOWED = ['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
 const clean = (v, n=12000) => typeof v === 'string' ? v.trim().slice(0,n) : v;
