@@ -96,7 +96,11 @@ function fixture(opts={}) {
 }
 assert.match(read('base44/functions/setUnifiedOboConsent/entry.ts'),/approvedForAccount = granted && currentObo.granted === true/);
 assert.match(read('base44/functions/saveConnectionCredentials/entry.ts'),/accountAiConsent = unifiedObo && currentConsent.granted === true/);
-assert.match(read('src/components/connections/ConnectDialog.jsx'),/window.open\("about:blank"/);
+assert.doesNotMatch(read('src/components/connections/ConnectDialog.jsx'),/window.open\("about:blank"/);
+const connectFlow = read('src/components/connections/ConnectDialog.jsx');
+assert.ok(connectFlow.indexOf('localStorage.setItem("ifund_pending_platform_connection"') <
+  connectFlow.indexOf('base44.connectors.connectAppUser(data.connector_id)'),
+  'OAuth return state must be stored before SDK redirects');
 assert.match(read('src/App.jsx'),/ifund-provider-oauth-returned/);
 assert.match(read('src/pages/Connections.jsx'),/window.addEventListener\("message", resume\)/);
 const ui=read('src/pages/Connections.jsx');
