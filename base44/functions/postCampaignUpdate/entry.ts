@@ -62,6 +62,10 @@ Update content: ${content}`;
 
       crosspost = await generateAndDistribute({
         base44, sr, user: consentOwner || user, campaign, connections, prompt, sourceUpdateId: update.id,
+        // The campaign owner explicitly checked Cross-post and clicked Post update.
+        // That click is authorization for this publication event; standing OBO
+        // consent is only required for background/automatic publishing later.
+        explicitPublish: true,
       });
     }
 
@@ -97,7 +101,7 @@ Update content: ${content}`;
 
     return Response.json({ update, crosspost, followers_notified: notified });
   } catch (error) {
-    console.error('postCampaignUpdate error:', error.message);
+    console.error('postCampaignUpdate error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to publish your update. Please try again.' }, { status: 500 });
   }
 }
