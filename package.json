@@ -7,6 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "verify:fundraising-mode": "node scripts/verify-fundraising-mode.mjs",
     "verify:runtime-node22": "node scripts/require-node22.mjs",
     "preinstall": "npm run verify:runtime-node22 --silent",
     "predev": "npm run verify:runtime-node22 --silent",
@@ -47,7 +48,7 @@
     "test:delete-account": "node scripts/test-delete-account.mjs",
     "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
     "test:account-guard": "node scripts/test-account-guard.mjs",
-    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-paypal-financial-recovery.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs && node scripts/verify-paypal-checkout-contract.mjs && node scripts/test-paypal-wallet-readiness.mjs",
+    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-paypal-financial-recovery.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs && node scripts/verify-paypal-checkout-contract.mjs && node scripts/test-paypal-wallet-readiness.mjs && node scripts/verify-fundraising-mode.mjs",
     "preview": "vite preview",
     "verify:node22-release-contract": "node scripts/verify-node22-release-contract.mjs",
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
