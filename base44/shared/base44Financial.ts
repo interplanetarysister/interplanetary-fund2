@@ -81,8 +81,24 @@ export async function ensureCanonicalCampaign(sr, campaign) {
   const verified = rows.filter((d) => d.payment_verified === true && (!d.is_institutional || d.cleared === true));
   const raisedAmount = round2(verified.reduce((s,d) => s + giftOf(d), 0));
   const donorCount = verified.length;
-  const availableBalance = round2(verified.filter((d) => !d.withdrawal_id).reduce((s,d) => s + giftOf(d), 0));
-  return { campaignId: campaign.id, raisedAmount, donorCount, availableBalance, needsLegacyBaseline: false };
+  const donationAvailable = round2(verified.filter((d) => !d.withdrawal_id).reduce((s,d) => s + giftOf(d), 0));
+  // Verified external-platform settlements that have actually arrived in the
+  // Interplanetary holding account are available for withdrawal too. Restrict
+  // this to source_type=external_platform so direct IFund PayPal donations are
+  // not double-counted (those are already represented by Donation rows).
+  const settledExternal = await sr.entities.HoldingLedgerEntry.filter({
+    campaign_id: campaign.id,
+    beneficiary_user_id: campaign.created_by_id,
+    source_type: 'external_platform',
+    direction: 'in',
+    state: 'settled',
+  }, '-created_date', 5000).catch(() => []);
+  if (settledExternal.length >= 5000) throw new Error('Campaign external settlement baseline exceeds the safe batch size.');
+  const externalAvailable = round2(settledExternal
+    .filter((entry) => !entry.withdrawal_id)
+    .reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
+  const availableBalance = round2(donationAvailable + externalAvailable);
+  return { campaignId: campaign.id, raisedAmount, donorCount, availableBalance, donationAvailable, externalAvailable, needsLegacyBaseline: false };
 }
 
 export async function recordCanonicalDonation(sr, args) {
