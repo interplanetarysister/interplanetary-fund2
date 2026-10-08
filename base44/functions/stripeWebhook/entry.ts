@@ -5,6 +5,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { computeContribution, round2, validateDonationAmount } from '../../shared/fees.js';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
+import { reconcileCanonicalCampaignProjection } from '../../shared/base44Financial.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 import { stripePriceFor } from '../../shared/subscriptionCatalog.js';
 
@@ -104,6 +105,10 @@ async function applyStripeDonation({
   // separately so we never mislabel the first recurring payment just to obtain
   // the correct idempotency key.
   const operationKey = `stripe:${providerObjectKind}:${providerObjectId}`;
+  const blocked = await sr.entities.FinancialOperation.filter({ operation_key: operationKey }).catch(() => []);
+  if ((blocked || []).some(row => String(row.note || '').startsWith('STRIPE_REVERSAL_HOLD:'))) {
+    throw new Error('Donation has a Stripe reversal hold; paid access cannot be restored by an older event.');
+  }
   const isRenewal = providerObjectKind === 'invoice';
   const donorName = metadata?.donor_name || 'Anonymous';
   const canonical = await recordCanonicalDonation(sr, {
@@ -299,6 +304,42 @@ export default async function(req) {
         });
         return Response.json({ received: true });
       }
+    } else if (event.type === 'charge.refunded' || event.type === 'charge.dispute.created') {
+      // A refund/dispute cannot remain part of IFund's withdrawable balance.
+      // Use a fresh provider GET, not untrusted event amounts or user input.
+      const resource = event.data.object;
+      const chargeId = event.type === 'charge.refunded' ? resource.id : resource.charge;
+      if (typeof chargeId !== 'string' || !/^ch_[A-Za-z0-9]+$/.test(chargeId)) {
+        throw new Error('Stripe reversal references an invalid charge.');
+      }
+      const charge = await stripe.charges.retrieve(chargeId);
+      const reversed = charge.livemode === true &&
+        (Number(charge.amount_refunded || 0) > 0 || charge.disputed === true);
+      if (!reversed) {
+        await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString() });
+        return Response.json({ received: true, no_active_reversal: true });
+      }
+      const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
+      if (paymentIntentId && /^pi_[A-Za-z0-9]+$/.test(paymentIntentId)) {
+        const operations = await sr.entities.FinancialOperation.filter({ provider: 'stripe', provider_transaction_id: paymentIntentId });
+        for (const operation of operations || []) {
+          if (operation.operation_type !== 'donation') continue;
+          const mirrors = await sr.entities.Donation.filter({ canonical_operation_id: operation.id });
+          if (!mirrors?.length) throw new Error('Stripe reversal mirror is missing; retry and review.');
+          // Conservative full hold even on a partial refund. Finance can
+          // reconcile the exact net amount rather than risk overpaying.
+          await sr.entities.FinancialOperation.update(operation.id, {
+            note: 'STRIPE_REVERSAL_HOLD: refunded or disputed charge. Do not release. Review full/partial amounts and any prior payouts.',
+          });
+          for (const mirror of mirrors) {
+            await sr.entities.Donation.update(mirror.id, { payment_verified: false,
+              description: 'Stripe refund or dispute pending financial review.' });
+          }
+          await reconcileCanonicalCampaignProjection(sr, operation.campaign_id);
+        }
+      }
+      await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString() });
+      return Response.json({ received: true, reversal_hold_applied: true });
     } else if (event.type === 'invoice.paid') {
       const invoice = event.data.object;
       if (invoice.subscription) {
