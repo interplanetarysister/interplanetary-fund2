@@ -7,6 +7,7 @@ import { validateDonationAmount, computeProcessingFee, computeContribution, roun
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 import { isPublicCampaignFundraisingEnabled } from '../../shared/fundraisingMode.ts';
 import { areFeaturesEnabled, isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
+import { stripeCryptoGatewayReadiness } from '../../shared/stripeCryptoReadiness.ts';
 
 export default async function(req) {
   try {
@@ -16,8 +17,19 @@ export default async function(req) {
     if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
     const donor = donorGuard.donor;
 
-    const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution } = await req.json();
-    if (!(await areFeaturesEnabled(base44, ['payment_checkout_enabled','stripe_checkout']))) return featureUnavailable('Card checkout');
+    const { campaign_id, amount, donor_name, message, is_recurring, origin, platform_contribution, payment_rail } = await req.json();
+    const isCrypto = payment_rail === 'stripe_crypto';
+    if (payment_rail && payment_rail !== 'stripe_crypto' && payment_rail !== 'card') {
+      return Response.json({ error: 'Unsupported payment method.' }, { status: 400 });
+    }
+    if (!(await areFeaturesEnabled(base44, isCrypto
+      ? ['payment_checkout_enabled','crypto_donations']
+      : ['payment_checkout_enabled','stripe_checkout']))) return featureUnavailable(isCrypto ? 'Crypto checkout' : 'Card checkout');
+    if (isCrypto) {
+      if (is_recurring) return Response.json({ error: 'Crypto recurring donations are not supported.' }, { status: 400 });
+      const readiness = await stripeCryptoGatewayReadiness();
+      if (!readiness.ready) return Response.json({ error: 'Crypto payments are not available until IFund merchant approval and verification are complete.' }, { status: 503 });
+    }
     if (is_recurring && !(await isFeatureEnabled(base44, 'recurring_donations'))) return featureUnavailable('New recurring donations');
     const amountCheck = validateDonationAmount(amount);
     if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
@@ -54,6 +66,9 @@ export default async function(req) {
     const campaign = await base44.asServiceRole.entities.Campaign.get(campaign_id).catch(() => null);
     if (!campaign) return Response.json({ error: 'Campaign not found' }, { status: 404 });
     if (campaign.status !== 'active') return Response.json({ error: 'This campaign is not accepting donations.' }, { status: 400 });
+    if (isCrypto && campaign.accept_crypto_donations !== true) {
+      return Response.json({ error: 'The campaign owner has not enabled cryptocurrency donations.' }, { status: 403 });
+    }
 
     // Fail closed before creating a provider payment that cannot be reconciled
     // to the canonical financial backend.
@@ -66,6 +81,7 @@ export default async function(req) {
       donor_name: donor_name || donor?.full_name || 'Anonymous',
       message: (message || '').slice(0, 450),
       is_recurring: is_recurring ? 'true' : 'false',
+      payment_rail: isCrypto ? 'stripe_crypto' : 'card',
       donation_amount: String(value),
       processing_fee: String(processing),
       platform_contribution_amount: String(contribution),
@@ -77,6 +93,7 @@ export default async function(req) {
     const stripe = new Stripe(stripeSecret);
     const session = await stripe.checkout.sessions.create({
       mode: is_recurring ? 'subscription' : 'payment',
+      ...(isCrypto ? { payment_method_types: ['crypto'] } : {}),
       line_items: [{
         quantity: 1,
         price_data: {
