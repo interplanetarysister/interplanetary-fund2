@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { IFUND_SIGNATURE_STYLE } from '../../shared/ifundSignatureStyle.ts';
 
 // AI Social Content Generator — creates official Interplanetary Fund social
 // posts about platform features, with signature-style AI imagery. Admin-only.
@@ -116,7 +117,7 @@ export default async function(req) {
 
     // Generate signature-style image
     const imageRes = await base44.integrations.Core.GenerateImage({
-      prompt: `${topic.image_prompt}. ${SIGNATURE_STYLE}`,
+      prompt: `${topic.image_prompt}. ${IFUND_SIGNATURE_STYLE}`,
     });
 
     // Never create a media post with a broken or missing generator result.
