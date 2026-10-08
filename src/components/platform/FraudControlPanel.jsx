@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 const money = (n) => `$${(n || 0).toFixed(2)}`;
 
 // Fraud Control Panel — admin only
-// Approve/deny pending-review withdrawals; pause/unpause campaigns.
+// Approve/deny canonical pending-review withdrawals; pause/unpause campaigns.
+// Admin-attested external migration records have no reservation/payout destination
+// and are intentionally excluded from this payout-action queue.
 export default function FraudControlPanel() {
   const [withdrawals, setWithdrawals] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -23,7 +25,7 @@ export default function FraudControlPanel() {
       base44.entities.Withdrawal.filter({ status: "under_review" }),
       base44.entities.Campaign.filter({ status: "paused" }),
     ]);
-    setWithdrawals(w || []);
+    setWithdrawals((w || []).filter((row) => !!row.canonical_reservation_id && !!row.paypal_email));
     setCampaigns(c || []);
     setLoading(false);
   };
