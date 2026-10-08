@@ -71,7 +71,8 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { platform } = await req.json().catch(() => ({}));
+    const body = await req.json().catch(() => ({}));
+    const { platform } = body;
     const key = String(platform || '').toLowerCase();
     const cfg = CONFIG[key];
     // Canonical IFund-wide OBO is the sole authorization decision. Provider
@@ -92,13 +93,23 @@ export default async function(req) {
     }
 
     const existing = (await base44.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }))[0] || null;
+    const requestedCampaignId = String(body.campaign_id || existing?.campaign_id || '').trim();
+    let pairedCampaign = null;
+    if (requestedCampaignId) {
+      pairedCampaign = await base44.asServiceRole.entities.Campaign.get(requestedCampaignId).catch(() => null);
+      if (!pairedCampaign || pairedCampaign.created_by_id !== user.id) {
+        return Response.json({ error: 'The selected campaign is not available to this account.' }, { status: 403 });
+      }
+    }
+    const requestedDisplayName = String(body.display_name || pairedCampaign?.title || existing?.display_name || key).trim().slice(0, 200);
     const now = new Date().toISOString();
     const confirmed = providerCapabilities(oauth);
     const data = {
       platform: key,
       kind: cfg.kind,
-      display_name: existing?.display_name || key,
+      display_name: requestedDisplayName || key,
       external_url: existing?.external_url || '',
+      campaign_id: requestedCampaignId || undefined,
       automation_mode: 'manual',
       obo_consent: {
         granted: false,
@@ -137,10 +148,10 @@ export default async function(req) {
       provider_verified: false, verification_required: true,
       ai_consent_required: true,
       // No credentials are returned to the client.
-      connection: { id: saved.id, platform: saved.platform, status: saved.status },
+      connection: { id: saved.id, platform: saved.platform, status: saved.status, campaign_id: saved.campaign_id || '', display_name: saved.display_name || '' },
     });
   } catch (error) {
-    console.error('finalizeAppUserOAuthConnection error:', error?.message || error);
+    console.error('finalizeAppUserOAuthConnection error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to finish this connection.' }, { status: 500 });
   }
 }
