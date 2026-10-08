@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Bell, Loader2, CheckCheck, ChevronRight } from "lucide-react";
@@ -9,36 +9,65 @@ export default function Notifications() {
   const navigate = useNavigate();
   const [items, setItems] = useState(null);
   const [user, setUser] = useState(null);
+  const [error, setError] = useState("");
+  const requestGeneration = useRef(0);
+  const mountedRef = useRef(true);
 
   const load = async () => {
+    const generation = ++requestGeneration.current;
     try {
       const me = await base44.auth.me();
-      setUser(me);
+      if (!me?.id) throw new Error("Malformed auth response");
       const mine = await base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50);
+      if (!Array.isArray(mine)) throw new Error("Malformed notification response");
+      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      setUser(me);
       setItems(mine);
-    } catch {
-      setItems([]);
+      setError("");
+      return true;
+    } catch (e) {
+      console.error("Notifications load failed:", e?.name || "UnknownError");
+      if (mountedRef.current && generation === requestGeneration.current) {
+        setItems([]);
+        setError("We couldn't load your notifications. Please try again.");
+      }
+      return false;
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    mountedRef.current = true;
+    load();
+    return () => {
+      mountedRef.current = false;
+      requestGeneration.current += 1;
+    };
+  }, []);
 
   const markAllRead = async () => {
     if (!user) return;
-    await base44.entities.Notification.updateMany({ user_id: user.id, read: false }, { $set: { read: true } });
-    load();
+    try {
+      await base44.entities.Notification.updateMany({ user_id: user.id, read: false }, { $set: { read: true } });
+      await load();
+    } catch (e) {
+      console.error("Mark notifications read failed:", e?.name || "UnknownError");
+      if (mountedRef.current) setError("We couldn't update your notifications. Please try again.");
+    }
   };
 
   const openItem = async (n) => {
     if (!n.read) {
       setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
-      await base44.entities.Notification.update(n.id, { read: true });
+      await base44.entities.Notification.update(n.id, { read: true }).catch((e) => {
+        console.error("Notification update failed:", e?.name || "UnknownError");
+        if (mountedRef.current) setError("We couldn't update this notification. Please try again.");
+      });
     }
     if (n.link) navigate(n.link);
   };
 
   if (!items) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading notifications</span></div>;
   }
 
   const unread = items.filter((n) => !n.read).length;
@@ -58,6 +87,8 @@ export default function Notifications() {
           </Button>
         )}
       </div>
+
+      {error && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">{error} <button type="button" onClick={() => { setItems(null); load(); }} className="font-semibold underline">Retry</button></div>}
 
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
