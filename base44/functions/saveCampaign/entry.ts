@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step']);
 const STATUSES = new Set(['draft','active','paused','completed']);
@@ -6,8 +7,9 @@ const STATUSES = new Set(['draft','active','paused','completed']);
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Authentication required' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
     const body = await req.json().catch(() => ({}));
     const campaignId = String(body?.campaign_id || '').trim();
     const input = body?.campaign && typeof body.campaign === 'object' && !Array.isArray(body.campaign) ? body.campaign : null;
