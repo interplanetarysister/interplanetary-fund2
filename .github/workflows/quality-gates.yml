@@ -108,6 +108,9 @@ jobs:
       - name: Connection lifecycle and operational health contract
         run: npm run verify:connection-lifecycle
 
+      - name: Integration registry truth contract
+        run: node scripts/verify-integration-registry-truth.mjs
+
       - name: Managed Connections authorization and delegation contract
         run: npm run verify:managed-connections
 
