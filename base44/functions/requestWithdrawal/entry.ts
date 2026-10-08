@@ -1,3 +1,4 @@
+import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendPayout, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { giftOf, round2, computeWithdrawal } from '../../shared/fees.js';
@@ -227,6 +228,12 @@ export default async function(req) {
     const user = guard.user;
     const body = await req.json();
     const action = body.action || 'request';
+    // An emergency payout pause applies BEFORE new reservations or approvals.
+    // Historical payout reconciliation, donation verification, provider status
+    // resolution, and safe reservation release must always remain available.
+    if ((action === 'request' || action === 'approve') &&
+        !(await isFeatureEnabled(base44, 'outbound_payout_execution')))
+      return featureUnavailable('New payouts');
 
     if (action === 'clear') {
       if (user.role !== 'admin') return Response.json({ error: 'Admin only.' }, { status: 403 });
