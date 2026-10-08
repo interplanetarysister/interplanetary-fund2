@@ -1,5 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { logAudit } from '../../shared/auditLog.ts';
+import Stripe from 'npm:stripe@17.7.0';
+import { secrets } from 'base44:runtime';
+import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 
 // Retry-safe account deletion state machine. The account is deleted or
 // anonymized LAST — never first — so a mid-process failure leaves the user
@@ -46,13 +49,30 @@ export default async function(req) {
       await audit('account_deletion_authorized', 'success', 'Deletion authorized; no data touched yet.');
     }
 
+    // Financial obligations must outlive an account. Refuse deletion while
+    // money is reserved, under review, awaiting reconciliation, or still owed
+    // to one of the user's campaigns. This prevents a privacy action from
+    // destroying the ownership/reconciliation trail for real funds.
+    const openWithdrawals = await sr.entities.Withdrawal.filter({ owner_user_id: user.id }).catch(() => []);
+    const blockingWithdrawal = (openWithdrawals || []).find((w) => !['paid', 'failed', 'cancelled'].includes(w.status));
+    if (blockingWithdrawal) {
+      return Response.json({ error: 'Your account has a withdrawal still being processed or reviewed. Finish or resolve it before deleting the account.' }, { status: 409 });
+    }
+    const ownedCampaigns = await sr.entities.Campaign.filter({ created_by_id: user.id }).catch(() => []);
+    for (const campaign of ownedCampaigns || []) {
+      const financial = await ensureCanonicalCampaign(sr, campaign).catch(() => null);
+      if (financial && Number(financial.availableBalance || 0) > 0) {
+        return Response.json({ error: 'Your account still has campaign funds available to withdraw. Withdraw or resolve those funds before deleting the account.' }, { status: 409 });
+      }
+    }
+
     // ---- Stage 2: mark pending + revoke access ----
     if (!resuming) {
       await sr.entities.User.update(user.id, { account_deletion_pending: true });
       await audit('account_deletion_pending', 'success', 'Access revoked; cleanup will run next.');
     }
 
-    // ---- Stage 3: data cleanup (idempotent) ----
+    // ---- Stage 3: stop future provider billing before local cleanup ----
     const runStep = async (name, fn) => {
       try {
         await fn();
@@ -64,6 +84,42 @@ export default async function(req) {
       }
     };
 
+    await runStep('provider_billing', async () => {
+      const stripeKey = String(secrets.get('STRIPE_SECRET_KEY') || '');
+      if (!stripeKey.startsWith('sk_live_')) return;
+      const stripe = new Stripe(stripeKey);
+
+      // Cancel the user's IFund plan subscriptions, if any.
+      if (fresh.stripe_customer_id) {
+        const subscriptions = await stripe.subscriptions.list({ customer: fresh.stripe_customer_id, status: 'all', limit: 100 });
+        for (const subscription of subscriptions.data || []) {
+          if (!['canceled', 'incomplete_expired'].includes(subscription.status)) {
+            await stripe.subscriptions.cancel(subscription.id);
+          }
+        }
+      }
+
+      // Cancel recurring donations initiated by this user. Checkout Session is
+      // the stored provider reference; resolve it to the actual subscription.
+      const recurring = await sr.entities.Donation.filter({
+        donor_user_id: user.id,
+        payment_method: 'stripe',
+        is_recurring: true,
+        payment_verified: true,
+      }, 'created_date', 1000).catch(() => []);
+      const sessionIds = [...new Set((recurring || []).map((d) => String(d.stripe_session_id || '')).filter((id) => id.startsWith('cs_')))];
+      for (const sessionId of sessionIds) {
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+        if (!subscriptionId) continue;
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        if (!['canceled', 'incomplete_expired'].includes(subscription.status)) {
+          await stripe.subscriptions.cancel(subscriptionId);
+        }
+      }
+    });
+
+    // ---- Stage 4: data cleanup (idempotent) ----
     await runStep('personal_data', async () => {
       await sr.entities.FollowedCampaign.deleteMany({ user_id: user.id });
       await sr.entities.Notification.deleteMany({ user_id: user.id });
@@ -79,7 +135,6 @@ export default async function(req) {
       await sr.entities.DiscussionPost.deleteMany({ created_by_id: user.id });
       await sr.entities.DiscussionReply.deleteMany({ created_by_id: user.id });
       await sr.entities.GrantApplication.deleteMany({ applicant_user_id: user.id });
-      await sr.entities.Withdrawal.deleteMany({ owner_user_id: user.id });
     });
 
     await runStep('anonymize_donations', async () => {
@@ -97,21 +152,45 @@ export default async function(req) {
       const campaigns = await sr.entities.Campaign.filter({ created_by_id: user.id });
       for (const c of campaigns) {
         await sr.entities.CampaignUpdate.deleteMany({ campaign_id: c.id });
-        await sr.entities.Donation.deleteMany({ campaign_id: c.id });
         await sr.entities.DistributedPost.deleteMany({ campaign_id: c.id });
         await sr.entities.AgentActivity.deleteMany({ campaign_id: c.id });
         await sr.entities.AgentDelegation.deleteMany({ owner_user_id: user.id, campaign_id: c.id });
+        // Preserve the campaign id itself because Donation, Withdrawal,
+        // FinancialOperation and HoldingLedgerEntry records may legally and
+        // operationally reference it. Remove public/personal campaign content.
+        await sr.entities.Campaign.update(c.id, {
+          title: 'Deleted account campaign',
+          summary: '',
+          story: '',
+          status: 'paused',
+          cover_image_url: '',
+          location: '',
+          location_lat: null,
+          location_lng: null,
+          ai_profile: {},
+          story_versions: [],
+          outreach_enabled: false,
+          outreach_paused: true,
+        });
       }
-      await sr.entities.Campaign.deleteMany({ created_by_id: user.id });
+    });
+
+    await runStep('financial_identity_redaction', async () => {
+      // Preserve immutable amounts, provider references, status, fee and
+      // reconciliation history while removing redundant display PII.
+      await sr.entities.Withdrawal.updateMany(
+        { owner_user_id: user.id },
+        { $set: { user_name: 'Deleted user', paypal_email: '' } }
+      );
     });
 
     await runStep('connections', async () => {
       await sr.entities.PlatformConnection.deleteMany({ created_by_id: user.id });
     });
 
-    await audit('account_deletion_cleanup_done', 'success', 'All owned data wiped.');
+    await audit('account_deletion_cleanup_done', 'success', 'Personal data removed; financial records retained and redacted where required.');
 
-    // ---- Stage 4: delete or anonymize the account LAST ----
+    // ---- Stage 5: delete or anonymize the account LAST ----
     try {
       await sr.entities.User.delete(user.id);
       await audit('account_deleted', 'success', 'Account deleted after data wipe.');
@@ -130,6 +209,7 @@ export default async function(req) {
         subscription_renews_at: null,
         trial_end: null,
         stripe_customer_id: '',
+        username: '',
         account_deletion_pending: true,
         account_status: 'disabled',
       });
@@ -137,7 +217,7 @@ export default async function(req) {
       return Response.json({ anonymized: true, reason: 'Account anonymized.' });
     }
   } catch (error) {
-    console.error('deleteAccount error:', error && error.message ? error.message : error);
+    console.error('deleteAccount error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to delete your account. Please try again or contact support.' }, { status: 500 });
   }
 }
