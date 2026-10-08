@@ -54,7 +54,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         return;
       }
       if (!data?.configured || !data?.connector_id) {
-        setError("Facebook Pages and other publishing connections require an IFund provider connector. Sign-in alone cannot grant posting access; setup is not finished yet.");
+        setError(platform.id === "facebook"
+          ? "Facebook Pages publishing has not been configured for IFund yet. Facebook sign-in does not grant posting permission."
+          : "This platform connection requires provider setup before sign-in can open.");
         return;
       }
       const me = await base44.auth.me();
