@@ -16,8 +16,15 @@ export default defineConfig({
     }),
     react(),
   ],
-  // Reown is intentionally opened lazily by the wallet button; don't preload
-  // obsolete React entrypoints via Vite's dependency optimizer.
+  optimizeDeps: {
+    include: [
+      '@reown/appkit/react',
+      '@reown/appkit-adapter-ethers',
+      '@reown/appkit-adapter-solana/react',
+      '@reown/appkit-adapter-bitcoin',
+      '@reown/appkit/networks',
+    ],
+  },
   build: {
     rollupOptions: {
       output: {
