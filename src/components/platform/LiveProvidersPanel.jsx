@@ -103,6 +103,11 @@ export default function LiveProvidersPanel() {
         <a href="/admin/integrations" className="text-xs text-blue-700 underline">IFund integration health</a>
       </div>
     </section>}
+    {snapshot?.connections?.length > 0 && <details className="bg-white border border-stone-200 rounded-2xl p-4">
+      <summary className="text-sm font-semibold text-stone-900 cursor-pointer">Connected account diagnostics ({snapshot.connections.length})</summary>
+      <p className="text-xs text-stone-600 mt-2">OAuth configuration is not proof that a provider action works. Run integration health checks in the IFund admin console.</p>
+      <div className="divide-y divide-stone-100 mt-2 max-h-72 overflow-y-auto">{snapshot.connections.map((r, i) => <div key={`${r.platform}-${i}`} className="flex justify-between gap-3 py-2 text-xs"><span className="text-stone-800">{r.platform}</span><span className={r.live_verified ? "text-emerald-700" : "text-amber-800"}>{r.live_verified ? "Verified" : r.state === "ACTIVE" ? "Recheck required" : r.state}</span></div>)}</div>
+    </details>}
     {snapshot && <section className="bg-white rounded-2xl border border-stone-200 divide-y divide-stone-100">
       <div className="p-5">
         <h3 className="font-semibold text-stone-900">Administrator live switches</h3>
