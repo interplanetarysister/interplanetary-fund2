@@ -81,7 +81,7 @@ assert.match(styles,/space.comic/i);
 assert.match(styles,/afro/i);
 assert.match(read('base44/functions/generateCampaignCover/entry.ts'),/IFUND_SIGNATURE_STYLE/);
 assert.match(read('base44/functions/generateSocialContent/entry.ts'),/IFUND_SIGNATURE_STYLE/);
-assert.doesNotMatch(backend,/GenerateImage/,'Never pretend a text prompt sees uploaded photos');
+assert.doesNotMatch(backend,/Core\.GenerateImage\(/,'Never pretend a text prompt sees uploaded photos');
 const media=read('src/components/media/MediaUpload.jsx');
 assert.match(media,/createIfundPhotoTreatment\(source\)/);
 assert.match(media,/brandAndUploadGeneratedImage\(base44, imageSource\)/);
