@@ -61,7 +61,10 @@ export default function GlobalGlobe() {
             <Globe2 className="w-4 h-4 text-cyan-400" />
             <span className="font-display text-sm hidden sm:block">Global Activity</span>
           </div>
-          <Link to="/discover" className="text-xs text-cyan-300 hover:text-cyan-200">Browse all →</Link>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="text-xs text-cyan-300 hover:text-cyan-200">Home</Link>
+            <Link to="/discover" className="text-xs text-cyan-300 hover:text-cyan-200">Browse campaigns →</Link>
+          </div>
         </div>
       </header>
 

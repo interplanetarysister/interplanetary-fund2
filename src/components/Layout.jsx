@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen, House, CircleHelp } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
@@ -12,7 +12,8 @@ import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
-import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
 
 const PAGE_TITLES = {
@@ -21,7 +22,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/social": "Social", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
+  "/social": "Social", "/devices": "Connected Devices", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -104,63 +105,21 @@ const bottomNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState(null);
-  useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => setUser(null));
-  }, []);
+  const { user: currentUser, isAuthenticated } = useAuth();
+  const user = isAuthenticated ? currentUser : null;
   const isAdmin = user?.role === "admin";
   const hasAiAgents = hasPlanLevel(user, 1);
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const TAB_ROOTS = ["/", "/dashboard", "/discover", "/social", "/inbox", "/profile"];
-  const isRoot = TAB_ROOTS.includes(pathname);
-  useSwipeBack(!isRoot);
-
-  const tabStacks = useRef(Object.fromEntries(TAB_ROOTS.map((r) => [r, r])));
-  const TAB_SECTIONS = {
-    "/dashboard": ["/dashboard"],
-    "/discover": ["/discover", "/campaign", "/globe", "/create"],
-    "/social": ["/social"],
-    "/inbox": ["/inbox", "/communications", "/notifications"],
-    "/profile": ["/profile", "/giving", "/following", "/subscriptions", "/withdrawals", "/ledger"],
-  };
-  const owningRoot = (p) => {
-    if (p === "/") return "/";
-    if (p === "/dashboard") return "/dashboard";
-    const hit = Object.entries(TAB_SECTIONS).find(([, prefixes]) =>
-      prefixes.some((pre) => p === pre || p.startsWith(pre + "/"))
-    );
-    return hit ? hit[0] : null;
-  };
-  const activeTab = useRef(owningRoot(pathname) || "/dashboard");
-  const navDepth = useRef(0);
-  useEffect(() => {
-    navDepth.current += 1;
-    const root = owningRoot(pathname);
-    if (root) activeTab.current = root;
-    tabStacks.current[activeTab.current] = pathname;
-  }, [pathname]);
-  const goTab = (root) => {
-    hapticTap();
-    if (activeTab.current === root) {
-      tabStacks.current[root] = root;
-      activeTab.current = root;
-      navigate(root);
-      return;
-    }
-    activeTab.current = root;
-    navigate(tabStacks.current[root] || root);
-  };
-  const isTabActive = (root) =>
-    root === "/dashboard"
-      ? pathname === "/dashboard" || activeTab.current === "/dashboard"
-      : pathname === root || pathname.startsWith(root + "/") || activeTab.current === root;
-
+  const activeTab = owningNavigationTab(pathname, !!user);
+  const isRoot = ["/", "/dashboard", "/discover", "/social", "/inbox",
+    "/profile", "/community", "/help", "/globe"].includes(pathname);
   const goBack = () => {
-    if (navDepth.current > 1) navigate(-1);
-    else navigate(owningRoot(pathname) || "/dashboard");
+    if (canReturnWithinApp(window.history.state)) navigate(-1);
+    else navigate(navigationBackFallback(pathname, !!user), { replace: true });
   };
-
+  useSwipeBack(!isRoot, goBack);
+  useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
@@ -254,20 +213,23 @@ export default function Layout() {
         </>
       )}
 
-      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
+      <nav aria-label="Bottom navigation" className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
         {(user ? bottomNavItems : publicNavItems).map(({ to, label, icon: Icon }) => {
-          const active = isTabActive(to);
+          const active = activeTab === to;
           return (
-            <button
+            <NavLink
               key={to}
-              onClick={() => goTab(to)}
-              className={`flex flex-1 flex-col items-center justify-center gap-0.5 py-2 min-h-[44px] text-[10px] font-medium transition-colors ${
-                active ? "text-cyan-400" : "text-slate-400"
-              }`}
+              to={to}
+              end
+              onClick={() => { hapticTap(); setOpen(false); }}
+              aria-current={active ? "page" : undefined}
+              className={active
+                ? "flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 min-h-[48px] text-[10px] font-medium text-cyan-400"
+                : "flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 min-h-[48px] text-[10px] font-medium text-slate-400"}
             >
-              <Icon className="w-5 h-5" strokeWidth={1.75} />
-              {label}
-            </button>
+              <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
+              <span className="max-w-full truncate px-0.5 text-center">{label}</span>
+            </NavLink>
           );
         })}
       </nav>
