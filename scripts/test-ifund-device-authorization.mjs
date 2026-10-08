@@ -29,6 +29,11 @@ const entity={
       const row=rows.find(r=>r.id===id);if(!row)throw Error('missing auth');
       Object.assign(row,patch);return {...row};
     },
+    updateMany:async(q,patch)=>{
+      const matches=rows.filter(r=>r.id===q.id && r.state===q.state);
+      for(const r of matches)Object.assign(r,patch.$set);
+      return {count:matches.length};
+    },
   },
   RateLimitBucket:{
     filter:async(q)=>{

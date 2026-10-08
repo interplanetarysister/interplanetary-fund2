@@ -139,13 +139,20 @@ export default async function(req: Request) {
         scopes:row.scopes.filter((s:string)=>DEVICE_SCOPES.includes(s)),expires_at:row.expires_at,
       });
       if (!['approve','deny'].includes(body.decision)) return fail('Choose Approve or Deny.');
-      if (body.decision === 'approve') {
-        await sr.entities.DeviceAuthorization.update(row.id,{
-          state:'approved',owner_user_id:owner.id,approved_at:new Date().toISOString(),
-          grant_expires_at:new Date(Date.now()+DEVICE_GRANT_LIFETIME_MS).toISOString(),
-        });
-      } else {
-        await sr.entities.DeviceAuthorization.update(row.id,{state:'denied',owner_user_id:owner.id});
+      const patch = body.decision === 'approve' ? {
+        state:'approved',owner_user_id:owner.id,approved_at:new Date().toISOString(),
+        grant_expires_at:new Date(Date.now()+DEVICE_GRANT_LIFETIME_MS).toISOString(),
+      } : {state:'denied',owner_user_id:owner.id};
+      // Compare-and-set the PENDING state so two simultaneous human decisions
+      // cannot silently transfer a grant between accounts.
+      await sr.entities.DeviceAuthorization.updateMany(
+        {id:row.id,state:'pending'},{$set:patch},
+      );
+      const persisted=await sr.entities.DeviceAuthorization.get(row.id);
+      if (!persisted || persisted.owner_user_id !== owner.id ||
+          persisted.state !== patch.state ||
+          (patch.state === 'approved' && persisted.approved_at !== patch.approved_at)) {
+        return fail('This authorization was already decided. Start a new request.',409);
       }
       return Response.json({ok:true,decision:body.decision});
     }
