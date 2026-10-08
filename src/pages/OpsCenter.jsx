@@ -122,7 +122,7 @@ export default function OpsCenter() {
             {syncing ? "Syncing…" : "Sync Now"}
           </button>
         </div>
-        {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>
+        {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>}
 
         {error ? (
           <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
