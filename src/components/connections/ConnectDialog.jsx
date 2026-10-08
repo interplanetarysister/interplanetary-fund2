@@ -181,7 +181,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
-          {usesProviderOAuth && (!existing || existing?.capability_status === "reauthorization_required") ? (
+          {usesProviderOAuth ? (
             <Button onClick={connectWithProvider} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>

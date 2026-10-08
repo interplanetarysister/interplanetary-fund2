@@ -35,7 +35,10 @@ export default async function(req: Request) {
       return Response.json({ error: 'Finish the provider sign-in before choosing AI permissions.' }, { status: 409 });
 
     const now = new Date().toISOString();
-    if (allowAi && user.ai_obo_consent?.granted !== true) {
+    if (allowAi && (
+      user.ai_obo_consent?.granted !== true ||
+      user.ai_obo_consent?.permission_version !== CONSENT_VERSION
+    )) {
       // This is the user's explicit unified authorization decision. It does not
       // auto-enable older per-connection grants or bypass provider scopes.
       const shared = { granted: true, decided_at: now, permission_version: CONSENT_VERSION };
