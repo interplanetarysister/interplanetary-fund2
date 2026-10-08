@@ -42,6 +42,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   }, [open, existing]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const selectedCampaign = campaigns.find((campaign) => campaign.id === form.campaign_id) || null;
+  const selectCampaign = (campaignId) => {
+    const selected = campaigns.find((campaign) => campaign.id === campaignId);
+    setForm((current) => ({
+      ...current,
+      campaign_id: campaignId,
+      // Pairing a campaign also names the connection after that campaign so the
+      // user never has to type the same title twice.
+      display_name: selected?.title || current.display_name || "",
+    }));
+  };
 
   const connectWithProvider = async () => {
     if (connecting) return;
@@ -66,10 +77,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
         platform: platform.id, userId: me.id, startedAt: Date.now(),
         step: "oauth_pending",
-        returnPath: window.location.pathname + window.location.search + window.location.hash,
+        campaignId: form.campaign_id || "",
+        campaignTitle: selectedCampaign?.title || form.display_name || "",
+        displayName: selectedCampaign?.title || form.display_name || "",
+        publishInitial: platform.kind !== "app" && !!form.campaign_id,
+        returnPath: "/connections",
       }));
       // A single-tab flow preserves the IFund origin/session on mobile and
       // avoids popup callbacks landing in an unrelated Base44 editor window.
+      if (platform.kind !== "app" && !form.campaign_id) throw new Error("Choose a campaign before connecting this platform.");
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
       if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
       const destination = new URL(String(redirectUrl));
@@ -147,13 +163,20 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
           <div className="space-y-1.5">
             <Label>Linked Interplanetary Fund campaign</Label>
-            <Select value={form.campaign_id} onValueChange={(v) => set("campaign_id", v)}>
-              <SelectTrigger><SelectValue placeholder="Optional — pick a campaign" /></SelectTrigger>
+            <Select value={form.campaign_id} onValueChange={selectCampaign}>
+              <SelectTrigger><SelectValue placeholder={platform.kind === "app" ? "Optional — pick a campaign" : "Pick the campaign to publish first"} /></SelectTrigger>
               <SelectContent>
                 {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
+          {platform.kind !== "app" && selectedCampaign && (
+            <div className="space-y-1.5">
+              <Label>Connection title</Label>
+              <Input value={form.display_name} readOnly aria-readonly="true" />
+              <p className="text-xs text-muted-foreground">This title follows the paired Interplanetary Fund campaign automatically.</p>
+            </div>
+          )}
           {isCrowd && (
             <div className="space-y-2">
               <p className="text-xs text-stone-500">Enter the numbers shown on the other fundraiser. We’ll label them as confirmed only after we can check them.</p>
@@ -185,8 +208,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           )}
           {error && <p className="text-sm text-red-600">{error}</p>}
           {usesProviderOAuth ? (
-            <Button onClick={connectWithProvider} disabled={connecting} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
+            <Button onClick={connectWithProvider} disabled={connecting || (platform.kind !== "app" && !selectedCampaign)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCampaign && platform.kind !== "app" ? `Link ${selectedCampaign.title} to ${platform.name}` : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>
           ) : (
             <Button onClick={save} disabled={saving} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
