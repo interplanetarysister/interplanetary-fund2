@@ -91,12 +91,14 @@ export default function DevicePairingSelfTest({ onChanged }) {
         return;
       }
       let delay = 5000;
+      let receivedGrant = false;
       try {
         const reply = await invokeDevice({
           mode:"poll",grant_type:DEVICE_GRANT,device_code:secretRef.current,
         });
         if (!active) return;
         if (reply.access_token && reply.token_type === "Bearer") {
+          receivedGrant = true;
           // Keep status=waiting until verification and revocation finish so
           // React does not clean up this active polling effect prematurely.
           setVerifying(true);
@@ -138,7 +140,13 @@ export default function DevicePairingSelfTest({ onChanged }) {
         else if (reply.error === "expired_token") {secretRef.current = "";setStatus("expired");return;}
         else {setStatus("failed");setError("Authorization status could not be checked.");return;}
       } catch {
-        if (active) {setStatus("failed");setError("Could not contact the device authorization service.");}
+        if (active) {
+          setVerifying(false);
+          setStatus(receivedGrant ? "cleanup" : "failed");
+          setError(receivedGrant
+            ? "The test device was approved, but the verification could not finish. Revoke its access from your device list."
+            : "Could not contact the device authorization service.");
+        }
         return;
       }
       if (active) next = setTimeout(check,delay);
