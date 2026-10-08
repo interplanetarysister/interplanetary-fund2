@@ -87,7 +87,9 @@ export function assessFeatureReadiness(key: string, providers: Awaited<ReturnTyp
   const payout = p.paypal_payouts.ready;
   const registryActive = (platform: string) => registry.some((r: any) =>
     String(r.platform || '').toLowerCase() === platform &&
-    String(r.status || '').toUpperCase() === 'ACTIVE' && r.provider_verified === true);
+    String(r.status || '').toUpperCase() === 'ACTIVE' &&
+    Number.isFinite(Date.parse(r.last_successful_verification)) &&
+    Date.now() - Date.parse(r.last_successful_verification) < 24 * 60 * 60 * 1000);
   const social = ['facebook_pages','linkedin','discord','instagram','tiktok'].some(registryActive);
   const connectedNetwork = ['facebook_pages','linkedin','discord','instagram','tiktok','wix','github'].some(registryActive);
   const known: Record<string, ReturnType<typeof settled>> = {
