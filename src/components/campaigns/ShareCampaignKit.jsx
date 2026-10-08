@@ -1,90 +1,89 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Share2, Copy, Check, Code2, QrCode, Download } from "lucide-react";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
+import { buildCampaignEmbed } from "@/lib/campaignSharing";
+import { copyText } from "@/lib/copyText";
 
-// The Universal Donation Button — the campaign's permanent Interplanetary Fund
-// URL packaged as a branded button anyone can embed on websites, blogs, forums,
-// and articles. Includes copy link, HTML embed, QR code, share, and a live preview.
+// Both embed snippets are always visible, selectable, and copyable even when
+// mobile browsers block clipboard permissions. Never put preview/editor URLs
+// in code pasted outside IFund: use the canonical public domain.
 export default function ShareCampaignKit({ campaign }) {
   const platformOnlyMode = !usePublicCampaignFundraising();
   const [copied, setCopied] = useState("");
-  const url = `${window.location.origin}/campaign/${campaign.id}`;
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=${encodeURIComponent(url)}`;
+  const [warning, setWarning] = useState("");
+  const cardRef = useRef(null);
+  const buttonRef = useRef(null);
+  const linkRef = useRef(null);
+  const embed = buildCampaignEmbed(campaign, platformOnlyMode);
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=${encodeURIComponent(embed.url)}`;
 
-  const embedHtml = `<a href="${url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#22d3ee,#3b82f6,#7c3aed);color:#ffffff;font-family:system-ui,sans-serif;font-weight:600;font-size:15px;padding:12px 24px;border-radius:12px;text-decoration:none;box-shadow:0 4px 14px rgba(59,130,246,.35);">&#128640; ${platformOnlyMode ? "View Campaign" : "Donate &mdash; Interplanetary Fund"}</a>`;
-
-  const embedIframe = `<iframe src="${window.location.origin}/embed/campaign/${campaign.id}" width="340" height="440" style="border:0;border-radius:16px;overflow:hidden" loading="lazy" title="${(campaign.title || 'Campaign').replace(/"/g, '&quot;')}"><a href="${window.location.origin}/campaign/${campaign.id}" target="_blank" rel="noopener">${platformOnlyMode ? `Preview ${campaign.title || "this campaign"} — campaign donations are paused; platform support does not fund this campaign` : `Support ${campaign.title || "this campaign"}`}</a></iframe>`;
-
-  const copy = async (what, text) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(what);
-    setTimeout(() => setCopied(""), 2000);
+  const copy = async (which, text, ref) => {
+    const success = await copyText(text, ref?.current);
+    setCopied(success ? which : "");
+    setWarning(success ? "" : "Clipboard access is unavailable. Tap the code field, select its text and use Copy.");
+    if (success) setTimeout(() => setCopied(""), 2200);
   };
-
   const share = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: campaign.title, url }); } catch { /* dismissed */ }
-    } else {
-      copy("link", url);
+      try { await navigator.share({ title: campaign.title || "Campaign", url: embed.url }); return; }
+      catch { /* user canceled or native share unavailable */ }
     }
+    await copy("link", embed.url, linkRef);
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">
+    <section className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm" aria-label="Share and embed campaign">
       <h3 className="flex items-center gap-2 font-display text-lg text-stone-900 mb-1">
-        <Share2 className="w-4 h-4 text-primary" /> {platformOnlyMode ? "Universal View Campaign" : "Universal Donation Button"}
+        <Share2 className="w-4 h-4 text-primary" /> Share & embed campaign
       </h3>
       <p className="text-xs text-stone-500 mb-4">
-        {platformOnlyMode ? "Your campaign is live and shareable. Campaign donations are currently paused; separate platform support donations never count toward this campaign." : "One permanent campaign URL. Embed the button anywhere — every click opens this donation page."}
+        {platformOnlyMode ? "Your campaign stays public and shareable. Individual campaign donations are currently paused." :
+          "Copy a permanent IFund link or paste the campaign card into a website, blog or profile."}
       </p>
 
-      {/* Live preview */}
-      <div className="rounded-xl bg-slate-50 border border-stone-200 p-4 flex justify-center mb-3">
-        <a href={url} className="inline-flex items-center gap-2 bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-600 text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-lg shadow-blue-500/30">
-          🚀 {platformOnlyMode ? "View Campaign" : "Donate — Interplanetary Fund"}
+      <label htmlFor="ifund-campaign-link" className="block text-xs font-semibold text-stone-700 mb-1">Permanent campaign link</label>
+      <textarea id="ifund-campaign-link" ref={linkRef} readOnly value={embed.url}
+        onFocus={e => e.target.select()} rows={2}
+        className="w-full rounded-lg border border-stone-300 bg-slate-50 p-3 text-sm text-slate-900 break-all resize-y" />
+      <div className="flex flex-wrap gap-2 mt-2 mb-4">
+        <Button type="button" variant="outline" size="sm" onClick={() => copy("link", embed.url, linkRef)}>
+          {copied === "link" ? <Check /> : <Copy />} {copied === "link" ? "Link copied" : "Copy link"}
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={share}><Share2 /> Share</Button>
+      </div>
+
+      <label htmlFor="ifund-campaign-card-code" className="block text-xs font-semibold text-stone-700 mb-1">Embed campaign card — copy all HTML</label>
+      <textarea id="ifund-campaign-card-code" ref={cardRef} readOnly rows={6}
+        value={embed.card} onFocus={e => e.target.select()}
+        className="w-full rounded-lg border border-stone-300 bg-slate-50 p-3 font-mono text-xs text-slate-900 resize-y" />
+      <Button type="button" variant="outline" size="sm" className="w-full mt-2 rounded-xl"
+        onClick={() => copy("card", embed.card, cardRef)}>
+        {copied === "card" ? <Check /> : <Code2 />} {copied === "card" ? "Card HTML copied" : "Copy campaign card HTML"}
+      </Button>
+
+      <div className="rounded-xl bg-slate-50 border border-stone-200 p-3 mt-4 flex justify-center">
+        <iframe src={`${window.location.origin}/embed/campaign/${encodeURIComponent(campaign.id)}`}
+          width="280" height="370" title={`${campaign.title || "Campaign"} preview`}
+          className="border-0 rounded-2xl max-w-full overflow-hidden" />
+      </div>
+      <p className="text-[11px] text-stone-500 mt-2">This preview opens the real campaign; payments are handled on IFund, not inside an embedded frame.</p>
+
+      <label htmlFor="ifund-campaign-button-code" className="block text-xs font-semibold text-stone-700 mt-4 mb-1">Embed a smaller campaign button</label>
+      <textarea id="ifund-campaign-button-code" ref={buttonRef} readOnly rows={4}
+        value={embed.button} onFocus={e => e.target.select()}
+        className="w-full rounded-lg border border-stone-300 bg-slate-50 p-3 font-mono text-xs text-slate-900 resize-y" />
+      <Button type="button" variant="outline" size="sm" className="w-full mt-2"
+        onClick={() => copy("button", embed.button, buttonRef)}>
+        {copied === "button" ? <Check /> : <Code2 />} {copied === "button" ? "Button HTML copied" : "Copy button HTML"}
+      </Button>
+      {warning && <p role="status" className="text-sm text-amber-700 mt-3">{warning}</p>}
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <img src={qrSrc} alt="QR code linking to this campaign" className="w-28 h-28 rounded-lg border border-stone-200" />
+        <a href={qrSrc} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-blue-700 underline">
+          <Download className="w-4 h-4" /> Open QR code <QrCode className="w-4 h-4" />
         </a>
       </div>
-
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <Button onClick={() => copy("link", url)} variant="outline" size="sm" className="rounded-xl">
-          {copied === "link" ? <><Check className="w-3.5 h-3.5" />Copied</> : <><Copy className="w-3.5 h-3.5" />Copy link</>}
-        </Button>
-        <Button onClick={() => copy("embed", embedHtml)} variant="outline" size="sm" className="rounded-xl">
-          {copied === "embed" ? <><Check className="w-3.5 h-3.5" />Copied</> : <><Code2 className="w-3.5 h-3.5" />Copy embed</>}
-        </Button>
-        <Button onClick={share} variant="outline" size="sm" className="rounded-xl">
-          <Share2 className="w-3.5 h-3.5" />Share
-        </Button>
-        <a href={qrSrc} target="_blank" rel="noopener noreferrer" download>
-          <Button variant="outline" size="sm" className="w-full rounded-xl"><Download className="w-3.5 h-3.5" />QR code</Button>
-        </a>
-      </div>
-
-      <div className="rounded-xl bg-slate-50 border border-stone-200 p-3 flex justify-center">
-        <img src={qrSrc} alt={`QR code linking to ${campaign.title}`} className="w-32 h-32" />
-      </div>
-      <p className="flex items-center gap-1.5 text-[11px] text-stone-400 mt-2">
-        <QrCode className="w-3 h-3" /> Works on websites, blogs, forums, articles, and print.
-      </p>
-
-      <div className="mt-4 pt-4 border-t border-stone-200">
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
-          <Code2 className="w-3.5 h-3.5" /> Embed campaign card
-        </p>
-        <p className="text-[11px] text-stone-500 mb-3">A live, clickable campaign card for blogs and websites.</p>
-        <div className="rounded-xl bg-slate-50 border border-stone-200 p-3 mb-3 flex justify-center">
-          <iframe
-            src={`${window.location.origin}/embed/campaign/${campaign.id}`}
-            width="280" height="360"
-            title={`${campaign.title} preview`}
-            className="border-0 rounded-2xl overflow-hidden"
-          />
-        </div>
-        <Button onClick={() => copy("iframe", embedIframe)} variant="outline" size="sm" className="w-full rounded-xl">
-          {copied === "iframe" ? <><Check className="w-3.5 h-3.5" />Copied embed code</> : <><Copy className="w-3.5 h-3.5" />Copy embed code</>}
-        </Button>
-      </div>
-    </div>
+    </section>
   );
 }
