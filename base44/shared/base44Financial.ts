@@ -74,14 +74,14 @@ async function one(sr, operationKey) {
   return canonical;
 }
 
-export async function ensureCanonicalCampaign(sr, campaign) {
+export async function ensureCanonicalCampaign(sr, campaign, currentWithdrawalId = '') {
   if (!campaign?.id) throw new Error('Campaign is required for financial registration.');
   const rows = await sr.entities.Donation.filter({ campaign_id: campaign.id }, '-created_date', 5000).catch(() => []);
   if (rows.length >= 5000) throw new Error('Campaign financial baseline exceeds the safe batch size.');
   const verified = rows.filter((d) => d.payment_verified === true && (!d.is_institutional || d.cleared === true));
   const raisedAmount = round2(verified.reduce((s,d) => s + giftOf(d), 0));
   const donorCount = verified.length;
-  const donationAvailable = round2(verified.filter((d) => !d.withdrawal_id).reduce((s,d) => s + giftOf(d), 0));
+  const donationAvailable = round2(verified.filter((d) => !d.withdrawal_id || d.withdrawal_id === currentWithdrawalId).reduce((s,d) => s + giftOf(d), 0));
   // Verified external-platform settlements that have actually arrived in the
   // Interplanetary holding account are available for withdrawal too. Restrict
   // this to source_type=external_platform so direct IFund PayPal donations are
@@ -95,7 +95,7 @@ export async function ensureCanonicalCampaign(sr, campaign) {
   }, '-created_date', 5000).catch(() => []);
   if (settledExternal.length >= 5000) throw new Error('Campaign external settlement baseline exceeds the safe batch size.');
   const externalAvailable = round2(settledExternal
-    .filter((entry) => !entry.withdrawal_id)
+    .filter((entry) => !entry.withdrawal_id || entry.withdrawal_id === currentWithdrawalId)
     .reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
   const availableBalance = round2(donationAvailable + externalAvailable);
   return { campaignId: campaign.id, raisedAmount, donorCount, availableBalance, donationAvailable, externalAvailable, needsLegacyBaseline: false };
@@ -140,7 +140,7 @@ export async function reserveCanonicalWithdrawal(sr, args) {
   }
   const campaign = await sr.entities.Campaign.get(args.campaignId);
   if (!campaign || campaign.created_by_id !== args.campaignOwnerUserId) throw new Error('Campaign ownership mismatch.');
-  const totals = await ensureCanonicalCampaign(sr, campaign);
+  const totals = await ensureCanonicalCampaign(sr, campaign, args.withdrawalId || '');
   const gross = round2(Number(args.requestedGross || 0));
   if (!(gross > 0) || gross > totals.availableBalance) throw new Error('Insufficient verified available balance.');
   const { fee, net } = computeWithdrawal(gross);
