@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import DistributedPostCard from "./DistributedPostCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import { isUsableConnection } from "@/lib/connectionHealth";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 
 const directReady = (c, capabilityMap) => {
   const capability = capabilityMap[c.platform] || null;
@@ -33,6 +34,8 @@ function DestinationGroup({ title, hint, icon: Icon, connections, selected, setS
 }
 
 export default function DistributionPanel({ campaign }) {
+  const aiEnabled = useFeatureEnabled("ai_campaign_assistant");
+  const publishEnabled = useFeatureEnabled("cross_platform_publishing");
   const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]), [aiAuthorized,setAiAuthorized]=useState(false), [capabilityMap,setCapabilityMap]=useState({});
   const [generating,setGenerating]=useState(false), [broadcasting,setBroadcasting]=useState(false), [error,setError]=useState("");
   const {toast}=useToast();
@@ -49,7 +52,7 @@ export default function DistributionPanel({ campaign }) {
       <DestinationGroup title="AI can prepare these" hint="AI can write a version suited to each of these accounts. You stay in control according to your posting choice." icon={Sparkles} connections={ai} selected={selected} setSelected={setSelected}/>
       <DestinationGroup title="You approve, then we can send" hint="These accounts can receive a post after you approve it. AI won't take over the wording unless you choose it." icon={CheckCircle2} connections={approved} selected={selected} setSelected={setSelected}/>
       <DestinationGroup title="Ready to copy and paste" hint="We'll prepare the post here, but this destination needs you to paste it into the other site." icon={Clipboard} connections={copy} selected={selected} setSelected={setSelected}/>
-      <div className="flex flex-wrap gap-3 pt-1"><Button onClick={generate} disabled={generating||!selected.length} className="rounded-xl">{generating?<Loader2 className="w-4 h-4 animate-spin"/>:<Sparkles className="w-4 h-4"/>} Fill posts with AI</Button>{pending.length>0&&<Button onClick={broadcast} disabled={broadcasting} variant="outline" className="rounded-xl">{broadcasting?<Loader2 className="w-4 h-4 animate-spin"/>:<Rocket className="w-4 h-4"/>} Approve & send ({pending.length})</Button>}</div>
+      <div className="flex flex-wrap gap-3 pt-1"><Button onClick={generate} disabled={!aiEnabled||generating||!selected.length} className="rounded-xl">{generating?<Loader2 className="w-4 h-4 animate-spin"/>:<Sparkles className="w-4 h-4"/>} Fill posts with AI</Button>{pending.length>0&&<Button onClick={broadcast} disabled={!publishEnabled||broadcasting} variant="outline" className="rounded-xl">{broadcasting?<Loader2 className="w-4 h-4 animate-spin"/>:<Rocket className="w-4 h-4"/>} Approve & send ({pending.length})</Button>}</div>
       {error&&<p className="text-sm text-red-600">{error}</p>}
     </div>}
     {!!posts.length&&<div className="space-y-3 mt-4">{posts.map(p=><DistributedPostCard key={p.id} post={p} onChanged={u=>setPosts(prev=>prev.map(x=>x.id===u.id?u:x))} onRemoved={id=>setPosts(prev=>prev.filter(x=>x.id!==id))}/>)}</div>}

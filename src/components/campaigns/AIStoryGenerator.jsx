@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sparkles, Loader2, Wand2, History, RotateCcw, Undo2 } from "lucide-react";
 import { COMPLIANCE_RULES, STORY_STYLES, AUDIENCES, buildCampaignContext, styleLabel, styleGuidance, audienceLabel } from "@/lib/campaignAI";
 import { secureInvokeLLM } from "@/lib/secureLLM";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 import { wrapUntrustedData } from "@/lib/promptSecurity";
 
 const ACTIONS = [
@@ -15,6 +16,7 @@ const ACTIONS = [
 ];
 
 export default function AIStoryGenerator({ form, aiProfile, versions = [], onApply, onSaveVersion, onRestoreVersion }) {
+  const available = useFeatureEnabled("ai_campaign_assistant");
   const [style, setStyle] = useState("emotional");
   const [audience, setAudience] = useState("auto");
   const [loading, setLoading] = useState(false);
@@ -54,7 +56,7 @@ Audience: ${audience === "auto" ? "Infer plausible supporters from campaign fact
 Use short paragraphs and plain language. Keep all known facts intact. Respect never_change and avoid_words. Never invent facts, names, amounts, dates, diagnoses, urgency, or outcomes.
 Return only the complete revised story.`;
 
-      const res = await secureInvokeLLM({ task: prompt, response_json_schema: { type: "object", properties: { story: { type: "string" } } } });
+      const res = await secureInvokeLLM({ task: prompt, featureKey: "ai_campaign_assistant", response_json_schema: { type: "object", properties: { story: { type: "string" } } } });
       const text = res.story?.trim();
       if (!text) throw new Error("Empty story");
       saveCurrent();
@@ -71,6 +73,8 @@ Return only the complete revised story.`;
     saveCurrent();
     onRestoreVersion?.(ver);
   };
+
+  if (!available) return <p className="text-sm text-slate-300">Write and edit your campaign story normally. AI story assistance is not available yet.</p>;
 
   return (
     <div className="rounded-[1.5rem] border border-cyan-300/25 bg-gradient-to-br from-cyan-400/10 to-violet-500/10 p-4 sm:p-5 space-y-4 shadow-[0_0_30px_rgba(34,211,238,.08)]">

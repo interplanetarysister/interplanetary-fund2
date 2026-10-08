@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { secureInvokeLLM } from "@/lib/secureLLM";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 
 export default function AICoach({ campaign, updatesCount }) {
+  const available = useFeatureEnabled("ai_campaign_assistant");
   const [tips, setTips] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,6 +18,7 @@ export default function AICoach({ campaign, updatesCount }) {
     try {
       const nextRound = round + 1;
       const res = await secureInvokeLLM({
+        featureKey: "ai_campaign_assistant",
         task: `Act as a dynamic fundraising coach. Give exactly 3 short, specific, actionable tips, each one sentence with a brief reason. Analyze the current campaign state rather than repeating a canned checklist. This is coaching round ${nextRound}. Deliberately choose different useful angles from previous rounds: rotate among story clarity, trust/transparency, campaign presentation, updates, sharing, audience discovery, supporter retention, milestones, calls to action, accessibility, and next-step experimentation. Do not repeat or lightly paraphrase prior tips supplied below unless the campaign state makes one urgently necessary. Never guarantee outcomes and never invent campaign facts.`,
         untrusted: [
           { label: "campaign", value: JSON.stringify({ title: campaign.title, category: campaign.category, summary: campaign.summary || "", goal: campaign.goal_amount, raised: campaign.raised_amount || 0, donors: campaign.donor_count || 0, story_length: campaign.story?.length || 0, updates_posted: updatesCount, has_cover_image: !!campaign.cover_image_url, status: campaign.status }) },
@@ -35,6 +38,8 @@ export default function AICoach({ campaign, updatesCount }) {
     }
     setLoading(false);
   };
+
+  if (!available) return <p className="text-sm text-muted-foreground">AI coaching is not available yet. You can continue managing and publishing your campaign.</p>;
 
   return (
     <div className="bg-gradient-to-br from-slate-950 to-slate-900 rounded-2xl p-5 text-slate-200">

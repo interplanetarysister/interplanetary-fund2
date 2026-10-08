@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Sparkles, Loader2, Pause, Play, Bot, Check, X } from "lucide-react";
 import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 
 // Owner-only panel: activate/pause the autonomous AI Outreach Agent and
 // review its activity log. Every action stays pending until the owner approves
 // or rejects it — the agent never executes without authorization.
 export default function OutreachAgentPanel({ campaign }) {
+  const platformEnabled = useFeatureEnabled("ai_outreach_agent");
   const [user, setUser] = useState(null);
   const [activities, setActivities] = useState(null);
   const [enabling, setEnabling] = useState(false);
@@ -28,6 +30,7 @@ export default function OutreachAgentPanel({ campaign }) {
   const hasOutreach = subscription.active && subscription.plan.level >= 2;
 
   const toggleEnabled = async () => {
+    if (!platformEnabled) return;
     setEnabling(true);
     const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_enabled: !campaign.outreach_enabled } });
     if (data?.ok !== true) throw new Error("Campaign setting update rejected");
@@ -67,6 +70,7 @@ export default function OutreachAgentPanel({ campaign }) {
         )}
       </div>
 
+      {!platformEnabled && <p className="text-sm text-amber-200 mt-2">New automated outreach runs are paused. Existing recommendations remain available for review.</p>}
       {!hasOutreach ? (
         <div className="mt-3">
           <p className="text-sm text-slate-400 mb-3">
@@ -86,7 +90,7 @@ export default function OutreachAgentPanel({ campaign }) {
               <p className="text-sm text-slate-200 font-medium">Enable autonomous agent</p>
               <p className="text-xs text-slate-400">It runs on a schedule and waits for your approval on every action.</p>
             </div>
-            <Switch checked={!!campaign.outreach_enabled} onCheckedChange={toggleEnabled} disabled={enabling} />
+            <Switch checked={!!campaign.outreach_enabled && platformEnabled} onCheckedChange={toggleEnabled} disabled={enabling || !platformEnabled} />
           </div>
 
           {campaign.outreach_enabled && (

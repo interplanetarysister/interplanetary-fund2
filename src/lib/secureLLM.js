@@ -3,7 +3,13 @@ import { buildSecurePrompt, validateLLMObject } from "@/lib/promptSecurity";
 
 // Central AI gateway: keeps instructions separate from untrusted data and
 // validates returned text before it reaches UI, persistence, or messaging.
-export async function secureInvokeLLM({ task, trustedContext = "", untrusted = [], response_json_schema }) {
+export async function secureInvokeLLM({ task, trustedContext = "", untrusted = [], response_json_schema, featureKey }) {
+  // The feature gate prevents client-initiated metered AI calls when disabled.
+  // Server-side metered gateways must ALSO enforce their own authorization.
+  if (featureKey) {
+    const { data } = await base44.functions.invoke('getFeatureAvailability', {});
+    if (data?.available?.[featureKey] !== true) throw new Error('Feature not enabled');
+  }
   const result = await base44.integrations.Core.InvokeLLM({
     prompt: buildSecurePrompt({ task, trustedContext, untrusted }),
     ...(response_json_schema ? { response_json_schema } : {}),
