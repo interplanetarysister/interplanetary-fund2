@@ -30,6 +30,13 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return;
+          // React, ReactDOM, scheduler and React Router are a single runtime.
+          // Splitting them separately introduced a circular ES module import:
+          // react-dom -> react-router -> react-dom. In production it failed
+          // before React mounted with "reading 'useLayoutEffect'" (blank site).
+          // Keep the framework runtime together so initialization is ordered.
+          if (/(?:\x2f|\\)node_modules(?:\x2f|\\)(?:react|react-dom|react-router|react-router-dom|scheduler)(?:\x2f|\\)/.test(id) ||
+              id.includes('node_modules/@remix-run/')) return 'react-runtime';
           if (id.includes('@reown/appkit-adapter-ethers') || id.includes('/ethers/')) return 'reown-ethers';
           if (id.includes('@reown/appkit-adapter-solana') || id.includes('@solana/')) return 'reown-solana';
           if (id.includes('@reown/appkit-adapter-bitcoin')) return 'reown-bitcoin';
