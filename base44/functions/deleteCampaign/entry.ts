@@ -1,10 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const guard = await assertActiveAccount(base44);
+    if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
+    const user = guard.user;
     const { campaign_id } = await req.json().catch(() => ({}));
     if (!campaign_id) return Response.json({ error: 'campaign_id is required' }, { status: 400 });
 
@@ -32,10 +34,36 @@ export default async function(req) {
       });
     }
 
+    const [donations, withdrawals, operations, holdings] = await Promise.all([
+      sr.entities.Donation.filter({ campaign_id }, '-created_date', 1).catch(() => []),
+      sr.entities.Withdrawal.filter({ campaign_id }, '-created_date', 1).catch(() => []),
+      sr.entities.FinancialOperation.filter({ campaign_id }, '-created_date', 1).catch(() => []),
+      sr.entities.HoldingLedgerEntry.filter({ campaign_id }, '-created_date', 1).catch(() => []),
+    ]);
+    const hasFinancialHistory = donations.length > 0 || withdrawals.length > 0 || operations.length > 0 || holdings.length > 0;
+    if (hasFinancialHistory) {
+      // Financial references must never point at a deleted campaign id. Remove
+      // public/personal campaign content but retain the identity shell required
+      // for audit, payout and reconciliation history.
+      await sr.entities.Campaign.update(campaign_id, {
+        title: 'Archived campaign',
+        summary: '',
+        story: '',
+        status: 'completed',
+        cover_image_url: '',
+        location: '',
+        ai_profile: {},
+        story_versions: [],
+        outreach_enabled: false,
+        outreach_paused: true,
+      });
+      return Response.json({ deleted: false, archived: true });
+    }
+
     await sr.entities.Campaign.delete(campaign_id);
-    return Response.json({ deleted: true });
+    return Response.json({ deleted: true, archived: false });
   } catch (error) {
-    console.error('deleteCampaign error:', error?.message || error);
+    console.error('deleteCampaign error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Unable to delete this campaign.' }, { status: 500 });
   }
 }
