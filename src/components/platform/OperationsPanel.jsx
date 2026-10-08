@@ -20,7 +20,7 @@ export default function OperationsPanel() {
           <p className="font-display text-2xl text-white">Operational Maturity & Governance</p>
         </div>
         <p className="text-sm text-stone-400 mt-1.5">
-          The capstone of Phase 5 — how Crowdfund evolves from manual operations to an intelligent, self-improving enterprise while governance keeps it coherent.
+          The capstone of Phase 5 — how Interplanetary Fund evolves from manual operations to an intelligent, self-improving enterprise while governance keeps it coherent.
         </p>
       </div>
 
