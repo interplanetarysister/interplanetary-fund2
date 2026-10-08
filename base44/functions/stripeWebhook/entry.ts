@@ -105,6 +105,12 @@ async function applyStripeDonation({
   // separately so we never mislabel the first recurring payment just to obtain
   // the correct idempotency key.
   const operationKey = `stripe:${providerObjectKind}:${providerObjectId}`;
+  const previousHolds = await sr.entities.StripeReversalHold.filter({
+    payment_intent_id: String(providerTransactionId || ''),
+  });
+  if ((previousHolds || []).some(h => h.review_status === 'pending')) {
+    throw new Error('Payment already has a Stripe reversal hold and cannot be credited automatically.');
+  }
   const blocked = await sr.entities.FinancialOperation.filter({ operation_key: operationKey }).catch(() => []);
   if ((blocked || []).some(row => String(row.note || '').startsWith('STRIPE_REVERSAL_HOLD:'))) {
     throw new Error('Donation has a Stripe reversal hold; paid access cannot be restored by an older event.');
@@ -321,6 +327,15 @@ export default async function(req) {
       }
       const paymentIntentId = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
       if (paymentIntentId && /^pi_[A-Za-z0-9]+$/.test(paymentIntentId)) {
+        const holds = await sr.entities.StripeReversalHold.filter({ payment_intent_id: paymentIntentId });
+        if (!(holds || []).length) {
+          await sr.entities.StripeReversalHold.create({
+            payment_intent_id: paymentIntentId, charge_id: chargeId,
+            reason: event.type, amount_refunded_cents: Number(charge.amount_refunded || 0),
+            disputed: charge.disputed === true, provider_event_id: event.id,
+            review_status: 'pending', recorded_at: new Date().toISOString(),
+          });
+        }
         const operations = await sr.entities.FinancialOperation.filter({ provider: 'stripe', provider_transaction_id: paymentIntentId });
         for (const operation of operations || []) {
           if (operation.operation_type !== 'donation') continue;
