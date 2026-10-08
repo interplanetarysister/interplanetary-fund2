@@ -11,7 +11,7 @@ function readOriginal(sourceUrl) {
   });
 }
 
-export async function createIfundPhotoTreatment(sourceUrl) {
+export async function createIfundPhotoTreatment(sourceUrl, aiEditUrl = null) {
   const image = await readOriginal(sourceUrl);
   const width = Math.max(1, Math.round(image.naturalWidth * Math.min(1, 2200 / Math.max(image.naturalWidth, image.naturalHeight))));
   const height = Math.max(1, Math.round(image.naturalHeight * Math.min(1, 2200 / Math.max(image.naturalWidth, image.naturalHeight))));
@@ -26,6 +26,15 @@ export async function createIfundPhotoTreatment(sourceUrl) {
   ctx.filter = 'contrast(1.055) saturate(1.115) brightness(1.018)';
   ctx.drawImage(image, 0, 0, width, height);
   ctx.filter = 'none';
+  if (aiEditUrl) {
+    try {
+      const edit = await readOriginal(aiEditUrl);
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      ctx.drawImage(edit, 0, 0, width, height);
+      ctx.restore();
+    } catch { /* Preserve the original when remote editing fails. */ }
+  }
 
   const edge = Math.max(4, Math.min(width, height) * .008);
   const aurora = ctx.createLinearGradient(0, 0, width, height);
