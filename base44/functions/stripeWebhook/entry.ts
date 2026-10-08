@@ -318,6 +318,8 @@ export default async function(req) {
               subscription_provider: 'stripe',
               subscription_interval: m.subscription_interval,
               stripe_customer_id: session.customer || sub.customer || undefined,
+              stripe_subscription_id: sub.id,
+              ...(sub.current_period_end ? { subscription_renews_at: new Date(sub.current_period_end * 1000).toISOString() } : {}),
             });
           }
         }
@@ -450,7 +452,8 @@ export default async function(req) {
       if (invoice.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: invoice.customer });
         const u = users && users[0];
-        if (u && u.role !== 'admin' && u.subscription_provider !== 'paypal') {
+        if (u && u.role !== 'admin' && u.subscription_provider === 'stripe' &&
+            u.stripe_subscription_id === invoice.subscription) {
           const periodEnd = invoice.lines?.data?.[0]?.period?.end;
           await sr.entities.User.update(u.id, {
             subscription_status: 'active',
@@ -463,7 +466,8 @@ export default async function(req) {
       if (sub.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
         const u = users && users[0];
-        if (u && u.role !== 'admin' && u.subscription_provider !== 'paypal') {
+        if (u && u.role !== 'admin' && u.subscription_provider === 'stripe' &&
+            u.stripe_subscription_id === sub.id) {
           const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
           await sr.entities.User.update(u.id, {
@@ -478,11 +482,13 @@ export default async function(req) {
       if (sub.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
         const u = users && users[0];
-        if (u && u.role !== 'admin' && u.subscription_provider !== 'paypal') {
+        if (u && u.role !== 'admin' && u.subscription_provider === 'stripe' &&
+            u.stripe_subscription_id === sub.id) {
           await sr.entities.User.update(u.id, {
             subscription_status: 'canceled',
             subscription_tier: 'free',
             subscription_renews_at: null,
+            stripe_subscription_id: '',
           });
           await sr.entities.Notification.create({
             user_id: u.id,
