@@ -130,6 +130,10 @@
     "stripe_customer_id": {
       "type": "string"
     },
+    "stripe_subscription_id": {
+      "type": "string",
+      "description": "Stripe subscription ID verified from Checkout, bound to this user for renewals and cancellation."
+    },
     "paypal_subscription_id": {
       "type": "string",
       "description": "Provider verified PayPal billing subscription. Never populated from a browser-only success redirect."
