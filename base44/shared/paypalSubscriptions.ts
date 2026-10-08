@@ -9,19 +9,37 @@ export { IFUND_PAYPAL_ACCOUNT_REF };
 export function isPayPalSubscriptionId(id: unknown): boolean { return PAYPAL_SUB_PATTERN.test(String(id || '')); }
 export function isPayPalPlanId(id: unknown): boolean { return PAYPAL_PLAN_PATTERN.test(String(id || '')); }
 
-export async function paypalBillingRequest(path: string, options: any = {}) {
+// Reuse the short-lived OAuth token across the ten plan provisioning calls.
+let tokenCache: { client: string; token: string; until: number; pending: Promise<string> | null } =
+  { client: '', token: '', until: 0, pending: null };
+async function liveBillingToken() {
   if (secrets.get('PAYPAL_MODE') !== 'live') throw new Error('Live PayPal billing is not enabled.');
   const client = String(secrets.get('PAYPAL_CLIENT_ID') || '');
   const secret = String(secrets.get('PAYPAL_CLIENT_SECRET') || '');
   if (!client || !secret) throw new Error('Business PayPal REST credentials are unavailable.');
-  const auth = await fetch(BASE + '/v1/oauth2/token', {
-    method: 'POST',
-    headers: { Authorization: 'Basic ' + btoa(client + ':' + secret), 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'grant_type=client_credentials',
-  });
-  if (!auth.ok) throw new Error('PayPal business authorization failed.');
-  const token = (await auth.json()).access_token;
-  if (!token) throw new Error('PayPal business authorization failed.');
+  if (tokenCache.client === client && tokenCache.token && tokenCache.until > Date.now()) return tokenCache.token;
+  if (tokenCache.client === client && tokenCache.pending) return await tokenCache.pending;
+  const pending = (async () => {
+    const auth = await fetch(BASE + '/v1/oauth2/token', {
+      method: 'POST',
+      headers: { Authorization: 'Basic ' + btoa(client + ':' + secret), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials',
+    });
+    if (!auth.ok) throw new Error('PayPal business authorization failed.');
+    const data = await auth.json();
+    if (!data?.access_token) throw new Error('PayPal business authorization failed.');
+    const until = Date.now() + Math.max(10000, Math.min(300000, (Number(data.expires_in) || 300) * 1000 - 60000));
+    tokenCache = { client, token: data.access_token, until, pending: null };
+    return data.access_token as string;
+  })();
+  tokenCache = { client, token: '', until: 0, pending };
+  try { return await pending; } catch (error) {
+    tokenCache = { client: '', token: '', until: 0, pending: null };
+    throw error;
+  }
+}
+export async function paypalBillingRequest(path: string, options: any = {}) {
+  const token = await liveBillingToken();
   const response = await fetch(BASE + path, {
     method: options.method || 'GET',
     headers: {
