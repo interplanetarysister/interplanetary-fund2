@@ -6,6 +6,7 @@ import { computeContribution, round2, validateDonationAmount } from '../../share
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
+import { stripePriceFor } from '../../shared/subscriptionCatalog.js';
 
 function webhookOrder(rows) {
   return [...(rows || [])].sort((a, b) => {
@@ -228,17 +229,32 @@ export default async function(req) {
       // AI plan checkout. This is not a campaign donation, so it remains a
       // non-financial application side effect for this particular integrity boundary.
       if (m.subscription_tier) {
-        if (m.user_id) {
+        // A completed redirect is not proof of an active paid subscription.
+        // Verify the recurring price and owner against Stripe itself.
+        const expectedPrice = stripePriceFor(m.subscription_tier, m.subscription_interval);
+        const sub = session.subscription ? await stripe.subscriptions.retrieve(session.subscription) : null;
+        const selectedPrice = sub?.items?.data?.[0]?.price?.id;
+        const matches = session.mode === 'subscription' &&
+          (sub?.status === 'active' || sub?.status === 'trialing') &&
+          !!expectedPrice && selectedPrice === expectedPrice &&
+          sub?.metadata?.user_id === m.user_id &&
+          sub?.metadata?.subscription_tier === m.subscription_tier &&
+          sub?.metadata?.subscription_interval === m.subscription_interval;
+        if (matches && m.user_id) {
           const subscriptionUser = await sr.entities.User.get(m.user_id).catch(() => null);
-          if (subscriptionUser?.role !== 'admin') await sr.entities.User.update(m.user_id, {
-            subscription_tier: m.subscription_tier,
-            subscription_status: 'active',
-            subscription_interval: m.subscription_interval || 'monthly',
-            stripe_customer_id: session.customer || undefined,
-          });
+          if (subscriptionUser && subscriptionUser.role !== 'admin' &&
+              !(subscriptionUser.subscription_provider === 'paypal' && subscriptionUser.subscription_status === 'active')) {
+            await sr.entities.User.update(m.user_id, {
+              subscription_tier: m.subscription_tier,
+              subscription_status: sub.status === 'trialing' ? 'trialing' : 'active',
+              subscription_provider: 'stripe',
+              subscription_interval: m.subscription_interval,
+              stripe_customer_id: session.customer || sub.customer || undefined,
+            });
+          }
         }
         await markWebhook(sr, webhookRecord, { state: 'nonfinancial_complete', processed_at: new Date().toISOString(), last_error: '' });
-        return Response.json({ received: true });
+        return Response.json({ received: true, verified: !!matches });
       }
 
       if (m.campaign_id) {
@@ -293,7 +309,7 @@ export default async function(req) {
       if (invoice.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: invoice.customer });
         const u = users && users[0];
-        if (u && u.role !== 'admin') {
+        if (u && u.role !== 'admin' && u.subscription_provider !== 'paypal') {
           const periodEnd = invoice.lines?.data?.[0]?.period?.end;
           await sr.entities.User.update(u.id, {
             subscription_status: 'active',
@@ -306,7 +322,7 @@ export default async function(req) {
       if (sub.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
         const u = users && users[0];
-        if (u && u.role !== 'admin') {
+        if (u && u.role !== 'admin' && u.subscription_provider !== 'paypal') {
           const statusMap = { trialing: 'trialing', active: 'active', past_due: 'past_due', canceled: 'canceled', incomplete_expired: 'canceled', unpaid: 'canceled' };
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
           await sr.entities.User.update(u.id, {
@@ -321,7 +337,7 @@ export default async function(req) {
       if (sub.customer) {
         const users = await sr.entities.User.filter({ stripe_customer_id: sub.customer });
         const u = users && users[0];
-        if (u && u.role !== 'admin') {
+        if (u && u.role !== 'admin' && u.subscription_provider !== 'paypal') {
           await sr.entities.User.update(u.id, {
             subscription_status: 'canceled',
             subscription_tier: 'free',
