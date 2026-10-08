@@ -27,7 +27,7 @@ for (const [tier,values] of Object.entries(amounts)) {
 }
 assert.equal(subscriptionPrice('free','monthly'),null);
 assert.equal(subscriptionPrice('enterprise','weekly'),null);
-assert.equal(stripePriceFor('basic','monthly'),'price_1Tz8iSEkntycHB4NlQlYd0Gs');
+assert.equal(stripePriceFor('basic','monthly'),'price_1UOFDfGg5Dyxp347qGlvjDcY');
 assert.equal(stripePriceFor('enterprise','monthly'),null);
 
 const src = name => readFileSync(name,'utf8');
