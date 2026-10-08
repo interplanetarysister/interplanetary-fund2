@@ -31,7 +31,11 @@ export default async function(req) {
     const eventId = String(event.id || '');
     if (!/^WH-[A-Z0-9-]{8,90}$/.test(eventId)) return Response.json({ error: 'Invalid PayPal webhook event.' }, { status: 400 });
     if (!EVENTS.has(type)) return Response.json({ received: true, ignored: true });
-    const subscriptionId = String(event.resource?.id || event.resource?.billing_agreement_id || '');
+    // PAYMENT.SALE events use resource.id for the SALE, not the subscription.
+    // Their billing_agreement_id is the I-* subscription reference.
+    const subscriptionId = type.startsWith('PAYMENT.SALE.')
+      ? String(event.resource?.billing_agreement_id || '')
+      : String(event.resource?.id || '');
     // Subscription-event resources contain the actual subscription ID;
     // payment-sale IDs are deliberately not used to mutate entitlements.
     if (!/^I-[A-Z0-9]{10,30}$/.test(subscriptionId)) {
