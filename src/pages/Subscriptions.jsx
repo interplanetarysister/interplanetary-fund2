@@ -13,12 +13,13 @@ export default function Subscriptions() {
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(null);
   const [paypal, setPaypal] = useState({ plans: [], live_configured: false, webhook_configured: false });
-  const [stripe, setStripe] = useState({ plans: [], webhook_configured: false });
+  const [stripe, setStripe] = useState({ plans: [], webhook_configured: false, trial_eligible: false, welcome_discount_available: false, day_pass: { available: false } });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [provisioning, setProvisioning] = useState(false);
   const query = new URLSearchParams(window.location.search);
   const stripeReturned = query.get("subscribed") === "success";
+  const dayPassReturned = query.get("day_pass") === "confirming";
 
   const refresh = useCallback(async () => {
     const [{ data }, stripeResult, currentUser] = await Promise.all([
@@ -61,7 +62,7 @@ export default function Subscriptions() {
     // Read a single returned subscription id once, not on repeated renders.
   }, []);
 
-  const subscribe = async (plan, provider) => {
+  const subscribe = async (plan, provider, useWelcomeDiscount = false) => {
     if (!checkoutEnabled) { setError("New subscriptions are not available yet."); return; }
     if (window.self !== window.top) { setError("Open IFund in a full browser tab to subscribe."); return; }
     setError("");
@@ -76,7 +77,7 @@ export default function Subscriptions() {
     try {
       const { data } = provider === "paypal"
         ? await base44.functions.invoke("createPayPalSubscriptionCheckout", { tier: plan.id, interval, origin: window.location.origin })
-        : await base44.functions.invoke("createSubscriptionCheckout", { tier: plan.id, interval, price_id: stripePlan.price_id, origin: window.location.origin });
+        : await base44.functions.invoke("createSubscriptionCheckout", { tier: plan.id, interval, price_id: stripePlan.price_id, origin: window.location.origin, intro_discount: useWelcomeDiscount });
       if (data?.url && /^https:\/\//.test(data.url)) {
         window.location.assign(data.url);
         return;
@@ -87,6 +88,30 @@ export default function Subscriptions() {
     } finally {
       setSubscribing(null);
     }
+  };
+
+  const startTrial = async () => {
+    if (!checkoutEnabled || !stripe.trial_eligible) return;
+    setError(""); setNotice(""); setSubscribing("trial");
+    try {
+      const { data } = await base44.functions.invoke("startPremiumTrial", {});
+      if (!data?.ok) throw new Error(data?.error || "Trial is unavailable.");
+      await refresh();
+      setNotice("Your free Basic trial is active for three days. No card or automatic payment is required.");
+    } catch (e) { setError(e?.message || "Could not activate the free trial."); }
+    finally { setSubscribing(null); }
+  };
+
+  const buyDayPass = async () => {
+    if (!checkoutEnabled || !stripe.day_pass?.available) return;
+    if (window.self !== window.top) { setError("Open IFund in a full browser tab to buy a day pass."); return; }
+    setError(""); setNotice(""); setSubscribing("daypass");
+    try {
+      const { data } = await base44.functions.invoke("createPremiumDayPassCheckout", { origin: window.location.origin });
+      if (!data?.url || !/^https:\\/\\//.test(data.url)) throw new Error(data?.error || "Day-pass checkout is unavailable.");
+      window.location.assign(data.url);
+    } catch (e) { setError(e?.message || "Could not open day-pass checkout."); }
+    finally { setSubscribing(null); }
   };
 
   const cancelPayPal = async () => {
@@ -190,6 +215,7 @@ export default function Subscriptions() {
         <p className="text-stone-500">Choose the AI assistant that matches your fundraising ambitions.</p>
       </div>
       {stripeReturned && <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-800 text-center">Thank you! Stripe is confirming your subscription.</div>}
+      {dayPassReturned && <div className="mb-6 rounded-xl bg-cyan-50 border border-cyan-200 px-4 py-3 text-sm text-cyan-900 text-center">Stripe is confirming your $1 day pass. Access begins only after payment verification.</div>}
       {query.get("paypal_checkout") === "cancel" && <p className="text-sm text-stone-600 text-center mb-4">PayPal checkout was canceled. No subscription was activated.</p>}
       {notice && <p role="status" className="text-sm text-emerald-800 text-center mb-4">{notice}</p>}
       {error && <p role="alert" className="text-sm text-red-600 text-center mb-4">{error}</p>}
@@ -228,6 +254,31 @@ export default function Subscriptions() {
           </div>
           <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-white">{subscription.adminGranted ? "Admin · permanent" : subscription.status}</Badge>
         </div>
+      )}
+      {!subscription.adminGranted && !active && (
+        <div className="grid sm:grid-cols-2 gap-4 mb-8">
+          <section className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
+            <h2 className="font-display text-lg text-stone-900">Try Premium free for 3 days</h2>
+            <p className="text-sm text-stone-700 mt-2 mb-4">One trial per new member. No payment method and no automatic renewal. Your campaigns and drafts remain yours.</p>
+            <Button type="button" disabled={!checkoutEnabled || !stripe.trial_eligible || subscribing !== null}
+              onClick={startTrial} className="w-full rounded-xl">
+              {subscribing === "trial" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {stripe.trial_eligible ? "Start my free trial" : "Free trial not available"}
+            </Button>
+          </section>
+          <section className="rounded-2xl border border-stone-200 bg-white p-5">
+            <h2 className="font-display text-lg text-stone-900">$1 Premium Day Pass</h2>
+            <p className="text-sm text-stone-700 mt-2 mb-4">24 hours of Basic premium access. Pay once. Does not renew automatically.</p>
+            <Button type="button" variant="outline" disabled={!checkoutEnabled || !stripe.day_pass?.available || subscribing !== null}
+              onClick={buyDayPass} className="w-full rounded-xl">
+              {subscribing === "daypass" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {stripe.day_pass?.available ? "Buy 24 hours for $1" : "Day pass setup in progress"}
+            </Button>
+          </section>
+        </div>
+      )}
+      {subscription.status === "day_pass" && (
+        <p className="text-sm text-stone-600 mb-6 text-center">Your day pass ends {new Date(user.premium_day_pass_expires_at).toLocaleString()}.</p>
       )}
       <div className="flex items-center justify-center gap-3 mb-8">
         <span className={`text-sm font-medium ${!annual ? "text-stone-900" : "text-stone-400"}`}>Monthly</span>
@@ -280,6 +331,11 @@ export default function Subscriptions() {
                     <Button variant={paypalAvailable ? "outline" : "default"} onClick={() => subscribe(plan, "stripe")} disabled={!checkoutEnabled || subscribing !== null} className="w-full rounded-xl">
                       {subscribing === plan.id + ":stripe" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                       Subscribe with card / Stripe
+                    </Button>
+                  )}
+                  {stripeAvailable && !annual && plan.id === "basic" && stripe.welcome_discount_available && (
+                    <Button variant="outline" onClick={() => subscribe(plan, "stripe", true)} disabled={!checkoutEnabled || subscribing !== null} className="w-full rounded-xl">
+                      First month $6 (then $12/month)
                     </Button>
                   )}
                   {!paypalAvailable && !stripeAvailable && (
