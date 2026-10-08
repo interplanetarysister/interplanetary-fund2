@@ -4,16 +4,14 @@
 //
 // Business account: interplanetarysister@gmail.com
 
-import { PRELAUNCH_MODE } from "@/lib/prelaunch";
 
 export const IFUND_PAYPAL_BUSINESS_EMAIL = "interplanetarysister@gmail.com";
 
 export function generatePayPalLink(_campaignTitle, amount) {
-  if (!PRELAUNCH_MODE) return "https://interplanetaryfund.com/";
   const params = new URLSearchParams({
     cmd: "_donations",
     business: IFUND_PAYPAL_BUSINESS_EMAIL,
-    item_name: "Interplanetary Fund - Prelaunch Development & Operations",
+    item_name: "Interplanetary Fund - Platform Support",
     currency_code: "USD",
   });
   if (amount) params.set("amount", String(amount));
@@ -22,10 +20,10 @@ export function generatePayPalLink(_campaignTitle, amount) {
 
 // Full donation block appended to cross-posted campaign content so a
 // clickable PayPal link travels with the post even if copy-pasted.
-export function generateDonationBlock(campaignTitle, amount, campaignId) {
-  if (PRELAUNCH_MODE) {
+export function generateDonationBlock(campaignTitle, amount, campaignId, platformOnly = false) {
+  if (platformOnly) {
     const link = generatePayPalLink(campaignTitle, amount);
-    return `\n\nSupport Interplanetary Fund during prelaunch: ${link}\nThis payment supports Interplanetary Fund development and operations, not the individual campaign shown.`;
+    return `\n\nSupport Interplanetary Fund: ${link}\nThis payment supports Interplanetary Fund development and operations, not the individual campaign shown.`;
   }
   const link = campaignId
     ? `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaignId)}?donate=true`
@@ -34,9 +32,9 @@ export function generateDonationBlock(campaignTitle, amount, campaignId) {
 }
 
 // Short version for character-limited platforms (X, etc.).
-export function generateShortDonationBlock(campaignTitle, campaignId) {
-  if (PRELAUNCH_MODE) {
-    return `\nSupport Interplanetary Fund (prelaunch; not this campaign): ${generatePayPalLink(campaignTitle)}`;
+export function generateShortDonationBlock(campaignTitle, campaignId, platformOnly = false) {
+  if (platformOnly) {
+    return `\nSupport Interplanetary Fund (not this campaign): ${generatePayPalLink(campaignTitle)}`;
   }
   const link = campaignId
     ? `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaignId)}?donate=true`
