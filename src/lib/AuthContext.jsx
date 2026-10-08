@@ -124,6 +124,23 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       
       if (error.status === 401 || error.status === 403) {
+        // The SDK's bearer is captured at app startup. If it has expired,
+        // clear ONLY IFund's local session values and reload so the next SDK
+        // instance is initialized without the revoked bearer. Calling
+        // base44.auth.logout() here would navigate to the provider logout
+        // endpoint and can trap users in a failed sign-in/redirect loop.
+        if (appParams.token && typeof window !== 'undefined') {
+          let cleared = false;
+          try {
+            window.localStorage.removeItem('base44_access_token');
+            window.localStorage.removeItem('token');
+            cleared = true;
+          } catch { /* Continue to the login view without looping. */ }
+          if (cleared) {
+            window.location.reload();
+            return;
+          }
+        }
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'

@@ -58,7 +58,7 @@ import BrandLogo from "@/components/brand/BrandLogo";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const checkedReturn = useRef(false);
@@ -87,7 +87,13 @@ const AuthenticatedApp = () => {
       .catch(() => {});
   }, [isLoadingAuth, isLoadingPublicSettings, authError, pathname, navigate]);
   if (isLoadingPublicSettings || isLoadingAuth) return <div className="fixed inset-0 flex items-center justify-center bg-background"><BrandLogo size="lg" showName={false} className="animate-pulse" /></div>;
-  if (authError) { if (authError.type === 'user_not_registered') return <UserNotRegisteredError />; if (authError.type === 'auth_required') { navigateToLogin(); return null; } }
+  // Public login/recovery/approval pages must stay accessible when an old
+  // token expires. ProtectedRoute gates private pages after authentication;
+  // never navigate the entire SPA to the platform login during render.
+  if (authError?.type === 'user_not_registered' &&
+      !['/login','/register','/forgot-password','/reset-password','/activate'].includes(pathname)) {
+    return <UserNotRegisteredError />;
+  }
   return <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-background"><BrandLogo size="lg" showName={false} className="animate-pulse" /></div>}><Routes>
     <Route path="/login" element={<Login />} /><Route path="/register" element={<Register />} /><Route path="/forgot-password" element={<ForgotPassword />} /><Route path="/reset-password" element={<ResetPassword />} /><Route path="/globe" element={<GlobalGlobe />} /><Route path="/embed/campaign/:id" element={<EmbedCampaign />} /><Route path="/oauth/consent" element={<OAuthConsent />} /><Route path="/activate" element={<DeviceActivation />} /><Route path="/" element={<Home />} /><Route path="/about" element={<About />} /><Route path="/contact" element={<Contact />} />
     <Route element={<Layout />}><Route path="/discover" element={<Discover />} /><Route path="/campaign/:id" element={<CampaignDetail />} /><Route path="/community" element={<Community />} /><Route path="/community/:id" element={<CommunityDetail />} /><Route path="/help" element={<Help />} /></Route>

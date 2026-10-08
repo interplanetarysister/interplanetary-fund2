@@ -8,7 +8,9 @@ import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import SocialButtons from "@/components/auth/SocialButtons";
 import { safeReturnTo } from "@/lib/authReturnTo";
-import { safeAuthErrorMessage } from "@/lib/safe-auth-error";
+import { runtimeContract } from "@/lib/runtimeContract";
+import { appParams } from "@/lib/app-params";
+import { safeAuthErrorMessage, safeLoginFailureByStatus } from "@/lib/safe-auth-error";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -24,10 +26,31 @@ export default function Login() {
     setError("");
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = returnTo;
-    } catch (err) {
-      setError(safeAuthErrorMessage("login"));
+      // Same-origin IFund authentication avoids stale SDK Authorization
+      // headers and Base44 SDK's automatic logout redirect on 401 responses.
+      // Never transmit credentials to another host or third-party connector.
+      const appId = runtimeContract.appId || appParams.appId;
+      if (!appId) throw new Error("IFund app ID unavailable");
+      const response = await fetch("/api/apps/" + encodeURIComponent(appId) + "/auth/login", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+      if (!response.ok) {
+        setError(safeLoginFailureByStatus(response.status));
+        return;
+      }
+      const result = await response.json().catch(() => ({}));
+      if (typeof result.access_token !== "string" || !result.access_token) {
+        setError(safeAuthErrorMessage("login"));
+        return;
+      }
+      base44.auth.setToken(result.access_token);
+      window.location.assign(returnTo);
+    } catch {
+      setError(safeLoginFailureByStatus(null));
     } finally {
       setLoading(false);
     }
@@ -106,6 +129,10 @@ export default function Login() {
             />
           </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Use the email linked to your IFund account. If you registered with Google,
+          Apple or Facebook, use that same sign-in option above instead.
+        </p>
         <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
           {loading ? (
             <>
@@ -117,6 +144,9 @@ export default function Login() {
           )}
         </Button>
       </form>
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        Forgot your password? <Link to="/forgot-password" className="underline">Reset it here</Link>.
+      </p>
     </AuthLayout>
   );
 }
