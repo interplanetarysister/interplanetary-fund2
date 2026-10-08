@@ -5,6 +5,7 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const social = read('base44/shared/socialPublish.ts');
 const publish = read('base44/functions/publishPost/entry.ts');
 const broadcast = read('base44/functions/broadcastPosts/entry.ts');
+const capabilities = read('base44/shared/providerCapabilities.ts');
 
 assert.match(social, /connection\?\.platform === 'mastodon'\) return false/);
 assert.match(social, /Live Mastodon publishing is unavailable in this runtime/);
@@ -20,5 +21,7 @@ assert.match(broadcast, /canPublishViaConnector/);
 assert.match(broadcast, /publishThroughConnection\(connection, text, sr\)/);
 assert.doesNotMatch(publish, /pubError.*message \?/);
 assert.doesNotMatch(publish, /console\.error\('publishPost error:', error\.message\)/);
+assert.match(capabilities, /DIRECT_PUBLISH_RUNTIME_PLATFORMS = new Set\(\['bluesky', 'linkedin'\]\)/);
+assert.match(capabilities, /merged\.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS\.has/);
 
 console.log('social publishing truth and transport safety contract: PASS');
