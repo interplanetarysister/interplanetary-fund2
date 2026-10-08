@@ -8,7 +8,6 @@ const withdrawal = read('base44/functions/requestWithdrawal/entry.ts');
 const schema = read('base44/entities/Withdrawal.jsonc');
 const balanceFunction = read('base44/functions/getCampaignWithdrawalBalance/entry.ts');
 const withdrawalsPage = read('src/pages/Withdrawals.jsx');
-const financial = read('base44/shared/base44Financial.ts');
 const kofiWebhook = read('base44/functions/kofiWebhook/entry.ts');
 
 expect(financial.includes("source_type: 'external_platform'"), 'canonical balance must include only verified external-platform settlements');
