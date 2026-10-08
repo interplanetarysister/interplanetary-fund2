@@ -13,7 +13,7 @@ for (const [name, code] of [['audit',audit],['repair',repair]]) {
   assert.match(code, /user\.role !== 'admin'/, `${name} must be admin-only`);
   assert.match(code, /req\.method !== 'POST'/);
 }
-for (const kind of ['stripe.accounts.retrieve','stripe.webhookEndpoints.list','stripe.products.list','stripe.paymentMethodConfigurations.list','stripe.prices.retrieve'])
+for (const kind of ['stripe.accounts.retrieve','stripe.webhookEndpoints.list','stripe.products.list','stripe.paymentMethodConfigurations.list','resolveStripeSubscriptionPrice'])
   assert.ok(audit.includes(kind), `Missing Stripe account audit operation ${kind}`);
 for (const forbidden of [/stripe\.checkout\.sessions\.create/,/stripe\.prices\.create/,/stripe\.products\.create/,/stripe\.transfers\.create/,/stripe\.payouts\.create/,/stripe\.charges\.create/,/stripe\.accounts\.update/,/stripe\.refunds\.create/,/stripe\.apiKeys\.create/])
   assert.doesNotMatch(audit+repair, forbidden, 'Stripe maintenance must not initiate money movement or paid resources');
