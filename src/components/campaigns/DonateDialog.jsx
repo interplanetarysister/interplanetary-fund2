@@ -13,6 +13,7 @@ import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
+import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 import { Heart, Loader2, Lock, CheckCircle2, Sparkles, CreditCard } from "lucide-react";
 import { computeBreakdown, computePayPalBreakdown, computePayPalWalletBreakdown, MIN_DONATION } from "@/lib/fees";
 
@@ -24,6 +25,11 @@ function RailBreakdown({ rail, breakdown }) {
 
 export default function DonateDialog({ campaign, onDonated, open: controlledOpen, onOpenChange: controlledOnOpenChange, hideTrigger }) {
   const platformOnlyMode = !usePublicCampaignFundraising();
+  const newCheckoutEnabled = useFeatureEnabled("payment_checkout_enabled");
+  const paypalEnabled = useFeatureEnabled("paypal_checkout");
+  const stripeEnabled = useFeatureEnabled("stripe_checkout");
+  const googlePayEnabled = useFeatureEnabled("google_pay_checkout");
+  const recurringEnabled = useFeatureEnabled("recurring_donations");
   const [urlOpen, setUrlOpen] = useUrlDialog("donate");
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : urlOpen;
@@ -59,11 +65,12 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   }, [open, platformOnlyMode]);
 
   const platformOnlyPrelaunch = platformOnlyMode;
-  const paypalApiAvailable = capabilities?.paypal?.api_live === true;
-  const stripeAvailable = !platformOnlyMode && capabilities?.stripe?.live === true;
+  const paypalApiAvailable = newCheckoutEnabled && paypalEnabled && capabilities?.paypal?.api_live === true;
+  const googlePayAvailable = newCheckoutEnabled && googlePayEnabled && capabilities?.paypal?.api_live === true;
+  const stripeAvailable = !platformOnlyMode && newCheckoutEnabled && stripeEnabled && capabilities?.stripe?.live === true;
   useEffect(() => {
-    if (recurring && capabilities && !stripeAvailable) setRecurring(false);
-  }, [recurring, capabilities, stripeAvailable]);
+    if (recurring && capabilities && (!stripeAvailable || !recurringEnabled)) setRecurring(false);
+  }, [recurring, capabilities, stripeAvailable, recurringEnabled]);
 
   const confirmManualDonation = async (payment_method) => {
     const value = parseFloat(amount);
@@ -121,7 +128,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             <Input placeholder="Your name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
             <Textarea placeholder="Leave a message of support (optional)" value={message} onChange={(e) => setMessage(e.target.value)} rows={2} />
 
-            {stripeAvailable && <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3"><Label htmlFor="recurring" className="text-sm text-stone-700">Give monthly</Label><Switch id="recurring" checked={recurring} onCheckedChange={setRecurring} /></div>}
+            {stripeAvailable && recurringEnabled && <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3"><Label htmlFor="recurring" className="text-sm text-stone-700">Give monthly</Label><Switch id="recurring" checked={recurring} onCheckedChange={setRecurring} /></div>}
 
             <div className="flex items-start justify-between gap-3 rounded-xl border border-stone-200 px-4 py-3"><div><Label htmlFor="contrib" className="text-sm text-stone-700 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-amber-500" /> Support the platform</Label><p className="text-xs text-stone-500 mt-0.5">Direct 10% of your gift to Interplanetary Fund. Optional, off by default.</p></div><Switch id="contrib" checked={platformContribution} onCheckedChange={setPlatformContribution} /></div>
 
@@ -129,12 +136,12 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {!capabilities && !capabilityError && <div className="flex items-center justify-center py-4 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking available payment methods…</div>}
             {capabilityError && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">We couldn’t check payment choices right now. Please try again.</p>}
-            {capabilities && !paypalApiAvailable && !stripeAvailable && (platformOnlyMode || !campaign.cashapp_tag) && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">No live payment method is available for this campaign right now. No payment has been started.</p>}
+            {capabilities && !paypalApiAvailable && !stripeAvailable && (platformOnlyMode || !campaign.cashapp_tag) && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">Campaign donations are not available through a verified payment method right now. No payment has been started.</p>}
 
 
             {!recurring && paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName={name} message={message} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 && <RailBreakdown rail="PayPal" breakdown={paypalBd} />}</div>}
 
-            {!recurring && paypalApiAvailable && <div className={googlePayReady ? "rounded-xl border border-stone-200 p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onReadyChange={setGooglePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 ? <RailBreakdown rail="Google Pay via PayPal" breakdown={paypalWalletBd} /> : <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p>}</div>}
+            {!recurring && googlePayAvailable && <div className={googlePayReady ? "rounded-xl border border-stone-200 p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onReadyChange={setGooglePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 ? <RailBreakdown rail="Google Pay via PayPal" breakdown={paypalWalletBd} /> : <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p>}</div>}
 
             {stripeAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">{recurring ? "Monthly giving via card" : "Give with a card"}</p><Button onClick={startStripeCheckout} disabled={stripeLoading || !amount} className="w-full h-10 rounded-xl bg-[#635BFF] hover:bg-[#635BFF]/90 text-white border-0">{stripeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4 mr-1.5" />} {amount ? `Donate $${bd.totalCharged.toFixed(2)} with card` : "Donate with card"}</Button><p className="text-[11px] text-stone-400 mt-2 text-center">Secure card payment via Stripe.</p></div>}
 
