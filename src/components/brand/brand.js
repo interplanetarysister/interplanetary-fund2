@@ -4,7 +4,7 @@ export const BRAND_NAME = "Interplanetary Fund";
 export const SLOGAN = "What If?";
 export const SLOGAN_LONG = "Where platforms once worlds apart become one universe of funding";
 export const TAGLINE = "The Universal Fundraising Operating System";
-export const BRAND_MARK = "/interplanetary-planet.svg";
+export const BRAND_MARK = "/ifund-logo.jpg";
 
 // Platform positioning — Interplanetary Fund is not just a crowdfunding site.
 export const POSITIONING = "The Universal Fundraising Operating System";
@@ -17,8 +17,7 @@ export const POSITIONING_LINES = [
 
 // The official Interplanetary Fund logo. Shown whenever a campaign, profile,
 // or update has no photo, video, or generated image of its own.
-export const FALLBACK_IMAGE =
-  "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
+export const FALLBACK_IMAGE = BRAND_MARK;
 
 // Each person's account is their own "Interplanetary Fund" — the place where
 // all of their support arrives.
