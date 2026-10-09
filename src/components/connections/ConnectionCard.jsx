@@ -172,7 +172,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
-        {failed && managedAvailable && onManagedRepair && (
+        {failed && managedAvailable && connection.obo_consent?.granted === true && connection.obo_consent?.opted_out !== true && onManagedRepair && (
           <Button size="sm" variant="outline" onClick={managedRepair} disabled={managedBusy} className="rounded-lg">
             <Wrench className="w-3.5 h-3.5" />{managedBusy ? "Checking…" : "Let IFund repair"}
           </Button>
