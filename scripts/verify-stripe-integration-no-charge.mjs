@@ -34,4 +34,15 @@ assert.match(ui, /repairStripeWebhookEvents/);
 assert.ok((agent.tool_configs||[]).some(item=>item.function_name==='getStripeIntegrationAudit'));
 assert.ok((agent.tool_configs||[]).some(item=>item.function_name==='repairStripeWebhookEvents'));
 assert.equal(schema.rls.create.user_condition.role,'admin');
-console.log('PASS: admin-only Stripe API audit, no-charge webhook repair, refund/dispute hold, tax ID privacy, IFund agent tools and safety constraints.');
+// Never advertise restricted Stripe accounts as purchasable merely because catalog prices exist.
+const options = read('base44/functions/getStripeSubscriptionOptions/entry.ts');
+const checkout = read('base44/functions/createSubscriptionCheckout/entry.ts');
+const pass = read('base44/functions/createPremiumDayPassCheckout/entry.ts');
+for (const code of [options, checkout, pass]) {
+  assert.match(code, /stripe\.accounts\.retrieve\(\)/, 'Live merchant capabilities must be checked');
+  assert.match(code, /charges_enabled/, 'The account must be allowed to charge customers');
+  assert.match(code, /card_payments/, 'Card payment capability must be active');
+}
+assert.match(options, /available = !!found && paymentReady && endpointReady/);
+assert.match(options, /dayPassAvailable = accessAvailable && paymentReady && endpointReady/);
+console.log('PASS: admin-only Stripe audit, no-charge webhook repair, refund/dispute holds and live merchant checkout capability gates.');
