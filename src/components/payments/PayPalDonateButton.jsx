@@ -3,9 +3,9 @@ import { generatePayPalLink } from "@/lib/paypalLink";
 
 // The Interplanetary Fund one-time platform-support PayPal donate button.
 // It never credits a campaign (business: interplanetarysister@gmail.com)
-// — the same link used across every Interplanetary Fund repo — and opens it in
-// a secure new tab. This is a ONE-TIME payment link; recurring (monthly)
-// donations are handled separately via the Stripe subscription checkout.
+// — the same platform-support link used across IFund properties — and opens
+// in a secure new tab. Campaign donations use tracked PayPal order checkout;
+// subscription plans use the separately verified PayPal billing flow.
 export default function PayPalDonateButton({ campaignTitle = "Interplanetary Fund", amount, label = "Support Interplanetary Fund" }) {
   // This platform-support link remains available in both fundraising modes.
   // Campaign gifts always use the separately tracked checkout.
