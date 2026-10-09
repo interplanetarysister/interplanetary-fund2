@@ -2,6 +2,7 @@ import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGa
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
+import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 // Autonomous AI Outreach Agent runner. Invoked on a schedule (no user context),
 // so all work is service-scoped. For each campaign opted into the agent whose
@@ -43,10 +44,11 @@ export default async function(req) {
     if (!(await isFeatureEnabled(base44, 'ai_outreach_agent'))) return Response.json({ skipped: true, flag: 'ai_outreach_agent', reason: 'disabled' });
     const sr = base44.asServiceRole;
 
-    const campaigns = await sr.entities.Campaign.filter({ outreach_enabled: true });
+    const campaigns = await sr.entities.Campaign.filter({ outreach_enabled: true, status: 'active' });
     const processed = [];
 
     for (const campaign of campaigns.slice(0, 5)) {
+      try {
       if (campaign.outreach_paused) { processed.push({ id: campaign.id, skipped: 'paused' }); continue; }
 
       const owner = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
@@ -58,6 +60,10 @@ export default async function(req) {
       }
       if (!hasSubscriptionLevel(owner, 2)) {
         processed.push({ id: campaign.id, skipped: 'outreach entitlement unavailable' });
+        continue;
+      }
+      if (!hasUnifiedOboConsent(owner)) {
+        processed.push({ id: campaign.id, skipped: 'owner AI help not authorized' });
         continue;
       }
 
@@ -142,6 +148,10 @@ ${context}`;
       });
 
       processed.push({ id: campaign.id, recommendations: recIds.length });
+      } catch (campaignError) {
+        console.error('runOutreachAgent campaign failed:', campaignError?.name || 'UnknownError');
+        processed.push({ id: campaign.id, skipped: 'analysis unavailable; retry on next run' });
+      }
     }
 
     return Response.json({ processed });
