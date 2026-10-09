@@ -362,7 +362,7 @@ export default function Connections() {
       </div>
 
       <div className="mb-8">
-        <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v }))} />
+        <AIConsentCard user={user} onChanged={(v) => { setUser((u) => ({ ...u, ai_obo_consent: v })); setReloadKey((key) => key + 1); }} />
       </div>
       <AgentWorkPanel refreshKey={historyKey} />
 
@@ -402,6 +402,7 @@ export default function Connections() {
                 platform={ALL_PLATFORMS.find((p) => p.id === c.platform)}
                 resolved={lifecycleMap[c.id]}
                 onManage={() => setDialog({ platform: { ...(ALL_PLATFORMS.find((p) => p.id === c.platform) || { id: c.platform, name: c.platform, api: "" }), kind: c.kind }, existing: c })}
+                aiAuthorized={aiAuthorized}
                 managedAvailable={managedAvailable}
                 onManagedRepair={() => requestManagedAction({ platform: c.platform, action: "repair", connection: c })}
                 onUpdated={(updated) => setConnections(prev => prev.map(item => item.id === updated.id ? updated : item))}
