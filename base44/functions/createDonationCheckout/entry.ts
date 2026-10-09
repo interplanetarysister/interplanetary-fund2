@@ -10,6 +10,8 @@ import { areFeaturesEnabled, isFeatureEnabled, featureUnavailable } from '../../
 import { stripeCryptoGatewayReadiness } from '../../shared/stripeCryptoReadiness.ts';
 
 export default async function(req) {
+  // Do not create new Stripe card or crypto checkout sessions.
+  return Response.json({ error: 'Stripe donation checkout has been retired. Choose PayPal.' }, { status: 410 });
   try {
     const base44 = createClientFromRequest(req);
     if (!(await isPublicCampaignFundraisingEnabled(base44))) return Response.json({ error: 'Campaign donations are currently paused. The platform remains open for campaigns and sharing.' }, { status: 409 });
