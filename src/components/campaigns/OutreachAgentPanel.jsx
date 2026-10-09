@@ -16,12 +16,22 @@ export default function OutreachAgentPanel({ campaign }) {
   const [user, setUser] = useState(null);
   const [activities, setActivities] = useState(null);
   const [enabling, setEnabling] = useState(false);
+  const [enabled, setEnabled] = useState(!!campaign.outreach_enabled);
+  const [paused, setPaused] = useState(!!campaign.outreach_paused);
+  const [error, setError] = useState("");
+  useEffect(() => { setEnabled(!!campaign.outreach_enabled); setPaused(!!campaign.outreach_paused); }, [campaign.id, campaign.outreach_enabled, campaign.outreach_paused]);
 
   const load = useCallback(async () => {
-    const me = await base44.auth.me();
-    setUser(me);
-    const acts = await base44.entities.AgentActivity.filter({ campaign_id: campaign.id }, "-created_date", 30);
-    setActivities(acts);
+    try {
+      const me = await base44.auth.me();
+      setUser(me);
+      const acts = await base44.entities.AgentActivity.filter({ campaign_id: campaign.id }, "-created_date", 30);
+      setActivities(Array.isArray(acts) ? acts : []);
+      setError("");
+    } catch {
+      setActivities([]);
+      setError("AI outreach activity could not be loaded. Refresh this page to try again.");
+    }
   }, [campaign.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -30,24 +40,48 @@ export default function OutreachAgentPanel({ campaign }) {
   const hasOutreach = subscription.active && subscription.plan.level >= 2;
 
   const toggleEnabled = async () => {
-    if (!platformEnabled) return;
+    if (!platformEnabled || enabling) return;
     setEnabling(true);
-    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_enabled: !campaign.outreach_enabled } });
-    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
-    setEnabling(false);
+    setError("");
+    try {
+      const { data } = await base44.functions.invoke("updateCampaignSettings", {
+        campaign_id: campaign.id, patch: { outreach_enabled: !enabled },
+      });
+      if (data?.ok !== true) throw new Error("Campaign setting update rejected");
+      setEnabled((value) => !value);
+    } catch {
+      setError("Could not save the outreach automation setting. Try again.");
+    } finally {
+      setEnabling(false);
+    }
   };
 
   const togglePaused = async () => {
+    if (enabling) return;
     setEnabling(true);
-    const { data } = await base44.functions.invoke("updateCampaignSettings", { campaign_id: campaign.id, patch: { outreach_paused: !campaign.outreach_paused } });
-    if (data?.ok !== true) throw new Error("Campaign setting update rejected");
-    setEnabling(false);
+    setError("");
+    try {
+      const { data } = await base44.functions.invoke("updateCampaignSettings", {
+        campaign_id: campaign.id, patch: { outreach_paused: !paused },
+      });
+      if (data?.ok !== true) throw new Error("Campaign setting update rejected");
+      setPaused((value) => !value);
+    } catch {
+      setError("Could not change the outreach pause setting. Try again.");
+    } finally {
+      setEnabling(false);
+    }
   };
 
   const setStatus = async (id, status) => {
-    setActivities((prev) => (prev || []).map((a) => (a.id === id ? { ...a, status } : a)));
-    const { data } = await base44.functions.invoke("reviewAgentActivity", { activity_id: id, status });
-    if (data?.ok !== true) throw new Error("Agent activity review rejected");
+    setError("");
+    try {
+      const { data } = await base44.functions.invoke("reviewAgentActivity", { activity_id: id, status });
+      if (data?.ok !== true) throw new Error("Agent activity review rejected");
+      setActivities((prev) => (prev || []).map((a) => (a.id === id ? { ...a, status } : a)));
+    } catch {
+      setError("Could not update the recommendation review. Try again.");
+    }
   };
 
   if (!user || !activities) {
@@ -61,15 +95,16 @@ export default function OutreachAgentPanel({ campaign }) {
           <Bot className="w-4 h-4 text-cyan-400" />
           <h3 className="font-display text-lg text-slate-100">AI Outreach Agent</h3>
         </div>
-        {campaign.outreach_enabled ? (
+        {enabled ? (
           <Badge variant="outline" className="border-cyan-400/30 bg-cyan-400/10 text-cyan-300">
-            {campaign.outreach_paused ? "Paused" : "Active"}
+            {paused ? "Paused" : "Active · scheduled"}
           </Badge>
         ) : (
           <Badge variant="outline" className="border-white/15 text-slate-400">Off</Badge>
         )}
       </div>
 
+      {error && <p className="text-sm text-red-300 mt-2" role="alert">{error}</p>}
       {!platformEnabled && <p className="text-sm text-amber-200 mt-2">New automated outreach runs are paused. Existing recommendations remain available for review.</p>}
       {!hasOutreach ? (
         <div className="mt-3">
@@ -90,14 +125,14 @@ export default function OutreachAgentPanel({ campaign }) {
               <p className="text-sm text-slate-200 font-medium">Enable autonomous agent</p>
               <p className="text-xs text-slate-400">It runs on a schedule and waits for your approval on every action.</p>
             </div>
-            <Switch checked={!!campaign.outreach_enabled && platformEnabled} onCheckedChange={toggleEnabled} disabled={enabling || !platformEnabled} />
+            <Switch checked={enabled && platformEnabled} onCheckedChange={toggleEnabled} disabled={enabling || !platformEnabled} />
           </div>
 
-          {campaign.outreach_enabled && (
+          {enabled && (
             <div className="flex items-center justify-between gap-4 mt-2 rounded-xl bg-white/5 p-3">
               <p className="text-sm text-slate-200">Pause agent temporarily</p>
               <Button size="sm" variant="ghost" onClick={togglePaused} disabled={enabling} className="text-cyan-300 hover:bg-white/10">
-                {campaign.outreach_paused ? <><Play className="w-4 h-4 mr-1" />Resume</> : <><Pause className="w-4 h-4 mr-1" />Pause</>}
+                {paused ? <><Play className="w-4 h-4 mr-1" />Resume</> : <><Pause className="w-4 h-4 mr-1" />Pause</>}
               </Button>
             </div>
           )}
@@ -120,6 +155,7 @@ export default function OutreachAgentPanel({ campaign }) {
                     {a.reason && <p className="text-xs text-slate-400 mt-1">Why: {a.reason}</p>}
                     {a.expected_impact && <p className="text-xs text-slate-400">Expected impact: {a.expected_impact}</p>}
                     {a.result && <p className="text-xs text-emerald-400/90">Result: {a.result}</p>}
+                    {a.category === "outreach" && a.description && <div className="mt-2 rounded-lg bg-slate-800 p-2"><p className="text-xs font-semibold text-cyan-200">Prepared outreach message</p><p className="text-xs text-slate-200 mt-1 whitespace-pre-wrap">{a.description}</p><p className="text-[11px] text-slate-400 mt-1">This draft has not been sent.</p></div>
                     {a.recommended_next_actions && a.recommended_next_actions.length > 0 && (
                       <ul className="mt-1 space-y-0.5">
                         {a.recommended_next_actions.map((n, i) => (
