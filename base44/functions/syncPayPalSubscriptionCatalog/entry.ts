@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { subscriptionPrices, subscriptionPrice, providerPriceIsExact, CATALOG_VERSION } from '../../shared/subscriptionCatalog.js';
-import { paypalBillingRequest, IFUND_PAYPAL_ACCOUNT_REF, getPayPalBillingPlan } from '../../shared/paypalSubscriptions.ts';
+import { paypalBillingRequest, IFUND_PAYPAL_ACCOUNT_REF, getPayPalBillingPlan, IFUND_OWNER_BASIC_MONTHLY_PLAN_ID } from '../../shared/paypalSubscriptions.ts';
 
 // Explicit administrator action: provision the ten live recurring PayPal
 // prices from IFund's canonical catalog. Never auto-run this on public reads.
@@ -24,12 +24,18 @@ export default async function(req) {
     // Never generate a replacement Basic monthly plan during bulk setup:
     // the owner-provided plan must be accessible via the connected live REST
     // app and match the IFund catalog, or this setup fails without duplicating.
-    const ownerBasicMonthlyId = 'P-6YD2273006199630KNLDXBLA';
+    const ownerBasicMonthlyId = IFUND_OWNER_BASIC_MONTHLY_PLAN_ID;
     for (const expected of catalog) {
       const existing = (allRows || []).find((r: any) =>
         r.tier === expected.tier && r.interval === expected.interval &&
         r.catalog_version === CATALOG_VERSION && r.amount_cents === expected.amount_cents);
       let activePlan: any = null;
+      if (expected.tier === 'basic' && expected.interval === 'monthly' &&
+          existing?.plan_id && existing.plan_id !== ownerBasicMonthlyId) {
+        return Response.json({
+          error: 'An older Basic monthly mapping conflicts with the supplied PayPal plan. No duplicate plan was created.',
+        }, { status: 409 });
+      }
       if (existing?.plan_id) {
         activePlan = await getPayPalBillingPlan(existing.plan_id).catch(() => null);
         if (!providerPriceIsExact(activePlan, expected) || activePlan.product_id !== existing.product_id) {
