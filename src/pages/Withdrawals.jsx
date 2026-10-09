@@ -31,10 +31,7 @@ export default function Withdrawals() {
   const [reviewQueue, setReviewQueue] = useState([]);
   const [collectCampaign, setCollectCampaign] = useState(null);
   const [collectAll, setCollectAll] = useState(false);
-  const [payoutAccount, setPayoutAccount] = useState(null);
   const [payoutEnabled, setPayoutEnabled] = useState(false);
-  const [payoutBusy, setPayoutBusy] = useState(false);
-  const [payoutDisconnectBusy, setPayoutDisconnectBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // The open withdrawal sheet lives in the URL (?withdraw=<campaignId>) so the
@@ -51,12 +48,10 @@ export default function Withdrawals() {
     try {
       const me = await base44.auth.me();
       setUser(me);
-      const [payout, availability, paymentCapabilities] = await Promise.all([
-        base44.functions.invoke("getConnectedPayoutAccount", {}).catch(() => ({ data: null })),
+      const [availability, paymentCapabilities] = await Promise.all([
         base44.functions.invoke("getFeatureAvailability", {}).catch(() => ({ data: null })),
         base44.functions.invoke("getPaymentCapabilities", {}).catch(() => ({ data: null })),
       ]);
-      setPayoutAccount(payout?.data || null);
       setPayoutEnabled(availability?.data?.available?.outbound_payout_execution === true && paymentCapabilities?.data?.paypal?.payout_api_live === true);
       const owned = await base44.entities.Campaign.filter({ created_by_id: me.id });
       const enriched = [];
@@ -90,33 +85,6 @@ export default function Withdrawals() {
   };
 
   useEffect(() => { load(); }, []);
-
-  const startPayoutAccount = async () => {
-    setPayoutBusy(true);
-    try {
-      const { data } = await base44.functions.invoke("startStripeConnectOnboarding", { origin: window.location.origin });
-      if (!data?.url) throw new Error("No onboarding URL");
-      window.location.assign(data.url);
-    } catch (e) {
-      console.error("Payout account onboarding failed:", e?.name || "UnknownError");
-      toast({ title: "Payout account setup unavailable", description: "Please try again after payment-provider access is available.", variant: "destructive" });
-    } finally { setPayoutBusy(false); }
-  };
-
-  const disconnectPayoutAccount = async () => {
-    setPayoutDisconnectBusy(true);
-    try {
-      const { data } = await base44.functions.invoke("manageConnectedPayoutAccount", { action: "disconnect" });
-      if (data?.ok !== true) throw new Error("Disconnect not confirmed");
-      setPayoutAccount({ configured: false, status: "disabled", provider_available: payoutAccount?.provider_available === true });
-      toast({ title: "Settlement account disconnected", description: "IFund will no longer treat this Stripe Connect account as an active settlement destination." });
-    } catch (e) {
-      console.error("Payout account disconnect failed:", e?.name || "UnknownError");
-      toast({ title: "Disconnect failed", description: "The settlement account remains unchanged because the disconnect was not confirmed.", variant: "destructive" });
-    } finally {
-      setPayoutDisconnectBusy(false);
-    }
-  };
 
   const approve = async (id) => {
     try {
@@ -172,27 +140,6 @@ export default function Withdrawals() {
       </header>
 
       {!payoutEnabled && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">New payouts are temporarily paused while the live PayPal payout route is being verified. Your cleared balance remains recorded and reserved for you; no funds are lost.</div>}
-
-      <section className="rounded-2xl border border-stone-200/70 bg-white shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="font-display text-lg text-stone-900">Connected settlement account</h2>
-          <p className="text-sm text-stone-500">
-            {payoutAccount?.provider_available === true && payoutAccount?.status === "ready"
-              ? "Stripe Connect was verified and is ready for supported external-provider settlement routes. Campaign withdrawals still use the owner's PayPal email."
-              : payoutAccount?.status === "unavailable"
-                ? "Stripe Connect cannot be verified in the current runtime, so IFund will not treat this account as ready."
-                : payoutAccount?.configured
-                  ? "Finish Stripe Connect provider verification before IFund treats this account as ready for supported settlements."
-                  : "Connect Stripe Connect only for supported external-provider settlement routes. It is separate from campaign-owner PayPal withdrawals."}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
-          <Button variant="outline" disabled={payoutBusy || (payoutAccount?.provider_available === true && payoutAccount?.status === "ready")} onClick={startPayoutAccount} className="rounded-xl">
-            {payoutBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : payoutAccount?.provider_available === true && payoutAccount?.status === "ready" ? "Settlement account ready" : payoutAccount?.configured ? "Continue setup" : "Connect settlement account"}
-          </Button>
-          {payoutAccount?.configured && <Button variant="ghost" disabled={payoutDisconnectBusy} onClick={disconnectPayoutAccount} className="rounded-xl text-stone-600">{payoutDisconnectBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Disconnect"}</Button>}
-        </div>
-      </section>
 
       <div className="flex justify-end">
         <Button onClick={() => setCollectAll(true)} className="rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white">Collect & Withdraw everything</Button>
