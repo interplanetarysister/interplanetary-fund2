@@ -51,7 +51,8 @@ export default async function(req) {
           ...currentAgent,
           shared_with_agents: approvedForAccount,
           automation_enabled: approvedForAccount && connection.verification_status === 'verified'
-            && (connection.automation_mode || 'manual') === 'auto',
+            && connection.status === 'connected' && (connection.automation_mode || 'manual') === 'auto'
+            && (currentObo.provider_capabilities || []).includes('create_post'),
         },
         automation_mode: connection.automation_mode || 'manual',
       };
