@@ -44,6 +44,16 @@ export default async function(req) {
         if (!providerPriceIsExact(activePlan, expected) || activePlan.product_id !== existing.product_id) {
           return Response.json({ error: 'An existing PayPal plan does not match IFund pricing. No prices were changed.', tier: expected.tier, interval: expected.interval }, { status: 409 });
         }
+        if (expected.tier === 'basic' && expected.interval === 'monthly' &&
+            (existing.catalog_version !== CATALOG_VERSION || existing.amount_cents !== expected.amount_cents ||
+             existing.currency !== 'USD')) {
+          // Provider verified the unchanged billing amount; repair only the
+          // local catalog metadata, never a customer's PayPal billing plan.
+          await sr.entities.SubscriptionPlanMapping.update(existing.id, {
+            catalog_version: CATALOG_VERSION, amount_cents: expected.amount_cents,
+            currency: 'USD', verified_at: new Date().toISOString(),
+          });
+        }
         products[expected.tier] = existing.product_id;
         report.push({ tier: expected.tier, interval: expected.interval, amount_cents: expected.amount_cents, product_id: existing.product_id, plan_id: existing.plan_id, status: 'verified' });
         continue;
