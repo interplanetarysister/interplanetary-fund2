@@ -65,6 +65,10 @@ export default async function(req) {
       return Response.json({ error: 'Subscription checkout is not currently available.' }, { status: 503 });
     }
     const { stripe, accountId } = await stripeSubscriptionClient();
+    const merchant = await stripe.accounts.retrieve();
+    if (merchant.id !== accountId || merchant.charges_enabled !== true || merchant.capabilities?.card_payments !== 'active') {
+      return Response.json({ error: 'Stripe card payments are awaiting business verification. Choose an available payment option.' }, { status: 503 });
+    }
     const found = await resolveStripeSubscriptionPrice(base44.asServiceRole, stripe, accountId, tier, interval);
     if (!found || found.id !== price_id) {
       return Response.json({ error: 'Stripe price is not a verified IFund subscription price.' }, { status: 409 });
