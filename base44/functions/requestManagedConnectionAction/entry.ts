@@ -183,7 +183,7 @@ export default async function(req: Request) {
       updated_at: now,
     });
 
-    if (connection) {
+    if (connection && action !== 'create_account') {
       const verification = await base44.functions.invoke('verifyPlatformConnection', {
         connection_id: connection.id,
       }).catch(() => null);
