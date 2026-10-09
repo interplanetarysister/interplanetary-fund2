@@ -6,6 +6,9 @@ const BASE = 'https://api-m.paypal.com';
 const PAYPAL_PLAN_PATTERN = /^P-[A-Z0-9]{20,32}$/;
 const PAYPAL_SUB_PATTERN = /^I-[A-Z0-9]{10,30}$/;
 export { IFUND_PAYPAL_ACCOUNT_REF };
+// PayPal Button Factory's owner-supplied $12/month plan. This is only
+// a candidate until the configured live PayPal REST app verifies it.
+export const IFUND_OWNER_BASIC_MONTHLY_PLAN_ID = 'P-6YD2273006199630KNLDXBLA';
 export function isPayPalSubscriptionId(id: unknown): boolean { return PAYPAL_SUB_PATTERN.test(String(id || '')); }
 export function isPayPalPlanId(id: unknown): boolean { return PAYPAL_PLAN_PATTERN.test(String(id || '')); }
 
