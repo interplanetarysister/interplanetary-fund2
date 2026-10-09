@@ -5,6 +5,8 @@ import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/in
 import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
+import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
+import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -159,8 +161,28 @@ export default async function(req) {
           // connections remain unverified until a real supported check exists.
           continue;
         }
+        const owner = await sr.entities.User.get(c.created_by_id).catch(() => null);
+        const version = String(owner?.ai_obo_consent?.permission_version || '');
+        const delegated = !!owner && hasUnifiedOboConsent(owner) && !!version &&
+          c.obo_consent?.granted === true &&
+          c.obo_consent?.opted_out !== true &&
+          c.obo_consent?.permission_version === version;
+        const verifiedCaps = c.platform === 'bluesky'
+          ? verifiedConnectionCapabilities(c)
+          : (c.obo_consent?.provider_capabilities || []);
         const checked = await sr.entities.PlatformConnection.update(c.id, {
           status: 'connected', verification_status: 'verified', last_synced: now.toISOString(), last_error: '',
+          obo_consent: {
+            ...(c.obo_consent || {}),
+            provider_capabilities: verifiedCaps,
+            granted_capabilities: delegated ? verifiedCaps : [],
+          },
+          agent_access: {
+            ...(c.agent_access || {}),
+            shared_with_agents: delegated,
+            automation_enabled: delegated && c.automation_mode === 'auto' &&
+              verifiedCaps.includes('create_post'),
+          },
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Scheduled provider verification succeeded' }].slice(-30),
         });
         report.verified++;
