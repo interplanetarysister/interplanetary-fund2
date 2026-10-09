@@ -159,7 +159,7 @@ export default function OutreachAgentPanel({ campaign }) {
                     {a.reason && <p className="text-xs text-slate-400 mt-1">Why: {a.reason}</p>}
                     {a.expected_impact && <p className="text-xs text-slate-400">Expected impact: {a.expected_impact}</p>}
                     {a.result && <p className="text-xs text-emerald-400/90">Result: {a.result}</p>}
-                    {a.category === "outreach" && a.description && <div className="mt-2 rounded-lg bg-slate-800 p-2"><p className="text-xs font-semibold text-cyan-200">Prepared outreach message</p><p className="text-xs text-slate-200 mt-1 whitespace-pre-wrap">{a.description}</p><p className="text-[11px] text-slate-400 mt-1">This draft has not been sent.</p></div>
+                    {a.category === "outreach" && a.description && <div className="mt-2 rounded-lg bg-slate-800 p-2"><p className="text-xs font-semibold text-cyan-200">Prepared outreach message</p><p className="text-xs text-slate-200 mt-1 whitespace-pre-wrap">{a.description}</p><p className="text-[11px] text-slate-400 mt-1">This draft has not been sent.</p></div>}
                     {a.recommended_next_actions && a.recommended_next_actions.length > 0 && (
                       <ul className="mt-1 space-y-0.5">
                         {a.recommended_next_actions.map((n, i) => (
