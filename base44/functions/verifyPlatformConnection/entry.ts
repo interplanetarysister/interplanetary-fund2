@@ -27,7 +27,13 @@ async function completeManagedRepairDelegations(base44, user, connection, now) {
   }).catch(() => []);
 
   for (const delegation of delegations || []) {
-    if (delegation?.continuation_state?.continuation_ref !== connection.id) continue;
+    // A request to connect an account may precede the first connection row.
+    // When OAuth or token setup later produces a live-verified connection,
+    // resume only the same owner's unbound "connect" request for this platform.
+    const ref = delegation?.continuation_state?.continuation_ref;
+    const unboundConnect = delegation?.objective === `connect ${connection.platform}` &&
+      (!ref || ref === delegation.id);
+    if (ref !== connection.id && !unboundConnect) continue;
     if (String(delegation?.consent_version || '') !== consentVersion) continue;
     await base44.entities.AgentDelegation.update(delegation.id, {
       status: 'completed',
