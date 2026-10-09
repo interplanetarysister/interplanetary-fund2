@@ -71,7 +71,7 @@ export default async function(req: Request) {
       return Response.json({ error: 'This connection needs the current IFund help permission.' }, { status: 403 });
     }
     const last = Date.parse(work.last_attempt_at || '');
-    if (!body.force && Number.isFinite(last) && Date.now() - last < 30000) {
+    if (Number.isFinite(last) && Date.now() - last < 30000) {
       return Response.json({ ok: true, checked: false, work: publicWork(work), message: 'This connection was checked recently.' });
     }
     const now = new Date().toISOString();
