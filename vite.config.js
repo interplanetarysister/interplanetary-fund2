@@ -39,18 +39,18 @@ export default defineConfig({
           if (/(?:\x2f|\\)node_modules(?:\x2f|\\)(?:react|react-dom|react-router|react-router-dom|scheduler)(?:\x2f|\\)/.test(id) ||
               id.includes('node_modules/@remix-run/')) return 'react-runtime';
           if (id.includes('@reown/appkit-adapter-ethers') || id.includes('/ethers/')) return 'reown-ethers';
-          if (id.includes('@reown/appkit-adapter-solana') || id.includes('@solana/')) return 'reown-solana';
+          if (id.includes('@solana/')) return 'reown-solana';
           if (id.includes('@reown/appkit-adapter-bitcoin')) return 'reown-bitcoin';
           if (id.includes('@walletconnect')) return 'walletconnect';
-          if (id.includes('@reown/appkit-ui') || id.includes('@reown/appkit-scaffold-ui')) return 'reown-ui';
-          if (id.includes('@reown/appkit-controllers')) return 'reown-controllers';
-          if (id.includes('@reown/appkit')) return 'reown-core';
+          if (id.includes('@reown/appkit-ui') || id.includes('@reown/appkit-scaffold-ui')) return 'reown-runtime';
+          if (id.includes('@reown/appkit-controllers')) return 'reown-runtime';
+          if (id.includes('@reown/appkit')) return 'reown-runtime';
           if (id.includes('@coinbase/wallet-sdk') || id.includes('@cbhq/')) return 'coinbase-wallet';
           if (id.includes('@base-org/') || id.includes('@base/')) return 'base-wallet';
           // Do not split viem's own interdependent ESM graph into separate
           // chunks: it causes circular imports and TDZ runtime crashes on
           // campaign discovery. One crypto core chunk initializes atomically.
-          if (id.includes('@noble/') || id.includes('ox-')) return 'crypto-primitives';
+          if (id.includes('@noble/') || id.includes('ox-') || id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) return 'ui-crypto-primitives';
           if (id.includes('viem')) return 'viem-runtime';
           if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
           if (id.includes('react-router') || id.includes('@remix-run')) return 'react-router';
