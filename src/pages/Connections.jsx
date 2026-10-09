@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Link2, RefreshCw, Search, ChevronDown, History } from "lucide-react";
 import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
 import AIConsentCard from "@/components/connections/AIConsentCard";
+import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
@@ -285,6 +286,7 @@ export default function Connections() {
         campaign_id,
       });
       if (!data?.accepted) throw new Error("Managed Connections request was not accepted.");
+      setHistoryKey((key) => key + 1);
       const completed = data.state === "completed";
       setConnectionNotice({
         ok: completed,
@@ -362,6 +364,7 @@ export default function Connections() {
       <div className="mb-8">
         <AIConsentCard user={user} onChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v }))} onConnectionChanged={(v) => setUser((u) => ({ ...u, ai_obo_consent: v }))} />
       </div>
+      <AgentWorkPanel refreshKey={historyKey} />
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (
         <div className="mb-8">
