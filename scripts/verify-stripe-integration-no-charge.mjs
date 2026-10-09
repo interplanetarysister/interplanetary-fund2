@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { subscriptionPrices, stripePriceFor } from '../base44/shared/subscriptionCatalog.js';
 const read = p => readFileSync(p, 'utf8');
 const audit = read('base44/functions/getStripeIntegrationAudit/entry.ts');
 const repair = read('base44/functions/repairStripeWebhookEvents/entry.ts');
@@ -45,4 +46,8 @@ for (const code of [options, checkout, pass]) {
 }
 assert.match(options, /available = !!found && paymentReady && endpointReady/);
 assert.match(options, /dayPassAvailable = accessAvailable && paymentReady && endpointReady/);
-console.log('PASS: admin-only Stripe audit, no-charge webhook repair, refund/dispute holds and live merchant checkout capability gates.');
+const linkedPrices = subscriptionPrices().map(p => stripePriceFor(p.tier, p.interval));
+assert.equal(linkedPrices.length, 10, 'Five tiers require monthly and annual prices');
+assert.equal(new Set(linkedPrices).size, 10, 'Every billing option must have its own price');
+assert.ok(linkedPrices.every(id => /^price_[a-zA-Z0-9]+$/.test(id)), 'Missing live Stripe price mapping');
+console.log('PASS: ten subscription Stripe price IDs, admin-only audit, refund/dispute holds and live merchant checkout capability gates.');
