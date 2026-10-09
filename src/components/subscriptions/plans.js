@@ -2,8 +2,7 @@ import { SUBSCRIPTION_PRICING } from "../../../base44/shared/subscriptionCatalog
 
 // Subscription plan catalog for Interplanetary Fund AI tiers.
 // Designed so new tiers can be appended here without touching checkout or UI
-// code. Each tier declares monthly + annual Stripe price IDs (filled in after
-// the prices are created) and the feature set used by the subscribe UI.
+// code. Each tier declares a monthly and annual price and its included features.
 //
 // Tiers are ordered by elevation; `level` controls gating (higher = more).
 // `outreach` unlocks the autonomous AI Outreach Agent.
@@ -20,8 +19,8 @@ export const PLANS = [
       "On-demand AI coaching tips",
       "Single campaign at a time",
     ],
-    monthly: { amount: SUBSCRIPTION_PRICING.basic.monthly, stripe_price_id: "price_1UOFDfGg5Dyxp347qGlvjDcY" },
-    annual: { amount: SUBSCRIPTION_PRICING.basic.annual, stripe_price_id: "price_1Tz8iSEkntycHB4N8J7EXq42" },
+    monthly: { amount: SUBSCRIPTION_PRICING.basic.monthly },
+    annual: { amount: SUBSCRIPTION_PRICING.basic.annual },
   },
   {
     id: "outreach",
@@ -40,8 +39,8 @@ export const PLANS = [
       "Full activity log with approve / reject / pause",
       "Works across all your campaigns",
     ],
-    monthly: { amount: SUBSCRIPTION_PRICING.outreach.monthly, stripe_price_id: "price_1Tz8iSEkntycHB4NESNtjyOx" },
-    annual: { amount: SUBSCRIPTION_PRICING.outreach.annual, stripe_price_id: "price_1Tz8iSEkntycHB4N5iujmlJZ" },
+    monthly: { amount: SUBSCRIPTION_PRICING.outreach.monthly },
+    annual: { amount: SUBSCRIPTION_PRICING.outreach.annual },
   },
   {
     id: "professional",
@@ -54,8 +53,8 @@ export const PLANS = [
       "Priority AI processing",
       "Advanced performance forecasting",
     ],
-    monthly: { amount: SUBSCRIPTION_PRICING.professional.monthly, stripe_price_id: "" },
-    annual: { amount: SUBSCRIPTION_PRICING.professional.annual, stripe_price_id: "" },
+    monthly: { amount: SUBSCRIPTION_PRICING.professional.monthly },
+    annual: { amount: SUBSCRIPTION_PRICING.professional.annual },
   },
   {
     id: "enterprise",
@@ -68,8 +67,8 @@ export const PLANS = [
       "Team seats & roles",
       "Dedicated support",
     ],
-    monthly: { amount: SUBSCRIPTION_PRICING.enterprise.monthly, stripe_price_id: "" },
-    annual: { amount: SUBSCRIPTION_PRICING.enterprise.annual, stripe_price_id: "" },
+    monthly: { amount: SUBSCRIPTION_PRICING.enterprise.monthly },
+    annual: { amount: SUBSCRIPTION_PRICING.enterprise.annual },
   },
   {
     id: "nonprofit",
@@ -81,8 +80,8 @@ export const PLANS = [
       "Managed Connections",
       "Nonprofit pricing",
     ],
-    monthly: { amount: SUBSCRIPTION_PRICING.nonprofit.monthly, stripe_price_id: "" },
-    annual: { amount: SUBSCRIPTION_PRICING.nonprofit.annual, stripe_price_id: "" },
+    monthly: { amount: SUBSCRIPTION_PRICING.nonprofit.monthly },
+    annual: { amount: SUBSCRIPTION_PRICING.nonprofit.annual },
   },
 ];
 
@@ -96,10 +95,3 @@ export function planAllowsOutreach(tierId) {
   return getPlan(tierId).level >= 2;
 }
 
-// Stripe price metadata, used by createSubscriptionCheckout to resolve the
-// correct price object id at checkout time.
-export function priceFor(tierId, interval) {
-  const plan = getPlan(tierId);
-  if (plan === FREE_TIER) return null;
-  return plan[interval]?.stripe_price_id || null;
-}
