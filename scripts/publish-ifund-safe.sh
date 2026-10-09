@@ -23,6 +23,10 @@ node scripts/verify-ifund-navigation.mjs
 node scripts/verify-ifund-studio-pages.mjs
 ./node_modules/.bin/tsc -p jsconfig.json --noEmit
 ./node_modules/.bin/eslint . --quiet
+if [ "${IFUND_VALIDATE_ONLY:-0}" = "1" ]; then
+  printf '%s\n' "The local release gate passed. Publication skipped in validation-only mode."
+  exit 0
+fi
 printf '%s\n' "The local release gate passed. Publishing only the Base44 website files."
 base44 --app-id "$APP_ID" site deploy --no-build --yes
 printf '%s\n' "Checking production in Chromium..."
