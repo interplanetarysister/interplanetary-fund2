@@ -10,8 +10,8 @@
     "window-controls-overlay",
     "standalone"
   ],
-  "background_color": "#0a0e1f",
-  "theme_color": "#0a0e1f",
+  "background_color": "#0b1225",
+  "theme_color": "#101b34",
   "orientation": "any",
   "categories": [
     "finance",

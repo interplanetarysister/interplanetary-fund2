@@ -44,7 +44,7 @@ export default function ConnectedDevices() {
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:py-10">
       <h1 className="flex items-center gap-2 text-3xl font-bold text-stone-900"><Smartphone className="h-7 w-7 text-blue-600" /> Connected devices</h1>
       <p className="mt-2 text-sm text-stone-600">
         IFund-owned devices and agents you approved using a temporary code. Device permissions do not include payments, withdrawals, publishing, or outside accounts.

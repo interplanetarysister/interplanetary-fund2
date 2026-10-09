@@ -67,10 +67,10 @@ export default function DeviceActivation() {
   const loginTarget = "/login?returnTo=" +
     encodeURIComponent("/activate" + (normalize(code) ? "?code=" + encodeURIComponent(displayCode(normalize(code))) : ""));
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-50">
+    <main className="ifund-auth min-h-screen bg-slate-950 px-4 py-10 text-slate-50">
       <div className="mx-auto max-w-lg">
         <div className="mb-7 flex justify-center"><BrandLogo size="md" /></div>
-        <section className="rounded-3xl border border-cyan-300/20 bg-slate-900 p-5 sm:p-7 shadow-xl">
+        <section className="ifund-auth-card rounded-3xl border border-cyan-300/20 bg-slate-900 p-5 sm:p-7 shadow-xl">
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             <KeyRound className="w-6 h-6 text-cyan-300" /> Authorize a device
           </h1>

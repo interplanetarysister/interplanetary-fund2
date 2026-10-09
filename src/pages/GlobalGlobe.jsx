@@ -53,7 +53,7 @@ export default function GlobalGlobe() {
   );
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="ifund-public ifund-experience min-h-dvh bg-background">
       <header className="deep-space px-4 sm:px-6 py-4 pt-safe">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
           <Link to="/" className="shrink-0"><BrandLogo size="sm" nameClassName="text-slate-100 text-[15px]" /></Link>

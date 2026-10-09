@@ -120,14 +120,14 @@ body {
 .ifund-experience {
   font-family: var(--font-body);
 }
-.ifund-experience :where(h1,h2,h3,h4) {
+.ifund-shell .ifund-experience :where(h1,h2,h3,h4) {
   font-family: var(--font-heading);
   letter-spacing: -.035em;
   text-wrap: balance;
 }
-.ifund-experience :where(h1) { font-weight: 760; }
-.ifund-experience :where(h2) { font-weight: 710; }
-.ifund-experience :where(h3) { font-weight: 660; }
+.ifund-shell .ifund-experience :where(h1) { font-weight: 760; }
+.ifund-shell .ifund-experience :where(h2) { font-weight: 710; }
+.ifund-shell .ifund-experience :where(h3) { font-weight: 660; }
 .ifund-experience :where(input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="combobox"]) {
   border-radius: .82rem;
   transition: box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
@@ -244,4 +244,21 @@ body {
 @media print {
   .ifund-sidebar,.ifund-mobile-header,.ifund-mobile-nav,.ifund-workspace-bar { display: none !important; }
   .ifund-shell [data-page-scroll] { overflow: visible !important; padding: 0 !important; }
+}
+
+/* Premium cards are selected by semantic surface tokens; unlike global
+ * forced recoloring this preserves explicit dark panels and status alerts. */
+.ifund-shell .ifund-experience :where([class~="bg-card"]) {
+  border-color: rgb(var(--if-outline) / .56);
+  box-shadow: 0 14px 38px rgb(var(--if-shadow) / .065);
+}
+.ifund-shell .ifund-experience :where(.font-display):not(.brand-gradient-text) {
+  font-family: var(--font-heading);
+}
+.ifund-public :where(h2, h3), .ifund-auth :where(h1) {
+  font-family: var(--font-heading);
+  letter-spacing: -.035em;
+}
+.ifund-public-hero h1, .ifund-public-hero .ifund-home-headline {
+  font-family: var(--font-display);
 }

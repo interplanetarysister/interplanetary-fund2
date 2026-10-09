@@ -6,12 +6,12 @@ import BrandLogo from "@/components/brand/BrandLogo";
 
 export default function About() {
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="ifund-public min-h-dvh bg-background">
       {/* Hero */}
-      <section className="relative overflow-hidden deep-space">
+      <section className="ifund-public-hero relative overflow-hidden deep-space">
         <div className="relative px-5 sm:px-8 py-16 sm:py-24 max-w-3xl mx-auto text-center">
           <div className="flex justify-center mb-8"><BrandLogo size="sm" nameClassName="text-slate-100 text-sm" /></div>
-          <h1 className="font-display text-4xl sm:text-6xl leading-[1.05] text-white mb-6">
+          <h1 className="ifund-home-headline font-display text-4xl sm:text-6xl leading-[1.05] text-white mb-6">
             About <span className="brand-gradient-text">Interplanetary Fund</span>
           </h1>
           <p className="text-slate-300 text-base sm:text-lg leading-relaxed max-w-xl mx-auto">
