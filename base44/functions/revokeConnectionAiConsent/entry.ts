@@ -23,6 +23,8 @@ export default async function(req: Request) {
         ...(full.obo_consent || {}),
         granted: false,
         granted_at: null,
+        opted_out: true,
+        revoked_at: new Date().toISOString(),
         granted_capabilities: [],
       },
       agent_access: {
