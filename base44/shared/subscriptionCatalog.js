@@ -12,8 +12,11 @@ export const SUBSCRIPTION_PRICING = Object.freeze({
 // These existing Stripe IDs are available as an alternative payment method.
 // Do not infer a plan's price from an untrusted client-submitted price ID.
 export const SUBSCRIPTION_STRIPE_PRICES = Object.freeze({
-  basic: { monthly: 'price_1UOFDfGg5Dyxp347qGlvjDcY', annual: 'price_1Tz8iSEkntycHB4N8J7EXq42' },
-  outreach: { monthly: 'price_1Tz8iSEkntycHB4NESNtjyOx', annual: 'price_1Tz8iSEkntycHB4N5iujmlJZ' },
+  basic:        { monthly: 'price_1UOFDfGg5Dyxp347qGlvjDcY', annual: 'price_1UOhJxGg5Dyxp347c1tytkJf' },
+  outreach:     { monthly: 'price_1UOhJzGg5Dyxp347rdEIFurT', annual: 'price_1UOhK1Gg5Dyxp347mpy3wIjH' },
+  professional: { monthly: 'price_1UOhK2Gg5Dyxp347t9mfrKdT', annual: 'price_1UOhK4Gg5Dyxp347b7sQgZ5L' },
+  enterprise:   { monthly: 'price_1UOhK5Gg5Dyxp347ZtrOMWJl', annual: 'price_1UOhK7Gg5Dyxp347s6QzfztT' },
+  nonprofit:    { monthly: 'price_1UOhK9Gg5Dyxp347zTK6XDbn', annual: 'price_1UOhKBGg5Dyxp34785akXqNc' },
 });
 export function stripePriceFor(tier, interval) {
   return SUBSCRIPTION_STRIPE_PRICES[tier]?.[interval] || null;
