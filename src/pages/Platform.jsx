@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ServiceHealthPanel from "@/components/platform/ServiceHealthPanel";
 import FeatureFlagsPanel from "@/components/platform/FeatureFlagsPanel";
 import LiveProvidersPanel from "@/components/platform/LiveProvidersPanel";
-import StripeIntegrationPanel from "@/components/platform/StripeIntegrationPanel";
 import TimelinePanel from "@/components/platform/TimelinePanel";
 import KnowledgePanel from "@/components/platform/KnowledgePanel";
 import BlueprintPanel from "@/components/platform/BlueprintPanel";
@@ -46,7 +45,6 @@ export default function Platform() {
       <Tabs defaultValue="live">
         <TabsList className="mb-6 flex-wrap h-auto">
           <TabsTrigger value="live">Live providers</TabsTrigger>
-          <TabsTrigger value="stripe">Stripe billing</TabsTrigger>
           <TabsTrigger value="health">Health</TabsTrigger>
           <TabsTrigger value="blueprint">Blueprint</TabsTrigger>
           <TabsTrigger value="constitution">Constitution</TabsTrigger>
@@ -59,7 +57,6 @@ export default function Platform() {
           <TabsTrigger value="users">Users</TabsTrigger>
         </TabsList>
         <TabsContent value="live"><LiveProvidersPanel /></TabsContent>
-        <TabsContent value="stripe"><StripeIntegrationPanel /></TabsContent>
         <TabsContent value="health"><ServiceHealthPanel /></TabsContent>
         <TabsContent value="blueprint"><BlueprintPanel /></TabsContent>
         <TabsContent value="constitution"><ConstitutionPanel /></TabsContent>
