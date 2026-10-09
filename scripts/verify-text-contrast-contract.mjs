@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const css = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8');
 const layout = readFileSync(new URL('../src/components/Layout.jsx', import.meta.url), 'utf8');
 const pullToRefresh = readFileSync(new URL('../src/components/mobile/PullToRefresh.jsx', import.meta.url), 'utf8');
+const cryptoDonateOption = readFileSync(new URL('../src/components/payments/CryptoDonateOption.jsx', import.meta.url), 'utf8');
 
 function stripComments(source) {
   let output = '';
@@ -405,4 +406,43 @@ for (const file of walk(srcRoot)) {
 }
 assert.deepEqual(contrastViolations, [], 'obvious same-tone foreground/background combinations are forbidden:\n' + contrastViolations.join('\n'));
 
-console.log('Shared text contrast contract passed.');
+// Crypto donation information appears on the homepage and campaign checkout.
+// Preserve readable foreground/background pairings in both user color modes.
+assert.ok(
+  hasStaticElementClasses(cryptoDonateOption, 'section',
+    ['bg-violet-50', 'text-slate-950', 'dark:bg-slate-900', 'dark:text-slate-50']),
+  'crypto panel must declare matched backgrounds and foregrounds for light and dark modes'
+);
+assert.ok(
+  hasStaticElementClasses(cryptoDonateOption, 'h3', ['text-violet-900', 'dark:text-violet-100']),
+  'crypto heading must remain readable on each panel surface'
+);
+assert.ok(
+  hasStaticElementClasses(cryptoDonateOption, 'p',
+    ['bg-amber-50', 'text-amber-950', 'dark:bg-amber-200/10', 'dark:text-amber-100']),
+  'crypto readiness warning must have legible text in both modes'
+);
+function contrastRatio(foreground, background) {
+  const luminance = (hex) => {
+    const components = hex.match(/[a-f0-9]{2}/gi).map((channel) => {
+      const value = parseInt(channel, 16) / 255;
+      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return components[0] * 0.2126 + components[1] * 0.7152 + components[2] * 0.0722;
+  };
+  const light = Math.max(luminance(foreground), luminance(background));
+  const dark = Math.min(luminance(foreground), luminance(background));
+  return (light + 0.05) / (dark + 0.05);
+}
+for (const [name, fg, bg] of [
+  ['light crypto body', '020617', 'f5f3ff'],
+  ['light crypto heading', '4c1d95', 'f5f3ff'],
+  ['dark crypto body', 'f8fafc', '0f172a'],
+  ['dark crypto heading', 'ede9fe', '0f172a'],
+  ['light readiness warning', '451a03', 'fffbeb'],
+  ['dark readiness warning', 'fef3c7', '282c34'],
+]) {
+  assert.ok(contrastRatio(fg, bg) >= 4.5, name + ' must meet WCAG AA normal-text contrast');
+}
+
+console.log('Shared text contrast contract passed, including crypto donation panels in both color modes.');
