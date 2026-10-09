@@ -20,6 +20,10 @@ export default async function(req: Request) {
     const approved = (await sr.entities.NonprofitSubscriptionApproval.filter({ user_id: user.id }).catch(() => []))
       .some((r: any) => r.status === 'approved');
     const { stripe, accountId } = await stripeSubscriptionClient();
+    const merchant = await stripe.accounts.retrieve();
+    // Products and live prices are not sufficient: an unverified merchant cannot charge buyers.
+    const paymentReady = merchant.id === accountId && merchant.charges_enabled === true &&
+      merchant.capabilities?.card_payments === 'active';
     const hooks = await stripe.webhookEndpoints.list({ limit: 100 });
     const signatureReady = String(secrets.get('STRIPE_WEBHOOK_SECRET') || '').startsWith('whsec_');
     const required = ['checkout.session.completed', 'invoice.paid', 'customer.subscription.updated','customer.subscription.deleted'];
@@ -32,7 +36,7 @@ export default async function(req: Request) {
         (enabled.has('*') || required.every(event => enabled.has(event)));
     });
     const dayPassPrice = await stripe.prices.retrieve(PREMIUM_DAY_PASS_PRICE_ID).catch(() => null);
-    const dayPassAvailable = accessAvailable && endpointReady && verifiedDayPassPrice(dayPassPrice) &&
+    const dayPassAvailable = accessAvailable && paymentReady && endpointReady && verifiedDayPassPrice(dayPassPrice) &&
       (hooks.data || []).some((row: any) => {
         const events = new Set(row.enabled_events || []);
         const url = String(row.url || '').toLowerCase();
@@ -42,11 +46,11 @@ export default async function(req: Request) {
       });
     const plans = await Promise.all(subscriptionPrices().map(async price => {
       const found = await resolveStripeSubscriptionPrice(sr, stripe, accountId, price.tier, price.interval);
-      const available = !!found && endpointReady && (price.tier !== 'nonprofit' || approved);
+      const available = !!found && paymentReady && endpointReady && (price.tier !== 'nonprofit' || approved);
       return { tier: price.tier, interval: price.interval, amount_cents: price.amount_cents,
         available, price_id: available ? found.id : null };
     }));
-    return Response.json({ provider: 'stripe', webhook_configured: endpointReady,
+    return Response.json({ provider: 'stripe', merchant_payments_enabled: paymentReady, webhook_configured: endpointReady,
       nonprofit_approved: approved, trial_eligible: trialEligible,
       welcome_discount_available: welcomeDiscountAvailable,
       day_pass: { amount_cents: 100, duration_hours: 24, available: dayPassAvailable }, plans }, { headers: { 'Cache-Control': 'private, no-store' } });
