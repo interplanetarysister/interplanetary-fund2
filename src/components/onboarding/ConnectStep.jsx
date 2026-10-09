@@ -29,10 +29,6 @@ export default function ConnectStep({ data, onChange }) {
         ? "available"
         : "verify_runtime";
     }
-    if (item.id === "stripe") {
-      if (!paymentCapabilities) return "verify_runtime";
-      return paymentCapabilities.stripe?.configured ? "available" : "verify_runtime";
-    }
     return item.status;
   };
 
