@@ -28,12 +28,6 @@ export default async function(req) {
     for (const expected of catalog) {
       const matchingTier = (allRows || []).filter((r: any) =>
         r.tier === expected.tier && r.interval === expected.interval);
-      if (expected.tier === 'basic' && expected.interval === 'monthly' &&
-          matchingTier.some((r: any) => r.plan_id && r.plan_id !== ownerBasicMonthlyId)) {
-        return Response.json({
-          error: 'An older Basic monthly mapping conflicts with the supplied PayPal plan. No duplicate plan was created.',
-        }, { status: 409 });
-      }
       const existing = matchingTier.find((r: any) =>
         r.catalog_version === CATALOG_VERSION && r.amount_cents === expected.amount_cents) ||
         (expected.tier === 'basic' && expected.interval === 'monthly'
@@ -59,35 +53,33 @@ export default async function(req) {
         continue;
       }
       if (expected.tier === 'basic' && expected.interval === 'monthly') {
-        // Explicitly adopt the owner's existing recurring plan instead of
-        // creating a competing PayPal billing plan at the same price.
+        // First reuse the owner's existing $12/month Button Factory plan, but
+        // some merchant apps cannot read a plan created under another live app.
+        // When unavailable, provision a verified equivalent under the CURRENT
+        // authorized PayPal business; never open or substitute another merchant.
         const supplied = await getPayPalBillingPlan(ownerBasicMonthlyId).catch(() => null);
-        if (supplied?.id !== ownerBasicMonthlyId ||
-            !providerPriceIsExact(supplied, expected) || !supplied.product_id) {
-          return Response.json({
-            error: 'The owner-supplied Basic monthly PayPal plan is not available or does not match IFund billing. No substitute plan was created.',
-          }, { status: 409 });
+        if (supplied?.id === ownerBasicMonthlyId &&
+            providerPriceIsExact(supplied, expected) && supplied.product_id) {
+          const duplicate = (allRows || []).some((row: any) =>
+            row.plan_id === ownerBasicMonthlyId && (row.tier !== expected.tier || row.interval !== expected.interval));
+          if (duplicate) return Response.json({ error: 'The owner plan is assigned to another tier.' }, { status: 409 });
+          const mapping = {
+            provider: 'paypal', tier: expected.tier, interval: expected.interval,
+            currency: 'USD', amount_cents: expected.amount_cents, catalog_version: CATALOG_VERSION,
+            account_ref: IFUND_PAYPAL_ACCOUNT_REF, product_id: supplied.product_id,
+            plan_id: ownerBasicMonthlyId, verified_at: new Date().toISOString(),
+          };
+          if (existing?.id) await sr.entities.SubscriptionPlanMapping.update(existing.id, mapping);
+          else await sr.entities.SubscriptionPlanMapping.create(mapping);
+          products[expected.tier] = supplied.product_id;
+          report.push({ tier: expected.tier, interval: expected.interval,
+            amount_cents: expected.amount_cents, product_id: supplied.product_id,
+            plan_id: ownerBasicMonthlyId, status: 'adopted_existing_and_verified' });
+          continue;
         }
-        const duplicate = (allRows || []).some((row: any) =>
-          row.plan_id === ownerBasicMonthlyId && (row.tier !== expected.tier || row.interval !== expected.interval));
-        if (duplicate) return Response.json({ error: 'The supplied PayPal plan is already assigned to another tier.' }, { status: 409 });
-        const mapping = {
-          provider: 'paypal', tier: expected.tier, interval: expected.interval,
-          currency: 'USD', amount_cents: expected.amount_cents,
-          catalog_version: CATALOG_VERSION, account_ref: IFUND_PAYPAL_ACCOUNT_REF,
-          product_id: supplied.product_id, plan_id: ownerBasicMonthlyId,
-          verified_at: new Date().toISOString(),
-        };
-        if (existing?.id) await sr.entities.SubscriptionPlanMapping.update(existing.id, mapping);
-        else await sr.entities.SubscriptionPlanMapping.create(mapping);
-        products[expected.tier] = supplied.product_id;
-        report.push({
-          tier: expected.tier, interval: expected.interval,
-          amount_cents: expected.amount_cents,
-          product_id: supplied.product_id, plan_id: ownerBasicMonthlyId,
-          status: 'adopted_existing_and_verified',
-        });
-        continue;
+        // A missing owner plan is not a reason to replace the merchant
+        // account. Continue to the idempotent product + plan provisioning
+        // path below using the existing authorized live PayPal credentials.
       }
       // Reuse the product attached to the other billing interval for this tier.
       let productId = products[expected.tier] ||
