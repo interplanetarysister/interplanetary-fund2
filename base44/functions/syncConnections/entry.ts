@@ -164,7 +164,10 @@ export default async function(req) {
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Scheduled provider verification succeeded' }].slice(-30),
         });
         report.verified++;
-        report.delegations_completed += await completeVerifiedManagedWork(sr, checked, now.toISOString());
+        report.delegations_completed += await completeVerifiedManagedWork(sr, checked, now.toISOString()).catch((error) => {
+          console.error('Managed work reconciliation could not finish:', error?.name || 'UnknownError');
+          return 0;
+        });
       } catch (e) {
         console.error('syncConnections provider verification failed:', e?.name || 'UnknownError');
         const reason = String(e?.message || '');
