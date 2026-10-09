@@ -9,12 +9,10 @@ import { RefreshCw, Loader2, ExternalLink, ShieldAlert } from "lucide-react";
 const HELP = [
   { label: "Reown wallet connections", url: "https://dashboard.reown.com" },
   { label: "NOWPayments merchant setup", url: "https://nowpayments.io/api" },
-  { label: "Stripe payment methods", url: "https://dashboard.stripe.com/settings/payment_methods" },
 ];
 const PROVIDER_NAMES = {
   paypal_checkout: "PayPal checkout",
   paypal_payouts: "PayPal withdrawals",
-  stripe_checkout: "Stripe card processing",
   nowpayments: "Crypto settlement provider",
   reown: "Crypto wallet connections",
   openai: "AI provider",
@@ -88,7 +86,7 @@ export default function LiveProvidersPanel() {
     {snapshot && <section className="bg-white border border-stone-200 rounded-2xl p-5 space-y-3">
       <h3 className="font-semibold text-stone-900">Verified provider routes</h3>
       <div className="grid sm:grid-cols-2 gap-3">
-        {Object.entries(snapshot.providers || {}).map(([key, status]) =>
+        {Object.entries(snapshot.providers || {}).filter(([key]) => key !== "stripe_checkout").map(([key, status]) =>
           <div key={key} className="rounded-xl border border-stone-200 p-3">
             <div className="flex justify-between items-center gap-3">
               <p className="text-sm font-medium text-stone-900">{PROVIDER_NAMES[key] || key}</p>
@@ -113,7 +111,7 @@ export default function LiveProvidersPanel() {
         <h3 className="font-semibold text-stone-900">Administrator live switches</h3>
         <p className="text-xs text-stone-600 mt-1">Unavailable routes stay locked. Existing payment reconciliation and account access always remain on.</p>
       </div>
-      {(snapshot.features || []).map(f => <div key={f.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+      {(snapshot.features || []).filter(f => f.key !== "stripe_checkout" && f.key !== "recurring_donations").map(f => <div key={f.key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-stone-900">{f.label}</p>
           <p className="text-xs text-stone-600 mt-1">{f.detail}</p>
