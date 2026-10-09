@@ -132,7 +132,23 @@ export default async function(req) {
     // --- Connection health: actively verify every connection we can prove. ---
     // A green dot is refreshed by a provider check, not by the passage of time.
     const connections = await sr.entities.PlatformConnection.filter({}, '-updated_date', 200);
+    let probes = 0;
     for (const c of connections) {
+      // Per-user OAuth is never tested in a scheduled service context.
+      if (OAUTH_ENV[c.platform] || c.platform === 'kofi' ||
+          !(c.platform === 'bluesky' || isLinkBasedPlatform(c.platform))) {
+        report.health_deferred++;
+        continue;
+      }
+      const lastEvent = (c.history || []).filter((item) =>
+        item.event === 'health_check' || item.event === 'health_check_failed').at(-1);
+      const lastAttempt = Date.parse(lastEvent?.at || c.last_synced || '');
+      if ((Number.isFinite(lastAttempt) && now.getTime() - lastAttempt < 6 * 60 * 60 * 1000) ||
+          probes >= 12) {
+        report.health_deferred++;
+        continue;
+      }
+      probes++;
       try {
         if (['bluesky'].includes(c.platform)) {
           await verifyManualConnection(c);
@@ -143,11 +159,12 @@ export default async function(req) {
           // connections remain unverified until a real supported check exists.
           continue;
         }
-        await sr.entities.PlatformConnection.update(c.id, {
+        const checked = await sr.entities.PlatformConnection.update(c.id, {
           status: 'connected', verification_status: 'verified', last_synced: now.toISOString(), last_error: '',
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Scheduled provider verification succeeded' }].slice(-30),
         });
         report.verified++;
+        report.delegations_completed += await completeVerifiedManagedWork(sr, checked, now.toISOString());
       } catch (e) {
         console.error('syncConnections provider verification failed:', e?.name || 'UnknownError');
         const reason = String(e?.message || '');
@@ -155,7 +172,8 @@ export default async function(req) {
         const message = reauth ? 'Provider authorization needs attention.' : 'Live provider verification could not be completed.';
         await sr.entities.PlatformConnection.update(c.id, {
           status: 'error', verification_status: 'unverified', last_error: message,
-          capability_status: OAUTH_ENV[c.platform] ? (reauth ? 'reauthorization_required' : 'unknown') : (c.capability_status || 'unknown'),
+          capability_status: c.capability_status || 'unknown',
+          agent_access: { ...(c.agent_access || {}), automation_enabled: false },
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
         });
         report.needs_attention++;
