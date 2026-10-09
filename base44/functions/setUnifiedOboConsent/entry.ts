@@ -32,14 +32,16 @@ export default async function(req) {
     for (const connection of connections || []) {
       const currentObo = connection.obo_consent || {};
       const currentAgent = connection.agent_access || {};
-      // A global authorization cannot silently override an account-specific
-      // refusal. Users must opt in separately to each outside provider.
-      const approvedForAccount = granted && currentObo.granted === true;
+      // A global authorization cannot override a provider-specific refusal.
+      // Preserve the original grant timestamp when globally disabled so a
+      // later global re-enable restores formerly approved accounts.
+      const approvedForAccount = granted && currentObo.opted_out !== true &&
+        (currentObo.granted === true || !!currentObo.granted_at);
       const patch = {
         obo_consent: {
           ...currentObo,
           granted: approvedForAccount,
-          granted_at: approvedForAccount ? (currentObo.granted_at || now) : null,
+          granted_at: approvedForAccount ? (currentObo.granted_at || now) : currentObo.granted_at || null,
           permission_version: VERSION,
           granted_capabilities: approvedForAccount
             ? (currentObo.provider_capabilities || currentObo.granted_capabilities || [])
