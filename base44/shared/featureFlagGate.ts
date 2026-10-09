@@ -67,8 +67,8 @@ export function featureUnavailable(name = 'This feature'): Response {
 export const CODE_CONNECTED_FEATURES = [
   'public_campaign_fundraising',
   'payment_checkout_enabled',
-  'paypal_checkout', 'stripe_checkout', 'google_pay_checkout',
-  'recurring_donations', 'subscription_checkout',
+  'paypal_checkout', 'google_pay_checkout',
+  'subscription_checkout',
   'outbound_payout_execution',
   'ai_campaign_assistant', 'ai_outreach_agent', 'social_autopilot',
   'cross_platform_publishing', 'managed_connections',
