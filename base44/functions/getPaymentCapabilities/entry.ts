@@ -7,8 +7,6 @@ export default async function (_req) {
   const paypalClientId = secrets.get('PAYPAL_CLIENT_ID');
   const paypalClientSecret = secrets.get('PAYPAL_CLIENT_SECRET');
   const paypalMode = secrets.get('PAYPAL_MODE') === 'live' ? 'live' : 'sandbox';
-  const stripeSecret = secrets.get('STRIPE_SECRET_KEY');
-  const stripeWebhookSecret = secrets.get('STRIPE_WEBHOOK_SECRET');
   const paypalApiLive = Boolean(paypalClientId && paypalClientSecret && paypalMode === 'live' && await isLivePayPalRestReady());
   const paypalPayoutLive = paypalApiLive && await isLivePayPalPayoutReady();
 
@@ -23,11 +21,6 @@ export default async function (_req) {
       mode: paypalMode,
       account_ref: IFUND_PAYPAL_ACCOUNT_REF,
       account_type: IFUND_PAYPAL_ACCOUNT_TYPE,
-    },
-    stripe: {
-      configured: Boolean(stripeSecret),
-      webhook_configured: Boolean(stripeWebhookSecret),
-      live: Boolean(stripeSecret && String(stripeSecret).startsWith('sk_live_') && stripeWebhookSecret),
     },
   });
 }
