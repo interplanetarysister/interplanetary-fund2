@@ -183,7 +183,7 @@ export default function Subscriptions() {
           <div>
             <p className="font-medium text-stone-900">IFund business PayPal billing</p>
             <p className="text-sm text-stone-600">
-              {paypal.plans.filter(row => row.available).length}/10 verified PayPal prices · {paypal.webhook_configured ? "Webhook registered" : "Webhook not registered"}
+              {paypal.plans.filter(row => row.verified).length}/10 verified PayPal prices · {paypal.webhook_configured ? "Webhook registered" : "Webhook not registered"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
