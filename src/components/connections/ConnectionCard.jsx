@@ -18,11 +18,12 @@ const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fu
 // - Otherwise the total is "owner reported" — entered by the campaign owner
 //   and informational only; it is never withdrawable from Interplanetary Fund.
 
-export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved, onUpdated, managedAvailable = false, onManagedRepair }) {
+export default function ConnectionCard({ connection, platform, resolved, onManage, onRemoved, onUpdated, aiAuthorized = false, managedAvailable = false, onManagedRepair }) {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [managedBusy, setManagedBusy] = useState(false);
   const [revokeBusy, setRevokeBusy] = useState(false);
+  const [permissionError, setPermissionError] = useState("");
 
   // Prefer the canonical lifecycle from resolveConnectionStatus; fall back to
   // the local record heuristic when the resolver result is not yet available.
@@ -53,6 +54,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
 
   const revokeAi = async () => {
     setRevokeBusy(true);
+    setPermissionError("");
     try {
       const { data } = await base44.functions.invoke("revokeConnectionAiConsent", {
         connection_id: connection.id,
@@ -60,12 +62,34 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       if (data?.ok !== true) throw new Error("Revocation was not saved");
       onUpdated?.({
         ...connection,
-        obo_consent: { ...(connection.obo_consent || {}), granted: false, granted_capabilities: [] },
+        obo_consent: { ...(connection.obo_consent || {}), granted: false, opted_out: true, granted_capabilities: [] },
         agent_access: { ...(connection.agent_access || {}), shared_with_agents: false, automation_enabled: false },
         automation_mode: "manual",
       });
     } catch {
-      // Keep existing display until the server confirms the permission changed.
+      setPermissionError("Could not turn off AI for this account. Try again.");
+    } finally { setRevokeBusy(false); }
+  };
+
+  const authorizeAi = async () => {
+    if (revokeBusy || !aiAuthorized) return;
+    setRevokeBusy(true);
+    setPermissionError("");
+    try {
+      const { data } = await base44.functions.invoke("authorizeConnectionAi", {
+        connection_id: connection.id, granted: true,
+      });
+      if (data?.ok !== true) throw new Error("Permission not saved");
+      onUpdated?.({
+        ...connection,
+        obo_consent: { ...(connection.obo_consent || {}), granted: true, opted_out: false },
+        agent_access: {
+          ...(connection.agent_access || {}), shared_with_agents: true,
+          automation_enabled: data.automation_enabled === true,
+        },
+      });
+    } catch {
+      setPermissionError("Could not turn on AI for this account. Try again.");
     } finally { setRevokeBusy(false); }
   };
 
@@ -133,6 +157,16 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
           </Button>
         </div>
       )}
+
+      {aiAuthorized && connection.obo_consent?.granted !== true && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-amber-950">This older connection has no active AI account permission.</span>
+          <Button type="button" size="sm" variant="outline" onClick={authorizeAi} disabled={revokeBusy}>
+            {revokeBusy ? "Saving…" : "Allow IFund AI for this account"}
+          </Button>
+        </div>
+      )}
+      {permissionError && <p className="mt-2 text-xs text-red-700" role="alert">{permissionError}</p>}
 
       <div className="flex flex-wrap gap-2 mt-3">
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
