@@ -169,6 +169,15 @@ export async function assertExternalAgentAction(sr, {
   if (connection.status !== 'connected' || connection.verification_status !== 'verified') {
     return { ok: false, reason: 'connection is not verified and active' };
   }
+  // Global OBO is necessary but not sufficient. Respect individual account
+  // revocations and consent-version changes before any external AI action.
+  const ownerVersion = String(ownerUser.ai_obo_consent?.permission_version || '');
+  if (!ownerVersion || connection.obo_consent?.granted !== true ||
+      connection.obo_consent?.opted_out === true ||
+      String(connection.obo_consent?.permission_version || '') !== ownerVersion ||
+      connection.agent_access?.shared_with_agents !== true) {
+    return { ok: false, reason: 'connection-specific AI authorization is not active' };
+  }
   // automation_mode is the only automation preference. agent_access.automation_enabled
   // is a mirrored execution field (kept in sync by setUnifiedOboConsent and the
   // connection-save functions), not a second authorization decision.
