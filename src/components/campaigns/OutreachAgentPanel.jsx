@@ -19,6 +19,7 @@ export default function OutreachAgentPanel({ campaign }) {
   const [enabled, setEnabled] = useState(!!campaign.outreach_enabled);
   const [paused, setPaused] = useState(!!campaign.outreach_paused);
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => { setEnabled(!!campaign.outreach_enabled); setPaused(!!campaign.outreach_paused); }, [campaign.id, campaign.outreach_enabled, campaign.outreach_paused]);
 
   const load = useCallback(async () => {
@@ -28,7 +29,9 @@ export default function OutreachAgentPanel({ campaign }) {
       const acts = await base44.entities.AgentActivity.filter({ campaign_id: campaign.id }, "-created_date", 30);
       setActivities(Array.isArray(acts) ? acts : []);
       setError("");
+      setLoadFailed(false);
     } catch {
+      setLoadFailed(true);
       setActivities([]);
       setError("AI outreach activity could not be loaded. Refresh this page to try again.");
     }
@@ -84,6 +87,7 @@ export default function OutreachAgentPanel({ campaign }) {
     }
   };
 
+  if (loadFailed) return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">{error} <Button size="sm" variant="outline" onClick={load}>Retry</Button></div>;
   if (!user || !activities) {
     return <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>;
   }
