@@ -74,7 +74,7 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
     setChecking(item.id);
     try {
       const response = await base44.functions.invoke("manageAgentWork", {
-        mode: "advance", delegation_id: item.id,
+        mode: "advance", delegation_id: item.id, manual: true,
       });
       if (!response?.data?.ok) throw new Error("Unable to check");
       await load();
@@ -92,7 +92,7 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
           <h2 className="font-semibold text-slate-950">{allAgents ? "AI requests and progress" : "IFund AI work"}</h2>
-          <p className="text-xs text-slate-600">Each request shows what IFund actually checked, and what still needs attention.</p>
+          <p className="text-xs text-slate-600">Verified results, pending steps, and connections IFund can safely check automatically.</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={load}><RefreshCw className="w-4 h-4 mr-1" /> Refresh</Button>
       </div>
@@ -106,6 +106,7 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
             </div>
             {item.result_summary && <p className="text-xs text-slate-700 mt-2 break-words">{item.result_summary}</p>}
             {ACTIVE.has(item.status) && item.external_requirement && <p className="text-xs text-amber-800 mt-1 break-words">Next: {item.external_requirement}</p>}
+            {item.status === "waiting_external" && item.next_retry_at && <p className="text-xs text-slate-600 mt-1">Next automated check: {new Date(item.next_retry_at).toLocaleString()}</p>}
             {ACTIVE.has(item.status) && item.agent === "managed_connection_agent" && item.connection_id && (
               <Button type="button" size="sm" variant="outline" className="mt-2" disabled={checking === item.id} onClick={() => advance(item)}>
                 {checking === item.id && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
