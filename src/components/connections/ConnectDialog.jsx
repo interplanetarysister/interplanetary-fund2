@@ -146,12 +146,12 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md min-w-0 rounded-2xl max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform to connect it." : "Add your link and follow the steps shown."}</p>
-        <div className="space-y-4">
+        <div className="min-w-0 w-full space-y-4">
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
             <Input value={form.display_name} onChange={(e) => set("display_name", e.target.value)} placeholder={isCrowd ? "e.g. Help Rebuild Our Shelter" : "e.g. @interplanetaryfund"} />
@@ -164,7 +164,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           <div className="space-y-1.5">
             <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Campaign to publish first"}</Label>
             <Select value={form.campaign_id} onValueChange={selectCampaign}>
-              <SelectTrigger><SelectValue placeholder={platform.kind === "app" ? "Optional — pick a campaign" : "Pick the campaign to publish first"} /></SelectTrigger>
+              <SelectTrigger className="min-w-0 w-full"><SelectValue placeholder={platform.kind === "app" ? "Optional — pick a campaign" : "Pick the campaign to publish first"} /></SelectTrigger>
               <SelectContent>
                 {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
               </SelectContent>
@@ -173,7 +173,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           {platform.kind !== "app" && selectedCampaign && (
             <div className="space-y-1.5">
               <Label>Connection title</Label>
-              <Input value={form.display_name} readOnly aria-readonly="true" />
+              <p className="w-full min-w-0 rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-foreground break-words [overflow-wrap:anywhere]" aria-label="Connection title">{form.display_name}</p>
               <p className="text-xs text-muted-foreground">This title follows the paired Interplanetary Fund campaign automatically.</p>
             </div>
           )}
@@ -198,7 +198,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           )}
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
-            <p className="text-xs text-muted-foreground mt-1">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
+            <p className="text-xs text-muted-foreground mt-1 break-words">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
           </div>
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
@@ -206,18 +206,18 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               <p className="text-xs text-muted-foreground">Choose the Interplanetary Fund campaign first, then use the one-click link below. You’ll sign in on {platform.name}, approve the provider permissions, and return here automatically. Your existing IFund AI authorization applies without a second permission screen.</p>
             </div>
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
           {usesProviderOAuth ? (
-            <Button onClick={connectWithProvider} disabled={connecting || (platform.kind !== "app" && !selectedCampaign)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCampaign && platform.kind !== "app" ? `Link ${selectedCampaign.title} to ${platform.name}` : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
+            <Button onClick={connectWithProvider} disabled={connecting || (platform.kind !== "app" && !selectedCampaign)} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>
           ) : (
-            <Button onClick={save} disabled={saving || (platform.kind !== "app" && !selectedCampaign)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11 rounded-xl">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCampaign && platform.kind !== "app" ? `Link ${selectedCampaign.title} to ${platform.name}` : existing ? "Save changes" : "Connect"}
+            <Button onClick={save} disabled={saving || (platform.kind !== "app" && !selectedCampaign)} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : `Link to ${platform.name}`}
             </Button>
           )}
           {!existing && managedAvailable && onManagedCreateAccount && platform.kind !== "app" && (
-            <Button type="button" variant="outline" onClick={requestManagedAccountSetup} disabled={managedBusy} className="w-full rounded-xl h-11">
+            <Button type="button" variant="outline" onClick={requestManagedAccountSetup} disabled={managedBusy} className="w-full min-w-0 rounded-xl min-h-11 h-auto py-3 px-3 whitespace-normal break-words">
               {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to help set up a new account"}
             </Button>
           )}
