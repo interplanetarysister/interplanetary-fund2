@@ -48,7 +48,7 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
     setChecking(item.id);
     try {
       const response = await base44.functions.invoke("manageAgentWork", {
-        mode: "advance", delegation_id: item.id, force: true,
+        mode: "advance", delegation_id: item.id,
       });
       if (!response?.data?.ok) throw new Error("Unable to check");
       await load();
