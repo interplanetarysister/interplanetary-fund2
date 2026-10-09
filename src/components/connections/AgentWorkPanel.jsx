@@ -17,7 +17,7 @@ const format = (state) => ({
   superseded: "Replaced",
 }[state] || "Unknown");
 
-export default function AgentWorkPanel({ refreshKey = 0 }) {
+export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
   const [work, setWork] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
   const sweepInFlight = useRef(false);
   const load = useCallback(async () => {
     try {
-      const response = await base44.functions.invoke("manageAgentWork", { mode: "list" });
+      const response = await base44.functions.invoke("manageAgentWork", { mode: "list", view: allAgents ? "all" : "managed" });
       if (!response?.data?.ok || !Array.isArray(response.data.work)) throw new Error("Invalid work status");
       setWork(response.data.work);
       setError("");
@@ -35,7 +35,7 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [allAgents]);
 
   // A safe, owner-authorized foreground worker checks a small number of due
   // connections. It never creates accounts, posts, spends, or bypasses provider
@@ -47,7 +47,7 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
       const rows = await load();
       const due = (rows || []).filter((item) =>
         ["in_progress", "waiting_external"].includes(item.status) &&
-        item.connection_id &&
+        item.agent === "managed_connection_agent" && item.connection_id &&
         (!item.last_attempt_at || Date.now() - Date.parse(item.last_attempt_at) >= 5 * 60 * 1000)
       ).slice(0, 2);
       if (due.length) {
@@ -91,7 +91,7 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
     <section className="mb-7 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Managed connection activity">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <h2 className="font-semibold text-slate-950">IFund AI work</h2>
+          <h2 className="font-semibold text-slate-950">{allAgents ? "AI requests and progress" : "IFund AI work"}</h2>
           <p className="text-xs text-slate-600">Each request shows what IFund actually checked, and what still needs attention.</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={load}><RefreshCw className="w-4 h-4 mr-1" /> Refresh</Button>
@@ -106,7 +106,7 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
             </div>
             {item.result_summary && <p className="text-xs text-slate-700 mt-2 break-words">{item.result_summary}</p>}
             {ACTIVE.has(item.status) && item.external_requirement && <p className="text-xs text-amber-800 mt-1 break-words">Next: {item.external_requirement}</p>}
-            {ACTIVE.has(item.status) && item.connection_id && (
+            {ACTIVE.has(item.status) && item.agent === "managed_connection_agent" && item.connection_id && (
               <Button type="button" size="sm" variant="outline" className="mt-2" disabled={checking === item.id} onClick={() => advance(item)}>
                 {checking === item.id && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
                 Check connection now
