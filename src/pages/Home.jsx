@@ -39,18 +39,19 @@ export default function Home() {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="min-h-dvh bg-background">
+    <div className="ifund-public min-h-dvh bg-background">
       {platformOnlyMode && (
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-4">
           <PrelaunchNotice />
         </div>
       )}
       {/* Hero */}
-      <section className="relative overflow-hidden deep-space">
+      <section className="ifund-public-hero relative overflow-hidden deep-space">
         <Image src={HERO_IMAGE} alt="A glowing planet arc surrounded by stars and soft nebula light" className="absolute inset-0 w-full h-full opacity-60" fittingType="fill" focalPointX={0.7} focalPointY={0.6} />
         <div className="relative px-5 sm:px-8 py-16 sm:py-24 max-w-3xl mx-auto text-center">
+          <p className="ifund-editorial-eyebrow mb-6">A universe of possibility</p>
           <div className="flex justify-center mb-8"><BrandLogo size="sm" nameClassName="text-slate-100 text-sm" /></div>
-          <h1 className="font-display text-4xl sm:text-6xl leading-[1.05] text-white mb-6">
+          <h1 className="ifund-home-headline font-display text-4xl sm:text-6xl leading-[1.05] text-white mb-6">
             Endless possibilities start with one question:
             <br />
             <span className="brand-gradient-text">What if?</span>
@@ -73,7 +74,7 @@ export default function Home() {
       </section>
 
       {/* About */}
-      <section className="max-w-3xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
+      <section className="ifund-story-surface max-w-3xl mx-auto px-5 sm:px-8 py-14 sm:py-20">
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-primary mb-3">Who is Interplanetary Fund?</p>
         <h2 className="font-display text-3xl sm:text-4xl text-foreground mb-8 leading-tight">One universe of funding — for every person, every cause, every platform.</h2>
 

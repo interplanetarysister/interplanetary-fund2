@@ -15,8 +15,10 @@ import QuickActions from "@/components/QuickActions";
 import { useAuth } from "@/lib/AuthContext";
 import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
+import { LifeBuoy, ArrowUpRight } from "lucide-react";
 
 const PAGE_TITLES = {
+  "/dashboard": "Overview", "/help": "Help Center", "/devices": "Connected Devices",
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
@@ -110,6 +112,10 @@ export default function Layout() {
   const isAdmin = user?.role === "admin";
   const hasAiAgents = hasPlanLevel(user, 1);
   const { pathname } = useLocation();
+  const title = pageTitle(pathname);
+  const section = pathname.startsWith("/admin/") ? "Administration"
+    : ["/discover", "/campaign", "/community", "/help"].some(v => pathname.startsWith(v)) ? "Explore"
+    : "Your workspace";
   const navigate = useNavigate();
   const activeTab = owningNavigationTab(pathname, !!user);
   const isRoot = ["/", "/dashboard", "/discover", "/social", "/inbox",
@@ -128,13 +134,13 @@ export default function Layout() {
   }, [open]);
 
   const nav = (
-    <nav className="flex min-h-0 flex-1 flex-col gap-3 px-3 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <nav aria-label="Main navigation" className="flex min-h-0 flex-1 flex-col gap-3 px-3 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {!user ? (
         <div>
-          <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">Explore</p>
+          <p className="ifund-nav-section-title px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/90">Explore</p>
           <div className="flex flex-col gap-0.5">
             {publicNavItems.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"}`}>
+              <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `ifund-nav-link flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"}`}>
                 <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} /><span className="truncate">{label}</span>
               </NavLink>
             ))}
@@ -142,7 +148,7 @@ export default function Layout() {
         </div>
       ) : navSections.map((section) => (
         <div key={section.label}>
-          <p className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500/80">{section.label}</p>
+          <p className="ifund-nav-section-title px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/90">{section.label}</p>
           <div className="flex flex-col gap-0.5">
             {section.items.filter(({ to }) => {
               if (to === "/agents") return hasAiAgents;
@@ -155,7 +161,7 @@ export default function Layout() {
                 end={to === "/"}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                `ifund-nav-link flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                   isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
                 }`
                 }
@@ -171,8 +177,8 @@ export default function Layout() {
   );
 
   return (
-    <div className="h-dvh w-full min-w-0 overflow-hidden bg-background text-foreground flex flex-col">
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
+    <div className="ifund-shell h-dvh w-full min-w-0 overflow-hidden bg-background text-foreground flex flex-col">
+      <aside className="ifund-sidebar hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
             <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
@@ -180,13 +186,14 @@ export default function Layout() {
             </Link>
             {user && <NotificationBell />}
           </div>
-          <p className="mt-3 font-display text-lg brand-gradient-text">{SLOGAN}</p>
+          <p className="mt-3 font-display text-base brand-gradient-text">{SLOGAN}</p>
+          <p className="mt-2 text-[10px] uppercase tracking-[.17em] text-slate-400">Fundraising, connected.</p>
         </div>
         {nav}
         <p className="mt-auto px-6 text-[11px] leading-relaxed text-slate-500">{SLOGAN_LONG}</p>
       </aside>
 
-      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
+      <header className="ifund-mobile-header md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
         <div className="flex items-center gap-1 min-w-0">
           {!isRoot && (
             <button onClick={goBack} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
@@ -209,11 +216,11 @@ export default function Layout() {
       {open && (
         <>
           <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div id="mobile-menu" className="md:hidden fixed inset-x-0 top-14 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 deep-space pt-2 shadow-xl flex flex-col overflow-hidden">{nav}</div>
+          <div id="mobile-menu" className="ifund-sidebar md:hidden fixed inset-x-0 top-14 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 deep-space pt-2 shadow-xl flex flex-col overflow-hidden">{nav}</div>
         </>
       )}
 
-      <nav aria-label="Bottom navigation" className="md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
+      <nav aria-label="Bottom navigation" className="ifund-mobile-nav md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
         {(user ? bottomNavItems : publicNavItems).map(({ to, label, icon: Icon }) => {
           const active = activeTab === to;
           return (
@@ -234,7 +241,24 @@ export default function Layout() {
         })}
       </nav>
 
-      <main data-page-scroll className="ifund-experience flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
+      <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain text-foreground">
+        <div className="ifund-workspace-bar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-7">
+          <div className="min-w-0">
+            <p className="ifund-workspace-kicker">{section}</p>
+            <p className="ifund-workspace-title truncate">{title}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/help" className="ifund-workspace-utility inline-flex min-h-10 items-center gap-2 px-3 text-xs font-semibold" aria-label="Visit IFund Help Center">
+              <LifeBuoy className="h-4 w-4" />
+              <span className="hidden sm:inline">Help Center</span>
+            </Link>
+            {user && (
+              <Link to="/create" className="hidden lg:inline-flex min-h-10 items-center gap-2 rounded-full bg-slate-900 px-4 text-xs font-semibold text-white hover:bg-slate-800" aria-label="Create a campaign">
+                New campaign <ArrowUpRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+        </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={pathname}
