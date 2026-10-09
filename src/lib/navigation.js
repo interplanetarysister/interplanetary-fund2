@@ -11,6 +11,7 @@ const PREFIXES = Object.freeze({
 });
 export function owningNavigationTab(pathname,isAuthenticated=false) {
   if(pathname==='/')return isAuthenticated?'/dashboard':'/';
+  if(!isAuthenticated && pathname==='/globe')return '/globe';
   const tabs=isAuthenticated?AUTH_TABS:PUBLIC_TABS;
   for(const tab of tabs){
     if(tab==='/globe'&&pathname==='/globe')return '/globe';
