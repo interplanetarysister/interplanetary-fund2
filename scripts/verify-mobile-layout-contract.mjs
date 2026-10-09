@@ -9,16 +9,27 @@ const css = read('src/index.css');
 const globe = read('src/components/globe/CampaignGlobe.jsx');
 
 for (const source of [dialog, alertDialog]) {
-  assert.match(source, /w-\[calc\(100%_-_2rem\)\]/);
-  assert.match(source, /max-h-\[calc\(100dvh_-_2rem\)\]/);
-  assert.match(source, /overflow-y-auto/);
+  assert.match(source, /grid-cols-\[minmax\(0,1fr\)\]/);
+  assert.match(source, /w-\[calc\(100vw-1rem\)\]/);
+  assert.match(source, /max-h-\[calc\(100dvh-1rem\)\]/);
+  assert.match(source, /overflow-x-hidden overflow-y-auto/);
+  assert.match(source, /\[&>\*\]:min-w-0/);
   assert.match(source, /p-4 sm:p-6/);
 }
-assert.match(sheet, /overflow-y-auto overscroll-contain/);
+assert.match(sheet, /overflow-x-hidden overflow-y-auto overscroll-contain/);
+assert.match(sheet, /w-\[min\(100vw,28rem\)\]/);
 assert.match(sheet, /min-h-\[44px\] min-w-\[44px\]/);
 assert.match(css, /touch-action: pan-y/);
 assert.match(css, /overflow-x: hidden/);
 assert.match(globe, /touchAction = "pan-y"/);
 assert.doesNotMatch(globe, /touch-none/);
 
-console.log('mobile dialog and single-touch layout contract: PASS');
+const connect = read('src/components/connections/ConnectDialog.jsx');
+const select = read('src/components/ui/select.jsx');
+assert.match(connect, /max-h-\[calc\(100dvh-1rem\)\] overflow-x-hidden/);
+assert.match(connect, /\[overflow-wrap:anywhere\]/);
+assert.doesNotMatch(connect, /`Link \$\{selectedCampaign\.title\}/, 'Connection action must not use unbounded campaign titles');
+assert.match(connect, /whitespace-normal break-words leading-snug/);
+assert.match(select, /\[&>span\]:truncate/);
+assert.match(select, /leading-snug whitespace-normal break-words/);
+console.log('mobile dialog, connection popups and single-touch layout contract: PASS');
