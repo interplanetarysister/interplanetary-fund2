@@ -62,7 +62,7 @@ try {
       if(['/about','/contact'].includes(route)){
         assert.ok(info.bodyFont.includes('Inter'),'Brand font missing '+route);
       }
-      if(route.includes('definitely-not-a-real')) assert.ok(info.text.includes("This page isn't available"));
+      if(route.includes('definitely-not-a-real')) { console.log('MISSING_ROUTE_TEXT',JSON.stringify(info.text.slice(0,370))); assert.ok(info.text.includes("This page isn't available")); }
       console.log('PASS studio '+setting.name+' '+route);
     }
     const icons=await page.evaluate(async()=>{
