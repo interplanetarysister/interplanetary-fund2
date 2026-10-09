@@ -92,7 +92,7 @@ export default function CryptoDonateOption({
         </Button>
       )}
       {reownConfigured()
-        ? <Button type="button" variant="outline" className="w-full mt-2 border-violet-400 bg-white text-violet-950 hover:bg-violet-100 dark:border-violet-300 dark:bg-slate-800 dark:text-violet-100 dark:hover:bg-slate-700 dark:hover:text-white" onClick={connect} disabled={connecting || paying}>
+        ? <Button type="button" variant="outline" className="w-full mt-2 border-violet-400 bg-violet-50 text-violet-950 hover:bg-violet-100 dark:border-violet-300 dark:bg-slate-800 dark:text-violet-100 dark:hover:bg-slate-700 dark:hover:text-white" onClick={connect} disabled={connecting || paying}>
             {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
             Connect wallet (no payment)
           </Button>
