@@ -2,8 +2,10 @@ import * as React from "react"
 import { useSize } from "@/hooks/use-size"
 import { cn } from "@/lib/utils"
 
-const FALLBACK_IMAGE_URL =
-  "https://static.wixstatic.com/media/12d367_4f26ccd17f8f4e3a8958306ea08c2332~mv2.png"
+// Keep every image failure within IFund's own trusted, published assets.
+// Depending on a third-party placeholder caused broken visuals in offline
+// installs and when that external CDN failed.
+const FALLBACK_IMAGE_URL = "/ifund-logo.jpg"
 
 // Wix Media Platform hosts whose images support /v1/ transform URLs
 // (resize, focal-point crop, and format conversion via the OUTPUT FILENAME
