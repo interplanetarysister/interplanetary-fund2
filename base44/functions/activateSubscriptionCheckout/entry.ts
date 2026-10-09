@@ -41,8 +41,8 @@ export default async function(req) {
     }
     const flags = await sr.entities.FeatureFlag.filter({ key: 'subscription_checkout' });
     const selected = (flags || [])[0];
-    if (selected) await sr.entities.FeatureFlag.update(selected.id, { enabled: true, scope: 'global' });
-    else await sr.entities.FeatureFlag.create({ key: 'subscription_checkout', label: 'Subscription checkout', enabled: true, scope: 'global' });
+    if (selected) await sr.entities.FeatureFlag.update(selected.id, { enabled: true, scope: 'beta' });
+    else await sr.entities.FeatureFlag.create({ key: 'subscription_checkout', label: 'Subscription checkout', enabled: true, scope: 'beta' });
     return Response.json({ ok: true, enabled: true, matched_paypal_prices: verifiedCount, webhook_verified: true });
   } catch (error) {
     console.error('activateSubscriptionCheckout:', error?.name || 'UnknownError');
