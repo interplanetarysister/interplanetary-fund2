@@ -1,6 +1,6 @@
 {
-  "name": "PlatformConnection",
   "type": "object",
+  "name": "PlatformConnection",
   "properties": {
     "platform": {
       "type": "string",
@@ -71,52 +71,52 @@
     },
     "status": {
       "type": "string",
+      "description": "Provider transport state. Configuration alone must not set connected; only successful provider verification may do so.",
       "enum": [
         "connected",
         "error",
         "disconnected"
       ],
-      "default": "disconnected",
-      "description": "Provider transport state. Configuration alone must not set connected; only successful provider verification may do so."
+      "default": "disconnected"
     },
     "verification_status": {
       "type": "string",
+      "description": "Whether the provider has independently verified this connection. Missing values on legacy records are treated as unverified.",
       "enum": [
         "unverified",
         "verified"
       ],
-      "default": "unverified",
-      "description": "Whether the provider has independently verified this connection. Missing values on legacy records are treated as unverified."
+      "default": "unverified"
     },
     "capability_status": {
       "type": "string",
+      "description": "Truth state for provider-reported capabilities. Unknown never behaves as granted.",
       "enum": [
         "confirmed",
         "unknown",
         "reauthorization_required"
       ],
-      "default": "unknown",
-      "description": "Truth state for provider-reported capabilities. Unknown never behaves as granted."
+      "default": "unknown"
     },
     "external_data_source": {
       "type": "string",
+      "description": "Provenance for external totals. Owner-reported values remain informational and must never be presented as provider-verified or withdrawable.",
       "enum": [
         "owner_reported",
         "provider_verified"
       ],
-      "default": "owner_reported",
-      "description": "Provenance for external totals. Owner-reported values remain informational and must never be presented as provider-verified or withdrawable."
+      "default": "owner_reported"
     },
     "automation_mode": {
       "type": "string",
+      "description": "AI publishing authorization for this destination: publish automatically, ask before every post, generate drafts only, or manual posting only.",
       "enum": [
         "auto",
         "ask",
         "draft",
         "manual"
       ],
-      "default": "manual",
-      "description": "AI publishing authorization for this destination: publish automatically, ask before every post, generate drafts only, or manual posting only."
+      "default": "manual"
     },
     "obo_consent": {
       "type": "object",
@@ -150,6 +150,16 @@
           "items": {
             "type": "string"
           }
+        },
+        "opted_out": {
+          "type": "boolean",
+          "default": false,
+          "description": "True only after this account's owner explicitly turns off agent access. A subsequent global IFund permission does not override this individual refusal."
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of an explicit per-connection agent access refusal."
         }
       }
     },
@@ -201,8 +211,8 @@
     },
     "external_total": {
       "type": "number",
-      "default": 0,
-      "description": "Funds observed on the external platform in external_currency. This is informational/external until an actual transfer into Interplanetary Fund is verified."
+      "description": "Funds observed on the external platform in external_currency. This is informational/external until an actual transfer into Interplanetary Fund is verified.",
+      "default": 0
     },
     "external_currency": {
       "type": "string",
@@ -282,6 +292,9 @@
     "kind"
   ],
   "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
     "read": {
       "$or": [
         {
@@ -293,9 +306,6 @@
           }
         }
       ]
-    },
-    "create": {
-      "created_by_id": "{{user.id}}"
     },
     "update": {
       "$or": [
