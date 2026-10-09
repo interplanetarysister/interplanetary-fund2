@@ -139,7 +139,7 @@ export default function FeatureFlagsPanel() {
         <p className="text-sm text-stone-400 text-center py-10">No feature flags configured yet.</p>
       ) : (
         <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm divide-y divide-stone-100">
-          {flags.map((f) => (
+          {flags.filter(f => f.key !== "stripe_checkout" && f.key !== "recurring_donations").map((f) => (
             <div key={f.id} className="flex items-center justify-between gap-4 px-5 py-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
