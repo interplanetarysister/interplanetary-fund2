@@ -57,7 +57,6 @@ export const CAPABILITY_MODULES = [
     id: "payments",
     group: "Payment Providers",
     items: [
-      { id: "stripe", label: "Stripe", status: "verify_runtime" },
       { id: "paypal", label: "PayPal", status: "verify_runtime" },
     ],
   },
