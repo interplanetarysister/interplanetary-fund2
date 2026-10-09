@@ -26,16 +26,19 @@ export default async function(req) {
     // app and match the IFund catalog, or this setup fails without duplicating.
     const ownerBasicMonthlyId = IFUND_OWNER_BASIC_MONTHLY_PLAN_ID;
     for (const expected of catalog) {
-      const existing = (allRows || []).find((r: any) =>
-        r.tier === expected.tier && r.interval === expected.interval &&
-        r.catalog_version === CATALOG_VERSION && r.amount_cents === expected.amount_cents);
-      let activePlan: any = null;
+      const matchingTier = (allRows || []).filter((r: any) =>
+        r.tier === expected.tier && r.interval === expected.interval);
       if (expected.tier === 'basic' && expected.interval === 'monthly' &&
-          existing?.plan_id && existing.plan_id !== ownerBasicMonthlyId) {
+          matchingTier.some((r: any) => r.plan_id && r.plan_id !== ownerBasicMonthlyId)) {
         return Response.json({
           error: 'An older Basic monthly mapping conflicts with the supplied PayPal plan. No duplicate plan was created.',
         }, { status: 409 });
       }
+      const existing = matchingTier.find((r: any) =>
+        r.catalog_version === CATALOG_VERSION && r.amount_cents === expected.amount_cents) ||
+        (expected.tier === 'basic' && expected.interval === 'monthly'
+          ? matchingTier.find((r: any) => r.plan_id === ownerBasicMonthlyId || !r.plan_id) : null);
+      let activePlan: any = null;
       if (existing?.plan_id) {
         activePlan = await getPayPalBillingPlan(existing.plan_id).catch(() => null);
         if (!providerPriceIsExact(activePlan, expected) || activePlan.product_id !== existing.product_id) {
