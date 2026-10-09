@@ -10,6 +10,8 @@ import { PREMIUM_WELCOME_COUPON_ID, introductoryCouponIsValid } from '../../shar
 
 // Starts a Stripe subscription checkout for an AI tier.
 export default async function(req) {
+  // Stripe has been retired as an IFund payment option; historic webhook reconciliation stays intact.
+  return Response.json({ error: 'Stripe checkout is no longer offered. Use PayPal.' }, { status: 410 });
   try {
     const base44 = createClientFromRequest(req);
     if (!(await isFeatureEnabled(base44, 'subscription_checkout'))) return featureUnavailable('New paid subscriptions');
