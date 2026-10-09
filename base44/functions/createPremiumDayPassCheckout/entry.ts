@@ -41,6 +41,10 @@ export default async function(req: Request) {
     if (accountId !== 'acct_1TxdGsGg5Dyxp347') {
       return Response.json({ error: 'Stripe merchant account does not match IFund.' }, { status: 503 });
     }
+    const merchant = await stripe.accounts.retrieve();
+    if (merchant.id !== accountId || merchant.charges_enabled !== true || merchant.capabilities?.card_payments !== 'active') {
+      return Response.json({ error: 'Stripe card payments are awaiting business verification. No day-pass payment was started.' }, { status: 503 });
+    }
     const price = await stripe.prices.retrieve(PREMIUM_DAY_PASS_PRICE_ID);
     if (!verifiedDayPassPrice(price)) {
       return Response.json({ error: 'The $1 Stripe day-pass price could not be verified.' }, { status: 503 });
