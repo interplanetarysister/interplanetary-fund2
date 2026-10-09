@@ -2,7 +2,7 @@
 // appears across the platform, so every surface speaks with the same promise.
 export const BRAND_NAME = "Interplanetary Fund";
 export const SLOGAN = "What If?";
-export const SLOGAN_LONG = "Where platforms once worlds apart become one universe of funding";
+export const SLOGAN_LONG = "One campaign. Connected possibilities.";
 export const TAGLINE = "The Universal Fundraising Operating System";
 export const BRAND_MARK = "/ifund-logo.jpg";
 

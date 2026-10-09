@@ -273,7 +273,7 @@ export default function Layout() {
             </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
-        <QuickActions />
+        {user && <QuickActions />}
         <BackToTop />
         <div className="md:block hidden"><LegalFooter /></div>
       </main>
