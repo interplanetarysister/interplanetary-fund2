@@ -23,7 +23,15 @@ assert.equal(providerPriceIsExact({ ...plan, billing_cycles: [{ ...plan.billing_
 assert.equal(providerPriceIsExact({ ...plan, billing_cycles: [{ ...plan.billing_cycles[0], frequency: { interval_unit: 'YEAR', interval_count: 1 } }] }, expected), false);
 
 const registry = src('base44/functions/verifyOwnerPayPalBasicPlan/entry.ts');
-assert.ok(registry.includes(supplied), 'owner-supplied plan is the candidate');
+const shared = src('base44/shared/paypalSubscriptions.ts');
+const bulk = src('base44/functions/syncPayPalSubscriptionCatalog/entry.ts');
+assert.ok(shared.includes(supplied), 'the authoritative shared catalog contains the owner-supplied plan');
+assert.match(registry, /IFUND_OWNER_BASIC_MONTHLY_PLAN_ID/);
+assert.match(bulk, /IFUND_OWNER_BASIC_MONTHLY_PLAN_ID/);
+assert.match(bulk, /getPayPalBillingPlan\(ownerBasicMonthlyId\)/);
+assert.match(bulk, /adopted_existing_and_verified/);
+assert.match(bulk, /existing\.plan_id !== ownerBasicMonthlyId/);
+assert.match(bulk, /No substitute plan was created/);
 assert.match(registry, /getPayPalBillingPlan\(PROVIDED_BASIC_MONTHLY_PLAN_ID\)/);
 assert.match(registry, /providerPriceIsExact\(plan, expected\)/);
 assert.match(registry, /assertActiveAccount\(base44\)/);
