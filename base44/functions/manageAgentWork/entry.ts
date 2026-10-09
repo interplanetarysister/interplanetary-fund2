@@ -18,6 +18,8 @@ function publicWork(item: any) {
     connection_id: item.continuation_state?.continuation_ref === item.id
       ? null : clean(item.continuation_state?.continuation_ref, 120) || null,
     last_attempt_at: item.last_attempt_at || null,
+    next_retry_at: item.next_retry_at || null,
+    retry_count: Math.max(0, Number(item.retry_count || 0)),
     updated_at: item.updated_at || item.created_at || null,
     completed_at: item.completed_at || null,
     verification: item.status === 'completed' ? clean(item.verification, 150) : '',
@@ -74,8 +76,19 @@ export default async function(req: Request) {
       return Response.json({ error: 'This connection needs the current IFund help permission.' }, { status: 403 });
     }
     const last = Date.parse(work.last_attempt_at || '');
+    const retryAt = Date.parse(work.next_retry_at || '');
+    const retries = Math.max(0, Number(work.retry_count || 0));
+    const maxRetries = Math.max(1, Math.min(5, Number(work.max_retries || 3)));
     if (Number.isFinite(last) && Date.now() - last < 30000) {
       return Response.json({ ok: true, checked: false, work: publicWork(work), message: 'This connection was checked recently.' });
+    }
+    if (retries >= maxRetries && body.manual !== true) {
+      return Response.json({ ok: true, checked: false, work: publicWork(work),
+        message: 'Automatic checks are paused after repeated failures; choose Check connection now to retry.' });
+    }
+    if (body.manual !== true && Number.isFinite(retryAt) && retryAt > Date.now()) {
+      return Response.json({ ok: true, checked: false, work: publicWork(work),
+        message: 'The next provider check is not due yet.' });
     }
     const now = new Date().toISOString();
     await base44.entities.AgentDelegation.update(work.id, { last_attempt_at: now, updated_at: now });
@@ -90,16 +103,33 @@ export default async function(req: Request) {
         result_summary: 'A live provider check succeeded.', verification: 'verifyPlatformConnection:' + connection.id,
       }) });
     }
-    // A failed provider check is not a successful automated repair; preserve the
-    // original request and its next authorized step for the user to resume.
     const message = clean(result?.error || 'The provider did not verify this connection.', 300);
+    const needsAuthorization = result?.connection?.capability_status === 'reauthorization_required';
+    const attempts = retries + 1;
+    const exhausted = attempts >= maxRetries;
+    const nextStatus = needsAuthorization ? 'waiting_user' : exhausted ? 'needs_review' : 'waiting_external';
+    const nextRetry = needsAuthorization || exhausted ? null
+      : new Date(Date.now() + Math.min(6 * 60, 2 ** Math.min(attempts, 4)) * 60 * 1000).toISOString();
+    const continuation = {
+      ...(work.continuation_state || {}),
+      pending_step: needsAuthorization ? 'reauthorize_provider' :
+        exhausted ? 'manual_review' : 'retry_provider_verification',
+      external_requirement: needsAuthorization
+        ? 'Reconnect on the provider sign-in page to restore access.'
+        : exhausted ? 'The provider could not be verified after repeated attempts. Review or reconnect this platform.'
+          : message,
+    };
     await base44.entities.AgentDelegation.update(work.id, {
-      result_summary: message,
-      updated_at: new Date().toISOString(),
+      status: nextStatus, retry_count: attempts, next_retry_at: nextRetry,
+      result_summary: message, updated_at: new Date().toISOString(),
+      continuation_state: continuation,
     });
     return Response.json({ ok: true, checked: true, verified: false,
-      work: publicWork({ ...work, result_summary: message, updated_at: now }),
-      message,
+      work: publicWork({
+        ...work, status: nextStatus, retry_count: attempts,
+        next_retry_at: nextRetry, result_summary: message,
+        continuation_state: continuation, updated_at: now,
+      }), message,
     });
   } catch (error) {
     console.error('manageAgentWork error:', error instanceof Error ? error.name : 'UnknownError');
