@@ -30,13 +30,20 @@ export default function ReportsPanel({ data }) {
   const [reports, setReports] = useState(null);
   const [type, setType] = useState("executive_summary");
   const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    base44.entities.ExecutiveReport.list("-created_date", 20).then(setReports);
+    base44.entities.ExecutiveReport.list("-created_date", 20).then(setReports).catch(() => {
+      setReports([]);
+      setError("Existing reports could not be loaded. Try again later.");
+    });
   }, []);
 
   const generate = async () => {
+    if (generating) return;
     setGenerating(true);
+    setError("");
+    try {
     const { donations, campaigns, communities, signups, institutions, applications, volunteerOpps } = data;
     const snapshot = {
       total_raised: donations.reduce((s, d) => s + (d.amount || 0), 0),
@@ -76,7 +83,11 @@ Never invent data that isn't in the snapshot.` }],
       ...result,
     });
     setReports((prev) => [report, ...(prev || [])]);
-    setGenerating(false);
+    } catch {
+      setError("IFund could not generate or save the report. No report was added; try again.");
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -93,6 +104,7 @@ Never invent data that isn't in the snapshot.` }],
         </Button>
       </div>
       {generating && <p className="text-xs text-stone-400">Analyzing platform activity and drafting your report…</p>}
+      {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
 
       {reports === null ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div>
