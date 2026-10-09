@@ -1,10 +1,8 @@
-import Stripe from 'npm:stripe@17.7.0';
 import { secrets } from 'base44:runtime';
 import { FEATURE_SCOPES, CODE_CONNECTED_FEATURES } from './featureFlagGate.ts';
 import { isLivePayPalRestReady, isLivePayPalPayoutReady } from './paypal.ts';
 import { IFUND_PAYPAL_ACCOUNT_REF, paypalBillingRequest, verifiedPayPalPlan } from './paypalSubscriptions.ts';
 import { subscriptionPrices } from './subscriptionCatalog.js';
-import { stripeCryptoGatewayReadiness } from './stripeCryptoReadiness.ts';
 
 // A connection, secret, or administrative toggle alone never means that real
 // donations, payouts, posting, or agent execution are operational.
@@ -13,7 +11,7 @@ export const LIVE_FEATURE_NAMES: Record<string, string> = {
   payment_checkout_enabled: 'Donation checkout',
   paypal_checkout: 'PayPal payments',
   google_pay_checkout: 'Google Pay',
-  stripe_checkout: 'Stripe card payments',
+  stripe_checkout: 'Retired payment rail',
   recurring_donations: 'Monthly giving',
   subscription_checkout: 'Subscriptions',
   outbound_payout_execution: 'Campaign withdrawals',
@@ -32,16 +30,6 @@ export const LIVE_FEATURE_NAMES: Record<string, string> = {
 };
 
 const settled = (ready: boolean, explanation: string) => ({ ready, explanation });
-function stripeEnabledEvents(endpoint: any): boolean {
-  const events = new Set(endpoint?.enabled_events || []);
-  return endpoint?.status === 'enabled' && (events.has('*') ||
-    ['checkout.session.completed','invoice.paid','customer.subscription.updated','customer.subscription.deleted'].every(e => events.has(e)));
-}
-function stripeWebhookMatches(endpoint: any): boolean {
-  const url = String(endpoint?.url || '').toLowerCase();
-  return url.includes('stripewebhook') && (url.includes('6a67a778342a8fe05ee79cba') || url.includes('interplanetaryfund'));
-}
-
 export async function probeLiveProviders(sr?: any) {
   const payPalId = secrets.get('PAYPAL_CLIENT_ID');
   const payPalSecret = secrets.get('PAYPAL_CLIENT_SECRET');
@@ -72,32 +60,17 @@ export async function probeLiveProviders(sr?: any) {
       }
     } catch (_) { /* Fail closed: subscription catalog is not verified. */ }
   }
-  const stripeKey = String(secrets.get('STRIPE_SECRET_KEY') || '');
-  const stripeHook = !!secrets.get('STRIPE_WEBHOOK_SECRET');
-  let stripe = false;
-  if (stripeKey.startsWith('sk_live_') && stripeHook) {
-    try {
-      const client = new Stripe(stripeKey);
-      const [account, webhookEndpoints] = await Promise.all([
-        client.accounts.retrieve(),
-        client.webhookEndpoints.list({ limit: 100 }),
-      ]);
-      stripe = account?.charges_enabled === true &&
-        (webhookEndpoints.data || []).some((e: any) => stripeWebhookMatches(e) && stripeEnabledEvents(e));
-    } catch (_) { /* Fail closed. */ }
-  }
   // This is configuration presence only: until the provider verifies IFund's
   // pooled donations and settlement agreement, it must never enable transfers.
   const nowpaymentsConfigured = !!(secrets.get('NOWPAYMENTS_API_KEY') && secrets.get('NOWPAYMENTS_IPN_SECRET'));
   const reownConfigured = !!secrets.get('REOWN_PROJECT_ID');
   const openaiConfigured = !!secrets.get('OPENAI_API_KEY');
-  const stablecoin = await stripeCryptoGatewayReadiness();
   return {
     paypal_checkout: settled(paypal, paypal ? 'Verified live PayPal REST account' : 'Live PayPal account verification required'),
     paypal_payouts: settled(payouts, payouts ? 'Verified PayPal payouts' : 'PayPal payouts must be verified separately'),
     paypal_subscriptions: settled(paypalSubscriptions, paypalSubscriptions ? 'Verified PayPal billing plans and webhook' : 'PayPal billing plans and webhook verification required'),
-    stripe_checkout: settled(stripe, stripe ? 'Live Stripe account and signed webhook verified' : 'Stripe live account and matching webhook required'),
-    crypto_gateway: settled(stablecoin.ready, stablecoin.reason),
+    stripe_checkout: settled(false, 'Stripe has been retired from IFund checkout.'),
+    crypto_gateway: settled(false, 'Awaiting a non-Stripe crypto settlement provider and verified accounting.'),
     nowpayments: settled(false, nowpaymentsConfigured ? 'Credentials present; merchant approval, IPN and settlement are not verified' : 'NOWPayments merchant account, API key and IPN setup required'),
     reown: settled(false, reownConfigured ? 'Server-side project reference exists; website allowlist and client configuration unverified' : 'Reown Project ID and allowed website origins required'),
     openai: settled(false, openaiConfigured ? 'API key configured; agent execution not independently verified' : 'An authorized AI execution provider and runtime test are required'),
@@ -107,7 +80,7 @@ export async function probeLiveProviders(sr?: any) {
 export function assessFeatureReadiness(key: string, providers: Awaited<ReturnType<typeof probeLiveProviders>>, registry: any[] = []) {
   const p = providers;
   const pp = p.paypal_checkout.ready;
-  const st = p.stripe_checkout.ready;
+  const st = false; // Retired payment rail. Never use it to enable collection or purchases.
   const payout = p.paypal_payouts.ready;
   const registryActive = (platform: string) => registry.some((r: any) =>
     String(r.platform || '').toLowerCase() === platform &&
@@ -117,13 +90,13 @@ export function assessFeatureReadiness(key: string, providers: Awaited<ReturnTyp
   const social = ['facebook_pages','linkedin','discord','instagram','tiktok'].some(registryActive);
   const connectedNetwork = ['facebook_pages','linkedin','discord','instagram','tiktok','wix','github'].some(registryActive);
   const known: Record<string, ReturnType<typeof settled>> = {
-    public_campaign_fundraising: settled((pp || st) && payout, 'Requires verified donation processing and a verified payout route'),
-    payment_checkout_enabled: settled(pp || st, 'Requires at least one verified payment processor'),
+    public_campaign_fundraising: settled(pp && payout, 'Requires verified PayPal donation processing and payout route'),
+    payment_checkout_enabled: settled(pp, 'Requires verified PayPal business checkout'),
     paypal_checkout: settled(pp, p.paypal_checkout.explanation),
     google_pay_checkout: settled(false, 'Google Pay wallet processing has not been independently verified end to end'),
     stripe_checkout: settled(st, p.stripe_checkout.explanation),
-    recurring_donations: settled(st, 'Requires verified Stripe billing events and checkout'),
-    subscription_checkout: settled(st || p.paypal_subscriptions.ready, 'Requires verified Stripe or PayPal subscription plans and signed subscription lifecycle events'),
+    recurring_donations: settled(false, 'Monthly campaign gifts are unavailable until PayPal recurring-giving support is verified'),
+    subscription_checkout: settled(p.paypal_subscriptions.ready, 'Requires verified PayPal billing plans and signed subscription lifecycle events'),
     outbound_payout_execution: settled(payout, p.paypal_payouts.explanation),
     ai_campaign_assistant: settled(false, 'AI provider credentials and campaign-assistant runtime must be tested'),
     ai_outreach_agent: settled(false, 'AI runtime, consent and outbound messaging must be tested'),
