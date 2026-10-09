@@ -16,7 +16,6 @@ ok('guard re-reads the user via the service role', guard.includes('asServiceRole
 
 // --- Every sensitive authenticated function must apply the guard ---
 const REQUIRED = [
-  ['createDonationCheckout', 'assertActiveAccountIfSignedIn'],
   ['recordDonation', 'assertActiveAccountIfSignedIn'],
   ['capturePayPalOrder', 'assertActiveAccountIfSignedIn'],
   ['createPayPalOrder', 'assertActiveAccountIfSignedIn'],
@@ -25,7 +24,6 @@ const REQUIRED = [
   ['publishPost', 'assertActiveAccount'],
   ['broadcastPosts', 'assertActiveAccount'],
   ['generateDistributionContent', 'assertActiveAccount'],
-  ['createSubscriptionCheckout', 'assertActiveAccount'],
   ['decideGrantApplication', 'assertActiveAccount'],
 ];
 for (const [fn, helper] of REQUIRED) {
@@ -33,6 +31,11 @@ for (const [fn, helper] of REQUIRED) {
   ok(`${fn} imports ${helper}`, src.includes("from '../../shared/accountGuard.ts'") && src.includes(helper));
   ok(`${fn} invokes the guard`, src.includes(`await ${helper}(`));
   ok(`${fn} no longer bypasses status with a bare auth.me check`, !/const user = await base44\.auth\.me\(\);[\s\S]{0,120}if \(!user\) return Response\.json\(\{ error: 'Unauthorized' \}/.test(src));
+}
+
+for (const fn of ['createDonationCheckout','createSubscriptionCheckout']) {
+  const src = readFileSync(`base44/functions/${fn}/entry.ts`, 'utf8');
+  ok(`${fn} denies new purchases after retirement`, src.includes('status: 410'));
 }
 
 // runOutreachAgent is service-scoped (no caller) — it must skip revoked owners.
