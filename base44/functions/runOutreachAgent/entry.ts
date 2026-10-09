@@ -118,6 +118,8 @@ ${context}`;
         recIds.push(rec.id);
       }
 
+      const draftMessage = typeof res?.draft_message === 'string'
+        ? res.draft_message.trim().slice(0, 2500) : '';
       const nextActions = [
         res.next_action,
         'Review the draft outreach message and approve or edit it before sending to supporters.',
@@ -131,7 +133,8 @@ ${context}`;
         action: 'Ran autonomous outreach analysis and generated recommendations plus a draft outreach message.',
         reason: 'Campaign is opted into the AI Outreach Agent; periodic monitoring improves outreach performance.',
         expected_impact: 'Sharper audience targeting and ready-to-send donor messaging.',
-        result: `Generated ${recIds.length} recommendation(s) and 1 draft outreach message.`,
+        result: `Generated ${recIds.length} recommendation(s)${draftMessage ? ' and an outreach draft' : ''}.`,
+        description: draftMessage,
         recommended_next_actions: nextActions,
         artifact_type: 'recommendation',
         artifact_id: recIds[0] || undefined,
