@@ -14,6 +14,8 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 export default async function(req: Request) {
+  // No new Stripe purchases; preserve historical payment records for reconciliation.
+  return Response.json({ error: 'Stripe day-pass checkout has been retired.' }, { status: 410 });
   if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
   try {
     const base44 = createClientFromRequest(req);
