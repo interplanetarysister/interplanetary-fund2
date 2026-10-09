@@ -11,7 +11,6 @@ const platformButton = read("src/components/payments/PayPalDonateButton.jsx");
 const link = read("src/lib/paypalLink.js");
 const hook = read("src/lib/useFundraisingMode.js");
 const checkout = [
-  read("base44/functions/createDonationCheckout/entry.ts"),
   read("base44/functions/recordDonation/entry.ts"),
   read("base44/shared/prelaunchPayments.ts"),
 ];
@@ -33,6 +32,7 @@ assert.match(platformButton, /generatePayPalLink/);
 assert.doesNotMatch(platformButton, /PRELAUNCH_MODE/);
 assert.match(link, /Platform Support/);
 assert.ok(checkout.every((code) => code.includes("isPublicCampaignFundraisingEnabled")));
+assert.match(read("base44/functions/createDonationCheckout/entry.ts"), /status: 410/, "Legacy Stripe donation endpoint must reject new payments");
 assert.match(paypalPaths[0], /campaignPaymentAccess\(base44\)/);
 assert.match(paypalPaths[0], /areFeaturesEnabled\(base44/);
 assert.doesNotMatch(paypalPaths[1], /campaignPaymentAccess\(base44\)/);
