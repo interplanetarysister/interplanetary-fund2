@@ -226,6 +226,11 @@ export default function Subscriptions() {
             <p className="text-sm text-stone-600">
               {paypal.plans.filter(row => row.available).length}/10 verified PayPal prices · {paypal.webhook_configured ? "Webhook registered" : "Webhook not registered"}
             </p>
+            {stripe.merchant_payments_enabled === false && (
+              <p role="status" className="mt-2 text-sm text-amber-900">
+                Stripe prices are saved, but Stripe has not enabled this business to take card payments. Purchases stay unavailable until Stripe verifies the merchant; use the PayPal setup options when ready.
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" disabled={provisioning} onClick={verifyProvidedBasicPayPalPlan}>
