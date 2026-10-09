@@ -87,6 +87,43 @@ try{
   console.log('PASS: desktop sidebar changes route while preserving navigation');
   await desktop.close();
   await context.close();
+
+  // Simulate a signed-in screen using in-memory route fixtures. No real
+  // credentials, financial records or account privileges are involved.
+  const member=await browser.newContext({viewport:{width:390,height:844}});
+  await member.addInitScript(()=>{
+    localStorage.setItem('base44_access_token','ifund_navigation_test_bearer');
+  });
+  await member.route('**/api/apps/public/prod/public-settings/by-id/**',route=>route.fulfill({
+    status:200,contentType:'application/json',
+    body:JSON.stringify({id:'6a67a778342a8fe05ee79cba',public_settings:'public_without_login'}),
+  }));
+  await member.route('**/api/apps/6a67a778342a8fe05ee79cba/entities/User/me',route=>route.fulfill({
+    status:200,contentType:'application/json',
+    body:JSON.stringify({id:'mock-only-account',username:'TestViewer',role:'user',subscription_tier:'free'}),
+  }));
+  const signed=await member.newPage(),authErrors=[];
+  signed.on('pageerror',error=>authErrors.push(error.message));
+  signed.on('console',msg=>{
+    if(msg.type()==='error' && /ReferenceError|TypeError|Route render error/.test(msg.text()))
+      authErrors.push(msg.text().slice(0,160));
+  });
+  await signed.goto(origin+'/dashboard',{waitUntil:'domcontentloaded'});
+  await signed.getByRole('button',{name:/I Agree — Continue/}).click();
+  const tabs=signed.getByRole('navigation',{name:'Bottom navigation'});
+  await tabs.getByRole('link',{name:'Dashboard',exact:true}).waitFor({timeout:12000});
+  for(const [label,path] of [
+    ['Campaigns','/discover'],['Social Media','/social'],['Inbox','/inbox'],
+    ['Profile','/profile'],['Dashboard','/dashboard'],
+  ]){
+    await tabs.getByRole('link',{name:label,exact:true}).click({timeout:8000});
+    await signed.waitForURL(url=>url.pathname===path,{timeout:10000});
+    await delay(350);
+    assert.deepEqual(await tabs.locator('a.text-cyan-400').allTextContents(),[label]);
+  }
+  assert.deepEqual(authErrors,[],'Authenticated bottom navigation must not crash');
+  console.log('PASS: authenticated Dashboard, Campaigns, Social, Inbox, Profile navigation using mocked account data');
+  await member.close();
 }finally{
   await browser?.close();
   if(preview){preview.kill();await delay(200)}
