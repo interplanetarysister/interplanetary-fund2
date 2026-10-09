@@ -48,6 +48,7 @@ export default async function(req: Request) {
       !!(await verifiedPayPalPlan(sr, p.tier, p.interval).catch(() => null)))) : prices.map(() => false);
     const plans = prices.map((p, i) => ({
       tier: p.tier, interval: p.interval, amount_cents: p.amount_cents,
+      verified: checked[i],
       available: checked[i] && eligible && (p.tier !== 'nonprofit' || nonprofitApproved),
       currency: 'USD',
     }));
