@@ -1,13 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { subscriptionPrice, providerPriceIsExact } from '../../shared/subscriptionCatalog.js';
-import { getPayPalBillingPlan, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypalSubscriptions.ts';
+import { getPayPalBillingPlan, IFUND_PAYPAL_ACCOUNT_REF, IFUND_OWNER_BASIC_MONTHLY_PLAN_ID } from '../../shared/paypalSubscriptions.ts';
 
 // The $12/month PayPal plan supplied by the IFund owner (2026-10-08).
 // This is a candidate identifier, NOT evidence that a plan is active or
 // belongs to IFund. PayPal's LIVE business REST API must verify it before
 // any catalog mapping is written or subscribers can check out.
-const PROVIDED_BASIC_MONTHLY_PLAN_ID = 'P-6YD2273006199630KNLDXBLA';
+const PROVIDED_BASIC_MONTHLY_PLAN_ID = IFUND_OWNER_BASIC_MONTHLY_PLAN_ID;
 
 export default async function(req) {
   if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
