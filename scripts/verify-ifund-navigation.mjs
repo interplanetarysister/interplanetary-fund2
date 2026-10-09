@@ -49,6 +49,14 @@ try{
     const active=await bottom.locator('a.text-cyan-400').allTextContents();
     assert.deepEqual(active,[name],'Only the current '+name+' tab may be highlighted');
   }
+  // Discover must offer a direct Help Center link even while campaigns load.
+  const discoverHelpLink=page.getByRole('link',{name:'Open Help Center'});
+  await discoverHelpLink.waitFor({state:'visible',timeout:12000});
+  await discoverHelpLink.click({timeout:7000});
+  await page.waitForURL(url=>url.pathname==='/help',{timeout:12000});
+  await page.getByRole('heading',{name:'Help Center'}).waitFor({timeout:12000});
+  await bottom.getByRole('link',{name:'Discover',exact:true}).click();
+  await page.waitForURL(url=>url.pathname==='/discover',{timeout:12000});
   await bottomTab('Community','/community');
   await bottomTab('Help','/help');
   await bottomTab('Discover','/discover');
@@ -72,7 +80,7 @@ try{
   await page.waitForURL(url=>url.pathname==='/community');
   assert.equal(await page.locator('#mobile-menu').count(),0);
   assert.deepEqual(exceptions,[],'No uncaught browser errors during mobile navigation');
-  console.log('PASS: mobile tabs, active route, drawer overlay, globe return, deep-link back and browser startup');
+  console.log('PASS: Discover → Help Center, mobile tabs, active route, drawer overlay, globe return, deep-link back and browser startup');
 
   const desktop=await browser.newContext({viewport:{width:1280,height:800}});
   const d=await desktop.newPage();
