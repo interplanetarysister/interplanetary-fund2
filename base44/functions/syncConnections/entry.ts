@@ -2,7 +2,7 @@ import { isFeatureEnabled } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
-import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
+import { OAUTH_ENV, verifyManualConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
 import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
