@@ -136,7 +136,8 @@ assert.doesNotMatch(connectionsPage, /OAuthPermissionStep|completeOAuthConnectio
 assert.match(verifyConnection, /completeManagedRepairDelegations/);
 assert.match(verifyConnection, /user\?\.ai_obo_consent\?\.granted !== true/);
 assert.match(verifyConnection, /delegation\?\.consent_version/);
-assert.match(verifyConnection, /continuation_state\?\.continuation_ref !== connection\.id/);
+assert.match(verifyConnection, /ref !== connection\.id && !unboundConnect/);
+assert.match(verifyConnection, /delegation\?\.objective === `connect/);
 assert.match(connectionsPage, /verifyPlatformConnection/);
 assert.match(register, /window\.location\.href = "\/onboarding"/);
 assert.match(register, /ifund_post_onboarding_return_to/);
