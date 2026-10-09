@@ -11,7 +11,8 @@ const STATUS_META = {
 };
 
 export default function ConnectStep({ data, onChange }) {
-  const selected = data.platforms || [];
+  // Remove stale selections for a retired payment provider.
+  const selected = (data.platforms || []).filter(id => id !== 'stripe');
   const [paymentCapabilities, setPaymentCapabilities] = useState(null);
 
   useEffect(() => {
