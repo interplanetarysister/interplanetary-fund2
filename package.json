@@ -37,7 +37,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-node22 --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs",
+    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
@@ -89,7 +89,10 @@
     "verify:browser-render": "node scripts/verify-ifund-browser-render.mjs",
     "verify:bundle-graph": "node scripts/verify-ifund-bundle-graph.mjs",
     "verify:navigation": "node scripts/verify-ifund-navigation.mjs",
-    "publish:safe": "bash scripts/publish-ifund-safe.sh"
+    "publish:safe": "bash scripts/publish-ifund-safe.sh",
+    "verify:studio-pages": "node scripts/verify-ifund-studio-pages.mjs",
+    "verify:links-assets": "node scripts/verify-ifund-links-assets.mjs",
+    "verify:studio-contracts": "node scripts/verify-ifund-links-assets.mjs && node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/verify-ifund-bundle-graph.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",
