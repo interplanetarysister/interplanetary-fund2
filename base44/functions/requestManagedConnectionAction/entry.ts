@@ -117,29 +117,40 @@ export default async function(req: Request) {
       }
     }
 
-    if (
-      connection &&
-      action !== 'reauthorize' &&
-      connection.status === 'connected' &&
-      connection.verification_status === 'verified' &&
-      !connection.last_error
-    ) {
-      return Response.json({
-        accepted: true,
-        state: 'completed',
-        already_connected: true,
-        platform,
-        action,
-        connection_id: connection.id,
-        message: 'This connection is already verified and working.',
-      });
-    }
-
+    // A saved "connected" flag can be stale. Never claim that a repair or
+    // reconnect succeeded from the database alone; use live verification below.
     const operation = action === 'create_account' ? 'account_create' : 'connect';
     const resolved = await resolveRecipe(sr, platform, operation);
     const transports = resolved.transport_order.filter((t: string) => t && t !== 'manual');
     const nextTransport = transports[0] || null;
     const now = new Date().toISOString();
+
+    // Avoid flooding the work queue when someone taps an AI action repeatedly.
+    // Existing outstanding work remains resumable; a new request is created
+    // only after the previous request has reached a terminal state.
+    const prior = await base44.entities.AgentDelegation.filter({
+      owner_user_id: user.id,
+      destination_agent: 'managed_connection_agent',
+      objective: `${action} ${platform}`,
+    }).catch(() => []);
+    const active = (Array.isArray(prior) ? prior : []).find((item: any) =>
+      ['requested', 'assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review'].includes(item.status) &&
+      item.consent_version === consentVersion &&
+      (item.continuation_state?.continuation_ref || item.id) === (connection?.id || item.id) &&
+      (!campaignId || item.campaign_id === campaignId)
+    );
+    if (active) {
+      return Response.json({
+        accepted: true,
+        state: active.status,
+        platform, action,
+        connection_id: connection?.id || null,
+        delegation_id: active.id,
+        executable_now: false,
+        message: active.continuation_state?.external_requirement ||
+          active.result_summary || 'Your existing IFund request is still active.',
+      });
+    }
 
     const delegation = await base44.entities.AgentDelegation.create({
       owner_user_id: user.id,
@@ -172,7 +183,7 @@ export default async function(req: Request) {
       updated_at: now,
     });
 
-    if (connection && (action === 'connect' || action === 'repair')) {
+    if (connection) {
       const verification = await base44.functions.invoke('verifyPlatformConnection', {
         connection_id: connection.id,
       }).catch(() => null);
@@ -199,7 +210,7 @@ export default async function(req: Request) {
           connection_id: connection.id,
           delegation_id: delegation.id,
           working: true,
-          message: 'The connection is verified and working.',
+          message: 'The connection passed a live provider check and is working.',
         });
       }
     }
