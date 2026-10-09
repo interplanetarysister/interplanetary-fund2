@@ -112,12 +112,17 @@ export default function Connections() {
     const hour = 60 * 60 * 1000;
     // Authenticated app-user refresh only. Shared/admin connectors and
     // public-page trackers have separate health paths.
-    const candidates = rows.filter(c =>
-      c.status === "connected" &&
-      ALL_PLATFORMS.some(p => p.id === c.platform && p.setupKind === "oauth") &&
-      (!Number.isFinite(Date.parse(c.last_synced)) ||
-        Date.now() - Date.parse(c.last_synced) >= hour)
-    ).slice(0, 8);
+    const candidates = rows.filter(c => {
+      if (!["connected", "error"].includes(c.status) ||
+          !ALL_PLATFORMS.some(p => p.id === c.platform && p.setupKind === "oauth")) return false;
+      // Error states need a recovery check too. A connection that has already
+      // failed must not be skipped forever merely because it is not green.
+      const lastHealth = [...(c.history || [])].reverse().find(item =>
+        ["health_check", "health_check_failed"].includes(item.event));
+      const lastAttempt = Date.parse(lastHealth?.at || c.last_synced || "");
+      const retryWindow = c.status === "error" ? 30 * 60 * 1000 : hour;
+      return !Number.isFinite(lastAttempt) || Date.now() - lastAttempt >= retryWindow;
+    }).slice(0, 6);
     if (!candidates.length) return;
     const checked = await Promise.all(candidates.map(c =>
       base44.functions.invoke("verifyPlatformConnection", { connection_id: c.id })
