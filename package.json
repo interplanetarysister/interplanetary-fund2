@@ -37,7 +37,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-node22 --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/verify-production-build-output.mjs",
+    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
@@ -86,7 +86,10 @@
     "test:paypal-checkout-recovery": "node scripts/test-paypal-checkout-recovery.mjs && node scripts/test-paypal-scanner-classification.mjs && node scripts/test-paypal-receipt-paging.mjs",
     "verify:base44-release": "node scripts/test-base44-release.mjs",
     "test:device-authorization": "node scripts/test-ifund-device-authorization.mjs && node scripts/test-ifund-device-browser-flow.mjs",
-    "verify:browser-render": "node scripts/verify-ifund-browser-render.mjs"
+    "verify:browser-render": "node scripts/verify-ifund-browser-render.mjs",
+    "verify:bundle-graph": "node scripts/verify-ifund-bundle-graph.mjs",
+    "verify:navigation": "node scripts/verify-ifund-navigation.mjs",
+    "publish:safe": "bash scripts/publish-ifund-safe.sh"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.53",

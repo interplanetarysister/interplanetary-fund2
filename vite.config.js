@@ -2,6 +2,38 @@ import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
+// Enforced for EVERY production Vite build (including Base44's own build),
+// independent of npm scripts or optional release commands.
+function blockCyclicProductionChunks() {
+  return {
+    name: "ifund-block-cyclic-production-chunks",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter(asset => asset.type === "chunk");
+      const known = new Set(chunks.map(chunk => chunk.fileName));
+      const graph = new Map(chunks.map(chunk => [
+        chunk.fileName,
+        chunk.imports.filter(name => known.has(name)),
+      ]));
+      const settled = new Set();
+      const active = [];
+      const visit = (name) => {
+        const cycleStart = active.indexOf(name);
+        if (cycleStart >= 0) {
+          this.error("IFund build blocked: circular JavaScript chunk import " +
+            active.slice(cycleStart).concat(name).join(" -> "));
+        }
+        if (settled.has(name)) return;
+        active.push(name);
+        for (const dependency of graph.get(name) || []) visit(dependency);
+        active.pop();
+        settled.add(name);
+      };
+      for (const chunk of chunks) visit(chunk.fileName);
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -15,6 +47,7 @@ export default defineConfig({
       visualEditAgent: true
     }),
     react(),
+    blockCyclicProductionChunks(),
   ],
   optimizeDeps: {
     include: [
