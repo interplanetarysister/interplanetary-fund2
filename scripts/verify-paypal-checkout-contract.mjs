@@ -18,7 +18,7 @@ const bridge=read("base44/shared/base44Financial.ts");
 assert.match(dialog,/PayPalCheckoutButton/);
 assert.match(dialog,/Give with PayPal/);
 assert.match(dialog,/paypal\?\.api_live === true/);
-assert.match(dialog,/stripe\?\.live === true/);
+assert.doesNotMatch(dialog,/stripeAvailable|startStripeCheckout|createDonationCheckout/, "Retired Stripe checkout is not offered to donors");
 assert.match(button,/createPayPalOrder/);
 assert.match(button,/capturePayPalOrder/);
 assert.match(button,/result\?\.ok !== true/);
