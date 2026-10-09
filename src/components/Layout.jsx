@@ -241,7 +241,7 @@ export default function Layout() {
         })}
       </nav>
 
-      <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain text-foreground">
+      <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
         <div className="ifund-workspace-bar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-7">
           <div className="min-w-0">
             <p className="ifund-workspace-kicker">{section}</p>
