@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { redactCredentials } from '../../shared/integrationRegistry.ts';
+import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
 const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
@@ -112,14 +113,24 @@ export default async function(req) {
       if (!connectionVerified) throw new Error('provider_probe_unavailable');
       const aiAllowed = user.ai_obo_consent?.granted === true &&
         connection.obo_consent?.granted === true &&
+        connection.obo_consent?.opted_out !== true &&
         String(connection.obo_consent?.permission_version || '') ===
         String(user.ai_obo_consent?.permission_version || '');
+      const verifiedCapabilities = providerBacked
+        ? verifiedConnectionCapabilities(connection)
+        : (connection.obo_consent?.provider_capabilities || []);
+      const publishEligible = verifiedCapabilities.includes('create_post');
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: 'connected', verification_status: 'verified', last_synced: now, last_error: '',
+        obo_consent: {
+          ...(connection.obo_consent || {}),
+          provider_capabilities: verifiedCapabilities,
+          granted_capabilities: aiAllowed ? verifiedCapabilities : [],
+        },
         agent_access: {
           ...(connection.agent_access || {}),
           shared_with_agents: aiAllowed,
-          automation_enabled: aiAllowed && connection.automation_mode === 'auto' && providerBacked,
+          automation_enabled: aiAllowed && connection.automation_mode === 'auto' && providerBacked && publishEligible,
         },
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
