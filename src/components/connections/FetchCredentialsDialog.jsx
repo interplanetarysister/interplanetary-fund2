@@ -25,7 +25,6 @@ export default function FetchCredentialsDialog({ platform, open, onOpenChange, o
     patreon: "https://www.patreon.com/portal/registration/register-clients",
     bluesky: "https://bsky.app/settings/app-passwords",
     mastodon: "https://docs.joinmastodon.org/api/",
-    stripe: "https://dashboard.stripe.com/apikeys",
     paypal: "https://developer.paypal.com/dashboard/applications/live",
   }[platform?.id] || "https://developers.google.com/";
 
