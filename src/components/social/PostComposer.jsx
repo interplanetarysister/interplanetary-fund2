@@ -132,7 +132,9 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       const campaign = campaigns?.find((c) => c.id === selectedCampaign);
       const { data } = await base44.functions.invoke("createSocialPost", {
         content: content.trim(), media_url: mediaUrl || undefined, campaign_id: campaign?.id,
-        crosspost_platforms: crossPost, ai_generated: aiGenerated,
+        // Only mark an external platform as shared after it returns a verified
+        // published result, not when the user merely selects a destination.
+        crosspost_platforms: [], ai_generated: aiGenerated,
         image_generated: Boolean(improvedMediaUrl && mediaUrl === improvedMediaUrl),
       });
       if (data?.ok !== true || !data?.post) throw new Error("Social post creation rejected");
@@ -140,19 +142,50 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       const newScore = data.social_score;
       const newTier = data.banner_tier;
 
-      // Cross-post to linked external platforms where a campaign is linked.
+      // The IFund post is independent of external publishing. Each external
+      // result must be inspected, because publishPost may return manual=true
+      // and an approved draft rather than a provider-published post.
+      const publishedPlatforms = [];
+      let manualCount = 0;
+      let failedCount = 0;
+      if (crossPost.length && !campaign) failedCount = crossPost.length;
       if (campaign && crossPost.length > 0) {
         for (const platform of crossPost) {
           const conn = connections?.find((c) => c.platform === platform && isUsableConnection(c));
-          if (!conn) continue;
+          if (!conn) { failedCount += 1; continue; }
           try {
-            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaign.id, connection_id: conn.id, content: content.trim() });
-            if (distributed?.ok !== true || !distributed?.post?.id) continue;
-            const dp = distributed.post;
-            await base44.functions.invoke("publishPost", { post_id: dp.id, user_publish_authorized: true });
+            const { data: distributed } = await base44.functions.invoke("createDistributedPost", {
+              campaign_id: campaign.id, connection_id: conn.id, content: content.trim(),
+            });
+            if (distributed?.ok !== true || !distributed?.post?.id) {
+              failedCount += 1;
+              continue;
+            }
+            const result = await base44.functions.invoke("publishPost", {
+              post_id: distributed.post.id, user_publish_authorized: true,
+            });
+            const outcome = result?.data;
+            if (outcome?.manual === false && outcome?.post?.status === "published") {
+              publishedPlatforms.push(platform);
+            } else if (outcome?.manual === true && outcome?.post?.status === "approved") {
+              manualCount += 1;
+            } else {
+              failedCount += 1;
+            }
           } catch {
-            // Cross-post failure doesn't block the native post.
+            failedCount += 1;
           }
+        }
+      }
+      let displayedPost = post;
+      if (publishedPlatforms.length) {
+        try {
+          displayedPost = await base44.entities.SocialPost.update(post.id, {
+            crosspost_platforms: publishedPlatforms,
+          });
+        } catch {
+          // Published destinations remain tracked by their DistributedPost
+          // records even if the social feed badge cannot be updated.
         }
       }
 
@@ -164,8 +197,12 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       setAiGenerated(false);
       setCrossPost([]);
       setSelectedCampaign("");
-      toast({ title: "Posted!", description: newTier !== (user.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points" });
-      onPosted?.(post, newScore, newTier);
+      const externalSummary = crossPost.length
+        ? `${publishedPlatforms.length} published externally; ${manualCount} prepared for manual sharing; ${failedCount} need attention.`
+        : (newTier !== (user.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points");
+      toast({ title: "Posted to IFund", description: externalSummary,
+        ...(failedCount ? { variant: "destructive" } : {}) });
+      onPosted?.(displayedPost || post, newScore, newTier);
     } catch {
       toast({ title: "Couldn't post", description: "Please try again.", variant: "destructive" });
     } finally {
