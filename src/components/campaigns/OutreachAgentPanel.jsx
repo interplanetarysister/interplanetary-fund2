@@ -41,6 +41,7 @@ export default function OutreachAgentPanel({ campaign }) {
 
   const subscription = effectiveSubscription(user);
   const hasOutreach = subscription.active && subscription.plan.level >= 2;
+  const automationReady = !!platformEnabled && hasOutreach && user?.ai_obo_consent?.granted === true;
 
   const toggleEnabled = async () => {
     if (!platformEnabled || enabling) return;
@@ -101,7 +102,7 @@ export default function OutreachAgentPanel({ campaign }) {
         </div>
         {enabled ? (
           <Badge variant="outline" className="border-cyan-400/30 bg-cyan-400/10 text-cyan-300">
-            {paused ? "Paused" : "Active · scheduled"}
+            {paused ? "Paused" : automationReady ? "Active · scheduled" : "Waiting for AI permission or plan"}
           </Badge>
         ) : (
           <Badge variant="outline" className="border-white/15 text-slate-400">Off</Badge>
@@ -110,6 +111,7 @@ export default function OutreachAgentPanel({ campaign }) {
 
       {error && <p className="text-sm text-red-300 mt-2" role="alert">{error}</p>}
       {!platformEnabled && <p className="text-sm text-amber-200 mt-2">New automated outreach runs are paused. Existing recommendations remain available for review.</p>}
+      {hasOutreach && enabled && !user?.ai_obo_consent?.granted && <p className="text-sm text-amber-200 mt-2">To run this agent, <Link to="/connections" className="underline">turn on IFund AI help</Link>. No outreach will run before authorization.</p>
       {!hasOutreach ? (
         <div className="mt-3">
           <p className="text-sm text-slate-400 mb-3">
