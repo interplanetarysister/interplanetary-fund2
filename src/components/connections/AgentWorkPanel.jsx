@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
@@ -22,12 +22,14 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState("");
+  const sweepInFlight = useRef(false);
   const load = useCallback(async () => {
     try {
       const response = await base44.functions.invoke("manageAgentWork", { mode: "list" });
       if (!response?.data?.ok || !Array.isArray(response.data.work)) throw new Error("Invalid work status");
       setWork(response.data.work);
       setError("");
+      return response.data.work;
     } catch {
       setError("AI connection work could not be loaded.");
     } finally {
@@ -35,13 +37,37 @@ export default function AgentWorkPanel({ refreshKey = 0 }) {
     }
   }, []);
 
+  // A safe, owner-authorized foreground worker checks a small number of due
+  // connections. It never creates accounts, posts, spends, or bypasses provider
+  // authorization. Runs only while the owner is viewing this page.
+  const sweep = useCallback(async () => {
+    if (sweepInFlight.current || document.visibilityState === "hidden") return;
+    sweepInFlight.current = true;
+    try {
+      const rows = await load();
+      const due = (rows || []).filter((item) =>
+        ["in_progress", "waiting_external"].includes(item.status) &&
+        item.connection_id &&
+        (!item.last_attempt_at || Date.now() - Date.parse(item.last_attempt_at) >= 5 * 60 * 1000)
+      ).slice(0, 2);
+      if (due.length) {
+        await Promise.allSettled(due.map((item) =>
+          base44.functions.invoke("manageAgentWork", { mode: "advance", delegation_id: item.id })
+        ));
+        await load();
+      }
+    } finally { sweepInFlight.current = false; }
+  }, [load]);
+
   useEffect(() => {
     let active = true;
     const refresh = () => { if (active && document.visibilityState !== "hidden") void load(); };
     refresh();
-    const timer = window.setInterval(refresh, 15000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [load, refreshKey]);
+    void sweep();
+    const statusTimer = window.setInterval(refresh, 15000);
+    const workTimer = window.setInterval(() => { if (active) void sweep(); }, 180000);
+    return () => { active = false; window.clearInterval(statusTimer); window.clearInterval(workTimer); };
+  }, [load, refreshKey, sweep]);
 
   const advance = async (item) => {
     if (checking) return;
