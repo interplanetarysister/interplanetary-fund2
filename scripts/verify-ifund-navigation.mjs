@@ -118,7 +118,10 @@ try{
   ]){
     await tabs.getByRole('link',{name:label,exact:true}).click({timeout:8000});
     await signed.waitForURL(url=>url.pathname===path,{timeout:10000});
-    await delay(350);
+    // On the published domain a lazy-loaded page can leave the previous
+    // route's bottom-nav briefly mounted after the URL has advanced. Wait
+    // until the new route commits rather than asserting at an arbitrary 350ms.
+    await tabs.locator('a.text-cyan-400').filter({hasText:label}).waitFor({state:'visible',timeout:12000});
     assert.deepEqual(await tabs.locator('a.text-cyan-400').allTextContents(),[label]);
   }
   assert.deepEqual(authErrors,[],'Authenticated bottom navigation must not crash');
