@@ -71,14 +71,14 @@ export default function CryptoDonateOption({
   const ready = readiness?.verified_checkout_live === true && readiness?.settlement_ready === true;
 
   return (
-    <section className="rounded-xl border border-violet-300 bg-violet-50 p-4 text-stone-900" aria-label="Cryptocurrency donations">
-      <h3 className="flex items-center gap-2 text-sm font-semibold text-violet-900"><Wallet className="w-4 h-4" /> Donate cryptocurrency</h3>
-      <p className="text-xs text-violet-950 mt-1">
+    <section className="rounded-xl border border-violet-300 bg-violet-50 p-4 text-slate-950 dark:border-violet-500 dark:bg-slate-900 dark:text-slate-50" aria-label="Cryptocurrency donations">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100"><Wallet className="w-4 h-4" /> Donate cryptocurrency</h3>
+      <p className="mt-1 text-sm leading-relaxed text-violet-950 dark:text-slate-100">
         {platformSupport
           ? "Interplanetary Fund is preparing a verified cryptocurrency donation option."
           : "The campaign creator has chosen to accept cryptocurrency when secure payment processing is available."}
       </p>
-      <p className="mt-2 flex items-start gap-1.5 text-xs text-amber-900">
+      <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-700/20 bg-amber-50 p-2.5 text-sm leading-relaxed text-amber-950 dark:border-amber-200/30 dark:bg-amber-200/10 dark:text-amber-100" role="status">
         <ShieldAlert className="w-4 h-4 shrink-0" />
         {checking ? "Checking payment availability…"
           : ready
@@ -92,12 +92,12 @@ export default function CryptoDonateOption({
         </Button>
       )}
       {reownConfigured()
-        ? <Button type="button" variant="outline" className="w-full mt-2 border-violet-300 text-violet-900" onClick={connect} disabled={connecting || paying}>
+        ? <Button type="button" variant="outline" className="w-full mt-2 border-violet-400 bg-white text-violet-950 hover:bg-violet-100 dark:border-violet-300 dark:bg-slate-800 dark:text-violet-100 dark:hover:bg-slate-700 dark:hover:text-white" onClick={connect} disabled={connecting || paying}>
             {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
             Connect wallet (no payment)
           </Button>
-        : <p className="text-xs text-violet-800 mt-2">Standalone wallet connection is awaiting provider setup. Stripe can connect wallets during approved checkout.</p>}
-      {error && <p role="alert" className="text-xs text-red-700 mt-2">{error}</p>}
+        : <p className="mt-2 text-sm leading-relaxed text-violet-900 dark:text-violet-100">Standalone wallet connection is awaiting provider setup. Stripe can connect wallets during approved checkout.</p>}
+      {error && <p role="alert" className="mt-2 text-sm font-medium text-red-800 dark:text-red-200">{error}</p>}
     </section>
   );
 }
