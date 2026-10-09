@@ -19,6 +19,7 @@ const WIRED_FLAGS = new Set([
   "managed_connections", "external_campaign_import",
   "external_fund_collection", "external_feed_mirroring",
   "community_creation", "institution_programs",
+  "crypto_donations",
 ]);
 const ALWAYS_AVAILABLE = new Set([
   "new_campaign_publishing", "public_campaign_publishing",
@@ -32,6 +33,7 @@ const NEEDS_EXTERNAL_VERIFICATION = new Set([
   "ai_outreach_agent", "social_autopilot", "cross_platform_publishing",
   "managed_connections", "external_campaign_import",
   "external_fund_collection", "external_feed_mirroring",
+  "crypto_donations",
 ]);
 const RETIRED_FLAGS = new Set(["outbound_payout_executiin", "ai_campaign_asisstant"]);
 

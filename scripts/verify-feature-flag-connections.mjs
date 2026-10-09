@@ -13,9 +13,12 @@ const mock = rows => ({
 const yes = (key) => ({key, enabled:true, scope:FEATURE_SCOPES[key]});
 const no = (key) => ({key, enabled:false, scope:FEATURE_SCOPES[key]});
 
-assert.equal(Object.keys(FEATURE_SCOPES).length, 19);
+assert.equal(Object.keys(FEATURE_SCOPES).length, 20,
+  'Keep the crypto donations flag in the reviewed inventory');
 assert.equal(new Set(CODE_CONNECTED_FEATURES).size, CODE_CONNECTED_FEATURES.length);
 assert.ok(CODE_CONNECTED_FEATURES.every(k => FEATURE_SCOPES[k]));
+assert.ok(CODE_CONNECTED_FEATURES.includes('crypto_donations'),
+  'Crypto donations must remain an explicitly gated platform feature');
 assert.ok(!CODE_CONNECTED_FEATURES.includes('admin_agent_execution'), 'Unverified admin agents must not be wired as a public switch');
 assert.ok(NEVER_SWITCH_OFF.includes('paypal_donation_reconciliation'), 'Financial reconciliation is always on');
 assert.ok(NEVER_SWITCH_OFF.includes('new_campaign_publishing'), 'Site publishing is always on');
@@ -88,4 +91,4 @@ assert.match(panel,/RETIRED_FLAGS/);
 assert.match(read('src/lib/useFeatureEnabled.js'),/getFeatureAvailability/);
 assert.match(entry('getFeatureAvailability'),/Cache-Control/);
 
-console.log('PASS: flag fail-closed behavior, 18 source-connected keys, 16 gated functions, preserved core accounting and site publishing.');
+console.log('PASS: feature flags fail closed, including crypto donations; admin agent execution remains unverified, and core accounting stays available.');
