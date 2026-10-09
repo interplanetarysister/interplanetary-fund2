@@ -7,6 +7,8 @@ printf '%s\n' "Building the IFund release..."
 node scripts/verify-production-build-output.mjs
 node scripts/verify-ifund-bundle-graph.mjs
 node scripts/verify-ifund-links-assets.mjs
+node scripts/test-base44-release.mjs
+node scripts/verify-text-contrast-contract.mjs
 node --experimental-strip-types scripts/verify-feature-flag-connections.mjs
 node scripts/verify-agent-chat-resilience.mjs
 node scripts/verify-agent-reasoning-coherence.mjs
@@ -27,4 +29,5 @@ printf '%s\n' "Checking production in Chromium..."
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-browser-render.mjs
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-navigation.mjs
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-studio-pages.mjs
+node --input-type=module -e 'import { IFUND_RELEASE_ID } from "./src/lib/ifundRelease.js"; const response = await fetch("https://interplanetaryfund.com/ifund-release.json?release-check="+Date.now(), {cache:"no-store"}); const data=await response.json(); if (data.release_id !== IFUND_RELEASE_ID) throw Error("IFund live release manifest does not match the published source"); console.log("PASS: live Base44 release marker matches source");'
 printf '%s\n' "IFund published and production navigation verified."

@@ -54,3 +54,9 @@ Dignity, human clarity, readable controls, keyboard focus, consistent brand
 image, single-finger scrolling, semantic contrast, robust failure recovery,
 reduced-motion support and predictable mobile back navigation. The site and
 installable PWA must stay visually the same, including signed-in pages.
+
+
+## Release identity
+The web/PWA frontend release marker is ifund-20261008-studio-unified-design-v3.
+Its public Base44 manifest is deliberately versioned separately from provider
+credential setup and merchant donation verification.
