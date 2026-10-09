@@ -134,14 +134,7 @@ export default async function(req) {
     const connections = await sr.entities.PlatformConnection.filter({}, '-updated_date', 200);
     for (const c of connections) {
       try {
-        const envName = OAUTH_ENV[c.platform];
-        if (envName) {
-          const connectorId = Deno.env.get(envName) || '';
-          if (!connectorId) throw new Error('Provider sign-in is not configured yet.');
-          const oauth = await sr.connectors.getCurrentAppUserConnection(connectorId);
-          if (!oauth?.accessToken) throw new Error('Provider authorization needs to be renewed.');
-          await verifyOAuthConnection(c.platform, oauth);
-        } else if (['bluesky', 'mastodon'].includes(c.platform)) {
+        if (['bluesky'].includes(c.platform)) {
           await verifyManualConnection(c);
         } else if (isLinkBasedPlatform(c.platform)) {
           await verifyPublicCampaignConnection(c);
