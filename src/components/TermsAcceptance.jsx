@@ -48,7 +48,7 @@ export default function TermsAcceptance({ children }) {
 
   return (
     <div className="fixed inset-0 z-[60] deep-space flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full max-w-lg animate-fade-up my-auto">
+      <div className="w-full min-w-0 max-w-lg animate-fade-up my-auto">
         <div className="text-center mb-6">
           <BrandLogo size="lg" className="justify-center mb-4" nameClassName="text-slate-100" />
         </div>
@@ -56,7 +56,7 @@ export default function TermsAcceptance({ children }) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="perm-title"
-          className="glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl"
+          className="glass-panel min-w-0 max-w-full overflow-x-hidden rounded-3xl p-4 sm:p-8 shadow-2xl"
         >
           <div className="text-center mb-6">
             <h2 id="perm-title" className="font-display text-2xl text-white">
@@ -97,7 +97,7 @@ export default function TermsAcceptance({ children }) {
           <button
             type="button"
             onClick={accept}
-            className="w-full h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-white font-semibold text-base hover:opacity-90 transition-opacity glow-primary"
+            className="w-full min-w-0 min-h-12 h-auto py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-white font-semibold text-base whitespace-normal break-words hover:opacity-90 transition-opacity glow-primary"
           >
             I Agree — Continue
           </button>
