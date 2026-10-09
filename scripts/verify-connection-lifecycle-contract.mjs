@@ -17,7 +17,10 @@ assert.match(provider, /Live Mastodon verification is unavailable in this runtim
 assert.doesNotMatch(provider, /api\/v1\/accounts\/verify_credentials/);
 assert.match(verify, /verification_status: 'verified'/);
 assert.match(verify, /verification_status: 'unverified'/);
-assert.match(sync, /reauthorization_required/);
+// Background workers cannot verify app-user OAuth without the signed-in owner.
+assert.doesNotMatch(sync, /getCurrentAppUserConnection\(/);
+assert.match(sync, /OAUTH_ENV\[c\.platform\]/);
+assert.match(sync, /health_deferred/);
 assert.match(sync, /Scheduled provider verification succeeded/);
 assert.match(health, /verification_status === "verified"/);
 assert.match(disconnect, /shared_with_agents: false/);
