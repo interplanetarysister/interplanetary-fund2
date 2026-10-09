@@ -111,7 +111,7 @@ export default function OutreachAgentPanel({ campaign }) {
 
       {error && <p className="text-sm text-red-300 mt-2" role="alert">{error}</p>}
       {!platformEnabled && <p className="text-sm text-amber-200 mt-2">New automated outreach runs are paused. Existing recommendations remain available for review.</p>}
-      {hasOutreach && enabled && !user?.ai_obo_consent?.granted && <p className="text-sm text-amber-200 mt-2">To run this agent, <Link to="/connections" className="underline">turn on IFund AI help</Link>. No outreach will run before authorization.</p>
+      {hasOutreach && enabled && !user?.ai_obo_consent?.granted && <p className="text-sm text-amber-200 mt-2">To run this agent, <Link to="/connections" className="underline">turn on IFund AI help</Link>. No outreach will run before authorization.</p>}
       {!hasOutreach ? (
         <div className="mt-3">
           <p className="text-sm text-slate-400 mb-3">
