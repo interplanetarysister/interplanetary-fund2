@@ -10,6 +10,7 @@ function publicWork(item: any) {
   return {
     id: item.id,
     objective: clean(item.objective, 160),
+    agent: clean(item.destination_agent, 100),
     status: item.status,
     result_summary: clean(item.result_summary, 500),
     next_step: clean(item.continuation_state?.pending_step, 120),
@@ -34,11 +35,11 @@ export default async function(req: Request) {
     const mode = clean(body.mode || 'list', 16);
     const rows = await base44.entities.AgentDelegation.filter({
       owner_user_id: user.id,
-      destination_agent: 'managed_connection_agent',
     }).catch(() => []);
     const owned = (Array.isArray(rows) ? rows : []).filter((item: any) => item.owner_user_id === user.id);
     if (mode === 'list') {
-      const selected = owned.sort((a: any, b: any) =>
+      const matching = body.view === 'all' ? owned : owned.filter((item: any) => item.destination_agent === 'managed_connection_agent');
+      const selected = matching.sort((a: any, b: any) =>
         String(b.updated_at || b.created_date || '').localeCompare(String(a.updated_at || a.created_date || ''))).slice(0, 20);
       return Response.json({ ok: true, work: selected.map(publicWork) }, {
         headers: { 'Cache-Control': 'no-store, max-age=0' },
@@ -49,7 +50,9 @@ export default async function(req: Request) {
       return Response.json({ error: 'Active Managed Connections access and IFund help permission are required.' }, { status: 403 });
     }
     const work = owned.find((item: any) => item.id === clean(body.delegation_id, 120));
-    if (!work) return Response.json({ error: 'Work item not found.' }, { status: 404 });
+    if (!work || work.destination_agent !== 'managed_connection_agent') {
+      return Response.json({ error: 'Managed connection work item not found.' }, { status: 404 });
+    }
     if (!LIVE.has(work.status)) return Response.json({ ok: true, work: publicWork(work) });
     const consentVersion = clean(user.ai_obo_consent?.permission_version, 120);
     if (!consentVersion || work.consent_version !== consentVersion) {
