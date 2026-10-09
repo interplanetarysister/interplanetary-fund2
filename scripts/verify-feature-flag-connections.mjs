@@ -51,7 +51,7 @@ const checks = [
   ['cross_platform_publishing','broadcastPosts'],
   ['managed_connections','requestManagedConnectionAction'],
   ['external_fund_collection','prepareCollectAndWithdraw'],
-  ['subscription_checkout','createSubscriptionCheckout'],
+  ['subscription_checkout','createPayPalSubscriptionCheckout'],
   ['outbound_payout_execution','requestWithdrawal'],
 ];
 for(const [key,fn] of checks) {
@@ -61,9 +61,9 @@ const paypal = entry('createPayPalOrder');
 assert.match(paypal,/channel === 'googlepay' \? 'google_pay_checkout' : 'paypal_checkout'/);
 assert.match(paypal,/payment_checkout_enabled/);
 const stripe = entry('createDonationCheckout');
-assert.match(stripe,/payment_checkout_enabled/);
-assert.match(stripe,/stripe_checkout/);
-assert.match(stripe,/recurring_donations/);
+assert.match(stripe,/status: 410/, 'Stripe donations must be retired');
+assert.match(entry('createSubscriptionCheckout'),/status: 410/);
+assert.match(entry('createPremiumDayPassCheckout'),/status: 410/);
 const manual = entry('recordDonation');
 assert.match(manual,/payment_checkout_enabled/);
 assert.match(read('base44/shared/prelaunchPayments.ts'),/isPublicCampaignFundraisingEnabled/);
