@@ -29,7 +29,7 @@ export default async function(req) {
     if (connection_id) {
       existing = await base44.entities.PlatformConnection.get(connection_id).catch(() => null);
       if (!existing) return Response.json({ error: 'Connection not found' }, { status: 404 });
-      if (existing.created_by_id !== user.id && user.role !== 'admin') {
+      if (existing.created_by_id !== user.id) {
         return Response.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
@@ -104,12 +104,17 @@ export default async function(req) {
     const unifiedObo = hasUnifiedOboConsent(consentOwner);
     const currentConsent = existing?.obo_consent || {};
     // Connecting or saving an account cannot itself confer OBO authority.
-    const accountAiConsent = unifiedObo && currentConsent.granted === true;
+    // A newly linked account inherits the owner's one IFund permission.
+    // Existing accounts retain explicit refusal; saving a connection must not
+    // silently undo an earlier account-specific revocation.
+    const previouslyAllowed = currentConsent.granted === true || !!currentConsent.granted_at;
+    const accountAiConsent = unifiedObo && currentConsent.opted_out !== true &&
+      (existing ? previouslyAllowed : true);
     data.obo_consent = {
       ...currentConsent,
       granted: accountAiConsent,
-      granted_at: accountAiConsent ? (currentConsent.granted_at || now) : null,
-      permission_version: '2026-10-unified-obo-v1',
+      granted_at: accountAiConsent ? (currentConsent.granted_at || now) : currentConsent.granted_at || null,
+      permission_version: String(consentOwner.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
       granted_capabilities: accountAiConsent
         ? (currentConsent.provider_capabilities || currentConsent.granted_capabilities || [])
         : [],
@@ -117,8 +122,9 @@ export default async function(req) {
     data.agent_access = {
       ...(existing?.agent_access || {}),
       shared_with_agents: accountAiConsent,
-      automation_enabled: accountAiConsent && existing?.verification_status === 'verified'
-        && effectiveAutomationMode === 'auto',
+      // Settings saves set verification_status=unverified above. Never keep
+      // auto actions enabled until a fresh provider check succeeds.
+      automation_enabled: false,
     };
 
 
