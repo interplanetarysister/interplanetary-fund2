@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import AgentChat from "@/components/agents/AgentChat";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
+import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import { base44 } from "@/api/base44Client";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
 import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown, Compass, Link2 } from "lucide-react";
@@ -36,7 +37,8 @@ export default function Agents() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-3xl text-foreground mb-1">Your AI team</h1>
-      <p className="text-muted-foreground mb-6">Always-on agents that work alongside you. Pick one to start a conversation.</p>
+      <p className="text-muted-foreground mb-6">Your agents can help you work. Follow their actual progress below.</p>
+      <AgentWorkPanel allAgents />
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-hide">
         {visibleAgents.map((a) => {
