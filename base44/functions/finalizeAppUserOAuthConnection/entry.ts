@@ -105,7 +105,11 @@ export default async function(req) {
     const requestedDisplayName = String(body.display_name || pairedCampaign?.title || existing?.display_name || key).trim().slice(0, 200);
     const now = new Date().toISOString();
     const confirmed = providerCapabilities(oauth);
-    const unifiedObo = hasUnifiedOboConsent(user);
+    const unifiedObo = hasUnifiedOboConsent(user) &&
+      existing?.obo_consent?.opted_out !== true &&
+      // Legacy per-connection refusals remain refusals; a new OAuth account
+      // inherits the one explicit IFund permission by default.
+      (!existing || existing.obo_consent?.granted === true || !!existing.obo_consent?.granted_at);
     const data = {
       platform: key,
       kind: cfg.kind,
@@ -116,7 +120,9 @@ export default async function(req) {
       obo_consent: {
         granted: unifiedObo,
         granted_at: unifiedObo ? (user.ai_obo_consent?.decided_at || now) : null,
-        permission_version: '2026-10-unified-obo-v1',
+        permission_version: String(user.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
+        opted_out: existing?.obo_consent?.opted_out === true,
+        revoked_at: existing?.obo_consent?.revoked_at || undefined,
         requested_capabilities: cfg.requestedCapabilities,
         // Provider-reported capabilities remain authoritative. Unified IFund
         // authorization permits use of those capabilities but never invents them.
