@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Search, LifeBuoy, ChevronDown } from "lucide-react";
+import { Search, LifeBuoy, ChevronDown, Link2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -37,6 +38,16 @@ export default function Help() {
 
   return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
     <div className="text-center mb-8"><div className="w-12 h-12 mx-auto rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-4"><LifeBuoy className="w-6 h-6 text-cyan-600" /></div><h1 className="font-display text-3xl text-stone-900">Help Center</h1><p className="text-stone-500 mt-2">Find answers about Interplanetary Fund.</p></div>
+    <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5 mb-6">
+      <h2 className="font-semibold text-slate-950 flex items-center gap-2"><Link2 className="h-5 w-5" /> Need help connecting a platform?</h2>
+      <p className="mt-2 text-sm text-slate-700">
+        IFund can guide provider authorization and check connected accounts. If you are already logged in to the provider on this device, you may be able to approve the connection without reentering your password. Otherwise the provider will guide you through sign-in, verification or an official app password.
+      </p>
+      <Link to={user ? "/connections#connection-help" : "/login?returnTo=%2Fconnections%23connection-help"}
+        className="inline-flex mt-3 min-h-11 items-center rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800">
+        {user ? "Open IFund connection helper" : "Sign in to connect a platform"}
+      </Link>
+    </div>
     <div className="relative mb-6"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search help…" className="pl-9" /></div>
     <div className="space-y-2">{filtered.map((article) => <div key={article.id} className="bg-white rounded-xl border border-stone-200/70 overflow-hidden"><button type="button" onClick={() => setOpenId(openId === article.id ? null : article.id)} className="w-full flex items-center justify-between gap-3 p-4 text-left"><span><span className="block text-[11px] uppercase tracking-wide text-primary mb-1">{article.category}</span><span className="font-medium text-stone-900">{article.question}</span></span><ChevronDown className={`w-4 h-4 text-stone-400 transition-transform ${openId === article.id ? "rotate-180" : ""}`} /></button>{openId === article.id && <p className="px-4 pb-4 text-sm text-stone-600 whitespace-pre-wrap">{article.answer}</p>}</div>)}</div>
     {!filtered.length && <p className="text-center py-10 text-stone-500">No matching help articles yet.</p>}
