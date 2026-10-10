@@ -58,11 +58,14 @@ try{
   await discoverHelpLink.click({timeout:7000});
   await page.waitForURL(url=>url.pathname==='/help',{timeout:12000});
   await page.getByRole('heading',{name:'Help Center'}).waitFor({timeout:12000});
-  await bottom.getByRole('link',{name:'Discover',exact:true}).click();
-  await page.waitForURL(url=>url.pathname==='/discover',{timeout:12000});
-  await bottomTab('Community','/community');
-  await bottomTab('Help','/help');
-  await bottomTab('Discover','/discover');
+  await page.goto(origin+'/discover',{waitUntil:'domcontentloaded'});
+  await bottomTab('Forums','/community');
+  await bottomTab('IFund Social','/social');
+  await bottomTab('Forums','/community');
+  // Public stories and profiles must be routable without signing in.
+  await page.goto(origin+'/blogs',{waitUntil:'domcontentloaded'});
+  await page.getByRole('heading',{name:'IFund Stories & Blogs'}).waitFor({timeout:12000});
+  await page.goto(origin+'/community',{waitUntil:'domcontentloaded'});
 
   await page.getByRole('button',{name:'Toggle menu'}).click({timeout:7500});
   assert.equal(await page.locator('#mobile-menu').isVisible(),true,
@@ -71,19 +74,18 @@ try{
   await page.waitForURL(url=>url.pathname==='/community');
   assert.equal(await page.locator('#mobile-menu').count(),0,'Menu must close after changing pages');
 
-  await bottom.getByRole('link',{name:'Global Globe',exact:true}).click();
-  await page.waitForURL(url=>url.pathname==='/globe');
+  await page.goto(origin+'/globe',{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'Campaigns across the planet'}).waitFor({timeout:12000});
   await page.getByRole('link',{name:/Browse campaigns/}).click();
   await page.waitForURL(url=>url.pathname==='/discover');
-  assert.equal(await bottom.locator('a.text-cyan-400').first().innerText(),'Discover');
+  assert.equal(await bottom.locator('a.text-cyan-400').count(),0);
 
   await page.goto(origin+'/community/nonexistent',{waitUntil:'domcontentloaded'});
   await page.getByRole('button',{name:'Back'}).click({timeout:9000});
   await page.waitForURL(url=>url.pathname==='/community');
   assert.equal(await page.locator('#mobile-menu').count(),0);
   assert.deepEqual(exceptions,[],'No uncaught browser errors during mobile navigation');
-  console.log('PASS: Discover → Help Center, mobile tabs, active route, drawer overlay, globe return, deep-link back and browser startup');
+  console.log('PASS: public Help, Forums, Social, Stories, mobile tabs, drawer, globe, and deep-link back');
 
   const desktop=await browser.newContext({viewport:{width:1280,height:800}});
   const d=await desktop.newPage();
