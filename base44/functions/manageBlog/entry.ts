@@ -10,8 +10,7 @@ const safeEntry=(e:any)=>({id:e.id,blog_id:e.blog_id,owner_user_id:e.owner_user_
   type:e.type,title:e.title,summary:e.summary,body:e.body,status:e.status,
   featured:e.featured,published_at:e.published_at,created_at:e.created_at});
 const canAuthor=(u:any)=>!!u&&(u.role==='admin'||
-  (hasSubscriptionLevel(u,1)&&
-    (u.subscription_status==='active'||Date.parse(String(u.premium_day_pass_expires_at||''))>Date.now())));
+  (hasSubscriptionLevel(u,1)&&u.subscription_status==='active'));
 const editable=(e:any,u:any)=>!!u&&!!e&&(e.owner_user_id===u.id||u.role==='admin');
 export default async function(req:Request) {
  try{
@@ -33,10 +32,20 @@ export default async function(req:Request) {
     }
     const title=str(body.title,90);
     if(title.length<3)return Response.json({error:'Blog title must contain at least three characters.'},{status:400});
-    const blog=await sr.entities.UserBlog.create({
+    const created=await sr.entities.UserBlog.create({
       owner_user_id:user.id,type:'member',title,description:str(body.description,500),
       status:'active',created_at:new Date().toISOString(),updated_at:new Date().toISOString(),
     });
+    // Converge concurrent requests on the earliest blog. An account cannot
+    // rotate a second permanent blog after a plan expires or a title changes.
+    const check=await sr.entities.UserBlog.filter({owner_user_id:user.id});
+    const ordered=(check||[]).filter((b:any)=>b.type==='member').sort((a:any,b:any)=>
+      String(a.created_date||'').localeCompare(String(b.created_date||''))||
+      String(a.id).localeCompare(String(b.id)));
+    for(const extra of ordered.slice(1)){
+      await sr.entities.UserBlog.update(extra.id,{status:'archived'}).catch(()=>{});
+    }
+    const blog=ordered[0]||created;
     return Response.json({ok:true,blog:safeBlog(blog)});
   }
   if(mode==='edit_blog'){
