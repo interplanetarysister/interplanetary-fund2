@@ -3,6 +3,7 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { redactCredentials } from '../../shared/integrationRegistry.ts';
 import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
+import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
 const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
@@ -10,50 +11,6 @@ const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
 function publicConnection(row) {
   const { credentials, credentials_meta } = redactCredentials(row?.credentials);
   return { ...row, credentials, credentials_meta };
-}
-
-async function completeManagedRepairDelegations(base44, user, connection, now) {
-  const consentVersion = String(user?.ai_obo_consent?.permission_version || '');
-  if (
-    user?.ai_obo_consent?.granted !== true ||
-    !consentVersion ||
-    connection?.obo_consent?.granted !== true ||
-    String(connection?.obo_consent?.permission_version || '') !== consentVersion
-  ) return;
-
-  const delegations = await base44.entities.AgentDelegation.filter({
-    owner_user_id: user.id,
-    destination_agent: 'managed_connection_agent',
-    status: { $in: ['assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review'] },
-  }).catch(() => []);
-
-  for (const delegation of delegations || []) {
-    // A request to connect an account may precede the first connection row.
-    // When OAuth or token setup later produces a live-verified connection,
-    // resume only the same owner's unbound "connect" request for this platform.
-    const ref = delegation?.continuation_state?.continuation_ref;
-    const unboundConnect = delegation?.objective === `connect ${connection.platform}` &&
-      (!ref || ref === delegation.id);
-    if (ref !== connection.id && !unboundConnect) continue;
-    if (String(delegation?.consent_version || '') !== consentVersion) continue;
-    await base44.entities.AgentDelegation.update(delegation.id, {
-      status: 'completed',
-      result_summary: 'The connection passed live provider verification and is working.',
-      verification: `verifyPlatformConnection:${connection.id}`,
-      completed_at: now,
-      updated_at: now,
-      continuation_state: {
-        ...(delegation.continuation_state || {}),
-        pending_step: '',
-        completed_steps: [
-          ...new Set([...(delegation.continuation_state?.completed_steps || []), 'provider_verified']),
-        ],
-        external_requirement: '',
-        return_route: '/connections',
-        continuation_ref: connection.id,
-      },
-    }).catch(() => {});
-  }
 }
 
 export default async function(req) {
@@ -134,7 +91,10 @@ export default async function(req) {
         },
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
-      await completeManagedRepairDelegations(base44, user, updated, now);
+      // One authoritative completion rule for owner-triggered checks and the
+      // scheduled worker. Account creation is not proven by a login check.
+      await completeVerifiedManagedWork(sr, updated, now).catch((error) =>
+        console.warn('Could not reconcile verified agent work:', error?.name || 'UnknownError'));
       return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
