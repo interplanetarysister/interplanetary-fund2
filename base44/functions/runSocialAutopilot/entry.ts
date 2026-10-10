@@ -105,10 +105,13 @@ Return JSON with post_text and optional hashtags.`,
             post_text: { type: 'string' }, hashtags: { type: 'array', items: { type: 'string' } },
           }},
         });
-        const words = String(answer?.post_text || '').trim().slice(0, 280);
-        if (!words) throw new Error('No generated content');
-        const hashtags = (Array.isArray(answer?.hashtags) ? answer.hashtags : [])
-          .filter(x => typeof x === 'string' && /^#[a-z0-9_]{2,32}$/i.test(x)).slice(0, 3);
+        const campaignUrl = `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaign.id)}`;
+        const copy = String(answer?.post_text || '').trim();
+        if (!copy) throw new Error('No generated content');
+        // Every generated promotion contains a working IFund campaign route.
+        // Preserve the whole link in Bluesky's tight character limit.
+        const words = [copy.slice(0, 278 - campaignUrl.length).trim(), campaignUrl].join(' ').trim();
+        const hashtags = []; // Preserve the whole donation link within 280 chars.
         for (const { conn, auto } of destinations) {
           // Create as a draft, then issue a service-only, owner/connection
           // bound posting permit BEFORE the status becomes scheduled.
