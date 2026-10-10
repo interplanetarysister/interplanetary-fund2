@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CommunityCard from "@/components/community/CommunityCard";
 import CreateCommunityDialog from "@/components/community/CreateCommunityDialog";
 import ActivityFeed from "@/components/community/ActivityFeed";
-import { Search, Loader2, Users } from "lucide-react";
+import { Search, Loader2, Users, Newspaper } from "lucide-react";
 import { communityTypes } from "@/components/community/communityTypes";
 import PageError from "@/components/PageError";
 import PageTips from "@/components/coach/PageTips";
@@ -18,7 +18,8 @@ import PageTips from "@/components/coach/PageTips";
 // prompt instead of a broken button.
 export default function Community() {
   const [params] = useSearchParams();
-  const [section, setSection] = useState(params.get("tab") === "communities" ? "communities" : "feed");
+  const [section, setSection] = useState(
+    ["communities","stories"].includes(params.get("tab")) ? params.get("tab") : "feed");
   const [communities, setCommunities] = useState(null);
   const [myMemberships, setMyMemberships] = useState([]);
   const [authed, setAuthed] = useState(false);
@@ -71,12 +72,27 @@ export default function Community() {
         <TabsList>
           <TabsTrigger value="feed">Feed</TabsTrigger>
           <TabsTrigger value="communities">Communities</TabsTrigger>
+          <TabsTrigger value="stories">Stories & blogs</TabsTrigger>
         </TabsList>
       </Tabs>
 
       {section === "feed" ? (
         <div className="mt-6">
           <ActivityFeed />
+        </div>
+      ) : section === "stories" ? (
+        <div className="mt-6 space-y-4">
+          <div className="rounded-2xl bg-gradient-to-br from-slate-950 to-indigo-950 text-white p-6">
+            <Newspaper className="h-7 w-7 text-cyan-300 mb-2" />
+            <h2 className="font-display text-2xl">Interplanetary Fund Reporter</h2>
+            <p className="text-slate-300 text-sm mt-2">Featured stories, the IFund insider diary, fundraising ideas and news from our community.</p>
+            <Link to="/blogs" className="inline-flex mt-4 min-h-11 items-center bg-cyan-500 rounded-xl px-4 text-sm font-semibold text-slate-950">Read the newsletter and blogs</Link>
+          </div>
+          <div className="rounded-2xl border bg-white p-5">
+            <h3 className="font-semibold text-slate-950">Your voice belongs here</h3>
+            <p className="text-sm text-slate-600 mt-1">Members can read and share blog posts. Subscribed creators can publish their own blog about a cause, an experience, or a social event.</p>
+            <Link to="/my-blog" className="inline-flex mt-3 text-blue-700 underline text-sm">Open your blog studio</Link>
+          </div>
         </div>
       ) : (
         <div className="mt-6">
