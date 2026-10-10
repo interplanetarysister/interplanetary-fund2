@@ -46,7 +46,9 @@ export default async function(req: Request) {
     const tips = (studies?.[0]?.guidance || []).slice(0, 5).join('; ').slice(0, 1500);
     const ownerCache = new Map();
     const eligible = [];
-    const report = { campaigns_processed: 0, posts_staged: 0, automatic: 0, owner_review: 0, failed: 0 };
+    const report = { campaigns_processed: 0, posts_staged: 0, automatic: 0,
+      owner_review: 0, failed: 0,
+      scan_truncated: campaignBatch.truncated || connectionBatch.truncated };
     for (const campaign of campaigns || []) {
       if (campaign.outreach_paused ||
           recent(campaign.social_last_generated_at, DAY) ||
