@@ -1,6 +1,6 @@
 {
-  "name": "DistributedPost",
   "type": "object",
+  "name": "DistributedPost",
   "properties": {
     "campaign_id": {
       "type": "string"
@@ -37,7 +37,8 @@
         "approved",
         "scheduled",
         "published",
-        "failed"
+        "failed",
+        "publishing"
       ],
       "default": "draft"
     },
@@ -58,6 +59,23 @@
     "retry_count": {
       "type": "number",
       "default": 0
+    },
+    "owner_user_id": {
+      "type": "string",
+      "description": "Authenticated campaign owner for system-generated posts; never IFund's service-role author."
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "creator",
+        "agent_autopilot",
+        "ifund_official"
+      ],
+      "default": "creator"
+    },
+    "publishing_started_at": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [
@@ -66,10 +84,16 @@
     "content"
   ],
   "rls": {
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
     "read": {
       "$or": [
         {
           "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_user_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -78,13 +102,13 @@
         }
       ]
     },
-    "create": {
-      "created_by_id": "{{user.id}}"
-    },
     "update": {
       "$or": [
         {
           "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_user_id": "{{user.id}}"
         },
         {
           "user_condition": {
