@@ -1,6 +1,6 @@
 {
-  "name": "PlatformOwnedAccount",
   "type": "object",
+  "name": "PlatformOwnedAccount",
   "properties": {
     "platform": {
       "type": "string"
@@ -54,6 +54,17 @@
     },
     "notes": {
       "type": "string"
+    },
+    "account_type": {
+      "type": "string",
+      "enum": [
+        "ifund_facebook_group",
+        "ifund_instagram",
+        "ifund_facebook_business",
+        "other"
+      ],
+      "default": "other",
+      "description": "Explicit admin-classified account type; not inferred from platform name. Official accounts can be exempted from scheduled member post throttles only after linked owner verified."
     }
   },
   "required": [
@@ -61,12 +72,12 @@
     "status"
   ],
   "rls": {
-    "read": {
+    "create": {
       "user_condition": {
         "role": "admin"
       }
     },
-    "create": {
+    "read": {
       "user_condition": {
         "role": "admin"
       }
