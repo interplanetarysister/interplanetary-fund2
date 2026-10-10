@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { IFUND_SIGNATURE_STYLE } from '../../shared/ifundSignatureStyle.ts';
+import { latestWritingGuidance } from '../../shared/writingGuidance.ts';
 
 // AI Social Content Generator — creates official Interplanetary Fund social
 // posts about platform features, with signature-style AI imagery. Admin-only.
@@ -92,10 +93,13 @@ export default async function(req) {
 
     if (!topic) return Response.json({ error: 'Topic not found' }, { status: 400 });
 
-    // Generate post text
+    // Generate post text with current source-backed audience research.
+    const research = await latestWritingGuidance(base44.asServiceRole);
     const textRes = await base44.integrations.Core.InvokeLLM({
       prompt: `Write a social media post for the Interplanetary Fund platform about the "${topic.feature}" feature.
         
+        Current weekly donor psychology / trend reference: ${research || 'Use authentic, audience-aware persuasion.'}
+        Only present a capability as live if verified in IFund's current records. Treat prelaunch features as plans.
         Feature description: ${topic.description}
         Key benefit: ${topic.benefit}
         How to use: ${topic.how_to}
