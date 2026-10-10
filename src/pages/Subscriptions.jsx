@@ -12,7 +12,7 @@ export default function Subscriptions() {
   const [user, setUser] = useState(null);
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(null);
-  const [paypal, setPaypal] = useState({ plans: [], live_configured: false, webhook_configured: false });
+  const [paypal, setPaypal] = useState({ plans: [], live_configured: false, webhook_configured: false, readiness: "checking", saved_plan_mapping_count: null });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [provisioning, setProvisioning] = useState(false);
@@ -24,7 +24,7 @@ export default function Subscriptions() {
       base44.functions.invoke("getPayPalSubscriptionOptions", {}).catch(() => ({ data: null })),
       base44.auth.me().catch(() => null),
     ]);
-    if (data?.plans) setPaypal(data);
+    if (Array.isArray(data?.plans)) setPaypal(data);
     if (currentUser) setUser(currentUser);
   }, []);
 
@@ -126,7 +126,7 @@ export default function Subscriptions() {
       window.dispatchEvent(new Event("ifund:fundraising-mode-changed"));
     } catch {
       await refresh().catch(() => {});
-      setError("The provided $12 PayPal plan could not be fully connected. Confirm this plan belongs to the configured live business PayPal account and that IFund's subscription webhook is published. No charge was created.");
+      setError("The existing $12 PayPal plan or subscription webhook could not be verified for this IFund business account. No charge was created. Review the billing status below before retrying.");
     } finally {
       setProvisioning(false);
     }
@@ -150,7 +150,11 @@ export default function Subscriptions() {
       window.setTimeout(() => window.location.reload(), 650);
     } catch (e) {
       await refresh().catch(() => {});
-      setError(e?.message || "PayPal business subscription setup is not complete.");
+      const providerError = e?.response?.data?.error;
+      const genericServiceError = /status code 50[0234]|request failed/i.test(String(e?.message || ""));
+      setError(providerError || (genericServiceError
+        ? "The PayPal setup service could not finish. Saved plan mappings remain intact, but checkout is disabled until the live webhook is verified. No charge was created."
+        : e?.message || "PayPal business subscription setup is not complete."));
     } finally {
       setProvisioning(false);
     }
@@ -183,7 +187,17 @@ export default function Subscriptions() {
           <div>
             <p className="font-medium text-foreground">IFund business PayPal billing</p>
             <p className="text-sm text-muted-foreground">
-              {paypal.plans.filter(row => row.verified).length}/10 verified PayPal prices · {paypal.webhook_configured ? "Webhook registered" : "Webhook not registered"}
+              Saved PayPal price mappings: {paypal.saved_plan_mapping_count ?? "unknown"}/10
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Checkout-ready prices: {paypal.plans.filter(row => row.verified).length}/10 · {paypal.webhook_configured ? "Webhook verified" : "Webhook not verified"}
+            </p>
+            <p className="text-xs text-muted-foreground" role="status">
+              {paypal.readiness === "paypal_rest_unavailable" ? "Live PayPal API access is not verified." :
+                paypal.readiness === "webhook_not_verified" ? "Subscription purchase is blocked until IFund registers and verifies its PayPal webhook." :
+                paypal.readiness === "status_unavailable" ? "PayPal status could not be checked. This is not proof that prices are missing." :
+                paypal.readiness === "verification_checked" ? "Live plan readiness was checked with PayPal." :
+                "Checking PayPal connection status…"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
