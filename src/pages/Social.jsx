@@ -25,8 +25,18 @@ export default function Social() {
 
   const loadUser = useCallback(async () => {
     try {
+      const maybeUser = await base44.auth.me().catch(() => null);
+      if (!maybeUser) {
+        // The public IFund social feed is readable without registration.
+        // Composer, external connections and management remain signed-in.
+        setUser(null);
+        setConnections([]);
+        setCampaigns([]);
+        setProviderCapabilities([]);
+        return;
+      }
       const [u, connectionResponse, camps, capabilityResponse] = await Promise.all([
-        base44.auth.me(),
+        Promise.resolve(maybeUser),
         base44.functions.invoke("listConnections", {}),
         base44.entities.Campaign.filter({}).catch(() => []),
         base44.functions.invoke("listFundraisingProviderCapabilities", {}).catch(() => ({ data: { providers: [] } })),
@@ -116,10 +126,13 @@ export default function Social() {
                     onPosted={handlePosted}
                   />
                 )}
+                {!user && <div className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-sm text-cyan-100">
+                  Browse community posts below. <Link to="/login?returnTo=%2Fsocial" className="font-semibold underline">Sign in to share your own story.</Link>
+                </div>}
                 <SocialFeed
                   key={refreshKey}
                   user={user}
-                  onShare={(post) => setShareTarget({ sourceType: "social_post", sourceId: post.id })}
+                  onShare={user ? (post) => setShareTarget({ sourceType: "social_post", sourceId: post.id }) : undefined}
                 />
               </>
             ) : (
