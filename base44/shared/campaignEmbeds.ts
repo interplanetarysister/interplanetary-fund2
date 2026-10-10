@@ -6,7 +6,7 @@ export function campaignIdsFromText(text: string): string[] {
   const src = String(text || '').slice(0, 22000);
   const matches = [
     ...src.matchAll(/\[campaign:([a-zA-Z0-9_-]{8,72})\]/gi),
-    ...src.matchAll(/(?:https?:\/\/(?:www\.)?interplanetaryfund\.com)?\/(?:embed\/)?campaign\/([a-zA-Z0-9_-]{8,72})/gi),
+    ...src.matchAll(/https?:\/\/(?:www\.)?interplanetaryfund\.com\/(?:embed\/)?campaign\/([a-zA-Z0-9_-]{8,72})/gi),
   ];
   return [...new Set(matches.map(match => match[1]))].slice(0, 8);
 }
