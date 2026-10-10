@@ -1,7 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
-const VALID_AGENT = /^[a-z][a-z0-9_]{2,65}$/;
+const VALID_AGENT = new Set([
+  'chief_of_staff', 'strategy_agent', 'growth_agent', 'communications_agent',
+  'story_agent', 'finance_agent', 'outreach_agent', 'connection_discovery_agent',
+  'managed_connection_agent',
+]);
 const clean = (v: unknown, n = 140) =>
   String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 const safeRun = (r: any) => ({
@@ -51,9 +57,16 @@ export default async function(req: Request) {
     if (mode === 'start') {
       const conversationId = clean(body.conversation_id, 120);
       const agent = clean(body.agent_name, 70);
-      if (!conversationId || !VALID_AGENT.test(agent)) {
-        return Response.json({ error: 'Agent conversation is required.' }, { status: 400 });
+      if (!conversationId || !VALID_AGENT.has(agent)) {
+        return Response.json({ error: 'A supported agent conversation is required.' }, { status: 400 });
       }
+      if (!hasSubscriptionLevel(user, agent === 'managed_connection_agent' ? 2 : 1)) {
+        return Response.json({ error: 'Agent access requires an eligible subscription.' }, { status: 403 });
+      }
+      const rate = await checkRateLimit(base44, `agentConversationRun:${user.id}`, 10, 60);
+      if (!rate.allowed) return Response.json({
+        error: 'Too many agent requests. Try again shortly.',
+      }, { status: 429 });
       // The user-mode SDK must be able to read this conversation. Never fetch
       // foreign conversation content through service-role operations.
       const conv = await base44.agents.getConversation(conversationId).catch(() => null);
