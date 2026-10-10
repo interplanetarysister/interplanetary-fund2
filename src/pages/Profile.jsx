@@ -10,6 +10,7 @@ import MediaUpload from "@/components/media/MediaUpload";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import AccountManagement from "@/components/account/AccountManagement";
 import FriendsPanel from "@/components/profile/FriendsPanel";
+import PublicProfileEditor from "@/components/profile/PublicProfileEditor";
 import CoachMarks from "@/components/coach/CoachMarks";
 import CoachTourButton from "@/components/coach/CoachTourButton";
 
@@ -136,6 +137,12 @@ export default function Profile() {
         </Button></Link>
       </div>
 
+      <PublicProfileEditor user={user} />
+      <div className="mt-6 rounded-2xl border border-stone-200 bg-white p-5">
+        <h2 className="text-lg font-semibold text-slate-950">Your blog</h2>
+        <p className="text-sm text-slate-600 my-2">Paid members can create one public blog and write about causes, fundraising, and community events.</p>
+        <Link to="/my-blog" className="text-blue-700 font-medium underline text-sm">Open my blog studio</Link>
+      </div>
       <div className="mt-6">
         <FriendsPanel />
       </div>
