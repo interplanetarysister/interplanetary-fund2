@@ -11,7 +11,7 @@ import CredentialFields from "./CredentialFields";
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
-export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, open, onOpenChange, onSaved }) {
+export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, onManagedConnect, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
   const usesProviderOAuth = platform.setupKind === "oauth";
   const canUseUnifiedProviderFlow = usesProviderOAuth;
@@ -21,6 +21,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [managedBusy, setManagedBusy] = useState(false);
+  const [helpDetails, setHelpDetails] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
+    setHelpDetails("");
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
       .then((rows) => setCampaigns((rows || []).filter((campaign) => campaign.status === "active" || campaign.id === existing?.campaign_id)))
@@ -100,6 +102,35 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     } finally {
       setConnecting(false);
     }
+  };
+
+  const startGuidedConnection = async () => {
+    if (managedBusy) return;
+    setManagedBusy(true);
+    setError("");
+    try {
+      if (managedAvailable && onManagedConnect) {
+        const result = await onManagedConnect({ campaign_id: form.campaign_id || undefined });
+        if (result?.state === "completed") {
+          setHelpDetails("This connection was verified as working.");
+          return;
+        }
+        setHelpDetails(result?.message || "The connection agent has recorded the next required step.");
+      } else {
+        setHelpDetails("Follow the provider’s sign-in and authorization instructions here. Agent-managed setup requires an eligible subscription and IFund help permission.");
+      }
+      if (usesProviderOAuth) {
+        // This user gesture starts actual provider sign-in, not a fake
+        // IFund-generated verification code. The provider owns MFA.
+        await connectWithProvider();
+      } else if (platform.setupKind === "link") {
+        setHelpDetails("Open the platform in your browser, sign in if needed, copy your real campaign/profile URL and paste it into the field above. IFund checks supported public data after saving.");
+      } else {
+        setHelpDetails("If you’re already logged in on this device, open that platform’s account settings and generate its official app password/token. Enter it only in this secure IFund form; save to request verification.");
+      }
+    } catch (e) {
+      setError(e?.message || "The connection request could not start.");
+    } finally { setManagedBusy(false); }
   };
 
   const requestManagedAccountSetup = async () => {
@@ -207,6 +238,14 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
           {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
+          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 space-y-2">
+            <p className="font-semibold text-sm text-slate-950">IFund connection helper</p>
+            <p className="text-xs text-slate-700">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
+            <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-slate-900 bg-white" disabled={managedBusy || connecting || (platform.kind !== "app" && usesProviderOAuth && !selectedCampaign)} onClick={startGuidedConnection}>
+              {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to connect this account now"}
+            </Button>
+            {helpDetails && <p role="status" className="text-xs text-slate-800 break-words">{helpDetails}</p>}
+          </div>
           {usesProviderOAuth ? (
             <Button onClick={connectWithProvider} disabled={connecting || (platform.kind !== "app" && !selectedCampaign)} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
