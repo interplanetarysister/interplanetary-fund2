@@ -33,8 +33,16 @@ export default async function(req) {
     // publish here. No public client-supplied DistributedPost fields can
     // authorize an automated external action.
     const publishingEnabled = await isFeatureEnabled(base44, 'cross_platform_publishing');
-    const staged = await sr.entities.DistributedPost.filter({ status: 'scheduled' }, 'scheduled_for', 300);
-    const existingPermits = await sr.entities.ScheduledAutoPostPermit.filter({}, '-created_date', 500);
+    const stagedBatch = await readEntityPages(sr, 'DistributedPost',
+      { status: 'scheduled' }, 'scheduled_for', 200, 3000);
+    const staged = stagedBatch.rows;
+    const [queuedBatch, inProgressBatch, completedBatch] = await Promise.all([
+      readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'queued' }, 'created_date', 200, 3000),
+      readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'publishing' }, '-publishing_at', 200, 600),
+      readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'published' }, '-published_at', 200, 600),
+    ]);
+    const existingPermits = [...queuedBatch.rows, ...inProgressBatch.rows, ...completedBatch.rows];
+    report.queue_scan_truncated = stagedBatch.truncated || queuedBatch.truncated;
     const permitByPost = new Map((existingPermits || []).map(p => [p.post_id, p]));
     // Legacy scheduler records without a server-only permit cannot run
     // automatically; preserve their copy for the owner to review.
