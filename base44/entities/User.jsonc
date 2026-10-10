@@ -1,4 +1,6 @@
 {
+  "type": "object",
+  "name": "User",
   "properties": {
     "role": {
       "type": "string",
@@ -14,6 +16,7 @@
     },
     "banner_tier": {
       "type": "string",
+      "description": "Reward banner tier earned by posting on the Interplanetary Fund social feed. Higher tiers unlock premium profile banners and top-feed placement.",
       "enum": [
         "none",
         "bronze",
@@ -21,18 +24,17 @@
         "gold",
         "platinum"
       ],
-      "default": "none",
-      "description": "Reward banner tier earned by posting on the Interplanetary Fund social feed. Higher tiers unlock premium profile banners and top-feed placement."
+      "default": "none"
     },
     "social_score": {
       "type": "number",
-      "default": 0,
-      "description": "Accumulated reward points from social posting activity. Determines banner tier and top-placement eligibility."
+      "description": "Accumulated reward points from social posting activity. Determines banner tier and top-placement eligibility.",
+      "default": 0
     },
     "onboarding_completed": {
       "type": "boolean",
-      "default": false,
-      "description": "Whether the user has completed the intelligent onboarding flow."
+      "description": "Whether the user has completed the intelligent onboarding flow.",
+      "default": false
     },
     "onboarding": {
       "type": "object",
@@ -81,6 +83,10 @@
     "ai_publishing_consent": {
       "type": "object",
       "description": "Explicit, revocable authorization for AI-assisted external publishing. Automatic publishing must fail closed unless granted is true.",
+      "required": [
+        "granted",
+        "decided_at"
+      ],
       "properties": {
         "granted": {
           "type": "boolean",
@@ -90,11 +96,7 @@
           "type": "string",
           "format": "date-time"
         }
-      },
-      "required": [
-        "granted",
-        "decided_at"
-      ]
+      }
     },
     "subscription_tier": {
       "type": "string",
@@ -159,13 +161,13 @@
     },
     "premium_trial_started_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Permanent record that the one-time card-free introductory trial was redeemed."
+      "description": "Permanent record that the one-time card-free introductory trial was redeemed.",
+      "format": "date-time"
     },
     "premium_day_pass_expires_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "Server-verified end of the 24-hour Stripe premium day pass."
+      "description": "Server-verified end of the 24-hour Stripe premium day pass.",
+      "format": "date-time"
     },
     "stripe_day_pass_checkout_id": {
       "type": "string",
@@ -177,17 +179,17 @@
     },
     "account_deletion_pending": {
       "type": "boolean",
-      "default": false,
-      "description": "True once account deletion has been authorized and is in progress. The app revokes access for a pending account; data cleanup and final deletion/anonymization run idempotently so a retry after a mid-process failure resumes cleanly."
+      "description": "True once account deletion has been authorized and is in progress. The app revokes access for a pending account; data cleanup and final deletion/anonymization run idempotently so a retry after a mid-process failure resumes cleanly.",
+      "default": false
     },
     "account_status": {
       "type": "string",
+      "description": "Lifecycle status of the account. 'disabled' blocks all sensitive actions server-side (assertActiveAccount). Pending deletion is tracked separately by account_deletion_pending; a deleted account is simply absent from the store.",
       "enum": [
         "active",
         "disabled"
       ],
-      "default": "active",
-      "description": "Lifecycle status of the account. 'disabled' blocks all sensitive actions server-side (assertActiveAccount). Pending deletion is tracked separately by account_deletion_pending; a deleted account is simply absent from the store."
+      "default": "active"
     },
     "ai_obo_consent": {
       "type": "object",
@@ -205,11 +207,14 @@
           "type": "string"
         }
       }
+    },
+    "first_paid_subscription_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Earliest provider-verified first paid subscription; immutable across renewals for social posting priority."
     }
   },
   "required": [
     "role"
-  ],
-  "name": "User",
-  "type": "object"
+  ]
 }
