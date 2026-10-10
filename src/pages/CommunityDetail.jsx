@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,11 @@ export default function CommunityDetail() {
         )}
       </div>
 
+      <div className="mb-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+        <p className="text-sm font-semibold text-slate-950">IFund Reporter & community blogs</p>
+        <p className="text-xs text-slate-700 mt-1">Read featured Interplanetary Fund stories, or write about your community and the causes you care about.</p>
+        <Link to="/blogs" className="text-blue-700 font-medium underline text-sm inline-block mt-2">Browse the newsletter and member blogs</Link>
+      </div>
       <Tabs defaultValue="discussions">
         <TabsList className="mb-6">
           <TabsTrigger value="discussions">Discussions</TabsTrigger>
