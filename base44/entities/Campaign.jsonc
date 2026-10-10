@@ -181,6 +181,16 @@
     "outreach_last_error": {
       "type": "string",
       "description": "Human-readable safe last-run outcome; no provider secrets."
+    },
+    "social_last_generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Latest successfully staged AI social content; throttles duplicate generation."
+    },
+    "social_last_generation_attempt_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last AI post generation attempt; prevents excessive LLM retry."
     }
   },
   "required": [],
