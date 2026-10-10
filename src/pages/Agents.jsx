@@ -6,7 +6,7 @@ import { base44 } from "@/api/base44Client";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
 import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown, Compass, Link2 } from "lucide-react";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
-import { Navigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 // Always-on AI agent team. The Chief of Staff coordinates; each specialist
 // handles one domain. Switching agents starts a fresh conversation.
@@ -31,7 +31,15 @@ export default function Agents() {
   }, []);
 
   if (loadingUser) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 text-muted-foreground">Loading AI Agents…</div>;
-  if (!hasPlanLevel(user, 1)) return <Navigate to="/subscriptions" replace />;
+  if (!hasPlanLevel(user, 1)) return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4">
+    <h1 className="font-display text-3xl text-slate-950">IFund AI Chat</h1>
+    <p className="text-slate-700">Your AI team can help you write campaign stories, plan outreach, understand fundraising ideas and connect supported platforms.</p>
+    <div className="rounded-2xl bg-white border border-stone-200 p-5">
+      <h2 className="font-semibold text-slate-950 text-lg">Enable your AI team</h2>
+      <p className="text-sm text-slate-600 mt-2">Agent conversations are included with an eligible subscription. The free account can still create campaigns and participate in the IFund community.</p>
+      <Link to="/subscriptions" className="inline-flex mt-4 min-h-11 items-center rounded-xl bg-blue-700 px-4 text-white text-sm font-semibold hover:bg-blue-800">Explore AI subscriptions</Link>
+    </div>
+  </div>;
   const visibleAgents = AGENTS.filter((agent) => !agent.minLevel || hasPlanLevel(user, agent.minLevel));
 
   return (
