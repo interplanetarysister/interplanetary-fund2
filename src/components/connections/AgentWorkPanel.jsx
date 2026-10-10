@@ -11,6 +11,9 @@ const format = (state) => ({
   waiting_user: "Needs your help",
   waiting_external: "Waiting for provider",
   needs_review: "Needs review",
+  responding: "Working",
+  responded: "Response ready",
+  tool_failed: "Tool failed",
   completed: "Verified",
   failed: "Failed",
   cancelled: "Cancelled",
@@ -25,11 +28,17 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
   const sweepInFlight = useRef(false);
   const load = useCallback(async () => {
     try {
-      const response = await base44.functions.invoke("manageAgentWork", { mode: "list", view: allAgents ? "all" : "managed" });
+      const [response, chat] = await Promise.all([
+        base44.functions.invoke("manageAgentWork", { mode: "list", view: allAgents ? "all" : "managed" }),
+        allAgents ? base44.functions.invoke("trackAgentConversation", { mode: "list" }) : Promise.resolve(null),
+      ]);
       if (!response?.data?.ok || !Array.isArray(response.data.work)) throw new Error("Invalid work status");
-      setWork(response.data.work);
-      setError("");
-      return response.data.work;
+      const chats = allAgents && Array.isArray(chat?.data?.runs) ? chat.data.runs : [];
+      const combined = [...response.data.work, ...chats]
+        .sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || ""))).slice(0, 24);
+      setWork(combined);
+      setError(allAgents && !chat?.data?.ok ? "Agent conversations could not be loaded." : "");
+      return combined;
     } catch {
       setError("AI connection work could not be loaded.");
     } finally {
@@ -66,7 +75,22 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
     void sweep();
     const statusTimer = window.setInterval(refresh, 15000);
     const workTimer = window.setInterval(() => { if (active) void sweep(); }, 180000);
-    return () => { active = false; window.clearInterval(statusTimer); window.clearInterval(workTimer); };
+    // Agent replies are persisted server-side and rechecked even if the chat
+    // tab was switched or a subscription event was dropped.
+    const chatTimer = allAgents ? window.setInterval(async () => {
+      if (!active || document.visibilityState === "hidden") return;
+      const rows = await load();
+      const pending = (rows || []).find((item) => item.status === "responding" && item.agent &&
+        !item.agent.endsWith("_connection_agent") && !item.connection_id);
+      if (pending) {
+        await base44.functions.invoke("trackAgentConversation", { mode: "sync", run_id: pending.id }).catch(() => {});
+        if (active) await load();
+      }
+    }, 30000) : null;
+    return () => {
+      active = false; window.clearInterval(statusTimer); window.clearInterval(workTimer);
+      if (chatTimer) window.clearInterval(chatTimer);
+    };
   }, [load, refreshKey, sweep]);
 
   const advance = async (item) => {
@@ -98,7 +122,7 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
       </div>
       {error && <p role="alert" className="text-xs text-red-700 mb-3">{error}</p>}
       <div className="space-y-3">
-        {work.slice(0, 8).map((item) => (
+        {work.slice(0, 12).map((item) => (
           <article key={item.id} className="rounded-xl border border-slate-200 px-3 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium text-slate-950 break-words">{item.objective || "Connection request"}</p>
