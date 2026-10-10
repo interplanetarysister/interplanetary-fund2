@@ -12,7 +12,11 @@ const clean = (value: unknown, max = 300) =>
 async function resolveRecipe(sr: any, platform: string, operation: string) {
   const rows = await sr.entities.PlatformConnectionRecipe.filter({ platform, operation }).catch(() => []);
   const persisted = rows?.[0] || null;
-  const seed = staticRecipe(platform, operation);
+  // Crowdfunding pages often expose a public read route, not an OAuth connect
+  // API. Reuse the proven public-check recipe instead of leaving the agent
+  // waiting on an undefined "connect" transport.
+  const seed = staticRecipe(platform, operation) ||
+    (operation === 'connect' ? staticRecipe(platform, 'read_metrics') : null);
   const effective = persisted && persisted.status !== 'disabled'
     ? persisted
     : seed
@@ -217,7 +221,9 @@ export default async function(req: Request) {
     }
 
     const externalRequirement = waitingRequirement(action, nextTransport);
-    const waitForUser = ['oauth', 'token', 'authenticated_browser'].includes(String(nextTransport || ''))
+    // If a URL or code is required, the next step belongs to the owner.
+    // Never leave the user looking at a passive "working" spinner.
+    const waitForUser = ['oauth', 'token', 'authenticated_browser','public_browser','webhook'].includes(String(nextTransport || ''))
       || action === 'reauthorize';
     const nextStatus = waitForUser ? 'waiting_user' : 'waiting_external';
 
@@ -248,7 +254,11 @@ export default async function(req: Request) {
       next_transport: nextTransport,
       rediscovery_required: resolved.rediscovery_required,
       executable_now: false,
-      next_route: '/connections',
+      next_route: '/connections#connection-help',
+      interaction_required: waitForUser,
+      // The app can open its configured provider OAuth connection on a user
+      // gesture; code issuance or second-factor checks belong to the provider.
+      provider_verification_code_issuer: nextTransport === 'oauth' ? 'provider' : null,
       message: externalRequirement,
     });
   } catch (error) {
