@@ -239,9 +239,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
           {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
-          <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
-            <p className="font-semibold text-sm text-stone-900 mb-2">How IFund connects {platform.name}</p>
-            <ol className="list-decimal pl-4 space-y-2 text-xs text-stone-700">
+          <div className="rounded-xl border border-border bg-muted/40 p-3">
+            <p className="font-semibold text-sm text-foreground mb-2">How IFund connects {platform.name}</p>
+            <ol className="list-decimal pl-4 space-y-2 text-xs text-foreground">
               {usesProviderOAuth && <li>IFund opens the official {platform.name} authorization. An existing provider session may be reused on this device.</li>}
               {(platform.steps||[]).filter(step=>step.id!=="auto").map(step=><li key={step.id}>
                 <span className="font-medium">{step.label}</span>
@@ -250,13 +250,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               <li>Return to IFund for a provider verification check. If the account was not verified, the specific required step remains in your AI activity panel.</li>
             </ol>
           </div>
-          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 space-y-2">
-            <p className="font-semibold text-sm text-slate-950">IFund connection helper</p>
-            <p className="text-xs text-slate-700">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
+          <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+            <p className="font-semibold text-sm text-foreground">IFund connection helper</p>
+            <p className="text-xs text-muted-foreground">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
             <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-foreground bg-card whitespace-normal h-auto py-3" disabled={managedBusy || connecting} onClick={startGuidedConnection}>
               {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to connect this account now"}
             </Button>
-            {helpDetails && <p role="status" className="text-xs text-slate-800 break-words">{helpDetails}</p>}
+            {helpDetails && <p role="status" className="text-xs text-foreground break-words">{helpDetails}</p>}
           </div>
           {usesProviderOAuth ? (
             <Button onClick={connectWithProvider} disabled={connecting} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
