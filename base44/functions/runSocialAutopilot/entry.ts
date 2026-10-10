@@ -36,11 +36,13 @@ export default async function(req: Request) {
     const sr = base44.asServiceRole;
     const access = await assertPlatformAccess(sr, 'social_publish');
     if (!access.ok) return Response.json({ skipped: true, reason: 'Publishing access unavailable' });
-    const [connections, campaigns, studies] = await Promise.all([
-      sr.entities.PlatformConnection.filter({ kind: 'social', status: 'connected' }, '-updated_date', 300),
-      sr.entities.Campaign.filter({ status: 'active', outreach_enabled: true }, '-updated_date', 300),
+    const [connectionBatch, campaignBatch, studies] = await Promise.all([
+      readEntityPages(sr, 'PlatformConnection', { kind: 'social', status: 'connected' }, 'created_date'),
+      readEntityPages(sr, 'Campaign', { status: 'active', outreach_enabled: true }, 'created_date'),
       sr.entities.WritingResearchBrief.filter({ status: 'verified_sources' }, '-created_date', 1).catch(() => []),
     ]);
+    const connections = connectionBatch.rows;
+    const campaigns = campaignBatch.rows;
     const tips = (studies?.[0]?.guidance || []).slice(0, 5).join('; ').slice(0, 1500);
     const ownerCache = new Map();
     const eligible = [];
