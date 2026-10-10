@@ -70,8 +70,11 @@ assert.match(read('base44/shared/prelaunchPayments.ts'),/isPublicCampaignFundrai
 assert.doesNotMatch(entry('capturePayPalOrder'),/isFeatureEnabled|campaignPaymentAccess\(base44\)/,
   'Previously started PayPal payments must always be capturable and reconcilable');
 assert.match(entry('capturePayPalOrder'),/recordCanonicalDonation/);
-assert.match(entry('syncConnections'),/publishingEnabled \? queue : \[\]/,
-  'Health checks must continue even while outbound posting is paused');
+const syncConnections = entry('syncConnections');
+assert.match(syncConnections, /if \(publishingEnabled && access\.ok\) \{/,
+  'Outbound publishing must have an explicit feature and platform-access gate');
+assert.ok(syncConnections.indexOf('// --- Connection health:') > syncConnections.indexOf('if (publishingEnabled && access.ok)'),
+  'Provider health checking must remain outside the outbound publishing gate');
 assert.doesNotMatch(entry('saveCampaign'),/isFeatureEnabled|areFeaturesEnabled/,
   'Campaign creation and publishing cannot be gated');
 for(const fn of ['stripeWebhook','kofiWebhook','discoverPayPalHoldingSettlements','reconcileDirectPayPalCampaignDonation','getOwnerFinancialLedger','getCampaignWithdrawalBalance']) {
