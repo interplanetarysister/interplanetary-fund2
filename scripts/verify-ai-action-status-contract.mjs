@@ -35,7 +35,10 @@ assert.match(social, /"Posted to IFund"/);
 assert.match(knowledge, /response_json_schema: \{ type: "object", properties: \{ summary:/);
 assert.match(knowledge, /finally \{\s*setSaving\(false\)/);
 assert.match(reports, /finally \{\s*setGenerating\(false\)/);
-assert.match(conversation, /approved: false/);
+assert.match(conversation, /trackAgentConversation/);
+assert.match(conversation, /mode: "start"/);
+assert.match(conversation, /mode: "sync"/);
+assert.doesNotMatch(conversation, /outcome: "Message accepted; agent action not yet verified"/);
 assert.match(conversation, /waiting_for_user_input/);
 
 console.log("IFund AI action/connection status contracts verified.");
