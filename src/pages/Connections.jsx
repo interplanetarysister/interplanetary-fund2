@@ -370,6 +370,25 @@ export default function Connections() {
         <AIConsentCard user={user} onChanged={(v) => { setUser((u) => ({ ...u, ai_obo_consent: v })); setReloadKey((key) => key + 1); }} />
       </div>
       <AgentWorkPanel refreshKey={historyKey} />
+      <div className="mb-8 rounded-2xl border border-cyan-200 bg-cyan-50 p-4" id="connection-help">
+        <h2 className="font-semibold text-slate-950">Connect with IFund AI help</h2>
+        <p className="text-sm text-slate-700 mt-1">
+          Choose a platform below, then select “Ask IFund to connect this account now.”
+          IFund checks your existing connection, starts a supported provider sign-in
+          when needed, or walks you through the provider’s own code or app-password setup.
+          You can use an account that’s already signed in on this device.
+        </p>
+        <p className="text-xs text-slate-600 mt-2">
+          {managedAvailable
+            ? "Managed connection tracking is active for your account. You can follow the agent’s progress above."
+            : "You can still use guided sign-in. Automatic connection management requires an eligible paid tier and IFund AI permission."}
+        </p>
+        <Button type="button" variant="outline" className="mt-3 bg-white text-slate-900"
+          onClick={() => { setPlatformMenuOpen(true);
+            document.getElementById("connection-chooser")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+          Choose a platform to connect
+        </Button>
+      </div>
 
       {sharedIntegrations && sharedIntegrations.length > 0 && (
         <div className="mb-8">
@@ -427,7 +446,7 @@ export default function Connections() {
         </div>
       )}
 
-      <div className="mb-8">
+      <div className="mb-8" id="connection-chooser">
         <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
         <p className="text-sm text-stone-500 mb-3">Choose a platform you already use. IFund handles the connection behind the scenes.</p>
         <div className="relative">
@@ -490,6 +509,11 @@ export default function Connections() {
           existing={dialog.existing}
           aiAuthorized={aiAuthorized}
           managedAvailable={managedAvailable}
+          onManagedConnect={managedAvailable ? async ({ campaign_id }) =>
+            requestManagedAction({
+              platform: dialog.platform, connection: dialog.existing || null,
+              action: dialog.existing ? "repair" : "connect", campaign_id,
+            }) : null}
           onManagedCreateAccount={async ({ campaign_id }) => {
             const data = await requestManagedAction({ platform: dialog.platform, action: "create_account", campaign_id });
             if (data.state !== "waiting_user") setDialog(null);
