@@ -23,6 +23,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const [managedBusy, setManagedBusy] = useState(false);
   const [helpDetails, setHelpDetails] = useState("");
   const [error, setError] = useState("");
+  const [oauthReadiness, setOauthReadiness] = useState("checking");
 
   useEffect(() => {
     if (!open) return;
@@ -42,6 +43,20 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       .then((rows) => setCampaigns((rows || []).filter((campaign) => campaign.status === "active" || campaign.id === existing?.campaign_id)))
       .catch(() => setCampaigns([]));
   }, [open, existing]);
+
+  useEffect(() => {
+    if (!open || !usesProviderOAuth) return;
+    let current = true;
+    setOauthReadiness("checking");
+    base44.functions.invoke("getAppUserConnector", { platform: platform.id })
+      .then(({ data }) => {
+        if (!current) return;
+        setOauthReadiness(!data?.supported ? "unsupported" :
+          data?.configured && data?.connector_id ? "ready" : "not_configured");
+      })
+      .catch(() => { if (current) setOauthReadiness("unavailable"); });
+    return () => { current = false; };
+  }, [open, platform.id, usesProviderOAuth]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const selectedCampaign = campaigns.find((campaign) => campaign.id === form.campaign_id) || null;
@@ -238,7 +253,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               <p className="text-xs text-muted-foreground">You may link a campaign now or after connecting. Use the one-click provider sign-in below. You’ll sign in on {platform.name}, approve the provider permissions, and return here automatically. Your existing IFund AI authorization applies without a second permission screen.</p>
             </div>
           )}
-          {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
+          {usesProviderOAuth && oauthReadiness === "not_configured" &&
+            <p role="status" className="text-sm text-amber-600 break-words">IFund still needs to enable {platform.name} sign-in. This is an IFund setup task, not a problem with your account. Connection has not started.</p>}
+          {usesProviderOAuth && oauthReadiness === "unavailable" &&
+            <p role="status" className="text-sm text-amber-600 break-words">IFund could not check the connection setup right now. You can retry Connect.</p>}
+          {usesProviderOAuth && oauthReadiness === "unsupported" &&
+            <p role="status" className="text-sm text-amber-600 break-words">Provider sign-in is not available for {platform.name} through IFund yet.</p>}
+          {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>
           <div className="rounded-xl border border-border bg-muted/40 p-3">
             <p className="font-semibold text-sm text-foreground mb-2">How IFund connects {platform.name}</p>
             <ol className="list-decimal pl-4 space-y-2 text-xs text-foreground">
