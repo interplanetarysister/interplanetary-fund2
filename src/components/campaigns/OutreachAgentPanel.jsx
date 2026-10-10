@@ -115,8 +115,8 @@ export default function OutreachAgentPanel({ campaign }) {
       {!hasOutreach ? (
         <div className="mt-3">
           <p className="text-sm text-slate-400 mb-3">
-            The AI Outreach Agent works continuously on your behalf — monitoring, drafting outreach, and recommending
-            opportunities, all with your approval. Upgrade to unlock it.
+            The AI Outreach Agent checks opted-in campaigns on a schedule, prepares outreach drafts,
+            and recommends improvements for your review. Upgrade to unlock it.
           </p>
           <Link to="/subscriptions">
             <Button className="bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl">
@@ -129,7 +129,7 @@ export default function OutreachAgentPanel({ campaign }) {
           <div className="flex items-center justify-between gap-4 mt-3 rounded-xl bg-white/5 p-3">
             <div>
               <p className="text-sm text-slate-200 font-medium">Enable autonomous agent</p>
-              <p className="text-xs text-slate-400">It runs on a schedule and waits for your approval on every action.</p>
+              <p className="text-xs text-slate-400">Scheduled checks prepare drafts and recommendations for your approval. Messages are never sent automatically.</p>
             </div>
             <Switch checked={enabled && platformEnabled} onCheckedChange={toggleEnabled} disabled={enabling || !platformEnabled} />
           </div>
@@ -143,6 +143,14 @@ export default function OutreachAgentPanel({ campaign }) {
             </div>
           )}
 
+          {(campaign.outreach_last_run_at || campaign.outreach_last_error) && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              {campaign.outreach_last_run_at && <p className="text-xs text-slate-300">
+                Last successful analysis: {new Date(campaign.outreach_last_run_at).toLocaleString()}
+              </p>}
+              {campaign.outreach_last_error && <p className="text-xs text-amber-200 mt-1">{campaign.outreach_last_error}</p>}
+            </div>
+          )}
           <div className="mt-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">Activity log</p>
             {activities.length === 0 ? (
