@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { latestWritingGuidance } from '../../shared/writingGuidance.ts';
 
 // AI Share Draft — a user clicks "Share to your profile" on a campaign or
 // social post, and this function generates an AI-drafted post they can review
@@ -38,8 +39,12 @@ ${post.content}`;
       return Response.json({ error: 'Invalid source type.' }, { status: 400 });
     }
 
+    const research = await latestWritingGuidance(base44.asServiceRole);
     const res = await base44.integrations.Core.InvokeLLM({
       prompt: `You are an AI agent for the Interplanetary Fund platform. A user wants to share this content to their social media profile. Draft a post they can approve.
+
+General weekly public research writing guidance: ${research || 'Use relatable, original, specific and truthful motivations.'}
+Use persuasive audience-aware word choice while respecting the original creator and voluntary donor choices. No invented urgency, social proof, results or trust rankings.
 
 Source content:
 ${sourceContext}
