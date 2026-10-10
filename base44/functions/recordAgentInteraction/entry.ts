@@ -27,14 +27,19 @@ export default async function(req) {
       campaign_title: campaignTitle,
       owner_user_id: user.id,
       category: 'other',
-      action: String(body.action || 'conversation').slice(0, 500),
+      // This endpoint is only an interaction log, not an approval or action
+      // execution endpoint. Never accept a caller-asserted "approved" state.
+      action: 'conversation',
       reason: summary || 'Agent interaction',
       result: outcome,
       expected_impact: '',
       recommended_next_actions: [],
       artifact_type: 'none',
-      status: body.approved === true ? 'approved' : 'pending',
-      description: JSON.stringify({ agent_id: requestedAgent, source: String(body.source || 'base44_agent_chat').slice(0, 100), approved: typeof body.approved === 'boolean' ? body.approved : null }),
+      status: 'pending',
+      description: JSON.stringify({
+        agent_id: requestedAgent, source: 'unverified_interaction_log',
+        approved: false, externally_executed: false,
+      }),
     });
     return Response.json({ ok: true, result: { id: record.id, stored_in: 'base44' } });
   } catch (error) {
