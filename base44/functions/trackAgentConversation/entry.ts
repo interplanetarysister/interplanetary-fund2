@@ -5,7 +5,7 @@ const VALID_AGENT = /^[a-z][a-z0-9_]{2,65}$/;
 const clean = (v: unknown, n = 140) =>
   String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
 const safeRun = (r: any) => ({
-  id: r.id, agent: r.agent_name, status: r.status,
+  id: r.id, kind: 'chat', agent: r.agent_name, status: r.status,
   objective: clean(r.request_summary || 'Agent conversation', 160),
   result_summary: clean(r.result_summary, 280),
   updated_at: r.updated_at || r.created_at || r.created_date || null,
