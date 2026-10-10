@@ -37,7 +37,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-node22 --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs",
+    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
