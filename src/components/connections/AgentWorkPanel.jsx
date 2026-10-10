@@ -80,8 +80,7 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
     const chatTimer = allAgents ? window.setInterval(async () => {
       if (!active || document.visibilityState === "hidden") return;
       const rows = await load();
-      const pending = (rows || []).find((item) => item.status === "responding" && item.agent &&
-        !item.agent.endsWith("_connection_agent") && !item.connection_id);
+      const pending = (rows || []).find((item) => item.status === "responding" && item.kind === "chat");
       if (pending) {
         await base44.functions.invoke("trackAgentConversation", { mode: "sync", run_id: pending.id }).catch(() => {});
         if (active) await load();
