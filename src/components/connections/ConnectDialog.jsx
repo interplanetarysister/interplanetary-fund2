@@ -87,7 +87,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       }));
       // A single-tab flow preserves the IFund origin/session on mobile and
       // avoids popup callbacks landing in an unrelated Base44 editor window.
-      if (platform.kind !== "app" && !form.campaign_id) throw new Error("Choose a campaign before connecting this platform.");
+      // An account can be connected before its first IFund campaign is chosen.
+      // Provider identity linking should not depend on campaign creation.
       const redirectUrl = await base44.connectors.connectAppUser(data.connector_id);
       if (!redirectUrl) throw new Error("Provider did not return a sign-in URL.");
       const destination = new URL(String(redirectUrl));
@@ -193,7 +194,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           </div>}
           {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
           <div className="space-y-1.5">
-            <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Campaign to publish first"}</Label>
+            <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Optional campaign to promote"}</Label>
             <Select value={form.campaign_id} onValueChange={selectCampaign}>
               <SelectTrigger className="min-w-0 w-full"><SelectValue placeholder={platform.kind === "app" ? "Optional — pick a campaign" : "Pick the campaign to publish first"} /></SelectTrigger>
               <SelectContent>
@@ -234,20 +235,20 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           {usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
               <p className="text-sm font-semibold text-foreground">Connect {platform.name}</p>
-              <p className="text-xs text-muted-foreground">Choose the Interplanetary Fund campaign first, then use the one-click link below. You’ll sign in on {platform.name}, approve the provider permissions, and return here automatically. Your existing IFund AI authorization applies without a second permission screen.</p>
+              <p className="text-xs text-muted-foreground">You may link a campaign now or after connecting. Use the one-click provider sign-in below. You’ll sign in on {platform.name}, approve the provider permissions, and return here automatically. Your existing IFund AI authorization applies without a second permission screen.</p>
             </div>
           )}
           {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 space-y-2">
             <p className="font-semibold text-sm text-slate-950">IFund connection helper</p>
             <p className="text-xs text-slate-700">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
-            <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-slate-900 bg-white" disabled={managedBusy || connecting || (platform.kind !== "app" && usesProviderOAuth && !selectedCampaign)} onClick={startGuidedConnection}>
+            <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-slate-900 bg-white" disabled={managedBusy || connecting} onClick={startGuidedConnection}>
               {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to connect this account now"}
             </Button>
             {helpDetails && <p role="status" className="text-xs text-slate-800 break-words">{helpDetails}</p>}
           </div>
           {usesProviderOAuth ? (
-            <Button onClick={connectWithProvider} disabled={connecting || (platform.kind !== "app" && !selectedCampaign)} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
+            <Button onClick={connectWithProvider} disabled={connecting} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
             </Button>
           ) : (
