@@ -49,6 +49,12 @@ export default function PublicProfile() {
   {p.show_communities!==false&&<section><h2 className="text-lg font-semibold text-slate-950 mb-3 flex gap-2 items-center"><Users className="w-5 h-5"/>Communities</h2>
     {data.communities?.length?<div className="grid sm:grid-cols-2 gap-3">{data.communities.map(c=><Link key={c.id} to={`/community/${c.id}`} className="block p-4 bg-white border border-stone-200 rounded-xl hover:border-cyan-400"><p className="font-semibold text-slate-900">{c.name}</p><p className="text-sm text-slate-600 line-clamp-2">{c.description}</p></Link>)}</div>:<p className="text-sm text-slate-600">No visible community memberships.</p>}
   </section>}
+  {p.show_communities!==false&&data.community_activity?.length>0&&<section>
+   <h2 className="font-semibold text-lg text-slate-950 mb-3">Community conversations</h2>
+   <div className="space-y-2">{data.community_activity.slice(0,12).map(item=><Link key={item.id} to={`/community/${item.community_id}`} className="block rounded-xl bg-white border border-stone-200 p-3 text-sm text-blue-800 hover:underline">
+    {item.title} <span className="text-xs text-slate-500 ml-2">{item.type==="reply"?"Discussion reply":"Community discussion"}</span>
+   </Link>)}</div>
+  </section>}
   {data.blogs?.length>0&&<section><h2 className="font-semibold text-lg text-slate-950 mb-3 flex gap-2 items-center"><BookOpen className="w-5 h-5"/>Blog</h2>{data.blogs.map(b=><Link className="block bg-white rounded-xl border border-stone-200 p-4 text-blue-700 hover:underline" key={b.id} to={`/blogs?author=${id}`}>{b.title}</Link>)}</section>}
  </div>;
 }
