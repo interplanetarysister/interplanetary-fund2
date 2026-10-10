@@ -97,6 +97,7 @@ export default async function(req: Request) {
       }
       if (
         connection.obo_consent?.granted !== true ||
+        connection.obo_consent?.opted_out === true ||
         String(connection.obo_consent?.permission_version || '') !== consentVersion
       ) {
         return Response.json(
