@@ -12,6 +12,7 @@ import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import { useAuth } from "@/lib/AuthContext";
 import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
@@ -225,28 +226,7 @@ export default function Layout() {
         </>
       )}
 
-      <nav aria-label="Bottom navigation" className="ifund-mobile-nav md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
-        {bottomNavItems.map(({ to, label, icon: Icon }) => {
-          const active = activeTab === to;
-          const destination = user || ["/social", "/community"].includes(to)
-            ? to : `/login?returnTo=${encodeURIComponent(to)}`;
-          return (
-            <NavLink
-              key={to}
-              to={destination}
-              end
-              onClick={() => { hapticTap(); setOpen(false); }}
-              aria-current={active ? "page" : undefined}
-              className={active
-                ? "flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 min-h-[48px] text-[10px] font-medium text-cyan-400"
-                : "flex flex-1 min-w-0 flex-col items-center justify-center gap-0.5 py-2 min-h-[48px] text-[10px] font-medium text-slate-400"}
-            >
-              <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-              <span className="max-w-full truncate px-0.5 text-center">{label}</span>
-            </NavLink>
-          );
-        })}
-      </nav>
+      <MobileBottomNav user={user} onNavigate={() => setOpen(false)} />
 
       <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
         <div className="ifund-workspace-bar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-7">
