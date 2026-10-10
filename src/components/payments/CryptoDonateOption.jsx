@@ -23,7 +23,7 @@ export default function CryptoDonateOption({ campaign = null, platformSupport = 
       <h3 className="flex items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
         <Wallet className="w-4 h-4" /> Cryptocurrency donations
       </h3>
-      <p className="mt-2 flex items-start gap-2 text-sm leading-relaxed text-amber-950 dark:text-amber-100">
+      <p className="mt-2 flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm leading-relaxed text-amber-950 dark:bg-amber-200/10 dark:text-amber-100">
         <ShieldAlert className="w-4 h-4 shrink-0" />
         Crypto payment acceptance is paused until IFund verifies a supported non-Stripe payment and settlement provider.
         Connecting a wallet does not donate money.
