@@ -61,6 +61,22 @@ export default async function(req: Request) {
     if ((prior || []).some((b: any) => b.status === 'verified_sources')) {
       return Response.json({ ok: true, reused: true, week });
     }
+    // Create a weekly attempt record before any public network request or
+    // metered AI call. Normal retries are spaced out; a failed research fetch
+    // must never become an unbounded public expensive endpoint.
+    const previous = (prior || [])[0];
+    const lastAttempt = Date.parse(String(previous?.created_at || ''));
+    if (Number.isFinite(lastAttempt) && Date.now() - lastAttempt < 6 * 60 * 60 * 1000) {
+      return Response.json({ ok: true, week, deferred: true,
+        message: 'This week’s research was attempted recently; retry is deferred.' });
+    }
+    const attempt = previous
+      ? await sr.entities.WritingResearchBrief.update(previous.id, {
+          status: 'partial', created_at: iso,
+        })
+      : await sr.entities.WritingResearchBrief.create({
+          status: 'partial', week_key: week, created_at: iso,
+        });
     const sources = await Promise.all(SOURCES.map(fetchSource));
     const verified = sources.filter(r => r.ok);
     if (verified.length < 2) {
@@ -94,8 +110,8 @@ Return JSON fields summary (max 800 characters), guidance (3-9 short actionable 
     if (!answer?.summary || !Array.isArray(answer?.guidance) || !answer.guidance.length) {
       return Response.json({ ok: false, week, message: 'Research synthesis was incomplete.' }, { status: 503 });
     }
-    const row = await sr.entities.WritingResearchBrief.create({
-      week_key: week, created_at: iso, reviewed_at: iso,
+    const row = await sr.entities.WritingResearchBrief.update(attempt.id, {
+      reviewed_at: iso,
       status: 'verified_sources',
       summary: safe(answer.summary,800),
       source_urls: verified.map(r => r.source.url),
