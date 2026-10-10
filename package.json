@@ -184,8 +184,8 @@
     "js-yaml": "^4.3.2",
     "playwright": "1.64.0",
     "postcss": "^8.5.26",
-    "postcss-selector-parser": "^6.1.4",
-    "tailwindcss": "^3.4.17",
+    "postcss-selector-parser": "^7.1.6",
+    "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"
