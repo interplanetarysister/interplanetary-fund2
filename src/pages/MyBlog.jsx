@@ -4,7 +4,7 @@ import {base44} from "@/api/base44Client";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
-import {extractCampaignIds,embedSnippet} from "@/lib/campaignEmbed";
+import {extractCampaignIds} from "@/lib/campaignEmbed";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import {Loader2,BookOpen} from "lucide-react";
 
