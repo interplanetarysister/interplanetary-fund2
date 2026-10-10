@@ -83,13 +83,15 @@ export default async function(req: Request) {
     if (!visible || visible.owner_user_id !== user.id) {
       return Response.json({ error: 'Request not found.' }, { status: 404 });
     }
-    if (visible.status === 'failed' || visible.status === 'responded' || visible.status === 'tool_failed') {
+    if (visible.status === 'failed' || visible.status === 'delivery_unconfirmed' ||
+        visible.status === 'responded' || visible.status === 'tool_failed') {
       return Response.json({ ok: true, run: safeRun(visible) });
     }
     const now = new Date().toISOString();
     let next;
     if (mode === 'failed') {
-      next = { status: 'failed', result: 'The message was not delivered to the agent.' };
+      next = { status: 'delivery_unconfirmed',
+        result: 'The message submission could not be confirmed. Check the conversation before retrying.' };
     } else {
       const conv = await base44.agents.getConversation(visible.conversation_id).catch(() => null);
       if (!conv) return Response.json({ ok: true, run: safeRun(visible), message: 'Agent response has not been confirmed.' });
