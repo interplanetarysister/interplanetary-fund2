@@ -11,12 +11,12 @@ export function extractCampaignIds(input) {
 }
 export function splitCampaignContent(raw) {
   const text = String(raw||"").slice(0,19000);
-  const tokens = /\[campaign:([A-Za-z0-9_-]{8,72})\]|<iframe\b[^>]*src=["'](?:https?:\/\/(?:www\.)?interplanetaryfund\.com)?\/embed\/campaign\/([A-Za-z0-9_-]{8,72})[^"']*["'][^>]*><\/iframe>/gi;
+  const tokens = /\[campaign:([A-Za-z0-9_-]{8,72})\]|<iframe\b[^>]*src=["'](?:https?:\/\/(?:www\.)?interplanetaryfund\.com)?\/embed\/campaign\/([A-Za-z0-9_-]{8,72})[^"']*["'][^>]*><\/iframe>|https?:\/\/(?:www\.)?interplanetaryfund\.com\/(?:embed\/)?campaign\/([A-Za-z0-9_-]{8,72})(?:\?[^\s<]*)?/gi;
   const blocks = [];
   let last = 0;
   for (const match of text.matchAll(tokens)) {
     if (match.index > last) blocks.push({type:"text",value:text.slice(last,match.index)});
-    blocks.push({type:"campaign",id:match[1]||match[2]});
+    blocks.push({type:"campaign",id:match[1]||match[2]||match[3]});
     last = match.index + match[0].length;
   }
   if (last < text.length)blocks.push({type:"text",value:text.slice(last)});
