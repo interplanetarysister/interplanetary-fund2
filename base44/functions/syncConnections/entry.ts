@@ -1,6 +1,7 @@
 import { isFeatureEnabled } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { platformMayPublish, chooseNextMember, canEnterMemberQueue } from '../../shared/socialPublishingPolicy.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV, verifyManualConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
@@ -10,11 +11,10 @@ import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
-// 1. Publishes due scheduled posts on auto-capable connections; asks the owner
-//    when their permission setting requires it.
-// 2. Retries failed publishes (up to 3 attempts) with error logging.
-// 3. Flags stale connections (>7 days without a sync) for health monitoring.
-const MAX_RETRIES = 3;
+// 1. Publishes authorized paid-member agent posts, max one per platform
+//    per rolling 12h, in first-paid / round-robin queue order.
+// 2. Unconfirmed provider writes go to manual review without auto retries.
+// 3. Checks provider connection health where service-context checks are safe.
 
 export default async function(req) {
   try {
@@ -27,110 +27,123 @@ export default async function(req) {
     // pending_approval (the existing non-auto path) instead of auto-posting.
     const access = await assertPlatformAccess(sr, 'social_publish');
 
-    // --- Due scheduled posts + failed retries ---
-    const scheduled = await sr.entities.DistributedPost.filter({ status: 'scheduled' }, 'scheduled_for', 100);
-    const failed = await sr.entities.DistributedPost.filter({ status: 'failed' }, '-updated_date', 50);
-    const queue = [
-      ...scheduled.filter((p) => p.scheduled_for && new Date(p.scheduled_for) <= now),
-      ...failed.filter((p) => (p.retry_count || 0) < MAX_RETRIES),
-    ];
-
+    // --- Paid member automatic publishing; platform-global rolling 12h ---
+    // Only trusted auto-post permits produced by IFund's own scheduler may
+    // publish here. No public client-supplied DistributedPost fields can
+    // authorize an automated external action.
     const publishingEnabled = await isFeatureEnabled(base44, 'cross_platform_publishing');
-    for (const post of publishingEnabled ? queue : []) {
-      const connection = await sr.entities.PlatformConnection.get(post.connection_id).catch(() => null);
-      if (!connection) {
-        await sr.entities.DistributedPost.update(post.id, { status: 'failed', error: 'Connection was removed', retry_count: MAX_RETRIES });
-        report.failed++;
-        continue;
-      }
-
-      const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
-      const campaign = post.campaign_id
-        ? await sr.entities.Campaign.get(post.campaign_id).catch(() => null)
-        : null;
-      const ownerUserId = campaign?.created_by_id || post.created_by_id;
-      const ownerChainMatches = !!campaign &&
-        !!post.created_by_id &&
-        !!connection.created_by_id &&
-        connection.created_by_id === campaign.created_by_id &&
-        post.created_by_id === campaign.created_by_id &&
-        (!connection.campaign_id || connection.campaign_id === campaign.id);
-      const owner = ownerUserId
-        ? await sr.entities.User.get(ownerUserId).catch(() => null)
-        : null;
-      const consentGranted = hasAiPublishingConsent(owner);
-      const capability = await resolveCapabilityForPlatform(sr, connection.platform);
-      const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
-      // A scheduled service has no signed-in owner OAuth session. It can use
-      // only genuinely per-connection credentials; OAuth posts are handed to
-      // the owner for explicit foreground publishing.
-      const runtimePublishAvailable = canAutoPublish(connection);
-      const actionAuthorization = owner && ownerUserId
-        ? await assertExternalAgentAction(sr, {
-            ownerUser: owner,
-            ownerUserId,
-            campaign,
-            connection,
-            capability: 'create_post',
-            requireAutomation: true,
-          })
-        : { ok: false, reason: 'owner unavailable' };
-      if (connection.automation_mode === 'auto' && runtimePublishAvailable && directPublishVerified && ownerChainMatches && consentGranted && access.ok && actionAuthorization.ok) {
-        try {
-          const { url } = await publishThroughConnection(connection, text, sr);
-          await sr.entities.DistributedPost.update(post.id, {
-            status: 'published', published_at: now.toISOString(), external_post_url: url, error: '',
-          });
-          await sr.entities.PlatformConnection.update(connection.id, {
-            status: 'connected',
-            verification_status: 'verified',
-            last_synced: now.toISOString(),
-            last_error: '',
-          });
-          report.published++;
-        } catch (e) {
-          console.error('syncConnections publish failed:', e?.name || 'UnknownError');
-          const retries = (post.retry_count || 0) + 1;
-          const safePublishError = 'Publishing could not be completed. Review the connection and try again.';
-          await sr.entities.DistributedPost.update(post.id, {
-            status: retries >= MAX_RETRIES ? 'failed' : post.status === 'failed' ? 'failed' : 'scheduled',
-            error: safePublishError,
-            retry_count: retries,
-          });
-          if (retries >= MAX_RETRIES) {
-            await sr.entities.Notification.create({
-              user_id: post.created_by_id,
-              title: 'Post could not be published',
-              body: `Publishing to ${post.platform} failed after ${MAX_RETRIES} attempts. Review the connection before retrying.`,
-              type: 'system',
-              link: `/campaign/${post.campaign_id}`,
-            });
-            report.failed++;
-          } else report.retried++;
-        }
-      } else if (post.status === 'scheduled') {
-        // Ask/draft mode, no direct API, disabled registry access, or revoked AI consent —
-        // hand back to the owner instead of allowing an automated external side effect.
+    const staged = await sr.entities.DistributedPost.filter({ status: 'scheduled' }, 'scheduled_for', 300);
+    const existingPermits = await sr.entities.ScheduledAutoPostPermit.filter({}, '-created_date', 500);
+    const permitByPost = new Map((existingPermits || []).map(p => [p.post_id, p]));
+    // Legacy scheduler records without a server-only permit cannot run
+    // automatically; preserve their copy for the owner to review.
+    for (const post of staged || []) {
+      if (!permitByPost.has(post.id)) {
         await sr.entities.DistributedPost.update(post.id, {
           status: 'pending_approval',
-          ...(connection.automation_mode === 'auto' && runtimePublishAvailable && directPublishVerified && !ownerChainMatches
-            ? { error: 'Automatic publishing blocked: post, campaign, and connection ownership do not match.' }
-            : connection.automation_mode === 'auto' && runtimePublishAvailable && directPublishVerified && !consentGranted
-              ? { error: 'Automatic publishing blocked: AI OBO authorization is not active.' }
-            : connection.automation_mode === 'auto' && runtimePublishAvailable && !directPublishVerified
-              ? { error: 'Automatic publishing is not provider-verified for this platform yet.' }
-            : connection.automation_mode === 'auto' && !actionAuthorization.ok
-              ? { error: `Automatic publishing blocked: ${actionAuthorization.reason}.` }
-            : {}),
-        });
-        await sr.entities.Notification.create({
-          user_id: post.created_by_id,
-          title: 'Scheduled post is ready',
-          body: `Your ${post.platform} post for "${post.campaign_title}" is ready — approve it to publish.`,
-          type: 'system',
-          link: `/campaign/${post.campaign_id}`,
-        });
+          error: 'Scheduling requires verified IFund posting authorization. Review this post before publishing.',
+        }).catch(() => {});
         report.awaiting_approval++;
+      }
+    }
+    if (publishingEnabled && access.ok) {
+      const published = await sr.entities.DistributedPost.filter({ status: 'published' }, '-published_at', 500);
+      const publishedPermits = (existingPermits || []).filter(p => p.status === 'published');
+      const inflight = new Set((existingPermits || []).filter(p =>
+        p.status === 'publishing').map(p => p.platform));
+      const dueByPlatform = new Map();
+      for (const permit of (existingPermits || [])) {
+        if (permit.status !== 'queued' || !platformMayPublish(published, permit.platform, now.getTime())
+            || inflight.has(permit.platform)) continue;
+        const post = (staged || []).find(p => p.id === permit.post_id);
+        if (!post || !post.scheduled_for || Date.parse(post.scheduled_for) > now.getTime()) continue;
+        if (!dueByPlatform.has(permit.platform)) dueByPlatform.set(permit.platform, []);
+        dueByPlatform.get(permit.platform).push(permit);
+      }
+      for (const [platform, candidates] of dueByPlatform) {
+        const permit = chooseNextMember(candidates,
+          publishedPermits.filter(p => p.platform === platform), now.getTime());
+        if (!permit) continue;
+        const post = (staged || []).find(p => p.id === permit.post_id);
+        if (!post || post.origin !== 'agent_autopilot' ||
+            post.owner_user_id !== permit.owner_user_id ||
+            post.campaign_id !== permit.campaign_id ||
+            post.connection_id !== permit.connection_id ||
+            post.platform !== permit.platform) {
+          await sr.entities.ScheduledAutoPostPermit.update(permit.id, { status: 'review',
+            last_error: 'Post does not match trusted scheduler authorization.' });
+          continue;
+        }
+        const [campaign, connection, owner] = await Promise.all([
+          sr.entities.Campaign.get(permit.campaign_id).catch(() => null),
+          sr.entities.PlatformConnection.get(permit.connection_id).catch(() => null),
+          sr.entities.User.get(permit.owner_user_id).catch(() => null),
+        ]);
+        const ownerMatch = campaign?.created_by_id === permit.owner_user_id &&
+          connection?.created_by_id === permit.owner_user_id &&
+          (!connection?.campaign_id || connection.campaign_id === campaign.id);
+        const gate = ownerMatch && canEnterMemberQueue(owner, campaign) &&
+          hasAiPublishingConsent(owner) && connection.automation_mode === 'auto' &&
+          connection.status === 'connected' && connection.verification_status === 'verified';
+        const capability = connection
+          ? await resolveCapabilityForPlatform(sr, connection.platform) : null;
+        const executable = !!capability?.direct_publish_verified &&
+          capability?.implementation_status === 'implemented' &&
+          capability?.test_status === 'passing' &&
+          !!connection && canAutoPublish(connection);
+        const authorization = gate
+          ? await assertExternalAgentAction(sr, {
+            ownerUser: owner, ownerUserId: owner.id, campaign, connection,
+            capability: 'create_post', requireAutomation: true,
+          }) : { ok: false, reason: 'subscription, ownership or connection unavailable' };
+        if (!gate || !executable || !authorization.ok) {
+          await sr.entities.DistributedPost.update(post.id, {
+            status: 'pending_approval',
+            error: 'Automatic publishing unavailable. Verify subscription, connection, and permission.',
+          });
+          await sr.entities.ScheduledAutoPostPermit.update(permit.id, {
+            status: 'review', last_error: 'A verified automatic publishing path is unavailable.',
+          });
+          report.awaiting_approval++;
+          continue;
+        }
+        // Fail closed on ambiguous provider outcomes. Never auto retry an
+        // uncertain external write and potentially post it twice.
+        await sr.entities.ScheduledAutoPostPermit.update(permit.id, {
+          status: 'publishing', publishing_at: now.toISOString(),
+        });
+        await sr.entities.DistributedPost.update(post.id, {
+          status: 'publishing', publishing_started_at: now.toISOString(),
+        });
+        try {
+          const words = [post.content, ...(post.hashtags || [])].join(' ').trim();
+          const { url } = await publishThroughConnection(connection, words, sr);
+          const publishedAt = new Date().toISOString();
+          await sr.entities.DistributedPost.update(post.id, {
+            status: 'published', published_at: publishedAt,
+            external_post_url: url, error: '',
+          });
+          await sr.entities.ScheduledAutoPostPermit.update(permit.id, {
+            status: 'published', published_at: publishedAt, last_error: '',
+          });
+          report.published++;
+          published.push({ ...post, status: 'published', published_at: publishedAt });
+        } catch (error) {
+          console.error('syncConnections auto publish needs review:', error?.name || 'UnknownError');
+          await sr.entities.DistributedPost.update(post.id, {
+            status: 'failed',
+            error: 'Provider publish result is unconfirmed. Review before retrying.',
+          }).catch(() => {});
+          await sr.entities.ScheduledAutoPostPermit.update(permit.id, {
+            status: 'review', last_error: 'Provider response requires review before retrying.',
+          }).catch(() => {});
+          await sr.entities.Notification.create({
+            user_id: permit.owner_user_id, title: 'Scheduled post needs review',
+            body: 'Publishing could not be confirmed. Please check the platform before trying again.',
+            type: 'system', link: `/campaign/${permit.campaign_id}`,
+          }).catch(() => {});
+          report.failed++;
+        }
       }
     }
 
