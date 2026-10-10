@@ -37,6 +37,17 @@ export default function Connections() {
   const requestGeneration = useRef(0);
   const mountedRef = useRef(true);
 
+  // Help Center deep-links open the actual connection helper, even though
+  // the app scrolls inside its central workspace instead of the window.
+  useEffect(() => {
+    if (!connections || window.location.hash !== "#connection-help") return;
+    const id = window.requestAnimationFrame(() =>
+      document.getElementById("connection-help")?.scrollIntoView({
+        behavior: "smooth", block: "start",
+      }));
+    return () => window.cancelAnimationFrame(id);
+  }, [connections]);
+
   // Resume either a provider popup or the same-tab OAuth redirect. The caller
   // is never trusted merely because it sent a message: the backend rechecks
   // the authenticated owner and provider credential before recording anything.
