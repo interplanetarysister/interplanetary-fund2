@@ -44,10 +44,13 @@ assert.match(registry,/if \(capability && !known\.has\(capability\)\)/);
 assert.match(registry,/\(connection\.automation_mode \|\| 'manual'\) !== 'auto'/);
 assert.doesNotMatch(autopilot,/c\.obo_consent\?\.granted === true/);
 assert.doesNotMatch(connectionSync,/connectionAutomationAllowed/);
-assert.match(saveCredentials,/granted: unifiedObo/);
-assert.match(saveCredentials,/shared_with_agents: unifiedObo/);
+// Existing per-connection opt-outs remain binding after global permission.
+assert.match(saveCredentials,/granted: accountAiConsent/);
+assert.match(saveCredentials,/shared_with_agents: accountAiConsent/);
+assert.match(saveCredentials,/currentConsent\.opted_out !== true/);
 assert.doesNotMatch(campaignUpdate,/agent_access\?\.automation_enabled === true/);
-assert.match(finalizeOauth,/automation_enabled: sharedAgentConsent && \(existing\?\.automation_mode \|\| 'auto'\) === 'auto'/);
+assert.match(finalizeOauth,/automation_enabled: false/);
+assert.match(finalizeOauth,/granted_capabilities: unifiedObo \? confirmed : \[\]/);
 assert.doesNotMatch(prepare,/hasUnifiedOboConsent/);
 assert.match(prepare,/cap\?\.capability_status === 'verified'/);
 assert.match(payoutAccount,/payouts_enabled/);
