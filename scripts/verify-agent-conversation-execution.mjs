@@ -48,6 +48,10 @@ assert.match(cron, /const runtimePublishAvailable = canAutoPublish\(connection\)
 const manual = fs.readFileSync('base44/functions/publishPost/entry.ts', 'utf8');
 assert.match(manual, /getCurrentAppUserConnection\(connectorId\)/);
 assert.match(manual, /publishThroughConnection\(connection, text, sr, ownerOAuth\)/);
+const interactions = fs.readFileSync('base44/functions/recordAgentInteraction/entry.ts', 'utf8');
+assert.match(interactions, /status: 'pending'/);
+assert.match(interactions, /externally_executed: false/);
+assert.doesNotMatch(interactions, /body.approved === true \? 'approved'/);
 const mission = fs.readFileSync('src/components/mission/AutomationPanel.jsx', 'utf8');
 assert.match(mission, /trackAgentConversation/);
 assert.match(mission, /finally \{\s*setLoading\(false\)/);
