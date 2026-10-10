@@ -65,7 +65,10 @@ for(const agent of ['chief_of_staff','communications_agent','story_agent','growt
   assert.match(config.instructions,/WRITING|WRITING RESEARCH|WRITING AND MARKETING/);
 }
 const weekly=JSON.parse(read('base44/workflows/Weekly Writing Psychology & Social Trends Training.jsonc'));
-assert.equal(weekly.trigger.config.cron_expression,'0 16 * * 1');
+assert.equal(weekly.trigger.config.cron_expression,'0 16 * * *');
+assert.match(read('base44/functions/refreshWritingResearch/entry.ts'),/status: 'partial'/);
+assert.match(read('base44/functions/refreshWritingResearch/entry.ts'),/reused: true/);
+assert.match(read('base44/functions/refreshWritingResearch/entry.ts'),/6 \* 60 \* 60/);
 const owned=JSON.parse(read('base44/workflows/IFund Official Social Editor.jsonc'));
 assert.equal(owned.trigger.config.cron_expression,'0 */4 * * *');
 assert.match(read('base44/functions/refreshWritingResearch/entry.ts'),/peer_reviewed/);
