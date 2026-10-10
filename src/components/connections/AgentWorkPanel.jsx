@@ -14,6 +14,7 @@ const format = (state) => ({
   responding: "Working",
   responded: "Response ready",
   tool_failed: "Tool failed",
+  delivery_unconfirmed: "Delivery unconfirmed",
   completed: "Verified",
   failed: "Failed",
   cancelled: "Cancelled",
