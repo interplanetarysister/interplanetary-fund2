@@ -72,8 +72,17 @@ export default async function(req: Request) {
       return Response.json({ error: 'The linked connection is no longer accessible.' }, { status: 404 });
     }
     if (connection.obo_consent?.granted !== true ||
+        connection.obo_consent?.opted_out === true ||
         connection.obo_consent?.permission_version !== consentVersion) {
       return Response.json({ error: 'This connection needs the current IFund help permission.' }, { status: 403 });
+    }
+    // A provider login is not evidence that IFund created an external
+    // account. That operation requires a separate creation receipt.
+    if (String(work.objective || '').startsWith('create_account ')) {
+      return Response.json({
+        ok: true, checked: false, work: publicWork(work),
+        message: 'Provider account creation is pending a supported creation route and proof of creation.',
+      });
     }
     const last = Date.parse(work.last_attempt_at || '');
     const retryAt = Date.parse(work.next_retry_at || '');
@@ -98,10 +107,14 @@ export default async function(req: Request) {
     const result = verification?.data;
     if (result?.working === true) {
       const updated = await base44.entities.AgentDelegation.get(work.id).catch(() => null);
-      return Response.json({ ok: true, checked: true, verified: true, work: publicWork(updated || {
-        ...work, status: 'completed', completed_at: now,
-        result_summary: 'A live provider check succeeded.', verification: 'verifyPlatformConnection:' + connection.id,
-      }) });
+      const completed = updated?.status === 'completed' && !!updated?.verification;
+      return Response.json({
+        ok: true, checked: true, verified: completed,
+        work: publicWork(updated || work),
+        message: completed
+          ? 'The connection check completed this request.'
+          : 'The provider check succeeded, but delegated work remains pending verification.',
+      });
     }
     const message = clean(result?.error || 'The provider did not verify this connection.', 300);
     const needsAuthorization = result?.connection?.capability_status === 'reauthorization_required';
