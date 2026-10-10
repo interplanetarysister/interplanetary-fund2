@@ -259,7 +259,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <p role="status" className="text-sm text-amber-600 break-words">IFund could not check the connection setup right now. You can retry Connect.</p>}
           {usesProviderOAuth && oauthReadiness === "unsupported" &&
             <p role="status" className="text-sm text-amber-600 break-words">Provider sign-in is not available for {platform.name} through IFund yet.</p>}
-          {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>
+          {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
           <div className="rounded-xl border border-border bg-muted/40 p-3">
             <p className="font-semibold text-sm text-foreground mb-2">How IFund connects {platform.name}</p>
             <ol className="list-decimal pl-4 space-y-2 text-xs text-foreground">
