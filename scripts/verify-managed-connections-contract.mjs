@@ -133,11 +133,17 @@ assert.match(finalizeOauth, /ai_consent_required: false/);
 assert.match(finalizeOauth, /automation_mode: unifiedObo \? 'auto' : 'manual'/);
 assert.match(finalizeOauth, /granted_capabilities: unifiedObo \? confirmed : \[\]/);
 assert.doesNotMatch(connectionsPage, /OAuthPermissionStep|completeOAuthConnection|pendingOAuthConsent/);
-assert.match(verifyConnection, /completeManagedRepairDelegations/);
-assert.match(verifyConnection, /user\?\.ai_obo_consent\?\.granted !== true/);
-assert.match(verifyConnection, /delegation\?\.consent_version/);
-assert.match(verifyConnection, /ref !== connection\.id && !unboundConnect/);
-assert.match(verifyConnection, /delegation\?\.objective === `connect/);
+// Owner-triggered and scheduled verification share the same guarded
+// completion rule. Login verification must never complete account creation.
+assert.match(verifyConnection, /completeVerifiedManagedWork/);
+const managedQueue = read('base44/shared/managedQueue.ts');
+assert.match(managedQueue, /hasUnifiedOboConsent/);
+assert.match(managedQueue, /hasManagedConnections/);
+assert.match(managedQueue, /opted_out === true/);
+assert.match(managedQueue, /work\.consent_version !== version/);
+assert.match(managedQueue, /reference !== connection\.id && !isUnboundConnect/);
+assert.match(managedQueue, /work\.objective === `connect/);
+assert.match(managedQueue, /startsWith\('create_account '\)/);
 assert.match(connectionsPage, /verifyPlatformConnection/);
 assert.match(register, /window\.location\.href = "\/onboarding"/);
 assert.match(register, /ifund_post_onboarding_return_to/);
