@@ -7,7 +7,6 @@ import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
 import useSwipeBack from "@/hooks/useSwipeBack";
 import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
-import { hapticTap } from "@/lib/haptics";
 import LegalFooter from "@/components/LegalFooter";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
