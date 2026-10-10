@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import CampaignCard from "@/components/campaigns/CampaignCard";
 import { splitCampaignContent } from "@/lib/campaignEmbed";
 
