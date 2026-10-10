@@ -36,12 +36,16 @@ export default async function(req) {
     const stagedBatch = await readEntityPages(sr, 'DistributedPost',
       { status: 'scheduled' }, 'scheduled_for', 200, 3000);
     const staged = stagedBatch.rows;
-    const [queuedBatch, inProgressBatch, completedBatch] = await Promise.all([
+    const [queuedBatch, inProgressBatch, completedBatch, reviewBatch] = await Promise.all([
       readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'queued' }, 'created_date', 200, 3000),
       readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'publishing' }, '-publishing_at', 200, 600),
       readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'published' }, '-published_at', 200, 600),
+      readEntityPages(sr, 'ScheduledAutoPostPermit', { status: 'review' }, '-publishing_at', 200, 600),
     ]);
-    const existingPermits = [...queuedBatch.rows, ...inProgressBatch.rows, ...completedBatch.rows];
+    const existingPermits = [
+      ...queuedBatch.rows, ...inProgressBatch.rows,
+      ...completedBatch.rows, ...reviewBatch.rows,
+    ];
     report.queue_scan_truncated = stagedBatch.truncated || queuedBatch.truncated;
     const permitByPost = new Map((existingPermits || []).map(p => [p.post_id, p]));
     // Legacy scheduler records without a server-only permit cannot run
