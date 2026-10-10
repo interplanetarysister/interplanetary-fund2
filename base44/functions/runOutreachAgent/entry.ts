@@ -3,6 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { latestWritingGuidance } from '../../shared/writingGuidance.ts';
 
 // Autonomous AI Outreach Agent runner. Invoked on a schedule (no user context),
 // so all work is service-scoped. For each campaign opted into the agent whose
@@ -51,6 +52,7 @@ export default async function(req) {
     const campaigns = await sr.entities.Campaign.filter(
       { outreach_enabled: true, status: 'active' }, '-updated_date', 200);
     const processed = [];
+    const research = await latestWritingGuidance(sr);
     const now = Date.now();
     const recent = (value, windowMs) => {
       const parsed = Date.parse(String(value || ''));
@@ -97,6 +99,8 @@ export default async function(req) {
 
       const prompt = `You are an autonomous fundraising outreach agent working on behalf of an Interplanetary Fund campaign creator. The creator approves every action you propose.
 ${COMPLIANCE}
+Current research-grounded writing guidance: ${research || 'Use clear, credible, donor-centered messaging.'}
+Apply the campaign creator's intended audience and tone; write persuasively but only from real campaign facts. Contrarian framing is acceptable when truthful and respectful.
 
 Based on the campaign below, produce:
 1. Two specific, actionable recommendations to improve outreach and fundraising (truthful, no invented facts).
