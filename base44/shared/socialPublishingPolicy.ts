@@ -26,7 +26,8 @@ export function canEnterMemberQueue(owner: any, campaign: any): boolean {
 
 export function lastPlatformPublication(posts: any[], platform: string, nowMs: number) {
   const recent = (posts || []).filter((p) => p.platform === platform &&
-    p.origin === 'agent_autopilot' && p.status === 'published')
+    (p.origin === 'agent_autopilot' || !p.origin) &&
+    p.status === 'published')
     .map((p) => Date.parse(String(p.published_at || '')))
     .filter((t) => Number.isFinite(t) && t <= nowMs);
   return recent.length ? Math.max(...recent) : 0;
