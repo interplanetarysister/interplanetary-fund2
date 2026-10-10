@@ -5,7 +5,7 @@ export function extractCampaignIds(input) {
   const text = String(input || "");
   const expressions = [
     /\[campaign:([A-Za-z0-9_-]{8,72})\]/gi,
-    /(?:https?:\/\/(?:www\.)?interplanetaryfund\.com)?\/(?:embed\/)?campaign\/([A-Za-z0-9_-]{8,72})/gi,
+    /https?:\/\/(?:www\.)?interplanetaryfund\.com\/(?:embed\/)?campaign\/([A-Za-z0-9_-]{8,72})/gi,
   ];
   return [...new Set(expressions.flatMap(re => [...text.matchAll(re)].map(x=>x[1])))].slice(0,8);
 }
