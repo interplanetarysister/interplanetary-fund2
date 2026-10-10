@@ -10,6 +10,10 @@ import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 // and records recommendations + an activity log entry. Every artifact stays
 // truthful and is left for the owner to approve, reject, edit, or pause.
 
+const MAX_ANALYSES_PER_RUN = 5;
+const SUCCESS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const FAILURE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+
 const COMPLIANCE = `Compliance and safety (non-negotiable):
 - Never fabricate facts, names, amounts, dates, statistics, or outcomes.
 - Only use information provided in the campaign context; omit anything unknown.
@@ -44,12 +48,26 @@ export default async function(req) {
     if (!(await isFeatureEnabled(base44, 'ai_outreach_agent'))) return Response.json({ skipped: true, flag: 'ai_outreach_agent', reason: 'disabled' });
     const sr = base44.asServiceRole;
 
-    const campaigns = await sr.entities.Campaign.filter({ outreach_enabled: true, status: 'active' });
+    const campaigns = await sr.entities.Campaign.filter(
+      { outreach_enabled: true, status: 'active' }, '-updated_date', 200);
     const processed = [];
-
-    for (const campaign of campaigns.slice(0, 5)) {
+    const now = Date.now();
+    const recent = (value, windowMs) => {
+      const parsed = Date.parse(String(value || ''));
+      return Number.isFinite(parsed) && now - parsed >= 0 && now - parsed < windowMs;
+    };
+    // Rotate fairly across opted-in campaigns. The old first-five loop
+    // analyzed the same campaigns forever and never reached later owners.
+    // Cooldowns also prevent repeated metered LLM use and duplicate drafts.
+    const due = (campaigns || []).filter((c) => !c.outreach_paused &&
+      !recent(c.outreach_last_run_at, SUCCESS_COOLDOWN_MS) &&
+      !recent(c.outreach_last_attempt_at, FAILURE_COOLDOWN_MS))
+      .sort((a, b) => (Date.parse(a.outreach_last_attempt_at || '') || 0) -
+        (Date.parse(b.outreach_last_attempt_at || '') || 0));
+    let attempts = 0;
+    for (const campaign of due) {
+      if (attempts >= MAX_ANALYSES_PER_RUN) break;
       try {
-      if (campaign.outreach_paused) { processed.push({ id: campaign.id, skipped: 'paused' }); continue; }
 
       const owner = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
       // Skip campaigns whose owner account is revoked (pending deletion, disabled,
@@ -67,6 +85,12 @@ export default async function(req) {
         continue;
       }
 
+      // Reserve this campaign's cooldown before requesting a metered AI
+      // analysis. Owner auth and tier were verified above.
+      await sr.entities.Campaign.update(campaign.id, {
+        outreach_last_attempt_at: new Date().toISOString(),
+      });
+      attempts++;
       const donations = await sr.entities.Donation.filter({ campaign_id: campaign.id }, '-created_date', 100);
       const updates = await sr.entities.CampaignUpdate.filter({ campaign_id: campaign.id });
       const context = buildContext(campaign, donations.length, updates.length);
@@ -107,6 +131,9 @@ ${context}`;
         },
       });
 
+      if (!res || (!Array.isArray(res.recommendations) && !res.draft_message)) {
+        throw new Error('Outreach analysis returned no usable result.');
+      }
       const ownerId = campaign.created_by_id;
       const recIds = [];
       for (const r of (res.recommendations || [])) {
@@ -147,9 +174,15 @@ ${context}`;
         status: 'pending',
       });
 
+      await sr.entities.Campaign.update(campaign.id, {
+        outreach_last_run_at: new Date().toISOString(), outreach_last_error: '',
+      });
       processed.push({ id: campaign.id, recommendations: recIds.length });
       } catch (campaignError) {
         console.error('runOutreachAgent campaign failed:', campaignError?.name || 'UnknownError');
+        await sr.entities.Campaign.update(campaign.id, {
+          outreach_last_error: 'Analysis could not be completed. It will be retried after a cooldown.',
+        }).catch(() => {});
         processed.push({ id: campaign.id, skipped: 'analysis unavailable; retry on next run' });
       }
     }
