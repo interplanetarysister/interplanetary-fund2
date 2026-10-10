@@ -312,7 +312,15 @@ export default async function(req) {
           const subscriptionUser = await sr.entities.User.get(m.user_id).catch(() => null);
           if (subscriptionUser && subscriptionUser.role !== 'admin' &&
               !(subscriptionUser.subscription_provider === 'paypal' && subscriptionUser.subscription_status === 'active')) {
+            const paidStart = sub.status === 'active' && session.payment_status === 'paid' &&
+              Number.isFinite(Number(sub.start_date || sub.created)) &&
+              Number(sub.start_date || sub.created) > 0
+              ? new Date(Number(sub.start_date || sub.created) * 1000).toISOString() : null;
+            const priorStart = Date.parse(String(subscriptionUser.first_paid_subscription_at || ''));
+            const earliest = paidStart && Number.isFinite(priorStart) && priorStart < Date.parse(paidStart)
+              ? subscriptionUser.first_paid_subscription_at : paidStart;
             await sr.entities.User.update(m.user_id, {
+              ...(earliest ? { first_paid_subscription_at: earliest } : {}),
               subscription_tier: m.subscription_tier,
               subscription_status: sub.status === 'trialing' ? 'trialing' : 'active',
               subscription_provider: 'stripe',
