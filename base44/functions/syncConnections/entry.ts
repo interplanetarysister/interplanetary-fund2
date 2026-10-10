@@ -1,6 +1,6 @@
 import { isFeatureEnabled } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
+import { canAutoPublish, hasAiPublishingConsent, publishThroughConnection } from '../../shared/socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { OAUTH_ENV, verifyManualConnection, isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
@@ -61,7 +61,10 @@ export default async function(req) {
       const consentGranted = hasAiPublishingConsent(owner);
       const capability = await resolveCapabilityForPlatform(sr, connection.platform);
       const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
-      const runtimePublishAvailable = canAutoPublish(connection) || canPublishViaConnector(connection.platform);
+      // A scheduled service has no signed-in owner OAuth session. It can use
+      // only genuinely per-connection credentials; OAuth posts are handed to
+      // the owner for explicit foreground publishing.
+      const runtimePublishAvailable = canAutoPublish(connection);
       const actionAuthorization = owner && ownerUserId
         ? await assertExternalAgentAction(sr, {
             ownerUser: owner,
