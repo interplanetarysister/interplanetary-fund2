@@ -69,8 +69,17 @@ export default async function(req:Request) {
     await sr.entities.SocialPost.filter({author_user_id:userId},'-created_date',24).catch(()=>[]);
   const memberships=profile.show_communities===false?[]:
     await sr.entities.CommunityMember.filter({user_id:userId},'-created_date',35).catch(()=>[]);
-  const communities=await Promise.all((memberships||[]).map((m:any)=>
-    sr.entities.Community.get(m.community_id).catch(()=>null)));
+  const discussions=profile.show_communities===false?[]:
+    await sr.entities.DiscussionPost.filter({created_by_id:userId},'-created_date',24).catch(()=>[]);
+  const replies=profile.show_communities===false?[]:
+    await sr.entities.DiscussionReply.filter({created_by_id:userId},'-created_date',24).catch(()=>[]);
+  const groupIds=[...new Set([
+    ...(memberships||[]).map((m:any)=>m.community_id),
+    ...(discussions||[]).map((p:any)=>p.community_id),
+    ...(replies||[]).map((p:any)=>p.community_id),
+  ].filter(Boolean))].slice(0,50);
+  const communities=await Promise.all(groupIds.map((id:string)=>
+    sr.entities.Community.get(id).catch(()=>null)));
   const groups=communities.filter(Boolean).map((c:any)=>({
     id:c.id,name:c.name,description:c.description,type:c.type,
   }));
@@ -90,6 +99,16 @@ export default async function(req:Request) {
        created_date:p.created_date,likes_count:p.likes_count,comments_count:p.comments_count,
     })),
     communities:groups,
+    community_activity:profile.show_communities===false?[]:[
+      ...(discussions||[]).map((p:any)=>({
+        id:p.id,community_id:p.community_id,type:'discussion',
+        title:compact(p.title,180),created_date:p.created_date,
+      })),
+      ...(replies||[]).map((p:any)=>({
+        id:p.id,community_id:p.community_id,type:'reply',
+        title:'Replied to a community discussion',created_date:p.created_date,
+      })),
+    ].sort((a:any,b:any)=>String(b.created_date||'').localeCompare(String(a.created_date||''))).slice(0,15),
     blogs:(blogs||[]).map((b:any)=>({id:b.id,title:b.title,description:b.description})),
   },{headers:{'Cache-Control':'no-store'}});
  }catch(error){
