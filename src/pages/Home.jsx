@@ -9,6 +9,8 @@ import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CryptoDonateOption from "@/components/payments/CryptoDonateOption";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
+import QuickActions from "@/components/QuickActions";
+import MobileBottomNav from "@/components/MobileBottomNav";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 
@@ -35,11 +37,13 @@ const STORY = [
 
 export default function Home() {
   const platformOnlyMode = !usePublicCampaignFundraising();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="ifund-public min-h-dvh bg-background">
+    <div className="ifund-public min-h-dvh bg-background pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <MobileBottomNav user={isAuthenticated ? user : null} />
+      <QuickActions user={isAuthenticated ? user : null} />
       {platformOnlyMode && (
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-4">
           <PrelaunchNotice />
