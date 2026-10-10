@@ -167,22 +167,22 @@ export default function Subscriptions() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <div className="text-center mb-8">
-        <h1 className="flex items-center justify-center gap-2.5 font-display text-3xl sm:text-4xl text-stone-900 mb-2">
+        <h1 className="flex items-center justify-center gap-2.5 font-display text-3xl sm:text-4xl text-foreground mb-2">
           <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </span>
           AI Plans
         </h1>
-        <p className="text-stone-500">Choose the AI assistant that matches your fundraising ambitions.</p>
+        <p className="text-muted-foreground">Choose the AI assistant that matches your fundraising ambitions.</p>
       </div>
-      {query.get("paypal_checkout") === "cancel" && <p className="text-sm text-stone-600 text-center mb-4">PayPal checkout was canceled. No subscription was activated.</p>}
-      {notice && <p role="status" className="text-sm text-emerald-800 text-center mb-4">{notice}</p>}
-      {error && <p role="alert" className="text-sm text-red-600 text-center mb-4">{error}</p>}
+      {query.get("paypal_checkout") === "cancel" && <p className="text-sm text-muted-foreground text-center mb-4">PayPal checkout was canceled. No subscription was activated.</p>}
+      {notice && <p role="status" className="text-sm text-emerald-700 dark:text-emerald-300 text-center mb-4">{notice}</p>}
+      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300 text-center mb-4">{error}</p>}
       {user.role === "admin" && (
-        <div className="mb-6 border border-cyan-200 rounded-xl bg-cyan-50 p-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6 border border-border rounded-xl bg-card p-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="font-medium text-stone-900">IFund business PayPal billing</p>
-            <p className="text-sm text-stone-600">
+            <p className="font-medium text-foreground">IFund business PayPal billing</p>
+            <p className="text-sm text-muted-foreground">
               {paypal.plans.filter(row => row.verified).length}/10 verified PayPal prices · {paypal.webhook_configured ? "Webhook registered" : "Webhook not registered"}
             </p>
           </div>
@@ -201,8 +201,8 @@ export default function Subscriptions() {
       {active && current.id !== "free" && (
         <div className="mb-6 rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between">
           <div>
-            <p className="text-sm text-stone-500">Your current plan</p>
-            <p className="font-display text-lg text-stone-900">{current.name}</p>
+            <p className="text-sm text-muted-foreground">Your current plan</p>
+            <p className="font-display text-lg text-foreground">{current.name}</p>
             {user.subscription_provider === "paypal" && (
               <button type="button" onClick={cancelPayPal} disabled={subscribing !== null}
                 className="mt-2 text-sm text-red-700 underline underline-offset-2 disabled:opacity-50">
@@ -210,36 +210,36 @@ export default function Subscriptions() {
               </button>
             )}
           </div>
-          <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-white">{subscription.adminGranted ? "Admin · permanent" : subscription.status}</Badge>
+          <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-card">{subscription.adminGranted ? "Admin · permanent" : subscription.status}</Badge>
         </div>
       )}
       {!subscription.adminGranted && !active && (
         <div className="grid sm:grid-cols-2 gap-4 mb-8">
-          <section className="rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
-            <h2 className="font-display text-lg text-stone-900">Try Premium free for 3 days</h2>
-            <p className="text-sm text-stone-700 mt-2 mb-4">One trial per new member. No payment method and no automatic renewal. Your campaigns and drafts remain yours.</p>
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-display text-lg text-foreground">Try Premium free for 3 days</h2>
+            <p className="text-sm text-foreground mt-2 mb-4">One trial per new member. No payment method and no automatic renewal. Your campaigns and drafts remain yours.</p>
             <Button type="button" disabled={!checkoutEnabled || !paypal.trial_eligible || subscribing !== null}
               onClick={startTrial} className="w-full rounded-xl">
               {subscribing === "trial" && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {paypal.trial_eligible ? "Start my free trial" : "Free trial not available"}
             </Button>
           </section>
-          <section className="rounded-2xl border border-stone-200 bg-white p-5">
-            <h2 className="font-display text-lg text-stone-900">$1 Premium Day Pass</h2>
-            <p className="text-sm text-stone-700 mt-2 mb-4">24 hours of Basic premium access. Pay once. Does not renew automatically.</p>
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="font-display text-lg text-foreground">$1 Premium Day Pass</h2>
+            <p className="text-sm text-foreground mt-2 mb-4">24 hours of Basic premium access. Pay once. Does not renew automatically.</p>
             <Button type="button" variant="outline" disabled className="w-full rounded-xl">PayPal day pass not yet available</Button>
           </section>
         </div>
       )}
       {subscription.status === "day_pass" && (
-        <p className="text-sm text-stone-600 mb-6 text-center">Your day pass ends {new Date(user.premium_day_pass_expires_at).toLocaleString()}.</p>
+        <p className="text-sm text-muted-foreground mb-6 text-center">Your day pass ends {new Date(user.premium_day_pass_expires_at).toLocaleString()}.</p>
       )}
       <div className="flex items-center justify-center gap-3 mb-8">
-        <span className={`text-sm font-medium ${!annual ? "text-stone-900" : "text-stone-400"}`}>Monthly</span>
+        <span className={`text-sm font-medium ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
         <button type="button" aria-label="Toggle annual billing" aria-pressed={annual} onClick={() => setAnnual(a => !a)} className={`w-12 h-6 rounded-full transition-colors ${annual ? "bg-primary" : "bg-stone-300"}`}>
           <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${annual ? "translate-x-6" : "translate-x-0.5"}`} />
         </button>
-        <span className={`text-sm font-medium ${annual ? "text-stone-900" : "text-stone-400"}`}>Annual <span className="text-xs text-emerald-600">save ~20%</span></span>
+        <span className={`text-sm font-medium ${annual ? "text-foreground" : "text-muted-foreground"}`}>Annual <span className="text-xs text-emerald-600">save ~20%</span></span>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         {PLANS.map(plan => {
@@ -249,27 +249,27 @@ export default function Subscriptions() {
           const isCurrent = active && subscription.tier === plan.id;
           const existingPaid = active && !subscription.adminGranted;
           return (
-            <div key={plan.id} className={`rounded-2xl border p-6 bg-white flex flex-col ${plan.featured ? "border-primary shadow-lg ring-1 ring-primary/20" : "border-stone-200"}`}>
+            <div key={plan.id} className={`rounded-2xl border p-6 bg-card flex flex-col ${plan.featured ? "border-primary shadow-lg ring-1 ring-primary/20" : "border-border"}`}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-display text-xl text-stone-900">{plan.name}</h2>
+                <h2 className="font-display text-xl text-foreground">{plan.name}</h2>
                 {plan.featured && <Badge className="bg-primary text-primary-foreground">Most popular</Badge>}
               </div>
-              <p className="text-sm text-stone-500 mb-4">{plan.tagline}</p>
+              <p className="text-sm text-muted-foreground mb-4">{plan.tagline}</p>
               <p className="mb-4">
-                <span className="font-display text-3xl text-stone-900">${(price.amount / 100).toLocaleString()}</span>
-                <span className="text-stone-500 text-sm">/{annual ? "year" : "month"}</span>
+                <span className="font-display text-3xl text-foreground">${(price.amount / 100).toLocaleString()}</span>
+                <span className="text-muted-foreground text-sm">/{annual ? "year" : "month"}</span>
               </p>
               <ul className="space-y-2 mb-6 flex-1">
                 {plan.features.map(f => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-stone-700">
+                  <li key={f} className="flex items-start gap-2 text-sm text-foreground">
                     <Check className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />{f}
                   </li>
                 ))}
               </ul>
               {subscription.adminGranted ? (
-                <Button disabled className="rounded-xl bg-stone-100 text-stone-500">{isCurrent ? "Admin plan · included" : "Included with admin"}</Button>
+                <Button disabled className="rounded-xl bg-muted text-muted-foreground">{isCurrent ? "Admin plan · included" : "Included with admin"}</Button>
               ) : isCurrent ? (
-                <Button disabled className="rounded-xl bg-stone-100 text-stone-500">Current plan</Button>
+                <Button disabled className="rounded-xl bg-muted text-muted-foreground">Current plan</Button>
               ) : existingPaid ? (
                 <Button disabled variant="outline" className="rounded-xl">Manage your current plan before switching</Button>
               ) : (
@@ -291,7 +291,7 @@ export default function Subscriptions() {
           );
         })}
       </div>
-      <p className="flex items-center justify-center gap-1.5 text-xs text-stone-500 mt-8">
+      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mt-8">
         <ShieldCheck className="w-4 h-4" /> Secure recurring billing via PayPal when available. Prices in USD. Manage or cancel through your billing provider.
       </p>
     </div>
