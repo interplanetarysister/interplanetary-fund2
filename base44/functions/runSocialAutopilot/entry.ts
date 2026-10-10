@@ -1,177 +1,158 @@
-import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
+import { isFeatureEnabled } from '../../shared/featureFlagGate.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
-import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { canAutoPublish, hasAiPublishingConsent } from '../../shared/socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
+import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
+import { canEnterMemberQueue, paidPriorityAt } from '../../shared/socialPublishingPolicy.ts';
 
-// Autonomous Social Media Autopilot (invoked by the "Social Media Autopilot"
-// workflow, no user context — service-scoped like runOutreachAgent):
-// For each active, opted-in campaign whose owner granted AI publishing consent,
-// it generates one truthful cross-platform post and stages it on the owner's
-// connected social destinations — auto connections get it scheduled for the
-// Connection Sync Engine to publish, ask/draft connections get it staged for
-// the owner to approve. Max one generated post per campaign per week, and
-// every artifact is recorded in AgentActivity for the owner.
-
-const COMPLIANCE = `Compliance and safety (non-negotiable):
-- Never fabricate facts, names, amounts, dates, statistics, or outcomes.
-- Only use information provided in the campaign context; omit anything unknown.
-- Never create false urgency, promise outcomes, or misrepresent facts.
-- Respect privacy, anti-spam rules, and platform terms.`;
-
-const WEEK_SECONDS = 7 * 24 * 60 * 60;
-
-function buildContext(campaign) {
-  const p = campaign.ai_profile || {};
-  const lines = [];
-  if (campaign.title) lines.push(`Title: ${campaign.title}`);
-  if (campaign.category) lines.push(`Category: ${campaign.category}`);
-  if (campaign.summary) lines.push(`Summary: ${campaign.summary}`);
-  if (campaign.goal_amount) lines.push(`Goal: $${campaign.goal_amount}`);
-  if (campaign.raised_amount != null) lines.push(`Raised: $${campaign.raised_amount || 0} from ${campaign.donor_count || 0} donors`);
-  if (p.tone) lines.push(`Preferred tone: ${p.tone}`);
-  if (p.priority) lines.push(`Priority: ${p.priority}`);
-  if (p.always_emphasize) lines.push(`Always emphasize: ${p.always_emphasize}`);
-  if (p.never_change) lines.push(`Never change: ${p.never_change}`);
-  if (p.avoid_words) lines.push(`Avoid: ${p.avoid_words}`);
-  if (p.ideal_donors) lines.push(`Ideal donors: ${p.ideal_donors}`);
-  if (p.platforms && p.platforms.length) lines.push(`Sharing platforms: ${p.platforms.join(', ')}`);
-  return lines.join('\n') || 'No campaign context available.';
+const MAX_CAMPAIGNS = 6;
+const DAY = 24 * 60 * 60 * 1000;
+function recent(value: unknown, ms: number) {
+  const t = Date.parse(String(value || ''));
+  return Number.isFinite(t) && Date.now() - t >= 0 && Date.now() - t < ms;
+}
+function context(c: any) {
+  const p = c.ai_profile || {};
+  return [
+    c.title && `Campaign: ${c.title}`,
+    c.summary && `Summary: ${String(c.summary).slice(0,1000)}`,
+    c.category && `Type: ${c.category}`,
+    p.tone && `Chosen writing style: ${p.tone}`,
+    p.donor_discovery_notes && `Creator's voluntary audience notes: ${p.donor_discovery_notes}`,
+    p.priority && `Priority: ${p.priority}`,
+    p.avoid_words && `Words to avoid: ${p.avoid_words}`,
+  ].filter(Boolean).join('\n').slice(0,3000);
 }
 
-export default async function(req) {
+// Runs daily; only creates trusted queue permits. The hourly sync worker
+// enforces no more than one paid-campaign post per external platform in a
+// rolling 12-hour window across ALL IFund subscribed campaigns.
+export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
-    if (!(await isFeatureEnabled(base44, 'social_autopilot'))) return Response.json({ skipped: true, flag: 'social_autopilot', reason: 'disabled' });
+    if (!(await isFeatureEnabled(base44, 'social_autopilot')))
+      return Response.json({ skipped: true, reason: 'Autopilot disabled' });
     const sr = base44.asServiceRole;
-    const report = { campaigns_processed: 0, posts_staged: 0, skipped: [] };
-
-    // Centralized access gate: if social publishing is revoked/disabled at the
-    // registry level, the autopilot stages nothing this run.
     const access = await assertPlatformAccess(sr, 'social_publish');
-    if (!access.ok) {
-      return Response.json({ skipped_all: access.reason, ...report });
-    }
-
-    // Eligible destinations: connected social connections with automation on.
-    const connections = await sr.entities.PlatformConnection.filter({ kind: 'social', status: 'connected' }, '-updated_date', 200);
-    const activeConnections = connections.filter((c) =>
-      ['auto', 'ask', 'draft'].includes(c.automation_mode)
-    );
-    if (!activeConnections.length) {
-      return Response.json({ skipped_all: 'no automated social connections', ...report });
-    }
-
-    const campaigns = await sr.entities.Campaign.filter({ status: 'active', outreach_enabled: true }, '-updated_date', 50);
-
-    for (const campaign of campaigns) {
-      if (report.campaigns_processed >= 5) break;
-      if (campaign.outreach_paused) { report.skipped.push({ id: campaign.id, reason: 'paused' }); continue; }
-
-      const owner = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
-      if (!owner || owner.account_deletion_pending || (owner.account_status && owner.account_status !== 'active')) {
-        report.skipped.push({ id: campaign.id, reason: 'owner account unavailable' });
-        continue;
+    if (!access.ok) return Response.json({ skipped: true, reason: 'Publishing access unavailable' });
+    const [connections, campaigns, studies] = await Promise.all([
+      sr.entities.PlatformConnection.filter({ kind: 'social', status: 'connected' }, '-updated_date', 300),
+      sr.entities.Campaign.filter({ status: 'active', outreach_enabled: true }, '-updated_date', 300),
+      sr.entities.WritingResearchBrief.filter({ status: 'verified_sources' }, '-created_date', 1).catch(() => []),
+    ]);
+    const tips = (studies?.[0]?.guidance || []).slice(0, 5).join('; ').slice(0, 1500);
+    const ownerCache = new Map();
+    const eligible = [];
+    const report = { campaigns_processed: 0, posts_staged: 0, automatic: 0, owner_review: 0, failed: 0 };
+    for (const campaign of campaigns || []) {
+      if (campaign.outreach_paused ||
+          recent(campaign.social_last_generated_at, DAY) ||
+          recent(campaign.social_last_generation_attempt_at, 2 * 60 * 60 * 1000)) continue;
+      let owner = ownerCache.get(campaign.created_by_id);
+      if (!owner) {
+        owner = await sr.entities.User.get(campaign.created_by_id).catch(() => null);
+        if (owner) ownerCache.set(campaign.created_by_id, owner);
       }
-      if (!hasAiPublishingConsent(owner)) {
-        report.skipped.push({ id: campaign.id, reason: 'no AI OBO authorization' });
-        continue;
-      }
-      const ownerTargets = activeConnections.filter((c) =>
-        c.created_by_id === campaign.created_by_id &&
-        (!c.campaign_id || c.campaign_id === campaign.id)
-      );
-      const targets = [];
-      for (const connection of ownerTargets) {
-        const authorization = await assertExternalAgentAction(sr, {
-          ownerUser: owner,
-          ownerUserId: campaign.created_by_id,
-          campaign,
-          connection,
-          capability: 'create_post',
-          requireAutomation: connection.automation_mode === 'auto',
+      if (!canEnterMemberQueue(owner, campaign) || !hasAiPublishingConsent(owner)) continue;
+      const targets = (connections || []).filter(c =>
+        c.created_by_id === owner.id &&
+        (!c.campaign_id || c.campaign_id === campaign.id) &&
+        c.verification_status === 'verified' &&
+        ['auto', 'ask', 'draft'].includes(c.automation_mode));
+      if (targets.length) eligible.push({ campaign, owner, targets, priority: paidPriorityAt(owner) });
+    }
+    // First generation favors original paid subscribers; repeated generations
+    // rotate to campaigns not served recently instead of starving new members.
+    eligible.sort((a,b) => String(a.campaign.social_last_generated_at || '').localeCompare(
+      String(b.campaign.social_last_generated_at || '')) ||
+      a.priority.localeCompare(b.priority) || String(a.campaign.id).localeCompare(String(b.campaign.id)));
+
+    for (const { campaign, owner, targets, priority } of eligible) {
+      if (report.campaigns_processed >= MAX_CAMPAIGNS) break;
+      try {
+        const existing = await sr.entities.DistributedPost.filter(
+          { campaign_id: campaign.id }, '-created_date', 100);
+        const destinations = [];
+        const seen = new Set();
+        for (const conn of targets) {
+          if (seen.has(conn.platform)) continue;
+          seen.add(conn.platform);
+          if ((existing || []).some(p => p.origin === 'agent_autopilot' &&
+              p.platform === conn.platform &&
+              ['scheduled','publishing','pending_approval','draft'].includes(p.status))) continue;
+          const grant = await assertExternalAgentAction(sr, {
+            ownerUser: owner, ownerUserId: owner.id, campaign, connection: conn,
+            capability: 'create_post', requireAutomation: conn.automation_mode === 'auto',
+          });
+          if (!grant.ok) continue;
+          const capability = await resolveCapabilityForPlatform(sr, conn.platform);
+          const verified = capability?.direct_publish_verified === true &&
+            capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
+          destinations.push({ conn, auto: conn.automation_mode === 'auto' &&
+            verified && canAutoPublish(conn) });
+        }
+        if (!destinations.length) continue;
+        await sr.entities.Campaign.update(campaign.id, {
+          social_last_generation_attempt_at: new Date().toISOString(),
         });
-        if (authorization.ok) targets.push(connection);
-      }
-      if (!targets.length) {
-        report.skipped.push({ id: campaign.id, reason: 'no matching social connections' });
-        continue;
-      }
-
-      // Cadence guard: at most one generated post per campaign per week.
-      const rate = await checkRateLimit(base44, `socialAutopilot:${campaign.id}`, 1, WEEK_SECONDS);
-      if (!rate.allowed) {
-        report.skipped.push({ id: campaign.id, reason: 'weekly cadence reached' });
-        continue;
-      }
-
-      const res = await sr.integrations.Core.InvokeLLM({
-        prompt: `You are the autonomous social media manager for an Interplanetary Fund campaign, acting on behalf of the campaign creator. The creator approved automated social posting for this campaign.
-${COMPLIANCE}
-
-Write one social media post promoting this campaign. It should be under 280 characters, plain text, warm and inspiring, include a clear call to support, and no hashtags (a platform-tailored hashtag set is added separately). Use only facts from the context below.
-
-Campaign context:
-${buildContext(campaign)}
-
-Return JSON only matching the schema.`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            post_text: { type: 'string' },
-            hashtags: { type: 'array', items: { type: 'string' } },
-          },
-        },
-      });
-
-      const content = (res.post_text || '').trim();
-      if (!content) {
-        report.skipped.push({ id: campaign.id, reason: 'empty generation' });
-        continue;
-      }
-      const hashtags = (res.hashtags || []).slice(0, 4);
-      const nowIso = new Date().toISOString();
-      let staged = 0;
-
-      for (const connection of targets) {
-        const status =
-          connection.automation_mode === 'auto' && canAutoPublish(connection) ? 'scheduled' :
-          connection.automation_mode === 'ask' ? 'pending_approval' : 'draft';
-        await sr.entities.DistributedPost.create({
-          campaign_id: campaign.id,
-          campaign_title: campaign.title,
-          connection_id: connection.id,
-          platform: connection.platform,
-          content,
-          hashtags,
-          status,
-          scheduled_for: status === 'scheduled' ? nowIso : undefined,
-          retry_count: 0,
+        const answer = await sr.integrations.Core.InvokeLLM({
+          prompt: `Write a compelling and truthful social media promotion for a subscribed Interplanetary Fund fundraiser.
+Use evidence-based persuasion: audience relevance, concrete benefits, meaningful human stories, credible proof, an inspiring but accurate message and a clear invitation to donate or share. Match the creator's chosen style. Social marketing research guidance (not facts about this campaign): ${tips || 'Clarity, credibility, human agency and authentic social connection matter.'}
+Never fabricate donations, urgency, trust rankings, accomplishments, testimonials, or results. Do not shame potential donors or exploit personal vulnerability. Under 280 characters, no hashtags in text.
+Campaign data:\n${context(campaign)}
+Return JSON with post_text and optional hashtags.`,
+          response_json_schema: { type: 'object', properties: {
+            post_text: { type: 'string' }, hashtags: { type: 'array', items: { type: 'string' } },
+          }},
         });
-        staged++;
+        const words = String(answer?.post_text || '').trim().slice(0, 280);
+        if (!words) throw new Error('No generated content');
+        const hashtags = (Array.isArray(answer?.hashtags) ? answer.hashtags : [])
+          .filter(x => typeof x === 'string' && /^#[a-z0-9_]{2,32}$/i.test(x)).slice(0, 3);
+        for (const { conn, auto } of destinations) {
+          // Create as a draft, then issue a service-only, owner/connection
+          // bound posting permit BEFORE the status becomes scheduled.
+          const post = await sr.entities.DistributedPost.create({
+            owner_user_id: owner.id, origin: 'agent_autopilot',
+            campaign_id: campaign.id, campaign_title: campaign.title,
+            connection_id: conn.id, platform: conn.platform,
+            content: words, hashtags, status: 'draft', retry_count: 0,
+          });
+          if (auto) {
+            await sr.entities.ScheduledAutoPostPermit.create({
+              post_id: post.id, campaign_id: campaign.id,
+              owner_user_id: owner.id, connection_id: conn.id,
+              platform: conn.platform, priority_at: priority, status: 'queued',
+            });
+            await sr.entities.DistributedPost.update(post.id, {
+              status: 'scheduled', scheduled_for: new Date().toISOString(),
+            });
+            report.automatic++;
+          } else {
+            await sr.entities.DistributedPost.update(post.id, {
+              status: conn.automation_mode === 'ask' ? 'pending_approval' : 'draft',
+            });
+            report.owner_review++;
+          }
+          report.posts_staged++;
+        }
+        await sr.entities.AgentActivity.create({
+          campaign_id: campaign.id, campaign_title: campaign.title, owner_user_id: owner.id,
+          category: 'content', action: 'Prepared audience-aware campaign promotion.',
+          reason: 'Subscriber opted in to IFund social promotion.',
+          result: 'Scheduled only when a provider-supported path is verified; otherwise prepared for manual review.',
+          status: 'pending', artifact_type: 'social_post',
+        }).catch(() => {});
+        await sr.entities.Campaign.update(campaign.id, { social_last_generated_at: new Date().toISOString() });
+        report.campaigns_processed++;
+      } catch (error) {
+        console.error('runSocialAutopilot campaign failed:', error?.name || 'UnknownError');
+        report.failed++;
       }
-
-      await sr.entities.AgentActivity.create({
-        campaign_id: campaign.id,
-        campaign_title: campaign.title,
-        owner_user_id: campaign.created_by_id,
-        category: 'content',
-        action: `Autopilot generated a social post and staged it on ${staged} connected platform${staged === 1 ? '' : 's'}.`,
-        reason: 'Campaign is opted into autonomous social posting; the weekly cadence guard allowed a new post.',
-        expected_impact: 'Steady cross-platform presence that keeps the campaign in front of supporters.',
-        result: `Staged ${staged} post${staged === 1 ? '' : 's'} across the connected social destinations.`,
-        recommended_next_actions: ['Review the staged post in your campaign distribution panel and edit or approve it.'],
-        artifact_type: 'social_post',
-        status: 'pending',
-      });
-
-      report.campaigns_processed++;
-      report.posts_staged += staged;
     }
-
     return Response.json(report);
   } catch (error) {
-    console.error('runSocialAutopilot error:', error.message);
-    return Response.json({ error: 'The Social Autopilot hit a problem and could not finish this run.' }, { status: 500 });
+    console.error('runSocialAutopilot failed:', error?.name || 'UnknownError');
+    return Response.json({ error: 'Could not prepare social posts.' }, { status: 500 });
   }
 }
