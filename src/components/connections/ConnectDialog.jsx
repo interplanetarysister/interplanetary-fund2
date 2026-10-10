@@ -69,7 +69,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       if (!data?.configured || !data?.connector_id) {
         setError(platform.id === "facebook"
           ? "Facebook Pages publishing has not been configured for IFund yet. Facebook sign-in does not grant posting permission."
-          : "This platform connection requires provider setup before sign-in can open.");
+          : `IFund has not enabled ${platform.name} account sign-in yet. This is an IFund connection setup issue, not something you need to configure on ${platform.name}. The account has not been connected.`);
         return;
       }
       const me = await base44.auth.me();
@@ -116,7 +116,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           setHelpDetails("This connection was verified as working.");
           return;
         }
-        setHelpDetails(result?.message || "The connection agent has recorded the next required step.");
+        setHelpDetails(result?.message || "The connection agent has recorded the next required step. IFund will not show this account as connected until the provider verifies it.");
       } else {
         setHelpDetails("Follow the provider’s sign-in and authorization instructions here. Agent-managed setup requires an eligible subscription and IFund help permission.");
       }
@@ -178,7 +178,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md min-w-0 rounded-2xl max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-lg sm:max-w-md min-w-0 rounded-2xl max-h-[calc(100dvh-1.5rem)] overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y pb-6">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
@@ -253,7 +253,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 space-y-2">
             <p className="font-semibold text-sm text-slate-950">IFund connection helper</p>
             <p className="text-xs text-slate-700">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
-            <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-slate-900 bg-white" disabled={managedBusy || connecting} onClick={startGuidedConnection}>
+            <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-foreground bg-card whitespace-normal h-auto py-3" disabled={managedBusy || connecting} onClick={startGuidedConnection}>
               {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to connect this account now"}
             </Button>
             {helpDetails && <p role="status" className="text-xs text-slate-800 break-words">{helpDetails}</p>}
