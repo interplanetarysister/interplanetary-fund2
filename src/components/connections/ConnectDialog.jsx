@@ -239,6 +239,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
           {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
+          <div className="rounded-xl border border-stone-200 bg-stone-50 p-3">
+            <p className="font-semibold text-sm text-stone-900 mb-2">How IFund connects {platform.name}</p>
+            <ol className="list-decimal pl-4 space-y-2 text-xs text-stone-700">
+              {usesProviderOAuth && <li>IFund opens the official {platform.name} authorization. An existing provider session may be reused on this device.</li>}
+              {(platform.steps||[]).filter(step=>step.id!=="auto").map(step=><li key={step.id}>
+                <span className="font-medium">{step.label}</span>
+                {step.hint && <span className="block mt-0.5">{step.hint}</span>}
+              </li>)}
+              <li>Return to IFund for a provider verification check. If the account was not verified, the specific required step remains in your AI activity panel.</li>
+            </ol>
+          </div>
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3 space-y-2">
             <p className="font-semibold text-sm text-slate-950">IFund connection helper</p>
             <p className="text-xs text-slate-700">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
