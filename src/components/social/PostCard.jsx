@@ -28,7 +28,7 @@ export default function PostCard({ post, currentUser, onLike, onDelete, onShare 
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-slate-100 text-sm break-words">{post.author_name || "Explorer"}</span>
+            <Link className="font-medium text-cyan-100 text-sm break-words hover:underline" to={`/u/${post.author_user_id}`}>{post.author_name || "Explorer"}</Link>
             {post.author_username && <span className="min-w-0 max-w-full break-all text-slate-400 text-xs">@{post.author_username}</span>}
             <BannerBadge tier={post.author_banner_tier} />
             {post.ai_generated && (
