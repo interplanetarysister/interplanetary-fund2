@@ -59,15 +59,35 @@ export default async function(req) {
         report.awaiting_approval++;
       }
     }
+    // A provider request may have succeeded just before the worker stopped.
+    // Never auto-retry that ambiguous write: put it in review and reserve the
+    // platform for the full twelve-hour window from the attempted send.
+    for (const permit of inProgressBatch.rows) {
+      const started = Date.parse(String(permit.publishing_at || ''));
+      if (!Number.isFinite(started) || now.getTime() - started < 30 * 60 * 1000) continue;
+      await sr.entities.ScheduledAutoPostPermit.update(permit.id, {
+        status: 'review', last_error: 'Provider result unknown after worker interruption.',
+      });
+      await sr.entities.DistributedPost.update(permit.post_id, {
+        status: 'failed', error: 'Check the provider for an existing post before retrying.',
+      }).catch(() => {});
+      reviewBatch.rows.push({ ...permit, status: 'review' });
+    }
     if (publishingEnabled && access.ok) {
       const published = await sr.entities.DistributedPost.filter({ status: 'published' }, '-published_at', 500);
-      const publishedPermits = (existingPermits || []).filter(p => p.status === 'published');
-      const inflight = new Set((existingPermits || []).filter(p =>
-        p.status === 'publishing').map(p => p.platform));
+      const publishedPermits = completedBatch.rows;
+      const activeInFlight = inProgressBatch.rows.filter(p => !reviewBatch.rows.some(r => r.id === p.id));
+      const uncertainPlatforms = new Set(reviewBatch.rows.filter(p => {
+        const started = Date.parse(String(p.publishing_at || ''));
+        return Number.isFinite(started) &&
+          now.getTime() - started < 12 * 60 * 60 * 1000;
+      }).map(p => p.platform));
+      const inflight = new Set(activeInFlight.map(p => p.platform));
       const dueByPlatform = new Map();
       for (const permit of (existingPermits || [])) {
-        if (permit.status !== 'queued' || !platformMayPublish(published, permit.platform, now.getTime())
-            || inflight.has(permit.platform)) continue;
+        if (permit.status !== 'queued' ||
+            !platformMayPublish(published, permit.platform, now.getTime()) ||
+            inflight.has(permit.platform) || uncertainPlatforms.has(permit.platform)) continue;
         const post = (staged || []).find(p => p.id === permit.post_id);
         if (!post || !post.scheduled_for || Date.parse(post.scheduled_for) > now.getTime()) continue;
         if (!dueByPlatform.has(permit.platform)) dueByPlatform.set(permit.platform, []);
