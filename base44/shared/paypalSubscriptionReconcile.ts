@@ -36,7 +36,17 @@ export async function reconcilePayPalSubscription(sr: any, subscriptionId: strin
         ['active', 'trialing', 'past_due'].includes(user.subscription_status)) {
       throw new Error('A different PayPal subscription is already linked.');
     }
+    // First paid membership is stable even if the member later renews or
+    // changes plans. Only record provider-attested dates AFTER payment check.
+    const providerStart = Date.parse(String(subscription.start_time || ''));
+    const paidAt = Date.parse(String(payment?.time || ''));
+    const verifiedFirstPaidAt = Number.isFinite(providerStart) && providerStart <= paidAt
+      ? new Date(providerStart).toISOString() : new Date(paidAt).toISOString();
+    const previousFirstPaid = Date.parse(String(user.first_paid_subscription_at || ''));
+    const earliestPaidAt = Number.isFinite(previousFirstPaid) && previousFirstPaid < Date.parse(verifiedFirstPaidAt)
+      ? user.first_paid_subscription_at : verifiedFirstPaidAt;
     await sr.entities.User.update(user.id, {
+      first_paid_subscription_at: earliestPaidAt,
       subscription_provider: 'paypal', paypal_subscription_id: subscriptionId,
       paypal_subscription_plan_id: subscription.plan_id,
       subscription_tier: intent.tier, subscription_interval: intent.interval,
