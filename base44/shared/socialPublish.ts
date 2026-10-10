@@ -97,16 +97,16 @@ export async function publishToLinkedIn(accessToken, text) {
 }
 
 // Publishes a DistributedPost through its connection. Throws on failure.
-// For OAuth connector platforms (linkedin), the caller must pass the service-
-// role client so the access token can be retrieved server-side.
-export async function publishThroughConnection(connection, text, sr) {
+// OAuth platforms MUST receive the current signed-in owner's app-user token;
+// an administrator/shared connector can never post on behalf of an unrelated
+// creator. Scheduled/background workers do not have that owner context.
+export async function publishThroughConnection(connection, text, sr, ownerOAuth = null) {
   const c = connection.credentials || {};
   if (connection.platform === 'bluesky') return publishToBluesky(c.bluesky_handle, c.bluesky_app_password, text);
   if (connection.platform === 'mastodon') return publishToMastodon(c.mastodon_instance, c.mastodon_access_token, text);
-  if (connection.platform === 'linkedin' && sr) {
-    const conn = await sr.connectors.getConnection('linkedin').catch(() => null);
-    if (!conn?.accessToken) throw new Error('LinkedIn connector is not authorized.');
-    return publishToLinkedIn(conn.accessToken, text);
+  if (connection.platform === 'linkedin') {
+    if (!ownerOAuth?.accessToken) throw new Error('LinkedIn requires the account owner to authorize publishing.');
+    return publishToLinkedIn(ownerOAuth.accessToken, text);
   }
   throw new Error(`Direct publishing is not available for ${connection.platform} yet.`);
 }
