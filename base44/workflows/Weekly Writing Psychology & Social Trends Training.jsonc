@@ -1,13 +1,13 @@
 {
   "name": "Weekly Writing Psychology & Social Trends Training",
-  "description": "Weekly public-source research and training reference for every IFund agent that writes copy. Studies real donation behavior, persuasion, social engagement and evolving creator trends with source provenance and cautious conclusions.",
+  "description": "Retrieves and synthesizes public donor psychology and current social trends once per week; daily schedule retries only if no successful weekly research exists. Weekly deduplication prevents repeated metered AI calls.",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "0 16 * * 1",
+      "cron_expression": "0 16 * * *",
       "one_time_date": null,
       "timezone": "UTC",
       "interval_value": null,
