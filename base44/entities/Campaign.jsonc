@@ -1,5 +1,6 @@
 {
   "type": "object",
+  "name": "Campaign",
   "properties": {
     "title": {
       "type": "string"
@@ -70,8 +71,8 @@
     },
     "accept_crypto_donations": {
       "type": "boolean",
-      "default": false,
-      "description": "Creator opts into cryptocurrency giving. Checkout requires independently verified settlement readiness; opt-in alone never activates transfers."
+      "description": "Creator opts into cryptocurrency giving. Checkout requires independently verified settlement readiness; opt-in alone never activates transfers.",
+      "default": false
     },
     "ai_profile": {
       "type": "object",
@@ -155,7 +156,7 @@
     },
     "outreach_enabled": {
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "outreach_paused": {
       "type": "boolean",
@@ -163,9 +164,23 @@
     },
     "draft_step": {
       "type": "integer",
+      "description": "Last step reached in the private campaign creation wizard.",
       "minimum": 0,
-      "maximum": 3,
-      "description": "Last step reached in the private campaign creation wizard."
+      "maximum": 3
+    },
+    "outreach_last_run_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent completed Outreach Agent analysis; used for fair scheduling."
+    },
+    "outreach_last_attempt_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Latest attempted Outreach Agent analysis; prevents excessive retries."
+    },
+    "outreach_last_error": {
+      "type": "string",
+      "description": "Human-readable safe last-run outcome; no provider secrets."
     }
   },
   "required": [],
@@ -214,6 +229,5 @@
         }
       ]
     }
-  },
-  "name": "Campaign"
+  }
 }
