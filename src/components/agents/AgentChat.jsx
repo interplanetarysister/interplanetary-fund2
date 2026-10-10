@@ -5,18 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
-import { recordAgentInteraction } from "@/lib/recordAgentInteraction";
-
-async function safelyRecord(details) {
-  try {
-    await recordAgentInteraction(details);
-  } catch (recordError) {
-    console.warn("Agent interaction record failed", recordError);
-  }
-}
 
 export default function AgentChat({ agentName, agentLabel, greeting }) {
   const convRef = useRef(null);
+  const currentRunRef = useRef(null);
+  const lastSyncRef = useRef(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [starting, setStarting] = useState(true);
@@ -24,6 +17,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   const [waitingForResponse, setWaitingForResponse] = useState(false);
   const [restart, setRestart] = useState(0);
   const [startError, setStartError] = useState(false);
+  const [trackingError, setTrackingError] = useState(false);
 
   useEffect(() => {
     let unsub = () => {};
@@ -33,20 +27,36 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     setWaitingForResponse(false);
     setMessages([]);
     convRef.current = null;
+    currentRunRef.current = null;
+    lastSyncRef.current = 0;
     (async () => {
       try {
         const conv = await base44.agents.createConversation({ agent_name: agentName, metadata: { name: agentLabel } });
         if (cancelled) return;
         convRef.current = conv;
         setMessages(conv.messages || []);
-        void safelyRecord({ agentName, summary: `Conversation started with ${agentLabel}`, outcome: conv?.id ? `Conversation ${conv.id} created` : "Conversation created", approved: false });
+
         unsub = base44.agents.subscribeToConversation(conv.id, (data) => {
           if (cancelled) return;
           const next = data.messages || [];
           setMessages(next);
           const lastUserIndex = next.map((m) => m.role).lastIndexOf("user");
           const lastAssistantIndex = next.map((m) => m.role).lastIndexOf("assistant");
-          if (lastAssistantIndex > lastUserIndex && next[lastAssistantIndex]?.content) setWaitingForResponse(false);
+          if (lastAssistantIndex > lastUserIndex) {
+            const latest = next[lastAssistantIndex];
+            const calls = Array.isArray(latest?.tool_calls) ? latest.tool_calls : [];
+            const busy = calls.some((call) => ["pending", "running"].includes(call.status));
+            if (!busy && (latest?.content || calls.some((call) =>
+              ["error", "stopped", "waiting_for_user_input"].includes(call.status)))) {
+              setWaitingForResponse(false);
+            }
+            const runId = currentRunRef.current;
+            if (runId && Date.now() - lastSyncRef.current >= 2500) {
+              lastSyncRef.current = Date.now();
+              void base44.functions.invoke("trackAgentConversation", { mode: "sync", run_id: runId })
+                .catch(() => setTrackingError(true));
+            }
+          }
         });
       } catch (e) {
         console.error("Agent conversation start failed", e);
@@ -64,11 +74,34 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     setInput("");
     setSending(true);
     setWaitingForResponse(true);
+    setTrackingError(false);
     try {
+      // Start the server-owned progress record BEFORE delivering a message.
+      // This preserves the baseline for distinguishing this reply from older
+      // assistant messages. Never store message bodies in the progress log.
+      try {
+        const tracked = await base44.functions.invoke("trackAgentConversation", {
+          mode: "start", agent_name: agentName, conversation_id: convRef.current.id,
+        });
+        currentRunRef.current = tracked?.data?.ok ? tracked.data.run.id : null;
+        if (!currentRunRef.current) setTrackingError(true);
+      } catch {
+        currentRunRef.current = null;
+        setTrackingError(true);
+      }
       await base44.agents.addMessage(convRef.current, { role: "user", content });
-      void safelyRecord({ agentName, summary: content, outcome: "Message accepted; agent action not yet verified", approved: false });
+      if (currentRunRef.current) {
+        void base44.functions.invoke("trackAgentConversation", {
+          mode: "sync", run_id: currentRunRef.current,
+        }).catch(() => setTrackingError(true));
+      }
     } catch (e) {
       console.error("Agent message send failed", e);
+      if (currentRunRef.current) {
+        void base44.functions.invoke("trackAgentConversation", {
+          mode: "failed", run_id: currentRunRef.current,
+        }).catch(() => {});
+      }
       setWaitingForResponse(false);
       setInput((current) => current || content);
       setMessages((m) => [...m, { role: "assistant", content: "I couldn't send that message. Please try again." }]);
@@ -98,11 +131,12 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
       </>}
     </div>
     <div className="mt-2 text-xs text-muted-foreground" role="status" aria-live="polite">{workStatus}</div>
+    {trackingError && <p role="alert" className="mt-1 text-xs text-amber-700">The conversation may still work, but IFund could not save its progress status.</p>}
     {startError && <Button type="button" size="sm" variant="outline" onClick={() => setRestart((n) => n + 1)}>Retry agent connection</Button>}
     <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>Platform actions use your verified IFund connections.</span><Link to="/connections" className="font-semibold text-primary hover:underline shrink-0">Connect a platform</Link></div>
     <div className="mt-2 flex gap-2 items-end">
       <Textarea value={input} disabled={starting || !convRef.current} onChange={(e) => setInput(e.target.value)} placeholder={`Ask ${agentLabel}…`} rows={1} className="flex-1 resize-none rounded-xl min-h-[42px] max-h-28 py-2.5" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
-      <Button size="icon" aria-label="Send message" onClick={send} disabled={sending || starting || !input.trim() || !convRef.current} className="rounded-xl h-11 w-11 shrink-0"><Send className="w-4 h-4" /></Button>
+      <Button size="icon" aria-label="Send message" onClick={send} disabled={sending || waitingForResponse || starting || !input.trim() || !convRef.current} className="rounded-xl h-11 w-11 shrink-0"><Send className="w-4 h-4" /></Button>
     </div>
   </div>;
 }
