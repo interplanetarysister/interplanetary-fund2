@@ -94,6 +94,17 @@ export default async function(req) {
         dueByPlatform.get(permit.platform).push(permit);
       }
       for (const [platform, candidates] of dueByPlatform) {
+        // Fresh platform-scoped preflight: do not trust a truncated global
+        // history list when subscriber volume becomes very large.
+        const latestOnPlatform = await sr.entities.DistributedPost.filter(
+          { status: 'published', platform }, '-published_at', 50);
+        if (!platformMayPublish(latestOnPlatform, platform, now.getTime())) continue;
+        const conflictingWrites = await sr.entities.ScheduledAutoPostPermit.filter(
+          { status: 'publishing', platform }, '-publishing_at', 30);
+        if ((conflictingWrites || []).some(p => {
+          const at = Date.parse(String(p.publishing_at || ''));
+          return !Number.isFinite(at) || now.getTime() - at < 12 * 60 * 60 * 1000;
+        })) continue;
         const permit = chooseNextMember(candidates,
           publishedPermits.filter(p => p.platform === platform), now.getTime());
         if (!permit) continue;
