@@ -81,7 +81,18 @@ export default async function(req) {
     // publishing (LinkedIn). If neither is available, fall back to manual.
     const canCredentialPublish = canAutoPublish(connection);
     const canConnectorPublish = canPublishViaConnector(connection.platform);
-    if ((!canCredentialPublish && !canConnectorPublish) || !actionAuthorization.ok) {
+    // The caller is signed in and owns the post/campaign/connection above.
+    // Resolve their app-user OAuth connection, never IFund's shared LinkedIn
+    // admin connector. When missing, leave a manual draft rather than posting
+    // from the wrong identity or exhausting automatic retries.
+    let ownerOAuth = null;
+    if (canConnectorPublish && connection.platform === 'linkedin') {
+      const connectorId = Deno.env.get('APP_USER_CONNECTOR_LINKEDIN_ID') || '';
+      if (connectorId) {
+        ownerOAuth = await sr.connectors.getCurrentAppUserConnection(connectorId).catch(() => null);
+      }
+    }
+    if ((!canCredentialPublish && !(canConnectorPublish && ownerOAuth?.accessToken)) || !actionAuthorization.ok) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '' });
@@ -98,7 +109,7 @@ export default async function(req) {
         await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Auto-publish blocked: ${reason}`, status: 'failure' });
         return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason });
       }
-      const { url } = await publishThroughConnection(connection, text, sr);
+      const { url } = await publishThroughConnection(connection, text, sr, ownerOAuth);
       const updated = await base44.entities.DistributedPost.update(post_id, {
         status: 'published',
         published_at: new Date().toISOString(),
