@@ -46,6 +46,17 @@ export default async function(req: Request) {
     const prices = subscriptionPrices();
     const checked = live && webhookReady ? await Promise.all(prices.map(async p =>
       !!(await verifiedPayPalPlan(sr, p.tier, p.interval).catch(() => null)))) : prices.map(() => false);
+    // Keep locally saved catalog mappings distinct from real provider-verified
+    // checkout readiness. A missing webhook must not make saved mappings look
+    // as though they vanished, nor may mappings enable checkout by themselves.
+    const adminMappings = user.role === "admin"
+      ? await sr.entities.SubscriptionPlanMapping.filter({
+          provider: "paypal", account_ref: IFUND_PAYPAL_ACCOUNT_REF,
+        }).catch(() => null)
+      : null;
+    const savedMappingCount = Array.isArray(adminMappings)
+      ? new Set(adminMappings.map((row: any) => `${row.tier}:${row.interval}`)).size
+      : null;
     const plans = prices.map((p, i) => ({
       tier: p.tier, interval: p.interval, amount_cents: p.amount_cents,
       verified: checked[i],
@@ -54,6 +65,8 @@ export default async function(req: Request) {
     }));
     return Response.json({
       provider: 'paypal', live_configured: live, webhook_configured: webhookReady,
+      readiness: !live ? 'paypal_rest_unavailable' : !webhookReady ? 'webhook_not_verified' : 'verification_checked',
+      ...(user.role === 'admin' ? { saved_plan_mapping_count: savedMappingCount } : {}),
       nonprofit_approved: nonprofitApproved, trial_eligible: trialEligible,
       plans,
     }, { headers: { 'Cache-Control': 'private, no-store' } });
@@ -61,7 +74,7 @@ export default async function(req: Request) {
     console.error('getPayPalSubscriptionOptions:', error?.name || 'UnknownError');
     return Response.json({
       provider: 'paypal', live_configured: false, webhook_configured: false,
-      trial_eligible: false, plans: [],
+      readiness: 'status_unavailable', trial_eligible: false, plans: [],
     }, { headers: { 'Cache-Control': 'private, no-store' } });
   }
 }
