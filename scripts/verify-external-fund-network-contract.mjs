@@ -54,9 +54,12 @@ assert.match(finalizeOauth,/granted_capabilities: unifiedObo \? confirmed : \[\]
 assert.doesNotMatch(prepare,/hasUnifiedOboConsent/);
 assert.match(prepare,/cap\?\.capability_status === 'verified'/);
 assert.match(payoutAccount,/payouts_enabled/);
-assert.match(payoutOnboarding,/type:'express'/);
-assert.match(payoutOnboarding,/idempotencyKey/);
-assert.match(payoutStatus,/stripe\.accounts\.retrieve/);
+// Stripe Connect onboarding is deliberately retired. Historical schemas
+// remain for reconciliation/audit but new accounts cannot be created.
+assert.match(payoutOnboarding,/onboarding is no longer offered/);
+assert.match(payoutOnboarding,/status: 410/);
+assert.doesNotMatch(payoutOnboarding,/type:'express'/);
+assert.match(payoutStatus,/410|retired|unavailable|no longer/i);
 assert.match(importedSync,/locally_locked_fields/);
 assert.match(importedSync,/source_value/);
 assert.match(discovery,/discoverPublicCampaignSnapshot/);
