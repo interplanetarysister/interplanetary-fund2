@@ -124,10 +124,10 @@ try{
   await signed.goto(origin+'/dashboard',{waitUntil:'domcontentloaded'});
   await signed.getByRole('button',{name:/I Agree — Continue/}).click();
   const tabs=signed.getByRole('navigation',{name:'Bottom navigation'});
-  await tabs.getByRole('link',{name:'Dashboard',exact:true}).waitFor({timeout:12000});
+  await tabs.getByRole('link',{name:'AI Chat',exact:true}).waitFor({timeout:12000});
   for(const [label,path] of [
-    ['Campaigns','/discover'],['Social Media','/social'],['Inbox','/inbox'],
-    ['Profile','/profile'],['Dashboard','/dashboard'],
+    ['IFund Social','/social'],['Forums','/community'],
+    ['Profile','/profile'],['AI Chat','/agents'],
   ]){
     await tabs.getByRole('link',{name:label,exact:true}).click({timeout:8000});
     await signed.waitForURL(url=>url.pathname===path,{timeout:10000});
@@ -138,7 +138,7 @@ try{
     assert.deepEqual(await tabs.locator('a.text-cyan-400').allTextContents(),[label]);
   }
   assert.deepEqual(authErrors,[],'Authenticated bottom navigation must not crash');
-  console.log('PASS: authenticated Dashboard, Campaigns, Social, Inbox, Profile navigation using mocked account data');
+  console.log('PASS: authenticated AI Chat, Profile, Social and Forums navigation using mocked account data');
   await member.close();
 }finally{
   await browser?.close();
