@@ -4,6 +4,7 @@ import { canAutoPublish, hasAiPublishingConsent } from '../../shared/socialPubli
 import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/integrationRegistry.ts';
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 import { canEnterMemberQueue, paidPriorityAt } from '../../shared/socialPublishingPolicy.ts';
+import { readEntityPages } from '../../shared/readEntityPages.ts';
 
 const MAX_CAMPAIGNS = 6;
 const DAY = 24 * 60 * 60 * 1000;
