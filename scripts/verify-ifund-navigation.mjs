@@ -3,11 +3,14 @@ import { spawn } from 'node:child_process';
 import { chromium } from 'playwright';
 import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from '../src/lib/navigation.js';
 
-assert.equal(owningNavigationTab('/campaign/example',true),'/discover');
-assert.equal(owningNavigationTab('/notifications',true),'/inbox');
+assert.equal(owningNavigationTab('/campaign/example',true),null);
+assert.equal(owningNavigationTab('/blogs/story',false),'/community');
+assert.equal(owningNavigationTab('/u/person',true),'/profile');
+assert.equal(owningNavigationTab('/agents',true),'/agents');
+assert.equal(owningNavigationTab('/notifications',true),null);
 assert.equal(owningNavigationTab('/devices',true),'/profile');
 assert.equal(owningNavigationTab('/community/thread',false),'/community');
-assert.equal(owningNavigationTab('/globe',false),'/globe');
+assert.equal(owningNavigationTab('/globe',false),null);
 assert.equal(navigationBackFallback('/community/entry',false),'/community');
 assert.equal(navigationBackFallback('/not-a-route',true),'/dashboard');
 assert.equal(canReturnWithinApp({idx:0}),false);
