@@ -8,13 +8,12 @@ export const MEMBER_QUEUE_MAX_PER_RUN = 1;
 
 export function paidPriorityAt(owner: any): string {
   // Only provider-verified first paid subscriptions receive an early rank.
-  // Legacy accounts without a trusted timestamp enter at their recorded
-  // creation date; no guessed payment date is presented as verified.
+  // Unknown paid start is NOT a signup date: older account creation is
+  // not evidence of earlier paid subscription. Place unknowns after verified
+  // subscription starts, then use actual queue creation as tie breaker.
   const verified = Date.parse(String(owner?.first_paid_subscription_at || ''));
-  if (Number.isFinite(verified)) return new Date(verified).toISOString();
-  const fallback = Date.parse(String(owner?.created_date || ''));
-  return Number.isFinite(fallback) ? new Date(fallback).toISOString()
-    : '9999-12-31T23:59:59.000Z';
+  return Number.isFinite(verified)
+    ? new Date(verified).toISOString() : '9999-12-31T23:59:59.000Z';
 }
 
 export function canEnterMemberQueue(owner: any, campaign: any): boolean {
