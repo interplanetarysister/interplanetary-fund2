@@ -1,6 +1,7 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 
 const roleStyles = {
   owner: "bg-cyan-100 text-cyan-700 hover:bg-cyan-100",
@@ -18,7 +19,7 @@ export default function MembersTab({ members }) {
               {(m.user_name || "?").charAt(0).toUpperCase()}
             </span>
             <div>
-              <p className="text-sm font-medium text-stone-900">{m.user_name}</p>
+              <Link className="text-sm font-medium text-blue-800 hover:underline" to={`/u/${m.user_id}`}>{m.user_name || "IFund member"}</Link>
               <p className="text-xs text-stone-400">Joined {format(new Date(m.created_date), "MMM yyyy")}</p>
             </div>
           </div>
