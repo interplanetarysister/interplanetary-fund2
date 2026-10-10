@@ -2,6 +2,7 @@ import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGa
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
+import { latestWritingGuidance } from '../../shared/writingGuidance.ts';
 
 // AI Campaign Distribution Engine — generates platform-tailored post content
 // for each connected social AND crowdfunding destination (never identical
@@ -83,8 +84,11 @@ export default async function(req) {
 
     const p = campaign.ai_profile || {};
     const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
+    const research = await latestWritingGuidance(base44.asServiceRole);
     const prompt = `You are the AI Campaign Distribution Engine for Interplanetary Fund.
 Compliance (non-negotiable): never fabricate facts, amounts, names, or urgency; use only the campaign context; no spam; no false promises.
+Writing and audience psychology reference: ${research || 'Compelling true stories, agency, clarity, credible impact.'}
+Use thoughtful persuasive framing and relevant donor motivations appropriate to the creator's requested tone. Never claim facts solely because they appeared in research.
 
 Write one tailored post per platform below. Do NOT reuse the same text — adapt tone, length, and format per platform rules. Every post must include the campaign link ${url}.
 
