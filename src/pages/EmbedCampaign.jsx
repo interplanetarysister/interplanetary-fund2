@@ -19,7 +19,7 @@ export default function EmbedCampaign() {
 
   useEffect(() => {
     base44.entities.Campaign.get(id)
-      .then((c) => setCampaign(c && c.status !== "draft" ? c : null))
+      .then((c) => setCampaign(c && c.status === "active" ? c : null))
       .catch(() => setCampaign(null))
       .finally(() => setLoading(false));
   }, [id]);
