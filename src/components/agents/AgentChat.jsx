@@ -10,6 +10,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   const convRef = useRef(null);
   const currentRunRef = useRef(null);
   const lastSyncRef = useRef(0);
+  const responseStartedAtRef = useRef(0);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [starting, setStarting] = useState(true);
@@ -18,6 +19,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   const [restart, setRestart] = useState(0);
   const [startError, setStartError] = useState(false);
   const [trackingError, setTrackingError] = useState(false);
+  const [slowResponse, setSlowResponse] = useState(false);
 
   useEffect(() => {
     let unsub = () => {};
@@ -25,10 +27,12 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     setStarting(true);
     setStartError(false);
     setWaitingForResponse(false);
+    setSlowResponse(false);
     setMessages([]);
     convRef.current = null;
     currentRunRef.current = null;
     lastSyncRef.current = 0;
+    responseStartedAtRef.current = 0;
     (async () => {
       try {
         const conv = await base44.agents.createConversation({ agent_name: agentName, metadata: { name: agentLabel } });
@@ -68,12 +72,50 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     return () => { cancelled = true; unsub(); };
   }, [agentName, agentLabel, restart]);
 
+  // Recover from a missed subscription event. A slow reply is not proof
+  // that an outside action failed or completed.
+  useEffect(() => {
+    if (!waitingForResponse || !convRef.current) return;
+    let alive = true;
+    const conversationId = convRef.current.id;
+    const timer = window.setInterval(async () => {
+      if (!alive || document.visibilityState === "hidden") return;
+      if (responseStartedAtRef.current && Date.now() - responseStartedAtRef.current > 90000) {
+        setSlowResponse(true);
+      }
+      const snapshot = await base44.agents.getConversation(conversationId).catch(() => null);
+      if (!alive || !snapshot || convRef.current?.id !== conversationId) return;
+      const latest = Array.isArray(snapshot.messages) ? snapshot.messages : [];
+      setMessages(latest);
+      const lastUser = latest.map((m) => m.role).lastIndexOf("user");
+      const lastAssistant = latest.map((m) => m.role).lastIndexOf("assistant");
+      if (lastAssistant > lastUser) {
+        const reply = latest[lastAssistant];
+        const calls = Array.isArray(reply?.tool_calls) ? reply.tool_calls : [];
+        if (!calls.some((call) => ["pending", "running"].includes(call.status)) &&
+            (reply?.content || calls.some((call) =>
+              ["error", "stopped", "waiting_for_user_input"].includes(call.status)))) {
+          setWaitingForResponse(false);
+          setSlowResponse(false);
+        }
+      }
+      if (currentRunRef.current) {
+        void base44.functions.invoke("trackAgentConversation", {
+          mode: "sync", run_id: currentRunRef.current,
+        }).catch(() => setTrackingError(true));
+      }
+    }, 12000);
+    return () => { alive = false; window.clearInterval(timer); };
+  }, [waitingForResponse]);
+
   const send = async () => {
     const content = input.trim();
-    if (!content || !convRef.current || sending) return;
+    if (!content || !convRef.current || sending || waitingForResponse) return;
     setInput("");
     setSending(true);
     setWaitingForResponse(true);
+    responseStartedAtRef.current = Date.now();
+    setSlowResponse(false);
     setTrackingError(false);
     try {
       // Start the server-owned progress record BEFORE delivering a message.
@@ -132,6 +174,10 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     </div>
     <div className="mt-2 text-xs text-muted-foreground" role="status" aria-live="polite">{workStatus}</div>
     {trackingError && <p role="alert" className="mt-1 text-xs text-amber-700">The conversation may still work, but IFund could not save its progress status.</p>}
+    {slowResponse && <div role="status" className="mt-1 text-xs text-amber-700">
+      The agent has not provided a confirmed reply yet. Its request remains visible in AI progress.
+      <Button size="sm" type="button" variant="outline" className="ml-2" onClick={() => setRestart((n) => n + 1)}>Start a new chat</Button>
+    </div>}
     {startError && <Button type="button" size="sm" variant="outline" onClick={() => setRestart((n) => n + 1)}>Retry agent connection</Button>}
     <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground"><span>Platform actions use your verified IFund connections.</span><Link to="/connections" className="font-semibold text-primary hover:underline shrink-0">Connect a platform</Link></div>
     <div className="mt-2 flex gap-2 items-end">
