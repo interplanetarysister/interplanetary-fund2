@@ -24,11 +24,13 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/social": "Social", "/devices": "Connected Devices", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
+  "/social": "Social", "/blogs": "Stories & Blogs", "/my-blog": "My Blog Studio", "/devices": "Connected Devices", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
   if (pathname.startsWith("/campaign/")) return "Campaign";
+  if (pathname.startsWith("/u/")) return "Member Profile";
+  if (pathname.startsWith("/blogs/")) return "IFund Story";
   if (pathname.startsWith("/community/")) return "Community";
   if (pathname.startsWith("/institutions/")) return "Institution";
   return "Interplanetary Fund";
@@ -60,6 +62,7 @@ const navSections = [
     items: [
       { to: "/social", label: "Interplanetary Social", icon: Radio },
       { to: "/community", label: "Community", icon: Users },
+      { to: "/blogs", label: "Stories & Blogs", icon: BookOpen },
       { to: "/institutions", label: "Institutions", icon: Building2 },
       { to: "/communications", label: "Messages", icon: MessageSquare },
       { to: "/inbox", label: "Inbox", icon: MailOpen },
@@ -82,6 +85,7 @@ const navSections = [
       { to: "/connections", label: "Connections", icon: Link2 },
       { to: "/platform", label: "Platform", icon: Server },
       { to: "/profile", label: "Profile", icon: User },
+      { to: "/my-blog", label: "My Blog", icon: BookOpen },
     ],
   },
 ];
@@ -94,15 +98,16 @@ const publicNavItems = [
   { to: "/discover", label: "Discover", icon: Compass },
   { to: "/globe", label: "Global Globe", icon: Globe2 },
   { to: "/community", label: "Community", icon: Users },
+  { to: "/social", label: "IFund Social", icon: Radio },
+  { to: "/blogs", label: "Stories", icon: BookOpen },
   { to: "/help", label: "Help", icon: CircleHelp },
 ];
 
 const bottomNavItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/discover", label: "Campaigns", icon: Compass },
-  { to: "/social", label: "Social Media", icon: Radio },
-  { to: "/inbox", label: "Inbox", icon: MailOpen },
+  { to: "/agents", label: "AI Chat", icon: Bot },
   { to: "/profile", label: "Profile", icon: User },
+  { to: "/social", label: "IFund Social", icon: Radio },
+  { to: "/community", label: "Forums", icon: Users },
 ];
 
 export default function Layout() {
@@ -221,12 +226,14 @@ export default function Layout() {
       )}
 
       <nav aria-label="Bottom navigation" className="ifund-mobile-nav md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
-        {(user ? bottomNavItems : publicNavItems).map(({ to, label, icon: Icon }) => {
+        {bottomNavItems.map(({ to, label, icon: Icon }) => {
           const active = activeTab === to;
+          const destination = user || ["/social", "/community"].includes(to)
+            ? to : `/login?returnTo=${encodeURIComponent(to)}`;
           return (
             <NavLink
               key={to}
-              to={to}
+              to={destination}
               end
               onClick={() => { hapticTap(); setOpen(false); }}
               aria-current={active ? "page" : undefined}
@@ -273,7 +280,7 @@ export default function Layout() {
             </ErrorBoundary>
           </motion.div>
         </AnimatePresence>
-        {user && <QuickActions />}
+        <QuickActions user={user} />
         <BackToTop />
         <div className="md:block hidden"><LegalFooter /></div>
       </main>
