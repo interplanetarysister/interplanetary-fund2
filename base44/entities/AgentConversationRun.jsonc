@@ -21,7 +21,8 @@
         "waiting_user",
         "responded",
         "tool_failed",
-        "failed"
+        "failed",
+        "delivery_unconfirmed"
       ],
       "default": "responding"
     },
