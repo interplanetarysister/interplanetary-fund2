@@ -28,10 +28,12 @@ const result = await createJustGivingStagingPage({
   appId: 'TestAppID1', payload,
   fetchFn: async (url, opts) => {
     calls++;
-    assert.equal(url, JUSTGIVING_STAGING_ENDPOINT + '/TestAppID1' + JUSTGIVING_UNCLAIMED_PATH);
+    assert.equal(url, JUSTGIVING_STAGING_ENDPOINT + JUSTGIVING_UNCLAIMED_PATH);
     assert.equal(opts.method, 'PUT');
     assert.equal(opts.redirect, 'manual');
     assert.equal(opts.headers['Content-Type'], 'application/json');
+    assert.equal(opts.headers['x-api-key'], 'TestAppID1');
+    assert.equal(url.includes('TestAppID1'), false);
     assert.equal(JSON.parse(opts.body).charityId, 12345);
     return {status:201,json:async()=>({
       pageId:123456,next:{uri:'https://www.justgiving.com/id/staging-page'},
@@ -54,6 +56,7 @@ rejected = await createJustGivingStagingPage({
 });
 assert.equal(rejected.status,'provider_rejected');
 assert.equal(rejected.http_status,403);
+assert.match(readFileSync(new URL('../base44/shared/justGivingUnclaimed.js',import.meta.url),'utf8'), /x-api-key/);
 await assert.rejects(()=>createJustGivingStagingPage({appId:'',payload,fetchFn:()=>{throw Error('Should not call');}}));
 
 const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
