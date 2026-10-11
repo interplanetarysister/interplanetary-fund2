@@ -7,6 +7,7 @@ const compatibility = read('base44/functions/completeOAuthConnection/entry.ts');
 const connect = read('src/components/connections/ConnectDialog.jsx');
 const page = read('src/pages/Connections.jsx');
 const verify = read('base44/functions/verifyPlatformConnection/entry.ts');
+const readiness = read('base44/functions/getAppUserConnector/entry.ts');
 
 assert.match(connect, /localStorage\.setItem\("ifund_pending_platform_connection"/);
 assert.ok(
@@ -18,6 +19,34 @@ assert.match(connect, /campaignId: form\.campaign_id/);
 assert.match(connect, /campaignTitle: selectedCampaign\?\.title/);
 assert.match(connect, /returnPath: "\/connections"/);
 assert.match(connect, /destination\.protocol !== "https:"/);
+assert.match(connect, /data\?\.can_attempt/);
+assert.match(connect, /registration_unverified/);
+assert.match(connect, /OAUTH_ATTEMPT_BLOCKED_STATES = new Set\(\["checking", "not_configured", "unsupported"\]\)/);
+assert.match(connect, /oauthAttemptBlocked = usesProviderOAuth &&[\s\S]{0,120}oauthReadinessPlatform !== platform\.id \|\| OAUTH_ATTEMPT_BLOCKED_STATES\.has\(oauthReadiness\)/,
+  'a stale readiness result from another platform must remain blocked');
+assert.equal((connect.match(/blockOAuthAttempt\(\)/g) || []).length, 3,
+  'direct OAuth, managed helper, and managed account setup handlers must share the readiness guard');
+assert.match(connect, /disabled=\{managedBusy \|\| connecting \|\| oauthAttemptBlocked\}/,
+  'the rendered helper action must honor the shared OAuth guard');
+assert.match(connect, /disabled=\{connecting \|\| oauthAttemptBlocked\}/,
+  'the rendered direct OAuth action must honor the shared OAuth guard');
+assert.match(connect, /disabled=\{managedBusy \|\| oauthAttemptBlocked\}/,
+  'the rendered managed account action must honor the shared OAuth guard');
+assert.doesNotMatch(connect, /OAUTH_ATTEMPT_BLOCKED_STATES[^\n]*unavailable/,
+  'a transient readiness check failure must leave retry available');
+assert.doesNotMatch(connect, /data\?\.configured && data\?\.connector_id \? "ready"/);
+assert.match(page, /p\.setupKind === "oauth" \? "Check setup" : "Open setup"/,
+  'the chooser must not promise an OAuth connection before readiness is checked');
+assert.match(page, /IFund will check its setup before offering provider sign-in/);
+
+assert.match(readiness, /getCurrentAppUserConnection/);
+assert.match(readiness, /registration_reference_present: true/);
+assert.match(readiness, /registration_verified: false/);
+assert.doesNotMatch(readiness, /registered: true/);
+assert.match(readiness, /can_attempt: true/);
+assert.match(readiness, /provider_verified: false/);
+assert.match(readiness, /readiness: authorizationPresent \? 'authorization_present' : 'registration_unverified'/);
+assert.doesNotMatch(readiness, /configured:\s*!!connectorId/);
 
 assert.match(finalize, /getCurrentAppUserConnection/);
 assert.match(finalize, /requestedCampaignId/);
