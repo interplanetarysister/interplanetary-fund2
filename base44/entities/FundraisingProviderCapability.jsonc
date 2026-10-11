@@ -101,6 +101,18 @@
       "type": "boolean",
       "default": false
     },
+    "campaign_create_documented": {
+      "type": "boolean",
+      "default": false
+    },
+    "campaign_create_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "campaign_create_tested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "social_publishing": {
       "type": "boolean",
       "default": false
