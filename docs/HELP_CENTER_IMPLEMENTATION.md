@@ -51,4 +51,6 @@ Before publication, validate all guidance against actual current capabilities, p
 - npm run build — passed, including production bundle, routes/assets, mobile/payment UX, provider and sustainability checks.
 - Sandbox Node 24.21.0 produced a tested-lane warning because established lanes are Node 20/22, but the build succeeded.
 - True live deployment, public browser rendering and authenticated end-to-end operations are not yet verified.
-- Browser-render regression was attempted but could not run because the Playwright Chromium executable is absent from this sandbox; do not mark browser QA as passed.
+- Browser-render tests now pass: Chromium and Linux shared libraries were installed into the transient sandbox. Both the existing site smoke test and the dedicated Help Center browser test passed at 390px and 1280px with category filtering and guest navigation; this does not prove a deployed/live browser release.
+- The current published interplanetaryfund.com and workers.dev help pages were inspected in Chromium and do not yet show the new Help Center: they continue serving a previous build and permission gate.
+- A separate zero-deploy Cloudflare publishing validation command now exists: npm run publish:cloudflare:validate; see docs/AGENT_DEPENDENCIES_DIRECT_PUBLISHING.md.
