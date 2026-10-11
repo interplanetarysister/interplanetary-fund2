@@ -19,6 +19,7 @@ node scripts/test-campaign-drafts-and-generated-media.mjs
 node scripts/test-ifund-login-recovery.mjs
 node scripts/test-ifund-device-authorization.mjs
 node scripts/verify-ifund-browser-render.mjs
+node scripts/verify-mobile-ai-composer-viewport.mjs
 node scripts/verify-ifund-navigation.mjs
 node scripts/verify-ifund-studio-pages.mjs
 ./node_modules/.bin/tsc -p jsconfig.json --noEmit
@@ -31,6 +32,7 @@ printf '%s\n' "The local release gate passed. Publishing only the Base44 website
 base44 --app-id "$APP_ID" site deploy --no-build --yes
 printf '%s\n' "Checking production in Chromium..."
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-browser-render.mjs
+IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-mobile-ai-composer-viewport.mjs
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-navigation.mjs
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-studio-pages.mjs
 node --input-type=module -e 'import { IFUND_RELEASE_ID } from "./src/lib/ifundRelease.js"; const response = await fetch("https://interplanetaryfund.com/ifund-release.json?release-check="+Date.now(), {cache:"no-store"}); const data=await response.json(); if (data.release_id !== IFUND_RELEASE_ID) throw Error("IFund live release manifest does not match the published source"); console.log("PASS: live Base44 release marker matches source");'
