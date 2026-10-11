@@ -77,7 +77,7 @@ const navSections = [
       { to: "/agents", label: "AI Agents", icon: Bot },
       { to: "/ops", label: "Ops Center", icon: Satellite },
       { to: "/analytics", label: "Command Center", icon: BarChart3 },
-      { to: "/connect", label: "Connect Assistant", icon: Plug },
+      { to: "/connect", label: "Admin connection setup", icon: Plug },
       { to: "/admin/audit", label: "Audit Log", icon: Server },
       { to: "/admin/sustainability", label: "Planet Impact", icon: Leaf },
       { to: "/admin/help", label: "Help Center Editor", icon: BookOpen },
