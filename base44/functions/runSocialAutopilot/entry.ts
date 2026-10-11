@@ -115,8 +115,9 @@ Return JSON with post_text and optional hashtags.`,
           }},
         });
         const campaignUrl = donationDestination.url;
-        const copy = String(answer?.post_text || '').trim();
+        const copy = String(answer?.post_text || '').replace(/https?:\/\/[^\s]+/gi, '').trim();
         if (!copy) throw new Error('No generated content');
+        if (campaignUrl.length > 275) throw new Error('Selected fundraiser link is too long for a short social post');
         // Every promotion uses the owner's saved donation destination.
         // Preserve the full link within short social platform limits.
         const words = [copy.slice(0, 278 - campaignUrl.length).trim(), campaignUrl].join(' ').trim();
