@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { validExternalFundraiserUrl, resolveDonationDestination } from '../base44/shared/distributionDestination.js';
+import { ALL_PLATFORMS } from '../src/components/connections/platformCatalog.js';
 
 const campaignId = 'campaign-one';
 const approved = { id: 'external-one', platform: 'gofundme', kind: 'crowdfunding',
@@ -31,6 +32,13 @@ approved.verification_status = 'unverified';
 await assert.rejects(() => resolveDonationDestination(sr, 'owner-one', campaignId, approved.id));
 
 const read = name => readFileSync(new URL('../' + name, import.meta.url), 'utf8');
+const connectionSchema = JSON.parse(read('base44/entities/PlatformConnection.jsonc'));
+const schemaPlatforms = new Set(connectionSchema.properties.platform.enum);
+const catalogPlatformsMissingFromSchema = ALL_PLATFORMS
+  .map(({ id }) => id)
+  .filter(id => !schemaPlatforms.has(id));
+assert.deepEqual(catalogPlatformsMissingFromSchema, [],
+  `Connection catalog platform ids missing from PlatformConnection schema: ${catalogPlatformsMissingFromSchema.join(', ')}`);
 const generator = read('base44/functions/generateDistributionContent/entry.ts');
 const writer = read('base44/functions/createDistributedPost/entry.ts');
 const ui = read('src/components/distribution/DistributionPanel.jsx');
