@@ -36,7 +36,7 @@ for(const path of [
 ]) assert.ok(fs.existsSync(path),'missing '+path);
 const gate=read('base44/functions/manageAdminBuilderWork/entry.ts');
 assert.match(gate,/isSuperAdmin\(owner\)/);
-assert.match(gate,/owner\?\.role==='admin'/);
+assert.match(gate,/user\?\.role==='admin'/);
 assert.match(read('base44/functions/executeAdminAgentRequest/entry.ts'),/admin_builder_agent/);
 assert.match(read('src/components/agents/AdminDevelopmentChat.jsx'),/admin_builder_agent/);
 assert.ok(!read('src/pages/Agents.jsx').includes('name: "admin_builder_agent"'),'admin builder must not appear in normal agent list');
