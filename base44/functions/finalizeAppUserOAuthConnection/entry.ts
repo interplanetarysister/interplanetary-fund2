@@ -49,6 +49,7 @@ const CONFIG: Record<string, { kind: string; requestedCapabilities: string[] }> 
   patreon: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
   eventbrite: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
   gumroad: { kind: 'crowdfunding', requestedCapabilities: COMMON_IF_CAPABILITIES },
+  wordpress_com: { kind: 'social', requestedCapabilities: ['read_account', 'read_resources', 'create_post', 'edit_post', 'upload_media'] },
 };
 
 function providerCapabilities(oauth: any): string[] {
