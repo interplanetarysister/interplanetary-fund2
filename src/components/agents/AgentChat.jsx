@@ -168,7 +168,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   const workStatus = needsInput ? "The agent needs your input to continue." :
     toolFailed ? "An agent tool step failed; review its response before retrying." :
     waitingForResponse || running ? "IFund AI is working on your request…" :
-    "External actions are complete only when verified by the provider or a successful tool result.";
+    "Ask me a question or tell me what you'd like to do.";
 
   const composer = (
     <div data-ifund-chat-composer className={compactViewport
@@ -181,7 +181,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
         <Button size="sm" type="button" variant="outline" className="ml-2" onClick={() => setRestart((n) => n + 1)}>Start a new chat</Button>
       </div>}
       {startError && <Button type="button" size="sm" variant="outline" onClick={() => setRestart((n) => n + 1)}>Retry agent connection</Button>}
-      <div className="mt-2 flex items-center justify-end sm:justify-between gap-2 text-xs text-muted-foreground"><span className="hidden sm:inline">Platform actions use your verified IFund connections.</span><Link to="/connections" className="font-semibold text-primary hover:underline shrink-0">Connect a platform</Link></div>
+      <div className="mt-2 flex items-center justify-end sm:justify-between gap-2 text-xs text-muted-foreground"><span className="hidden sm:inline">Need to connect an account? Choose the platform and sign in.</span><Link to="/connections" className="font-semibold text-primary hover:underline shrink-0">Connect an account</Link></div>
       <div className="mt-2 flex min-w-0 gap-2 items-end">
         <Textarea aria-label={`Message ${agentLabel}`} value={input} disabled={starting || !convRef.current} onChange={(e) => setInput(e.target.value)} onFocus={(e) => e.currentTarget.scrollIntoView({ block: "nearest" })} placeholder={`Ask ${agentLabel}…`} rows={1} className="flex-1 min-w-0 resize-none rounded-xl min-h-[44px] max-h-28 py-2.5" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
         <Button size="icon" aria-label="Send message" onClick={send} disabled={sending || waitingForResponse || starting || !input.trim() || !convRef.current} className="rounded-xl h-11 w-11 shrink-0"><Send className="w-4 h-4" /></Button>
