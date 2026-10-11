@@ -25,6 +25,8 @@ assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amoun
 assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:'-5.00'}),/valid positive/);
 assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:'1.234'}),/valid positive/);
 assert.equal(createUnclaimedPayload(campaign,{...validFields,target_amount:'350.20'}).targetAmount,'350.20');
+assert.equal(createUnclaimedPayload(campaign,{...validFields,target_amount:'0.50'}).targetAmount,'0.50');
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:'0'}));
 
 assert.throws(() => validateJustGivingCreateResult({pageId:7,next:{uri:'https://evil.example.com/fundraising/fake'}}));
 assert.throws(() => validateJustGivingCreateResult({pageId:0,next:{uri:'https://www.justgiving.com/fundraising/page'}}));
