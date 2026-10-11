@@ -16,6 +16,7 @@ import { hasSubscriptionLevel } from './subscriptionEntitlements.ts';
 import { canAutoPublish, canPublishViaConnector, hasAiPublishingConsent, publishThroughConnection } from './socialPublish.ts';
 import { assertExternalAgentAction, assertPlatformAccess } from './integrationRegistry.ts';
 import { resolveCapabilityForPlatform } from './providerCapabilities.ts';
+import { resolveDonationDestination } from './distributionDestination.js';
 
 const COMPLIANCE = `Compliance (non-negotiable): never fabricate facts, amounts, names, or urgency; use only the provided campaign context; no spam; no false promises.`;
 
@@ -60,6 +61,14 @@ export async function generateAndDistribute(opts) {
 
   if (!targets.length) return result;
 
+  let donationDestination;
+  try {
+    donationDestination = await resolveDonationDestination(sr, campaign.created_by_id, campaign.id, campaign.distribution_donation_connection_id || '');
+  } catch (_) {
+    result.authorization_blocked = 'Your saved external fundraiser link needs reconnection before IFund can prepare more promotional posts.';
+    return result;
+  }
+
   const fullPrompt = `${prompt}
 
 ${COMPLIANCE}
@@ -69,6 +78,7 @@ ${targets.map((c) => `- ${c.platform}: ${PLATFORM_RULES[c.platform] || 'General 
 
 Campaign: ${campaign.title}
 ${campaign.summary ? `Summary: ${campaign.summary}` : ''}
+The owner-selected donation page is ${donationDestination.url}. Do not insert alternative donation links or imply funds from an external provider are held by IFund.
 
 Return JSON only.`;
 
@@ -115,7 +125,11 @@ Return JSON only.`;
     }
     result.generated++;
 
-    const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
+    // AI-proposed links are never trusted as fundraiser checkout destinations.
+    const copyWithoutUrls = String(post.content).replace(/https?:\/\/[^\s]+/gi, '').trim();
+    const room = Math.max(0, (conn.platform === 'bluesky' ? 300 : 3000) - donationDestination.url.length - 2);
+    const approvedContent = `${copyWithoutUrls.slice(0, room).trim()}\n${donationDestination.url}`.trim();
+    const text = [approvedContent, ...(post.hashtags || [])].join(' ').trim();
 
     // Auto-publish only when subscription + consent + platform access + auto mode,
     // a runtime adapter exists, and the canonical provider registry confirms an
@@ -145,8 +159,10 @@ Return JSON only.`;
             connection_id: conn.id,
             platform: conn.platform,
             source_update_id: sourceUpdateId || undefined,
-            content: post.content,
+            content: approvedContent,
             hashtags: post.hashtags || [],
+            donation_destination_url: donationDestination.url,
+            donation_destination_platform: donationDestination.platform,
             status: 'published',
             published_at: new Date().toISOString(),
             external_post_url: postUrl,
@@ -166,8 +182,10 @@ Return JSON only.`;
             connection_id: conn.id,
             platform: conn.platform,
             source_update_id: sourceUpdateId || undefined,
-            content: post.content,
+            content: approvedContent,
             hashtags: post.hashtags || [],
+            donation_destination_url: donationDestination.url,
+            donation_destination_platform: donationDestination.platform,
             status: 'failed',
             error: 'Publishing failed.',
             retry_count: 1,
