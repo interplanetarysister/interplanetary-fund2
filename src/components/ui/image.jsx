@@ -63,8 +63,8 @@ function buildTransformUrl({ baseUrl, filename }, { width, height, crop, focalPo
   return `${baseUrl}/v1/${crop ? "fill" : "fit"}/${params.join(",")}/${outputName}`
 }
 
-function buildSrcSet(parsed, options) {
-  return DEVICE_PIXEL_RATIOS.map(
+function buildSrcSet(parsed, options, dataSaver = false) {
+  return DEVICE_PIXEL_RATIOS.filter((dpr) => !dataSaver || dpr === 1).map(
     (dpr) =>
       `${buildTransformUrl(parsed, {
         ...options,
@@ -100,6 +100,12 @@ const ResponsiveImage = React.forwardRef(
     }, [parsed.baseUrl])
 
     const crop = fittingType !== "fit"
+    // Respect explicit device data-saving preferences without degrading
+    // default image quality for everyone else.
+    const dataSaver = typeof navigator !== "undefined" && (
+      navigator.connection?.saveData === true ||
+      (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-data: reduce)")?.matches === true)
+    )
     // `size` is null exactly once: the pre-measurement first render, which we
     // never let reach the network (see below — useSize measures before paint).
     // A *measured* zero (content-sized wrapper with no CSS dimensions) falls
@@ -109,7 +115,7 @@ const ResponsiveImage = React.forwardRef(
       height: size.height ? size.height : undefined,
       crop,
       focalPoint: crop ? focalPoint : undefined,
-      quality,
+      quality: dataSaver ? Math.min(quality, 65) : quality,
     }
 
     // The main image MUST participate in layout. An absolutely positioned
@@ -118,7 +124,7 @@ const ResponsiveImage = React.forwardRef(
     // Keep blur-up only for an explicitly dimensioned container.
     return (
       <ImageWrapper ref={wrapperRef} aspectRatio={aspectRatio} className={className} style={style}>
-        {options && aspectRatio && !loaded && (
+        {options && aspectRatio && !loaded && !dataSaver && (
           <img
             src={buildTransformUrl(parsed, {
               ...options, width: 20,
@@ -140,7 +146,7 @@ const ResponsiveImage = React.forwardRef(
           <img
             ref={imgRef}
             src={buildTransformUrl(parsed, options)}
-            srcSet={buildSrcSet(parsed, options)}
+            srcSet={buildSrcSet(parsed, options, dataSaver)}
             loading="lazy"
             className={cn(
               "block w-full h-auto",
