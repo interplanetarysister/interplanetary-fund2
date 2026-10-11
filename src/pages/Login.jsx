@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -31,18 +32,35 @@ export default function Login() {
       // Never transmit credentials to another host or third-party connector.
       const appId = runtimeContract.appId || appParams.appId;
       if (!appId) throw new Error("IFund app ID unavailable");
-      const response = await fetch("/api/apps/" + encodeURIComponent(appId) + "/auth/login", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-      if (!response.ok) {
-        setError(safeLoginFailureByStatus(response.status));
-        return;
+      const path = "/api/apps/" + encodeURIComponent(appId) + "/auth/login";
+      let result;
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+        // The bundled Android app runs from a local origin, not the site origin.
+        // Use native HTTPS only for the canonical Base44 authentication endpoint.
+        const response = await CapacitorHttp.post({
+          url: "https://interplanetaryfund.base44.app" + path,
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          data: { email: email.trim(), password },
+        });
+        if (response.status < 200 || response.status >= 300) {
+          setError(safeLoginFailureByStatus(response.status));
+          return;
+        }
+        result = typeof response.data === "string" ? JSON.parse(response.data) : response.data;
+      } else {
+        const response = await fetch(path, {
+          method: "POST",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        if (!response.ok) {
+          setError(safeLoginFailureByStatus(response.status));
+          return;
+        }
+        result = await response.json().catch(() => ({}));
       }
-      const result = await response.json().catch(() => ({}));
       if (typeof result.access_token !== "string" || !result.access_token) {
         setError(safeAuthErrorMessage("login"));
         return;
