@@ -13,15 +13,20 @@ assert.match(dialog,/display_name: selected\?\.title/);
 assert.match(dialog,/Pick the campaign to publish first/);
 assert.match(dialog,/<Label>Connection title<\/Label>/);
 assert.match(dialog,/campaignId: form\.campaign_id/);
-assert.match(dialog,/publishInitial: platform\.kind !== "app"/);
+assert.doesNotMatch(dialog,/publishInitial: platform\.kind !== "app"/, 'OAuth authorization alone must not schedule a public post');
+assert.match(dialog,/quickConnect = false/);
+assert.match(dialog,/attemptedDeepLink\.current/);
+assert.match(dialog,/connectors\.connectAppUser/);
 assert.match(dialog,/returnPath: "\/connections"/);
-assert.match(dialog,/owns the authorization screen and IFund verifies the granted capability after you return/);
+assert.match(dialog,/Provider sign-in\. Back to IFund for verification/);
 assert.doesNotMatch(page,/OAuthPermissionStep|pendingOAuthConsent|completeOAuthConnection/);
 
 assert.match(page,/finalizeAppUserOAuthConnection/);
 assert.match(page,/campaign_id: pending\.campaignId/);
-assert.match(page,/publishLinkedCampaignToConnection/);
-assert.match(page,/future campaign updates can use this paired connection/);
+assert.doesNotMatch(page,/functions\.invoke\("publishLinkedCampaignToConnection"/, 'Connecting an account must not cause unsolicited publication');
+assert.match(page,/Publish an approved update from your campaign when ready/);
+assert.match(page,/searchParams\.get\("connect"\)/, 'IFund chat must be able to link directly to a named connection');
+assert.match(page,/ALL_PLATFORMS\.find/, 'Connection links must be limited to supported platform IDs');
 
 assert.match(finalize,/requestedCampaignId/);
 assert.match(finalize,/pairedCampaign\.created_by_id !== user\.id/);
@@ -46,4 +51,4 @@ assert.match(cross,/explicitPublish \? \{ ok: true \} : await assertExternalAgen
 assert.match(update,/explicitPublish: true/);
 assert.match(update,/explicitly checked Cross-post and clicked Post update/);
 
-console.log('campaign-paired connection one-click publish contract: PASS');
+console.log('campaign-paired connection OAuth and explicit publishing safety contract: PASS');
