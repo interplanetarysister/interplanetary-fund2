@@ -45,6 +45,8 @@ export default async function(req) {
         charity_id: body.charity_id,
         activity_type: body.activity_type,
         currency: body.currency,
+        target_amount: body.target_amount,
+        confirm_target_amount: body.confirm_target_amount === true,
       });
     } catch (error) {
       return Response.json({ error: error.message }, { status: 400 });
@@ -70,10 +72,19 @@ export default async function(req) {
 
     // A successful prior staging registration must never be repeated by this endpoint.
     const sr = base44.asServiceRole;
-    const prior = await sr.entities.ExternalCampaignPublication.filter({
-      campaign_id: campaignId, owner_user_id: user.id, platform: 'justgiving', environment: 'staging',
-    }).catch(() => []);
-    const existing = (prior || []).find(x => x.status === 'staging_created');
+    let prior;
+    try {
+      prior = await sr.entities.ExternalCampaignPublication.filter({
+        campaign_id: campaignId, owner_user_id: user.id, platform: 'justgiving', environment: 'staging',
+      });
+      if (!Array.isArray(prior)) throw new Error('Invalid publication history');
+    } catch (_) {
+      return Response.json({
+        ok: false, code: 'publication_history_unavailable',
+        error: 'Cannot verify prior JustGiving staging registrations. No new page has been requested; retry when IFund records are available.',
+      }, { status: 503 });
+    }
+    const existing = prior.find(x => x.status === 'staging_created');
     if (existing)
       return Response.json({
         ok: true, duplicate: true, environment: 'staging', status: 'staging_created',
@@ -81,10 +92,49 @@ export default async function(req) {
         claim_url: '', claim_link_note: 'The original one-time claim link is not stored. Check your JustGiving developer account.',
       });
 
-    const attempted = await createJustGivingStagingPage({
-      appId: Deno.env.get('JUSTGIVING_APP_ID'), payload,
-    });
+    if (prior.length) {
+      return Response.json({
+        ok: false, code: 'prior_registration_requires_review',
+        error: 'A JustGiving staging request is already recorded for this campaign. Review its status before attempting another provider registration.',
+      }, { status: 409 });
+    }
+    // Record an attempt BEFORE the external PUT. If the provider succeeds but
+    // a network timeout prevents receiving its answer, do not automatically
+    // retry or falsely claim no page was created.
+    let reservation;
+    try {
+      reservation = await sr.entities.ExternalCampaignPublication.create({
+        campaign_id: campaign.id, owner_user_id: user.id,
+        platform: 'justgiving', environment: 'staging', status: 'request_pending',
+        page_short_name: payload.pageShortName, provider_charity_id: String(payload.charityId),
+        registration_method: 'unclaimed_page_staging_api',
+        test_note: 'Provider request reserved. If result is unknown, manually reconcile before another test.',
+      });
+      if (!reservation?.id) throw new Error('Reservation missing ID');
+    } catch (_) {
+      return Response.json({
+        ok: false, code: 'record_reservation_failed',
+        error: 'IFund could not reserve this staging registration. No provider request was sent.',
+      }, { status: 503 });
+    }
+    let attempted;
+    try {
+      attempted = await createJustGivingStagingPage({
+        appId: Deno.env.get('JUSTGIVING_APP_ID'), payload,
+      });
+    } catch (_) {
+      await sr.entities.ExternalCampaignPublication.update(reservation.id, {
+        status: 'needs_attention', test_note: 'Provider outcome unknown. Check staging page by short name before any retry.',
+      }).catch(() => {});
+      return Response.json({
+        ok: false, code: 'staging_outcome_unknown',
+        error: 'JustGiving did not return a verified creation result. A page may have been created. Check JustGiving before attempting another registration.',
+      }, { status: 502 });
+    }
     if (!attempted.ok) {
+      await sr.entities.ExternalCampaignPublication.update(reservation.id, {
+        status: 'needs_attention', test_note: 'Provider returned ' + attempted.status + '; human review required before retry.',
+      }).catch(() => {});
       return Response.json({
         ok: false, status: attempted.status,
         error: attempted.status === 'provider_conflict'
@@ -95,14 +145,11 @@ export default async function(req) {
 
     let persisted = false;
     try {
-      await base44.entities.ExternalCampaignPublication.create({
-        campaign_id: campaign.id, owner_user_id: user.id,
-        platform: 'justgiving', environment: 'staging', status: 'staging_created',
-        page_short_name: payload.pageShortName, provider_page_id: attempted.page_id,
-        provider_page_url: attempted.page_url, provider_charity_id: String(payload.charityId),
+      await sr.entities.ExternalCampaignPublication.update(reservation.id, {
+        status: 'staging_created',
+        provider_page_id: attempted.page_id, provider_page_url: attempted.page_url,
         provider_verified_at: new Date().toISOString(),
-        registration_method: 'unclaimed_page_staging_api',
-        test_note: 'Staging only. JustGiving campaign owner claim and production approval not verified.',
+        test_note: 'Staging only. Owner claim and production authorization not verified.',
       });
       persisted = true;
     } catch (_) {
