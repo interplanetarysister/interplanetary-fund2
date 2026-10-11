@@ -20,6 +20,7 @@ const sharedConnectorStatus = read('base44/functions/getSharedConnectorStatus/en
 const importExternalCampaign = read('base44/functions/importExternalCampaign/entry.ts');
 const syncImportedCampaign = read('base44/functions/syncImportedCampaign/entry.ts');
 const importedCampaignUi = read('src/components/campaigns/ImportedCampaignSync.jsx');
+const createCampaign = read('src/pages/CreateCampaign.jsx');
 const saveConnectionCredentials = read('base44/functions/saveConnectionCredentials/entry.ts');
 const syncExternalFunds = read('base44/functions/syncExternalFunds/entry.ts');
 const providerCapabilities = read('base44/shared/providerCapabilities.ts');
@@ -41,12 +42,15 @@ expect(!table.includes('|| STATUS_BADGE.ACTIVE'), 'table must not render unknown
 
 expect(admin.includes('REQUEST_TIMEOUT_MS'), 'admin operations must have a bounded timeout');
 expect(admin.includes('invokeWithLock'), 'admin operations must prevent duplicate side effects');
+expect(admin.includes('return withTimeout(pending).finally'), 'admin operation lock must release when the bounded request times out');
 expect(admin.includes('normalizeRegistryEntries'), 'registry responses must normalize unknown states');
 expect(admin.includes('isHealthResponse'), 'health responses must be validated before success is accepted');
 
-expect(health.includes("let status = e.status === 'REVOKED' ? 'REVOKED' : 'DISCONNECTED'"), 'health validation must fail closed');
+expect(health.includes("let status = String(e.status || 'DISCONNECTED').toUpperCase()"), 'health validation must begin from the recorded provider-backed state');
+expect(health.includes("let applyStatus = status === 'REVOKED'"), 'health validation must distinguish evidence from unsupported checks');
 expect(health.includes('providerVerified = false'), 'health validation must track provider evidence');
-expect(health.includes("if (result.status === 'ACTIVE' && result.providerVerified)"), 'last successful verification requires provider evidence');
+expect(health.includes('const effectiveStatus = result.applyStatus ? result.status : before'), 'unsupported checks must preserve the previous registry state');
+expect(health.includes("if (result.applyStatus && result.status === 'ACTIVE' && result.providerVerified)"), 'last successful verification requires provider evidence');
 expect(health.includes("Historical backend record retained; not health-gated by Base44."), 'legacy Convex evidence must remain historical');
 
 expect(!syncConnections.includes('error: e.message'), 'scheduled publishing must not persist raw provider errors');
@@ -78,9 +82,13 @@ expect(syncImportedCampaign.includes('discoverPublicCampaignSnapshot(connection)
 expect(syncImportedCampaign.includes("source:key==='category'?'system_default':discovered.source"), 'refresh must preserve truthful default-category provenance');
 expect(!syncImportedCampaign.includes("body.campaign&&typeof body.campaign==='object'"), 'refresh must not trust caller-supplied campaign snapshots');
 expect(!importedCampaignUi.includes('discoverExternalCampaignSnapshot'), 'client refresh must not ferry provider evidence between server functions');
+expect(createCampaign.includes('goal_amount: goal'), 'external campaign import must forward the positive owner-supplied goal');
+expect(createCampaign.includes('Add your campaign goal, then choose import again'), 'external import must request a missing owner goal instead of failing generically');
 expect(saveConnectionCredentials.includes("Number(existing?.external_total ?? 0)"), 'connection edits must preserve an existing external total when omitted');
 expect(saveConnectionCredentials.includes("Number(existing?.external_donor_count ?? 0)"), 'connection edits must preserve an existing donor count when omitted');
 expect(!saveConnectionCredentials.includes("Number(external_total ?? 0)"), 'connection edits must not silently reset external totals to zero');
+expect(saveConnectionCredentials.includes('const identityChanged = Boolean(existing'), 'connection edits must detect provider identity changes');
+expect(saveConnectionCredentials.includes("existing?.external_data_source || 'owner_reported'"), 'omitted totals must retain their existing provenance');
 expect(syncExternalFunds.includes('await verifyPublicCampaignConnection(conn)'), 'link-based fund sync must verify the provider page before green state');
 expect(!syncExternalFunds.includes("last_error: String(err?.message"), 'external fund sync must not persist raw provider errors');
 expect(providerCapabilities.includes("merged[key] = Boolean(base[key]) && Boolean(merged[key])"), 'stored capability rows must not manufacture unsupported runtime capabilities');
@@ -95,6 +103,7 @@ expect(publicCampaignSnapshot.includes("declaredLength > 2_000_000"), 'provider 
 expect(publicCampaignSnapshot.includes("await readTextLimited(response, 2_000_000)"), 'provider snapshot body must be stream-bounded while the request timeout is active');
 expect(publicCampaignSnapshot.includes("if (total > maxBytes) throw new Error('provider_page_too_large')"), 'provider snapshot stream must stop above the size limit');
 expect(publicCampaignSnapshot.includes("contentType.includes('text/html')"), 'provider snapshot discovery must require HTML-compatible content');
+expect(publicCampaignSnapshot.indexOf(".replace(/&amp;/g, '&')") > publicCampaignSnapshot.indexOf(".replace(/&gt;/g, '>')"), 'provider metadata must decode ampersands last to prevent double-unescaping');
 expect(discoverSnapshotLocal === publicCampaignSnapshot, 'discover function-local snapshot helper must match canonical helper');
 expect(importSnapshotLocal === publicCampaignSnapshot, 'import function-local snapshot helper must match canonical helper');
 expect(syncSnapshotLocal === publicCampaignSnapshot, 'sync function-local snapshot helper must match canonical helper');
