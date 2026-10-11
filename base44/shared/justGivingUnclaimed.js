@@ -65,9 +65,13 @@ export function validateJustGivingCreateResult(result) {
   const candidate = String(result?.next?.uri || '').trim();
   const link = new URL(candidate);
   const host = link.hostname.toLowerCase();
-  if (link.protocol !== 'https:' || link.username || link.password ||
-    !(host === 'justgiving.com' || host === 'www.justgiving.com' || host.endsWith('.staging.justgiving.com')))
-    throw new Error('JustGiving returned an unverified page URL.');
+  // A staging response must not cause IFund to advertise a production URL.
+  // The public page URL must not include an embedded claim token or query.
+  if (link.protocol !== 'https:' || link.username || link.password || link.port ||
+    host !== 'www.staging.justgiving.com' ||
+    !link.pathname || link.pathname === '/' || link.pathname.includes('/create-page/') ||
+    link.search || link.hash)
+    throw new Error('JustGiving did not return a safe staging fundraising-page URL.');
   return { page_id: String(result.pageId), page_url: link.href };
 }
 
@@ -97,7 +101,9 @@ export async function createJustGivingStagingPage({ appId, payload, fetchFn = fe
   let claim_url = '';
   try {
     const u = new URL(claim);
-    if (u.protocol === 'https:' && ['justgiving.com','www.justgiving.com','www.staging.justgiving.com'].includes(u.hostname.toLowerCase()))
+    if (u.protocol === 'https:' && !u.username && !u.password && !u.port &&
+      u.hostname.toLowerCase() === 'www.staging.justgiving.com' &&
+      u.pathname.startsWith('/create-page/'))
       claim_url = u.href;
   } catch (_) { /* no claim URL */ }
   return { ok: true, status: 'staging_created', ...verified, claim_url };
