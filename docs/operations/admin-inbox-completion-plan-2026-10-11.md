@@ -61,17 +61,17 @@ Existing 9 PlatformOwnedAccount records have no real account URL/connection ID. 
 | `6ab453be4499f20444956053` | YouTube account | pending | Check existing channel/brand account; verify ownership and video upload consent/permissions before publishing. |
 | `6ab453be14b44ba0ad78d8df` | Pinterest account | pending | Verify business account and approved publishing access. |
 | `6ab453beeb788e03f46a9545` | TikTok account | pending | Verify existing account and permitted video-posting API before automation. |
-| `6ab453be47a9429823365005` | X account | pending | Validate existing account, API pricing and write permissions; no unapproved charges. |
+| `6ab453bebec817734e4db8d5` | X account | pending | Validate existing account, API pricing and write permissions; no unapproved charges. |
 | `6ab453beda3720b9a62b5e94` | Instagram account | pending | Merge investigation with current priority Instagram business task; do not duplicate account. |
 | `6ab453bf5eaa834a7a2f3047` | Mastodon account | investigating | User noted existing IFund account; check original URL/instance and ownership; do not create another without evidence. |
 | `6ab453bf5794061be4982564` | Bluesky account | approved | Reuse verified public account; refresh current owner app-password authorization, write test, then mark executed with URL if proved. |
 | `6ab453bece9456a1f190a06e` | Reddit account | approved | Approval is not creation. Verify real profile/account ownership and platform-approved posting route. |
 | `6ab453be47a9429823365005` | LinkedIn account | approved | Verify owner OAuth and member/page permissions. Separate official brand presence from personal account and test a post. |
-| `6ab453bebec817734e4db8d5` | Threads account | approved | Linked connection alone lacks provider-backed write proof; verify write ability and external post URL. |
+| `6ab453be0bf05fa08e9ebb60` | Threads account | approved | Linked connection alone lacks provider-backed write proof; verify write ability and external post URL. |
 | `6ab453beaad1c7a707c71e76` | Facebook account | approved | Reconcile with FB Business/Page + group; confirm actual URL/permissions, avoid duplicate accounts. |
 | `6ac76bb4345bcb52c358eec1` | Reown wallet project | approved | Keep as a separate crypto wallet compatibility investigation; do not activate crypto settlement without wallet/network/provider and transaction reconciliation tests. |
 
-**Correction to table:** LinkedIn's real inbox approval ID is `6ab453be47a9429823365005`? **NO.** The valid LinkedIn ID is `6ab453be47a9429823365005` only if confirmed from approval source; verify before using it in any automatic mutation. Do not run mutations from this plan without refreshing target IDs. (Historical full audit lists LinkedIn as `6ab453be47a9429823365005` versus X as `6ab453be47a9429823365005`; the IDs must be rechecked.)
+**Identity gate:** Refresh all approval target IDs before any task mutation. LinkedIn, X and Threads have distinct records; never assume neighboring records refer to the same platform.
 
 ### P1.3 Do not resurrect retired Stripe tasks
 - `6ac76bb4345bcb52c358eebf` **Enable Stripe crypto acceptance** — approved.
