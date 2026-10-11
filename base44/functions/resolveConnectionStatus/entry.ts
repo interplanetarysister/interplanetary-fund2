@@ -23,7 +23,7 @@ import { staticRecipe, orderedTransports } from '../../shared/platformConnection
 // Configuration, recipes, saved credentials, or public URLs are NOT sufficient.
 
 const CROWDFUNDING_OBSERVATION_PLATFORMS = new Set([
-  'gofundme', 'kickstarter', 'indiegogo', 'fundrazr', 'givesendgo', 'spotfund', 'custom',
+  'gofundme', 'justgiving', 'kickstarter', 'indiegogo', 'fundrazr', 'givesendgo', 'spotfund', 'custom',
 ]);
 
 // Provider-backed verification for SHARED connectors. Reuses the same calls the
