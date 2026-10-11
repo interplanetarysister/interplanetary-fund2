@@ -62,21 +62,27 @@ export default async function(req) {
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Direct publish is not IFund-verified for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, verified_manual: manualShareVerified, manual_share_method: capability?.manual_share_method || '', post: updated, profile_url: connection.external_url || '', reason: manualShareVerified ? 'Use the verified manual sharing method for this platform.' : 'IFund has not verified publishing for this platform yet.' });
     }
-    // Auto-publishing to connected platforms requires an active outreach+
-    // subscription. Without it, the post is saved as approved for manual posting.
-    if (!hasSubscriptionLevel(user, 2)) {
+    // A signed-in owner explicitly clicking Publish may post to a verified
+    // destination without buying the background outreach automation tier.
+    // Background/agent publishing still requires the corresponding subscription.
+    if (!hasPerPostHumanAuthorization && !hasSubscriptionLevel(user, 2)) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Manual post (no active subscription) for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, post: updated, profile_url: connection.external_url || '', reason: 'An active outreach subscription is required to auto-publish. You can post this manually.' });
     }
-    const actionAuthorization = await assertExternalAgentAction(sr, {
-      ownerUser: consentOwner,
-      ownerUserId: campaign.created_by_id,
-      campaign,
-      connection,
-      capability: 'create_post',
-      requireAutomation: connection.automation_mode === 'auto',
-    });
+    const actionAuthorization = hasPerPostHumanAuthorization
+      ? {
+        ok: connection.status === 'connected' && connection.verification_status === 'verified',
+        reason: 'The destination connection must be verified before publishing.',
+      }
+      : await assertExternalAgentAction(sr, {
+        ownerUser: consentOwner,
+        ownerUserId: campaign.created_by_id,
+        campaign,
+        connection,
+        capability: 'create_post',
+        requireAutomation: connection.automation_mode === 'auto',
+      });
     // Credential-based publishing (Bluesky, Mastodon) or OAuth connector
     // publishing (LinkedIn). If neither is available, fall back to manual.
     const canCredentialPublish = canAutoPublish(connection);
@@ -99,8 +105,7 @@ export default async function(req) {
     }
 
     try {
-      // Centralized access gate: if social publishing is revoked/disabled at the
-      // registry level, fall back to a manual handoff instead of auto-posting.
+      // Preserve the platform-wide safety switch even for explicit owner clicks.
       const access = await assertPlatformAccess(sr, 'social_publish');
       const obo = actionAuthorization;
       if (!access.ok || !obo.ok) {
