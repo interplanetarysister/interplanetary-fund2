@@ -71,3 +71,4 @@ export default function AdminOAuthProviderReadiness() {
       </details>
     </>}
   </section>;
+}
