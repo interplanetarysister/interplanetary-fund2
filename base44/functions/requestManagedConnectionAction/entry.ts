@@ -35,7 +35,7 @@ async function resolveRecipe(sr: any, platform: string, operation: string) {
 
 function waitingRequirement(action: string, transport: string | null) {
   if (action === 'create_account') {
-    return 'Account creation requires a provider-supported creation route. IFund will continue only when a real executable route exists.';
+    return 'Open the official platform site to sign up or sign in, then return to IFund and connect the account. IFund will verify the connection; account creation is not yet automated.';
   }
   if (transport === 'oauth') return 'Provider sign-in or consent is required on the provider page.';
   if (transport === 'token') return 'Connection details must be supplied through the protected IFund connection form.';
@@ -223,18 +223,20 @@ export default async function(req: Request) {
     const externalRequirement = waitingRequirement(action, nextTransport);
     // If a URL or code is required, the next step belongs to the owner.
     // Never leave the user looking at a passive "working" spinner.
-    const waitForUser = ['oauth', 'token', 'authenticated_browser','public_browser','webhook'].includes(String(nextTransport || ''))
-      || action === 'reauthorize';
+    const waitForUser = action === 'create_account' || action === 'reauthorize' ||
+      ['oauth', 'token', 'authenticated_browser', 'public_browser', 'webhook'].includes(String(nextTransport || ''));
     const nextStatus = waitForUser ? 'waiting_user' : 'waiting_external';
 
     await base44.entities.AgentDelegation.update(delegation.id, {
       status: nextStatus,
-      result_summary: resolved.rediscovery_required
-        ? 'No current proven route is available; route discovery or provider setup is required.'
-        : 'The request is authorized and preserved until the next provider-required step can be completed.',
+      result_summary: action === 'create_account'
+        ? 'Provider sign-up is an action on the official platform website; IFund has not created an account.'
+        : resolved.rediscovery_required
+          ? 'No verified IFund connection route is configured for this platform yet.'
+          : 'The request is authorized and preserved until the next provider-required step can be completed.',
       updated_at: new Date().toISOString(),
       continuation_state: {
-        pending_step: resolved.rediscovery_required ? 'discover_supported_route' : 'resume_provider_connection',
+        pending_step: action === 'create_account' ? 'complete_official_provider_signup' : resolved.rediscovery_required ? 'discover_supported_route' : 'resume_provider_connection',
         completed_steps: ['authorization_checked', 'ownership_checked', 'route_resolved'],
         external_requirement: externalRequirement,
         return_route: '/connections',
