@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,8 @@ import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
 // crowdfunding platform and social network Interplanetary Fund can reach,
 // managed from a single place.
 export default function Connections() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
   const [dialog, setDialog] = useState(null); // { platform, existing, quickConnect }
@@ -38,19 +41,20 @@ export default function Connections() {
   const [lifecycleMap, setLifecycleMap] = useState({});
   const requestGeneration = useRef(0);
   const mountedRef = useRef(true);
-  const processedConnectionLink = useRef(false);
 
-  // A link from IFund chat goes straight into the selected provider's sign-in
-  // flow. Only IDs in the first-party catalog are accepted; arbitrary URLs
-  // and unrecognized providers are never used as redirect destinations.
+  // All in-app and agent connection links land on this canonical page, even
+  // when a member switches platforms without a full page reload. Only catalog
+  // IDs may open a dialog; never use the URL as a provider redirect address.
   useEffect(() => {
-    if (!connections || processedConnectionLink.current) return;
-    const url = new URL(window.location.href);
-    const requested = url.searchParams.get("connect");
+    if (!connections || !location.search) return;
+    const params = new URLSearchParams(location.search);
+    const requested = params.get("connect") || params.get("platform") || params.get("provider");
     if (!requested) return;
-    processedConnectionLink.current = true;
-    url.searchParams.delete("connect");
-    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    for (const key of ["connect", "platform", "provider"]) params.delete(key);
+    const remaining = params.toString();
+    // Use router navigation instead of history.replaceState: that keeps
+    // React Router in sync for a second platform link in the same session.
+    navigate({ pathname: "/connections", search: remaining ? `?${remaining}` : "", hash: location.hash }, { replace: true });
     const platform = ALL_PLATFORMS.find((item) => item.id === requested);
     if (!platform) {
       setConnectionNotice({ ok: false, text: "This connection link isn't supported. Choose a platform below." });
@@ -59,7 +63,7 @@ export default function Connections() {
     const existing = connections.find((item) => item.platform === requested) || null;
     const alreadyWorking = existing?.status === "connected" && existing?.verification_status === "verified";
     setDialog({ platform, existing, quickConnect: platform.setupKind === "oauth" && !alreadyWorking });
-  }, [connections]);
+  }, [connections, location.search, location.hash, navigate]);
 
   // Help Center deep-links open the actual connection helper, even though
   // the app scrolls inside its central workspace instead of the window.
