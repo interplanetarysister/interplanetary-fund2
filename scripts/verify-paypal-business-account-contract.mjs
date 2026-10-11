@@ -10,7 +10,7 @@ const custody = read('docs/CUSTODY_HOLDING_LEDGER_CONTRACT.md');
 
 assert.match(paypal, /IFUND_PAYPAL_ACCOUNT_REF = "interplanetary_business_paypal"/);
 assert.match(paypal, /IFUND_PAYPAL_ACCOUNT_TYPE = "business"/);
-assert.match(paypal, /IFUND_PAYPAL_BUSINESS_EMAIL = "interplanetarysister@gmail\.com"/);
+assert.match(paypal, /IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail\.com"/);
 assert.match(paypal, /https:\/\/api-m\.paypal\.com/);
 assert.match(paypal, /https:\/\/api-m\.sandbox\.paypal\.com/);
 
@@ -20,7 +20,7 @@ assert.match(config, /business_email: IFUND_PAYPAL_BUSINESS_EMAIL/);
 assert.match(caps, /account_ref: IFUND_PAYPAL_ACCOUNT_REF/);
 assert.match(caps, /account_type: IFUND_PAYPAL_ACCOUNT_TYPE/);
 
-assert.match(link, /IFUND_PAYPAL_BUSINESS_EMAIL = "interplanetarysister@gmail\.com"/);
+assert.match(link, /IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail\.com"/);
 assert.match(link, /business: IFUND_PAYPAL_BUSINESS_EMAIL/);
 
 for (const p of [
