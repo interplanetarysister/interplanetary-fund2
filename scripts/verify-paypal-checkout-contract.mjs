@@ -11,6 +11,7 @@ const mirrors=read("base44/shared/financialMirrors.ts");
 const rawButton=read("src/components/payments/PayPalDonateButton.jsx");
 const fundingCard=read("src/components/campaigns/CampaignFundingCard.jsx");
 const distribution=read("base44/functions/generateDistributionContent/entry.ts");
+const distributionDestination=read("base44/shared/distributionDestination.js");
 const recoveryList=read("base44/functions/listUntrackedPayPalReceipts/entry.ts");
 const recovery=read("base44/functions/reconcileDirectPayPalCampaignDonation/entry.ts");
 const paypal=read("base44/shared/paypal.ts");
@@ -64,7 +65,8 @@ assert.match(dialog,/usePublicCampaignFundraising/);
 assert.doesNotMatch(rawButton,/if \(!PRELAUNCH_MODE\) return null/);
 assert.match(rawButton,/generatePayPalLink/);
 assert.doesNotMatch(distribution,/paypal\.com\/donate/,"campaign distribution must never bypass IFund checkout");
-assert.match(distribution,/\/campaign\/\$\{encodeURIComponent\(campaignId\)\}\?donate=true/);
+assert.doesNotMatch(distributionDestination,/paypal\.com\/donate/,"canonical campaign destinations must never bypass IFund checkout");
+assert.match(distributionDestination,/\/campaign\/\$\{encodeURIComponent\(campaignId\)\}\?donate=true/);
 assert.match(mirrors,/const mirror = await reconcileOne\(sr\.entities\.Donation/);
 assert.ok(
   mirrors.indexOf("const mirror = await reconcileOne(sr.entities.Donation") <
