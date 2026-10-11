@@ -26,6 +26,7 @@ export const STATIC_CONNECTION_RECIPES: Record<string, Record<string, any>> = {
   bluesky: { connect: { preferred_transport: 'token', worker_key: 'blueskyDirect' } },
   mastodon: { connect: { preferred_transport: 'token', worker_key: 'mastodonDirect' } },
   gofundme: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
+  justgiving: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   kickstarter: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   indiegogo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
