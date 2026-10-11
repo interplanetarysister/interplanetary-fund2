@@ -95,7 +95,7 @@ export default function Connections() {
       setConnections(nextConnections);
       resolveLifecycles(nextConnections);
       setHistoryKey((k) => k + 1);
-    } catch (e) {
+    } catch {
       if (mountedRef.current) setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     } finally {
       if (mountedRef.current) setSyncing(false);
@@ -330,7 +330,7 @@ export default function Connections() {
         </span>
         Connections
       </h1>
-      <p className="text-slate-300 mb-5">Connect the platforms you already use. Connected means the connection is ready to use.</p>
+      <p className="text-slate-300 mb-5">Explore the platforms you already use. IFund checks sign-in availability after you choose one; Connected means a provider-backed check succeeded.</p>
       <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
         <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} connected</span>
       </div>
@@ -459,7 +459,7 @@ export default function Connections() {
 
       <div className="mb-8" id="connection-chooser">
         <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
-        <p className="text-sm text-stone-500 mb-3">Choose a platform you already use. IFund handles the connection behind the scenes.</p>
+        <p className="text-sm text-stone-500 mb-3">Choose a platform you already use. IFund will check its setup before offering provider sign-in.</p>
         <div className="relative">
           <button
             type="button"
@@ -503,7 +503,7 @@ export default function Connections() {
                     <span className="min-w-0 flex-1">
                       <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
                     </span>
-                    <span className="text-xs font-semibold text-cyan-200">Connect</span>
+                    <span className="text-xs font-semibold text-cyan-200">{p.setupKind === "oauth" ? "Check setup" : "Open setup"}</span>
                   </button>
                 )) : (
                   <p className="px-3 py-6 text-center text-sm text-slate-400">No matching platforms.</p>
