@@ -2,7 +2,7 @@ import { secrets } from "base44:runtime";
 
 export const IFUND_PAYPAL_ACCOUNT_REF = "interplanetary_business_paypal";
 export const IFUND_PAYPAL_ACCOUNT_TYPE = "business";
-export const IFUND_PAYPAL_BUSINESS_EMAIL = "interplanetarysister@gmail.com";
+export const IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail.com";
 
 // Shared PayPal helpers. All platform money moves use deterministic provider
 // request identities so retries cannot create a second capture or payout.
