@@ -6,6 +6,8 @@ const finalize = read('base44/functions/finalizeAppUserOAuthConnection/entry.ts'
 const compatibility = read('base44/functions/completeOAuthConnection/entry.ts');
 const connect = read('src/components/connections/ConnectDialog.jsx');
 const page = read('src/pages/Connections.jsx');
+const publishHandoff = read('src/components/connections/PublishFromConnections.jsx');
+const publish = read('base44/functions/publishLinkedCampaignToConnection/entry.ts');
 const verify = read('base44/functions/verifyPlatformConnection/entry.ts');
 const readiness = read('base44/functions/getAppUserConnector/entry.ts');
 
@@ -68,7 +70,18 @@ assert.match(compatibility, /deprecated_per_connection_prompt: true/);
 assert.doesNotMatch(page, /pendingOAuthConsent|OAuthPermissionStep|completeOAuthConnection/);
 assert.match(page, /finalizeAppUserOAuthConnection/);
 assert.match(page, /verifyPlatformConnection/);
-assert.match(page, /publishLinkedCampaignToConnection/);
+assert.match(page, /import PublishFromConnections from "@\/components\/connections\/PublishFromConnections"/);
+assert.match(page, /<PublishFromConnections \/>/);
+assert.match(publishHandoff, /to=\{`\/campaign\/\$\{encodeURIComponent\(c\.id\)\}#campaign-distribution`\}/,
+  'Connections publishing handoff must route to the owner campaign distribution editor');
+for (const source of [connect, page, publishHandoff, finalize]) {
+  assert.doesNotMatch(source, /publishLinkedCampaignToConnection/,
+    'connecting, finalizing, and opening the publishing handoff must never invoke publication');
+}
+assert.match(publish, /direct_publish_verified === true/);
+assert.match(publish, /status: 'approved'/);
+assert.match(publish, /publishThroughConnection/,
+  'the canonical approved campaign publishing function must retain its verified transport path');
 assert.match(page, /finalizeAppUserOAuthConnection[\s\S]{0,1800}verifyPlatformConnection/);
 assert.match(verify, /aiAllowed && connection\.automation_mode === 'auto' && providerBacked/);
 
