@@ -25,7 +25,7 @@ export default async function(req) {
     // Guard the fixed first-party callback URL, then require PayPal to confirm
     // registration before persisting any webhook as billing-ready.
     stage = 'validate_callback_url';
-    const callback = new URL(URL);
+    const callback = new globalThis.URL(URL);
     if (callback.protocol !== 'https:' ||
         callback.origin !== 'https://interplanetaryfund.base44.app' ||
         callback.pathname !== '/functions/payPalSubscriptionWebhook' ||
