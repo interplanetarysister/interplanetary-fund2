@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import CredentialFields from "./CredentialFields";
+import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 
 const OAUTH_ATTEMPT_BLOCKED_STATES = new Set(["checking", "not_configured", "unsupported"]);
 
@@ -169,7 +170,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   };
 
   const requestManagedAccountSetup = async () => {
-    if (!onManagedCreateAccount || managedBusy || blockOAuthAttempt()) return;
+    if (!onManagedCreateAccount || managedBusy) return;
     setManagedBusy(true);
     setError("");
     try {
@@ -302,6 +303,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </Button>
             {helpDetails && <p role="status" className="text-xs text-foreground break-words">{helpDetails}</p>}
           </div>
+          {!existing && platform.kind !== "app" && officialProviderSite(platform.id) && (
+            <div className="rounded-xl border border-border bg-card p-3 text-sm text-foreground">
+              <p className="font-semibold">Need a new {platform.name} account?</p>
+              <p className="mt-1 text-xs text-muted-foreground">Sign up on the official provider website, then come back and connect that account. IFund only marks accounts connected after verification.</p>
+              <a href={officialProviderSite(platform.id)} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-primary px-3 py-2 text-center font-semibold text-primary underline">
+                Open {platform.name} to sign up
+              </a>
+            </div>
+          )}
           {usesProviderOAuth ? (
             <Button onClick={connectWithProvider} disabled={connecting || oauthAttemptBlocked} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : oauthReadiness === "checking" ? "Checking sign-in setup…" : oauthReadiness === "not_configured" ? "IFund setup required" : oauthReadiness === "unsupported" ? "Sign-in unavailable" : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
@@ -312,7 +322,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </Button>
           )}
           {!existing && managedAvailable && onManagedCreateAccount && platform.kind !== "app" && (
-            <Button type="button" variant="outline" onClick={requestManagedAccountSetup} disabled={managedBusy || oauthAttemptBlocked} className="w-full min-w-0 rounded-xl min-h-11 h-auto py-3 px-3 whitespace-normal break-words">
+            <Button type="button" variant="outline" onClick={requestManagedAccountSetup} disabled={managedBusy} className="w-full min-w-0 rounded-xl min-h-11 h-auto py-3 px-3 whitespace-normal break-words">
               {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to help set up a new account"}
             </Button>
           )}
