@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Loader2, Send, Copy, Check, CalendarClock, Trash2, ExternalLink } from "lucide-react";
 import { platformName } from "@/components/connections/platformCatalog";
+import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 
 const statusStyles = {
   draft: "bg-stone-100 text-stone-600",
@@ -46,7 +47,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
       if (data?.error) setNotice("Publishing could not be completed. Review the destination and try again.");
       else if (data?.manual) {
         onChanged(data.post);
-        setManualUrl(/^https:\/\//i.test(data.profile_url || "") ? data.profile_url : "");
+        setManualUrl(/^https:\/\//i.test(data.profile_url || "") ? data.profile_url : officialProviderSite(post.platform));
         setNotice(`${data.reason || "Direct publishing is not available for this account."} Copy the content and open your account to finish publishing.`);
       } else if (data?.post) {
         onChanged(data.post);
@@ -114,7 +115,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
         )}
         {manualUrl && post.status !== "published" && (
           <a href={manualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
-            <Button size="sm" type="button" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open account to post</Button>
+            <Button size="sm" type="button" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open platform to post</Button>
           </a>
         )}
         <Button size="sm" variant="outline" onClick={copy} className="rounded-lg">
