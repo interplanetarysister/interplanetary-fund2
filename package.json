@@ -101,6 +101,8 @@
   "dependencies": {
     "@base44/sdk": "^0.8.53",
     "@base44/vite-plugin": "^1.0.44",
+    "@capacitor/android": "8.4.3",
+    "@capacitor/core": "8.4.3",
     "@hello-pangea/dnd": "^17.0.0",
     "@hookform/resolvers": "^4.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -169,6 +171,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.4.3",
     "@eslint/js": "^9.19.0",
     "@humanfs/node": "^0.16.8",
     "@types/node": "^22",
