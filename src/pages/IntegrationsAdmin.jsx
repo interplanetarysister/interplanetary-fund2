@@ -15,18 +15,21 @@ const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Pl
 const REQUEST_TIMEOUT_MS = 15000;
 
 function withTimeout(promise) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), REQUEST_TIMEOUT_MS)),
-  ]);
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Request timed out")), REQUEST_TIMEOUT_MS);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function invokeWithLock(lock, operation) {
   if (lock.current) return null;
   lock.current = true;
   const pending = Promise.resolve().then(operation);
-  pending.then(() => { lock.current = false; }, () => { lock.current = false; });
-  return withTimeout(pending);
+  // The UI lock follows the bounded request, not an unbounded provider
+  // promise. A timed-out call can therefore be retried instead of silently
+  // disabling health checks for the lifetime of the page.
+  return withTimeout(pending).finally(() => { lock.current = false; });
 }
 
 function isAdminUser(value) {
