@@ -56,8 +56,15 @@ export default async function(req) {
     }
     const capability = await resolveCapabilityForPlatform(sr, connection.platform);
     const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
+    // These two provider-backed adapters are actually implemented in socialPublish.
+    // The capability table currently has no social rows; do not let its absence
+    // block an owner-approved live attempt on a separately verified connection.
+    // Only a successful provider write will ever mark the post as published.
+    const implementedAdapterReady = ['bluesky', 'linkedin'].includes(connection.platform) &&
+      connection.status === 'connected' && connection.verification_status === 'verified' &&
+      capability?.test_status !== 'failed' && capability?.implementation_status !== 'disabled';
     const manualShareVerified = capability?.manual_share_verified === true;
-    if (!directPublishVerified) {
+    if (!directPublishVerified && !implementedAdapterReady) {
       const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
       await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Direct publish is not IFund-verified for ${connection.platform}`, status: 'success' });
       return Response.json({ manual: true, verified_manual: manualShareVerified, manual_share_method: capability?.manual_share_method || '', post: updated, profile_url: connection.external_url || '', reason: manualShareVerified ? 'Use the verified manual sharing method for this platform.' : 'IFund has not verified publishing for this platform yet.' });
