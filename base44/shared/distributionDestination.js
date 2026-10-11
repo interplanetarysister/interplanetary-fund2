@@ -20,7 +20,7 @@ export function validExternalFundraiserUrl(platform, candidate) {
     if (url.protocol !== 'https:' || url.username || url.password || url.port) return null;
     const host = url.hostname.toLowerCase();
     if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') ||
-      /^\\d+\\.\\d+\\.\\d+\\.\\d+$/.test(host) || host.includes(':')) return null;
+      /^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(':')) return null;
     const known = PROVIDER_HOSTS[String(platform || '').toLowerCase()];
     if (known && !known.some(domain => host === domain || host === `www.${domain}`)) return null;
     if (!known && platform !== 'custom') return null;
