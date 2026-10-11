@@ -25,7 +25,7 @@ assert.match(page,/finalizeAppUserOAuthConnection/);
 assert.match(page,/campaign_id: pending\.campaignId/);
 assert.doesNotMatch(page,/functions\.invoke\("publishLinkedCampaignToConnection"/, 'Connecting an account must not cause unsolicited publication');
 assert.match(page,/Publish an approved update from your campaign when ready/);
-assert.match(page,/searchParams\.get\("connect"\)/, 'IFund chat must be able to link directly to a named connection');
+assert.match(page,/params\.get\("connect"\)/, 'IFund chat must be able to link directly to a named connection');
 assert.match(page,/ALL_PLATFORMS\.find/, 'Connection links must be limited to supported platform IDs');
 
 assert.match(finalize,/requestedCampaignId/);
