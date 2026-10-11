@@ -10,12 +10,12 @@ const cross=read('base44/shared/crossPost.ts');
 const update=read('base44/functions/postCampaignUpdate/entry.ts');
 
 assert.match(dialog,/display_name: selected\?\.title/);
-assert.match(dialog,/Campaign to publish first/);
-assert.match(dialog,/Link \$\{selectedCampaign\.title\} to \$\{platform\.name\}/);
+assert.match(dialog,/Pick the campaign to publish first/);
+assert.match(dialog,/<Label>Connection title<\/Label>/);
 assert.match(dialog,/campaignId: form\.campaign_id/);
 assert.match(dialog,/publishInitial: platform\.kind !== "app"/);
 assert.match(dialog,/returnPath: "\/connections"/);
-assert.match(dialog,/approve the provider permissions, and return here automatically/);
+assert.match(dialog,/owns the authorization screen and IFund verifies the granted capability after you return/);
 assert.doesNotMatch(page,/OAuthPermissionStep|pendingOAuthConsent|completeOAuthConnection/);
 
 assert.match(page,/finalizeAppUserOAuthConnection/);
