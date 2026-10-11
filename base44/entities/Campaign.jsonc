@@ -23,6 +23,7 @@
         "memorial",
         "disaster_relief",
         "creative",
+        "environment",
         "other"
       ],
       "default": "other"
