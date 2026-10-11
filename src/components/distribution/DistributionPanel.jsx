@@ -47,6 +47,7 @@ export default function DistributionPanel({ campaign }) {
   const destinations=connections.filter(c=>c.kind!=="app");
   const linkedFundraisers=destinations.filter(c=>c.kind==="crowdfunding"&&c.campaign_id===campaign.id&&isUsableConnection(c)&&/^https:\/\//i.test(c.external_url||""));
   const chosenFundraiser=linkedFundraisers.find(c=>c.id===donationTarget);
+  const invalidSavedDestination=donationTarget!=="ifund"&&!chosenFundraiser;
   const donationLink=chosenFundraiser?.external_url||`https://interplanetaryfund.com/campaign/${encodeURIComponent(campaign.id)}?donate=true`;
   const ai=destinations.filter(c=>aiReady(c,aiAuthorized)), approved=destinations.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,capabilityMap)), copy=destinations.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,capabilityMap));
   const chooseDonationDestination=async id=>{
@@ -66,6 +67,7 @@ export default function DistributionPanel({ campaign }) {
   };
   const createDrafts=async()=>{
     const targets=connections.filter(c=>selected.includes(c.id)&&isUsableConnection(c)&&c.kind!=="app");
+    if(invalidSavedDestination||savingDestination){setError("Repair or change the saved donation destination before preparing posts.");return;}
     if(!manualText.trim()||!targets.length){setError("Write a message and select at least one verified destination.");return;}
     setCreating(true);setError("");
     const content=manualText.trim();
@@ -79,7 +81,7 @@ export default function DistributionPanel({ campaign }) {
     }catch{setError("Could not create those drafts. Please try again.");}
     finally{setCreating(false);}
   };
-  const generate=async()=>{setGenerating(true);setError("");try{const {data}=await base44.functions.invoke("generateDistributionContent",{campaign_id:campaign.id,connection_ids:selected,donation_destination_connection_id:chosenFundraiser?.id||""});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else setPosts(prev=>[...(data.posts||[]),...prev])}catch(e){console.error("Distribution generation failed:",e?.name||"UnknownError");setError("Couldn't prepare the posts. Please try again.")}setGenerating(false)};
+  const generate=async()=>{if(invalidSavedDestination||savingDestination){setError("Repair or change the saved donation destination before preparing posts.");return;}setGenerating(true);setError("");try{const {data}=await base44.functions.invoke("generateDistributionContent",{campaign_id:campaign.id,connection_ids:selected,donation_destination_connection_id:chosenFundraiser?.id||""});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else setPosts(prev=>[...(data.posts||[]),...prev])}catch(e){console.error("Distribution generation failed:",e?.name||"UnknownError");setError("Couldn't prepare the posts. Please try again.")}setGenerating(false)};
   const broadcast=async()=>{setBroadcasting(true);setError("");try{const {data}=await base44.functions.invoke("broadcastPosts",{campaign_id:campaign.id});if(data?.error)setError("The distribution action could not be completed safely. Please try again.");else{const m=new Map(posts.map(p=>[p.id,p]));for(const u of(data.posts||[]))m.set(u.id,u);setPosts([...m.values()].sort((a,b)=>new Date(b.created_date)-new Date(a.created_date)));toast({title:"Posts prepared",description:`${data.published} sent · ${data.manual} ready for you to copy and post${data.failed?` · ${data.failed} need attention`:""}.`,
         actionContext:{campaignId:campaign.id,action:"cross-platform distribution"},actionLabel:"Review posts"})}}catch(e){console.error("Distribution broadcast failed:",e?.name||"UnknownError");setError("Couldn't send the posts. Please try again.")}setBroadcasting(false)};
   return <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
@@ -104,6 +106,7 @@ export default function DistributionPanel({ campaign }) {
           {linkedFundraisers.map(c=><option key={c.id} value={c.id}>{platformName(c.platform)} — linked external campaign</option>)}
         </select>
         <p className="text-xs text-sky-950 break-all">Selected destination: <a href={donationLink} target="_blank" rel="noopener noreferrer" className="underline">{donationLink}</a></p>
+        {invalidSavedDestination&&<div role="alert" className="rounded-md border border-red-300 bg-white p-2 text-sm text-red-800">Your saved external fundraiser is no longer a verified campaign connection. New promotions are paused until you reconnect it or choose IFund. <Button type="button" size="sm" variant="outline" disabled={savingDestination} onClick={()=>chooseDonationDestination("ifund")}>Use IFund instead</Button></div>}
         <p className="text-xs text-sky-950">External donations are processed and held by the external platform. IFund does not collect its 3% fee on those transactions or claim the funds are withdrawable here. Selecting a URL does not verify an external payment.</p>
       </div>
       <DestinationGroup title="AI can prepare these" hint="AI can write a version suited to each of these accounts. You stay in control according to your posting choice." icon={Sparkles} connections={ai} selected={selected} setSelected={setSelected}/>
@@ -113,9 +116,9 @@ export default function DistributionPanel({ campaign }) {
         <label htmlFor="ifund-distribution-message" className="block text-sm font-semibold text-stone-900">Write your post</label>
         <Textarea id="ifund-distribution-message" rows={4} maxLength={9000} placeholder="Share a verified campaign update, then choose Draft posts." value={manualText} onChange={e=>setManualText(e.target.value)} className="text-stone-900" />
         <p className="text-xs text-stone-600">The selected donation link is included automatically. Drafts do not publish or create outside campaigns. Destinations without verified direct publishing offer copy-and-open.</p>
-        <Button type="button" onClick={createDrafts} disabled={creating||!manualText.trim()||!selected.length} className="rounded-xl min-h-11">{creating?<Loader2 className="w-4 h-4 animate-spin"/>:<Megaphone className="w-4 h-4"/>} Draft posts for selected accounts</Button>
+        <Button type="button" onClick={createDrafts} disabled={creating||savingDestination||invalidSavedDestination||!manualText.trim()||!selected.length} className="rounded-xl min-h-11">{creating?<Loader2 className="w-4 h-4 animate-spin"/>:<Megaphone className="w-4 h-4"/>} Draft posts for selected accounts</Button>
       </div>
-      <div className="flex flex-wrap gap-3 pt-1"><Button onClick={generate} disabled={!aiEnabled||!aiAuthorized||generating||!selected.length} className="rounded-xl">{generating?<Loader2 className="w-4 h-4 animate-spin"/>:<Sparkles className="w-4 h-4"/>} Fill posts with AI</Button>{pending.length>0&&<Button onClick={broadcast} disabled={!publishEnabled||broadcasting} variant="outline" className="rounded-xl">{broadcasting?<Loader2 className="w-4 h-4 animate-spin"/>:<Rocket className="w-4 h-4"/>} Auto-send approved posts ({pending.length})</Button>}</div>
+      <div className="flex flex-wrap gap-3 pt-1"><Button onClick={generate} disabled={!aiEnabled||!aiAuthorized||generating||savingDestination||invalidSavedDestination||!selected.length} className="rounded-xl">{generating?<Loader2 className="w-4 h-4 animate-spin"/>:<Sparkles className="w-4 h-4"/>} Fill posts with AI</Button>{pending.length>0&&<Button onClick={broadcast} disabled={!publishEnabled||broadcasting} variant="outline" className="rounded-xl">{broadcasting?<Loader2 className="w-4 h-4 animate-spin"/>:<Rocket className="w-4 h-4"/>} Auto-send approved posts ({pending.length})</Button>}</div>
       {error&&<p className="text-sm text-red-600">{error}</p>}
     </div>}
     {!!posts.length&&<div className="space-y-3 mt-4">{posts.map(p=><DistributedPostCard key={p.id} post={p} onChanged={u=>setPosts(prev=>prev.map(x=>x.id===u.id?u:x))} onRemoved={id=>setPosts(prev=>prev.filter(x=>x.id!==id))}/>)}</div>}
