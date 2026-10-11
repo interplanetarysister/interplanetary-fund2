@@ -47,7 +47,7 @@ export default function TermsAcceptance({ children }) {
   // Reading public support information does not require consent to account features.
   // The regular app permission gate still applies when leaving these public help routes.
   const isHelpRoute = typeof window !== "undefined" &&
-    (window.location.pathname === "/help" || window.location.pathname.startsWith("/help/"));
+    (window.location.pathname === "/help" || window.location.pathname.startsWith("/help/") || window.location.pathname === "/contact");
   if (accepted || isEmbedRoute || isHelpRoute) return <>{children}</>;
 
   return (
