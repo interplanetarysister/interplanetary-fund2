@@ -17,6 +17,7 @@ const adminErrorMessage = (error) => {
 };
 
 const DEVELOPMENT_AGENTS = [
+  ["admin_builder_agent", "Admin Builder"],
   ["chief_of_staff", "Chief of Staff"],
   ["connection_discovery_agent", "Connection Discovery"],
   ["managed_connection_agent", "Managed Connections"],
@@ -26,7 +27,7 @@ const DEVELOPMENT_AGENTS = [
 export default function AdminDevelopmentChat({ user }) {
   const [key, setKey] = useState("");
   const [sessionId, setSessionId] = useState("");
-  const [agent, setAgent] = useState("chief_of_staff");
+  const [agent, setAgent] = useState("admin_builder_agent");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -37,7 +38,7 @@ export default function AdminDevelopmentChat({ user }) {
   const unlock = async () => {
     setBusy(true); setError("");
     try {
-      const result = await createAdminAgentSession({ adminKey: key, agent: "chief_of_staff" });
+      const result = await createAdminAgentSession({ adminKey: key, agent: "admin_builder_agent" });
       setSessionId(result.sessionId);
       setKey("");
     } catch (e) { console.error("Admin development session failed:", e?.name || "UnknownError"); setError(adminErrorMessage(e)); } finally { setBusy(false); }
