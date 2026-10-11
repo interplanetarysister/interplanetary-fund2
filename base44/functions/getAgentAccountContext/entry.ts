@@ -37,7 +37,7 @@ export default async function(req: Request) {
         capability_status: c.capability_status, automation_mode: c.automation_mode,
         agent_access: pick(c.agent_access, ['shared_with_agents','automation_enabled']),
         obo_consent: pick(c.obo_consent, ['granted','opted_out','requested_capabilities','granted_capabilities','provider_capabilities','permission_version']),
-        last_synced: c.last_synced, last_error: clip(c.last_error, 200),
+        last_synced: c.last_synced, needs_attention: !!c.last_error,
       })),
       campaigns: campaigns.filter((c:any) => c.created_by_id === user.id).map((c:any) => pick(c,
         ['id','title','summary','category','goal_amount','raised_amount','donor_count','status','outreach_enabled','outreach_paused','ai_profile'])),
