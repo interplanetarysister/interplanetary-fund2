@@ -16,17 +16,21 @@ export default async function(req: Request) {
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
     const sr = base44.asServiceRole;
-    const [connections, campaigns, profiles, followed, posts, distributed, membership, delegations, drafts] = await Promise.all([
+    const [connections, campaigns, profiles, followed, posts, distributedByOwner, distributedByCreator, membership, delegations, drafts] = await Promise.all([
       list(sr.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 120)),
       list(sr.entities.Campaign.filter({ created_by_id: user.id }, '-updated_date', 100)),
       list(sr.entities.PublicProfile.filter({ user_id: user.id })),
       list(sr.entities.FollowedCampaign.filter({ user_id: user.id }, '-created_date', 100)),
       list(sr.entities.SocialPost.filter({ author_user_id: user.id }, '-created_date', 60)),
       list(sr.entities.DistributedPost.filter({ owner_user_id: user.id }, '-created_date', 100)),
+      list(sr.entities.DistributedPost.filter({ created_by_id: user.id }, '-created_date', 100)),
       list(sr.entities.CommunityMember.filter({ user_id: user.id }, '-created_date', 100)),
       list(sr.entities.AgentDelegation.filter({ owner_user_id: user.id }, '-updated_date', 80)),
       list(sr.entities.AgentContentDraft.filter({ owner_user_id: user.id }, '-created_date', 30)),
     ]);
+    const distributed = [...new Map([...distributedByOwner, ...distributedByCreator]
+      .filter((p:any) => p.owner_user_id === user.id || p.created_by_id === user.id)
+      .map((p:any) => [p.id, p])).values()];
     return Response.json({
       ok: true,
       owner_user_id: user.id,
