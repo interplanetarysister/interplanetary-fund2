@@ -1,5 +1,7 @@
 // JustGiving staging-only unclaimed fundraising-page adapter.
-// Endpoint: https://api.justgiving.com/docs/resources/v1/UnclaimedPages/RegisterFundraisingPage
+// Reference: https://api.justgiving.com/docs/resources/v1/UnclaimedPages/RegisterFundraisingPage
+// Use the documented x-api-key header form rather than placing the AppID in
+// the URL, so the application identifier is not copied into access logs.
 // JustGiving remains custodian of all money. Creating an unclaimed page does
 // not grant IFund withdrawal, payment, or posting permissions for that user.
 const ACTIVITY_TYPES = new Set([
@@ -64,7 +66,7 @@ export function validateJustGivingCreateResult(result) {
 // Never return provider errors or account API keys to the frontend.
 export async function createJustGivingStagingPage({ appId, payload, fetchFn = fetch }) {
   if (!/^[a-zA-Z0-9_-]{4,128}$/.test(String(appId || ''))) throw new Error('JustGiving AppID is not configured.');
-  const response = await fetchFn(`${JUSTGIVING_STAGING_ENDPOINT}/${encodeURIComponent(appId)}${JUSTGIVING_UNCLAIMED_PATH}`, {
+  const response = await fetchFn(`${JUSTGIVING_STAGING_ENDPOINT}${JUSTGIVING_UNCLAIMED_PATH}`, {
     method: 'PUT',
     redirect: 'manual',
     headers: {
@@ -75,6 +77,8 @@ export async function createJustGivingStagingPage({ appId, payload, fetchFn = fe
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(15000),
   });
+  // API 409 can mean a short-name clash or a charity that cannot currently
+  // accept a page. A rejection must never be represented as published.
   if (response.status === 409) return { ok: false, status: 'provider_conflict' };
   if (response.status !== 201) return { ok: false, status: 'provider_rejected', http_status: response.status };
   const result = await response.json().catch(() => null);
