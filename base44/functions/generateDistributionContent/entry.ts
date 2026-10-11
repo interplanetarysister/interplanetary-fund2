@@ -132,12 +132,11 @@ Return JSON only.`;
     for (const post of (res.posts || [])) {
       const conn = targets.find((c) => c.platform === post.platform);
       if (!conn || !post.content) continue;
-      // Never silently redirect an external-platform campaign's donors to IFund.
-      const localCampaignLink = `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaign.id)}`;
-      const preparedText = destination.kind === 'external'
-        ? String(post.content).split(localCampaignLink + '?donate=true').join(destination.url).split(localCampaignLink).join(destination.url)
-        : String(post.content);
-      const content = conn.kind === 'social' && !preparedText.includes(destination.url)
+      // Never trust an LLM-generated URL for checkout. Crowdfunding updates
+      // are copyable text for the existing fundraiser; social appeals receive
+      // exactly the creator-selected support link, not a competing rail.
+      const preparedText = String(post.content).replace(/https?:\/\/[^\s]+/gi, '').trim();
+      const content = conn.kind === 'social'
         ? preparedText + generateDonationBlock(destination.url)
         : preparedText;
       const record = await base44.entities.DistributedPost.create({
