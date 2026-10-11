@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import AgentChat from "@/components/agents/AgentChat";
+import AgentContentReview from "@/components/agents/AgentContentReview";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
 import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import { base44 } from "@/api/base44Client";
@@ -81,6 +82,10 @@ export default function Agents() {
           ? <AdminDevelopmentChat user={user} />
           : <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />}
       </div>
+      <details className="mt-4 rounded-xl border border-border bg-card p-3 sm:p-4">
+        <summary className="cursor-pointer text-sm font-medium text-foreground">Review content your AI team prepared</summary>
+        <div className="pt-3"><AgentContentReview /></div>
+      </details>
       <details className="mt-4 rounded-xl border border-border bg-card p-3 sm:p-4">
         <summary className="cursor-pointer text-sm font-medium text-foreground">View AI work and progress</summary>
         <div className="pt-3"><AgentWorkPanel allAgents /></div>
