@@ -25,6 +25,7 @@ const files = {
   paypalRecoveryList: read('base44/functions/listUntrackedPayPalReceipts/entry.ts'),
   paypalRawButton: read('src/components/payments/PayPalDonateButton.jsx'),
   distribution: read('base44/functions/generateDistributionContent/entry.ts'),
+  distributionDestination: read('base44/shared/distributionDestination.js'),
 };
 
 const checks = [
@@ -72,7 +73,10 @@ const checks = [
   ['PayPal receipt completion requires one holding', files.paypalRecoveryList.includes('holdings.length === 1')],
   ['PayPal recovery duplicate status requires exactly one complete operation/mirror/holding', files.paypalRecovery.includes('allocation.ops.length !== 1') && files.paypalRecovery.includes('allocation.donations.length !== 1') && files.paypalRecovery.includes('allocation.holdings.length !== 1')],
   ['platform PayPal support remains available in both fundraising modes', files.paypalRawButton.includes('generatePayPalLink') && !files.paypalRawButton.includes('if (!PRELAUNCH_MODE) return null')],
-  ['campaign distribution never uses raw PayPal donate URLs', !files.distribution.includes('paypal.com/donate') && files.distribution.includes('?donate=true')],
+  ['campaign distribution never uses raw PayPal donate URLs',
+    !files.distribution.includes('paypal.com/donate') &&
+    !files.distributionDestination.includes('paypal.com/donate') &&
+    files.distributionDestination.includes('?donate=true')],
 
   ['Stripe uses canonical donation boundary', files.stripe.includes('recordCanonicalDonation')],
   ['Stripe never directly creates Base44 Donation', !/entities\.Donation\.create/.test(files.stripe)],
