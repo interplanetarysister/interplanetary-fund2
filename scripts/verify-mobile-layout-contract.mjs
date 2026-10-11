@@ -32,7 +32,7 @@ assert.doesNotMatch(globe, /touch-none/);
 
 const connect = read('src/components/connections/ConnectDialog.jsx');
 const select = read('src/components/ui/select.jsx');
-assert.match(connect, /max-h-\[calc\(100dvh-1rem\)\] overflow-x-hidden/);
+assert.match(connect, /max-h-\[calc\(100dvh-1\.5rem\)\] overflow-x-hidden/);
 assert.match(connect, /\[overflow-wrap:anywhere\]/);
 assert.doesNotMatch(connect, /`Link \$\{selectedCampaign\.title\}/, 'Connection action must not use unbounded campaign titles');
 assert.match(connect, /whitespace-normal break-words leading-snug/);
