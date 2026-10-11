@@ -29,6 +29,20 @@ export default async function(req) {
     if (!campaign || campaign.created_by_id !== user.id) return Response.json({ error: 'Paired campaign not found.' }, { status: 404 });
     if (campaign.status !== 'active') return Response.json({ error: 'Publish the Interplanetary Fund campaign before sending it to connected platforms.' }, { status: 409 });
 
+    if (connection.kind === 'crowdfunding') {
+      // Linking a crowdfunding URL is NOT an authorized create-campaign API.
+      // Return a clear manual handoff; never record a nonexistent external post.
+      return Response.json({
+        ok: true,
+        direct_published: false,
+        external_campaign_created: false,
+        manual_required: true,
+        manual_setup_required: true,
+        status: 'manual_setup_required',
+        message: 'Campaign details are available to copy in the campaign distribution panel. Create or update the fundraiser through the provider, then link its official campaign URL. IFund did not create or publish an external fundraiser.',
+      });
+    }
+
     const marker = `connection-launch:${connection.id}:${campaign.id}`;
     const existing = await sr.entities.DistributedPost.filter({
       campaign_id: campaign.id,
