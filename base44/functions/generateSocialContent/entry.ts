@@ -21,9 +21,9 @@ const TOPICS = [
   {
     id: 'cross_platform_sync',
     feature: 'Cross-Platform Campaign Sync',
-    description: 'Create your campaign once on Interplanetary Fund and it syncs across GoFundMe, Kickstarter, Ko-fi, and more.',
-    benefit: 'Manage every platform from one dashboard instead of juggling tabs.',
-    how_to: 'Open Connections, link your external accounts, and watch your totals sync automatically.',
+    description: 'IFund helps organize one campaign and prepare platform-specific promotions. Creators can link existing fundraisers on supported providers; automated creation on external crowdfunding sites is not yet verified.',
+    benefit: 'Keep linked campaigns and promotional drafts in one workspace while each external provider keeps control of its campaigns and payments.',
+    how_to: 'Open Connections, link an existing external fundraiser, then choose the donation destination in your IFund campaign distribution panel. Imported or entered totals may be informational.'
     image_prompt: 'A holographic dashboard floating in space, multiple planet-like platforms orbiting and connected by streams of light to a central command center',
   },
   {
