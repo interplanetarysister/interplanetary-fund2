@@ -8,11 +8,14 @@ const plans = read("src/pages/Subscriptions.jsx");
 const billing = read("base44/functions/getPayPalSubscriptionOptions/entry.ts");
 const webhook = read("base44/functions/setupPayPalSubscriptionWebhook/entry.ts");
 
-assert.match(chat, /createPortal\(composer, document\.body\)/, "mobile composer must escape animated page transforms");
-assert.match(chat, /bottom-\[calc\(6rem\+env\(safe-area-inset-bottom\)\)\]/, "mobile composer must clear bottom navigation and safe area");
+assert.doesNotMatch(chat, /createPortal\(composer, document\.body\)/, "mobile composer must not escape the chat flow");
+assert.match(chat, /sm:h-\[min\(68dvh,40rem\)\]/, "chat must use a bounded flex workspace on larger viewports");
+assert.match(chat, /pl-14[^\n]*md:pl-3/, "mobile composer must clear Quick Actions while main layout padding clears bottom navigation");
 assert.match(chat, /overflow-y-auto overscroll-y-contain touch-pan-y/, "conversation history must support touch scrolling");
 assert.match(dialog, /max-h-\[calc\(100dvh-1\.5rem\)\]/, "connection dialog must fit the mobile viewport");
 assert.match(dialog, /setOauthReadiness\("not_configured"\)|"not_configured"/, "show missing IFund provider setup separately from user sign-in failure");
+assert.match(dialog, /registration_unverified/, "a connector registration must not be presented as proven operational readiness");
+assert.doesNotMatch(dialog, /data\?\.configured && data\?\.connector_id \? "ready"/, "an environment connector id alone must not become ready");
 assert.match(plans, /Saved PayPal price mappings:/, "admin must see catalog records independently");
 assert.match(plans, /Checkout-ready prices:/, "admin must see provider-verified readiness independently");
 assert.match(billing, /saved_plan_mapping_count: savedMappingCount/, "backend must expose non-secret mapped catalog count for admin");
