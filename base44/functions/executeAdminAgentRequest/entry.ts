@@ -8,11 +8,9 @@ const SUPER_ADMIN_OWNER_EMAILS = new Set([
 ]);
 const ALLOWED = new Set([
   'chief_of_staff',
-  'builder_agent',
-  'admin_agent',
-  'review_agent',
-  'verification_agent',
   'connection_discovery_agent',
+  'managed_connection_agent',
+  'outreach_agent',
 ]);
 
 const isSuperAdminOwner = (user) =>
