@@ -8,9 +8,10 @@ const plans = read("src/pages/Subscriptions.jsx");
 const billing = read("base44/functions/getPayPalSubscriptionOptions/entry.ts");
 const webhook = read("base44/functions/setupPayPalSubscriptionWebhook/entry.ts");
 
-assert.doesNotMatch(chat, /createPortal\(composer, document\.body\)/, "mobile composer must not escape the chat flow");
+assert.match(chat, /createPortal\(composer, document\.body\)/, "mobile composer must escape the animated, clipped page");
 assert.match(chat, /sm:h-\[min\(68dvh,40rem\)\]/, "chat must use a bounded flex workspace on larger viewports");
-assert.match(chat, /pl-14[^\n]*md:pl-3/, "mobile composer must clear Quick Actions while main layout padding clears bottom navigation");
+assert.match(chat, /bottom-\[calc\(6rem\+env\(safe-area-inset-bottom\)\)\]/, "mobile composer must clear bottom navigation");
+assert.match(chat, /pl-14 text-foreground/, "mobile composer must clear Quick Actions");
 assert.match(chat, /overflow-y-auto overscroll-y-contain touch-pan-y/, "conversation history must support touch scrolling");
 assert.match(dialog, /max-h-\[calc\(100dvh-1\.5rem\)\]/, "connection dialog must fit the mobile viewport");
 assert.match(dialog, /setOauthReadiness\("not_configured"\)|"not_configured"/, "show missing IFund provider setup separately from user sign-in failure");
