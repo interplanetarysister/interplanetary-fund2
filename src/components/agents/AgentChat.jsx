@@ -5,7 +5,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
-import { createPortal } from "react-dom";
 
 export default function AgentChat({ agentName, agentLabel, greeting }) {
   const convRef = useRef(null);
@@ -21,15 +20,6 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   const [startError, setStartError] = useState(false);
   const [trackingError, setTrackingError] = useState(false);
   const [slowResponse, setSlowResponse] = useState(false);
-  const [compactViewport, setCompactViewport] = useState(() =>
-    typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
-
-  useEffect(() => {
-    const viewport = window.matchMedia("(max-width: 639px)");
-    const onChange = () => setCompactViewport(viewport.matches);
-    viewport.addEventListener("change", onChange);
-    return () => viewport.removeEventListener("change", onChange);
-  }, []);
 
   useEffect(() => {
     let unsub = () => {};
@@ -171,9 +161,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     "External actions are complete only when verified by the provider or a successful tool result.";
 
   const composer = (
-    <div className={compactViewport
-      ? "fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 min-w-0 rounded-2xl border border-border bg-card p-3 text-foreground shadow-xl"
-      : "mt-2 min-w-0"}>
+    <div className="mt-2 min-w-0 shrink-0 rounded-2xl border border-border bg-card p-3 pl-14 text-foreground shadow-sm md:pl-3">
       <div className={waitingForResponse || running || needsInput || toolFailed ? "text-xs text-muted-foreground" : "sr-only"} role="status" aria-live="polite">{workStatus}</div>
       {trackingError && <p role="alert" className="mt-1 text-xs text-amber-600">The conversation may still work, but IFund could not save its progress status.</p>}
       {slowResponse && <div role="status" className="mt-1 text-xs text-amber-600">
@@ -183,17 +171,19 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
       {startError && <Button type="button" size="sm" variant="outline" onClick={() => setRestart((n) => n + 1)}>Retry agent connection</Button>}
       <div className="mt-2 flex items-center justify-end sm:justify-between gap-2 text-xs text-muted-foreground"><span className="hidden sm:inline">Platform actions use your verified IFund connections.</span><Link to="/connections" className="font-semibold text-primary hover:underline shrink-0">Connect a platform</Link></div>
       <div className="mt-2 flex min-w-0 gap-2 items-end">
-        <Textarea aria-label={`Message ${agentLabel}`} value={input} disabled={starting || !convRef.current} onChange={(e) => setInput(e.target.value)} placeholder={`Ask ${agentLabel}…`} rows={1} className="flex-1 min-w-0 resize-none rounded-xl min-h-[44px] max-h-28 py-2.5" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
+        <Textarea aria-label={`Message ${agentLabel}`} value={input} disabled={starting || !convRef.current} onChange={(e) => setInput(e.target.value)} onFocus={(e) => e.currentTarget.scrollIntoView({ block: "nearest" })} placeholder={`Ask ${agentLabel}…`} rows={1} className="flex-1 min-w-0 resize-none rounded-xl min-h-[44px] max-h-28 py-2.5" onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }} />
         <Button size="icon" aria-label="Send message" onClick={send} disabled={sending || waitingForResponse || starting || !input.trim() || !convRef.current} className="rounded-xl h-11 w-11 shrink-0"><Send className="w-4 h-4" /></Button>
       </div>
     </div>
   );
 
-  // Keep the composer above mobile bottom navigation even when the workspace
-  // header and agent activity consume most of a small viewport. The chat
-  // history and page remain independently touch-scrollable.
-  return <div className="flex min-w-0 min-h-0 flex-col pb-36 sm:pb-0 sm:h-[min(68dvh,40rem)]">
-    <div role="log" aria-label={`${agentLabel} conversation`} className="min-w-0 min-h-[12rem] max-h-[48dvh] sm:min-h-0 sm:max-h-none sm:flex-1 overflow-y-auto overscroll-y-contain touch-pan-y space-y-3 pr-1">
+  // The transcript and composer share one in-flow flex column. The transcript
+  // scrolls independently while the composer remains the next reachable focus
+  // target when a narrow visual viewport or virtual keyboard shrinks the page.
+  // Main layout bottom padding clears the mobile nav; composer left padding
+  // keeps the fixed Quick Actions control from covering the text field.
+  return <div className="flex min-w-0 min-h-0 flex-col sm:h-[min(68dvh,40rem)]">
+    <div role="log" aria-label={`${agentLabel} conversation`} className="min-w-0 min-h-[12rem] h-[min(48dvh,32rem)] sm:h-auto sm:min-h-0 sm:flex-1 overflow-y-auto overscroll-y-contain touch-pan-y space-y-3 pr-1">
       {starting ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div> : <>
         <div className="bg-muted text-foreground border border-border rounded-2xl p-3 text-sm">{greeting}</div>
         {messages.filter((m) => m.content).map((m, i) => <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
@@ -204,6 +194,6 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
         {(sending || waitingForResponse || running) && <div className="flex justify-start"><div className="bg-card text-muted-foreground border border-border rounded-2xl px-4 py-2 text-sm flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Working…</div></div>}
       </>}
     </div>
-    {compactViewport ? createPortal(composer, document.body) : composer}
+    {composer}
   </div>;
 }
