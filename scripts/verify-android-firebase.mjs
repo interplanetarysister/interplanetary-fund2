@@ -34,6 +34,22 @@ assert.ok(rootGradle.includes("classpath 'com.google.gms:google-services:4.5.0'"
 assert.ok(nativeActivity.includes('extends BridgeActivity'), 'Native Android activity not present');
 assert.ok(androidManifest.includes('android:allowBackup="false"'), 'App data backup should not expose saved session tokens');
 assert.ok(androidManifest.includes('android.permission.INTERNET'), 'Android web app requires Internet access');
+assert.ok(androidManifest.includes('android:usesCleartextTraffic="false"'), 'Native Android must disallow plaintext HTTP');
+assert.ok(androidManifest.includes('firebase_crashlytics_collection_enabled'), 'Crashlytics opt-in metadata missing');
+assert.ok(androidManifest.includes('android:value="false"'), 'Crash telemetry must default to off');
+assert.ok(appGradle.includes("implementation 'com.google.firebase:firebase-crashlytics'"), 'Missing Crashlytics SDK');
+assert.ok(rootGradle.includes('firebase-crashlytics-gradle:3.0.8'), 'Missing Crashlytics build plugin');
+assert.ok(nativeActivity.includes('registerPlugin(IfundDiagnosticsPlugin.class)'), 'Missing native crash-report consent plugin');
+assert.ok(read('android/app/src/main/java/com/base6a67a778342a8fe05ee79cba/app/IfundDiagnosticsPlugin.java').includes('setCrashlyticsCollectionEnabled'), 'User crash consent control missing');
+assert.ok(config.plugins?.CapacitorHttp?.enabled === true, 'Native HTTP transport must be enabled for Android WebView API access');
+assert.equal(packageJson.dependencies['@capacitor/push-notifications'], '8.0.3');
+assert.ok(read('src/pages/Login.jsx').includes('CapacitorHttp.post'), 'Missing Android native HTTPS login route');
+assert.ok(read('src/pages/Login.jsx').includes('https://interplanetaryfund.base44.app'), 'Native login must use canonical Base44 HTTPS backend');
+assert.ok(read('src/lib/androidFirebaseFeatures.js').includes('PushNotifications.requestPermissions'), 'Push must require consent');
+assert.ok(read('src/lib/androidFirebaseFeatures.js').includes('registerPushDevice'), 'Push token registry missing');
+assert.ok(read('base44/functions/registerPushDevice/entry.ts').includes('assertActiveAccount'), 'Push registration backend must validate user identity');
+assert.ok(read('base44/entities/PushDevice.jsonc').includes('"role": "admin"'), 'Push tokens must not be public records');
+assert.ok(!appGradle.includes("firebase-auth'"), 'Firebase must not replace existing Base44 authentication');
 assert.equal(packageJson.dependencies['@capacitor/core'], '8.4.3');
 assert.equal(packageJson.dependencies['@capacitor/android'], '8.4.3');
 assert.equal(packageJson.devDependencies['@capacitor/cli'], '8.4.3');
@@ -44,4 +60,4 @@ assert.ok(read('wrangler.toml').includes('IFUND_BASE44_ORIGIN'), 'Existing hosti
 assert.equal(existsSync('firebase.json'), false, 'Firebase Hosting/deployment config not expected');
 
 console.log('PASS: Android scaffold and Firebase config match; Base44 auth, hosting and existing account model are preserved.');
-console.log('NOTE: Native APK/Google sign-in/OAuth/device testing remains required before Android release.');
+console.log('NOTE: Device sign-in, OAuth, FCM delivery and crash opt-in must be verified before Google Play release.');
