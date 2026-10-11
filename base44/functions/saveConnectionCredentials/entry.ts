@@ -34,12 +34,26 @@ export default async function(req) {
       }
     }
 
-    const reportedTotal = external_total === undefined || external_total === null
-      ? Number(existing?.external_total ?? 0)
-      : Number(external_total);
-    const reportedDonors = external_donor_count === undefined || external_donor_count === null
-      ? Number(existing?.external_donor_count ?? 0)
-      : Number(external_donor_count);
+    const hasReportedTotal = external_total !== undefined && external_total !== null;
+    const hasReportedDonors = external_donor_count !== undefined && external_donor_count !== null;
+    const credentialsChanged = SECRET_FIELDS.some((field) => credentials && credentials[field]);
+    const identityChanged = Boolean(existing && (
+      platform !== existing.platform ||
+      (external_url !== undefined && String(external_url).trim() !== String(existing.external_url || '').trim()) ||
+      credentialsChanged
+    ));
+    // Never carry an observed balance or donor count into a different provider
+    // identity. When the identity is unchanged and no new observation is
+    // supplied, preserve both the value and its original provenance.
+    const reportedTotal = hasReportedTotal
+      ? Number(external_total)
+      : (identityChanged ? 0 : Number(existing?.external_total ?? 0));
+    const reportedDonors = hasReportedDonors
+      ? Number(external_donor_count)
+      : (identityChanged ? 0 : Number(existing?.external_donor_count ?? 0));
+    const externalDataSource = hasReportedTotal || hasReportedDonors
+      ? 'owner_reported'
+      : (identityChanged ? 'owner_reported' : (existing?.external_data_source || 'owner_reported'));
     if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
       return Response.json({ error: 'external_total must be a non-negative number' }, { status: 400 });
     }
@@ -88,7 +102,7 @@ export default async function(req) {
       external_donor_count: reportedDonors,
       status: 'disconnected',
       verification_status: 'unverified',
-      external_data_source: 'owner_reported',
+      external_data_source: externalDataSource,
       last_error: '',
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };

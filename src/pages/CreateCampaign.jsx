@@ -73,7 +73,22 @@ export default function CreateCampaign() {
     try {
       const discovered = await base44.functions.invoke("discoverExternalCampaignSnapshot", { connection_id: importConnectionId });
       if (!discovered.data?.ok || !discovered.data?.campaign) throw new Error("Discovery failed");
-      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: discovered.data.campaign, sync_enabled: true });
+      const goal = Number(form.goal_amount);
+
+      // Public provider pages do not supply a trustworthy owner goal. The
+      // server re-discovers provider fields during import, so this client sends
+      // only the owner's goal and never implies that local edits were imported.
+      if (!Number.isFinite(goal) || goal <= 0) {
+        setStep(1);
+        toast({ title: "Campaign page verified", description: "Add your campaign goal, then choose import again. Provider details will be copied from the verified page." });
+        return;
+      }
+
+      const { data } = await base44.functions.invoke("importExternalCampaign", {
+        connection_id: importConnectionId,
+        campaign: { goal_amount: goal },
+        sync_enabled: true,
+      });
       if (!data?.campaign_id && !data?.campaign?.id) throw new Error("Import failed");
       navigate(`/create?draft=${data.campaign_id || data.campaign.id}`, { replace: true });
     } catch {

@@ -76,7 +76,7 @@
         "REVOKED",
         "MISCONFIGURED"
       ],
-      "default": "ACTIVE"
+      "default": "DISCONNECTED"
     },
     "last_verified": {
       "type": "string",

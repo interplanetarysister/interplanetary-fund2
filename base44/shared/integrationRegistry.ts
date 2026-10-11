@@ -111,8 +111,14 @@ export async function assertPlatformAccess(sr, platform) {
   }
   const entry = entries && entries[0];
   if (!entry) return { ok: false, status: null, reason: `no registry entry for ${platform}` };
-  const ok = entry.status === "ACTIVE" || entry.status === "EXPIRES_SOON";
-  return { ok, status: entry.status, reason: ok ? "ok" : `status ${entry.status}` };
+  const healthyStatus = entry.status === "ACTIVE" || entry.status === "EXPIRES_SOON";
+  const providerEvidenceAt = Date.parse(String(entry.last_successful_verification || ""));
+  const hasProviderEvidence = Number.isFinite(providerEvidenceAt);
+  const ok = healthyStatus && hasProviderEvidence;
+  const reason = ok
+    ? "ok"
+    : (healthyStatus ? "provider-backed verification is missing" : `status ${entry.status}`);
+  return { ok, status: entry.status, reason };
 }
 
 // OBO (On-Behalf-Of) authorization. A saved platform credential is NOT

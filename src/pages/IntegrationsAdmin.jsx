@@ -15,18 +15,25 @@ const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Pl
 const REQUEST_TIMEOUT_MS = 15000;
 
 function withTimeout(promise) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Request timed out")), REQUEST_TIMEOUT_MS)),
-  ]);
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Request timed out")), REQUEST_TIMEOUT_MS);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 function invokeWithLock(lock, operation) {
-  if (lock.current) return null;
-  lock.current = true;
-  const pending = Promise.resolve().then(operation);
-  pending.then(() => { lock.current = false; }, () => { lock.current = false; });
-  return withTimeout(pending);
+  if (!lock.current) {
+    const pending = Promise.resolve().then(operation);
+    lock.current = pending;
+    const release = () => {
+      if (lock.current === pending) lock.current = null;
+    };
+    pending.then(release, release);
+  }
+  // A retry after the UI timeout attaches to the same in-flight operation.
+  // This keeps the backend call single-flight without making retry a no-op.
+  return withTimeout(lock.current);
 }
 
 function isAdminUser(value) {
