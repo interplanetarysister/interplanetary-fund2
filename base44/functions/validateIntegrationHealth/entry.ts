@@ -41,7 +41,8 @@ async function verifyCloudflareToken() {
 async function validateEntry(sr, e) {
   const checks = [];
   const flags = [];
-  let status = e.status === 'REVOKED' ? 'REVOKED' : 'DISCONNECTED';
+  let status = String(e.status || 'DISCONNECTED').toUpperCase();
+  let applyStatus = status === 'REVOKED';
   let providerVerified = false;
   let lastFailure = '';
   const p = String(e.platform || '').toLowerCase();
@@ -55,6 +56,7 @@ async function validateEntry(sr, e) {
     });
     if (missing.length && !e.optional) {
       status = 'MISCONFIGURED';
+      applyStatus = true;
       lastFailure = 'Required provider configuration is missing.';
     }
     if (missing.length && e.optional) {
@@ -65,6 +67,7 @@ async function validateEntry(sr, e) {
       if (mode.includes('sandbox') && e.environment === 'production') {
         flags.push('dev_creds_in_prod');
         status = 'MISCONFIGURED';
+        applyStatus = true;
         lastFailure = 'Sandbox configuration is referenced by a production registry entry.';
       }
     }
@@ -77,8 +80,8 @@ async function validateEntry(sr, e) {
         ok: true,
         detail: 'Provider is managed by the hosting platform; app-side live verification is unavailable.',
       });
-      status = 'DISCONNECTED';
-      lastFailure = 'Live provider verification is unavailable from the app runtime.';
+      // This run cannot verify the hosted provider, so preserve the last
+      // provider-backed state instead of manufacturing a disconnect.
     } else {
       try {
         const conn = await sr.connectors?.getConnection?.(p);
@@ -88,16 +91,18 @@ async function validateEntry(sr, e) {
             ok: true,
             detail: 'Connector authorization is configured; live provider verification is still required.',
           });
-          status = 'DISCONNECTED';
-          lastFailure = 'Live provider verification is required before activation.';
+          // Connector presence is configuration evidence only. Preserve the
+          // prior state until a provider-backed check can replace it.
         } else {
           checks.push({ check: 'oauth_configured', ok: false, detail: 'Connector authorization is not configured.' });
           status = 'REAUTH_REQUIRED';
+          applyStatus = true;
           lastFailure = 'OAuth connector authorization is required.';
         }
       } catch (_) {
         checks.push({ check: 'oauth_configured', ok: false, detail: 'Connector authorization check failed.' });
         status = 'REAUTH_REQUIRED';
+        applyStatus = true;
         lastFailure = 'OAuth connector authorization needs attention.';
       }
     }
@@ -110,13 +115,14 @@ async function validateEntry(sr, e) {
       ok: true,
       detail: 'Credentials are stored on owner-scoped PlatformConnection records; registry activation requires separate provider evidence.',
     });
-    status = 'DISCONNECTED';
-    if (!lastFailure) lastFailure = 'Registry-level live provider verification is unavailable.';
+    // Per-connection storage is not a provider health result. Preserve the
+    // previous provider-backed state until the connection itself is checked.
   }
 
   if (p === 'cloudflare' && status !== 'REVOKED' && status !== 'MISCONFIGURED') {
     const cf = await verifyCloudflareToken();
     checks.push({ check: 'cloudflare_token_verified', ok: cf.ok, detail: cf.detail });
+    applyStatus = true;
     if (cf.ok) {
       status = 'ACTIVE';
       providerVerified = true;
@@ -132,6 +138,7 @@ async function validateEntry(sr, e) {
   if (p === 'convex') {
     checks.push({ check: 'legacy_backend', ok: true, detail: 'Historical backend record retained; not health-gated by Base44.' });
     status = 'DISCONNECTED';
+    applyStatus = true;
     lastFailure = '';
     providerVerified = false;
   }
@@ -142,7 +149,7 @@ async function validateEntry(sr, e) {
 
   const alertTitle = isUnhealthy(status) ? `[${p}] ${STATUS_LABEL[status] || status}` : '';
   const alertBody = lastFailure || `Integration "${p}" requires attention: ${status}.`;
-  return { status, flags, checks, lastFailure, alertTitle, alertBody, providerVerified };
+  return { status, applyStatus, flags, checks, lastFailure, alertTitle, alertBody, providerVerified };
 }
 
 export default async function(req) {
@@ -162,19 +169,22 @@ export default async function(req) {
     for (const e of entries) {
       const before = e.status;
       const result = await validateEntry(sr, e);
-      const update = {
+      const effectiveStatus = result.applyStatus ? result.status : before;
+      const update: any = {
         last_verified: now,
-        status: result.status,
         cleanup_flags: result.flags,
-        last_failure: result.lastFailure || '',
-        auth_failures: result.status === 'ACTIVE' ? 0 : (e.auth_failures || 0),
       };
-      if (result.status === 'ACTIVE' && result.providerVerified) {
+      if (result.applyStatus) {
+        update.status = result.status;
+        update.last_failure = result.lastFailure || '';
+        update.auth_failures = result.status === 'ACTIVE' ? 0 : (e.auth_failures || 0);
+      }
+      if (result.applyStatus && result.status === 'ACTIVE' && result.providerVerified) {
         update.last_successful_verification = now;
       }
       await sr.entities.PlatformAccessRegistry.update(e.id, update);
 
-      if (before !== result.status) {
+      if (result.applyStatus && before !== result.status) {
         await logAudit(base44, {
           action: 'integration_status_change',
           actor_user_id: user.id,
@@ -187,13 +197,14 @@ export default async function(req) {
       }
 
       const isHistoricalConvex = String(e.platform || '').toLowerCase() === 'convex';
-      if (!isHistoricalConvex && !e.optional && isUnhealthy(result.status)) {
+      if (result.applyStatus && !isHistoricalConvex && !e.optional && isUnhealthy(result.status)) {
         await emitIntegrationAlert(sr, { ...e, status: result.status }, result.alertTitle, result.alertBody);
       }
 
       report.push({
         platform: e.platform,
-        status: result.status,
+        status: effectiveStatus,
+        status_updated: result.applyStatus,
         provider_verified: result.providerVerified,
         flags: result.flags,
         checks: result.checks,
