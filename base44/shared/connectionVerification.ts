@@ -35,6 +35,7 @@ const MANUAL_VERIFICATION_PLATFORMS = new Set(['bluesky', 'mastodon']);
 const WEBHOOK_VERIFICATION_PLATFORMS = new Set(['kofi']);
 const PUBLIC_LINK_HOSTS: Record<string, Set<string>> = {
   gofundme: new Set(['gofundme.com', 'www.gofundme.com']),
+  justgiving: new Set(['justgiving.com', 'www.justgiving.com']),
   kickstarter: new Set(['kickstarter.com', 'www.kickstarter.com']),
   indiegogo: new Set(['indiegogo.com', 'www.indiegogo.com']),
   fundrazr: new Set(['fundrazr.com', 'www.fundrazr.com']),
