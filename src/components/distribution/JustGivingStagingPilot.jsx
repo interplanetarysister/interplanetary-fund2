@@ -49,9 +49,10 @@ export default function JustGivingStagingPilot({ campaign }) {
       <h4 className="flex gap-2 items-center font-semibold text-slate-900"><FlaskConical className="w-4 h-4"/> JustGiving — admin staging pilot</h4>
       <p className="text-sm text-slate-800">Test the official API that creates an unclaimed fundraising page for an eligible JustGiving charity. The owner must claim it on JustGiving. This does not publish a live fundraiser or move donations.</p>
       {readiness && <p className="text-xs font-medium text-slate-800">
-        Provider setup: {readiness.ready ? "Staging credentials and permission switch available" : "Not configured — an IFund administrator must register a JustGiving developer AppID and enable staging writes securely. No live creation is available."}
+        Provider setup: {readiness.ready ? "Registered developer AppID available and staging-only write switch enabled." : "Staging is not configured. Use the existing JustGiving developer account to find its AppID under Applications, store it in the secure Base44 environment, then explicitly enable staging writes. No live creation is available."}
       </p>}
-      <label className="block text-sm font-medium" htmlFor="jg-charity-id">Registered JustGiving charity ID</label>
+      <p className="text-xs text-slate-700">Developer portal: <a href="https://developer.justgiving.com/login" rel="noopener noreferrer" target="_blank" className="underline">Log in and open Applications</a>. Never paste portal passwords or AppIDs into campaign content. Staging accounts and charity IDs may differ from production.</p>
+      <label className="block text-sm font-medium" htmlFor="jg-charity-id">Registered JustGiving charity ID (staging)</label>
       <Input id="jg-charity-id" inputMode="numeric" value={charityId} onChange={e=>{setCharityId(e.target.value);setPreview(null);}} placeholder="Enter eligible charity's JustGiving ID" className="bg-white text-slate-900" />
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-medium">Staging page activity
