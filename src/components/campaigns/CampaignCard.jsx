@@ -10,7 +10,7 @@ const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 export const categoryLabels = {
   medical: "Medical", emergency: "Emergency", education: "Education", community: "Community",
   animals: "Animals", business: "Business", memorial: "Memorial", disaster_relief: "Disaster Relief",
-  creative: "Creative", other: "Other",
+  creative: "Creative", environment: "Planet & Environment", other: "Other",
 };
 
 export default function CampaignCard({ campaign }) {
