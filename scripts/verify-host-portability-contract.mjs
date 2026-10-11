@@ -20,6 +20,9 @@ assert.match(runtime, /VITE_ADMIN_AGENT_API_URL/);
 assert.match(gateway, /\/v1\/admin\/agents\/session/);
 assert.match(gateway, /\/v1\/admin\/agents\/message/);
 assert.match(gateway, /\/v1\/admin\/agents\/status/);
+assert.match(gateway, /verifyAdminGateway/, "When there is no separately configured gateway, native Base44 must verify the canonical super-admin role");
+assert.match(gateway, /executeAdminAgentRequest/, "A verified Base44 super-admin must be able to execute and poll the existing backend directly");
+assert.match(gateway, /adminGatewayMode/, "The separate admin gateway must be optional for Base44-hosted functionality");
 assert.match(gateway, /authorization.*Bearer/s, "Admin gateway client must forward the authenticated Base44 bearer token");
 assert.match(docs, /IFUND_ADMIN_AGENT_KEY/);
 assert.match(docs, /split-brain/i);
@@ -36,9 +39,14 @@ assert.match(client, /clientConfig\.serverUrl\s*=\s*appBaseUrl/, "Alternate host
 assert.doesNotMatch(client, /serverUrl:\\s*appBaseUrl[,:]/, "Native Base44 must not be forced through the alternate-host server override");
 assert.doesNotMatch(client, /serverUrl:\s*['\"]{2}/, "Hosted frontends must not use an empty same-origin Base44 server URL");
 assert.match(panel, /createAdminAgentSession/);
+assert.match(panel, /Verify admin access/, "The native admin option must be visible without requesting a meaningless key");
+for (const agent of ["chief_of_staff", "connection_discovery_agent", "managed_connection_agent", "outreach_agent"]) {
+  assert.ok(fs.existsSync(new URL(`../base44/agents/${agent}.jsonc`, import.meta.url)), `Admin chooser must only offer a defined ${agent}`);
+}
 assert.match(worker, /IFUND_AGENT_EXECUTE_URL/);
 assert.match(worker, /degraded.*true/);
 assert.match(worker, /IFUND_SESSION_SECRET/);
+assert.match(worker, /!env\.IFUND_ADMIN_AGENT_KEY\s*\|\|\s*!env\.IFUND_SESSION_SECRET/, "Missing gateway secrets must fail closed");
 assert.match(worker, /sessionSignature/);
 assert.match(worker, /access-control-allow-headers.*authorization/s, "Gateway CORS must allow the Base44 authorization header");
 assert.match(worker, /\/v1\/admin\/agents\/status/);
