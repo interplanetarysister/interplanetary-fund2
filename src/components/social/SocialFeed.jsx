@@ -120,6 +120,7 @@ export default function SocialFeed({ user, onShare }) {
 
   return (
     <div className="space-y-4">
+      {interestError && <p role="alert" className="text-sm text-rose-400">{interestError}</p>}
       {topPosts.length > 0 && (
         <div>
           <p className="text-cyan-300 text-xs font-medium mb-2 px-1 flex items-center gap-1.5">
@@ -127,7 +128,7 @@ export default function SocialFeed({ user, onShare }) {
           </p>
           <div className="space-y-3">
             {topPosts.map((p) => (
-              <PostCard key={p.id} post={p} currentUser={user} onLike={handleLike} onDelete={handleDelete} onShare={onShare} />
+              <PostCard key={p.id} post={p} currentUser={user} liked={!!interests[p.id]?.liked} saved={!!interests[p.id]?.saved} interestBusy={!!changingInterest} onLike={()=>handleInterest(p,"liked")} onSave={()=>handleInterest(p,"saved")} onDelete={handleDelete} onShare={onShare} />
             ))}
           </div>
         </div>
@@ -135,7 +136,7 @@ export default function SocialFeed({ user, onShare }) {
 
       <div className="space-y-3">
         {feedPosts.map((p) => (
-          <PostCard key={p.id} post={p} currentUser={user} onLike={handleLike} onDelete={handleDelete} onShare={onShare} />
+          <PostCard key={p.id} post={p} currentUser={user} liked={!!interests[p.id]?.liked} saved={!!interests[p.id]?.saved} interestBusy={!!changingInterest} onLike={()=>handleInterest(p,"liked")} onSave={()=>handleInterest(p,"saved")} onDelete={handleDelete} onShare={onShare} />
         ))}
       </div>
 
