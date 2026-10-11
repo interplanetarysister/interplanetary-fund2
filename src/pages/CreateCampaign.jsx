@@ -73,7 +73,36 @@ export default function CreateCampaign() {
     try {
       const discovered = await base44.functions.invoke("discoverExternalCampaignSnapshot", { connection_id: importConnectionId });
       if (!discovered.data?.ok || !discovered.data?.campaign) throw new Error("Discovery failed");
-      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: discovered.data.campaign, sync_enabled: true });
+      const snapshot = discovered.data.campaign;
+      const goal = Number(form.goal_amount);
+
+      // Public provider pages do not supply a trustworthy owner goal. Populate
+      // only the discovered fields, then require the owner to enter a positive
+      // goal before creating the imported draft.
+      if (!Number.isFinite(goal) || goal <= 0) {
+        setForm((current) => ({
+          ...current,
+          title: snapshot.title || current.title,
+          category: snapshot.category || current.category,
+          summary: snapshot.summary || current.summary,
+          story: snapshot.story || current.story,
+          cover_image_url: snapshot.cover_image_url || current.cover_image_url,
+        }));
+        setStep(1);
+        toast({ title: "Campaign details imported", description: "Add your campaign goal, then choose import again to create the draft." });
+        return;
+      }
+
+      const campaign = {
+        ...snapshot,
+        title: form.title || snapshot.title,
+        category: form.category || snapshot.category,
+        summary: form.summary || snapshot.summary,
+        story: form.story || snapshot.story,
+        cover_image_url: form.cover_image_url || snapshot.cover_image_url,
+        goal_amount: goal,
+      };
+      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign, sync_enabled: true });
       if (!data?.campaign_id && !data?.campaign?.id) throw new Error("Import failed");
       navigate(`/create?draft=${data.campaign_id || data.campaign.id}`, { replace: true });
     } catch {
