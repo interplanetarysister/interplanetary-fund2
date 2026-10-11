@@ -8,6 +8,7 @@ import AIConsentCard from "@/components/connections/AIConsentCard";
 import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
+import AdminOAuthProviderReadiness from "@/components/connections/AdminOAuthProviderReadiness";
 import PublishFromConnections from "@/components/connections/PublishFromConnections";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
@@ -343,6 +344,7 @@ export default function Connections() {
         </div>
       )}
 
+      {user?.role === "admin" && <AdminOAuthProviderReadiness />}
       <PublishFromConnections />
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
