@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { getFrontendIdentity } from '@/lib/adminBootstrap';
+import { isAndroidApp, disableAndroidPush } from '@/lib/androidFirebaseFeatures';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
@@ -159,10 +160,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (shouldRedirect = true) => {
+  const logout = async (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    
+    if (isAndroidApp) await disableAndroidPush().catch(() => {});
+
     if (shouldRedirect) {
       base44.auth.logout(window.location.href);
     } else {
