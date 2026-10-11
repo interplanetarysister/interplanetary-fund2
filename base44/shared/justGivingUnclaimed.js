@@ -30,9 +30,17 @@ export function createUnclaimedPayload(campaign, fields) {
   const activityType = String(fields?.activity_type || '').trim();
   if (!ACTIVITY_TYPES.has(activityType))
     throw new Error('Choose a supported JustGiving non-event activity.');
-  const amount = Number(campaign.goal_amount);
-  if (!Number.isFinite(amount) || amount <= 0)
-    throw new Error('Set a positive campaign fundraising goal.');
+  // IFund campaigns do not yet define a canonical currency. Require the
+  // owner to verify a fresh target amount in the currency selected for the
+  // provider rather than silently relabeling an IFund number as GBP/USD.
+  if (fields?.confirm_target_amount !== true)
+    throw new Error('Confirm the fundraising target amount and chosen JustGiving currency.');
+  const rawAmount = String(fields?.target_amount ?? '').trim();
+  if (!/^(?:[1-9]\\d{0,8})(?:\\.\\d{1,2})?$/.test(rawAmount))
+    throw new Error('Enter a valid positive JustGiving fundraising target (up to two decimals).');
+  const amount = Number(rawAmount);
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999)
+    throw new Error('The JustGiving fundraising target is outside the supported range.');
   const currency = String(fields?.currency || 'GBP').toUpperCase();
   if (!['GBP', 'USD', 'EUR', 'AUD', 'CAD'].includes(currency))
     throw new Error('Select a supported donation currency.');
@@ -41,7 +49,7 @@ export function createUnclaimedPayload(campaign, fields) {
     pageShortName: pageSlug(campaign),
     pageTitle: String(campaign.title).slice(0, 180),
     pageStory: String(campaign.story || campaign.summary).slice(0, 9000),
-    targetAmount: String(Math.round(amount * 100) / 100),
+    targetAmount: amount.toFixed(2),
     currency,
     activityType,
     charityOptIn: false,
