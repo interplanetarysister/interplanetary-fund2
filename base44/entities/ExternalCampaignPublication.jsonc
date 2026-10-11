@@ -27,7 +27,7 @@
         "production_verified",
         "needs_attention"
       ],
-      "default": "staging_created"
+      "default": "needs_attention"
     },
     "page_short_name": {
       "type": "string"
