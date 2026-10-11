@@ -69,7 +69,7 @@ export default function JustGivingStagingPilot({ campaign }) {
           </select>
         </label>
         <label className="text-sm font-medium">Goal's currency on JustGiving
-          <select value={currency} onChange={e=>{setCurrency(e.target.value);setPreview(null);}} className="mt-1 w-full min-h-11 rounded-md border border-slate-300 bg-white p-2 text-slate-900">
+          <select value={currency} onChange={e=>{setCurrency(e.target.value);setConfirmAmount(false);setPreview(null);}} className="mt-1 w-full min-h-11 rounded-md border border-slate-300 bg-white p-2 text-slate-900">
             <option value="GBP">GBP</option><option value="USD">USD</option><option value="EUR">EUR</option><option value="AUD">AUD</option><option value="CAD">CAD</option>
           </select>
         </label>
@@ -78,7 +78,7 @@ export default function JustGivingStagingPilot({ campaign }) {
       <Input id="jg-target-amount" inputMode="decimal" value={targetAmount} onChange={e=>{setTargetAmount(e.target.value);setConfirmAmount(false);setPreview(null);}} placeholder="Enter the amount for the selected currency" className="bg-white text-slate-900" />
       <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={confirmAmount} onChange={e=>{setConfirmAmount(e.target.checked);setPreview(null);}} className="mt-1"/> I confirm this specific goal amount is correct for {currency}. IFund has not converted currencies for me.</label>
       <p className="text-xs text-slate-700">Your IFund campaign goal is {campaign.goal_amount ?? "not set"}. The pilot does not assume its currency or convert it; enter the amount you authorize for JustGiving separately.</p>
-      <Button type="button" variant="outline" disabled={busy||!charityId.trim()||!targetAmount.trim()||!confirmAmount} onClick={()=>run("preview")}> 
+      <Button type="button" variant="outline" disabled={busy||!charityId.trim()||!targetAmount.trim()||!confirmAmount} onClick={()=>run("preview")}>
         {busy ? <Loader2 className="w-4 h-4 animate-spin"/> : null} Preview staging page
       </Button>
       {preview && <div className="rounded-lg bg-white border border-violet-200 p-3 text-xs text-slate-900 space-y-1">
@@ -90,7 +90,7 @@ export default function JustGivingStagingPilot({ campaign }) {
       {preview && <div className="space-y-2">
         <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={eligible} onChange={e=>setEligible(e.target.checked)} className="mt-1"/> I have confirmed this charity is eligible on JustGiving and that this campaign is permitted to fundraise for it.</label>
         <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={terms} onChange={e=>setTerms(e.target.checked)} className="mt-1"/> I have reviewed the JustGiving developer terms and explicitly authorize this one staging registration.</label>
-        <Button type="button" disabled={busy||!readiness?.ready||!eligible||!terms||!confirmAmount} onClick={()=>run("create_staging")}> 
+        <Button type="button" disabled={busy||!readiness?.ready||!eligible||!terms||!confirmAmount} onClick={()=>run("create_staging")}>
           Create unclaimed page in JustGiving staging
         </Button>
       </div>}
