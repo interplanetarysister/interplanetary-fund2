@@ -5,10 +5,6 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 // credentials, connector tokens, sessions, private admin integrations or raw finance.
 const clip = (value: unknown, n = 300) => String(value ?? '').slice(0, n);
 const pick = (obj: any, fields: string[]) => Object.fromEntries(fields.map(k => [k, obj?.[k]]));
-const list = async (query: Promise<any>) => {
-  try { const result = await query; return Array.isArray(result) ? result : []; }
-  catch { return []; }
-};
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
@@ -16,18 +12,23 @@ export default async function(req: Request) {
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
     const sr = base44.asServiceRole;
+    const unavailableSources:string[] = [];
+    const list = async (query:Promise<any>, source:string) => {
+      try { const result = await query; if(!Array.isArray(result))throw new Error('Unexpected result'); return result; }
+      catch { unavailableSources.push(source); return []; }
+    };
     const [connections, campaigns, profiles, followed, posts, distributedByOwner, distributedByCreator, membership, delegations, drafts, interests] = await Promise.all([
-      list(sr.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 120)),
-      list(sr.entities.Campaign.filter({ created_by_id: user.id }, '-updated_date', 100)),
-      list(sr.entities.PublicProfile.filter({ user_id: user.id })),
-      list(sr.entities.FollowedCampaign.filter({ user_id: user.id }, '-created_date', 100)),
-      list(sr.entities.SocialPost.filter({ author_user_id: user.id }, '-created_date', 60)),
-      list(sr.entities.DistributedPost.filter({ owner_user_id: user.id }, '-created_date', 100)),
-      list(sr.entities.DistributedPost.filter({ created_by_id: user.id }, '-created_date', 100)),
-      list(sr.entities.CommunityMember.filter({ user_id: user.id }, '-created_date', 100)),
-      list(sr.entities.AgentDelegation.filter({ owner_user_id: user.id }, '-updated_date', 80)),
-      list(sr.entities.AgentContentDraft.filter({ owner_user_id: user.id }, '-created_date', 30)),
-      list(sr.entities.PostInterest.filter({ user_id: user.id }, '-updated_at', 100)),
+      list(sr.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 120),'connections'),
+      list(sr.entities.Campaign.filter({ created_by_id: user.id }, '-updated_date', 100),'campaigns'),
+      list(sr.entities.PublicProfile.filter({ user_id: user.id }),'profile'),
+      list(sr.entities.FollowedCampaign.filter({ user_id: user.id }, '-created_date', 100),'followed_campaigns'),
+      list(sr.entities.SocialPost.filter({ author_user_id: user.id }, '-created_date', 60),'ifund_posts'),
+      list(sr.entities.DistributedPost.filter({ owner_user_id: user.id }, '-created_date', 100),'external_posts_owner'),
+      list(sr.entities.DistributedPost.filter({ created_by_id: user.id }, '-created_date', 100),'external_posts_creator'),
+      list(sr.entities.CommunityMember.filter({ user_id: user.id }, '-created_date', 100),'community_memberships'),
+      list(sr.entities.AgentDelegation.filter({ owner_user_id: user.id }, '-updated_date', 80),'agent_work'),
+      list(sr.entities.AgentContentDraft.filter({ owner_user_id: user.id }, '-created_date', 30),'content_drafts'),
+      list(sr.entities.PostInterest.filter({ user_id: user.id }, '-updated_at', 100),'liked_and_saved_posts'),
     ]);
     const distributed = [...new Map([...distributedByOwner, ...distributedByCreator]
       .filter((p:any) => p.owner_user_id === user.id || p.created_by_id === user.id)
@@ -43,6 +44,8 @@ export default async function(req: Request) {
     }));
     return Response.json({
       ok: true,
+      data_complete: unavailableSources.length === 0,
+      data_unavailable_sources: unavailableSources,
       owner_user_id: user.id,
       connections: connections.filter((c:any) => c.created_by_id === user.id).map((c:any) => ({
         id: c.id, platform: c.platform, kind: c.kind, display_name: clip(c.display_name, 120),
