@@ -32,7 +32,6 @@ const workerConfig=read('wrangler.toml');
 const browserEnabled=!/browser_execution_deferred/.test(browser);
 const cloudflareBrowserBinding=/^\s*\[browser\]\s*$/m.test(workerConfig);
 const playwrightInstalled=Boolean(config.devDependencies?.playwright||config.dependencies?.playwright);
-const noHostChromium=typeof process.env.IFUND_BROWSER_TEST_ONLY!=='string';
 assert.ok(agents.length>=9,'Expected specialist team');
 assert.ok(playwrightInstalled,'Playwright browser checks must be declared in development dependencies');
 assert.equal(issues.length,0,issues.join('\n'));
