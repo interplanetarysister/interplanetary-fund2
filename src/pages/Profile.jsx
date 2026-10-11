@@ -9,6 +9,7 @@ import { Image } from "@/components/ui/image";
 import MediaUpload from "@/components/media/MediaUpload";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import AccountManagement from "@/components/account/AccountManagement";
+import { isAndroidApp, disableAndroidPush } from "@/lib/androidFirebaseFeatures";
 import FriendsPanel from "@/components/profile/FriendsPanel";
 import PublicProfileEditor from "@/components/profile/PublicProfileEditor";
 import CoachMarks from "@/components/coach/CoachMarks";
@@ -54,6 +55,7 @@ export default function Profile() {
 
   const signOut = async () => {
     setSigningOut(true);
+    if (isAndroidApp) await disableAndroidPush().catch(() => {});
     await base44.auth.logout("/login");
   };
 
