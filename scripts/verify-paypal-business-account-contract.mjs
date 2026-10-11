@@ -36,7 +36,8 @@ for (const p of [
   assert.match(src, /IFUND_PAYPAL_ACCOUNT_REF/);
   assert.doesNotMatch(src, /source_account_ref:\s*['"]interplanetary_business_paypal['"]/);
 }
-assert.match(custody, /PayPal Business REST credentials are authoritative/);
+assert.match(custody, /Live PayPal Business REST credentials used for IFund/);
+assert.match(custody, /email in configuration is not itself proof/);
 assert.match(custody, /finance aggregators are diagnostic only/);
 
 console.log('Canonical IFund PayPal Business account contract verified.');
