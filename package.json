@@ -7,6 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "verify:android-firebase": "node scripts/verify-android-firebase.mjs",
     "verify:fundraising-mode": "node scripts/verify-fundraising-mode.mjs",
     "verify:sustainability": "node scripts/verify-ifund-sustainability.mjs",
     "verify:campaign-creation": "node scripts/test-campaign-drafts-and-generated-media.mjs && node scripts/test-generate-campaign-cover.mjs",
