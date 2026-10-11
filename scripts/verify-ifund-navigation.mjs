@@ -57,7 +57,8 @@ try{
   await discoverHelpLink.waitFor({state:'visible',timeout:12000});
   await discoverHelpLink.click({timeout:7000});
   await page.waitForURL(url=>url.pathname==='/help',{timeout:12000});
-  await page.getByRole('heading',{name:'Help Center'}).waitFor({timeout:12000});
+  await page.getByRole('heading',{name:'How can we help?'}).waitFor({timeout:12000});
+  await page.getByText('The Interplanetary Fund Help Center',{exact:true}).waitFor({timeout:12000});
   await page.goto(origin+'/discover',{waitUntil:'domcontentloaded'});
   await bottomTab('Forums','/community');
   await bottomTab('IFund Social','/social');
