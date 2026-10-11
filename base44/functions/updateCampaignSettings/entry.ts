@@ -1,8 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { resolveDonationDestination } from '../../shared/distributionDestination.js';
 
 const CASHTAG = /^[A-Za-z0-9_]{1,20}$/;
-const ALLOWED = new Set(['cashapp_tag','outreach_enabled','outreach_paused','ai_profile','accept_crypto_donations']);
+const ALLOWED = new Set(['cashapp_tag','outreach_enabled','outreach_paused','ai_profile','accept_crypto_donations','distribution_donation_connection_id']);
 
 export default async function(req) {
   try {
@@ -29,6 +30,14 @@ export default async function(req) {
     }
 
     const safe = {};
+    if ('distribution_donation_connection_id' in patch) {
+      // Never let an administrator silently change another creator's donor destination.
+      if (campaign.created_by_id !== user.id) return Response.json({ error: 'Only the campaign owner can select where supporters donate.' }, { status: 403 });
+      const selectedId = String(patch.distribution_donation_connection_id || '').trim();
+      try { await resolveDonationDestination(base44.asServiceRole, user.id, campaignId, selectedId); }
+      catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+      safe.distribution_donation_connection_id = selectedId;
+    }
     if ('cashapp_tag' in patch) {
       const tag = String(patch.cashapp_tag || '').replace(/^\$/, '').trim();
       if (tag && !CASHTAG.test(tag)) return Response.json({ error: 'Invalid Cashtag' }, { status: 400 });
