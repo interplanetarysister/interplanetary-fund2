@@ -22,6 +22,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "request_pending",
         "staging_created",
         "production_verified",
         "needs_attention"
