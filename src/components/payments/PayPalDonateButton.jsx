@@ -2,7 +2,7 @@ import React from "react";
 import { generatePayPalLink } from "@/lib/paypalLink";
 
 // The Interplanetary Fund one-time platform-support PayPal donate button.
-// It never credits a campaign (business: interplanetarysister@gmail.com)
+// It never credits a campaign (business: cuddlemeplatonically@gmail.com)
 // — the same platform-support link used across IFund properties — and opens
 // in a secure new tab. Campaign donations use tracked PayPal order checkout;
 // subscription plans use the separately verified PayPal billing flow.
