@@ -5,6 +5,7 @@ import { Bell, Loader2, CheckCheck, ChevronRight } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { contextualNotificationDestination } from "@/lib/actionDestinations";
+import { isAndroidApp, getCrashReporting, setCrashReporting, hasLocalPushRegistration, enableAndroidPush, disableAndroidPush } from "@/lib/androidFirebaseFeatures";
 
 export default function Notifications() {
   const navigate = useNavigate();
@@ -13,6 +14,10 @@ export default function Notifications() {
   const [error, setError] = useState("");
   const requestGeneration = useRef(0);
   const mountedRef = useRef(true);
+  const [pushEnabled, setPushEnabled] = useState(() => hasLocalPushRegistration());
+  const [crashEnabled, setCrashEnabled] = useState(false);
+  const [nativeBusy, setNativeBusy] = useState("");
+  const [nativeError, setNativeError] = useState("");
 
   const load = async () => {
     const generation = ++requestGeneration.current;
@@ -44,6 +49,40 @@ export default function Notifications() {
       requestGeneration.current += 1;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAndroidApp) return;
+    getCrashReporting().then((enabled) => { if (mountedRef.current) setCrashEnabled(enabled); })
+      .catch(() => { /* Crash reporting remains disabled by default. */ });
+  }, []);
+
+  const setPushPreference = async () => {
+    if (nativeBusy) return;
+    setNativeBusy("push"); setNativeError("");
+    try {
+      if (pushEnabled) {
+        await disableAndroidPush();
+        setPushEnabled(false);
+      } else {
+        await enableAndroidPush();
+        setPushEnabled(true);
+      }
+    } catch {
+      setNativeError("Device notifications could not be updated. Please try again.");
+    } finally { setNativeBusy(""); }
+  };
+
+  const setCrashPreference = async () => {
+    if (nativeBusy) return;
+    setNativeBusy("crash"); setNativeError("");
+    try {
+      const next = !crashEnabled;
+      await setCrashReporting(next);
+      setCrashEnabled(next);
+    } catch {
+      setNativeError("Crash report preference could not be saved.");
+    } finally { setNativeBusy(""); }
+  };
 
   const markAllRead = async () => {
     if (!user) return;
@@ -91,6 +130,26 @@ export default function Notifications() {
       </div>
 
       {error && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert">{error} <button type="button" onClick={() => { setItems(null); load(); }} className="font-semibold underline">Retry</button></div>}
+
+      {isAndroidApp && (
+        <section className="mb-5 rounded-2xl border border-slate-200 bg-card p-5" aria-label="Android device preferences">
+          <h2 className="font-semibold text-foreground">Android device preferences</h2>
+          <p className="text-sm text-muted-foreground mt-1">Your existing IFund account stays on Base44. Firebase never becomes your login provider.</p>
+          {nativeError && <p className="mt-3 text-sm text-destructive" role="alert">{nativeError}</p>}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div><p className="text-sm font-medium">Device push notifications</p><p className="text-xs text-muted-foreground">Requires permission and IFund's notification delivery service.</p></div>
+            <Button variant="outline" disabled={!!nativeBusy} onClick={setPushPreference}>
+              {nativeBusy === "push" ? "Saving…" : pushEnabled ? "Turn off" : "Allow"}
+            </Button>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div><p className="text-sm font-medium">Share crash reports</p><p className="text-xs text-muted-foreground">Optional technical diagnostics; off until you choose to share.</p></div>
+            <Button variant="outline" disabled={!!nativeBusy} onClick={setCrashPreference}>
+              {nativeBusy === "crash" ? "Saving…" : crashEnabled ? "Turn off" : "Turn on"}
+            </Button>
+          </div>
+        </section>
+      )}
 
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
