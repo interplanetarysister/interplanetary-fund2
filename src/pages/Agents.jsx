@@ -19,11 +19,12 @@ const AGENTS = [
   { name: "finance_agent", label: "Finance", icon: Wallet, greeting: "I'm your Finance Agent. Ask me about raised amounts, clearing funds, fees, or payouts for any of your campaigns." },
   { name: "outreach_agent", label: "Outreach", icon: Megaphone, greeting: "I'm your Outreach Agent. I'll surface open recommendations and the autonomous agent's activity for your opted-in campaigns." },
   { name: "connection_discovery_agent", label: "Discovery", icon: Compass, greeting: "I'm your Connection Discovery Agent. I research fundraising and social platforms, verify their capabilities, and record what Interplanetary Fund can do with each one. Ask me about any platform or request a discovery scan." },
-  { name: "managed_connection_agent", label: "Managed Connections", icon: Link2, minLevel: 2, greeting: "I can help connect or repair eligible outside accounts under your IFund authorization. I will verify your entitlement and permission before any delegated action, and I will preserve any provider-required sign-in or verification step instead of pretending it is complete." },
+  { name: "managed_connection_agent", label: "Managed Connections", icon: Link2, minLevel: 2, greeting: "Tell me which account you want to connect or fix. I'll give you the right IFund connection link and check what can be completed for you. You just sign in and approve any permissions requested by the provider." },
 ];
 
 export default function Agents() {
   const [active, setActive] = useState(AGENTS[0]);
+  const [chatMode, setChatMode] = useState("chat");
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   useEffect(() => {
@@ -41,12 +42,12 @@ export default function Agents() {
     </div>
   </div>;
   const visibleAgents = AGENTS.filter((agent) => !agent.minLevel || hasPlanLevel(user, agent.minLevel));
+  const canUseAdminTools = active.name === "chief_of_staff" && getFrontendIdentity(user).superAdminOwner;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
       <h1 className="font-display text-3xl text-foreground mb-1">Your AI team</h1>
-      <p className="text-muted-foreground mb-6">Your agents can help you work. Follow their actual progress below.</p>
-      <AgentWorkPanel allAgents />
+      <p className="text-muted-foreground mb-4">Ask a question or tell your AI team what you need. To connect an account, just name the platform.</p>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-hide">
         {visibleAgents.map((a) => {
@@ -55,7 +56,7 @@ export default function Agents() {
           return (
             <button
               key={a.name}
-              onClick={() => setActive(a)}
+              onClick={() => { setActive(a); setChatMode("chat"); }}
               className={`shrink-0 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 on
                   ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-md shadow-blue-500/20"
@@ -68,11 +69,22 @@ export default function Agents() {
         })}
       </div>
 
-      {active.name === "chief_of_staff" && getFrontendIdentity(user).superAdminOwner && <div className="mb-4"><AdminDevelopmentChat user={user} /></div>}
+      {canUseAdminTools && <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Chat workspace">
+        <button type="button" aria-pressed={chatMode === "chat"} onClick={() => setChatMode("chat")}
+          className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold border ${chatMode === "chat" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border"}`}>Chat</button>
+        <button type="button" aria-pressed={chatMode === "admin"} onClick={() => setChatMode("admin")}
+          className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold border ${chatMode === "admin" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border"}`}>Admin tools</button>
+      </div>}
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm p-4">
-        <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />
+      <div className="bg-card rounded-2xl border border-border shadow-sm p-3 sm:p-4 min-w-0">
+        {canUseAdminTools && chatMode === "admin"
+          ? <AdminDevelopmentChat user={user} />
+          : <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />}
       </div>
+      <details className="mt-4 rounded-xl border border-border bg-card p-3 sm:p-4">
+        <summary className="cursor-pointer text-sm font-medium text-foreground">View AI work and progress</summary>
+        <div className="pt-3"><AgentWorkPanel allAgents /></div>
+      </details>
     </div>
   );
 }
