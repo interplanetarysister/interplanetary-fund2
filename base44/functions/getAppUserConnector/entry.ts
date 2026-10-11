@@ -13,13 +13,52 @@ export default async function(req) {
 
     const { platform } = await req.json().catch(() => ({}));
     const envName = OAUTH_ENV[String(platform || '').toLowerCase()];
-    if (!envName) return Response.json({ configured: false, supported: false });
+    if (!envName) {
+      return Response.json({
+        supported: false,
+        registration_reference_present: false,
+        registration_verified: false,
+        can_attempt: false,
+        authorization_present: false,
+        provider_verified: false,
+        readiness: 'unsupported',
+      });
+    }
 
     const connectorId = Deno.env.get(envName) || '';
+    if (!connectorId) {
+      return Response.json({
+        supported: true,
+        registration_reference_present: false,
+        registration_verified: false,
+        can_attempt: false,
+        authorization_present: false,
+        provider_verified: false,
+        readiness: 'not_configured',
+      });
+    }
+
+    // An environment value identifies only a connector registration reference. It does
+    // not prove the registration is valid, that provider authorization works,
+    // or that the provider granted a usable capability. A user authorization
+    // is stronger evidence, but live provider verification remains a separate
+    // post-return step owned by verifyPlatformConnection.
+    let authorizationPresent = false;
+    try {
+      const connection = await base44.asServiceRole.connectors.getCurrentAppUserConnection(connectorId);
+      authorizationPresent = !!connection?.accessToken;
+    } catch {
+      authorizationPresent = false;
+    }
     return Response.json({
-      configured: !!connectorId,
       supported: true,
-      connector_id: connectorId || undefined,
+      registration_reference_present: true,
+      registration_verified: false,
+      can_attempt: true,
+      authorization_present: authorizationPresent,
+      provider_verified: false,
+      readiness: authorizationPresent ? 'authorization_present' : 'registration_unverified',
+      connector_id: connectorId,
     });
   } catch (error) {
     console.error('getAppUserConnector error:', error?.message || error);
