@@ -28,7 +28,7 @@ assert.doesNotMatch(publish, /console\.error\('publishPost error:', error\.messa
 assert.match(capabilities, /DIRECT_PUBLISH_RUNTIME_PLATFORMS = new Set\(\['bluesky', 'linkedin'\]\)/);
 assert.match(capabilities, /merged\.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS\.has/);
 assert.match(distribution, /direct_publish_verified === true/);
-assert.match(distribution, /c\.platform === \"linkedin\"/);
+assert.match(distribution, /\[\"bluesky\", \"linkedin\"\]\.includes\(c\.platform\)/);
 assert.match(distribution, /const approvedReady = \(c, capabilityMap\) => isUsableConnection/);
 assert.doesNotMatch(distribution, /approvedReady\(c,aiAuthorized/);
 assert.doesNotMatch(distribution, /c\.platform === \"mastodon\" && cr\.mastodon_instance/);
