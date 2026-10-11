@@ -290,18 +290,6 @@ export default function ConnectDialog({ platform, existing, quickConnect = false
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
             <p className="text-xs text-muted-foreground mt-1 break-words">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
           </div>}
-          {false && usesProviderOAuth && !existing && (
-            <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
-              <p className="text-sm font-semibold text-foreground">Review {platform.name} sign-in</p>
-              <p className="text-xs text-muted-foreground">You may choose a campaign now or later. IFund checks the provider setup first. When sign-in is available, {platform.name} owns the authorization screen and IFund verifies the granted capability after you return.</p>
-            </div>
-          )}
-          {false && usesProviderOAuth && oauthReadiness === "not_configured" &&
-            <p role="status" className="text-sm text-amber-600 break-words">IFund still needs to enable {platform.name} sign-in. This is an IFund setup task, not a problem with your account. Connection has not started.</p>}
-          {usesProviderOAuth && oauthReadiness === "registration_unverified" &&
-            <p role="status" className="text-sm text-muted-foreground break-words">IFund will confirm this sign-in setup only after {platform.name} returns a secure authorization page. Your account is not connected yet.</p>}
-          {usesProviderOAuth && oauthReadiness === "authorization_present" &&
-            <p role="status" className="text-sm text-muted-foreground break-words">A provider authorization is present. IFund will still verify the granted {platform.name} capability before showing this connection as working.</p>}
           {usesProviderOAuth && oauthReadiness === "unavailable" &&
             <p role="status" className="text-sm text-amber-600 break-words">IFund could not check the connection setup right now. You can retry Connect.</p>}
           {usesProviderOAuth && oauthReadiness === "unsupported" &&
@@ -326,7 +314,7 @@ export default function ConnectDialog({ platform, existing, quickConnect = false
             </Button>
             {helpDetails && <p role="status" className="text-xs text-foreground break-words">{helpDetails}</p>}
           </div>}
-          {!existing && platform.kind !== "app" && officialProviderSite(platform.id) && (
+          {!usesProviderOAuth && !existing && platform.kind !== "app" && officialProviderSite(platform.id) && (
             <div className="rounded-xl border border-border bg-card p-3 text-sm text-foreground">
               <p className="font-semibold">Need a new {platform.name} account?</p>
               <p className="mt-1 text-xs text-muted-foreground">Sign up on the official provider website, then come back and connect that account. IFund only marks accounts connected after verification.</p>
