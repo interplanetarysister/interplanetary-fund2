@@ -1,3 +1,4 @@
+// PR #204 post-merge truth recovery contract.
 import fs from 'node:fs';
 
 const read = (path) => fs.readFileSync(path, 'utf8');
