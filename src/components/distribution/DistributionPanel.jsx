@@ -39,7 +39,7 @@ export default function DistributionPanel({ campaign }) {
   const publishEnabled = useFeatureEnabled("cross_platform_publishing");
   const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]), [aiAuthorized,setAiAuthorized]=useState(false), [capabilityMap,setCapabilityMap]=useState({});
   const [generating,setGenerating]=useState(false), [broadcasting,setBroadcasting]=useState(false), [error,setError]=useState("");
-  const [manualText,setManualText]=useState(""), [creating,setCreating]=useState(false), [donationTarget,setDonationTarget]=useState("ifund");
+  const [manualText,setManualText]=useState(""), [creating,setCreating]=useState(false), [donationTarget,setDonationTarget]=useState(campaign.distribution_donation_connection_id||"ifund"), [savingDestination,setSavingDestination]=useState(false);
   const {toast}=useToast();
   useEffect(()=>{(async()=>{try{const [r,p,me,capRes]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me(),base44.functions.invoke("listFundraisingProviderCapabilities",{})]);const authorized=me?.ai_obo_consent?.granted===true;const allConnections=Array.isArray(r?.data?.connections)?r.data.connections:[];const cs=allConnections.filter(c=>!c.campaign_id||c.campaign_id===campaign.id);const providers=Array.isArray(capRes?.data?.providers)?capRes.data.providers:[];const caps=Object.fromEntries(providers.map(cap=>[String(cap.platform||"").toLowerCase(),cap]));setAiAuthorized(authorized);setCapabilityMap(caps);setConnections(cs);setSelected(cs.filter(c=>isUsableConnection(c) && c.kind!=="app").map(c=>c.id));setPosts(Array.isArray(p)?p:[])}catch(e){console.error("Distribution load failed:",e?.name||"UnknownError");setConnections([]);setPosts([]);setCapabilityMap({})}})()},[campaign.id]);
   if(!connections)return null;
@@ -49,6 +49,16 @@ export default function DistributionPanel({ campaign }) {
   const chosenFundraiser=linkedFundraisers.find(c=>c.id===donationTarget);
   const donationLink=chosenFundraiser?.external_url||`https://interplanetaryfund.com/campaign/${encodeURIComponent(campaign.id)}?donate=true`;
   const ai=destinations.filter(c=>aiReady(c,aiAuthorized)), approved=destinations.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,capabilityMap)), copy=destinations.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,capabilityMap));
+  const chooseDonationDestination=async id=>{
+    const previous=donationTarget;
+    setDonationTarget(id);setSavingDestination(true);setError("");
+    try {
+      const {data}=await base44.functions.invoke("updateCampaignSettings",{campaign_id:campaign.id,patch:{distribution_donation_connection_id:id==="ifund"?"":id}});
+      if(data?.ok!==true) throw new Error(data?.error||"Destination could not be saved.");
+      toast({title:"Campaign destination saved",description:id==="ifund"?"New promotion links use IFund checkout.":"New promotion links use the selected external fundraiser."});
+    }catch(e){setDonationTarget(previous);setError(e?.message||"The donation destination could not be saved.");}
+    finally{setSavingDestination(false);}
+  };
   const copyCampaignStarter=async()=>{
     const text=[`Campaign: ${campaign.title||""}`,`Summary: ${campaign.summary||""}`,`Goal: ${campaign.goal_amount??""} ${campaign.currency||"USD"}`,`Story:\n${campaign.story||""}`].join("\n\n");
     try{await navigator.clipboard.writeText(text);toast({title:"Campaign details copied",description:"Paste into the official provider form. IFund has not created the external campaign."});}
@@ -88,8 +98,8 @@ export default function DistributionPanel({ campaign }) {
     </section>
     {!connections.length?<p className="text-sm text-stone-500">No platforms connected yet. <Link to="/connections" className="text-primary hover:underline">Connect your accounts</Link>.</p>:<div className="space-y-3">
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">
-        <label htmlFor="ifund-donation-destination" className="block text-sm font-semibold text-sky-950">Where should supporters donate?</label>
-        <select id="ifund-donation-destination" value={chosenFundraiser?.id||"ifund"} onChange={e=>setDonationTarget(e.target.value)} className="min-h-11 w-full rounded-lg border border-sky-300 bg-white px-3 py-2 text-slate-900">
+        <label htmlFor="ifund-donation-destination" className="block text-sm font-semibold text-sky-950">Where should supporters donate? (saved for future promotions)</label>
+        <select id="ifund-donation-destination" disabled={savingDestination} value={chosenFundraiser?.id||"ifund"} onChange={e=>chooseDonationDestination(e.target.value)} className="min-h-11 w-full rounded-lg border border-sky-300 bg-white px-3 py-2 text-slate-900">
           <option value="ifund">IFund — donate on this campaign</option>
           {linkedFundraisers.map(c=><option key={c.id} value={c.id}>{platformName(c.platform)} — linked external campaign</option>)}
         </select>
