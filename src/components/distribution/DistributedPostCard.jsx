@@ -96,6 +96,11 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
       ) : (
         <Textarea rows={3} value={content} onChange={(e) => setContent(e.target.value)} onBlur={saveEdit} className="text-sm" />
       )}
+      {post.donation_destination_url && (
+        <p className="mt-2 break-all text-xs text-slate-600">Donation destination ({post.donation_destination_platform==="ifund"?"IFund":"external provider"}):{" "}
+          <a href={post.donation_destination_url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{post.donation_destination_url}</a>
+        </p>
+      )}
       {post.error && <p className="text-xs text-red-600 mt-1.5">Last error: {post.error} (attempt {post.retry_count || 0}/3)</p>}
       {post.scheduled_for && post.status === "scheduled" && (
         <p className="text-xs text-violet-600 mt-1.5">Scheduled for {new Date(post.scheduled_for).toLocaleString()}</p>
