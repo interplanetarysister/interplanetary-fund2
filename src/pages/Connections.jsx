@@ -21,7 +21,7 @@ import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
 export default function Connections() {
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
-  const [dialog, setDialog] = useState(null); // { platform, existing }
+  const [dialog, setDialog] = useState(null); // { platform, existing, quickConnect }
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -38,6 +38,28 @@ export default function Connections() {
   const [lifecycleMap, setLifecycleMap] = useState({});
   const requestGeneration = useRef(0);
   const mountedRef = useRef(true);
+  const processedConnectionLink = useRef(false);
+
+  // A link from IFund chat goes straight into the selected provider's sign-in
+  // flow. Only IDs in the first-party catalog are accepted; arbitrary URLs
+  // and unrecognized providers are never used as redirect destinations.
+  useEffect(() => {
+    if (!connections || processedConnectionLink.current) return;
+    const url = new URL(window.location.href);
+    const requested = url.searchParams.get("connect");
+    if (!requested) return;
+    processedConnectionLink.current = true;
+    url.searchParams.delete("connect");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    const platform = ALL_PLATFORMS.find((item) => item.id === requested);
+    if (!platform) {
+      setConnectionNotice({ ok: false, text: "This connection link isn't supported. Choose a platform below." });
+      return;
+    }
+    const existing = connections.find((item) => item.platform === requested) || null;
+    const alreadyWorking = existing?.status === "connected" && existing?.verification_status === "verified";
+    setDialog({ platform, existing, quickConnect: platform.setupKind === "oauth" && !alreadyWorking });
+  }, [connections]);
 
   // Help Center deep-links open the actual connection helper, even though
   // the app scrolls inside its central workspace instead of the window.
@@ -201,29 +223,14 @@ export default function Connections() {
             const connectionId = data.connection.id;
             const verified = await base44.functions.invoke("verifyPlatformConnection", { connection_id: connectionId });
             const working = verified?.data?.working === true;
-            let firstPublish = null;
-            if (working && pending.publishInitial === true && pending.campaignId) {
-              try {
-                firstPublish = (await base44.functions.invoke("publishLinkedCampaignToConnection", {
-                  connection_id: connectionId,
-                }))?.data || null;
-              } catch {
-                firstPublish = { ok: false, error: "The account connected, but the first campaign post needs attention." };
-              }
-            }
+            // Connecting an outside account never authorizes or initiates a
+            // public post. Publishing is a separate user-approved action from
+            // the campaign distribution screen, even for a paired campaign.
             localStorage.removeItem("ifund_pending_platform_connection");
             if (!working) {
               setConnectionNotice({ ok: false, text: pending.platform + " authorization was saved, but the live provider check needs attention." });
-            } else if (firstPublish?.direct_published === true) {
-              setConnectionNotice({ ok: true, text: `${pending.platform} is connected. ${pending.campaignTitle || "Your campaign"} was published there, and future campaign updates can use this paired connection.` });
-            } else if (firstPublish?.manual_setup_required === true) {
-              setConnectionNotice({ ok: true, text: `${pending.platform} is linked, but IFund cannot create or update that provider's fundraiser automatically. Open your campaign's distribution panel to copy its details and finish through the official provider.` });
-            } else if (firstPublish?.manual_required === true) {
-              setConnectionNotice({ ok: true, text: `${pending.platform} is connected and paired with ${pending.campaignTitle || "your campaign"}. This provider does not currently have a verified direct-publish route, so the first post is prepared for manual publishing.` });
-            } else if (firstPublish?.ok === false) {
-              setConnectionNotice({ ok: false, text: `${pending.platform} is connected, but the first campaign post could not be published. The connection remains paired for retry and future updates.` });
             } else {
-              setConnectionNotice({ ok: true, text: `${pending.platform} is connected${pending.campaignTitle ? ` and paired with ${pending.campaignTitle}` : ""}.` });
+              setConnectionNotice({ ok: true, text: `${pending.platform} is connected${pending.campaignTitle ? ` and paired with ${pending.campaignTitle}` : ""}. Open your campaign to publish an approved post when ready.` });
             }
           } else {
             localStorage.removeItem("ifund_pending_platform_connection");
@@ -525,6 +532,7 @@ export default function Connections() {
         <ConnectDialog
           platform={dialog.platform}
           existing={dialog.existing}
+          quickConnect={dialog.quickConnect === true}
           aiAuthorized={aiAuthorized}
           managedAvailable={managedAvailable}
           onManagedConnect={managedAvailable ? async ({ campaign_id }) =>
@@ -548,21 +556,10 @@ export default function Connections() {
               const checked = verified?.data?.connection || saved;
               setConnections((prev) => prev.map((x) => (x.id === checked.id ? checked : x)));
 
+              // Do not send, draft, or publish content merely because a user
+              // connected an account. Only the separate publish control may do so.
               if (verified?.data?.working && saved.campaign_id && dialog.platform.kind !== "app") {
-                try {
-                  const first = await base44.functions.invoke("publishLinkedCampaignToConnection", { connection_id: saved.id });
-                  if (first?.data?.direct_published) {
-                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected. ${saved.display_name || "The paired campaign"} was published there, and future updates can use this connection.` });
-                  } else if (first?.data?.manual_setup_required) {
-                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is linked. IFund has not created an external fundraiser. Copy the campaign details from the campaign distribution panel and complete the provider’s own setup.` });
-                  } else if (first?.data?.manual_required) {
-                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and paired with ${saved.display_name || "the campaign"}. A first post is prepared because this provider does not currently expose a verified direct-publish route.` });
-                  } else {
-                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and paired with ${saved.display_name || "the campaign"}.` });
-                  }
-                } catch {
-                  setConnectionNotice({ ok: false, text: `${dialog.platform.name} is connected, but the first campaign post needs attention. The campaign pairing is saved.` });
-                }
+                setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and paired with ${saved.display_name || "the campaign"}. Publish an approved update from your campaign when ready.` });
               } else if (verified?.data?.working) {
                 setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and working.` });
               } else if (verified?.data?.error) {
