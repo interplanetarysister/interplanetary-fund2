@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Megaphone, Sparkles, Rocket, CheckCircle2, Clipboard } from "lucide-react";
 import { Link } from "react-router-dom";
 import DistributedPostCard from "./DistributedPostCard";
-import JustGivingStagingPilot from "./JustGivingStagingPilot";
+const JustGivingStagingPilot = React.lazy(() => import("./JustGivingStagingPilot"));
 import { platformName } from "@/components/connections/platformCatalog";
 import { isUsableConnection } from "@/lib/connectionHealth";
 import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
@@ -99,7 +99,7 @@ export default function DistributionPanel({ campaign }) {
       </div>
       <p className="mt-2 text-xs">JustGiving documents a fundraising-page API, but IFund does not yet have a tested, authorized account-write integration. No external campaign has been created by this action.</p>
     </section>
-    {isAdmin && <JustGivingStagingPilot campaign={campaign}/>}
+    {isAdmin && <React.Suspense fallback={<p className="text-sm text-stone-600">Loading administrator pilot…</p>}><JustGivingStagingPilot campaign={campaign}/></React.Suspense>}
     {!connections.length?<p className="text-sm text-stone-500">No platforms connected yet. <Link to="/connections" className="text-primary hover:underline">Connect your accounts</Link>.</p>:<div className="space-y-3">
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">
         <label htmlFor="ifund-donation-destination" className="block text-sm font-semibold text-sky-950">Where should supporters donate? (saved for future promotions)</label>
