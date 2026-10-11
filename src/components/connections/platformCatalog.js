@@ -215,6 +215,21 @@ export const CROWDFUNDING_PLATFORMS = [
 
 export const SOCIAL_PLATFORMS = [
   {
+    id: "wordpress_com",
+    name: "WordPress.com",
+    kind: "social",
+    color: "#21759b",
+    icon: "📝",
+    tagline: "Connect WordPress.com for campaign stories and blog-ready publishing.",
+    setupKind: "oauth",
+    integrationType: "wordpress_com",
+    steps: [
+      { id: "oauth", label: "Authorize your WordPress.com account", hint: "Sign in on WordPress.com and grant only the post and media permissions you approve." },
+      { id: "auto", label: "Review publishing controls", hint: "Direct publication is disabled until IFund verifies a specific site and provider-backed publishing adapter." },
+    ],
+    api: "Prepare WordPress.com blog posts and manage connection permissions. Direct posting remains unavailable until verified.",
+  },
+  {
     id: "bluesky",
     name: "Bluesky",
     kind: "social",
