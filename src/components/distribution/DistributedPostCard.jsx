@@ -25,6 +25,7 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
   const [scheduleAt, setScheduleAt] = useState("");
   const [showSchedule, setShowSchedule] = useState(false);
   const [notice, setNotice] = useState("");
+  const [manualUrl, setManualUrl] = useState("");
 
   const fullText = [content, ...(post.hashtags || [])].join(" ").trim();
 
@@ -38,14 +39,20 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
   const publish = async () => {
     setBusy(true);
     setNotice("");
-    await saveEdit();
     try {
-      const { data } = await base44.functions.invoke("publishPost", { post_id: post.id });
-      if (data?.error) setNotice("Publishing could not be completed safely. Review the connection and try again.");
+      await saveEdit();
+      // This owner click authorizes only this post, not ongoing AI posting.
+      const { data } = await base44.functions.invoke("publishPost", { post_id: post.id, user_publish_authorized: true });
+      if (data?.error) setNotice("Publishing could not be completed. Review the destination and try again.");
       else if (data?.manual) {
         onChanged(data.post);
-        setNotice("We can’t post this one for you yet. It’s ready to copy and post on your account.");
-      } else onChanged(data.post);
+        setManualUrl(/^https:\/\//i.test(data.profile_url || "") ? data.profile_url : "");
+        setNotice(`${data.reason || "Direct publishing is not available for this account."} Copy the content and open your account to finish publishing.`);
+      } else if (data?.post) {
+        onChanged(data.post);
+        setManualUrl("");
+        setNotice("Published successfully. Open View post to verify.");
+      } else setNotice("The publishing result could not be confirmed. Check the destination before retrying.");
     } catch (e) {
       console.error("Distributed post publish failed:", e?.name || "UnknownError");
       setNotice("Publishing failed safely. Review the connection and try again.");
@@ -104,6 +111,11 @@ export default function DistributedPostCard({ post, onChanged, onRemoved }) {
           <Button size="sm" variant="outline" onClick={() => setShowSchedule((v) => !v)} className="rounded-lg">
             <CalendarClock className="w-3.5 h-3.5" /> Schedule
           </Button>
+        )}
+        {manualUrl && post.status !== "published" && (
+          <a href={manualUrl} target="_blank" rel="noopener noreferrer" className="inline-flex">
+            <Button size="sm" type="button" variant="outline" className="rounded-lg"><ExternalLink className="w-3.5 h-3.5" /> Open account to post</Button>
+          </a>
         )}
         <Button size="sm" variant="outline" onClick={copy} className="rounded-lg">
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} Copy
