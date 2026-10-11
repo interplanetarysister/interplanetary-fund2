@@ -53,7 +53,9 @@ assert.doesNotMatch(source, /existing\?\.external_currency \|\| "USD"/);
 
 assert.match(save, /base44\.auth\.me\(\)/);
 assert.match(save, /Campaign\.get\(effectiveCampaignId\)/);
-assert.match(save, /user\.role !== 'admin'/);
+assert.match(save, /existing\.created_by_id !== user\.id/);
+assert.doesNotMatch(save, /user\.role === 'admin'|user\.role === 'super_admin'/,
+  "connection saves must not bypass owner authorization for privileged roles");
 assert.match(save, /const connectionOwnerId = existing\?\.created_by_id \|\| user\.id/);
 assert.match(save, /campaign\.created_by_id !== connectionOwnerId/);
 assert.match(save, /A connection and its campaign must have the same owner/);
@@ -124,8 +126,11 @@ assert.match(crossPost, /assertExternalAgentAction/);
 assert.match(crossPost, /c\.created_by_id === campaign\.created_by_id/);
 assert.match(crossPost, /c\.automation_mode !== 'manual'/);
 assert.match(syncConnections, /hasAiPublishingConsent\(owner\)/);
-assert.match(syncConnections, /connection\.created_by_id === campaign\.created_by_id/);
-assert.match(syncConnections, /post\.created_by_id === campaign\.created_by_id/);
+assert.match(syncConnections, /campaign\?\.created_by_id === permit\.owner_user_id/);
+assert.match(syncConnections, /connection\?\.created_by_id === permit\.owner_user_id/);
+assert.match(syncConnections, /post\.owner_user_id !== permit\.owner_user_id/);
+assert.match(syncConnections, /post\.campaign_id !== permit\.campaign_id/);
+assert.match(syncConnections, /post\.connection_id !== permit\.connection_id/);
 assert.doesNotMatch(syncConnections, /!post\.created_by_id \|\|/);
 assert.match(publishPost, /hasAiPublishingConsent\(consentOwner\)/);
 assert.match(publishPost, /post\.created_by_id === campaign\.created_by_id/);
