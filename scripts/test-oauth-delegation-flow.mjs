@@ -24,14 +24,18 @@ assert.match(connect, /registration_unverified/);
 assert.match(connect, /OAUTH_ATTEMPT_BLOCKED_STATES = new Set\(\["checking", "not_configured", "unsupported"\]\)/);
 assert.match(connect, /oauthAttemptBlocked = usesProviderOAuth &&[\s\S]{0,120}oauthReadinessPlatform !== platform\.id \|\| OAUTH_ATTEMPT_BLOCKED_STATES\.has\(oauthReadiness\)/,
   'a stale readiness result from another platform must remain blocked');
-assert.equal((connect.match(/blockOAuthAttempt\(\)/g) || []).length, 3,
-  'direct OAuth, managed helper, and managed account setup handlers must share the readiness guard');
+assert.equal((connect.match(/blockOAuthAttempt\(\)/g) || []).length, 2,
+  'direct OAuth and the connect helper must share readiness; official account signup remains available as a truthful external handoff');
 assert.match(connect, /disabled=\{managedBusy \|\| connecting \|\| oauthAttemptBlocked\}/,
   'the rendered helper action must honor the shared OAuth guard');
 assert.match(connect, /disabled=\{connecting \|\| oauthAttemptBlocked\}/,
   'the rendered direct OAuth action must honor the shared OAuth guard');
-assert.match(connect, /disabled=\{managedBusy \|\| oauthAttemptBlocked\}/,
-  'the rendered managed account action must honor the shared OAuth guard');
+assert.match(connect, /officialProviderSite\(platform\.id\)/,
+  'account setup must offer the official provider site without claiming IFund created an account');
+assert.match(connect, /requestManagedAccountSetup = async \(\) => \{[\s\S]{0,180}if \(!onManagedCreateAccount \|\| managedBusy\) return/,
+  'managed account help must remain bounded by availability and a single in-flight request');
+assert.match(connect, /onClick=\{requestManagedAccountSetup\} disabled=\{managedBusy\}/,
+  'official account-setup help must not be falsely blocked by an unavailable direct OAuth registration');
 assert.doesNotMatch(connect, /OAUTH_ATTEMPT_BLOCKED_STATES[^\n]*unavailable/,
   'a transient readiness check failure must leave retry available');
 assert.doesNotMatch(connect, /data\?\.configured && data\?\.connector_id \? "ready"/);
