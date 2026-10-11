@@ -8,6 +8,7 @@
   },
   "scripts": {
     "verify:fundraising-mode": "node scripts/verify-fundraising-mode.mjs",
+    "verify:sustainability": "node scripts/verify-ifund-sustainability.mjs",
     "verify:campaign-creation": "node scripts/test-campaign-drafts-and-generated-media.mjs && node scripts/test-generate-campaign-cover.mjs",
     "verify:feature-flags": "node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/test-core-flag-routes.mjs",
     "verify:platform-oauth": "node scripts/test-oauth-delegation-flow.mjs && node scripts/verify-managed-connections-contract.mjs && node scripts/verify-connection-lifecycle-contract.mjs",
@@ -37,7 +38,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-node22 --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs",
+    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
