@@ -105,6 +105,12 @@ export default async function(req:Request) {
     const payload=sanitize(draft.kind,body.payload);
     if(!payload)return Response.json({error:'Invalid replacement draft'},{status:400});
     // Identity, destination, campaign and type remain fixed while revising.
+    // All nested resource selectors stay immutable; a text edit cannot move a
+    // previously reviewed draft onto a different account, blog, or thread.
+    for(const key of ['campaign_id','blog_id','entry_id','community_id','post_id','donation_destination_connection_id']){
+      if(String(payload[key]??'')!==String(draft.payload?.[key]??''))
+        return Response.json({error:'Destination fields cannot change during a draft edit'},{status:409});
+    }
     const updated=await sr.entities.AgentContentDraft.update(id,{payload,updated_at:new Date().toISOString()});
     return Response.json({ok:true,draft:readDraft(updated)});
   } catch(error){
