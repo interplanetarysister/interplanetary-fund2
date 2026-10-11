@@ -51,3 +51,4 @@ Before publication, validate all guidance against actual current capabilities, p
 - npm run build — passed, including production bundle, routes/assets, mobile/payment UX, provider and sustainability checks.
 - Sandbox Node 24.21.0 produced a tested-lane warning because established lanes are Node 20/22, but the build succeeded.
 - True live deployment, public browser rendering and authenticated end-to-end operations are not yet verified.
+- Browser-render regression was attempted but could not run because the Playwright Chromium executable is absent from this sandbox; do not mark browser QA as passed.
