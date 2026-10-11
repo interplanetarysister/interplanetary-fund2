@@ -16,7 +16,7 @@ export default async function(req: Request) {
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
     const sr = base44.asServiceRole;
-    const [connections, campaigns, profiles, followed, posts, distributedByOwner, distributedByCreator, membership, delegations, drafts] = await Promise.all([
+    const [connections, campaigns, profiles, followed, posts, distributedByOwner, distributedByCreator, membership, delegations, drafts, interests] = await Promise.all([
       list(sr.entities.PlatformConnection.filter({ created_by_id: user.id }, '-updated_date', 120)),
       list(sr.entities.Campaign.filter({ created_by_id: user.id }, '-updated_date', 100)),
       list(sr.entities.PublicProfile.filter({ user_id: user.id })),
@@ -27,10 +27,20 @@ export default async function(req: Request) {
       list(sr.entities.CommunityMember.filter({ user_id: user.id }, '-created_date', 100)),
       list(sr.entities.AgentDelegation.filter({ owner_user_id: user.id }, '-updated_date', 80)),
       list(sr.entities.AgentContentDraft.filter({ owner_user_id: user.id }, '-created_date', 30)),
+      list(sr.entities.PostInterest.filter({ user_id: user.id }, '-updated_at', 100)),
     ]);
     const distributed = [...new Map([...distributedByOwner, ...distributedByCreator]
       .filter((p:any) => p.owner_user_id === user.id || p.created_by_id === user.id)
       .map((p:any) => [p.id, p])).values()];
+    const personalInterests = interests.filter((i:any) => i.user_id === user.id && (i.liked === true || i.saved === true));
+    const interestPosts = await Promise.all(personalInterests.slice(0,30).map(async (i:any) => {
+      const post = await sr.entities.SocialPost.get(i.post_id).catch(() => null);
+      return post ? {
+        post_id: i.post_id, liked: i.liked === true, saved: i.saved === true,
+        author_user_id: post.author_user_id, campaign_id: post.campaign_id,
+        content_preview: clip(post.content, 180),
+      } : null;
+    }));
     return Response.json({
       ok: true,
       owner_user_id: user.id,
@@ -59,12 +69,13 @@ export default async function(req: Request) {
         content_preview: clip(p.content, 240),
       })),
       community_memberships: membership.filter((m:any) => m.user_id === user.id).map((m:any) => pick(m, ['community_id','role'])),
+      liked_and_saved_posts: interestPosts.filter(Boolean),
       agent_work: delegations.filter((d:any) => d.owner_user_id === user.id).map((d:any) =>
         pick(d, ['id','campaign_id','source_agent','destination_agent','objective','status','result_summary','updated_at'])),
       content_drafts: drafts.filter((d:any) => d.owner_user_id === user.id).map((d:any) =>
         pick(d, ['id','kind','campaign_id','connection_id','status','source_agent','updated_at'])),
       limitations: {
-        liked_or_saved_post_history: 'No authoritative per-user liked/saved post history is currently configured.',
+        liked_or_saved_post_history: 'History is recorded for new user interactions; earlier anonymous or untracked likes cannot be attributed retroactively.',
         provider_receipts: 'An external post is confirmed only by published status and a provider-backed receipt/URL.',
       },
     }, { headers: { 'Cache-Control': 'no-store' } });
