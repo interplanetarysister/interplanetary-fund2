@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Download, Trash2, Bell, Loader2, ShieldAlert } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import CountMyMoney from "@/components/account/CountMyMoney";
+import { isAndroidApp, disableAndroidPush } from "@/lib/androidFirebaseFeatures";
 
 // Account management surface: global notification preferences (respected by
 // the sendCommunication function), data export, and permanent account deletion.
@@ -72,6 +73,7 @@ export default function AccountManagement({ user, onUserChanged }) {
   const deleteAccount = async () => {
     setDeleting(true);
     try {
+      if (isAndroidApp) await disableAndroidPush().catch(() => {});
       const res = await base44.functions.invoke("deleteAccount", {});
       if (res.data?.error) throw new Error("Server operation rejected");
       toast({ title: "Account deleted" });
