@@ -7,9 +7,11 @@ const dialog = read("src/components/connections/ConnectDialog.jsx");
 const provider = read("base44/functions/getAppUserConnector/entry.ts");
 const finalize = read("base44/functions/finalizeAppUserOAuthConnection/entry.ts");
 
-assert.match(connections, /searchParams\.get\("connect"\)/);
+assert.match(connections, /params\.get\("connect"\)/);
 assert.match(connections, /ALL_PLATFORMS\.find\(\(item\) => item\.id === requested\)/);
 assert.match(connections, /quickConnect: platform\.setupKind === "oauth"/);
+assert.match(connections, /useLocation\(\)/);
+assert.match(connections, /navigate\(\{ pathname: "\/connections"/);
 assert.match(connections, /!alreadyWorking/);
 assert.match(dialog, /quickConnect = false/);
 assert.match(dialog, /attemptedDeepLink\.current/);
