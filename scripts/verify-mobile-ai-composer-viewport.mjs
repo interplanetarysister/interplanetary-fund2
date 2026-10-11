@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 
-const remote = process.env.IFUND_SMOKE_URL?.replace(/\\/+$/, "");
+const remote = (process.env.IFUND_SMOKE_URL || "").trim().replace(new RegExp("/+$"), "");
 const origin = remote || "http://127.0.0.1:4192";
 let preview;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
