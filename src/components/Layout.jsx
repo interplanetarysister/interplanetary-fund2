@@ -15,10 +15,11 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import { useAuth } from "@/lib/AuthContext";
 import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
+import { helpPathForLocation } from "@/lib/helpCenter";
 import { LifeBuoy, ArrowUpRight } from "lucide-react";
 
 const PAGE_TITLES = {
-  "/dashboard": "Overview", "/help": "Help Center", "/devices": "Connected Devices",
+  "/dashboard": "Overview", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
@@ -31,6 +32,7 @@ function pageTitle(pathname) {
   if (pathname.startsWith("/campaign/")) return "Campaign";
   if (pathname.startsWith("/u/")) return "Member Profile";
   if (pathname.startsWith("/blogs/")) return "IFund Story";
+  if (pathname.startsWith("/help/")) return "Help Article";
   if (pathname.startsWith("/community/")) return "Community";
   if (pathname.startsWith("/institutions/")) return "Institution";
   return "Interplanetary Fund";
@@ -78,6 +80,7 @@ const navSections = [
       { to: "/connect", label: "Connect Assistant", icon: Plug },
       { to: "/admin/audit", label: "Audit Log", icon: Server },
       { to: "/admin/sustainability", label: "Planet Impact", icon: Leaf },
+      { to: "/admin/help", label: "Help Center Editor", icon: BookOpen },
     ],
   },
   {
@@ -235,7 +238,7 @@ export default function Layout() {
             <p className="ifund-workspace-title truncate">{title}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Link to="/help" className="ifund-workspace-utility inline-flex min-h-10 items-center gap-2 px-3 text-xs font-semibold" aria-label="Visit IFund Help Center">
+            <Link to={helpPathForLocation(pathname)} className="ifund-workspace-utility inline-flex min-h-10 items-center gap-2 px-3 text-xs font-semibold" aria-label="Visit IFund Help Center">
               <LifeBuoy className="h-4 w-4" />
               <span className="hidden sm:inline">Help Center</span>
             </Link>
