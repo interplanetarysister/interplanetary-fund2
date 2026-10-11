@@ -10,20 +10,29 @@ export default function SocialFeed({ user, onShare }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [interests, setInterests] = useState({});
+  const [changingInterest, setChangingInterest] = useState("");
+  const [interestError, setInterestError] = useState("");
   const sentinelRef = useRef(null);
 
   const loadInitial = useCallback(async () => {
     setLoading(true);
     try {
-      const initial = await base44.entities.SocialPost.list("-created_date", 20);
+      const [initial, interactions] = await Promise.all([
+        base44.entities.SocialPost.list("-created_date", 20),
+        user?.id ? base44.functions.invoke("managePostInterest", {mode:"list"}).catch(()=>null) : Promise.resolve(null),
+      ]);
       setPosts(Array.isArray(initial) ? initial : []);
-      setHasMore(initial.length >= 20);
+      setHasMore(Array.isArray(initial) && initial.length >= 20);
+      const mapped = {};
+      for (const item of interactions?.data?.interests||[]) mapped[item.post_id]={liked:item.liked===true,saved:item.saved===true};
+      setInterests(mapped);
     } catch {
       setPosts([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     loadInitial();
@@ -68,11 +77,18 @@ export default function SocialFeed({ user, onShare }) {
     return () => observer.disconnect();
   }, [loadMore]);
 
-  const handleLike = async (post) => {
+  const handleInterest = async (post, field) => {
+    if (!user?.id || changingInterest) return;
+    setChangingInterest(post.id);setInterestError("");
     try {
-      const updated = await base44.entities.SocialPost.update(post.id, { likes_count: (post.likes_count || 0) + 1 });
-      setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, likes_count: updated.likes_count } : p)));
-    } catch { /* best-effort */ }
+      const value = interests[post.id]?.[field] !== true;
+      const response = await base44.functions.invoke("managePostInterest", {mode:"set",post_id:post.id,field,value});
+      if (!response?.data?.ok) throw new Error("Not saved");
+      const {liked,saved,likes_count} = response.data;
+      setInterests(prev=>({...prev,[post.id]:{liked,saved}}));
+      setPosts(prev=>prev.map(p=>p.id===post.id?{...p,likes_count}:p));
+    } catch { setInterestError("Could not save your reaction. Refresh and try again."); }
+    finally { setChangingInterest(""); }
   };
 
   const handleDelete = async (post) => {
