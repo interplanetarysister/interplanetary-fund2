@@ -65,11 +65,16 @@ export default async function(req) {
     const summary = String(campaign.summary || campaign.story || '').trim().replace(/\s+/g, ' ').slice(0, 900);
     const content = [campaign.title, summary, url].filter(Boolean).join('\n\n');
     const capability = await resolveCapabilityForPlatform(sr, connection.platform);
+    let ownerOAuth = null;
+    if (connection.platform === 'linkedin') {
+      const connectorId = Deno.env.get('APP_USER_CONNECTOR_LINKEDIN_ID') || '';
+      if (connectorId) ownerOAuth = await sr.connectors.getCurrentAppUserConnection(connectorId).catch(() => null);
+    }
     const directVerified =
       capability?.direct_publish_verified === true &&
       capability?.test_status === 'passing' &&
       capability?.implementation_status === 'implemented' &&
-      (canAutoPublish(connection) || canPublishViaConnector(connection.platform));
+      (canAutoPublish(connection) || (canPublishViaConnector(connection.platform) && !!ownerOAuth?.accessToken));
 
     if (!directVerified) {
       const prepared = await base44.entities.DistributedPost.create({
@@ -92,7 +97,7 @@ export default async function(req) {
     }
 
     try {
-      const published = await publishThroughConnection(connection, content, sr);
+      const published = await publishThroughConnection(connection, content, sr, ownerOAuth);
       const post = await base44.entities.DistributedPost.create({
         campaign_id: campaign.id,
         campaign_title: campaign.title,
