@@ -149,7 +149,12 @@ export default { async fetch(request, env) {
 
   if(url.pathname==="/v1/admin/agents/session"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
-    if(!(await sameSecret(body.adminKey,env.IFUND_ADMIN_AGENT_KEY))){
+    // Missing secrets must fail closed: comparing two empty strings would
+    // otherwise allow an empty admin key on an unconfigured deployment.
+    if(!env.IFUND_ADMIN_AGENT_KEY || !env.IFUND_SESSION_SECRET){
+      return json({error:"Admin gateway secrets are not configured."},503,origin);
+    }
+    if(!body.adminKey || !(await sameSecret(body.adminKey,env.IFUND_ADMIN_AGENT_KEY))){
       await audit(env,{type:"admin_agent_auth_failed",userId:user.id,at:new Date().toISOString()},request);
       return json({error:"Admin development key rejected."},403,origin);
     }
@@ -161,7 +166,7 @@ export default { async fetch(request, env) {
   if(url.pathname==="/v1/admin/agents/message"&&request.method==="POST"){
     const body=await request.json().catch(()=>({}));
     if(!(await validSession(body.sessionId,user.id,env))) return json({error:"Admin development session expired."},401,origin);
-    const allowed=new Set(["chief_of_staff","builder_agent","admin_agent","review_agent","verification_agent","connection_discovery_agent"]);
+    const allowed=new Set(["chief_of_staff","connection_discovery_agent","managed_connection_agent","outreach_agent"]);
     if(!allowed.has(body.agent)) return json({error:"Agent is not approved for this gateway."},400,origin);
 
     const runtime=await callAgentRuntime(env,request,{
