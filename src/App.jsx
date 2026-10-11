@@ -98,7 +98,7 @@ const AuthenticatedApp = () => {
   // token expires. ProtectedRoute gates private pages after authentication;
   // never navigate the entire SPA to the platform login during render.
   if (authError?.type === 'user_not_registered' &&
-      !['/login','/register','/forgot-password','/reset-password','/activate'].includes(pathname) &&
+      !['/login','/register','/forgot-password','/reset-password','/activate','/contact'].includes(pathname) &&
       pathname !== '/help' && !pathname.startsWith('/help/')) {
     return <UserNotRegisteredError />;
   }
