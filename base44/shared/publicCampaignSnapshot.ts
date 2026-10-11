@@ -17,11 +17,13 @@ function hostAllowed(platform: string, host: string) {
 
 function decode(value = '') {
   return value
-    .replace(/&amp;/g, '&')
+    // Decode ampersands last so encoded text such as &amp;lt; remains "&lt;"
+    // after one pass instead of becoming executable markup.
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 }
 
 function readMeta(html: string, key: string) {
