@@ -8,6 +8,10 @@ export default function HelpArticle() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [user, setUser] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [feedbackError, setFeedbackError] = useState("");
+  const [savingFeedback, setSavingFeedback] = useState(false);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -18,6 +22,30 @@ export default function HelpArticle() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [slug]);
+  useEffect(() => {
+    if (!article?.id) return;
+    let active = true;
+    base44.auth.me().then(async (me) => {
+      if (!active || !me?.id) return;
+      setUser(me);
+      const records = await base44.entities.HelpFeedback.filter({ article_id: article.id, user_id: me.id }, "-created_date", 1);
+      if (active) setFeedback(Array.isArray(records) ? records[0] || null : null);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [article?.id]);
+  const vote = async (helpful) => {
+    if (!user?.id || !article?.id || savingFeedback) return;
+    setSavingFeedback(true);
+    setFeedbackError("");
+    try {
+      const value = feedback
+        ? await base44.entities.HelpFeedback.update(feedback.id, { helpful })
+        : await base44.entities.HelpFeedback.create({ article_id: article.id, user_id: user.id, helpful });
+      setFeedback(value || { ...feedback, helpful });
+    } catch {
+      setFeedbackError("We couldn't save your feedback. Please try again.");
+    } finally { setSavingFeedback(false); }
+  };
   return <main className="max-w-3xl mx-auto px-4 sm:px-8 py-10 min-w-0 text-foreground">
     <Link to="/help" className="font-semibold text-cyan-700 underline">Back to Help Center</Link>
     {loading && <p role="status" className="mt-8">Loading article…</p>}
@@ -29,7 +57,20 @@ export default function HelpArticle() {
       {article.description && <p className="text-muted-foreground mt-3">{article.description}</p>}
       <div className="border-t border-border my-7" />
       <div className="whitespace-pre-wrap leading-8 break-words">{article.answer}</div>
-      <div className="mt-10 rounded-xl border border-border p-5">
+      <section aria-labelledby="help-feedback-label" className="mt-10 border-t border-border pt-6">
+        <h2 id="help-feedback-label" className="font-semibold">Was this article helpful?</h2>
+        {user ? <div className="flex flex-wrap gap-3 mt-3">
+          {[true, false].map((choice) => <button key={String(choice)} type="button" disabled={savingFeedback}
+            aria-pressed={feedback?.helpful === choice} onClick={() => vote(choice)}
+            className={"min-h-11 px-4 py-2 rounded-xl border font-medium " +
+              (feedback?.helpful === choice ? "bg-cyan-50 border-cyan-500 text-slate-950" : "bg-card border-border text-foreground")}>
+            {choice ? "Yes" : "No"}
+          </button>)}
+          {feedback && <p role="status" className="w-full text-sm text-muted-foreground">Thanks for your feedback.</p>}
+        </div> : <p className="text-sm mt-2 text-muted-foreground">Sign in to rate articles, or contact us for more help.</p>}
+        {feedbackError && <p className="text-sm text-red-700 mt-2" role="alert">{feedbackError}</p>}
+      </section>
+      <div className="mt-8 rounded-xl border border-border p-5">
         <h2 className="font-semibold">Still need help?</h2>
         <Link to="/help" className="inline-block mt-3 font-semibold text-cyan-700 underline">Get support</Link>
       </div>
