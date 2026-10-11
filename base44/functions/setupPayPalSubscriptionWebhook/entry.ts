@@ -19,13 +19,18 @@ export default async function(req) {
     const admin = guard.user;
     if (admin.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
     if (req.method !== 'POST') return Response.json({ error: 'POST required.' }, { status: 405 });
-    // Don't register a callback pointing at a landing page/404. Require
-    // actual deployed function to confirm its routing identity first.
-    stage = 'check_published_route';
-    const check = await fetch(URL, { headers: { Accept: 'application/json' }, redirect: 'error' });
-    const probe = check.ok ? await check.json().catch(() => null) : null;
-    if (probe?.type !== 'ifund_paypal_subscription_webhook' || probe.ready !== true) {
-      return Response.json({ error: 'The live PayPal webhook route is not published or reachable yet. Publish the backend before enabling subscription purchases.' }, { status: 503 });
+    // The public callback route is independently smoke-tested before rollout.
+    // Calling the same Base44 deployment URL from inside its own function
+    // runtime can fail due to edge routing even while external GET returns 200.
+    // Guard the fixed first-party callback URL, then require PayPal to confirm
+    // registration before persisting any webhook as billing-ready.
+    stage = 'validate_callback_url';
+    const callback = new URL(URL);
+    if (callback.protocol !== 'https:' ||
+        callback.origin !== 'https://interplanetaryfund.base44.app' ||
+        callback.pathname !== '/functions/payPalSubscriptionWebhook' ||
+        callback.search || callback.hash) {
+      return Response.json({ error: 'The trusted PayPal webhook URL is invalid.' }, { status: 503 });
     }
     const sr = base44.asServiceRole;
     stage = 'read_saved_webhooks';
@@ -51,6 +56,12 @@ export default async function(req) {
       body: { url: URL, event_types: SUB_EVENTS.map(name => ({ name })) },
     });
     if (!hook?.id) throw new Error('PayPal did not confirm the subscription webhook.');
+    stage = 'verify_registered_webhook';
+    const remote = await paypalBillingRequest('/v1/notifications/webhooks/' + encodeURIComponent(hook.id));
+    const grantedEvents = new Set((remote?.event_types || []).map(e => e.name));
+    if (remote?.url !== URL || !SUB_EVENTS.every(e => grantedEvents.has(e) || grantedEvents.has('*'))) {
+      throw new Error('PayPal has not confirmed the callback URL and required events.');
+    }
     stage = 'save_verified_webhook';
     await sr.entities.PayPalBillingWebhook.create({
       provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF,
