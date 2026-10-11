@@ -44,7 +44,11 @@ export default function TermsAcceptance({ children }) {
   // embedded campaign cards render on external sites without a click.
   const isEmbedRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/embed/");
   if (!initialized) return null;
-  if (accepted || isEmbedRoute) return <>{children}</>;
+  // Reading public support information does not require consent to account features.
+  // The regular app permission gate still applies when leaving these public help routes.
+  const isHelpRoute = typeof window !== "undefined" &&
+    (window.location.pathname === "/help" || window.location.pathname.startsWith("/help/"));
+  if (accepted || isEmbedRoute || isHelpRoute) return <>{children}</>;
 
   return (
     <div className="fixed inset-0 z-[60] deep-space flex items-center justify-center p-4 overflow-y-auto">
