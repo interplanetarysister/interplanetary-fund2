@@ -1,6 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
-import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 
 export default async function(req){
  try{
@@ -9,13 +8,15 @@ export default async function(req){
   if(!campaignId||!connectionId||!content||content.length>10000)return Response.json({error:'Invalid post request'},{status:400});
   const [campaigns,connections]=await Promise.all([base44.asServiceRole.entities.Campaign.filter({id:campaignId}),base44.asServiceRole.entities.PlatformConnection.filter({id:connectionId})]);
   const campaign=campaigns?.[0],connection=connections?.[0];if(!campaign||!connection)return Response.json({error:'Campaign or connection not found'},{status:404});
-  if(campaign.created_by_id!==user.id&&user.role!=='admin')return Response.json({error:'Not authorized for campaign'},{status:403});
-  if(connection.created_by_id!==user.id&&connection.user_id!==user.id&&user.role!=='admin')return Response.json({error:'Not authorized for connection'},{status:403});
+  // A draft belongs to the signed-in campaign owner and their own account.
+  // Being an IFund administrator never grants posting authority over another user's account.
+  if(campaign.created_by_id!==user.id)return Response.json({error:'Not authorized for campaign'},{status:403});
+  if(connection.created_by_id!==user.id)return Response.json({error:'Not authorized for connection'},{status:403});
   if(connection.campaign_id&&connection.campaign_id!==campaignId)return Response.json({error:'Connection does not belong to this campaign'},{status:409});
-  const capability=await resolveCapabilityForPlatform(base44.asServiceRole,connection.platform);
-  const directPublishVerified=capability?.direct_publish_verified===true&&capability?.test_status==='passing'&&capability?.implementation_status==='implemented';
-  const manualShareVerified=capability?.manual_share_verified===true;
-  if(!directPublishVerified&&!manualShareVerified)return Response.json({error:'Publishing to this platform has not been verified by IFund yet.'},{status:409});
+  // Saving a draft does not send anything to the provider. Always allow an
+  // owner to prepare copyable content, even when direct publishing is unsupported.
+  if(connection.status!=='connected' || connection.verification_status!=='verified')
+    return Response.json({error:'Verify this destination connection before preparing a post.'},{status:409});
   const post=await base44.entities.DistributedPost.create({campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,platform:connection.platform,content,status:'pending_approval'});
   return Response.json({ok:true,post});
  }catch(error){console.error('createDistributedPost failed:',error?.name||'UnknownError');return Response.json({error:'Distributed post could not be created safely.'},{status:500});}
