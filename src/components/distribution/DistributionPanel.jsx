@@ -21,7 +21,7 @@ const directReady = (c, capabilityMap) => {
   return ["bluesky", "linkedin"].includes(c.platform);
 };
 const aiReady = (c, aiAuthorized) => aiAuthorized && isUsableConnection(c) && c.automation_mode !== "manual";
-const approvedReady = (c, aiAuthorized, capabilityMap) => aiAuthorized && isUsableConnection(c) && directReady(c, capabilityMap);
+const approvedReady = (c, capabilityMap) => isUsableConnection(c) && directReady(c, capabilityMap);
 
 function DestinationGroup({ title, hint, icon: Icon, connections, selected, setSelected }) {
   if (!connections.length) return null;
@@ -45,7 +45,7 @@ export default function DistributionPanel({ campaign }) {
   if(!connections)return null;
   const pending=posts.filter(p=>["pending_approval","draft","approved","failed"].includes(p.status));
   const destinations=connections.filter(c=>c.kind!=="app");
-  const ai=destinations.filter(c=>aiReady(c,aiAuthorized)), approved=destinations.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,aiAuthorized,capabilityMap)), copy=destinations.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,aiAuthorized,capabilityMap));
+  const ai=destinations.filter(c=>aiReady(c,aiAuthorized)), approved=destinations.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,capabilityMap)), copy=destinations.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,capabilityMap));
   const createDrafts=async()=>{
     const targets=connections.filter(c=>selected.includes(c.id)&&isUsableConnection(c)&&c.kind!=="app");
     if(!manualText.trim()||!targets.length){setError("Write a message and select at least one verified destination.");return;}
