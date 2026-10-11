@@ -47,6 +47,7 @@ Run from the Base44 project root under **Node 22**:
 
 ```bash
 node scripts/verify-justgiving-staging-pilot.mjs
+node scripts/test-justgiving-staging-handler.mjs
 node scripts/verify-external-distribution-routing.mjs
 npm run build
 npm run typecheck
