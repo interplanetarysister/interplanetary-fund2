@@ -5,6 +5,7 @@ import { assertExternalAgentAction, assertPlatformAccess } from '../../shared/in
 import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.ts';
 import { canEnterMemberQueue, paidPriorityAt } from '../../shared/socialPublishingPolicy.ts';
 import { readEntityPages } from '../../shared/readEntityPages.ts';
+import { resolveDonationDestination } from '../../shared/distributionDestination.js';
 
 const MAX_CAMPAIGNS = 6;
 const DAY = 24 * 60 * 60 * 1000;
@@ -97,6 +98,9 @@ export default async function(req: Request) {
             verified && canAutoPublish(conn) });
         }
         if (!destinations.length) continue;
+        // A saved external fundraising preference takes precedence over IFund checkout.
+        // If it became invalid, fail this campaign rather than silently redirect donors.
+        const donationDestination = await resolveDonationDestination(sr, owner.id, campaign.id, campaign.distribution_donation_connection_id || '');
         await sr.entities.Campaign.update(campaign.id, {
           social_last_generation_attempt_at: new Date().toISOString(),
         });
@@ -110,11 +114,11 @@ Return JSON with post_text and optional hashtags.`,
             post_text: { type: 'string' }, hashtags: { type: 'array', items: { type: 'string' } },
           }},
         });
-        const campaignUrl = `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaign.id)}`;
+        const campaignUrl = donationDestination.url;
         const copy = String(answer?.post_text || '').trim();
         if (!copy) throw new Error('No generated content');
-        // Every generated promotion contains a working IFund campaign route.
-        // Preserve the whole link in Bluesky's tight character limit.
+        // Every promotion uses the owner's saved donation destination.
+        // Preserve the full link within short social platform limits.
         const words = [copy.slice(0, 278 - campaignUrl.length).trim(), campaignUrl].join(' ').trim();
         const hashtags = []; // Preserve the whole donation link within 280 chars.
         for (const { conn, auto } of destinations) {
@@ -125,6 +129,8 @@ Return JSON with post_text and optional hashtags.`,
             campaign_id: campaign.id, campaign_title: campaign.title,
             connection_id: conn.id, platform: conn.platform,
             content: words, hashtags, status: 'draft', retry_count: 0,
+            donation_destination_url: donationDestination.url,
+            donation_destination_platform: donationDestination.platform,
           });
           if (auto) {
             await sr.entities.ScheduledAutoPostPermit.create({
