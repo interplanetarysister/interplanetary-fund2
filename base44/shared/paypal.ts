@@ -157,6 +157,10 @@ export async function createOrder({ amount, description, customId, requestId }) 
       purchase_units: [
         {
           amount: { currency_code: "USD", value: Number(amount).toFixed(2) },
+          // Explicitly bind new orders to the designated IFund business
+          // recipient. PayPal must reject mismatched/unauthorized credentials
+          // rather than silently route donations to another merchant.
+          payee: { email_address: IFUND_PAYPAL_BUSINESS_EMAIL },
           description: (description || "Donation").slice(0, 120),
           ...(customId ? { custom_id: customId } : {}),
         },
