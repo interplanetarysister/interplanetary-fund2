@@ -36,7 +36,7 @@ export async function resolveDonationDestination(sr, userId, campaignId, connect
   if (!connectionId) return { kind: 'ifund', platform: 'ifund', url: localUrl };
   const connection = await sr.entities.PlatformConnection.get(connectionId).catch(() => null);
   if (!connection || connection.created_by_id !== userId ||
-    (connection.campaign_id && connection.campaign_id !== campaignId) ||
+    connection.campaign_id !== campaignId ||
     connection.kind !== 'crowdfunding' ||
     connection.status !== 'connected' || connection.verification_status !== 'verified') {
     throw new Error('Selected external fundraiser is not an eligible connected campaign.');
