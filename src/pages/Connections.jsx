@@ -8,6 +8,7 @@ import AIConsentCard from "@/components/connections/AIConsentCard";
 import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import ConnectionCard from "@/components/connections/ConnectionCard";
 import ConnectDialog from "@/components/connections/ConnectDialog";
+import PublishFromConnections from "@/components/connections/PublishFromConnections";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
@@ -322,7 +323,7 @@ export default function Connections() {
   };
 
   return (
-    <div className="connections-hub max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="connections-hub max-w-4xl mx-auto min-w-0 px-4 sm:px-6 pt-6 sm:pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-10">
       <div className="rounded-[2rem] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-5 sm:p-7 shadow-xl mb-7">
       <h1 className="flex items-center gap-2.5 font-display text-3xl text-cyan-50 mb-1">
         <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
@@ -341,6 +342,8 @@ export default function Connections() {
           {connectionNotice.text}
         </div>
       )}
+
+      <PublishFromConnections />
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
         <Button onClick={syncAll} disabled={syncing} className="rounded-xl">
