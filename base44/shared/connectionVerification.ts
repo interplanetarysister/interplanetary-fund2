@@ -25,6 +25,7 @@ export const OAUTH_ENV: Record<string, string> = {
   tiktok: 'APP_USER_CONNECTOR_TIKTOK_ID',
   eventbrite: 'APP_USER_CONNECTOR_EVENTBRITE_ID',
   gumroad: 'APP_USER_CONNECTOR_GUMROAD_ID',
+  wordpress_com: 'APP_USER_CONNECTOR_WORDPRESS_COM_ID',
 };
 
 // Platforms that connect via a pasted URL and owner-reported totals. No provider
@@ -151,7 +152,15 @@ export async function verifyOAuthConnection(platform: string, oauth: any) {
     headers: { 'Content-Type': 'application/json' },
     body: 'null',
   });
-  if (['outlook', 'microsoft_teams', 'one_drive'].includes(key)) {
+  if (key === 'one_drive') {
+    // Microsoft identity alone cannot prove the Files permission needed by IFund.
+    // This safe read of the signed-in user's drive proves OneDrive access without
+    // reading file contents, downloading files or modifying anything.
+    const drive = await providerProbe('https://graph.microsoft.com/v1.0/me/drive/root?$select=id,name,folder', token);
+    if (!drive?.id || !drive?.folder) throw new Error('OneDrive file access could not be verified.');
+    return { drive_access_verified: true };
+  }
+  if (['outlook', 'microsoft_teams'].includes(key)) {
     return providerProbe('https://graph.microsoft.com/v1.0/me?$select=id,displayName', token);
   }
   if (key === 'gmail') return providerProbe('https://gmail.googleapis.com/gmail/v1/users/me/profile', token);
@@ -206,6 +215,9 @@ export async function verifyOAuthConnection(platform: string, oauth: any) {
   if (key === 'youtube') return providerProbe('https://www.googleapis.com/youtube/v3/channels?part=id&mine=true', token);
   if (key === 'patreon') return providerProbe('https://www.patreon.com/api/oauth2/v2/identity', token);
   if (key === 'eventbrite') return providerProbe('https://www.eventbriteapi.com/v3/users/me/', token);
+  if (key === 'wordpress_com') return providerProbe('https://public-api.wordpress.com/rest/v1.1/me', token, {
+    validate: (data: any) => !!data?.ID,
+  });
 
   throw new Error('Live provider verification is not implemented for this connector.');
 }
