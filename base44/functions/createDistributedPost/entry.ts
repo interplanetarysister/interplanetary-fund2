@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { resolveDonationDestination } from '../../shared/distributionDestination.js';
 
 export default async function(req){
  try{
@@ -17,7 +18,15 @@ export default async function(req){
   // owner to prepare copyable content, even when direct publishing is unsupported.
   if(connection.status!=='connected' || connection.verification_status!=='verified')
     return Response.json({error:'Verify this destination connection before preparing a post.'},{status:409});
-  const post=await base44.entities.DistributedPost.create({campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,platform:connection.platform,content,status:'pending_approval'});
+  let destination;
+  try { destination = await resolveDonationDestination(base44.asServiceRole, user.id, campaign.id, String(b?.donation_destination_connection_id || '')); }
+  catch (error) { return Response.json({ error: error.message }, { status: 409 }); }
+  const ifundLink = `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaignId)}`;
+  const corrected = destination.kind === 'external'
+    ? content.split(ifundLink + '?donate=true').join(destination.url).split(ifundLink).join(destination.url)
+    : content;
+  const finalContent = corrected.includes(destination.url) ? corrected : `${corrected}\n\nSupport this campaign: ${destination.url}`;
+  const post=await base44.entities.DistributedPost.create({campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,platform:connection.platform,content:finalContent,donation_destination_url:destination.url,donation_destination_platform:destination.platform,status:'pending_approval'});
   return Response.json({ok:true,post});
  }catch(error){console.error('createDistributedPost failed:',error?.name||'UnknownError');return Response.json({error:'Distributed post could not be created safely.'},{status:500});}
 }
