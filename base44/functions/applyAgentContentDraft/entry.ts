@@ -72,6 +72,11 @@ export default async function(req:Request) {
           name='createDistributedPost';args={campaign_id:campaignId,connection_id:draft.connection_id,content:p.content,donation_destination_connection_id:p.donation_destination_connection_id};
           humanResult='External post prepared for separate publishing approval';break;
         case 'blog_entry':
+          if(p.entry_id){
+            const existing=await sr.entities.BlogEntry.get(String(p.entry_id)).catch(()=>null);
+            if(!existing||existing.owner_user_id!==user.id||existing.status==='published')
+              throw new Error('Published or inaccessible blog articles require the direct owner editor');
+          }
           name='manageBlog';args={mode:'save_entry',blog_id:p.blog_id,entry_id:p.entry_id,title:p.title,summary:p.summary,body:p.body};
           humanResult='Blog article saved; publication still requires approval';break;
         case 'discussion_post':
