@@ -29,7 +29,10 @@ assert.equal(createUnclaimedPayload(campaign,{...validFields,target_amount:'0.50
 assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:'0'}));
 
 assert.throws(() => validateJustGivingCreateResult({pageId:7,next:{uri:'https://evil.example.com/fundraising/fake'}}));
-assert.throws(() => validateJustGivingCreateResult({pageId:0,next:{uri:'https://www.justgiving.com/fundraising/page'}}));
+assert.throws(() => validateJustGivingCreateResult({pageId:0,next:{uri:'https://www.staging.justgiving.com/fundraising/page'}}));
+assert.throws(() => validateJustGivingCreateResult({pageId:7,next:{uri:'https://www.justgiving.com/fundraising/page'}}));
+assert.throws(() => validateJustGivingCreateResult({pageId:7,next:{uri:'https://www.staging.justgiving.com/create-page/id/secret'}}));
+assert.throws(() => validateJustGivingCreateResult({pageId:7,next:{uri:'https://www.staging.justgiving.com/fundraising/page?claim=secret'}}));
 
 let calls = 0;
 const result = await createJustGivingStagingPage({
@@ -44,15 +47,15 @@ const result = await createJustGivingStagingPage({
     assert.equal(url.includes('TestAppID1'), false);
     assert.equal(JSON.parse(opts.body).charityId, 12345);
     return {status:201,json:async()=>({
-      pageId:123456,next:{uri:'https://www.justgiving.com/id/staging-page'},
-      signOnUrl:'https://www.justgiving.com/create-page/id/staging-page/PRIVATECLAIMTOKEN',
+      pageId:123456,next:{uri:'https://www.staging.justgiving.com/id/staging-page'},
+      signOnUrl:'https://www.staging.justgiving.com/create-page/id/staging-page/PRIVATECLAIMTOKEN',
     })};
   },
 });
 assert.equal(calls, 1);
 assert.equal(result.status, 'staging_created');
 assert.equal(result.page_id, '123456');
-assert.match(result.page_url, /^https:\/\/www\.justgiving\.com\//);
+assert.match(result.page_url, /^https:\/\/www\.staging\.justgiving\.com\//);
 assert.match(result.claim_url, /PRIVATECLAIMTOKEN/);
 
 let rejected = await createJustGivingStagingPage({
