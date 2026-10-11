@@ -8,7 +8,10 @@ const frontend = read("src/components/connections/AdminOAuthProviderReadiness.js
 const page = read("src/pages/Connections.jsx");
 
 const unique = [...new Set([...registry.matchAll(/^\s*[a-z_]+:\s*'(APP_USER_CONNECTOR_[A-Z_]+)'/gm)].map(x => x[1]))];
-assert.equal(unique.length, 24, "Audit must track all 24 unique app-user connector registrations");
+// Use the canonical registry, not a stale hard-coded provider count: WordPress
+// and future explicitly registered connectors must appear in this same audit.
+assert.ok(unique.length >= 25, "Audit must preserve the existing OAuth connector registrations");
+assert.ok(unique.includes('APP_USER_CONNECTOR_WORDPRESS_COM_ID'), "Audit must include registered WordPress connector");
 assert.match(backend, /assertActiveAccount\(base44\)/, "Admin audit must enforce active account");
 assert.match(backend, /guard\.user\?\.role !== 'admin'/, "Only IFund admins may read configuration names");
 assert.match(backend, /Object\.entries\(OAUTH_ENV\)/, "Use one canonical OAuth registry");
@@ -17,4 +20,4 @@ assert.doesNotMatch(backend, /connector_id:|accessToken:|secret_value:/, "Never 
 assert.match(page, /user\?\.role === "admin" && <AdminOAuthProviderReadiness/, "Audit must be admin-only");
 assert.match(frontend, /Needs registration/, "Show setup blockers rather than claiming success");
 assert.match(frontend, /Reference present; unverified/, "A registration must never be described as connected");
-console.log("PASS: 24-provider admin configuration audit and user-account boundary.");
+console.log(`PASS: ${unique.length}-provider admin configuration audit and user-account boundary.`);
