@@ -24,7 +24,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/social": "Social", "/blogs": "Stories & Blogs", "/my-blog": "My Blog Studio", "/devices": "Connected Devices", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
+  "/social": "Social", "/blogs": "Stories & Blogs", "/my-blog": "My Blog Studio", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
