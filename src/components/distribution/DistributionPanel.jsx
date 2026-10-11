@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Megaphone, Sparkles, Rocket, CheckCircle2, Clipboard } from "lucide-react";
 import { Link } from "react-router-dom";
 import DistributedPostCard from "./DistributedPostCard";
+import JustGivingStagingPilot from "./JustGivingStagingPilot";
 import { platformName } from "@/components/connections/platformCatalog";
 import { isUsableConnection } from "@/lib/connectionHealth";
 import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
@@ -39,9 +40,9 @@ export default function DistributionPanel({ campaign }) {
   const publishEnabled = useFeatureEnabled("cross_platform_publishing");
   const [connections,setConnections]=useState(null), [posts,setPosts]=useState([]), [selected,setSelected]=useState([]), [aiAuthorized,setAiAuthorized]=useState(false), [capabilityMap,setCapabilityMap]=useState({});
   const [generating,setGenerating]=useState(false), [broadcasting,setBroadcasting]=useState(false), [error,setError]=useState("");
-  const [manualText,setManualText]=useState(""), [creating,setCreating]=useState(false), [donationTarget,setDonationTarget]=useState(campaign.distribution_donation_connection_id||"ifund"), [savingDestination,setSavingDestination]=useState(false);
+  const [manualText,setManualText]=useState(""), [creating,setCreating]=useState(false), [donationTarget,setDonationTarget]=useState(campaign.distribution_donation_connection_id||"ifund"), [savingDestination,setSavingDestination]=useState(false), [isAdmin,setIsAdmin]=useState(false);
   const {toast}=useToast();
-  useEffect(()=>{(async()=>{try{const [r,p,me,capRes]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me(),base44.functions.invoke("listFundraisingProviderCapabilities",{})]);const authorized=me?.ai_obo_consent?.granted===true;const allConnections=Array.isArray(r?.data?.connections)?r.data.connections:[];const cs=allConnections.filter(c=>!c.campaign_id||c.campaign_id===campaign.id);const providers=Array.isArray(capRes?.data?.providers)?capRes.data.providers:[];const caps=Object.fromEntries(providers.map(cap=>[String(cap.platform||"").toLowerCase(),cap]));setAiAuthorized(authorized);setCapabilityMap(caps);setConnections(cs);setSelected(cs.filter(c=>isUsableConnection(c) && c.kind!=="app").map(c=>c.id));setPosts(Array.isArray(p)?p:[])}catch(e){console.error("Distribution load failed:",e?.name||"UnknownError");setConnections([]);setPosts([]);setCapabilityMap({})}})()},[campaign.id]);
+  useEffect(()=>{(async()=>{try{const [r,p,me,capRes]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me(),base44.functions.invoke("listFundraisingProviderCapabilities",{})]);const authorized=me?.ai_obo_consent?.granted===true;setIsAdmin(me?.role==="admin"||me?.role==="super_admin");const allConnections=Array.isArray(r?.data?.connections)?r.data.connections:[];const cs=allConnections.filter(c=>!c.campaign_id||c.campaign_id===campaign.id);const providers=Array.isArray(capRes?.data?.providers)?capRes.data.providers:[];const caps=Object.fromEntries(providers.map(cap=>[String(cap.platform||"").toLowerCase(),cap]));setAiAuthorized(authorized);setCapabilityMap(caps);setConnections(cs);setSelected(cs.filter(c=>isUsableConnection(c) && c.kind!=="app").map(c=>c.id));setPosts(Array.isArray(p)?p:[])}catch(e){console.error("Distribution load failed:",e?.name||"UnknownError");setConnections([]);setPosts([]);setCapabilityMap({})}})()},[campaign.id]);
   if(!connections)return null;
   const pending=posts.filter(p=>["pending_approval","draft","approved","failed"].includes(p.status));
   const destinations=connections.filter(c=>c.kind!=="app");
@@ -98,6 +99,7 @@ export default function DistributionPanel({ campaign }) {
       </div>
       <p className="mt-2 text-xs">JustGiving documents a fundraising-page API, but IFund does not yet have a tested, authorized account-write integration. No external campaign has been created by this action.</p>
     </section>
+    {isAdmin && <JustGivingStagingPilot campaign={campaign}/>}
     {!connections.length?<p className="text-sm text-stone-500">No platforms connected yet. <Link to="/connections" className="text-primary hover:underline">Connect your accounts</Link>.</p>:<div className="space-y-3">
       <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2">
         <label htmlFor="ifund-donation-destination" className="block text-sm font-semibold text-sky-950">Where should supporters donate? (saved for future promotions)</label>
