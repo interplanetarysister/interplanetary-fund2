@@ -216,6 +216,8 @@ export default function Connections() {
               setConnectionNotice({ ok: false, text: pending.platform + " authorization was saved, but the live provider check needs attention." });
             } else if (firstPublish?.direct_published === true) {
               setConnectionNotice({ ok: true, text: `${pending.platform} is connected. ${pending.campaignTitle || "Your campaign"} was published there, and future campaign updates can use this paired connection.` });
+            } else if (firstPublish?.manual_setup_required === true) {
+              setConnectionNotice({ ok: true, text: `${pending.platform} is linked, but IFund cannot create or update that provider's fundraiser automatically. Open your campaign's distribution panel to copy its details and finish through the official provider.` });
             } else if (firstPublish?.manual_required === true) {
               setConnectionNotice({ ok: true, text: `${pending.platform} is connected and paired with ${pending.campaignTitle || "your campaign"}. This provider does not currently have a verified direct-publish route, so the first post is prepared for manual publishing.` });
             } else if (firstPublish?.ok === false) {
@@ -551,6 +553,8 @@ export default function Connections() {
                   const first = await base44.functions.invoke("publishLinkedCampaignToConnection", { connection_id: saved.id });
                   if (first?.data?.direct_published) {
                     setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected. ${saved.display_name || "The paired campaign"} was published there, and future updates can use this connection.` });
+                  } else if (first?.data?.manual_setup_required) {
+                    setConnectionNotice({ ok: true, text: `${dialog.platform.name} is linked. IFund has not created an external fundraiser. Copy the campaign details from the campaign distribution panel and complete the provider’s own setup.` });
                   } else if (first?.data?.manual_required) {
                     setConnectionNotice({ ok: true, text: `${dialog.platform.name} is connected and paired with ${saved.display_name || "the campaign"}. A first post is prepared because this provider does not currently expose a verified direct-publish route.` });
                   } else {
