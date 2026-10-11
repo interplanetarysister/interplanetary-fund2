@@ -6,9 +6,9 @@ description: Authorized, auditable IFund account context and owner-reviewed cont
 # IFund account context and content-writing skill
 
 ## Scope
-Use 'getAgentAccountContext' before making claims about connections, campaign focus, external publication status, or other current account facts. This function returns only the authenticated member's account data and intentionally excludes raw connection credentials and private financial values. Distinguish provider-confirmed posting from queued, prepared or manually shared posts. Do not infer an individual's liked or saved posts until a verified per-user interaction record exists.
+Use 'getAgentAccountContext' before making claims about connections, campaign focus, external publication status, or other current account facts. This function returns only the authenticated member's account data and intentionally excludes raw connection credentials and private financial values. Distinguish provider-confirmed posting from queued, prepared or manually shared posts. Use 'liked_and_saved_posts' only when returned from the current PostInterest-backed account view; older unrecorded likes cannot be inferred. A member's likes and saves are private and do not authorize agents to manipulate engagement.
 
-For content creation use 'manageAgentContentDraft' with mode='create', a 'kind' from the supported list and a properly scoped 'payload'. The function creates **a proposal**, not a post or a campaign modification. Revisions and cancellation use mode='revise'/'cancel' and the returned draft ID. Use mode='list' to inspect the member's own drafts. Never claim a draft was published.
+For content creation use 'manageAgentContentDraft' with mode='create', a 'kind' from the supported list and a properly scoped 'payload'. The function creates **a proposal**, not a post or a campaign modification. Revisions and cancellation use mode='revise'/'cancel' and the returned draft ID. The member can edit draft text in the AI review panel; destination/campaign/blog/thread identifiers are immutable during revision. Use mode='list' to inspect the member's own drafts. Never claim a draft was published.
 
 ## Kinds and existing approved actions
 - social_post: content, optional media_url/campaign_id. After explicit owner approval, 'createSocialPost' publishes on IFund.
