@@ -17,6 +17,21 @@
 
 export const CROWDFUNDING_PLATFORMS = [
   {
+    id: "justgiving",
+    name: "JustGiving",
+    kind: "crowdfunding",
+    color: "#ee2b63",
+    icon: "💗",
+    tagline: "Link an existing eligible charity fundraising page. External page creation still happens through JustGiving.",
+    setupKind: "link",
+    steps: [
+      { id: "url", label: "Paste your JustGiving fundraising page URL", hint: "Create or open the page on JustGiving first. Linking a page does not grant IFund permission to create or edit it." },
+      { id: "totals", label: "Enter current totals", hint: "Owner-entered totals are informational until a provider-backed check is available." },
+      { id: "link", label: "Pair your IFund campaign", hint: "Choose the IFund campaign this page belongs to." },
+    ],
+    api: "Existing-page link only. A separate developer-approved API integration is required for automatic page creation.",
+  },
+  {
     id: "gofundme",
     name: "GoFundMe",
     kind: "crowdfunding",
