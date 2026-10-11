@@ -70,6 +70,10 @@
     "cashapp_tag": {
       "type": "string"
     },
+    "distribution_donation_connection_id": {
+      "type": "string",
+      "description": "Optional owner-selected external fundraiser connection for campaign promotion. Empty uses IFund checkout; never transfers external funds."
+    },
     "accept_crypto_donations": {
       "type": "boolean",
       "description": "Creator opts into cryptocurrency giving. Checkout requires independently verified settlement readiness; opt-in alone never activates transfers.",
