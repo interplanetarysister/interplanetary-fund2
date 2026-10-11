@@ -13,7 +13,8 @@ import PageTips from "@/components/coach/PageTips";
 export default function Discover() {
   const [campaigns, setCampaigns] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const [category, setCategory] = useState(() => searchParams.get("category") === "environment" ? "environment" : "all");
+  const requestedCategory = searchParams.get("category");
+  const category = categoryLabels[requestedCategory] ? requestedCategory : "all";
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState(null);
@@ -63,7 +64,7 @@ export default function Discover() {
       </div>
       <div className="flex gap-2 overflow-x-auto pb-2 mb-6 -mx-1 px-1">
         {categories.map((c) => (
-          <button key={c} onClick={() => { setCategory(c); setSearchParams(c === "all" ? {} : { category: c }); }}
+          <button key={c} onClick={() => setSearchParams(c === "all" ? {} : { category: c })}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               category === c
                 ? "bg-blue-700 text-white shadow-md shadow-blue-500/20"
