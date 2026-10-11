@@ -7,6 +7,7 @@ const SUPER_ADMIN_OWNER_EMAILS = new Set([
   'interplanetarysister@gmail.com',
 ]);
 const ALLOWED = new Set([
+  'admin_builder_agent',
   'chief_of_staff',
   'connection_discovery_agent',
   'managed_connection_agent',
