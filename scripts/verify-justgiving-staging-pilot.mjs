@@ -8,6 +8,7 @@ const campaign = { id: 'ifund_camp_abc123zz', title: 'A verified charity fundrai
   goal_amount: 1000 };
 const payload = createUnclaimedPayload(campaign, {
   charity_id: '12345', activity_type: 'OtherPersonalChallenge', currency: 'GBP',
+  target_amount: '980.50', confirm_target_amount: true,
 });
 assert.equal(payload.charityId, 12345);
 assert.equal(payload.pageShortName, pageSlug(campaign));
@@ -15,10 +16,15 @@ assert.equal(payload.pageTitle, campaign.title);
 assert.equal(payload.pageStory, campaign.story);
 assert.equal(payload.charityOptIn, false);
 assert.equal(payload.charityFunded, false);
-assert.equal(payload.targetAmount, '1000');
-assert.throws(() => createUnclaimedPayload(campaign,{charity_id:0,activity_type:'OtherPersonalChallenge'}));
-assert.throws(() => createUnclaimedPayload(campaign,{charity_id:123,activity_type:'something_else'}));
-assert.throws(() => createUnclaimedPayload({ ...campaign, goal_amount:0 },{charity_id:123,activity_type:'Walks'}));
+assert.equal(payload.targetAmount, '980.50');
+const validFields = { charity_id:123, activity_type:'Walks', currency:'GBP', target_amount:'1000.00', confirm_target_amount:true };
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,charity_id:0}));
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,activity_type:'something_else'}));
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,confirm_target_amount:false}),/Confirm/);
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:''}),/valid positive/);
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:'-5.00'}),/valid positive/);
+assert.throws(() => createUnclaimedPayload(campaign,{...validFields,target_amount:'1.234'}),/valid positive/);
+assert.equal(createUnclaimedPayload(campaign,{...validFields,target_amount:'350.20'}).targetAmount,'350.20');
 
 assert.throws(() => validateJustGivingCreateResult({pageId:7,next:{uri:'https://evil.example.com/fundraising/fake'}}));
 assert.throws(() => validateJustGivingCreateResult({pageId:0,next:{uri:'https://www.justgiving.com/fundraising/page'}}));
@@ -68,6 +74,12 @@ assert.match(worker,/confirm_staging_creation !== true/);
 assert.match(worker,/JUSTGIVING_STAGING_WRITE_ENABLED/);
 assert.match(worker,/user.role !== 'admin'/);
 assert.match(worker,/provider_verified_at/);
+assert.match(worker,/status: 'request_pending'/);
+assert.match(worker,/publication_history_unavailable/);
+assert.match(worker,/staging_outcome_unknown/);
+assert.doesNotMatch(worker,/\.catch\(\(\) => \[\]\)/);
+assert.ok(schema.properties.status.enum.includes('request_pending'));
+assert.match(ui,/confirm_target_amount/);
 assert.doesNotMatch(worker,/Deno\.env\.get\('JUSTGIVING_PRODUCTION_WRITE_ENABLED'\)/);
 assert.match(ui,/Preview staging page/);
 assert.match(ui,/eligible/);
