@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1015561464999",
+    "project_id": "interplanetary-fund",
+    "storage_bucket": "interplanetary-fund.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1015561464999:android:e42bc76a1ea0b986a6ff82",
+        "android_client_info": {
+          "package_name": "com.base6a67a778342a8fe05ee79cba.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAx071_e7uRK0mp6qvI2mv1wO6BwFf_Xwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
