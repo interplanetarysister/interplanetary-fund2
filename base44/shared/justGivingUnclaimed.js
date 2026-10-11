@@ -36,7 +36,7 @@ export function createUnclaimedPayload(campaign, fields) {
   if (fields?.confirm_target_amount !== true)
     throw new Error('Confirm the fundraising target amount and chosen JustGiving currency.');
   const rawAmount = String(fields?.target_amount ?? '').trim();
-  if (!/^(?:[1-9]\\d{0,8})(?:\\.\\d{1,2})?$/.test(rawAmount))
+  if (!/^(?:[1-9]\d{0,8})(?:\.\d{1,2})?$/.test(rawAmount))
     throw new Error('Enter a valid positive JustGiving fundraising target (up to two decimals).');
   const amount = Number(rawAmount);
   if (!Number.isFinite(amount) || amount <= 0 || amount > 999999999)
