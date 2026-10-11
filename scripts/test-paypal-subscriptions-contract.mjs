@@ -61,6 +61,8 @@ assert.match(webhook,/reconcilePayPalSubscription/);
 assert.match(webhook,/PAYMENT\.SALE\.REFUNDED/);
 assert.match(webhook,/PAYMENT\.SALE\.COMPLETED/);
 assert.match(setup, /stage = 'validate_callback_url'/);
+assert.match(setup, /new globalThis\.URL\(URL\)/, 'callback must use URL constructor, not the shadowing URL string');
+assert.doesNotMatch(setup, /new URL\(URL\)/, 'callback URL constant must never shadow the URL constructor');
 assert.match(setup, /stage = 'verify_registered_webhook'/);
 assert.match(setup, /remote\?\.url !== URL/);
 assert.match(setup, /grantedEvents\.has/);
