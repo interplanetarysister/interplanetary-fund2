@@ -8,7 +8,7 @@ import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.
 
 // Broadcasts every pending/approved/failed DistributedPost for a campaign in
 // one call — the owner's "publish everything I approved" action. Direct-
-// publishes where the platform supports it (Bluesky, Mastodon); marks the rest
+// publishes where the platform supports it (Bluesky, LinkedIn); marks the rest
 // "approved" with manual=true so the owner can copy-post to crowdfunding pages
 // and social sites without a publishing API. Never auto-posts without consent.
 export default async function(req) {
@@ -48,6 +48,13 @@ export default async function(req) {
     );
 
     const results = { published: 0, manual: 0, failed: 0, total: pending.length, posts: [] };
+    // This request is authenticated as the campaign owner. Resolve only that
+    // app user's LinkedIn connector; never use IFund's shared/admin identity.
+    let ownerLinkedInOAuth = null;
+    const linkedinConnectorId = Deno.env.get('APP_USER_CONNECTOR_LINKEDIN_ID') || '';
+    if (linkedinConnectorId) {
+      ownerLinkedInOAuth = await sr.connectors.getCurrentAppUserConnection(linkedinConnectorId).catch(() => null);
+    }
 
     for (const post of pending) {
       const connection = await base44.entities.PlatformConnection.get(post.connection_id).catch(() => null);
@@ -73,7 +80,10 @@ export default async function(req) {
       const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
       const capability = await resolveCapabilityForPlatform(sr, connection.platform);
       const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
-      if (!directPublishVerified) {
+      const implementedAdapterReady = ['bluesky', 'linkedin'].includes(connection.platform) &&
+        connection.status === 'connected' && connection.verification_status === 'verified' &&
+        capability?.test_status !== 'failed' && capability?.implementation_status !== 'disabled';
+      if (!directPublishVerified && !implementedAdapterReady) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
@@ -90,7 +100,8 @@ export default async function(req) {
       });
       const canCredentialPublish = canAutoPublish(connection);
       const canConnectorPublish = canPublishViaConnector(connection.platform);
-      if ((!canCredentialPublish && !canConnectorPublish) || !aiConsentGranted || !obo.ok) {
+      const ownerOAuth = connection.platform === 'linkedin' ? ownerLinkedInOAuth : null;
+      if ((!canCredentialPublish && !(canConnectorPublish && ownerOAuth?.accessToken)) || !aiConsentGranted || !obo.ok) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
         results.manual++;
         results.posts.push(updated);
@@ -98,7 +109,7 @@ export default async function(req) {
       }
 
       try {
-        const { url } = await publishThroughConnection(connection, text, sr);
+        const { url } = await publishThroughConnection(connection, text, sr, ownerOAuth);
         const updated = await base44.entities.DistributedPost.update(post.id, {
           status: 'published',
           published_at: new Date().toISOString(),
