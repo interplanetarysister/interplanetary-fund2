@@ -2,10 +2,10 @@
 // campaign fundraising path because it cannot create IFund's canonical
 // campaign/payment identity. Campaign donations must return to IFund checkout.
 //
-// Business account: interplanetarysister@gmail.com
+// Business account: cuddlemeplatonically@gmail.com
 
 
-export const IFUND_PAYPAL_BUSINESS_EMAIL = "interplanetarysister@gmail.com";
+export const IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail.com";
 
 export function generatePayPalLink(_campaignTitle, amount) {
   const params = new URLSearchParams({
