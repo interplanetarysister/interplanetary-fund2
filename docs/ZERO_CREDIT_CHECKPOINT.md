@@ -19,7 +19,7 @@ P1 payment-truthfulness queue in this repo: **#177** (canonical verified-donatio
 ## Blocked: requires message credits (owner reserve protected)
 
 - **Platform account creation queue (7):** Spotfund, Honeyfund, Fundable, Piggybackr, Bluesky, Patreon, Fundly — needs agent-driven browser automation (browser tooling is integration-credit free; driving it costs message credits).
-- **Treasury:** connect PayPal business account (interplanetarysister@gmail.com) as payment method on Ko-fi and BuyMeACoffee.
+- **Treasury:** connect PayPal business account (cuddlemeplatonically@gmail.com) as payment method on Ko-fi and BuyMeACoffee.
 - **Ruleset upgrade:** raise `required_approving_review_count` to 1 — blocked on owner providing a second (service/bot) GitHub identity (single-identity constraint).
 - **Autonomous Continuation Cycle reactivation** — only on owner authorization of that spend.
 
