@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import BrandLogo from "@/components/brand/BrandLogo";
 
 // Per-session permissions gate. Stored in sessionStorage so it re-appears
@@ -18,6 +19,7 @@ const PERMISSIONS = [
 ];
 
 export default function TermsAcceptance({ children }) {
+  const { pathname } = useLocation();
   const [accepted, setAccepted] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -42,12 +44,11 @@ export default function TermsAcceptance({ children }) {
 
   // Embed routes and public iframe content bypass the per-session gate so
   // embedded campaign cards render on external sites without a click.
-  const isEmbedRoute = typeof window !== "undefined" && window.location.pathname.startsWith("/embed/");
+  const isEmbedRoute = pathname.startsWith("/embed/");
   if (!initialized) return null;
   // Reading public support information does not require consent to account features.
   // The regular app permission gate still applies when leaving these public help routes.
-  const isHelpRoute = typeof window !== "undefined" &&
-    (window.location.pathname === "/help" || window.location.pathname.startsWith("/help/") || window.location.pathname === "/contact");
+  const isHelpRoute = pathname === "/help" || pathname.startsWith("/help/") || pathname === "/contact";
   if (accepted || isEmbedRoute || isHelpRoute) return <>{children}</>;
 
   return (
