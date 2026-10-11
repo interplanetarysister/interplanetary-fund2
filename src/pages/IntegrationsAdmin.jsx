@@ -8,6 +8,7 @@ import PayPalReceiptRecoveryPanel from "@/components/admin/PayPalReceiptRecovery
 import PageError from "@/components/PageError";
 import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, normalizeIntegrationStatus } from "@/lib/integrationRegistryUi";
 import Base44ReleaseStatus from "@/components/admin/Base44ReleaseStatus";
+import AdminOAuthProviderReadiness from "@/components/connections/AdminOAuthProviderReadiness";
 
 const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry. Please try again.";
 const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Please try again.";
@@ -181,6 +182,7 @@ export default function IntegrationsAdmin() {
       )}
 
       <Base44ReleaseStatus />
+      <div className="mt-5"><AdminOAuthProviderReadiness /></div>
       <PayPalReceiptRecoveryPanel user={user} />
 
       <div className="mt-6">
