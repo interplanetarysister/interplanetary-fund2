@@ -12,6 +12,15 @@ const unique = [...new Set([...registry.matchAll(/^\s*[a-z_]+:\s*'(APP_USER_CONN
 // and future explicitly registered connectors must appear in this same audit.
 assert.ok(unique.length >= 25, "Audit must preserve the existing OAuth connector registrations");
 assert.ok(unique.includes('APP_USER_CONNECTOR_WORDPRESS_COM_ID'), "Audit must include registered WordPress connector");
+assert.ok(unique.includes('APP_USER_CONNECTOR_ONE_DRIVE_ID'), "Audit must include OneDrive app-user connector registration");
+const catalog = read("src/components/connections/platformCatalog.js");
+const verifier = read("base44/shared/connectionVerification.ts");
+const oauthFinalize = read("base44/functions/finalizeAppUserOAuthConnection/entry.ts");
+assert.match(catalog, /id: "wordpress_com"/, "WordPress must be an available IFund destination");
+assert.match(oauthFinalize, /wordpress_com: \{ kind: 'social'/, "WordPress OAuth return must be recognized");
+assert.match(verifier, /graph\.microsoft\.com\/v1\.0\/me\/drive\/root/, "OneDrive must prove file access, not just Microsoft login");
+assert.match(verifier, /drive_access_verified: true/, "OneDrive identity and storage checks must stay distinct");
+assert.match(verifier, /wordpress\.com\/rest\/v1\.1\/me/, "WordPress must have a provider-backed identity check");
 assert.match(backend, /assertActiveAccount\(base44\)/, "Admin audit must enforce active account");
 assert.match(backend, /guard\.user\?\.role !== 'admin'/, "Only IFund admins may read configuration names");
 assert.match(backend, /Object\.entries\(OAUTH_ENV\)/, "Use one canonical OAuth registry");
