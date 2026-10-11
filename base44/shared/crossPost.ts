@@ -205,8 +205,10 @@ Return JSON only.`;
       connection_id: conn.id,
       platform: conn.platform,
       source_update_id: sourceUpdateId || undefined,
-      content: post.content,
+      content: approvedContent,
       hashtags: post.hashtags || [],
+      donation_destination_url: donationDestination.url,
+      donation_destination_platform: donationDestination.platform,
       status: explicitPublish ? 'approved' : conn.automation_mode === 'draft' ? 'draft' : 'pending_approval',
     });
     if (!explicitPublish && conn.automation_mode === 'draft') result.drafts++;
