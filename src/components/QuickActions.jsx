@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { isAndroidApp, disableAndroidPush } from "@/lib/androidFirebaseFeatures";
 import { Plus, Megaphone, Heart, LayoutDashboard, Sparkles, LogIn, LogOut, X } from "lucide-react";
 
 export default function QuickActions({user}) {
@@ -16,7 +17,7 @@ export default function QuickActions({user}) {
   const logout=async()=>{
     if(signingOut)return;
     setSigningOut(true);
-    try{await base44.auth.logout("/login");}
+    try{if(isAndroidApp)await disableAndroidPush().catch(()=>{});await base44.auth.logout("/login");}
     catch{setSigningOut(false);setOpen(false);}
   };
   return <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-6 left-3 md:left-auto md:right-6 z-30 flex flex-col items-start md:items-end gap-2">
