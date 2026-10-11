@@ -3,6 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { hasAiPublishingConsent } from '../../shared/socialPublish.ts';
 import { latestWritingGuidance } from '../../shared/writingGuidance.ts';
+import { resolveDonationDestination } from '../../shared/distributionDestination.js';
 
 // AI Campaign Distribution Engine — generates platform-tailored post content
 // for each connected social AND crowdfunding destination (never identical
@@ -36,13 +37,10 @@ const PLATFORM_RULES = {
   custom: 'Custom site update: general campaign update, gratitude and progress, 2-3 paragraphs.',
 };
 
-// Campaign-facing distribution always returns supporters to IFund checkout.
-// Never send campaign traffic to a raw PayPal donation URL: direct provider
-// links cannot carry IFund's canonical campaign/payment identity.
-const PUBLIC_ORIGIN = 'https://interplanetaryfund.com';
-function generateDonationBlock(campaignId) {
-  const link = `${PUBLIC_ORIGIN}/campaign/${encodeURIComponent(campaignId)}?donate=true`;
-  return `\n\n💛 Support this campaign: ${link}\nEvery donation makes a difference. Thank you! 🙏`;
+// A creator may explicitly choose either IFund checkout or their own linked
+// external fundraiser. External payments stay with the external provider.
+function generateDonationBlock(url) {
+  return `\n\nSupport this campaign: ${url}`;
 }
 
 export default async function(req) {
@@ -53,7 +51,7 @@ export default async function(req) {
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
     const user = guard.user;
 
-    const { campaign_id, connection_ids } = await req.json();
+    const { campaign_id, connection_ids, donation_destination_connection_id = '' } = await req.json();
     if (!campaign_id || !Array.isArray(connection_ids) || !connection_ids.length) {
       return Response.json({ error: 'Pick at least one connected platform.' }, { status: 400 });
     }
@@ -82,15 +80,21 @@ export default async function(req) {
       return Response.json({ error: 'None of the selected accounts are ready for content preparation.' }, { status: 400 });
     }
 
+    let destination;
+    try {
+      destination = await resolveDonationDestination(base44.asServiceRole, user.id, campaign.id, donation_destination_connection_id);
+    } catch (error) {
+      return Response.json({ error: error.message }, { status: 409 });
+    }
     const p = campaign.ai_profile || {};
-    const url = `${new URL(req.url).origin}/campaign/${campaign_id}`;
+    const url = destination.url;
     const research = await latestWritingGuidance(base44.asServiceRole);
     const prompt = `You are the AI Campaign Distribution Engine for Interplanetary Fund.
 Compliance (non-negotiable): never fabricate facts, amounts, names, or urgency; use only the campaign context; no spam; no false promises.
 Writing and audience psychology reference: ${research || 'Compelling true stories, agency, clarity, credible impact.'}
 Use thoughtful persuasive framing and relevant donor motivations appropriate to the creator's requested tone. Never claim facts solely because they appeared in research.
 
-Write one tailored post per platform below. Do NOT reuse the same text — adapt tone, length, and format per platform rules. Every post must include the campaign link ${url}.
+Write one tailored post per platform below. Do NOT reuse the same text — adapt tone, length, and format per platform rules. The creator selected this support destination: ${url} (${destination.kind === 'external' ? 'external provider; that provider handles donations' : 'IFund direct checkout'}). Every public appeal must use this selected link, never substitute an IFund payment link. Fundraising-site updates are drafts for an existing external campaign, NOT proof that IFund created or published a fundraiser.
 
 Platform rules:
 ${targets.map((c) => `- ${c.platform}: ${PLATFORM_RULES[c.platform] || 'General social post, under 400 chars.'}`).join('\n')}
@@ -128,12 +132,14 @@ Return JSON only.`;
     for (const post of (res.posts || [])) {
       const conn = targets.find((c) => c.platform === post.platform);
       if (!conn || !post.content) continue;
-      // Append the canonical PayPal donation block to social posts so a
-      // clickable give link travels with the content even when copy-pasted.
-      // (Skipped for crowdfunding update posts, which link to the campaign page.)
-      const content = conn.kind === 'social'
-        ? post.content + generateDonationBlock(campaign.id)
-        : post.content;
+      // Never silently redirect an external-platform campaign's donors to IFund.
+      const localCampaignLink = `https://interplanetaryfund.com/campaign/${encodeURIComponent(campaign.id)}`;
+      const preparedText = destination.kind === 'external'
+        ? String(post.content).split(localCampaignLink + '?donate=true').join(destination.url).split(localCampaignLink).join(destination.url)
+        : String(post.content);
+      const content = conn.kind === 'social' && !preparedText.includes(destination.url)
+        ? preparedText + generateDonationBlock(destination.url)
+        : preparedText;
       const record = await base44.entities.DistributedPost.create({
         campaign_id,
         campaign_title: campaign.title,
@@ -141,6 +147,8 @@ Return JSON only.`;
         platform: conn.platform,
         content,
         hashtags: post.hashtags || [],
+        donation_destination_url: destination.url,
+        donation_destination_platform: destination.platform,
         status: conn.automation_mode === 'draft' ? 'draft' : 'pending_approval',
       });
       created.push(record);
