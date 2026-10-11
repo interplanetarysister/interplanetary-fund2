@@ -14,11 +14,11 @@ import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 const directReady = (c, capabilityMap) => {
   const capability = capabilityMap[c.platform] || null;
   const verifiedDirect = capability?.direct_publish_verified === true && capability?.test_status === "passing" && capability?.implementation_status === "implemented";
-  if (!verifiedDirect) return false;
-  const cr = c.credentials || {};
-  if (c.platform === "bluesky") return !!(cr.bluesky_handle && cr.bluesky_app_password);
-  if (c.platform === "linkedin") return true;
-  return false;
+  const runtimeCandidate = ["bluesky", "linkedin"].includes(c.platform) &&
+    c.status === "connected" && c.verification_status === "verified" &&
+    capability?.test_status !== "failed" && capability?.implementation_status !== "disabled";
+  if (!verifiedDirect && !runtimeCandidate) return false;
+  return ["bluesky", "linkedin"].includes(c.platform);
 };
 const aiReady = (c, aiAuthorized) => aiAuthorized && isUsableConnection(c) && c.automation_mode !== "manual";
 const approvedReady = (c, aiAuthorized, capabilityMap) => aiAuthorized && isUsableConnection(c) && directReady(c, capabilityMap);
@@ -44,7 +44,8 @@ export default function DistributionPanel({ campaign }) {
   useEffect(()=>{(async()=>{try{const [r,p,me,capRes]=await Promise.all([base44.functions.invoke("listConnections",{}),base44.entities.DistributedPost.filter({campaign_id:campaign.id},"-created_date",30),base44.auth.me(),base44.functions.invoke("listFundraisingProviderCapabilities",{})]);const authorized=me?.ai_obo_consent?.granted===true;const allConnections=Array.isArray(r?.data?.connections)?r.data.connections:[];const cs=allConnections.filter(c=>!c.campaign_id||c.campaign_id===campaign.id);const providers=Array.isArray(capRes?.data?.providers)?capRes.data.providers:[];const caps=Object.fromEntries(providers.map(cap=>[String(cap.platform||"").toLowerCase(),cap]));setAiAuthorized(authorized);setCapabilityMap(caps);setConnections(cs);setSelected(cs.filter(c=>isUsableConnection(c) && c.kind!=="app").map(c=>c.id));setPosts(Array.isArray(p)?p:[])}catch(e){console.error("Distribution load failed:",e?.name||"UnknownError");setConnections([]);setPosts([]);setCapabilityMap({})}})()},[campaign.id]);
   if(!connections)return null;
   const pending=posts.filter(p=>["pending_approval","draft","approved","failed"].includes(p.status));
-  const ai=connections.filter(c=>aiReady(c,aiAuthorized)), approved=connections.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,aiAuthorized,capabilityMap)), copy=connections.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,aiAuthorized,capabilityMap));
+  const destinations=connections.filter(c=>c.kind!=="app");
+  const ai=destinations.filter(c=>aiReady(c,aiAuthorized)), approved=destinations.filter(c=>!aiReady(c,aiAuthorized)&&approvedReady(c,aiAuthorized,capabilityMap)), copy=destinations.filter(c=>!aiReady(c,aiAuthorized)&&!approvedReady(c,aiAuthorized,capabilityMap));
   const createDrafts=async()=>{
     const targets=connections.filter(c=>selected.includes(c.id)&&isUsableConnection(c)&&c.kind!=="app");
     if(!manualText.trim()||!targets.length){setError("Write a message and select at least one verified destination.");return;}
