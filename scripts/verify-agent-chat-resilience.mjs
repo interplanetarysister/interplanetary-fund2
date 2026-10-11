@@ -9,4 +9,8 @@ assert.match(source, /mode: "failed", run_id:/, "mark transport failures rather 
 assert.match(source, /setTrackingError\(true\)/, "surface persistence outages");
 assert.match(source, /setInput\(\(current\) => current \|\| content\)/, "failed message delivery must restore the draft");
 assert.match(source, /finally \{\s*setSending\(false\)/, "sending state must always be released");
+assert.doesNotMatch(source, /createPortal|position:\s*fixed|\bfixed\b[^\n]*composer/, "mobile composer must stay in the chat flex flow");
+assert.match(source, /h-\[min\(48dvh,32rem\)\][^\n]*overflow-y-auto overscroll-y-contain touch-pan-y/, "transcript must own bounded touch scrolling");
+assert.match(source, /shrink-0[^\n]*pl-14[^\n]*md:pl-3/, "composer must remain reachable and clear mobile Quick Actions");
+assert.match(source, /scrollIntoView\(\{ block: "nearest" \}\)/, "focused composer must remain visible when the visual viewport shrinks");
 console.log("Agent chat resilience contract passed");
