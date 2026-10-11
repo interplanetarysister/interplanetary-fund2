@@ -43,6 +43,12 @@ export default function About() {
           </p>
         </div>
 
+        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/10 p-5">
+          <h2 className="font-display text-xl sm:text-2xl text-foreground mb-3">Fund a healthier planet</h2>
+          <p className="text-muted-foreground leading-relaxed">Interplanetary Fund welcomes fundraising for environmental projects, from habitat restoration to waste reduction and cleaner energy. We are working to make our own software more efficient too. Our hosting energy use and overall emissions have not yet been independently verified, and campaign categories alone are not proof of environmental outcomes.</p>
+          <Link to="/discover?category=environment" className="mt-3 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary underline">Explore Planet &amp; Environment campaigns <ArrowRight size={16} /></Link>
+        </div>
+
         <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
           <Link to="/discover"><Button variant="outline" className="rounded-xl"><Compass className="w-4 h-4 mr-2" /> Explore causes</Button></Link>
           <Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90"><Sparkles className="w-4 h-4 mr-2" /> Start a campaign <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
