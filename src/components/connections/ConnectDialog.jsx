@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ const OAUTH_ATTEMPT_BLOCKED_STATES = new Set(["checking", "not_configured", "uns
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
-export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, onManagedConnect, open, onOpenChange, onSaved }) {
+export default function ConnectDialog({ platform, existing, quickConnect = false, aiAuthorized, managedAvailable = false, onManagedCreateAccount, onManagedConnect, open, onOpenChange, onSaved }) {
   const isCrowd = platform.kind === "crowdfunding";
   const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
@@ -25,6 +25,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const [managedBusy, setManagedBusy] = useState(false);
   const [helpDetails, setHelpDetails] = useState("");
   const [error, setError] = useState("");
+  const attemptedDeepLink = useRef("");
   const [oauthReadiness, setOauthReadiness] = useState("checking");
   const [oauthReadinessPlatform, setOauthReadinessPlatform] = useState("");
   const oauthAttemptBlocked = usesProviderOAuth &&
@@ -43,6 +44,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     });
     setCredentials(existing?.credentials || {});
     setHelpDetails("");
+    attemptedDeepLink.current = "";
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
       .then((rows) => setCampaigns((rows || []).filter((campaign) => campaign.status === "active" || campaign.id === existing?.campaign_id)))
@@ -117,7 +119,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         campaignId: form.campaign_id || "",
         campaignTitle: selectedCampaign?.title || form.display_name || "",
         displayName: selectedCampaign?.title || form.display_name || "",
-        publishInitial: platform.kind !== "app" && !!form.campaign_id,
         returnPath: "/connections",
       }));
       // A single-tab flow preserves the IFund origin/session on mobile and
@@ -139,6 +140,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       setConnecting(false);
     }
   };
+
+  // A shareable IFund link can start provider sign-in without the user
+  // having to navigate a platform picker, campaign fields or agent menus.
+  // A failed or missing connector registration must never cause a redirect.
+  useEffect(() => {
+    if (!open || !quickConnect || !usesProviderOAuth || oauthReadinessPlatform !== platform.id ||
+        !["registration_unverified", "authorization_present"].includes(oauthReadiness) ||
+        attemptedDeepLink.current === platform.id) return;
+    attemptedDeepLink.current = platform.id;
+    void connectWithProvider();
+  }, [open, quickConnect, platform.id, usesProviderOAuth, oauthReadinessPlatform, oauthReadiness]);
 
   const startGuidedConnection = async () => {
     if (managedBusy || blockOAuthAttempt()) return;
@@ -217,7 +229,18 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform to connect it." : "Add your link and follow the steps shown."}</p>
+        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform and approve its permissions. No post will be sent." : "Add your link and follow the steps shown."}</p>
+        {usesProviderOAuth && (
+          <div className="space-y-3 min-w-0">
+            <p className="text-sm text-foreground">{connecting ? `Opening ${platform.name} sign-in…` : "One link. Provider sign-in. Back to IFund for verification."}</p>
+            <Button type="button" onClick={connectWithProvider} disabled={connecting || oauthAttemptBlocked} className="w-full min-h-12 whitespace-normal h-auto py-3 break-words">
+              {connecting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {connecting ? "Opening secure sign-in…" : oauthReadiness === "checking" ? "Checking sign-in…" : oauthReadiness === "not_configured" ? "IFund setup required" : oauthReadiness === "unsupported" ? "Sign-in unavailable" : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
+            </Button>
+            {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
+            {oauthReadiness === "not_configured" && <p role="status" className="text-sm text-amber-700">IFund needs to finish this platform's user-login registration before this link can work. Nothing is wrong with your account.</p>}
+          </div>
+        )}
         <div className="min-w-0 w-full space-y-4">
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
@@ -228,7 +251,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
           </div>}
           {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
-          <div className="space-y-1.5">
+          {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Optional campaign to promote"}</Label>
             <Select value={form.campaign_id} onValueChange={selectCampaign}>
               <SelectTrigger className="min-w-0 w-full"><SelectValue placeholder={platform.kind === "app" ? "Optional — pick a campaign" : "Pick the campaign to publish first"} /></SelectTrigger>
@@ -236,15 +259,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
                 {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
-          {platform.kind !== "app" && selectedCampaign && (
+          </div>}
+          {!usesProviderOAuth && platform.kind !== "app" && selectedCampaign && (
             <div className="space-y-1.5">
               <Label>Connection title</Label>
               <p className="w-full min-w-0 rounded-md border border-input bg-muted/30 px-3 py-2 text-sm text-foreground break-words [overflow-wrap:anywhere]" aria-label="Connection title">{form.display_name}</p>
               <p className="text-xs text-muted-foreground">This title follows the paired Interplanetary Fund campaign automatically.</p>
             </div>
           )}
-          {isCrowd && (
+          {isCrowd && !usesProviderOAuth && (
             <div className="space-y-2">
               <p className="text-xs text-stone-500">Enter the numbers shown on the other fundraiser. We’ll label them as confirmed only after we can check them.</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -263,17 +286,17 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </div>
             </div>
           )}
-          <div className="rounded-xl border border-border bg-muted/30 p-3">
+          {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
             <p className="text-xs text-muted-foreground mt-1 break-words">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
-          </div>
-          {usesProviderOAuth && !existing && (
+          </div>}
+          {false && usesProviderOAuth && !existing && (
             <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-1">
               <p className="text-sm font-semibold text-foreground">Review {platform.name} sign-in</p>
               <p className="text-xs text-muted-foreground">You may choose a campaign now or later. IFund checks the provider setup first. When sign-in is available, {platform.name} owns the authorization screen and IFund verifies the granted capability after you return.</p>
             </div>
           )}
-          {usesProviderOAuth && oauthReadiness === "not_configured" &&
+          {false && usesProviderOAuth && oauthReadiness === "not_configured" &&
             <p role="status" className="text-sm text-amber-600 break-words">IFund still needs to enable {platform.name} sign-in. This is an IFund setup task, not a problem with your account. Connection has not started.</p>}
           {usesProviderOAuth && oauthReadiness === "registration_unverified" &&
             <p role="status" className="text-sm text-muted-foreground break-words">IFund will confirm this sign-in setup only after {platform.name} returns a secure authorization page. Your account is not connected yet.</p>}
@@ -283,8 +306,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <p role="status" className="text-sm text-amber-600 break-words">IFund could not check the connection setup right now. You can retry Connect.</p>}
           {usesProviderOAuth && oauthReadiness === "unsupported" &&
             <p role="status" className="text-sm text-amber-600 break-words">Provider sign-in is not available for {platform.name} through IFund yet.</p>}
-          {error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
-          <div className="rounded-xl border border-border bg-muted/40 p-3">
+          {!usesProviderOAuth && error && <p role="alert" className="text-sm text-red-600 break-words">{error}</p>}
+          {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/40 p-3">
             <p className="font-semibold text-sm text-foreground mb-2">How IFund connects {platform.name}</p>
             <ol className="list-decimal pl-4 space-y-2 text-xs text-foreground">
               {usesProviderOAuth && <li>IFund opens the official {platform.name} authorization. An existing provider session may be reused on this device.</li>}
@@ -294,15 +317,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </li>)}
               <li>Return to IFund for a provider verification check. If the account was not verified, the specific required step remains in your AI activity panel.</li>
             </ol>
-          </div>
-          <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
+          </div>}
+          {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
             <p className="font-semibold text-sm text-foreground">IFund connection helper</p>
             <p className="text-xs text-muted-foreground">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
             <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-foreground bg-card whitespace-normal h-auto py-3" disabled={managedBusy || connecting || oauthAttemptBlocked} onClick={startGuidedConnection}>
               {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to connect this account now"}
             </Button>
             {helpDetails && <p role="status" className="text-xs text-foreground break-words">{helpDetails}</p>}
-          </div>
+          </div>}
           {!existing && platform.kind !== "app" && officialProviderSite(platform.id) && (
             <div className="rounded-xl border border-border bg-card p-3 text-sm text-foreground">
               <p className="font-semibold">Need a new {platform.name} account?</p>
@@ -312,11 +335,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </a>
             </div>
           )}
-          {usesProviderOAuth ? (
-            <Button onClick={connectWithProvider} disabled={connecting || oauthAttemptBlocked} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
-              {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : oauthReadiness === "checking" ? "Checking sign-in setup…" : oauthReadiness === "not_configured" ? "IFund setup required" : oauthReadiness === "unsupported" ? "Sign-in unavailable" : existing ? `Reconnect ${platform.name}` : `Connect ${platform.name}`}
-            </Button>
-          ) : (
+          {!usesProviderOAuth && (
             <Button onClick={save} disabled={saving || (platform.kind !== "app" && !selectedCampaign)} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : `Link to ${platform.name}`}
             </Button>
