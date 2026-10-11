@@ -53,6 +53,12 @@
     "external_post_url": {
       "type": "string"
     },
+    "donation_destination_url": {
+      "type": "string"
+    },
+    "donation_destination_platform": {
+      "type": "string"
+    },
     "error": {
       "type": "string"
     },
