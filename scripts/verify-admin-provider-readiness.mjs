@@ -6,6 +6,7 @@ const backend = read("base44/functions/adminOAuthProviderReadiness/entry.ts");
 const registry = read("base44/shared/connectionVerification.ts");
 const frontend = read("src/components/connections/AdminOAuthProviderReadiness.jsx");
 const page = read("src/pages/Connections.jsx");
+const adminPage = read("src/pages/IntegrationsAdmin.jsx");
 
 const unique = [...new Set([...registry.matchAll(/^\s*[a-z_]+:\s*'(APP_USER_CONNECTOR_[A-Z_]+)'/gm)].map(x => x[1]))];
 // Use the canonical registry, not a stale hard-coded provider count: WordPress
@@ -26,7 +27,8 @@ assert.match(backend, /guard\.user\?\.role !== 'admin'/, "Only IFund admins may 
 assert.match(backend, /Object\.entries\(OAUTH_ENV\)/, "Use one canonical OAuth registry");
 assert.match(backend, /registration_reference_present/, "Present is only a reference, not a verified connection");
 assert.doesNotMatch(backend, /connector_id:|accessToken:|secret_value:/, "Never return connector credentials or provider access tokens");
-assert.match(page, /user\?\.role === "admin" && <AdminOAuthProviderReadiness/, "Audit must be admin-only");
+assert.doesNotMatch(page, /<AdminOAuthProviderReadiness/, "Technical configuration must never clutter normal Connections, including for IFund administrators");
+assert.match(adminPage, /<AdminOAuthProviderReadiness/, "Technical configuration belongs on the admin integrations page");
 assert.match(frontend, /Needs registration/, "Show setup blockers rather than claiming success");
 assert.match(frontend, /Reference present; unverified/, "A registration must never be described as connected");
 console.log(`PASS: ${unique.length}-provider admin configuration audit and user-account boundary.`);
