@@ -57,12 +57,12 @@ export default function AdminDevelopmentChat({ user }) {
 
   if (!sessionId) return <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
     <div className="flex items-center gap-2 font-semibold"><LockKeyhole className="w-4 h-4" /> Super admin development access</div>
-    <p className="text-sm text-muted-foreground">{adminGatewayMode === "external"
+    <p className="text-sm text-muted-foreground">{adminGatewayMode === "external" && agent !== "admin_builder_agent"
       ? "Enter your admin development key to use the protected gateway."
       : "Use your current verified super-admin login. IFund will check your permissions securely on its Base44 backend."}</p>
     <div className="flex flex-wrap gap-2">
-      {adminGatewayMode === "external" && <Input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} placeholder="Admin key" className="min-w-0 flex-1" />}
-      <Button type="button" className="min-h-11" onClick={unlock} disabled={(adminGatewayMode === "external" && !key) || busy}>{busy ? <Loader2 className="w-4 h-4 animate-spin"/> : adminGatewayMode === "external" ? "Unlock" : "Verify admin access"}</Button>
+      {adminGatewayMode === "external" && agent !== "admin_builder_agent" && <Input type="password" autoComplete="off" value={key} onChange={e=>setKey(e.target.value)} placeholder="Admin key" className="min-w-0 flex-1" />}
+      <Button type="button" className="min-h-11" onClick={unlock} disabled={(adminGatewayMode === "external" && agent !== "admin_builder_agent" && !key) || busy}>{busy ? <Loader2 className="w-4 h-4 animate-spin"/> : adminGatewayMode === "external" && agent !== "admin_builder_agent" ? "Unlock" : "Verify admin access"}</Button>
     </div>
     {error && <p className="text-sm text-destructive">{error}</p>}
   </div>;
