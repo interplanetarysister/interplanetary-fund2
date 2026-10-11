@@ -50,7 +50,9 @@ async function postGateway(path, body) {
 }
 
 export async function createAdminAgentSession({ adminKey, agent = "chief_of_staff" }) {
-  if (adminGatewayMode === "external") {
+  // The builder role always uses the authoritative Base44 server check,
+  // even when an optional external admin gateway is configured.
+  if (adminGatewayMode === "external" && agent !== "admin_builder_agent") {
     return postGateway("/v1/admin/agents/session", { adminKey, agent });
   }
   // No client-side key, role claim, or session ID grants authorization.
@@ -64,7 +66,7 @@ export async function createAdminAgentSession({ adminKey, agent = "chief_of_staf
 }
 
 export async function sendAdminAgentMessage({ sessionId, content, agent }) {
-  const native = sessionId === NATIVE_ADMIN_SESSION && adminGatewayMode === "base44";
+  const native = sessionId === NATIVE_ADMIN_SESSION;
   // Unknown session IDs are never silently switched to another route.
   if (!native && adminGatewayMode === "base44") throw new Error("Admin access expired. Verify your account again.");
   const started = native
