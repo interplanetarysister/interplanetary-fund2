@@ -58,7 +58,7 @@ for(const [key,fn] of checks) {
   assert.match(entry(fn),new RegExp("isFeatureEnabled\\(base44, '"+key+"'\\)"), fn+' '+key);
 }
 const paypal = entry('createPayPalOrder');
-assert.match(paypal,/channel === 'googlepay' \? 'google_pay_checkout' : 'paypal_checkout'/);
+assert.match(paypal,/channel === 'googlepay' \? 'google_pay_checkout' : channel === 'applepay' \? 'apple_pay_checkout' : 'paypal_checkout'/);
 assert.match(paypal,/payment_checkout_enabled/);
 const stripe = entry('createDonationCheckout');
 assert.match(stripe,/status: 410/, 'Stripe donations must be retired');
