@@ -32,13 +32,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 'node'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
-      - name: Verify Node 22 runtime contract
+      - name: Verify Node 20+ runtime contract
         run: npm run verify:node22-release-contract
 
       - name: Test runtime contract failure cases
@@ -200,14 +200,14 @@ jobs:
 
   node22-compatibility:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node 22 compatibility build
+    name: Node current compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 'node'
           cache: npm
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: npm run build
@@ -224,7 +224,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 'node'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
