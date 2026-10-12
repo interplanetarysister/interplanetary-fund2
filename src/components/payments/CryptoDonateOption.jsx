@@ -23,11 +23,9 @@ export default function CryptoDonateOption({ campaign = null, platformSupport = 
       <h3 className="flex items-center gap-2 text-sm font-semibold text-violet-900 dark:text-violet-100">
         <Wallet className="w-4 h-4" /> Cryptocurrency donations
       </h3>
-      
-
-
-
-      
+      <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950 dark:border-amber-400/30 dark:bg-amber-200/10 dark:text-amber-100">
+        Coming soon. Wallet setup does not accept or transfer donations yet.
+      </p>
       {reownConfigured() &&
       <Button type="button" variant="outline"
       className="w-full mt-3 border-violet-400 bg-white text-violet-950 hover:bg-violet-100"
