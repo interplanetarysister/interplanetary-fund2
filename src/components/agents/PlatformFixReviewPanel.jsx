@@ -1,6 +1,7 @@
 import React, {useState} from "react";
 import { base44 } from "@/api/base44Client";
 import { ClipboardCheck, RefreshCcw } from "lucide-react";
+import BuilderExecutionControls from "@/components/agents/BuilderExecutionControls";
 
 const fields=[
   ["analysis","Investigation and likely cause"],
@@ -15,13 +16,18 @@ export default function PlatformFixReviewPanel(){
   const [loaded,setLoaded]=useState(false);
   const [busy,setBusy]=useState("");
   const [editing,setEditing]=useState({});
+  const [readiness,setReadiness]=useState(null);
   const [error,setError]=useState("");
   const [message,setMessage]=useState("");
   const load=async()=>{
     setBusy("load");setError("");
     try{
-      const response=await base44.functions.invoke("managePlatformIncidents",{mode:"list"});
+      const [response, capabilities] = await Promise.all([
+        base44.functions.invoke("managePlatformIncidents",{mode:"list"}),
+        base44.functions.invoke("manageApprovedBuilderExecution",{mode:"readiness"}).catch(()=>null),
+      ]);
       if(!response.data?.ok)throw new Error("Not available");
+      setReadiness(capabilities?.data?.ok ? capabilities.data : null);
       setRecords(response.data.incidents||[]);setLoaded(true);
       setEditing(Object.fromEntries((response.data.incidents||[]).map(x=>[x.id,editable(x)])));
     }catch{setError("Could not read the platform fix inbox. Confirm your super-admin access.");}
@@ -38,11 +44,12 @@ export default function PlatformFixReviewPanel(){
       }else if(mode==="approve"){
         setRecords(rows=>rows.map(row=>row.id===incident.id?{
           ...row,status:response.data.dispatched?"builder_dispatched":"approved_queued",
+          builder_execution_state:response.data.execution_state || "queued",
           builder_task_id:response.data.task_id
         }:row));
         setMessage(response.data.dispatched?
-          "Approved plan sent to the builder. Implementation and deployment are not yet verified.":
-          "Approved plan queued. Builder dispatch needs attention; no fix has been deployed.");
+          "Approved plan submitted to the real Base44 builder; inspect source changes and tests before release.":
+          "Approved plan queued, but the builder is not enabled or the request was rejected. No source change was confirmed.");
       }
     }catch{setError("The requested action was not confirmed. Refresh before retrying.");}
     finally{setBusy("");}
@@ -77,6 +84,7 @@ export default function PlatformFixReviewPanel(){
             onChange={e=>setEditing(prev=>({...prev,[item.id]:{...prev[item.id],[key]:e.target.value}}))}
             className="w-full resize-y rounded-lg border border-border bg-background p-3 text-foreground"/>
         </label>)}
+        {item.builder_task_id&&<BuilderExecutionControls incident={item} readiness={readiness} onRefresh={load}/>}
         {item.builder_task_id&&<p className="text-sm text-muted-foreground">
           Builder task {item.builder_task_id}. {item.status==="builder_dispatched"?"Sent to builder.":"Queued for builder."}
           {" "}A verified source change, tests, and deployment are still required.
