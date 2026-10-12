@@ -13,8 +13,8 @@ const mock = rows => ({
 const yes = (key) => ({key, enabled:true, scope:FEATURE_SCOPES[key]});
 const no = (key) => ({key, enabled:false, scope:FEATURE_SCOPES[key]});
 
-assert.equal(Object.keys(FEATURE_SCOPES).length, 20,
-  'Keep the crypto donations flag in the reviewed inventory');
+assert.equal(Object.keys(FEATURE_SCOPES).length, 21,
+  'Keep the Apple Pay and crypto donations flags in the reviewed inventory');
 assert.equal(new Set(CODE_CONNECTED_FEATURES).size, CODE_CONNECTED_FEATURES.length);
 assert.ok(CODE_CONNECTED_FEATURES.every(k => FEATURE_SCOPES[k]));
 assert.ok(CODE_CONNECTED_FEATURES.includes('crypto_donations'),
