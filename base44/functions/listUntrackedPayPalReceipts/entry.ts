@@ -42,14 +42,15 @@ export default async function(req) {
     const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
     const transactions = await listTransactions({ startDate: start, endDate: end, pageSize: 500 });
 
-    const [paypalOps, paypalDonations, googlePayDonations, paypalHoldings] = await Promise.all([
+    const [paypalOps, paypalDonations, googlePayDonations, applePayDonations, paypalHoldings] = await Promise.all([
       sr.entities.FinancialOperation.filter({ provider: 'paypal' }, '-created_date', 5000),
       sr.entities.Donation.filter({ payment_method: 'paypal' }, '-created_date', 5000),
       sr.entities.Donation.filter({ payment_method: 'googlepay' }, '-created_date', 5000),
+      sr.entities.Donation.filter({ payment_method: 'applepay' }, '-created_date', 5000),
       sr.entities.HoldingLedgerEntry.filter({ source_provider: 'paypal' }, '-created_date', 5000),
     ]);
     const opsByTransaction = byTransaction(paypalOps);
-    const donationsByTransaction = byTransaction([...paypalDonations, ...googlePayDonations]);
+    const donationsByTransaction = byTransaction([...paypalDonations, ...googlePayDonations, ...applePayDonations]);
     const holdingsByTransaction = byTransaction(paypalHoldings);
 
     const recoverableCheckoutEvents = new Set(['T0000','T0005','T0006','T0007','T0011']);
@@ -85,7 +86,7 @@ export default async function(req) {
           op.payment_channel === paymentChannel && round2(op.gross_amount) === recovered &&
           round2(op.processing_fee || 0) === fee && contribution >= 0 && contribution <= recovered;
         const donationComplete = donations.length === 1 && donations.every((row) =>
-          row.payment_verified === true && ['paypal', 'googlepay'].includes(row.payment_method) &&
+          row.payment_verified === true && ['paypal', 'googlepay', 'applepay'].includes(row.payment_method) &&
           String(row.canonical_operation_id || '') === canonicalId && round2(row.amount) === recovered &&
           round2(row.processing_fee || 0) === fee && round2(row.platform_contribution || 0) === contribution
         );
@@ -97,10 +98,10 @@ export default async function(req) {
           round2(row.platform_contribution || 0) === contribution
         );
         const complete = campaignIds.size === 1 && contributions.size <= 1 && paymentChannels.size === 1 &&
-          ['paypal', 'googlepay'].includes(paymentChannel) && operationComplete && donationComplete && holdingComplete;
+          ['paypal', 'googlepay', 'applepay'].includes(paymentChannel) && operationComplete && donationComplete && holdingComplete;
         const hasLocalEvidence = ops.length + donations.length + holdings.length > 0;
         const allocationConflict = campaignIds.size > 1 || contributions.size > 1 || paymentChannels.size > 1 ||
-          [...paymentChannels].some((channel) => !['paypal', 'googlepay'].includes(channel)) ||
+          [...paymentChannels].some((channel) => !['paypal', 'googlepay', 'applepay'].includes(channel)) ||
           ops.some((row) => row.provider !== 'paypal' || round2(row.gross_amount) !== recovered || round2(row.processing_fee || 0) !== fee) ||
           donations.some((row) => round2(row.amount) !== recovered || round2(row.processing_fee || 0) !== fee) ||
           holdings.some((row) => row.source_provider !== 'paypal' || row.source_account_ref !== IFUND_PAYPAL_ACCOUNT_REF ||
