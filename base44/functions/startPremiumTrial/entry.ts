@@ -14,7 +14,7 @@ export default async function(req: Request) {
     const user = guard.user;
     if (user.role === 'admin') return Response.json({ error: 'Admin access is already included.' }, { status: 409 });
     const hasPaidHistory = Boolean(user.stripe_customer_id || user.paypal_subscription_id);
-    const trialAlreadyUsed = Boolean(user.premium_trial_started_at || user.trial_end);
+    const trialAlreadyUsed = Boolean(user.premium_trial_started_at || user.trial_end || user.referral_reward_redeemed_at || user.referral_reward_code);
     const alreadySubscribed = ['active', 'trialing', 'past_due'].includes(String(user.subscription_status));
     const passActive = Date.parse(String(user.premium_day_pass_expires_at || '')) > Date.now();
     if (hasPaidHistory || trialAlreadyUsed || alreadySubscribed || passActive) {
