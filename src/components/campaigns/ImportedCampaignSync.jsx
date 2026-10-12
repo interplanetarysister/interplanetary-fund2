@@ -15,7 +15,7 @@ export default function ImportedCampaignSync({ campaign, onSynced }) {
   const refresh=async()=>{
     setBusy(true); setMessage("");
     try{
-      const synced=await base44.functions.invoke("syncImportedCampaign",{import_id:record.id});
+      const synced=await base44.functions.invoke("syncImportedCampaign",{import_id:record.id,request_id:crypto.randomUUID()});
       if(!synced.data?.ok) throw new Error("sync");
       const locked=synced.data.locally_locked_fields?.length||0;
       setMessage(locked ? "Updated from "+record.platform+". "+locked+" locally edited field"+(locked===1?" was":"s were")+" preserved." : "Updated from "+record.platform+".");
@@ -26,8 +26,8 @@ export default function ImportedCampaignSync({ campaign, onSynced }) {
   };
   return <div className="bg-white rounded-2xl border border-stone-200/70 p-4 shadow-sm">
     <p className="font-semibold text-stone-900">Imported from <span className="capitalize">{record.platform}</span></p>
-    <p className="text-xs text-stone-500 mt-1">Refreshes source-owned fields while preserving fields you changed in IFund.</p>
-    <Button variant="outline" onClick={refresh} disabled={busy||record.sync_enabled!==true} className="w-full rounded-xl mt-3">
+    <p className="text-xs text-stone-500 mt-1">Only refreshes when you press the button. Fields you changed in IFund stay unchanged.</p>
+    <Button variant="outline" onClick={refresh} disabled={busy} className="w-full rounded-xl mt-3">
       {busy?<Loader2 className="w-4 h-4 mr-2 animate-spin"/>:<RefreshCw className="w-4 h-4 mr-2"/>}Refresh imported campaign
     </Button>
     {message&&<p className="text-xs text-stone-600 mt-2">{message}</p>}
