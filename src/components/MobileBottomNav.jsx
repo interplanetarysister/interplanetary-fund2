@@ -6,7 +6,7 @@ import { hapticTap } from "@/lib/haptics";
 
 // A single mobile tab bar shared by the public home, web app and installed PWA.
 export const IFUND_BOTTOM_TABS=[
-  {to:"/agents",label:"AI Chat",icon:Bot},
+  {to:"/agents",label:"AI Team",icon:Bot},
   {to:"/profile",label:"Profile",icon:User},
   {to:"/social",label:"IFund Social",icon:Radio},
   {to:"/community",label:"Forums",icon:Users},
