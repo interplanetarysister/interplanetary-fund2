@@ -8,9 +8,11 @@ export function reportFrontendError({source="app_request",kind="other",error,sum
   recent.set(key,Date.now());
   if(recent.size>100)recent.clear();
   const detail=String(summary||"Frontend action failed").slice(0,120);
-  Promise.resolve(base44.functions.invoke("managePlatformIncidents",{
-    mode:"report",source,kind,route,code,summary:detail
-  })).catch(()=>{});
+  try {
+    Promise.resolve(base44.functions.invoke("managePlatformIncidents",{
+      mode:"report",source,kind,route,code,summary:detail
+    })).catch(()=>{});
+  } catch { /* Reporting errors must never become new application errors. */ }
 }
 export function installPlatformErrorReporting(){
   const onError=e=>reportFrontendError({
