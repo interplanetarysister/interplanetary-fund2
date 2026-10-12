@@ -212,6 +212,20 @@
       "type": "string",
       "format": "date-time",
       "description": "Earliest provider-verified first paid subscription; immutable across renewals for social posting priority."
+    },
+    "referral_reward_code": {
+      "type": "string",
+      "description": "The single-use referral code redeemed by this account; no second referral grant allowed."
+    },
+    "referral_reward_redeemed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the account's one referral reward redemption."
+    },
+    "referral_basic_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expiration of complimentary Basic access from a referral card. Does not change billing fields or authorize renewal."
     }
   },
   "required": [
