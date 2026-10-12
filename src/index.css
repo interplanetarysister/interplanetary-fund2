@@ -144,9 +144,41 @@
   .dark [class~="bg-slate-100"],
   .dark [class~="bg-gray-100"],
   .dark [class~="bg-zinc-100"],
-  .dark [class~="bg-neutral-100"] {
+  .dark [class~="bg-neutral-100"],
+  /* Soft status / setup surfaces must darken with their text. A pale
+     lavender/cyan/yellow surface under globally lightened labels caused
+     unreadable campaign and connection forms in the Android quick-access app. */
+  .dark [class~="bg-violet-50"],
+  .dark [class~="bg-cyan-50"],
+  .dark [class~="bg-sky-50"],
+  .dark [class~="bg-blue-50"],
+  .dark [class~="bg-indigo-50"],
+  .dark [class~="bg-amber-50"],
+  .dark [class~="bg-yellow-50"],
+  .dark [class~="bg-emerald-50"],
+  .dark [class~="bg-green-50"],
+  .dark [class~="bg-red-50"],
+  .dark [class~="bg-rose-50"],
+  .dark [class~="bg-orange-50"],
+  .dark [class~="bg-pink-50"] {
     background-color: hsl(var(--card)) !important;
   }
+
+  /* Preserve semantic warning/help colors while giving them a legible
+     light-on-dark foreground. Form content uses the ordinary foreground. */
+  .dark [class~="text-amber-950"],
+  .dark [class~="text-amber-900"],
+  .dark [class~="text-amber-800"],
+  .dark [class~="text-amber-700"] { color: #fde68a !important; -webkit-text-fill-color: #fde68a !important; }
+  .dark [class~="text-sky-950"],
+  .dark [class~="text-sky-900"],
+  .dark [class~="text-cyan-800"] { color: #a5f3fc !important; -webkit-text-fill-color: #a5f3fc !important; }
+  .dark [class~="text-violet-900"],
+  .dark [class~="text-violet-800"] { color: #ddd6fe !important; -webkit-text-fill-color: #ddd6fe !important; }
+  .dark [class~="text-red-800"],
+  .dark [class~="text-red-700"] { color: #fca5a5 !important; -webkit-text-fill-color: #fca5a5 !important; }
+  .dark [class~="text-emerald-900"],
+  .dark [class~="text-emerald-800"] { color: #a7f3d0 !important; -webkit-text-fill-color: #a7f3d0 !important; }
 
   .dark [class~="bg-stone-200"],
   .dark [class~="bg-slate-200"],
