@@ -35,7 +35,7 @@ export default function CountMyMoney() {
     setError("");
     setResult(null);
     try {
-      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
+      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user", request_id: crypto.randomUUID() });
       setResult(data);
     } catch (e) {
       setError("We couldn't count your money right now. Please try again.");
