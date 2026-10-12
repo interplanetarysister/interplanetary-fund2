@@ -9,7 +9,7 @@ export const hasSecrets = (value) => secretPattern.test(String(value || ""));
 export const short = (text, limit) => String(text || "").trim().slice(0, limit);
 
 export function createChatGPTBuilderPrompt(task) {
-  if (!task?.id || !task?.objective) return "";
+  if (!task?.id || !task?.objective || hasSecrets(task.objective) || hasSecrets(task.context_summary)) return "";
   const title = short(task.objective, 500);
   const context = short(task.context_summary, 1800);
   return [
