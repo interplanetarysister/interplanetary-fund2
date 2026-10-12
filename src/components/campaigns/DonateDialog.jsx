@@ -86,12 +86,12 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setConfirmed(false); newIntent(); } }}>
       {!hideTrigger && <div className="space-y-2"><DialogTrigger asChild><Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"><Heart className="w-4 h-4 mr-2" /> {platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Donate"}</Button></DialogTrigger>{platformOnlyPrelaunch && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center"><p className="text-xs font-semibold text-amber-900">Donate to the platform, not this campaign</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">This payment supports Interplanetary Fund itself and is not credited to the campaign shown.</p></div>}</div>}
-      <DialogContent className="sm:max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="font-display text-xl">{platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Support this campaign"}</DialogTitle></DialogHeader>
+      <DialogContent className={`sm:max-w-md rounded-2xl max-h-[min(90dvh,680px)] overflow-y-auto ${platformOnlyPrelaunch ? "border border-cyan-400/50 bg-[#101a32] text-white shadow-2xl shadow-black/70 [&>button]:text-white [&>button]:opacity-100 [&>button]:hover:bg-white/15" : ""}`}>
+        <DialogHeader><DialogTitle className={`font-display text-xl ${platformOnlyPrelaunch ? "pr-10 text-white" : ""}`}>{platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Support this campaign"}</DialogTitle></DialogHeader>
         {platformOnlyPrelaunch ? (
           <div className="space-y-4">
             <PrelaunchNotice payment />
-            <p className="text-sm text-stone-600">This campaign is live and shareable, but it cannot accept donations while campaign fundraising is paused. Use the separate button below to support the platform instead.</p>
+            <p className="text-sm leading-relaxed text-slate-100">This campaign is live and shareable, but it cannot accept donations while campaign fundraising is paused. The support button below helps Interplanetary Fund, not this campaign.</p>
             <PayPalDonateButton label="Donate to Interplanetary Fund" />
             <CryptoDonateOption platformSupport />
           </div>
