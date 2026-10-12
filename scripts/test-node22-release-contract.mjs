@@ -1,51 +1,29 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { verifyReleaseContract } from './verify-node22-release-contract.mjs';
-
+import {mkdtempSync,mkdirSync,rmSync,writeFileSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {verifyReleaseContract} from './verify-node22-release-contract.mjs';
 function fixture() {
-  const root = mkdtempSync(join(tmpdir(), 'runtime-release-contract-'));
-  mkdirSync(join(root, '.github', 'workflows'), { recursive: true });
-  writeFileSync(join(root, 'package.json'), JSON.stringify({ engines: { node: '>=20' } }));
-  writeFileSync(join(root, 'package-lock.json'), JSON.stringify({ packages: { '': { engines: { node: '>=20' } } } }));
-  writeFileSync(join(root, '.node-version'), '20\n');
-  writeFileSync(join(root, '.nvmrc'), '20\n');
-  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  base44:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n  release:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n');
-  return root;
+ const dir=mkdtempSync(join(tmpdir(),'node-current-contract-'));
+ mkdirSync(join(dir,'.github/workflows'),{recursive:true});
+ writeFileSync(join(dir,'package.json'),JSON.stringify({engines:{node:'>=20'}}));
+ writeFileSync(join(dir,'package-lock.json'),JSON.stringify({packages:{'':{engines:{node:'>=20'}}}}));
+ writeFileSync(join(dir,'.node-version'),'node\n');
+ writeFileSync(join(dir,'.nvmrc'),'node\n');
+ writeFileSync(join(dir,'.github/workflows/check.yml'),"jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 'node'\n");
+ return dir;
 }
-
-function expect(name, mutate, expected) {
-  const root = fixture();
-  try {
-    mutate(root);
-    const errors = verifyReleaseContract(root);
-    if (!expected(errors)) throw new Error(`${name} failed; errors: ${JSON.stringify(errors)}`);
-  } finally {
-    rmSync(root, { recursive: true, force: true });
-  }
+function test(label,mutate,expected){
+ const dir=fixture();
+ try{mutate(dir);const errors=verifyReleaseContract(dir);assert.equal(expected(errors),true,label+': '+JSON.stringify(errors))}
+ finally{rmSync(dir,{recursive:true,force:true})}
 }
-
-expect('valid Node 20 and 22 contract', () => {}, (errors) => errors.length === 0);
-expect('Node-20-only regression rejected', (root) => {
-  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n');
-}, (errors) => errors.some((error) => error.includes('do not remove the Node 22 release lane')));
-expect('Node-22-only regression rejected', (root) => {
-  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n');
-}, (errors) => errors.some((error) => error.includes('Base44 compatibility')));
-expect('Node 24 rejected', (root) => {
-  writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 24\n');
-}, (errors) => errors.some((error) => error.includes('expected Node 20 or Node 22')));
-expect('Node-version baseline cannot change to 22', (root) => writeFileSync(join(root, '.node-version'), '22\n'), (errors) => errors.some((error) => error.includes('.node-version')));
-expect('nvm baseline cannot change to 22', (root) => writeFileSync(join(root, '.nvmrc'), '22\n'), (errors) => errors.some((error) => error.includes('.nvmrc')));
-expect('missing workflow inventory', (root) => rmSync(join(root, '.github', 'workflows'), { recursive: true }), (errors) => errors.some((error) => error === 'missing:.github/workflows'));
-expect('malformed package', (root) => writeFileSync(join(root, 'package.json'), '{'), (errors) => errors.some((error) => error.startsWith('malformed:package.json')));
-expect('malformed workflow rejected', (root) => writeFileSync(join(root, '.github', 'workflows', 'quality.yml'), 'jobs: [\n'), (errors) => errors.some((error) => error.startsWith('malformed:.github/workflows/quality.yml')));
-
-const runtimeGate = readFileSync(new URL('./require-node22.mjs', import.meta.url), 'utf8');
-assert.match(runtimeGate, /const MINIMUM_NODE_MAJOR = 20;/, 'runtime preflight must require Node 20 or newer');
-assert.match(runtimeGate, /const TESTED_NODE_MAJORS = \[20, 22\];/, 'runtime preflight must retain tested Node 20 and Node 22 lanes');
-assert.match(runtimeGate, /nodeMajor < MINIMUM_NODE_MAJOR/, 'runtime preflight must reject runtimes older than Node 20');
-assert.match(runtimeGate, /Continuing because IFund supports Node/, 'newer Node majors must warn and continue unless a concrete incompatibility is detected');
-
-console.log('Node 20+ runtime contract negative cases passed.');
+test('modern Node supported',()=>{},errors=>errors.length===0);
+test('hardcoded lane rejected',d=>writeFileSync(join(d,'.github/workflows/check.yml'),"jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n"),errors=>errors.some(e=>e.includes('pins a Node major')));
+test('engines upper bound rejected',d=>writeFileSync(join(d,'package.json'),JSON.stringify({engines:{node:'>=20 <26'}})),errors=>errors.some(e=>e.includes('engine')));
+test('pinned nvm rejected',d=>writeFileSync(join(d,'.nvmrc'),'20\n'),errors=>errors.some(e=>e.includes('.nvmrc')));
+test('malformed metadata rejected',d=>writeFileSync(join(d,'package.json'),'{'),errors=>errors.some(e=>e.includes('malformed:')));
+const source=readFileSync(new URL('./require-node22.mjs',import.meta.url),'utf8');
+assert.match(source,/MINIMUM_NODE_MAJOR = 20/);
+assert.doesNotMatch(source,/TESTED_NODE_MAJORS/);
+console.log('PASS: Node 20+ floating contract negative tests');
