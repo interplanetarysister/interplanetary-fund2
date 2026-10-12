@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ export default function ConnectDialog({ platform, existing, quickConnect = false
   const [managedBusy, setManagedBusy] = useState(false);
   const [helpDetails, setHelpDetails] = useState("");
   const [error, setError] = useState("");
-  const attemptedDeepLink = useRef("");
   const [oauthReadiness, setOauthReadiness] = useState("checking");
   const [oauthReadinessPlatform, setOauthReadinessPlatform] = useState("");
   const oauthAttemptBlocked = usesProviderOAuth &&
@@ -44,7 +43,6 @@ export default function ConnectDialog({ platform, existing, quickConnect = false
     });
     setCredentials(existing?.credentials || {});
     setHelpDetails("");
-    attemptedDeepLink.current = "";
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
       .then((rows) => setCampaigns((rows || []).filter((campaign) => campaign.status === "active" || campaign.id === existing?.campaign_id)))
@@ -141,16 +139,8 @@ export default function ConnectDialog({ platform, existing, quickConnect = false
     }
   };
 
-  // A shareable IFund link can start provider sign-in without the user
-  // having to navigate a platform picker, campaign fields or agent menus.
-  // A failed or missing connector registration must never cause a redirect.
-  useEffect(() => {
-    if (!open || !quickConnect || !usesProviderOAuth || oauthReadinessPlatform !== platform.id ||
-        !["registration_unverified", "authorization_present"].includes(oauthReadiness) ||
-        attemptedDeepLink.current === platform.id) return;
-    attemptedDeepLink.current = platform.id;
-    void connectWithProvider();
-  }, [open, quickConnect, platform.id, usesProviderOAuth, oauthReadinessPlatform, oauthReadiness]);
+  // Deep links open this IFund window first. The user chooses Connect before
+  // leaving IFund for the provider permission screen; never auto-redirect.
 
   const startGuidedConnection = async () => {
     if (managedBusy || blockOAuthAttempt()) return;
