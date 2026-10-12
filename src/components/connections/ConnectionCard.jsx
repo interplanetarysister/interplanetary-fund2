@@ -24,6 +24,8 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   const [managedBusy, setManagedBusy] = useState(false);
   const [revokeBusy, setRevokeBusy] = useState(false);
   const [permissionError, setPermissionError] = useState("");
+  const [checkBusy, setCheckBusy] = useState(false);
+  const [checkMessage, setCheckMessage] = useState("");
 
   // Prefer the canonical lifecycle from resolveConnectionStatus; fall back to
   // the local record heuristic when the resolver result is not yet available.
@@ -99,6 +101,31 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
     try { await onManagedRepair(); } finally { setManagedBusy(false); }
   };
 
+  // Live provider calls are a member-triggered action, not an automatic
+  // repeated health check every time a user opens Connections.
+  const checkConnection = async () => {
+    if (checkBusy || busy) return;
+    setCheckBusy(true);
+    setCheckMessage("");
+    try {
+      const { data } = await base44.functions.invoke("verifyPlatformConnection", {
+        connection_id: connection.id,
+      });
+      if (!data?.connection) throw new Error("No verification result.");
+      onUpdated?.(data.connection);
+      const isLinkOnly = platform?.setupKind === "link";
+      setCheckMessage(data.working === true
+        ? isLinkOnly
+          ? "Fundraising page is reachable. Account access, publishing permissions and donation totals were not verified."
+          : "Account connection verified."
+        : data?.error || "This connection needs attention. Choose Manage to reconnect.");
+    } catch {
+      setCheckMessage("The connection could not be checked. Try again.");
+    } finally {
+      setCheckBusy(false);
+    }
+  };
+
   // Data-source label used in the UI to distinguish provenance.
   // Contract requires both "Provider verified" and "owner reported" strings.
   const provenanceLabel = providerVerifiedFinancialData ? "Checked" : "Added by you";
@@ -167,8 +194,12 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         </div>
       )}
       {permissionError && <p className="mt-2 text-xs text-red-700" role="alert">{permissionError}</p>}
+      {checkMessage && <p className="mt-2 text-xs text-stone-700" role="status">{checkMessage}</p>}
 
       <div className="flex flex-wrap gap-2 mt-3">
+        <Button size="sm" variant="outline" onClick={checkConnection} disabled={checkBusy || busy} className="rounded-lg">
+          {checkBusy ? "Checking…" : platform?.setupKind === "link" ? "Check page" : "Check connection"}
+        </Button>
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
