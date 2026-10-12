@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from "react";
-import AgentChat from "@/components/agents/AgentChat";
-import AgentContentReview from "@/components/agents/AgentContentReview";
-import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
-import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
+import AgentMonitor from "@/components/agents/AgentMonitor";
 import { base44 } from "@/api/base44Client";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
 import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown, Compass, Link2 } from "lucide-react";
@@ -24,72 +21,24 @@ const AGENTS = [
 ];
 
 export default function Agents() {
-  const [active, setActive] = useState(AGENTS[0]);
-  const [chatMode, setChatMode] = useState("chat");
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   useEffect(() => {
     base44.auth.me().then(setUser).catch(() => setUser(null)).finally(() => setLoadingUser(false));
   }, []);
 
-  if (loadingUser) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10 text-muted-foreground">Loading AI Agents…</div>;
+  if (loadingUser) return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 text-muted-foreground">Loading your AI team…</div>;
   if (!hasPlanLevel(user, 1)) return <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-4">
-    <h1 className="font-display text-3xl text-slate-950">IFund AI Chat</h1>
-    <p className="text-slate-700">Your AI team can help you write campaign stories, plan outreach, understand fundraising ideas and connect supported platforms.</p>
-    <div className="rounded-2xl bg-white border border-stone-200 p-5">
-      <h2 className="font-semibold text-slate-950 text-lg">Enable your AI team</h2>
-      <p className="text-sm text-slate-600 mt-2">Agent conversations are included with an eligible subscription. The free account can still create campaigns and participate in the IFund community.</p>
+    <h1 className="font-display text-3xl text-foreground">Your AI team</h1>
+    <p className="text-muted-foreground">An agent monitor, updates, and personal campaign conversations are available with an eligible AI subscription.</p>
+    <div className="rounded-2xl bg-card border border-border p-5">
+      <h2 className="font-semibold text-foreground text-lg">Enable your AI team</h2>
+      <p className="text-sm text-muted-foreground mt-2">You can still create campaigns and participate in the community with a free account.</p>
       <Link to="/subscriptions" className="inline-flex mt-4 min-h-11 items-center rounded-xl bg-blue-700 px-4 text-white text-sm font-semibold hover:bg-blue-800">Explore AI subscriptions</Link>
     </div>
   </div>;
+
   const visibleAgents = AGENTS.filter((agent) => !agent.minLevel || hasPlanLevel(user, agent.minLevel));
-  const canUseAdminTools = active.name === "chief_of_staff" && getFrontendIdentity(user).superAdminOwner;
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
-      <h1 className="font-display text-3xl text-foreground mb-1">Your AI team</h1>
-      <p className="text-muted-foreground mb-4">Ask a question or tell your AI team what you need. To connect an account, just name the platform.</p>
-
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 -mx-1 px-1 scrollbar-hide">
-        {visibleAgents.map((a) => {
-          const Icon = a.icon;
-          const on = active.name === a.name;
-          return (
-            <button
-              key={a.name}
-              onClick={() => { setActive(a); setChatMode("chat"); }}
-              className={`shrink-0 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                on
-                  ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white shadow-md shadow-blue-500/20"
-                  : "bg-card border border-border text-muted-foreground hover:border-primary/40 hover:text-primary"
-              }`}
-            >
-              <Icon className="w-4 h-4" /> {a.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {canUseAdminTools && <div className="mb-3 flex flex-wrap items-center gap-2" role="group" aria-label="Chat workspace">
-        <button type="button" aria-pressed={chatMode === "chat"} onClick={() => setChatMode("chat")}
-          className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold border ${chatMode === "chat" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border"}`}>Chat</button>
-        <button type="button" aria-pressed={chatMode === "admin"} onClick={() => setChatMode("admin")}
-          className={`min-h-11 rounded-xl px-4 py-2 text-sm font-semibold border ${chatMode === "admin" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-foreground border-border"}`}>Admin tools</button>
-      </div>}
-
-      <div className="bg-card rounded-2xl border border-border shadow-sm p-3 sm:p-4 min-w-0">
-        {canUseAdminTools && chatMode === "admin"
-          ? <AdminDevelopmentChat user={user} />
-          : <AgentChat key={active.name} agentName={active.name} agentLabel={active.label} greeting={active.greeting} />}
-      </div>
-      <details className="mt-4 rounded-xl border border-border bg-card p-3 sm:p-4">
-        <summary className="cursor-pointer text-sm font-medium text-foreground">Review content your AI team prepared</summary>
-        <div className="pt-3"><AgentContentReview /></div>
-      </details>
-      <details className="mt-4 rounded-xl border border-border bg-card p-3 sm:p-4">
-        <summary className="cursor-pointer text-sm font-medium text-foreground">View AI work and progress</summary>
-        <div className="pt-3"><AgentWorkPanel allAgents /></div>
-      </details>
-    </div>
-  );
+  const canUseAdminTools = getFrontendIdentity(user).superAdminOwner;
+  return <AgentMonitor user={user} agents={visibleAgents} canUseAdminTools={canUseAdminTools} />;
 }
