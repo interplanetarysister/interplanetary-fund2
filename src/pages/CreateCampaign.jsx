@@ -69,11 +69,16 @@ export default function CreateCampaign() {
 
   const importConnectedCampaign = async () => {
     if (!importConnectionId) return;
+    const goal = Number(form.goal_amount);
+    if (!(Number.isFinite(goal) && goal > 0)) {
+      setStep(1);
+      toast({ title: "Enter a campaign goal", description: "Add your goal, then import the connected fundraiser.", variant: "destructive" });
+      return;
+    }
     setImporting(true);
     try {
-      const discovered = await base44.functions.invoke("discoverExternalCampaignSnapshot", { connection_id: importConnectionId });
-      if (!discovered.data?.ok || !discovered.data?.campaign) throw new Error("Discovery failed");
-      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: discovered.data.campaign });
+      const requestId = crypto.randomUUID();
+      const { data } = await base44.functions.invoke("importExternalCampaign", { connection_id: importConnectionId, campaign: { goal_amount: goal }, request_id: requestId });
       if (!data?.campaign_id && !data?.campaign?.id) throw new Error("Import failed");
       navigate(`/create?draft=${data.campaign_id || data.campaign.id}`, { replace: true });
     } catch {
