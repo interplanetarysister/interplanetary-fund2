@@ -1,5 +1,6 @@
 import React from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
+import { reportFrontendError } from "@/lib/platformErrorReporter";
 
 // Per-route error boundary. Wraps <Outlet/> in the Layout so a render crash
 // in any page replaces only that page's content with a recovery card — the nav
@@ -13,6 +14,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.error("Route render error:", error, info);
+    reportFrontendError({source:"error_boundary",kind:"render",error,summary:"A route component failed to render"});
   }
 
   reset = () => this.setState({ error: null });
