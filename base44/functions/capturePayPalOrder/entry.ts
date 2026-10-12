@@ -10,7 +10,7 @@ import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/b
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
 
-// Captures a PayPal/Google Pay order and applies the resulting donation through
+// Captures a PayPal/Google Pay/Apple Pay order and applies the resulting donation through
 // Base44's canonical transactional financial boundary. Provider capture idempotency + the
 // canonical operation key guarantees concurrent/retried handlers cannot create
 // multiple financial donations or increment campaign totals more than once.
@@ -103,7 +103,7 @@ export default async function (req) {
     const donCents = Number.parseInt(parts[1], 10);
     const procCents = Number.parseInt(parts[2], 10);
     const contributionCents = Number.parseInt(parts[3], 10);
-    const paymentChannel = parts[4] === 'googlepay' ? 'googlepay' : parts[4] === 'paypal' ? 'paypal' : '';
+    const paymentChannel = ['paypal', 'googlepay', 'applepay'].includes(parts[4]) ? parts[4] : '';
     if (!paymentChannel || ![donCents, procCents, contributionCents].every(Number.isInteger) || donCents <= 0 || procCents < 0 || contributionCents < 0 || contributionCents > donCents) {
       return Response.json({ error: 'PayPal order financial metadata is invalid.' }, { status: 409 });
     }
@@ -260,7 +260,7 @@ export default async function (req) {
       await reconcileNotificationMirror(sr, canonical.operationId, {
         user_id: campaign.created_by_id,
         title: 'New donation received',
-        body: `${displayName} gave USD ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'}`,
+        body: `${displayName} gave USD ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : paymentChannel === 'applepay' ? 'Apple Pay' : 'PayPal'}`,
         type: 'donation',
         link: `/campaign/${campaign_id}`,
         read: false,
@@ -272,7 +272,7 @@ export default async function (req) {
         action: 'donation_captured',
         target_type: 'campaign',
         target_id: campaign_id,
-        detail: `USD ${total} via ${paymentChannel === 'googlepay' ? 'Google Pay' : 'PayPal'} ${recovering ? 'recovered from a completed capture' : 'captured'} and applied canonically`,
+        detail: `USD ${total} via ${paymentChannel === 'googlepay' ? 'Google Pay' : paymentChannel === 'applepay' ? 'Apple Pay' : 'PayPal'} ${recovering ? 'recovered from a completed capture' : 'captured'} and applied canonically`,
         status: 'success',
         metadata: { canonical_operation_id: String(canonical.operationId), provider_reference: cap.capture_id },
       });
