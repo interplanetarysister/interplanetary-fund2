@@ -11,6 +11,8 @@ Owner-facing behavior: Connecting an external account must open that provider's 
 - Base44's app-level shared connectors are distinct from members' personal OAuth grants. Never substitute the IFund business/admin connection for an end-user connection.
 - Crowdfunding sites marked `setupKind: "link"` support a public campaign URL, not end-user account authorization or publishing. Do not call this a connected publishing account or redirect to a homepage as if it were OAuth.
 - Frontend now rejects a bare provider homepage returned as the OAuth authorization URL. Failure is shown in IFund without creating a false connection.
+- Opening Connections no longer automatically runs repeated live OAuth health probes against up to six provider accounts. Members instead use **Check connection** (or **Check page** for public URL trackers); immediately after a new OAuth authorization, IFund still verifies that provider. The saved lifecycle and its last-verified timestamp remain visible.
+- Manual checks re-resolve the displayed lifecycle without changing hosting, adding browser automation, or initiating external fund synchronization.
 - Existing account records, user permissions, hosting, and provider tokens are unchanged.
 
 ## No-added-cost decision (2026-10-11)
@@ -34,6 +36,6 @@ For current work, prioritize registering provider-owned OAuth applications in Ba
 
 ## Validation
 
-- `npm run verify:platform-oauth` checks code contracts and the new homepage rejection tests.
+- `npm run verify:platform-oauth` checks code contracts, homepage rejection tests, on-demand member verification and no added Nango dependency.
 - Passing code tests is **not** evidence that a live provider has completed consent. A successful provider OAuth user journey and server-side capability check are the required production gate.
 - Keep the Base44 main app checkpoint before any further provider migration.
