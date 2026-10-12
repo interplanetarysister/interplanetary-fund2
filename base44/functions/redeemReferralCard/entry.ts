@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { REFERRAL_REWARD_TIER, REFERRAL_REWARD_DAYS } from '../../shared/referralPolicy.js';
 
-const REWARD_MS = 30 * 24 * 60 * 60 * 1000;
+const REWARD_MS = REFERRAL_REWARD_DAYS * 24 * 60 * 60 * 1000;
 const isUnsubscribedNewMember = (user: any) => {
   const activeSubscription = ['active', 'trialing', 'past_due'].includes(String(user.subscription_status || ''));
   const paidHistory = Boolean(user.first_paid_subscription_at || user.paypal_subscription_id ||
@@ -29,8 +30,8 @@ export default async function(req: Request) {
     const sr = base44.asServiceRole;
     if (user.referral_reward_code === code && user.referral_reward_redeemed_at) {
       return Response.json({
-        ok: true, already_redeemed: true, tier: 'basic',
-        expires_at: user.referral_basic_expires_at, charged: false, renewal_scheduled: false,
+        ok: true, already_redeemed: true, tier: REFERRAL_REWARD_TIER,
+        expires_at: user.referral_full_expires_at || user.referral_basic_expires_at, charged: false, renewal_scheduled: false,
       }, { headers: { 'Cache-Control': 'no-store' } });
     }
     if (!isUnsubscribedNewMember(user)) {
@@ -39,7 +40,7 @@ export default async function(req: Request) {
     const cards = await sr.entities.ReferralCard.filter({ code });
     const card = (cards || []).find((c: any) => c.code === code);
     if (!card || card.status === 'revoked') return Response.json({ error: 'This referral code is unavailable.' }, { status: 404 });
-    if (card.reward_tier !== 'basic' || card.reward_days !== 30) {
+    if (card.reward_tier !== REFERRAL_REWARD_TIER || card.reward_days !== REFERRAL_REWARD_DAYS) {
       return Response.json({ error: 'This referral offer is unavailable.' }, { status: 409 });
     }
     // Compare-and-update by id AND available state. Another claimant cannot
@@ -73,15 +74,15 @@ export default async function(req: Request) {
     await sr.entities.User.update(user.id, {
       referral_reward_code: code,
       referral_reward_redeemed_at: redeemedAt,
-      referral_basic_expires_at: expiresAt,
+      referral_full_expires_at: expiresAt,
     });
     await sr.entities.AuditLog.create({
       action: 'referral_card_redeemed', actor_user_id: user.id,
       target_type: 'referral_card', target_id: card.id,
-      status: 'success', detail: '30-day Basic referral access granted.',
+      status: 'success', detail: '30 days of full IFund referral access granted.',
     }).catch(() => null);
     return Response.json({
-      ok: true, tier: 'basic', expires_at: expiresAt,
+      ok: true, tier: REFERRAL_REWARD_TIER, expires_at: expiresAt,
       charged: false, renewal_scheduled: false,
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
