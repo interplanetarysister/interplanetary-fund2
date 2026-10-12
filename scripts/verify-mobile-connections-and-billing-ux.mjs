@@ -4,6 +4,10 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf8");
 const chat = read("src/components/agents/AgentChat.jsx");
 const dialog = read("src/components/connections/ConnectDialog.jsx");
+const agentActivity = read("src/components/connections/AgentWorkPanel.jsx");
+const connections = read("src/pages/Connections.jsx");
+const home = read("src/pages/Home.jsx");
+const css = read("src/index.css");
 const plans = read("src/pages/Subscriptions.jsx");
 const billing = read("base44/functions/getPayPalSubscriptionOptions/entry.ts");
 const webhook = read("base44/functions/setupPayPalSubscriptionWebhook/entry.ts");
@@ -17,6 +21,14 @@ assert.match(dialog, /max-h-\[calc\(100dvh-1\.5rem\)\]/, "connection dialog must
 assert.match(dialog, /setOauthReadiness\("not_configured"\)|"not_configured"/, "show missing IFund provider setup separately from user sign-in failure");
 assert.match(dialog, /registration_unverified/, "a connector registration must not be presented as proven operational readiness");
 assert.doesNotMatch(dialog, /data\?\.configured && data\?\.connector_id \? "ready"/, "an environment connector id alone must not become ready");
+assert.doesNotMatch(dialog, /void connectWithProvider\(\)/, "provider deep links require a deliberate user click inside IFund");
+assert.match(agentActivity, /to=\{`\/connections\?connect=\$\{encodeURIComponent/, "account setup must link to IFund, not the provider homepage");
+assert.doesNotMatch(agentActivity, /href=\{officialProviderSite/, "activity must not bypass IFund connection authorization");
+assert.match(connections, /setDialog\(\{ platform, existing \}\)/, "provider deep links must open IFund connection window");
+assert.match(home, /Cryptocurrency donations — Coming soon…/, "homepage must use short crypto coming-soon copy");
+for (const surface of ["bg-violet-50", "bg-cyan-50", "bg-sky-50", "bg-amber-50"]) {
+  assert.ok(css.includes(`.dark [class~="${surface}"]`), `dark mode must contrast text on ${surface} cards`);
+}
 assert.match(plans, /Saved PayPal price mappings:/, "admin must see catalog records independently");
 assert.match(plans, /Checkout-ready prices:/, "admin must see provider-verified readiness independently");
 assert.match(billing, /saved_plan_mapping_count: savedMappingCount/, "backend must expose non-secret mapped catalog count for admin");
