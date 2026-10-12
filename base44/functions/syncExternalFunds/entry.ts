@@ -2,7 +2,14 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
-import { isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
+import {
+  beginExternalSyncRequest,
+  authorizeExternalSyncScope,
+  crowdfundingConnectionEligibility,
+  failExternalSyncRequest,
+  finishExternalSyncRequest,
+  validExternalSyncRequestId,
+} from '../../shared/externalSyncRequest.ts';
 
 // Centralized, request-triggered external-fund synchronization engine used by
 // Count My Money, Sync Linked Platforms, and the admin Migrate Funds surface.
@@ -24,10 +31,6 @@ import { isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../share
 
 const num = (v) => (typeof v === 'number' ? v : Number(v) || 0);
 const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCase());
-const validRequestId = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
-const RUN_TTL_MS = 10 * 60 * 1000;
-const RATE_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT = 5;
 
 const publicRun = (run, deduplicated = false) => ({
   ok: ['success', 'partial'].includes(run.overall_status),
@@ -76,6 +79,7 @@ export default async function (req) {
   let sr;
   let actor;
   let activeRun;
+  let activeClaimKey;
   try {
     base44 = createClientFromRequest(req);
     const activeAccount = await assertActiveAccount(base44);
@@ -86,7 +90,7 @@ export default async function (req) {
     if (!user) return Response.json({ error: 'Unauthorized.' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
     const requestId = String(body.request_id || '').trim();
-    if (!validRequestId(requestId)) {
+    if (!validExternalSyncRequestId(requestId)) {
       return Response.json({ error: 'A valid request_id is required for an explicit synchronization request.' }, { status: 400 });
     }
     if (body.initiator_type && body.initiator_type !== 'user' && body.initiator_type !== 'admin') {
@@ -97,7 +101,8 @@ export default async function (req) {
       return Response.json({ error: 'scope must be "user", "campaign", or "all".' }, { status: 400 });
     }
     const isAdmin = ['admin', 'super_admin'].includes(user.role);
-    if (requestedScope === 'all' && !isAdmin) return Response.json({ error: 'Admin access required for an all-campaign sync.' }, { status: 403 });
+    const initialScopeAuth = authorizeExternalSyncScope({ actorId: user.id, actorRole: user.role, scope: requestedScope, oboUserId: body.obo_user_id || null });
+    if (!initialScopeAuth.ok) return Response.json({ error: initialScopeAuth.reason === 'invalid_scope' ? 'scope must be "user", "campaign", or "all".' : 'Admin access required for this synchronization scope.' }, { status: initialScopeAuth.status });
     if (requestedScope === 'campaign' && !body.campaign_id) return Response.json({ error: 'campaign_id is required for campaign scope.' }, { status: 400 });
     if (body.campaign_id && requestedScope !== 'campaign') return Response.json({ error: 'campaign_id may only be used with campaign scope.' }, { status: 400 });
     if (body.obo_user_id && !isAdmin) return Response.json({ error: 'Only an admin may request an on-behalf-of synchronization.' }, { status: 403 });
@@ -106,53 +111,16 @@ export default async function (req) {
     if (oboUserId && scope !== 'user') return Response.json({ error: 'obo_user_id may only be used with user scope.' }, { status: 400 });
     const initiatorType = isAdmin ? 'admin' : 'user';
     const targetUserId = oboUserId || (scope === 'user' ? user.id : null);
-    const startedAt = new Date().toISOString();
     const fingerprint = JSON.stringify({ scope, campaign_id: body.campaign_id || null, obo_user_id: oboUserId });
 
-    const prior = await sr.entities.SyncRun.filter({ initiator_user_id: user.id, request_id: requestId }, '-created_date', 5).catch(() => []);
-    const existing = prior?.[0];
-    if (existing) {
-      if (existing.request_fingerprint && existing.request_fingerprint !== fingerprint) {
-        return Response.json({ error: 'request_id was already used for a different synchronization scope.' }, { status: 409 });
-      }
-      if (existing.overall_status !== 'in_progress') return Response.json(publicRun(existing, true));
-      const age = Date.now() - new Date(existing.started_at || existing.created_date || 0).getTime();
-      if (Number.isFinite(age) && age < RUN_TTL_MS) {
-        return Response.json({ ok: false, deduplicated: true, request_id: requestId, run_id: existing.id, overall_status: 'in_progress' }, { status: 202 });
-      }
-    }
-
-    const recent = await sr.entities.SyncRun.filter({ initiator_user_id: user.id }, '-started_at', 50).catch(() => []);
-    const recentDistinct = new Set(recent.filter((row) => Date.now() - new Date(row.started_at || 0).getTime() < RATE_WINDOW_MS).map((row) => row.request_id).filter(Boolean));
-    if (!recentDistinct.has(requestId) && recentDistinct.size >= RATE_LIMIT) {
-      await logAudit(base44, { action: 'external_funds_sync_rate_limited', actor_user_id: user.id, target_type: 'SyncRun', target_id: requestId, detail: 'Explicit external fundraising sync rate limit reached.', status: 'failure', metadata: { request_id: requestId, scope } }).catch(() => {});
-      return Response.json({ error: 'Too many synchronization requests. Wait a minute and try again.' }, { status: 429 });
-    }
-
-    let run = existing || await sr.entities.SyncRun.create({
-      request_id: requestId, request_fingerprint: fingerprint, initiator_type: initiatorType,
-      initiator_id: user.id, initiator_user_id: user.id, obo_user_id: oboUserId,
-      scope, campaign_id: body.campaign_id || null, started_at: startedAt,
-      overall_status: 'in_progress', provider_results: [], total_discovered: 0,
-      discovered_totals: [], total_imported: 0, campaigns_covered: 0,
-      description: 'Authenticated explicit request is in progress.',
-    });
-    activeRun = run;
-    if (existing) {
-      await sr.entities.SyncRun.update(existing.id, { started_at: startedAt, overall_status: 'in_progress', description: 'Retrying a stale authenticated explicit request.' });
-    }
-    const providerResults = [];
-    const discoveredByCurrency = new Map();
-    let totalImported = 0;
-    let campaignsCovered = 0;
-
+    // Resolve and authorize the complete target before claiming work so a bad
+    // campaign cannot strand an in-progress request.
     let campaigns = [];
     if (body.campaign_id) {
-      const c = await sr.entities.Campaign.get(body.campaign_id).catch(() => null);
+      const c = await sr.entities.Campaign.get(body.campaign_id);
       if (!c) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
-      if (!isAdmin && c.created_by_id !== user.id) {
-        return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: 403 });
-      }
+      const campaignScopeAuth = authorizeExternalSyncScope({ actorId: user.id, actorRole: user.role, scope, campaignOwnerId: c.created_by_id });
+      if (!campaignScopeAuth.ok) return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: campaignScopeAuth.status });
       campaigns = [c];
     } else if (scope === 'user' && targetUserId) {
       campaigns = await sr.entities.Campaign.filter({ created_by_id: targetUserId }, '-created_date', 100);
@@ -160,14 +128,33 @@ export default async function (req) {
       campaigns = await sr.entities.Campaign.list('-created_date', 200);
     }
 
+    let request;
+    try {
+      request = await beginExternalSyncRequest(sr, {
+        jobType: 'external_funds', actorUserId: user.id, requestId, fingerprint,
+        initiatorType, scope, campaignId: body.campaign_id || null,
+      });
+    } catch (error) {
+      await logAudit(base44, { action: error?.code === 'rate_limited' ? 'external_funds_sync_rate_limited' : 'external_funds_sync_rejected', actor_user_id: user.id, target_type: 'SyncRun', target_id: requestId, detail: String(error?.message || 'Synchronization safeguards rejected the request.'), status: 'failure', metadata: { request_id: requestId, scope, reason: error?.code || 'unknown' } }).catch(() => {});
+      return Response.json({ error: error?.message || 'Synchronization safeguards are unavailable.' }, { status: error?.status || 503 });
+    }
+    if (request.disposition === 'completed') return Response.json(publicRun(request.run, true));
+    if (request.disposition === 'in_progress') return Response.json({ ok: false, deduplicated: true, request_id: requestId, run_id: request.run?.id || null, overall_status: 'in_progress' }, { status: 202 });
+    let run = request.run;
+    activeRun = run;
+    activeClaimKey = request.claimKey;
+    const providerResults = [];
+    const discoveredByCurrency = new Map();
+    let totalImported = 0;
+    let campaignsCovered = 0;
+
     for (const campaign of campaigns) {
       campaignsCovered++;
-      const connections = await sr.entities.PlatformConnection.filter({ campaign_id: campaign.id, kind: 'crowdfunding' }, '-updated_date', 50).catch(() => []);
+      const connections = await sr.entities.PlatformConnection.filter({ campaign_id: campaign.id, kind: 'crowdfunding' }, '-updated_date', 50);
       for (const conn of connections) {
         try {
-          if (!campaign.created_by_id || campaign.created_by_id !== conn.created_by_id) {
-            throw new Error('Connection ownership does not match campaign ownership.');
-          }
+          const eligibility = crowdfundingConnectionEligibility(conn, campaign.created_by_id);
+          if (!eligibility.ok) continue;
 
           const result = await adapterFor(conn);
           let imported = 0;
@@ -211,7 +198,7 @@ export default async function (req) {
             // PayPal settlement matcher a concrete campaign/user/provider record
             // without treating an observed external donation as money IF holds.
             const observationKey = `external:${conn.platform}:${conn.id}:${txId}`;
-            const mirrored = await sr.entities.ExternalFundObservation.filter({ operation_key: observationKey }).catch(() => []);
+            const mirrored = await sr.entities.ExternalFundObservation.filter({ operation_key: observationKey });
             if (!mirrored?.length) {
               await sr.entities.ExternalFundObservation.create({
                 operation_key: observationKey,
@@ -235,23 +222,11 @@ export default async function (req) {
             last_error: result.status === 'error' ? result.note : '',
           };
           if (lastObservation && observedCurrency) {
-            update.status = 'connected';
-            update.verification_status = 'verified';
             update.external_data_source = 'provider_verified';
             update.last_synced = now;
             update.external_total = Number(lastObservation.observedTotal || 0);
             update.external_donor_count = Number(lastObservation.observedCount || 0);
             update.external_currency = observedCurrency;
-          } else if (isLinkBasedPlatform(conn.platform) && conn.external_url) {
-            // A saved URL alone is configuration, not verification. A bounded
-            // provider-domain read may verify that the linked campaign page is
-            // reachable, while monetary totals remain explicitly owner-reported.
-            await verifyPublicCampaignConnection(conn);
-            update.status = 'connected';
-            update.verification_status = 'verified';
-            update.external_data_source = 'owner_reported';
-            update.last_synced = now;
-            update.last_error = '';
           }
           await sr.entities.PlatformConnection.update(conn.id, update);
 
@@ -275,11 +250,7 @@ export default async function (req) {
         } catch (err) {
           console.error('syncExternalFunds provider sync failed:', err?.name || 'UnknownError');
           const safeError = 'This external connection could not be synchronized safely.';
-          await sr.entities.PlatformConnection.update(conn.id, {
-            status: 'error',
-            verification_status: 'unverified',
-            last_error: safeError,
-          }).catch(() => {});
+          await sr.entities.PlatformConnection.update(conn.id, { last_error: safeError }).catch(() => {});
           providerResults.push({
             provider: conn.platform,
             campaign_id: campaign.id,
@@ -324,8 +295,7 @@ export default async function (req) {
       campaigns_covered: campaignsCovered,
       description: 'Completed authenticated explicit request.',
     };
-    await sr.entities.SyncRun.update(run.id, completedRun);
-    run = { ...run, ...completedRun };
+    run = await finishExternalSyncRequest(sr, run, activeClaimKey, completedRun);
 
     await logAudit(base44, {
       action: 'external_funds_sync',
@@ -352,12 +322,7 @@ export default async function (req) {
   } catch (error) {
     console.error('syncExternalFunds error:', error?.name || 'UnknownError');
     if (sr && activeRun?.id) {
-      const completedAt = new Date().toISOString();
-      await sr.entities.SyncRun.update(activeRun.id, {
-        completed_at: completedAt,
-        overall_status: 'failed',
-        description: 'The authenticated explicit request failed before completion.',
-      }).catch(() => {});
+      await failExternalSyncRequest(sr, activeRun, activeClaimKey, 'The authenticated explicit request failed before completion.').catch(() => {});
       if (base44 && actor?.id) await logAudit(base44, {
         action: 'external_funds_sync', actor_user_id: actor.id, target_type: 'SyncRun', target_id: activeRun.id,
         detail: `request_id=${activeRun.request_id || 'unknown'} failed before completion`, status: 'failure',
