@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import CashAppDonateButton from "@/components/payments/CashAppDonateButton";
 import GooglePayButton from "@/components/payments/GooglePayButton";
+import ApplePayButton from "@/components/payments/ApplePayButton";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CryptoDonateOption from "@/components/payments/CryptoDonateOption";
 import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
@@ -29,6 +30,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const newCheckoutEnabled = useFeatureEnabled("payment_checkout_enabled");
   const paypalEnabled = useFeatureEnabled("paypal_checkout");
   const googlePayEnabled = useFeatureEnabled("google_pay_checkout");
+  const applePayEnabled = useFeatureEnabled("apple_pay_checkout");
   const [urlOpen, setUrlOpen] = useUrlDialog("donate");
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : urlOpen;
@@ -43,6 +45,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [capabilities, setCapabilities] = useState(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const [googlePayReady, setGooglePayReady] = useState(false);
+  const [applePayReady, setApplePayReady] = useState(false);
   const idempotencyRef = useRef(crypto.randomUUID());
   const newIntent = () => { idempotencyRef.current = crypto.randomUUID(); };
   const paypalBd = computePayPalBreakdown(parseFloat(amount) || 0, platformContribution);
@@ -63,6 +66,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const platformOnlyPrelaunch = platformOnlyMode;
   const paypalApiAvailable = newCheckoutEnabled && paypalEnabled && capabilities?.paypal?.api_live === true;
   const googlePayAvailable = newCheckoutEnabled && googlePayEnabled && capabilities?.paypal?.api_live === true;
+  const applePayAvailable = newCheckoutEnabled && applePayEnabled && capabilities?.paypal?.api_live === true;
 
   const confirmManualDonation = async (payment_method) => {
     const value = parseFloat(amount);
@@ -114,6 +118,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {paypalApiAvailable && <div className="rounded-xl border border-stone-200 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName={name} message={message} platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 && <RailBreakdown rail="PayPal" breakdown={paypalBd} />}</div>}
 
             {googlePayAvailable && <div className={googlePayReady ? "rounded-xl border border-stone-200 p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName={name} message={message} recurring={false} platformContribution={platformContribution} onReadyChange={setGooglePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 ? <RailBreakdown rail="Google Pay via PayPal" breakdown={paypalWalletBd} /> : <p className="text-[11px] text-stone-400 mt-2 text-center">Processed by the configured PayPal payment service.</p>}</div>}
+
+            {applePayAvailable && <div className={applePayReady ? "rounded-xl border border-stone-200 p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Pay with Apple Pay</p><ApplePayButton campaign={campaign} amount={amount} donorName={name} message={message} platformContribution={platformContribution} onReadyChange={setApplePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} />{amount && parseFloat(amount) > 0 && <RailBreakdown rail="Apple Pay via PayPal" breakdown={paypalWalletBd} />}</div>}
 
             {!platformOnlyMode && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
 
