@@ -60,6 +60,7 @@
       "enum": [
         "paypal",
         "googlepay",
+        "applepay",
         "cashapp",
         "stripe",
         "stripe_crypto",
