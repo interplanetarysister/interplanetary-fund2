@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ClipboardCopy, ExternalLink, RefreshCcw, CheckCircle2, AlertCircle } from "lucide-react";
+import { ClipboardCopy, ExternalLink, RefreshCcw, CheckCircle2, AlertCircle, Share2 } from "lucide-react";
 import { CHATGPT_BUILDER_URL, createChatGPTBuilderPrompt, hasSecrets, short } from "@/lib/chatgptBuilderHandoff";
 
 const toTask = (task) => ({
@@ -66,6 +66,19 @@ export default function ChatGPTBuilderHandoff() {
     if(selected && (hasSecrets(selected.objective) || hasSecrets(selected.context_summary))){
       setError("This saved task appears to contain credentials. Remove them through an authorized secure workflow before copying to ChatGPT.");
     }else{setError("");}
+  };
+
+  const share = async () => {
+    if (!prompt || selectedTaskHasSecrets || typeof navigator === "undefined" || !navigator.share) return;
+    setError("");
+    try {
+      // Native Android/iOS share UI lets the member choose their own
+      // installed ChatGPT app. This never grants IFund the ChatGPT session.
+      await navigator.share({ title: "IFund builder request", text: prompt });
+      setNotice("Request shared to your selected app. Send it inside ChatGPT to begin the task.");
+    } catch (error) {
+      if (error?.name !== "AbortError") setError("Sharing was unavailable. Use Copy and Open ChatGPT instead.");
+    }
   };
 
   const copy = async () => {
@@ -134,6 +147,10 @@ export default function ChatGPTBuilderHandoff() {
           value={prompt} onFocus={e=>e.target.select()}/>
       </label>
       <div className="flex flex-wrap gap-2">
+        {typeof navigator !== "undefined" && typeof navigator.share === "function" &&
+          <Button type="button" className="min-h-11" onClick={share}>
+            <Share2 className="w-4 h-4 mr-2"/>Share to ChatGPT app
+          </Button>}
         <Button type="button" variant="outline" className="min-h-11" onClick={copy}>
           <ClipboardCopy className="w-4 h-4 mr-2"/>{copied ? "Copied request" : "Copy builder request"}
         </Button>
