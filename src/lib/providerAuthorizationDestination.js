@@ -15,6 +15,11 @@ export function providerAuthorizationDestination(rawUrl, officialHomepage = "") 
       (destination.port && destination.port !== "443")) {
     throw new Error("Provider authorization returned an insecure link.");
   }
+  // A plain origin cannot identify which app, permissions, or user initiated
+  // authorization; this also protects services without a catalog homepage.
+  if (destination.pathname === "/" && !destination.search && !destination.hash) {
+    throw new Error("Provider authorization returned a homepage rather than a permissions link.");
+  }
   if (officialHomepage) {
     const homepage = new URL(officialHomepage);
     const host = (value) => value.toLowerCase().replace(/^www\./, "");
