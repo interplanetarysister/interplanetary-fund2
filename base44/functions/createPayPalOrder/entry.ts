@@ -8,7 +8,7 @@ import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
 import { areFeaturesEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
 
-// Creates an idempotent PayPal v2 order for PayPal Buttons or Google Pay. All financially
+// Creates an idempotent PayPal v2 order for PayPal Buttons, Google Pay, or Apple Pay. All financially
 // meaningful values are encoded server-side into PayPal custom_id so capture
 // can verify campaign, donation amount, processor fee, and optional platform
 // contribution without trusting post-payment client input.
@@ -28,9 +28,9 @@ export default async function (req) {
     if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
     if (!campaign_id) return Response.json({ error: 'A campaign is required' }, { status: 400 });
     if (!intent_id || !/^[A-Za-z0-9_-]{16,100}$/.test(String(intent_id))) return Response.json({ error: 'A stable payment intent is required' }, { status: 400 });
-    const channel = payment_channel === 'googlepay' ? 'googlepay' : payment_channel === 'paypal' ? 'paypal' : '';
+    const channel = ['paypal', 'googlepay', 'applepay'].includes(payment_channel) ? payment_channel : '';
     if (!channel) return Response.json({ error: 'A supported payment channel is required' }, { status: 400 });
-    if (!(await areFeaturesEnabled(base44, ['payment_checkout_enabled', channel === 'googlepay' ? 'google_pay_checkout' : 'paypal_checkout']))) return featureUnavailable('This payment method');
+    if (!(await areFeaturesEnabled(base44, ['payment_checkout_enabled', channel === 'googlepay' ? 'google_pay_checkout' : channel === 'applepay' ? 'apple_pay_checkout' : 'paypal_checkout']))) return featureUnavailable('This payment method');
     const totalCharge = round2(Number(amount));
 
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
@@ -45,7 +45,7 @@ export default async function (req) {
 
     await ensureCanonicalCampaign(sr, campaign);
 
-    const processing = channel === 'googlepay' ? computePayPalWalletProcessingFee(totalCharge) : computePayPalProcessingFee(totalCharge);
+    const processing = ['googlepay', 'applepay'].includes(channel) ? computePayPalWalletProcessingFee(totalCharge) : computePayPalProcessingFee(totalCharge);
     const value = round2(totalCharge - processing);
     const contribution = computeContribution(value, !!platform_contribution);
     // Validate the complete provider allocation before creating an order. A
