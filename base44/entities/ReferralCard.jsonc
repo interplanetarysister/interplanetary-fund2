@@ -1,0 +1,23 @@
+{
+  "name": "ReferralCard",
+  "type": "object",
+  "description": "One individual IFund digital or physical business card referral. Codes are issued only by an administrator and claimed at most once via server-side redemption.",
+  "properties": {
+    "code": { "type": "string", "description": "Cryptographically random code carried in the card's first-party homepage QR URL." },
+    "status": { "type": "string", "enum": ["available", "redeemed", "revoked"], "default": "available" },
+    "issued_by_user_id": { "type": "string" },
+    "issued_at": { "type": "string", "format": "date-time" },
+    "redeemed_by_user_id": { "type": "string" },
+    "redeemed_at": { "type": "string", "format": "date-time" },
+    "reward_tier": { "type": "string", "enum": ["basic"], "default": "basic" },
+    "reward_days": { "type": "number", "default": 30 },
+    "card_label": { "type": "string" }
+  },
+  "required": ["code", "status", "issued_by_user_id", "issued_at", "reward_tier", "reward_days"],
+  "rls": {
+    "read": { "user_condition": { "role": "admin" } },
+    "create": { "user_condition": { "role": "admin" } },
+    "update": { "user_condition": { "role": "admin" } },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}
