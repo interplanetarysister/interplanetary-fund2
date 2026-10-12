@@ -21,9 +21,10 @@ export function effectiveSubscription(user) {
     !(Date.parse(String(user?.trial_end || "")) > Date.now());
   const recurringActive = status === "active" || (status === "trialing" && !trialIsExpired);
   const dayPassActive = Date.parse(String(user?.premium_day_pass_expires_at || "")) > Date.now();
-  const referralActive = Date.parse(String(user?.referral_basic_expires_at || "")) > Date.now() && Boolean(user?.referral_reward_redeemed_at);
+  const rewardExpiresAt = user?.referral_full_expires_at || user?.referral_basic_expires_at;
+  const referralActive = Boolean(user?.referral_reward_redeemed_at) && Date.parse(String(rewardExpiresAt || "")) > Date.now();
   const active = recurringActive || dayPassActive || referralActive;
-  const tier = recurringActive ? user?.subscription_tier : dayPassActive || referralActive ? "basic" : "free";
+  const tier = referralActive ? TOP_PLAN.id : recurringActive ? user?.subscription_tier : dayPassActive ? "basic" : "free";
   const plan = getPlan(tier);
   return {
     plan,
