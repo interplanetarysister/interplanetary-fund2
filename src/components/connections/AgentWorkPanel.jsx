@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, ExternalLink } from "lucide-react";
-import { officialProviderSite } from "@/lib/providerOnboardingLinks";
+import { Link } from "react-router-dom";
+import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
+import { Loader2, RefreshCw, ArrowRight } from "lucide-react";
 
 const ACTIVE = new Set(["requested", "assigned", "in_progress", "waiting_user", "waiting_external", "needs_review"]);
 const format = (state) => ({
@@ -126,15 +127,15 @@ export default function AgentWorkPanel({ refreshKey = 0, allAgents = false }) {
         {work.slice(0, 12).map((item) => (
           <article key={item.id} className="rounded-xl border border-slate-200 px-3 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium text-slate-950 break-words">{item.objective || "Connection request"}</p>
-              <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">{item.objective?.startsWith("create_account ") && ["waiting_external", "waiting_user"].includes(item.status) ? "Provider sign-up required" : format(item.status)}</span>
+              <p className="text-sm font-medium text-slate-950 break-words">{item.objective?.startsWith("create_account ") ? `Set up ${ALL_PLATFORMS.find((p) => p.id === item.objective.slice("create_account ".length))?.name || item.objective.slice("create_account ".length)} account` : item.objective || "Connection request"}</p>
+              <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">{item.objective?.startsWith("create_account ") && ["waiting_external", "waiting_user"].includes(item.status) ? "Account setup needed" : format(item.status)}</span>
             </div>
             {item.result_summary && <p className="text-xs text-slate-700 mt-2 break-words">{item.result_summary}</p>}
-            {ACTIVE.has(item.status) && item.external_requirement && <p className="text-xs text-amber-800 mt-1 break-words">Next: {item.objective?.startsWith("create_account ") ? "Open the provider website, finish sign-up there, then return to IFund and connect your account. IFund cannot claim to have created the account without provider confirmation." : item.external_requirement}</p>}
-            {item.objective?.startsWith("create_account ") && officialProviderSite(item.objective.slice("create_account ".length)) && (
-              <a className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg border border-cyan-300 px-3 py-2 text-sm font-semibold text-cyan-800 underline" href={officialProviderSite(item.objective.slice("create_account ".length))} target="_blank" rel="noopener noreferrer">
-                Open official provider site <ExternalLink className="w-4 h-4" />
-              </a>
+            {ACTIVE.has(item.status) && item.external_requirement && <p className="text-xs text-amber-800 dark:text-amber-200 mt-1 break-words">Next: {item.objective?.startsWith("create_account ") ? "Open the IFund connection window. Use provider authorization when available; a new provider account may need official sign-up first." : item.external_requirement}</p>}
+            {item.objective?.startsWith("create_account ") && ALL_PLATFORMS.some((p) => p.id === item.objective.slice("create_account ".length)) && (
+              <Link className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-lg border border-cyan-400 px-3 py-2 text-sm font-semibold text-cyan-800 dark:text-cyan-200 underline" to={`/connections?connect=${encodeURIComponent(item.objective.slice("create_account ".length))}`}>
+                Continue in IFund <ArrowRight className="w-4 h-4" />
+              </Link>
             )}
             {item.status === "waiting_external" && item.next_retry_at && <p className="text-xs text-slate-600 mt-1">Next automated check: {new Date(item.next_retry_at).toLocaleString()}</p>}
             {ACTIVE.has(item.status) && item.agent === "managed_connection_agent" && item.connection_id && (
