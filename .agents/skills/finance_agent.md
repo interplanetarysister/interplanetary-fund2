@@ -49,20 +49,18 @@ deletes financial records.
 
 ---
 
-## Fee model (canonical — derived from `base44/shared/fees.js`)
+## Fee model (canonical source: `base44/shared/fees.js`)
 
-| Stage | Fee | Who pays | When |
-|-------|-----|---------|------|
-| Checkout (Stripe / PayPal checkout) | Processor: 2.9% + $0.30 on top of donation | Donor | At checkout |
-| Optional platform contribution | 10% of donation, allocated FROM donation | Donor (opt-in) | At checkout |
-| Withdrawal (payout) | 3% Interplanetary Fund fee | Campaign | At payout |
+**Always inspect the current fee implementation** before quoting processing fees or estimating a payout; historical values below are examples, not immutable pricing or verified provider charges.
 
-**Recipient gift** = donation − platform\_contribution
-**Net payout** = recipient\_gift × (1 − 0.03)
+- Donor-entered amount is the **total charged**; the processor estimate is derived *within* that amount so the checkout must not charge an unapproved larger total.
+- Payment-rail processing rates differ. Source-code defaults currently include Stripe 2.9% + $0.30, standard PayPal Checkout 3.49% + $0.49, and PayPal wallet 2.89% + $0.29. These may differ from the actual provider's contract, payment type and effective rate; never claim retired Stripe purchase routes are usable.
+- Optional 10% donor contribution is allocated **from** the donation after processor fees, not added to the total.
+- A 3% IFund fee is deducted **once at withdrawal** from the verified recipient gift; no second processor fee at withdrawal.
+- PayPal donate links and manual confirmation have separate provider accounting; an unverifiable off-platform report is not withdrawable money.
+- For precise values use the exported `computeProcessorBreakdown`, `computePayPalBreakdown`, `computePayPalWalletBreakdown` and `computeWithdrawal` functions, and keep fee source attribution visible.
 
-Manual-confirmation methods (PayPal donate link, Cash App) charge their own fees directly
-on the provider's site; Interplanetary Fund does not add a processing fee for these.
-
+Never calculate withdrawable funds solely from `Campaign.raised_amount`; reconcile verified, cleared and already-reserved donations and payouts through current server-authoritative records.
 ---
 
 ## Clearing & withdrawal rules

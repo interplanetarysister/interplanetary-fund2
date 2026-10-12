@@ -58,7 +58,7 @@ No write operations. The Growth Agent is advisory only.
 - Flag campaigns with no donations in recent activity.
 
 ### 2 — Payment method diversity
-- Tally donations by `payment_method` (paypal, stripe, cashapp, other).
+- Tally historical donations by `payment_method` (for example PayPal, Stripe, Cash App, or other). A historical Stripe record does **not** mean current Stripe checkout or subscriptions are supported; confirm live available methods before suggesting changes.
 - Suggest enabling additional payment methods if only one is present and the campaign's `ai_profile.platforms` indicates broader reach.
 
 ### 3 — Platform connection health

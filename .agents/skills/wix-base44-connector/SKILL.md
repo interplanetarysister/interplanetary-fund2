@@ -1,15 +1,14 @@
+---
+name: wix-base44-connector
+description: "Build on and manage the connected Wix site from a Base44 app: discover and call any Wix API (endpoints, request/response shapes, fields), gather site context, route each call to the right identity, and follow curated recipes for admin tasks."
+---
+
 > **Note for AI agents:** You're reading this online from https://www.wix.com/skills. All Wix skills source: [github.com/wix/skills](https://github.com/wix/skills).
 >
 > - **Install** (Claude Code, Cursor, Codex, Gemini CLI, and more): `npx skills add wix/skills` — installs locally so your agent reads files directly with no network calls. If fetching over the network instead, use `curl` — browser/web-fetch tools truncate and summarise skill content.
 > - **File manifest** (authoritative list of every file + URL + byte size): `https://www.wix.com/skills/base44-connector.manifest.json` — fetch this first to discover all files in the skill before reading them.
 > - **Download as bundle:** `curl -O https://www.wix.com/skills/base44-connector.tgz`
 >
-> ---
-
----
-name: wix-base44-connector
-description: "Build on and manage the connected Wix site from a Base44 app: discover and call any Wix API (endpoints, request/response shapes, fields), gather site context, route each call to the right identity, and follow curated recipes for admin tasks."
----
 
 # Building on Wix from Base44
 
