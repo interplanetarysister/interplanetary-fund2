@@ -91,7 +91,8 @@ assert.match(sync, /discovered_totals: discoveredTotals/);
 assert.match(sync, /total_discovered: totalDiscoveredUsd/);
 assert.match(sync, /c\.created_by_id !== user\.id/);
 assert.match(sync, /if \(!user\)/);
-assert.match(sync, /Scheduled synchronization requires a trusted authenticated invocation/);
+assert.match(sync, /A valid request_id is required for an explicit synchronization request/);
+assert.match(sync, /Scheduled, workflow, and agent synchronization is disabled/);
 assert.match(sync, /'realtime_webhook'/);
 assert.match(sync, /'credentials_required'/);
 assert.match(sync, /'no_read_api'/);
@@ -152,7 +153,8 @@ assert.doesNotMatch(githubSync, /initiator_type|isWorkflow/,
 assert.match(githubSync, /anySucceeded \? 'partial' : 'failed'/);
 assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/GitHub Sync.jsonc")), false,
   "scheduled GitHub sync must remain absent until workflow identity is server-verifiable");
-assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/External Fund Sync.jsonc")), true);
+assert.equal(fs.existsSync(path.join(appRoot, "base44/workflows/External Fund Sync.jsonc")), false,
+  "scheduled external fundraising sync must remain absent");
 assert.match(deferredWorkflowRunbook, /trusted workflow identity/);
 assert.match(deferredWorkflowRunbook, /native GitHub synchronization control/);
 
