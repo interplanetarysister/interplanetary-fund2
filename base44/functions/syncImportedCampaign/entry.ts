@@ -5,6 +5,7 @@ import { discoverPublicCampaignSnapshot } from './publicCampaignSnapshot.ts';
 
 const FIELDS=['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
 const same=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
+const validRequestId=(v)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v||'').trim());
 
 export default async function(req){
   try{
@@ -12,10 +13,11 @@ export default async function(req){
     const user=await base44.auth.me().catch(()=>null);
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
     const body=await req.json().catch(()=>({}));
+    const requestId=String(body.request_id||'').trim();
+    if(!validRequestId(requestId)) return Response.json({error:'A valid request_id is required for an explicit refresh.'},{status:400});
     const sr=base44.asServiceRole;
     const record=await sr.entities.ExternalCampaignImport.get(body.import_id).catch(()=>null);
     if(!record||record.owner_user_id!==user.id) return Response.json({error:'Imported campaign link not found.'},{status:404});
-    if(record.sync_enabled!==true) return Response.json({error:'Synchronization is disabled for this imported campaign.'},{status:409});
     const campaign=await sr.entities.Campaign.get(record.campaign_id).catch(()=>null);
     const connection=await sr.entities.PlatformConnection.get(record.connection_id).catch(()=>null);
     if(!campaign||campaign.created_by_id!==user.id||!connection||connection.created_by_id!==user.id||connection.status!=='connected') return Response.json({error:'Campaign connection is not available.'},{status:409});
@@ -35,8 +37,8 @@ export default async function(req){
     }
     if(Object.keys(patch).length) await sr.entities.Campaign.update(campaign.id,patch);
     await sr.entities.ExternalCampaignImport.update(record.id,{last_imported_at:now,source_updated_at:now,external_url:discovered.source_url,field_provenance:provenance,locally_locked_fields:[...locked],status:'imported'});
-    await logAudit(base44,{action:'external_campaign_synced',actor_user_id:user.id,target_type:'Campaign',target_id:campaign.id,detail:'Synchronized unlocked fields from connected external campaign without overwriting local edits.',status:'success',metadata:{platform:connection.platform,connection_id:connection.id,updated_fields:Object.keys(patch),locked_fields:[...locked]}});
-    return Response.json({ok:true,campaign_id:campaign.id,updated_fields:Object.keys(patch),locally_locked_fields:[...locked]});
+    await logAudit(base44,{action:'external_campaign_synced',actor_user_id:user.id,target_type:'Campaign',target_id:campaign.id,detail:'Explicitly refreshed unlocked fields from a connected external campaign without overwriting local edits.',status:'success',metadata:{request_id:requestId,request_origin:'explicit_authenticated_action',platform:connection.platform,connection_id:connection.id,updated_fields:Object.keys(patch),locked_fields:[...locked]}});
+    return Response.json({ok:true,request_id:requestId,campaign_id:campaign.id,updated_fields:Object.keys(patch),locally_locked_fields:[...locked]});
   }catch(error){
     console.error('syncImportedCampaign failed:', error?.name || 'UnknownError');
     return Response.json({error:'Imported campaign synchronization could not complete.'},{status:500});
