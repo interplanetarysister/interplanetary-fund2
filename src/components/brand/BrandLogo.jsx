@@ -1,6 +1,5 @@
 import React from "react";
 import { Image } from "@/components/ui/image";
-import { BRAND_MARK } from "@/components/brand/brand";
 
 // The Interplanetary Fund brand mark — the official logo, used everywhere the
 // brand appears so it stays consistent across navigation, auth, and marketing.
