@@ -117,7 +117,8 @@ export default async function(req:Request){
     if(mode==='release'){
       if(incident.builder_execution_state!=='review_required'||!incident.builder_review_evidence)
         return Response.json({error:'Record the actual source revision and test evidence before release'},{status:409});
-      if(body.confirm_release!==true)return Response.json({error:'Explicit release confirmation required'},{status:400});
+      if(body.confirm_release!==true||body.confirm_entire_current_app!==true)
+        return Response.json({error:'Explicit release confirmation is required for the entire current app state, including unrelated pending changes.'},{status:400});
       if(!config.enabled||!releaseEnabled)return Response.json({
         ok:true,released:false,reason:'Release blocked by backend credit or deployment setting.',
         job:read(incident)
