@@ -33,7 +33,7 @@ function AgentPlanet({ kind }) {
   const halo = kind === "working" ? "ring-2 ring-cyan-400 shadow-[0_0_15px_rgba(34,211,238,.8)] animate-pulse" :
     kind === "new" ? "ring-2 ring-amber-400 shadow-[0_0_14px_rgba(251,191,36,.8)]" :
     "grayscale opacity-65 ring-1 ring-slate-300";
-  const label = kind === "working" ? "Working now" : kind === "new" ? "New activity" : "No new activity";
+  const label = kind === "working" ? "Working now" : kind === "new" ? "New activity" : kind === "unknown" ? "Status unavailable" : "No new activity";
   return <span className={"inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full " + halo}
     title={label} aria-label={label}>
     <img src="/interplanetary-planet.svg" alt="" aria-hidden="true" className="h-9 w-9 object-cover" />
@@ -114,9 +114,10 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     });
     if (prepared !== null) setDrafts(prepared);
     if (suggestionsResult !== null) setSuggestions(suggestionsResult);
-    const success = tasks !== null || chats !== null || prepared !== null || suggestionsResult !== null;
-    setStatusLoaded((current) => current || success);
-    setError(success ? "" : "Activity could not be checked. Existing statuses may be out of date.");
+    const recordsAvailable = tasks !== null || chats !== null;
+    const success = recordsAvailable || prepared !== null || suggestionsResult !== null;
+    setStatusLoaded((current) => current || recordsAvailable);
+    setError(recordsAvailable ? "" : success ? "Live work status could not be checked; review items may still appear." : "Activity could not be checked. Existing statuses may be out of date.");
     setLoading(false);
   }, [user.id]);
 
@@ -124,7 +125,7 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     let live = true;
     const update = () => { if (live && document.visibilityState !== "hidden") void refresh(); };
     update();
-    const interval = window.setInterval(update, 30000);
+    const interval = window.setInterval(update, 60000);
     document.addEventListener("visibilitychange", update);
     return () => { live = false; window.clearInterval(interval); document.removeEventListener("visibilitychange", update); };
   }, [refresh]);
