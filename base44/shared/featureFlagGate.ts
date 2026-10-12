@@ -7,6 +7,7 @@ export const FEATURE_SCOPES: Record<string, string> = {
   paypal_checkout: 'beta', // Canonical scope, normalized from historical record.
   stripe_checkout: 'beta',
   google_pay_checkout: 'beta',
+  apple_pay_checkout: 'beta',
   recurring_donations: 'beta',
   subscription_checkout: 'beta',
   outbound_payout_execution: 'global',
@@ -67,7 +68,7 @@ export function featureUnavailable(name = 'This feature'): Response {
 export const CODE_CONNECTED_FEATURES = [
   'public_campaign_fundraising',
   'payment_checkout_enabled',
-  'paypal_checkout', 'google_pay_checkout',
+  'paypal_checkout', 'google_pay_checkout', 'apple_pay_checkout',
   'subscription_checkout',
   'outbound_payout_execution',
   'ai_campaign_assistant', 'ai_outreach_agent', 'social_autopilot',
