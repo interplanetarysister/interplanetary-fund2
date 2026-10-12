@@ -212,6 +212,25 @@
       "type": "string",
       "format": "date-time",
       "description": "Earliest provider-verified first paid subscription; immutable across renewals for social posting priority."
+    },
+    "referral_reward_code": {
+      "type": "string",
+      "description": "The single-use referral code redeemed by this account; no second referral grant allowed."
+    },
+    "referral_reward_redeemed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the account's one referral reward redemption."
+    },
+    "referral_basic_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Legacy pilot expiry field retained for compatibility; new referrals use referral_full_expires_at."
+    },
+    "referral_full_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expiry of the single complimentary 30-day full-tier referral grant. Not a billing subscription and never renews."
     }
   },
   "required": [

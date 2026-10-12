@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, Sparkles, ShieldCheck } from "lucide-react";
 import { PLANS } from "@/components/subscriptions/plans";
 import { effectiveSubscription } from "@/lib/subscriptionEntitlements";
+import ReferralCardShare from "@/components/referrals/ReferralCardShare";
 import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 
 export default function Subscriptions() {
@@ -227,6 +228,7 @@ export default function Subscriptions() {
           <Badge variant="outline" className="capitalize border-primary/30 text-primary bg-card">{subscription.adminGranted ? "Admin · permanent" : subscription.status}</Badge>
         </div>
       )}
+      <ReferralCardShare user={user} />
       {!subscription.adminGranted && !active && (
         <div className="grid sm:grid-cols-2 gap-4 mb-8">
           <section className="rounded-2xl border border-border bg-card p-5">

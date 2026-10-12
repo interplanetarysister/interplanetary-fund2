@@ -21,6 +21,7 @@ export default async function(req: Request) {
     const eligible = user.role !== 'admin' && !effectiveSubscription(user).active &&
       user.subscription_status !== 'past_due';
     const trialEligible = eligible && !user.trial_end && !user.premium_trial_started_at &&
+      !user.referral_reward_code && !user.referral_reward_redeemed_at &&
       !user.stripe_customer_id && !user.paypal_subscription_id;
     const approved = await sr.entities.NonprofitSubscriptionApproval
       .filter({ user_id: user.id }).catch(() => []);
