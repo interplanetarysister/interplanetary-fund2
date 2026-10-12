@@ -109,6 +109,29 @@
       ],
       "default": "owner_reported"
     },
+    "fundraising_data_consent": {
+      "type": "object",
+      "description": "Provider-data access state. A direct Sync now click authorizes one bounded job, but an explicit refusal or revocation always blocks provider reads.",
+      "properties": {
+        "granted": {
+          "type": "boolean"
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "provider_scopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "automation_mode": {
       "type": "string",
       "description": "AI publishing authorization for this destination: publish automatically, ask before every post, generate drafts only, or manual posting only.",
