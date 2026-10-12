@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { checkRateLimit } from '../../shared/rateLimit.ts';
 
 // Frontend reports are untrusted evidence, NOT instructions for an agent.
 // Reporting is also available on login/public pages. Every privileged mode
@@ -17,7 +18,10 @@ const allowedSources=new Set(['error_boundary','window_error','unhandled_rejecti
 const routeOf=(value:any)=>{
   const valueStr=String(value??'').split(/[?#]/,1)[0];
   if(!valueStr.startsWith('/')||valueStr.startsWith('//'))return '/unknown';
-  return valueStr.replace(/\/[a-z0-9_-]{16,}(?=\/|$)/gi,'/:id').replace(/\/[0-9]+(?=\/|$)/g,'/:id').slice(0,130);
+  const section=valueStr.split('/')[1]?.toLowerCase()||'home';
+  const allowed=new Set(['home','about','login','register','forgot-password','reset-password','dashboard','create','campaign','discover','social','community','blogs','help','u','profile','agents','connections','admin','subscriptions','withdrawals','giving','inbox','communications','onboarding','mission','ops','analytics','platform','connect','external-accounts','devices','donors','ledger','institutions','my-blog','following','notifications','contact','globe','oauth','activate','embed']);
+  if(!allowed.has(section))return '/other';
+  return '/'+section+(valueStr.split('/').filter(Boolean).length>1?'/:detail':'');
 };
 const publicIncident=(p:any)=>({
   id:p.id,route_pattern:p.route_pattern,error_kind:p.error_kind,error_summary:p.error_summary,
@@ -43,7 +47,10 @@ export default async function(req:Request){
       const kind=clean(body.kind||'other',24);
       if(!allowedSources.has(source)||!allowedKinds.has(kind))return Response.json({error:'Unsupported report'},{status:400});
       const route=routeOf(body.route);
-      const code=clean(body.code||'unknown',80).replace(/[^a-z0-9_. -]/gi,'').slice(0,70);
+      const rawCode=clean(body.code||'FrontendError',80).replace(/[^a-z0-9_. -]/gi,'').slice(0,70);
+      const code=new Set(['Error','TypeError','ReferenceError','SyntaxError','RangeError','NetworkError','TimeoutError','ChunkLoadError','ResourceLoadError','FrontendError','RequestError']).has(rawCode)?rawCode:'FrontendError';
+      const allowance=await checkRateLimit(base44,'platform_incident_reports_global',240,60);
+      if(!allowance.allowed)return Response.json({ok:true,recorded:false,reason:'rate_limited'});
       const summary=clean(body.summary||'Frontend failure',220);
       const fingerprint=await sha([route,source,kind,code].join(':'));
       const prior=await sr.entities.PlatformIncident.filter({fingerprint},'-last_seen_at',5);
