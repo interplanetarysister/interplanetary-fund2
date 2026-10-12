@@ -4,8 +4,9 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
 import { isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../shared/connectionVerification.ts';
 
-// Centralized external-fund synchronization engine used by scheduled sync,
-// Count My Money, Sync Linked Platforms, and Migrate Funds discovery.
+// Centralized, request-triggered external-fund synchronization engine used by
+// Count My Money, Sync Linked Platforms, and the admin Migrate Funds surface.
+// It must never be invoked by cron, a workflow, page load, login, or an agent.
 //
 // IMPORTANT FINANCIAL BOUNDARY:
 // Provider APIs/webhooks usually prove that a donation exists on an EXTERNAL
@@ -23,6 +24,24 @@ import { isLinkBasedPlatform, verifyPublicCampaignConnection } from '../../share
 
 const num = (v) => (typeof v === 'number' ? v : Number(v) || 0);
 const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCase());
+const validRequestId = (v) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(v || '').trim());
+const RUN_TTL_MS = 10 * 60 * 1000;
+const RATE_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT = 5;
+
+const publicRun = (run, deduplicated = false) => ({
+  ok: ['success', 'partial'].includes(run.overall_status),
+  deduplicated,
+  run_id: run.id,
+  request_id: run.request_id,
+  overall_status: run.overall_status,
+  campaigns_covered: num(run.campaigns_covered),
+  total_discovered: num(run.total_discovered),
+  discovered_totals: Array.isArray(run.discovered_totals) ? run.discovered_totals : [],
+  total_imported: num(run.total_imported),
+  withdrawable_imported: 0,
+  provider_results: Array.isArray(run.provider_results) ? run.provider_results : [],
+});
 
 // Per-platform adapter. Returns { status, amount_discovered, transactions, note }.
 // A transaction intended for import MUST include stable id, amount, and currency.
@@ -59,19 +78,61 @@ export default async function (req) {
     if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
     const sr = base44.asServiceRole;
     const user = await base44.auth.me().catch(() => null);
-    if (!user) {
-      return Response.json({ error: 'Unauthorized. Scheduled synchronization requires a trusted authenticated invocation.' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized.' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
-    const requestedScope = body.scope || 'user';
-    if (!['user', 'all'].includes(requestedScope)) {
-      return Response.json({ error: 'scope must be "user" or "all".' }, { status: 400 });
+    const requestId = String(body.request_id || '').trim();
+    if (!validRequestId(requestId)) {
+      return Response.json({ error: 'A valid request_id is required for an explicit synchronization request.' }, { status: 400 });
     }
-    const scope = user.role === 'admin' ? requestedScope : 'user';
-    const oboUserId = user.role === 'admin' ? (body.obo_user_id || null) : null;
-    const initiatorType = user.role === 'admin' && body.initiator_type === 'scheduled' ? 'scheduled' : 'user';
+    if (body.initiator_type && body.initiator_type !== 'user' && body.initiator_type !== 'admin') {
+      return Response.json({ error: 'Scheduled, workflow, and agent synchronization is disabled. Use an explicit user or admin request.' }, { status: 403 });
+    }
+    const requestedScope = body.scope || 'user';
+    if (!['user', 'campaign', 'all'].includes(requestedScope)) {
+      return Response.json({ error: 'scope must be "user", "campaign", or "all".' }, { status: 400 });
+    }
+    const isAdmin = ['admin', 'super_admin'].includes(user.role);
+    if (requestedScope === 'all' && !isAdmin) return Response.json({ error: 'Admin access required for an all-campaign sync.' }, { status: 403 });
+    if (requestedScope === 'campaign' && !body.campaign_id) return Response.json({ error: 'campaign_id is required for campaign scope.' }, { status: 400 });
+    if (body.obo_user_id && !isAdmin) return Response.json({ error: 'Only an admin may request an on-behalf-of synchronization.' }, { status: 403 });
+    const scope = requestedScope;
+    const oboUserId = isAdmin ? (body.obo_user_id || null) : null;
+    const initiatorType = isAdmin ? 'admin' : 'user';
     const targetUserId = oboUserId || (scope === 'user' ? user.id : null);
     const startedAt = new Date().toISOString();
+    const fingerprint = JSON.stringify({ scope, campaign_id: body.campaign_id || null, obo_user_id: oboUserId });
+
+    const prior = await sr.entities.SyncRun.filter({ initiator_user_id: user.id, request_id: requestId }, '-created_date', 5).catch(() => []);
+    const existing = prior?.[0];
+    if (existing) {
+      if (existing.request_fingerprint && existing.request_fingerprint !== fingerprint) {
+        return Response.json({ error: 'request_id was already used for a different synchronization scope.' }, { status: 409 });
+      }
+      if (existing.overall_status !== 'in_progress') return Response.json(publicRun(existing, true));
+      const age = Date.now() - new Date(existing.started_at || existing.created_date || 0).getTime();
+      if (Number.isFinite(age) && age < RUN_TTL_MS) {
+        return Response.json({ ok: false, deduplicated: true, request_id: requestId, run_id: existing.id, overall_status: 'in_progress' }, { status: 202 });
+      }
+    }
+
+    const recent = await sr.entities.SyncRun.filter({ initiator_user_id: user.id }, '-started_at', 50).catch(() => []);
+    const recentDistinct = new Set(recent.filter((row) => Date.now() - new Date(row.started_at || 0).getTime() < RATE_WINDOW_MS).map((row) => row.request_id).filter(Boolean));
+    if (!recentDistinct.has(requestId) && recentDistinct.size >= RATE_LIMIT) {
+      await logAudit(base44, { action: 'external_funds_sync_rate_limited', actor_user_id: user.id, target_type: 'SyncRun', target_id: requestId, detail: 'Explicit external fundraising sync rate limit reached.', status: 'failure', metadata: { request_id: requestId, scope } }).catch(() => {});
+      return Response.json({ error: 'Too many synchronization requests. Wait a minute and try again.' }, { status: 429 });
+    }
+
+    let run = existing || await sr.entities.SyncRun.create({
+      request_id: requestId, request_fingerprint: fingerprint, initiator_type: initiatorType,
+      initiator_id: user.id, initiator_user_id: user.id, obo_user_id: oboUserId,
+      scope, campaign_id: body.campaign_id || null, started_at: startedAt,
+      overall_status: 'in_progress', provider_results: [], total_discovered: 0,
+      discovered_totals: [], total_imported: 0, campaigns_covered: 0,
+      description: 'Authenticated explicit request is in progress.',
+    });
+    if (existing) {
+      await sr.entities.SyncRun.update(existing.id, { started_at: startedAt, completed_at: null, overall_status: 'in_progress', description: 'Retrying a stale authenticated explicit request.' });
+    }
     const providerResults = [];
     const discoveredByCurrency = new Map();
     let totalImported = 0;
@@ -81,7 +142,7 @@ export default async function (req) {
     if (body.campaign_id) {
       const c = await sr.entities.Campaign.get(body.campaign_id).catch(() => null);
       if (!c) return Response.json({ error: 'Campaign not found.' }, { status: 404 });
-      if (user.role !== 'admin' && c.created_by_id !== user.id) {
+      if (!isAdmin && c.created_by_id !== user.id) {
         return Response.json({ error: 'You can only synchronize your own campaigns.' }, { status: 403 });
       }
       campaigns = [c];
@@ -245,14 +306,7 @@ export default async function (req) {
           ? 'partial'
           : 'success';
 
-    const run = await sr.entities.SyncRun.create({
-      initiator_type: initiatorType,
-      initiator_id: user ? user.id : (body.initiator_id || 'workflow'),
-      initiator_user_id: user ? user.id : null,
-      obo_user_id: oboUserId,
-      scope,
-      campaign_id: body.campaign_id || null,
-      started_at: startedAt,
+    const completedRun = {
       completed_at: completedAt,
       overall_status: overall,
       provider_results: providerResults,
@@ -260,17 +314,22 @@ export default async function (req) {
       discovered_totals: discoveredTotals,
       total_imported: totalImported,
       campaigns_covered: campaignsCovered,
-    });
+      description: 'Completed authenticated explicit request.',
+    };
+    await sr.entities.SyncRun.update(run.id, completedRun);
+    run = { ...run, ...completedRun };
 
     await logAudit(base44, {
       action: 'external_funds_sync',
       actor_user_id: user ? user.id : null,
       target_type: 'SyncRun',
       target_id: run.id,
-      detail: `scope=${scope} campaigns=${campaignsCovered} observed_currency_groups=${discoveredTotals.length} new_observations=${totalImported} overall=${overall}`,
+      detail: `request_id=${requestId} scope=${scope} campaigns=${campaignsCovered} observed_currency_groups=${discoveredTotals.length} new_observations=${totalImported} overall=${overall}`,
       status: ['success', 'partial'].includes(overall) ? 'success' : 'failure',
       metadata: {
         scope,
+        request_id: requestId,
+        request_origin: 'explicit_authenticated_action',
         obo_user_id: oboUserId,
         overall,
         campaigns_covered: campaignsCovered,
@@ -281,17 +340,7 @@ export default async function (req) {
       },
     });
 
-    return Response.json({
-      ok: ['success', 'partial'].includes(overall),
-      run_id: run.id,
-      overall_status: overall,
-      campaigns_covered: campaignsCovered,
-      total_discovered: totalDiscoveredUsd,
-      discovered_totals: discoveredTotals,
-      total_imported: totalImported,
-      withdrawable_imported: 0,
-      provider_results: providerResults,
-    });
+    return Response.json(publicRun(run));
   } catch (error) {
     console.error('syncExternalFunds error:', error?.name || 'UnknownError');
     return Response.json({ error: 'Synchronization could not complete.' }, { status: 500 });
