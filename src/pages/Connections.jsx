@@ -427,7 +427,7 @@ export default function Connections() {
                   base44.functions.invoke("resolveConnectionStatus", { platform: updated.platform, connection_id: updated.id })
                     .then(({ data }) => { if (data) setLifecycleMap(prev => ({ ...prev, [updated.id]: data })); })
                     .catch(() => {});
-                }
+                }}
                 onRemoved={(id, updated) => {
                   setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id));
                   // After a provider check updates a connection, refresh its
