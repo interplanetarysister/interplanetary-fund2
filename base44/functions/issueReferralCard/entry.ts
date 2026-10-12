@@ -1,8 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { canIssueReferralCard, REFERRAL_REWARD_TIER, REFERRAL_REWARD_DAYS } from '../../shared/referralPolicy.js';
 
 // Each share/printed card gets a separate, high-entropy URL to the real homepage.
-// An admin must deliberately issue each code. No paid provider is called.
+// Admins and referred members with provider-confirmed active paid subscriptions
+// may issue individual cards. No purchase or charge is created by this call.
 const canonicalOrigin = 'https://interplanetaryfund.com';
 const newCode = () => {
   const bytes = crypto.getRandomValues(new Uint8Array(12));
@@ -15,7 +17,7 @@ export default async function(req: Request) {
     const base44 = createClientFromRequest(req);
     const guard = await assertActiveAccount(base44);
     if (!guard.ok) return Response.json({ error: guard.error }, { status: guard.status });
-    if (guard.user.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
+    if (!canIssueReferralCard(guard.user)) return Response.json({ error: 'Referral sharing unlocks after your referred account has an active, verified paid subscription.' }, { status: 403 });
     const input = await req.json().catch(() => ({}));
     const label = String(input.card_label || '').trim().slice(0, 80);
     const sr = base44.asServiceRole;
@@ -25,16 +27,17 @@ export default async function(req: Request) {
       if (alreadyExists?.length) continue;
       const record = await sr.entities.ReferralCard.create({
         code, status: 'available', issued_by_user_id: guard.user.id,
-        issued_at: new Date().toISOString(), reward_tier: 'basic',
-        reward_days: 30, card_label: label,
+        issued_at: new Date().toISOString(), reward_tier: REFERRAL_REWARD_TIER,
+        reward_days: REFERRAL_REWARD_DAYS, card_label: label,
+        ...(guard.user.role !== 'admin' ? { parent_referral_code: guard.user.referral_reward_code } : {}),
       });
       await sr.entities.AuditLog.create({
         action: 'referral_card_issued', actor_user_id: guard.user.id,
         target_type: 'referral_card', target_id: record.id,
-        status: 'success', detail: 'One Basic referral card issued.',
+        status: 'success', detail: 'One 30-day full-access referral card issued.',
       }).catch(() => null);
       return Response.json({
-        ok: true, card_id: record.id, code, reward_tier: 'basic', reward_days: 30,
+        ok: true, card_id: record.id, code, reward_tier: REFERRAL_REWARD_TIER, reward_days: REFERRAL_REWARD_DAYS,
         url: canonicalOrigin + '/?ref=' + encodeURIComponent(code),
       }, { headers: { 'Cache-Control': 'no-store' } });
     }
