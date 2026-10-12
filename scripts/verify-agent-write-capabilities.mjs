@@ -9,12 +9,13 @@ assert.equal(new Set(names).size,names.length);
 const builder=agents.find(a=>a.name==='admin_builder_agent');
 assert.ok(builder,'missing private admin role');
 assert.equal(builder.allow_anonymous_access,false);
-assert.deepEqual(builder.tool_configs.map(t=>t.function_name),['manageAdminBuilderWork']);
+assert.deepEqual(builder.tool_configs.map(t=>t.function_name).sort(),['manageAdminBuilderWork','managePlatformIncidents'].sort());
 for(const a of agents){
   const funcs=(a.tool_configs||[]).map(t=>t.function_name).filter(Boolean);
   assert.ok(!funcs.includes('applyAgentContentDraft'),a.name+' must not apply drafts');
   if(a.name!=='admin_builder_agent'){
     assert.ok(!funcs.includes('manageAdminBuilderWork'),a.name+' must not access builder');
+    assert.ok(!funcs.includes('managePlatformIncidents'),a.name+' must not approve platform repair plans');
     assert.ok(!(a.selected_skill_names||[]).includes('adminagent'),a.name+' has legacy builder skill');
     assert.ok(funcs.includes('getAgentAccountContext'),a.name+' needs current account view');
   }
