@@ -56,7 +56,7 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your Kickstarter project URL", hint: "Copy the link from your Kickstarter project page." },
-      { id: "totals", label: "Enter your current totals",          hint: "Enter the amount shown on your project. We’ll update it automatically when possible." },
+      { id: "totals", label: "Enter your current totals",          hint: "Enter the amount shown on your project. Press Sync now whenever you want IFund to refresh supported data." },
       { id: "link",   label: "Link to a campaign (optional)",      hint: "Connect these figures to one of your IF campaigns." },
     ],
     api: "Link your project and keep its progress here.",
@@ -71,7 +71,7 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your Indiegogo campaign URL", hint: "Copy the URL from your Indiegogo campaign page." },
-      { id: "totals", label: "Enter your current totals",         hint: "Enter the amount shown on your campaign. We’ll update it automatically when possible." },
+      { id: "totals", label: "Enter your current totals",         hint: "Enter the amount shown on your campaign. Press Sync now whenever you want IFund to refresh supported data." },
       { id: "link",   label: "Link to a campaign (optional)",     hint: "Connect these figures to one of your IF campaigns." },
     ],
     api: "Link your campaign now. We’ll use the best available way to keep it updated.",
@@ -86,7 +86,7 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your FundRazr campaign URL", hint: "Copy the URL from your FundRazr campaign." },
-      { id: "totals", label: "Enter your current totals",        hint: "Enter the amount shown on your campaign. We’ll update it automatically when possible." },
+      { id: "totals", label: "Enter your current totals",        hint: "Enter the amount shown on your campaign. Press Sync now whenever you want IFund to refresh supported data." },
       { id: "link",   label: "Link to a campaign (optional)",    hint: "Connect these figures to one of your IF campaigns." },
     ],
     api: "Link your campaign now. We’ll use the best available way to keep it updated.",
@@ -112,14 +112,14 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ff5e5b",
     icon: "☕",
-    tagline: "Connect Ko-fi so new support can appear here automatically.",
+    tagline: "Connect Ko-fi so confirmed payment webhook events can appear here in real time.",
     setupKind: "token",
     steps: [
       { id: "token",  label: "Enter your Ko-fi connection code", hint: "In Ko-fi settings, copy the connection code shown for outside apps." },
       { id: "webhook",label: "Finish Ko-fi setup",          hint: null }, // hint injected dynamically with the actual URL
       { id: "link",   label: "Link to a campaign (optional)",       hint: "Ko-fi donations will count toward this campaign's total." },
     ],
-    api: "Follow the short setup steps to keep Ko-fi support updated automatically.",
+    api: "Follow the short setup steps for real-time confirmed payment webhook events. This does not enable background balance polling.",
   },
   {
     id: "buymeacoffee",
@@ -127,13 +127,13 @@ export const CROWDFUNDING_PLATFORMS = [
     kind: "crowdfunding",
     color: "#ffdd00",
     icon: "☕",
-    tagline: "Connect Buy Me a Coffee so support can update here automatically.",
+    tagline: "Connect Buy Me a Coffee and refresh supported information when you choose.",
     setupKind: "token",
     steps: [
       { id: "token",  label: "Enter your connection code", hint: "Find the connection code in your Buy Me a Coffee settings." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Donations will roll up into this campaign." },
     ],
-    api: "Connect your account to keep support updated automatically.",
+    api: "Connect your account, then use Sync now for an on-demand refresh where supported.",
   },
   {
     id: "patreon",
@@ -145,7 +145,7 @@ export const CROWDFUNDING_PLATFORMS = [
     setupKind: "link",
     steps: [
       { id: "url",    label: "Paste your Patreon URL", hint: "Copy the link from your Patreon creator page." },
-      { id: "totals", label: "Enter your current totals", hint: "Enter the amount shown on your Patreon. We'll update it automatically when possible." },
+      { id: "totals", label: "Enter your current totals", hint: "Enter the amount shown on your Patreon. Press Sync now whenever you want IFund to refresh supported data." },
       { id: "link",   label: "Link to a campaign (optional)", hint: "Pledge totals will roll up into this campaign." },
     ],
     api: "Link your Patreon and keep its total here.",
