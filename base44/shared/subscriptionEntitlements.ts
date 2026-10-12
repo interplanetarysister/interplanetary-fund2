@@ -27,8 +27,9 @@ export function effectiveSubscription(user: any) {
     !(Date.parse(String(user?.trial_end || '')) > Date.now());
   const recurringActive = status === 'active' || (status === 'trialing' && !trialIsExpired);
   const dayPassActive = Date.parse(String(user?.premium_day_pass_expires_at || '')) > Date.now();
-  const referralActive = Date.parse(String(user?.referral_basic_expires_at || '')) > Date.now() && Boolean(user?.referral_reward_redeemed_at);
-  const tier = recurringActive ? String(user?.subscription_tier || 'free') : dayPassActive || referralActive ? 'basic' : 'free';
+  const rewardExpiresAt = user?.referral_full_expires_at || user?.referral_basic_expires_at;
+  const referralActive = Boolean(user?.referral_reward_redeemed_at) && Date.parse(String(rewardExpiresAt || '')) > Date.now();
+  const tier = referralActive ? TOP_SUBSCRIPTION_TIER : recurringActive ? String(user?.subscription_tier || 'free') : dayPassActive ? 'basic' : 'free';
   return {
     tier,
     level: SUBSCRIPTION_LEVEL[tier] || 0,
