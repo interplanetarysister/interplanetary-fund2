@@ -35,7 +35,7 @@ const node22Only = runFixture((fixture) => {
   }
 });
 assert.notEqual(node22Only.status, 0, "Node-22-only regression must fail");
-assert.match(node22Only.stderr, /Base44 baseline|do not revert to Node-22-only/);
+assert.match(node22Only.stderr, /current Node release|floating Node|pins a Node major/);
 
 const malformedMetadata = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, "package.json"), "{ malformed");

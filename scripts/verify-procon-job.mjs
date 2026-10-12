@@ -29,6 +29,6 @@ assert.doesNotMatch(finalize, /granted_capabilities:\s*cfg\.requestedCapabilitie
 assert.match(card, /disconnectPlatformConnection/);
 assert.doesNotMatch(card, /PlatformConnection\.delete/);
 assert.match(runtime, /const MINIMUM_NODE_MAJOR = 20;/);
-assert.match(runtime, /const TESTED_NODE_MAJORS = \[20, 22\];/);
+assert.doesNotMatch(runtime, /TESTED_NODE_MAJORS/);
 assert.match(runtime, /nodeMajor < MINIMUM_NODE_MAJOR/);
 console.log('Procon connection contract passed against current Base44 app-user connector support.');

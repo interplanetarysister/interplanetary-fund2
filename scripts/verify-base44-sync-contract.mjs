@@ -11,11 +11,11 @@ const nodeVersion = read('.node-version').trim();
 const nvmrc = read('.nvmrc').trim();
 const quality = read('.github/workflows/quality-gates.yml');
 
-assert.equal(nodeVersion, '20', '.node-version must preserve the Base44 Node 20 compatibility baseline');
-assert.equal(nvmrc, '20', '.nvmrc must preserve the Base44 Node 20 compatibility baseline');
+assert.equal(nodeVersion, 'node', '.node-version must follow current Node releases');
+assert.equal(nvmrc, 'node', '.nvmrc must follow current Node releases');
 assert.equal(pkg.engines?.node, '>=20', 'package engine must accept Node 20 and newer while CI retains tested compatibility lanes');
-assert.match(quality, /node-version:\s*20\b/, 'quality gates must retain the Base44 Node 20 compatibility lane');
-assert.match(quality, /node-version:\s*22\b/, 'quality gates must retain the Node 22 release lane');
+assert.match(quality, /node-version:\s*['"]node['"]/, 'quality gates must track current Node releases');
+
 
 function stripJsonComments(source) {
   let output = '';

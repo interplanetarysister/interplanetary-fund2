@@ -166,7 +166,7 @@ assert.match(accountDetail, /UNSPECIFIED/);
 assert.doesNotMatch(actionQueue, /last_error:\s*""/);
 assert.doesNotMatch(actionQueue, /status:\s*"disconnected"/);
 assert.match(runtimeGate, /const MINIMUM_NODE_MAJOR = 20;/);
-assert.match(runtimeGate, /const TESTED_NODE_MAJORS = \[20, 22\];/);
+assert.doesNotMatch(runtimeGate, /TESTED_NODE_MAJORS/);
 assert.match(runtimeGate, /nodeMajor < MINIMUM_NODE_MAJOR/);
 
 assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
