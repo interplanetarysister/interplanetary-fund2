@@ -7,7 +7,6 @@ import BrandLogo from "@/components/brand/BrandLogo";
 import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
-import CryptoDonateOption from "@/components/payments/CryptoDonateOption";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 import QuickActions from "@/components/QuickActions";
 import MobileBottomNav from "@/components/MobileBottomNav";
@@ -114,7 +113,7 @@ export default function Home() {
             <p className="text-sm font-medium text-foreground mb-2">Support Interplanetary Fund itself</p>
             <p className="text-xs text-muted-foreground mb-3">This donation helps operate the platform. It is not credited to any individual campaign.</p>
             <PayPalDonateButton label="Donate to Interplanetary Fund" />
-            <CryptoDonateOption platformSupport />
+            <p className="mt-3 text-sm font-semibold text-foreground">Cryptocurrency donations — Coming soon…</p>
           </div>
         </div>
       </section>
