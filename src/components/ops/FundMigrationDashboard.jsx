@@ -25,13 +25,13 @@ export default function FundMigrationDashboard() {
   const [reconciling, setReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState(null);
 
-  // Migrate Funds reconciles via the SAME centralized syncExternalFunds engine
-  // used by Count My Money, Sync Linked Platforms, and the daily sync.
+  // An admin click launches one bounded, auditable all-campaign observation.
+  // This is not permission for scheduled, agent, or background synchronization.
   const reconcile = async () => {
     setReconciling(true);
     setReconcileResult(null);
     try {
-      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "all", initiator_type: "user" });
+      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "all", initiator_type: "admin", request_id: crypto.randomUUID() });
       setReconcileResult(data);
       const c = await base44.entities.Campaign.list("-raised_amount", 100);
       setCampaigns(c || []);
