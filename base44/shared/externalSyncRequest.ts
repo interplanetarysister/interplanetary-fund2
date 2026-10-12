@@ -45,6 +45,37 @@ export class ExternalSyncRequestError extends Error {
 const time = (value) => new Date(value || 0).getTime();
 const isFinal = (status) => status && status !== 'in_progress';
 
+async function acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now) {
+  const windowStartMs = Math.floor(nowMs / EXTERNAL_SYNC_RATE_WINDOW_MS) * EXTERNAL_SYNC_RATE_WINDOW_MS;
+  const windowKey = `rate:${String(options.jobType)}:${String(options.actorUserId)}:${windowStartMs}`;
+
+  for (let slot = 0; slot < EXTERNAL_SYNC_RATE_LIMIT; slot++) {
+    let result;
+    try {
+      result = await sr.entities.ExternalSyncClaim.upsert([{
+        claim_key: `${windowKey}:${slot}`,
+        claim_type: 'rate_slot',
+        request_key: requestKey,
+        request_id: options.requestId,
+        request_fingerprint: options.fingerprint,
+        job_type: options.jobType,
+        actor_user_id: options.actorUserId,
+        attempt_number: 0,
+        claimed_at: now,
+        rate_window_started_at: new Date(windowStartMs).toISOString(),
+        rate_slot: slot,
+      }], { key: ['claim_key'] });
+    } catch {
+      throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
+    }
+
+    const record = result?.records?.[0] || null;
+    if (Number(result?.created || 0) === 1 || record?.request_key === requestKey) return;
+  }
+
+  throw new ExternalSyncRequestError('rate_limited', 'Too many synchronization requests. Wait a minute and try again.', 429);
+}
+
 export async function beginExternalSyncRequest(sr, options) {
   const nowMs = options.nowMs ?? Date.now();
   const now = new Date(nowMs).toISOString();
@@ -54,12 +85,10 @@ export async function beginExternalSyncRequest(sr, options) {
   // or limiter backend cannot be read, provider I/O must not begin.
   let runs;
   let claims;
-  let recent;
   try {
-    [runs, claims, recent] = await Promise.all([
+    [runs, claims] = await Promise.all([
       sr.entities.SyncRun.filter({ request_key: requestKey }, '-created_date', 5),
       sr.entities.ExternalSyncClaim.filter({ request_key: requestKey }, '-attempt_number', 10),
-      sr.entities.SyncRun.filter({ initiator_user_id: options.actorUserId, job_type: options.jobType }, '-started_at', 50),
     ]);
   } catch {
     throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
@@ -81,13 +110,10 @@ export async function beginExternalSyncRequest(sr, options) {
     return { disposition: 'in_progress', run: existing, requestKey };
   }
 
-  const recentRequestIds = new Set((recent || [])
-    .filter((row) => nowMs - time(row.started_at) < EXTERNAL_SYNC_RATE_WINDOW_MS)
-    .map((row) => row.request_id)
-    .filter(Boolean));
-  if (!recentRequestIds.has(options.requestId) && recentRequestIds.size >= EXTERNAL_SYNC_RATE_LIMIT) {
-    throw new ExternalSyncRequestError('rate_limited', 'Too many synchronization requests. Wait a minute and try again.', 429);
-  }
+  // A deterministic five-slot window turns the limit into an atomic claim.
+  // Concurrent distinct request IDs compete for unique slots before any
+  // provider I/O; retries for the same request reuse their existing slot.
+  await acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now);
 
   const attempt = Math.max(Number(existing?.attempt_number || 0), Number(latestClaim?.attempt_number || 0)) + 1;
   const claimKey = `${requestKey}:${attempt}`;
