@@ -1,6 +1,6 @@
 ---
 name: ifund-content-writes
-description: Authorized, auditable IFund account context and owner-reviewed content drafts for all user-facing agents.
+description: Use when building, reviewing or troubleshooting IFund user-facing agents that read owner-scoped account context or propose social, campaign, blog, discussion, external publishing and profile changes for human approval.
 ---
 
 # IFund account context and content-writing skill
