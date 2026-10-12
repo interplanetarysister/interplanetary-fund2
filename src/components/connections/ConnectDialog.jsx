@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import CredentialFields from "./CredentialFields";
 import { officialProviderSite } from "@/lib/providerOnboardingLinks";
+import { providerAuthorizationDestination } from "@/lib/providerAuthorizationDestination";
 
 const OAUTH_ATTEMPT_BLOCKED_STATES = new Set(["checking", "not_configured", "unsupported"]);
 
@@ -129,11 +130,15 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       if (destination.protocol !== "https:" || destination.username || destination.password) {
         throw new Error("Provider sign-in URL is not secure.");
       }
-      window.location.assign(destination.href);
+      // A successful authorization initiation must point to a permissions
+      // flow, not silently strand the member on the provider homepage.
+      window.location.assign(providerAuthorizationDestination(destination.href, officialProviderSite(platform.id)));
     } catch (e) {
       localStorage.removeItem("ifund_pending_platform_connection");
       console.error("Provider OAuth start failed:", e?.name || "ProviderConnectionError");
-      setError("The provider connection could not start. Try Connect again for a fresh authorization link.");
+      setError(e?.message?.includes("homepage rather than a permissions link")
+        ? `IFund did not receive a ${platform.name} permission request. Your account was not connected. IFund must repair this provider setup.`
+        : "The provider connection could not start. Try Connect again for a fresh authorization link.");
     } finally {
       setConnecting(false);
     }
@@ -217,9 +222,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100vw-1rem)] max-w-lg sm:max-w-md min-w-0 rounded-2xl max-h-[calc(100dvh-1.5rem)] overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y pb-6">
         <DialogHeader>
-          <DialogTitle className="font-display text-xl">{existing ? "Manage" : "Connect"} {platform.name}</DialogTitle>
+          <DialogTitle className="font-display text-xl">{existing ? "Manage" : platform.setupKind === "link" ? "Link a page on" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
-        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform and approve its permissions. No post will be sent." : "Add your link and follow the steps shown."}</p>
+        <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform and approve its permissions. No post will be sent." : platform.setupKind === "link" ? "This links an existing public fundraising page. It does not authorize account access or publishing." : "Follow the official connection steps below."}</p>
         {usesProviderOAuth && (
           <div className="space-y-3 min-w-0">
             <p className="text-sm text-foreground">{connecting ? `Opening ${platform.name} sign-in…` : "One link. Provider sign-in. Back to IFund for verification."}</p>
@@ -300,7 +305,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <p className="font-semibold text-sm text-foreground">IFund connection helper</p>
             <p className="text-xs text-muted-foreground">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
             <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-foreground bg-card whitespace-normal h-auto py-3" disabled={managedBusy || connecting || oauthAttemptBlocked} onClick={startGuidedConnection}>
-              {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ask IFund to connect this account now"}
+              {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : platform.setupKind === "link" ? "Help me link this fundraising page" : "Ask IFund to connect this account now"}
             </Button>
             {helpDetails && <p role="status" className="text-xs text-foreground break-words">{helpDetails}</p>}
           </div>}
