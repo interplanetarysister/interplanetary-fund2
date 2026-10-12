@@ -145,38 +145,6 @@ export default function Connections() {
   };
 
 
-  const refreshStaleOAuthConnections = async (rows) => {
-    const hour = 60 * 60 * 1000;
-    // Authenticated app-user refresh only. Shared/admin connectors and
-    // public-page trackers have separate health paths.
-    const candidates = rows.filter(c => {
-      if (!["connected", "error"].includes(c.status) ||
-          !ALL_PLATFORMS.some(p => p.id === c.platform && p.setupKind === "oauth")) return false;
-      // Error states need a recovery check too. A connection that has already
-      // failed must not be skipped forever merely because it is not green.
-      const lastHealth = [...(c.history || [])].reverse().find(item =>
-        ["health_check", "health_check_failed"].includes(item.event));
-      const lastAttempt = Date.parse(lastHealth?.at || c.last_synced || "");
-      const retryWindow = c.status === "error" ? 30 * 60 * 1000 : hour;
-      return !Number.isFinite(lastAttempt) || Date.now() - lastAttempt >= retryWindow;
-    }).slice(0, 6);
-    if (!candidates.length) return;
-    const checked = await Promise.all(candidates.map(c =>
-      base44.functions.invoke("verifyPlatformConnection", { connection_id: c.id })
-        .then(({ data }) => data?.connection || null).catch(() => null)
-    ));
-    if (!mountedRef.current) return;
-    const updates = new Map(checked.filter(Boolean).map(c => [c.id, c]));
-    if (updates.size) {
-      setConnections(old => old?.map(c => updates.get(c.id) || c) || old);
-      setLifecycleMap(old => {
-        const next = { ...old };
-        for (const id of updates.keys()) delete next[id];
-        return next;
-      });
-    }
-  };
-
   const syncWix = async () => {
     setWixSyncing(true);
     setWixSyncResult(null);
@@ -257,10 +225,10 @@ export default function Connections() {
       // summary, and the resolver all agree on "working". Best-effort: a failed
       // resolve leaves the local heuristic in place.
       resolveLifecycles(nextConnections);
-      // Where the Base44 provider connector supports refresh credentials, the
-      // next owner visit renews the health probe without another password entry.
-      // A revoked provider grant still requires the provider's own sign-in.
-      refreshStaleOAuthConnections(nextConnections).catch(() => {});
+      // No provider probes on page load: this keeps provider API usage
+      // request-triggered and avoids repeated calls that may consume quotas.
+      // New OAuth grants are still checked immediately after authorization.
+      // Saved accounts can be rechecked with their Check connection buttons.
       setError(null);
      } catch (e) {
        console.error("Connections load failed:", e?.name || "UnknownError");
@@ -454,7 +422,12 @@ export default function Connections() {
                 aiAuthorized={aiAuthorized}
                 managedAvailable={managedAvailable}
                 onManagedRepair={() => requestManagedAction({ platform: c.platform, action: "repair", connection: c })}
-                onUpdated={(updated) => setConnections(prev => prev.map(item => item.id === updated.id ? updated : item))}
+                onUpdated={(updated) => {
+                  setConnections(prev => prev.map(item => item.id === updated.id ? updated : item));
+                  base44.functions.invoke("resolveConnectionStatus", { platform: updated.platform, connection_id: updated.id })
+                    .then(({ data }) => { if (data) setLifecycleMap(prev => ({ ...prev, [updated.id]: data })); })
+                    .catch(() => {});
+                }
                 onRemoved={(id, updated) => {
                   setConnections((prev) => updated ? prev.map((x) => x.id === id ? updated : x) : prev.filter((x) => x.id !== id));
                   // After a provider check updates a connection, refresh its
