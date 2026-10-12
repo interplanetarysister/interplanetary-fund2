@@ -21,13 +21,14 @@ export function effectiveSubscription(user) {
     !(Date.parse(String(user?.trial_end || "")) > Date.now());
   const recurringActive = status === "active" || (status === "trialing" && !trialIsExpired);
   const dayPassActive = Date.parse(String(user?.premium_day_pass_expires_at || "")) > Date.now();
-  const active = recurringActive || dayPassActive;
-  const tier = recurringActive ? user?.subscription_tier : dayPassActive ? "basic" : "free";
+  const referralActive = Date.parse(String(user?.referral_basic_expires_at || "")) > Date.now() && Boolean(user?.referral_reward_redeemed_at);
+  const active = recurringActive || dayPassActive || referralActive;
+  const tier = recurringActive ? user?.subscription_tier : dayPassActive || referralActive ? "basic" : "free";
   const plan = getPlan(tier);
   return {
     plan,
     tier: plan.id,
-    status: recurringActive ? status : dayPassActive ? "day_pass" : trialIsExpired ? "expired" : status,
+    status: recurringActive ? status : dayPassActive ? "day_pass" : referralActive ? "referral" : trialIsExpired ? "expired" : status,
     active,
     adminGranted: false,
   };
