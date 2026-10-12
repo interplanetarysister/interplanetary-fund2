@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { providerAuthorizationDestination } from '../src/lib/providerAuthorizationDestination.js';
 
 const read = (p) => fs.readFileSync(new URL('../' + p, import.meta.url), 'utf8');
 const finalize = read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
@@ -10,6 +11,26 @@ const publishHandoff = read('src/components/connections/PublishFromConnections.j
 const publish = read('base44/functions/publishLinkedCampaignToConnection/entry.ts');
 const verify = read('base44/functions/verifyPlatformConnection/entry.ts');
 const readiness = read('base44/functions/getAppUserConnector/entry.ts');
+
+// OAuth sign-in must NEVER be replaced with a provider homepage, even if an
+// SDK incorrectly returns a successful-looking HTTPS link.
+assert.equal(
+  providerAuthorizationDestination('https://www.eventbrite.com/oauth/authorize?client_id=example', 'https://www.eventbrite.com/'),
+  'https://www.eventbrite.com/oauth/authorize?client_id=example'
+);
+assert.throws(
+  () => providerAuthorizationDestination('https://www.eventbrite.com/', 'https://www.eventbrite.com/'),
+  /homepage rather than a permissions link/
+);
+assert.throws(
+  () => providerAuthorizationDestination('https://eventbrite.com/', 'https://www.eventbrite.com/'),
+  /homepage rather than a permissions link/
+);
+assert.throws(() => providerAuthorizationDestination('http://example.com/auth'), /insecure link/);
+assert.throws(() => providerAuthorizationDestination('https://user:pass@example.com/auth'), /insecure link/);
+assert.throws(() => providerAuthorizationDestination('javascript:alert(1)'), /insecure link/);
+assert.match(connect, /providerAuthorizationDestination\(destination\.href, officialProviderSite\(platform\.id\)\)/);
+assert.match(connect, /This links an existing public fundraising page\. It does not authorize account access or publishing/);
 
 assert.match(connect, /localStorage\.setItem\("ifund_pending_platform_connection"/);
 assert.ok(
