@@ -51,7 +51,8 @@ const args={jobType:'external_funds',actorUserId:'u1',requestId:UUID,fingerprint
 const concurrent=fakeService();
 const [first,second]=await Promise.all([beginExternalSyncRequest(concurrent.sr,args),beginExternalSyncRequest(concurrent.sr,args)]);
 assert.deepEqual([first.disposition,second.disposition].sort(),['acquired','in_progress']);
-assert.equal(concurrent.claims.length,1,'concurrent retry has one atomic claim');
+assert.equal(concurrent.claims.filter((row)=>row.claim_type==='request_attempt').length,1,'concurrent retry has one atomic request claim');
+assert.equal(concurrent.claims.filter((row)=>row.claim_type==='rate_slot').length,1,'concurrent retry reuses one atomic rate slot');
 assert.equal(concurrent.runs.length,1,'concurrent retry has one run');
 
 await finishExternalSyncRequest(concurrent.sr,first.disposition==='acquired'?first.run:second.run,first.disposition==='acquired'?first.claimKey:second.claimKey,{overall_status:'success',result_payload:{ok:true}});
@@ -68,8 +69,29 @@ assert.match(recovered.claimKey,/:2$/);
 
 await assert.rejects(()=>beginExternalSyncRequest(fakeService({failReads:true}).sr,args),(error)=>error.code==='backend_unavailable'&&error.status===503);
 
-const limitedRuns=Array.from({length:5},(_,index)=>({id:`r${index}`,request_key:`external_funds:u1:old${index}`,request_id:`old${index}`,job_type:'external_funds',initiator_user_id:'u1',started_at:new Date(args.nowMs-index).toISOString(),overall_status:'success'}));
-await assert.rejects(()=>beginExternalSyncRequest(fakeService({runs:limitedRuns}).sr,{...args,requestId:UUID2}),(error)=>error.code==='rate_limited'&&error.status===429);
+const windowStart=Math.floor(args.nowMs/60000)*60000;
+const limitedClaims=Array.from({length:5},(_,index)=>({
+  claim_key:`rate:external_funds:u1:${windowStart}:${index}`,
+  claim_type:'rate_slot',
+  request_key:`external_funds:u1:old${index}`,
+  request_id:`old${index}`,
+  job_type:'external_funds',
+  actor_user_id:'u1',
+  attempt_number:0,
+  claimed_at:new Date(args.nowMs).toISOString(),
+  rate_window_started_at:new Date(windowStart).toISOString(),
+  rate_slot:index,
+}));
+await assert.rejects(()=>beginExternalSyncRequest(fakeService({claims:limitedClaims}).sr,{...args,requestId:UUID2}),(error)=>error.code==='rate_limited'&&error.status===429);
+
+const burst=fakeService();
+const burstIds=Array.from({length:6},(_,index)=>`00000000-0000-4000-8000-${String(index+1).padStart(12,'0')}`);
+const burstResults=await Promise.allSettled(burstIds.map((requestId)=>
+  beginExternalSyncRequest(burst.sr,{...args,requestId,fingerprint:`burst-${requestId}`})));
+assert.equal(burstResults.filter((result)=>result.status==='fulfilled'&&result.value.disposition==='acquired').length,5,'five concurrent distinct requests acquire bounded jobs');
+assert.equal(burstResults.filter((result)=>result.status==='rejected'&&result.reason?.code==='rate_limited'&&result.reason?.status===429).length,1,'sixth concurrent distinct request is atomically rate limited');
+assert.equal(burst.runs.length,5,'atomic limiter creates only five runs');
+assert.equal(burst.claims.filter((row)=>row.claim_type==='rate_slot').length,5,'atomic limiter creates only five rate slots');
 
 const paths=fakeService();
 const imported=await beginExternalSyncRequest(paths.sr,{...args,jobType:'campaign_import'});
