@@ -7,10 +7,27 @@ const finalize = read('base44/functions/finalizeAppUserOAuthConnection/entry.ts'
 const compatibility = read('base44/functions/completeOAuthConnection/entry.ts');
 const connect = read('src/components/connections/ConnectDialog.jsx');
 const page = read('src/pages/Connections.jsx');
+const connectionCard = read('src/components/connections/ConnectionCard.jsx');
 const publishHandoff = read('src/components/connections/PublishFromConnections.jsx');
 const publish = read('base44/functions/publishLinkedCampaignToConnection/entry.ts');
 const verify = read('base44/functions/verifyPlatformConnection/entry.ts');
 const readiness = read('base44/functions/getAppUserConnector/entry.ts');
+const packageJson = JSON.parse(read('package.json'));
+
+// $0 additional operating cost: no extra hosted OAuth vendor, no silent
+// page-load provider check, and no extra dependencies for verification.
+assert.equal(
+  Object.keys({...packageJson.dependencies, ...packageJson.devDependencies})
+    .some(name => /nango/i.test(name)), false,
+  'the production app must not depend on an unconfigured integration subscription'
+);
+assert.doesNotMatch(page, /refreshStaleOAuthConnections/);
+assert.match(connectionCard, /onClick=\{checkConnection\}/);
+assert.match(connectionCard, /base44\.functions\.invoke\("verifyPlatformConnection"/);
+assert.match(connectionCard, /Check connection/);
+assert.match(connectionCard, /Check page/);
+assert.match(page, /onUpdated=\{\(updated\) => \{/);
+
 
 // OAuth sign-in must NEVER be replaced with a provider homepage, even if an
 // SDK incorrectly returns a successful-looking HTTPS link.
