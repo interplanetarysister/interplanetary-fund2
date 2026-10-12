@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, LockKeyhole, Send } from "lucide-react";
 import { createAdminAgentSession, sendAdminAgentMessage, adminGatewayMode } from "@/lib/adminAgentGateway";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
+import PlatformFixReviewPanel from "@/components/agents/PlatformFixReviewPanel";
 
 const adminErrorMessage = (error) => {
   const message = String(error?.message || "");
@@ -67,7 +68,8 @@ export default function AdminDevelopmentChat({ user }) {
     {error && <p className="text-sm text-destructive">{error}</p>}
   </div>;
 
-  return <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+  return <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
+    <PlatformFixReviewPanel />
     <div className="flex flex-wrap gap-2">{DEVELOPMENT_AGENTS.map(([id,label])=><Button key={id} size="sm" variant={agent===id?"default":"outline"} onClick={()=>setAgent(id)}>{label}</Button>)}</div>
     <div className="max-h-[40dvh] min-h-12 overflow-y-auto overscroll-contain touch-pan-y space-y-2">{messages.map((m,i)=><div key={i} className={m.role==="user"?"text-right":"text-left"}><span className="inline-block max-w-[90%] rounded-xl border border-border px-3 py-2 text-sm whitespace-pre-wrap">{m.content}</span></div>)}</div>
     {error && <p className="text-sm text-destructive">{error}</p>}
