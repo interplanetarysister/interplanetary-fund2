@@ -17,6 +17,22 @@ export function loadGooglePayScript() {
   return gpayPromise;
 }
 
+let applePayPromise = null;
+// PayPal's v5 Apple Pay component uses Apple's browser session + button SDK.
+export function loadApplePayScript() {
+  if (applePayPromise) return applePayPromise;
+  applePayPromise = new Promise((resolve, reject) => {
+    if (window.customElements?.get("apple-pay-button")) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://applepay.cdn-apple.com/jsapi/1.latest/apple-pay-sdk.js";
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => { applePayPromise = null; reject(new Error("Apple Pay SDK unavailable")); };
+    document.head.appendChild(s);
+  });
+  return applePayPromise;
+}
+
 let ppPromise = null;
 let ppClientId = null;
 export function loadPayPalSdk(clientId) {
