@@ -1,5 +1,5 @@
-// Use one consistent PayPal JavaScript SDK version for PayPal Buttons and Google Pay.
-// Both integrations below use v5: paypal.Buttons() and paypal.Googlepay().
+// Use one consistent PayPal JavaScript SDK version for PayPal Buttons, Google Pay, and Apple Pay.
+// All integrations below use v5: paypal.Buttons(), paypal.Googlepay(), and paypal.Applepay().
 // Never mix this script with the v6 createInstance() interface.
 
 let gpayPromise = null;
@@ -30,7 +30,7 @@ export function loadPayPalSdk(clientId) {
     // Google Pay may be ineligible for this merchant; PayPal Buttons must still work.
     if (window.paypal?.Buttons) return resolve();
     const script = document.createElement("script");
-    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay&intent=capture&currency=USD`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay,applepay&intent=capture&currency=USD`;
     script.async = true;
     script.onload = () => {
       if (window.paypal?.Buttons) resolve();
