@@ -20,7 +20,7 @@ import { LifeBuoy, ArrowUpRight } from "lucide-react";
 
 const PAGE_TITLES = {
   "/dashboard": "Overview", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
-  "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Agents",
+  "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Team",
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
@@ -74,7 +74,7 @@ const navSections = [
     label: "Intelligence",
     items: [
       { to: "/mission", label: "Mission Control", icon: Sparkles },
-      { to: "/agents", label: "AI Agents", icon: Bot },
+      { to: "/agents", label: "AI Team", icon: Bot },
       { to: "/ops", label: "Ops Center", icon: Satellite },
       { to: "/analytics", label: "Command Center", icon: BarChart3 },
       { to: "/connect", label: "Admin connection setup", icon: Plug },
@@ -108,7 +108,7 @@ const publicNavItems = [
 ];
 
 const bottomNavItems = [
-  { to: "/agents", label: "AI Chat", icon: Bot },
+  { to: "/agents", label: "AI Team", icon: Bot },
   { to: "/profile", label: "Profile", icon: User },
   { to: "/social", label: "IFund Social", icon: Radio },
   { to: "/community", label: "Forums", icon: Users },
