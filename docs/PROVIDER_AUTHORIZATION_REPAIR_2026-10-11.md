@@ -1,6 +1,6 @@
 # IFund provider authorization: routing repair and Nango evaluation
 
-Status: **UI redirect guard applied. Production OAuth across every provider is not yet verified.**
+Status: **UI redirect guard applied. Production OAuth across every provider is not yet verified. No added operating cost permitted.**
 Owner-facing behavior: Connecting an external account must open that provider's real authorization/permissions flow, then return to IFund to verify the user's actual grant. A public provider website is not an authorization route.
 
 ## Current architecture and findings
@@ -13,13 +13,15 @@ Owner-facing behavior: Connecting an external account must open that provider's 
 - Frontend now rejects a bare provider homepage returned as the OAuth authorization URL. Failure is shown in IFund without creating a false connection.
 - Existing account records, user permissions, hosting, and provider tokens are unchanged.
 
-## Nango verdict
+## No-added-cost decision (2026-10-11)
 
-Nango is a possible **separate user-account authorization adapter**, not a universal pass that grants provider posting access. It manages connect sessions, token handling, refresh and connection callbacks, but still requires an IFund-owned developer app, legitimate provider approval and exact scopes per service. Do not swap all working Base44 connectors to Nango merely to use another vendor.
+**Keep existing Base44 per-app-user OAuth. Do not add Nango or any other extra hosted integration service to production.** The current official Nango Free plan is $0 but hard capped at **10 active connections**, **10 hours execution per month**, and **10 GB transfer per month** (https://nango.dev/pricing, verified 2026-10-11). Even without charges at the cap, this would stop working as IFund grows and is unsuitable as the default multi-user auth layer. Pay-as-you-go starts at $50/month. Free self-hosting would require hosting Postgres/processes and operational maintenance, so cannot be called zero-cost on this architecture.
 
-Adopt incrementally only after a real pilot passes. Nango sign-up: https://app.nango.dev/signup ; guide: https://docs.nango.dev/guides/auth/auth-guide .
+A future optional Nango pilot requires a new explicit assessment of its limits and spend and must remain disabled unless it can be proven to add **zero** incremental hosting, traffic, metered API, provider, seat, or operational fees. **No account, subscription, integration credentials, infrastructure, or paid plan should be created as a side effect of this repair.** Existing Base44 features can still consume the app's current plan usage/credits; $0 incremental spend does not mean unlimited provider calls.
 
-**Required pilot steps (not yet configured):**
+For current work, prioritize registering provider-owned OAuth applications in Base44 Workspace Settings and validating each existing app-user connector ID, redirect URL, and scopes. Connecting users requires genuine provider consent and permissions, not IFund's already-connected shared/business account. Do not alter the current hosting or account credentials.
+
+**Future optional adapter pilot only (not authorized for production):**
 
 1. Select one provider with supported, approved OAuth authorization and a read-only verification API. Compare its requirements with the existing Base44 app-user connector and choose Nango only if it fixes a real gap.
 2. Create the provider's OAuth developer app under the IFund business account. Set the exact callback supplied by Nango. Use provider-approved permissions for the specific requested capability; do not ask for nonexistent or excessive scopes.
