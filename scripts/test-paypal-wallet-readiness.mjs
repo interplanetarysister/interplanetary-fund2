@@ -15,11 +15,11 @@ const capabilities = read("base44/functions/getPaymentCapabilities/entry.ts");
 const sdk = read("src/components/payments/paypalScripts.js");
 const wallet = read("src/components/payments/GooglePayButton.jsx");
 
-for (const channel of ["paypal", "googlepay"]) {
+for (const channel of ["paypal", "googlepay", "applepay"]) {
   for (const optIn of [true, false]) {
     for (const charged of [1, 2, 25, 50, 100, 250]) {
       const b = computePayPalBreakdown(charged, optIn, channel);
-      const expected = channel === "googlepay"
+      const expected = ["googlepay", "applepay"].includes(channel)
         ? computePayPalWalletProcessingFee(charged)
         : computePayPalProcessingFee(charged);
       assert.equal(b.totalCharged, charged);
@@ -108,7 +108,7 @@ assert.match(create, /validateDonationAmount\(amount\)/);
 assert.doesNotMatch(create, /validateDonationAmount\(value\)/);
 assert.match(paypal, /isLivePayPalRestReady\(\)/);
 assert.match(capabilities, /isLivePayPalRestReady\(\)/);
-assert.match(sdk, /components=buttons,googlepay&/);
+assert.match(sdk, /components=buttons,googlepay,applepay&/);
 assert.match(sdk, /window\.paypal\?\.Buttons/);
 assert.match(wallet, /paypal\.Googlepay\(\)/);
 assert.match(wallet, /result\?\.ok !== true/);
