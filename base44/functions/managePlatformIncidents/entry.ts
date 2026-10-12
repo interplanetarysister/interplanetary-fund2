@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { logAudit } from '../../shared/auditLog.ts';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
+import { builderConfiguration, submitApprovedBuilderTurn } from '../../shared/approvedBuilderBridge.ts';
 
 // Frontend reports are untrusted evidence, NOT instructions for an agent.
 // Reporting is also available on login/public pages. Every privileged mode
@@ -29,7 +30,10 @@ const publicIncident=(p:any)=>({
   status:p.status,analysis:p.analysis,systemic_scope:p.systemic_scope,repair_plan:p.repair_plan,
   verification_plan:p.verification_plan,rollback_plan:p.rollback_plan,approval_note:p.approval_note,
   approved_at:p.approved_at,builder_task_id:p.builder_task_id,
-  dispatch_error:p.dispatch_error,verification_evidence:p.verification_evidence
+  dispatch_error:p.dispatch_error,verification_evidence:p.verification_evidence,
+  builder_execution_state:p.builder_execution_state,builder_request_ref:p.builder_request_ref,
+  builder_provider_phase:p.builder_provider_phase,builder_last_checked_at:p.builder_last_checked_at,
+  builder_review_evidence:p.builder_review_evidence,builder_release_approval_at:p.builder_release_approval_at
 });
 const sha=async(t:string)=>{
  const bytes=new TextEncoder().encode(t);
@@ -133,22 +137,41 @@ export default async function(req:Request){
       approval_note:clean(body.note,500),builder_task_id:task.id,dispatch_error:''
     });
     await logAudit(base44,{action:'platform_fix_plan_approved',actor_user_id:user.id,target_type:'PlatformIncident',target_id:id,detail:'Builder task '+task.id,status:'success'});
-    // Dispatch to native agent runtime, not a browser or unapproved external API.
-    // The present admin_builder_agent can triage and queue; code writing needs
-    // a separately authorized executor. A conversation is NOT deployment.
+    // This branch calls the *real* Base44 app builder, not an IFund chat bot.
+    // Source edits are metered: the zero-credit policy defaults to blocked.
+    const config=builderConfiguration();
+    if(!config.enabled){
+      const state=config.configured?'blocked_credits':'blocked_config';
+      await sr.entities.PlatformIncident.update(id,{
+        status:'approved_queued',builder_execution_state:state,
+        dispatch_error:config.configured?'Builder credits are disabled.':'Backend-only Base44 builder credentials are not configured.'
+      });
+      return Response.json({ok:true,task_id:task.id,dispatched:false,implemented:false,execution_state:state});
+    }
+    await sr.entities.PlatformIncident.update(id,{builder_execution_state:'submitting',builder_attempts:1});
     try{
-      const conversation=await base44.agents.createConversation({
-        agent_name:'admin_builder_agent',metadata:{name:'Approved platform repair',source:'platform_incident_audit',incident_id:id,task_id:task.id}
+      const sent=await submitApprovedBuilderTurn({...incident,id},task.id);
+      await sr.entities.PlatformIncident.update(id,{
+        status:'builder_dispatched',builder_execution_state:'submitted',
+        builder_request_ref:sent.request_ref,dispatch_error:'',
       });
-      await base44.agents.addMessage(conversation,{role:'user',
-        content:'An authorized super-admin approved incident '+id+' and task '+task.id+'. Review the approved platform-wide plan in the task context. Do not queue duplicates or claim code was changed unless independently verified. Plan: '+String(incident.repair_plan).slice(0,1800)
+      await sr.entities.AgentDelegation.update(task.id,{
+        status:'in_progress',result_summary:'Authorized Base44 builder turn accepted; await code/test review.',
+        updated_at:new Date().toISOString()
       });
-      await sr.entities.AgentDelegation.update(task.id,{status:'assigned',result_summary:'Builder conversation dispatched; awaiting actual implementation evidence.',updated_at:new Date().toISOString()});
-      await sr.entities.PlatformIncident.update(id,{status:'builder_dispatched',builder_conversation_id:conversation.id});
-      return Response.json({ok:true,task_id:task.id,dispatched:true,implemented:false});
-    }catch{
-      await sr.entities.PlatformIncident.update(id,{dispatch_error:'Builder conversation could not start; task remains queued.'});
-      return Response.json({ok:true,task_id:task.id,dispatched:false,implemented:false});
+      await logAudit(base44,{action:'approved_builder_turn_submitted',actor_user_id:user.id,
+        target_type:'PlatformIncident',target_id:id,status:'success'});
+      return Response.json({ok:true,task_id:task.id,dispatched:true,implemented:false,execution_state:'submitted'});
+    }catch(error){
+      const reason=error instanceof Error?error.message:'builder_unknown_failure';
+      const uncertain=!/^builder_(configuration_missing|credits_disabled|authorization_failed|workspace_access_denied|credits_or_rate_limited|provider_unavailable|request_rejected)$/.test(reason);
+      const state=uncertain?'failed_uncertain':'failed';
+      await sr.entities.PlatformIncident.update(id,{
+        status:'approved_queued',builder_execution_state:state,
+        dispatch_error:reason.slice(0,180)
+      });
+      return Response.json({ok:true,task_id:task.id,dispatched:false,
+        implemented:false,execution_state:state,reason:reason.slice(0,180)});
     }
   }catch(error){
     console.error('managePlatformIncidents:',error instanceof Error?error.name:'Error');
