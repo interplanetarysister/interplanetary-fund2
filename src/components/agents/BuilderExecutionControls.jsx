@@ -73,10 +73,10 @@ export default function BuilderExecutionControls({ incident, readiness, onRefres
       <p className="text-sm text-muted-foreground">Reviewed revision and tests: {incident.builder_review_evidence || "Saved in the incident record"}.</p>
       <label className="flex items-start gap-2 text-sm text-foreground">
         <input type="checkbox" checked={confirmedRelease} onChange={e=>setConfirmedRelease(e.target.checked)} className="mt-1"/>
-        I approve publishing the inspected IFund revision after reviewing the actual source, tests, and rollback plan.
+        I reviewed the full current IFund app state, including any other pending changes, and approve publishing it after checking the source, tests, and rollback plan.
       </label>
       <button type="button" disabled={!!busy || !confirmedRelease || !readiness?.can_start || !readiness?.release_enabled}
-        onClick={()=>run("release",{confirm_release:true})}
+        onClick={()=>run("release",{confirm_release:true,confirm_entire_current_app:true})}
         className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm text-foreground disabled:opacity-50">
         <Send className="h-4 w-4"/>Approve Base44 release
       </button>
