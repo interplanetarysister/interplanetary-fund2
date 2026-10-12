@@ -6,11 +6,20 @@
       "type": "string",
       "enum": [
         "user",
+        "admin",
         "agent",
         "workflow",
         "scheduled"
       ],
       "description": "What triggered the synchronization run."
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Client-generated UUID for one explicit authenticated request. Legacy rows may omit it."
+    },
+    "request_fingerprint": {
+      "type": "string",
+      "description": "Server-derived scope fingerprint used to reject request-id reuse across targets."
     },
     "initiator_id": {
       "type": "string",
@@ -50,7 +59,8 @@
         "partial",
         "failed",
         "unavailable",
-        "no_connections"
+        "no_connections",
+        "in_progress"
       ]
     },
     "provider_results": {
