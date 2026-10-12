@@ -6,6 +6,7 @@ import PullToRefresh from "@/components/mobile/PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { contextualNotificationDestination } from "@/lib/actionDestinations";
 import { isAndroidApp, getCrashReporting, setCrashReporting, hasLocalPushRegistration, enableAndroidPush, disableAndroidPush } from "@/lib/androidFirebaseFeatures";
+import { hasWebDiagnosticsConsent, setWebDiagnosticsConsent } from "@/lib/firebaseWebFeatures";
 
 export default function Notifications() {
   const navigate = useNavigate();
@@ -18,6 +19,8 @@ export default function Notifications() {
   const [crashEnabled, setCrashEnabled] = useState(false);
   const [nativeBusy, setNativeBusy] = useState("");
   const [nativeError, setNativeError] = useState("");
+  const [webDiagnosticsAllowed, setWebDiagnosticsAllowed] = useState(() => hasWebDiagnosticsConsent());
+  const [webDiagnosticsError, setWebDiagnosticsError] = useState("");
 
   const load = async () => {
     const generation = ++requestGeneration.current;
@@ -84,6 +87,16 @@ export default function Notifications() {
     } finally { setNativeBusy(""); }
   };
 
+  const toggleWebDiagnostics = () => {
+    const next = !webDiagnosticsAllowed;
+    if (!setWebDiagnosticsConsent(next)) {
+      setWebDiagnosticsError("Could not save this browser preference.");
+      return;
+    }
+    setWebDiagnosticsAllowed(next);
+    setWebDiagnosticsError("");
+  };
+
   const markAllRead = async () => {
     if (!user) return;
     try {
@@ -148,6 +161,21 @@ export default function Notifications() {
               {nativeBusy === "crash" ? "Saving…" : crashEnabled ? "Turn off" : "Turn on"}
             </Button>
           </div>
+        </section>
+      )}
+
+      {!isAndroidApp && (
+        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5" aria-label="Optional web diagnostics">
+          <h2 className="font-semibold text-slate-900">Optional web diagnostics</h2>
+          <p className="mt-1 text-sm text-slate-700">Help us find slow pages and understand general site use. This shares technical website activity with Google Firebase, including page and network performance information. It never replaces your IFund login or payment records. Off unless you allow it.</p>
+          {webDiagnosticsError && <p className="mt-2 text-sm text-red-700" role="alert">{webDiagnosticsError}</p>}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-medium text-slate-800">Analytics and speed monitoring: {webDiagnosticsAllowed ? "Allowed" : "Off"}</p>
+            <Button type="button" variant="outline" onClick={toggleWebDiagnostics} aria-pressed={webDiagnosticsAllowed}>
+              {webDiagnosticsAllowed ? "Turn off" : "Allow"}
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-slate-600">This browser-only choice can be changed at any time. It does not enable advertising personalization or collect custom donation details.</p>
         </section>
       )}
 
