@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+import { reportFrontendError } from "@/lib/platformErrorReporter";
 
 // Reusable error + retry card for failed data fetches. Mount inside a page
 // when its async load rejects, with an onRetry that clears the error and
 // re-triggers the fetch.
 export default function PageError({ message, onRetry }) {
+  useEffect(()=>{reportFrontendError({source:"page_error",kind:"page_load",summary:"A page data operation failed"});},[]);
   return (
     <div className="max-w-md mx-auto px-4 py-16 text-center">
       <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
