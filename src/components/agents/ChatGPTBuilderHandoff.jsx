@@ -60,7 +60,7 @@ export default function ChatGPTBuilderHandoff() {
     } finally { setBusy(""); }
   };
 
-  const useExisting = (id) => {
+  const selectExistingTask = (id) => {
     const selected = tasks.find(x=>x.id===id);
     setTask(selected || null); setCopied(false); setNotice("");
     if(selected && (hasSecrets(selected.objective) || hasSecrets(selected.context_summary))){
@@ -126,7 +126,7 @@ export default function ChatGPTBuilderHandoff() {
     {tasks.length>0 && <label className="block text-sm font-medium text-foreground">
       Resume a saved builder task
       <select className="mt-1 min-h-11 w-full min-w-0 rounded-lg border border-border bg-background px-3 text-foreground"
-        value={task?.id || ""} onChange={e=>useExisting(e.target.value)}>
+        value={task?.id || ""} onChange={e=>selectExistingTask(e.target.value)}>
         <option value="">Choose an existing task</option>
         {tasks.map(t=><option key={t.id} value={t.id}>
           {t.objective.slice(0,70)} ({t.status || "requested"})
