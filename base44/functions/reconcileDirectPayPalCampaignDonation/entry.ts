@@ -32,7 +32,7 @@ function allocationIsComplete(allocation) {
   const campaignId = String(op.campaign_id || '');
   const transactionId = String(op.provider_transaction_id || '');
   const channel = String(op.payment_channel || '');
-  return !!canonicalId && !!campaignId && !!transactionId && ['paypal', 'googlepay'].includes(channel) &&
+  return !!canonicalId && !!campaignId && !!transactionId && ['paypal', 'googlepay', 'applepay'].includes(channel) &&
     op.operation_type === 'donation' && op.state === 'applied' && op.provider === 'paypal' &&
     donation.payment_verified === true && donation.campaign_id === campaignId && donation.provider_transaction_id === transactionId &&
     donation.payment_method === channel && String(donation.canonical_operation_id || '') === canonicalId &&
@@ -128,7 +128,7 @@ export default async function(req) {
     if (existingRows.length && paymentMethods.size === 0) {
       return Response.json({ error: 'Existing local allocation is missing its PayPal payment channel and requires manual review.' }, { status: 409 });
     }
-    if ([...paymentMethods].some((method) => !['paypal', 'googlepay'].includes(method)) || paymentMethods.size > 1) {
+    if ([...paymentMethods].some((method) => !['paypal', 'googlepay', 'applepay'].includes(method)) || paymentMethods.size > 1) {
       return Response.json({ error: 'Existing local records disagree on the PayPal payment channel.' }, { status: 409 });
     }
     const paymentMethod = [...paymentMethods][0] || 'paypal';
