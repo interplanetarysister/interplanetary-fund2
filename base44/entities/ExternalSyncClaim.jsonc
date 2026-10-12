@@ -5,7 +5,22 @@
   "properties": {
     "claim_key": {
       "type": "string",
-      "description": "Unique request key plus attempt number; used as the atomic upsert key."
+      "description": "Unique request-attempt key or deterministic per-window rate-slot key; used as the atomic upsert key."
+    },
+    "claim_type": {
+      "type": "string",
+      "enum": [
+        "request_attempt",
+        "rate_slot"
+      ],
+      "description": "Optional for legacy rows; distinguishes request execution claims from atomic rate-limit slots."
+    },
+    "rate_window_started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rate_slot": {
+      "type": "number"
     },
     "request_key": {
       "type": "string"
