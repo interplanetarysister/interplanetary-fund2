@@ -61,13 +61,18 @@ hosted evidence:
 
 ## External Fund Sync
 
-**Capability:** Synchronize supported external fundraising evidence into
-Base44 without treating owner-entered totals as verified or withdrawable funds.
+**Policy:** External fundraising reads are request-triggered only. An
+authenticated owner presses **Sync now** for their accounts/campaigns, or an
+authorized admin submits one explicitly scoped request. Each request has a
+UUID, a bounded job, ownership checks, deduplication, rate limiting,
+provenance, and an auditable result.
 
-The existing External Fund Sync workflow and `syncExternalFunds` function are
-separate from the deferred GitHub workflow. Their provider adapters must remain
-fail-closed when authentication, provider evidence, ownership, or rate-limit
-safety is unavailable.
+The scheduled External Fund Sync workflow was removed. Do not restore cron,
+polling, login/page-load triggers, agent-proactive imports, or workflow-driven
+repetition. `poll_support` is provider research metadata, not runtime
+authorization. Confirmed donation/payment webhooks, payment confirmations,
+ledger updates, security events, and necessary settlement reconciliation remain
+automatic and separate because they preserve financial integrity.
 
 ---
 
