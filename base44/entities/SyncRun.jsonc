@@ -2,6 +2,20 @@
   "name": "SyncRun",
   "type": "object",
   "properties": {
+    "request_key": {
+      "type": "string",
+      "description": "Server-derived job, actor, and request UUID identity. Legacy rows may omit it."
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "external_funds",
+        "campaign_discovery",
+        "campaign_import",
+        "imported_campaign_refresh"
+      ],
+      "description": "Bounded explicit external-provider operation represented by this run."
+    },
     "initiator_type": {
       "type": "string",
       "enum": [
@@ -43,6 +57,18 @@
     },
     "campaign_id": {
       "type": "string"
+    },
+    "attempt_number": {
+      "type": "number",
+      "description": "Monotonic stale-recovery attempt for this request key."
+    },
+    "active_claim_key": {
+      "type": "string",
+      "description": "Immutable claim allowed to finalize the current attempt."
+    },
+    "result_payload": {
+      "type": "object",
+      "description": "Safe response payload retained so a completed request UUID can be replayed without provider I/O."
     },
     "started_at": {
       "type": "string",
