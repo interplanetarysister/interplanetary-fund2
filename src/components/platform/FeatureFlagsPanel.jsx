@@ -12,7 +12,7 @@ import { Loader2, Plus } from "lucide-react";
 // certify a live external provider, payout route or AI execution capability.
 const WIRED_FLAGS = new Set([
   "public_campaign_fundraising", "payment_checkout_enabled",
-  "paypal_checkout", "google_pay_checkout",
+  "paypal_checkout", "google_pay_checkout", "apple_pay_checkout",
   "recurring_donations", "subscription_checkout",
   "outbound_payout_execution", "ai_campaign_assistant",
   "ai_outreach_agent", "social_autopilot", "cross_platform_publishing",
@@ -27,7 +27,7 @@ const ALWAYS_AVAILABLE = new Set([
 ]);
 const NEEDS_EXTERNAL_VERIFICATION = new Set([
   "public_campaign_fundraising", "payment_checkout_enabled",
-  "paypal_checkout", "google_pay_checkout",
+  "paypal_checkout", "google_pay_checkout", "apple_pay_checkout",
   "recurring_donations", "subscription_checkout",
   "outbound_payout_execution", "ai_campaign_assistant",
   "ai_outreach_agent", "social_autopilot", "cross_platform_publishing",
