@@ -121,6 +121,7 @@ export async function beginExternalSyncRequest(sr, options) {
   try {
     claimResult = await sr.entities.ExternalSyncClaim.upsert([{
       claim_key: claimKey,
+      claim_type: 'request_attempt',
       request_key: requestKey,
       request_id: options.requestId,
       request_fingerprint: options.fingerprint,
