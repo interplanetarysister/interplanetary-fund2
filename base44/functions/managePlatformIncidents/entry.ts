@@ -95,7 +95,7 @@ export default async function(req:Request){
     const incident=await sr.entities.PlatformIncident.get(id).catch(()=>null);
     if(!incident)return Response.json({error:'Incident unavailable'},{status:404});
     if(mode==='save_plan'){
-      if(['approved_queued','builder_dispatched','verified_fixed'].includes(incident.status))
+      if(['approved_queued','builder_dispatched','implementation_pending','verified_fixed'].includes(incident.status))
         return Response.json({error:'This plan is already approved and cannot be silently changed'},{status:409});
       const patch={
         analysis:clean(body.analysis,1600),systemic_scope:clean(body.systemic_scope,1600),
@@ -164,7 +164,7 @@ export default async function(req:Request){
       return Response.json({ok:true,task_id:task.id,dispatched:true,implemented:false,execution_state:'submitted'});
     }catch(error){
       const reason=error instanceof Error?error.message:'builder_unknown_failure';
-      const uncertain=!/^builder_(configuration_missing|credits_disabled|authorization_failed|workspace_access_denied|credits_or_rate_limited|provider_unavailable|request_rejected)$/.test(reason);
+      const uncertain=!/^builder_(configuration_missing|credits_disabled|authorization_failed|workspace_access_denied|credits_or_rate_limited|request_rejected)$/.test(reason);
       const state=uncertain?'failed_uncertain':'failed';
       await sr.entities.PlatformIncident.update(id,{
         status:'approved_queued',builder_execution_state:state,
