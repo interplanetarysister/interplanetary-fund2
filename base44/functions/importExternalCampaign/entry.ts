@@ -50,7 +50,7 @@ export default async function(req) {
     const imported = await base44.entities.ExternalCampaignImport.create({
       owner_user_id: user.id, connection_id: connection.id, platform: connection.platform,
       external_campaign_id: String(body.external_campaign_id || ''), external_url: snapshot.source_url,
-      campaign_id: campaign.id, sync_enabled: body.sync_enabled !== false,
+      campaign_id: campaign.id, sync_enabled: false,
       last_imported_at: new Date().toISOString(), field_provenance: provenance, locally_locked_fields: [], status: 'imported'
     });
     // Converge: concurrent import calls for the same owner+connection may each
