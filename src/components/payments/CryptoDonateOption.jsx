@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Wallet, ShieldAlert } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reownConfigured, openReownWallet } from "@/lib/reownWallet";
 
