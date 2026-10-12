@@ -81,10 +81,11 @@ export default function PlatformFixReviewPanel(){
           Builder task {item.builder_task_id}. {item.status==="builder_dispatched"?"Sent to builder.":"Queued for builder."}
           {" "}A verified source change, tests, and deployment are still required.
         </p>}
+        {!item.builder_task_id&&fields.some(([key])=>(editing[item.id]?.[key]??"")!==(item[key]??""))&&<p className="text-xs text-muted-foreground">Save the latest changes before approval.</p>}
         {!item.builder_task_id&&<div className="flex flex-wrap gap-2">
           <button type="button" disabled={!!busy} onClick={()=>act(item,"save_plan")}
             className="min-h-11 rounded-lg border border-border px-3 text-foreground text-sm">Save reviewed plan</button>
-          <button type="button" disabled={!!busy||item.status!=="plan_ready"} onClick={()=>act(item,"approve")}
+          <button type="button" disabled={!!busy||item.status!=="plan_ready"||fields.some(([key])=>(editing[item.id]?.[key]??"")!==(item[key]??""))} onClick={()=>act(item,"approve")}
             className="min-h-11 rounded-lg bg-blue-700 text-white px-3 text-sm disabled:opacity-50">Approve and dispatch</button>
           <button type="button" disabled={!!busy} onClick={()=>act(item,"reject")}
             className="min-h-11 rounded-lg border border-border text-foreground px-3 text-sm">Reject</button>
