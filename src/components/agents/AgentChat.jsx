@@ -7,7 +7,7 @@ import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
 
-export default function AgentChat({ agentName, agentLabel, greeting }) {
+export default function AgentChat({ agentName, agentLabel, greeting, overlayMode = false }) {
   const convRef = useRef(null);
   const currentRunRef = useRef(null);
   const lastSyncRef = useRef(0);
@@ -171,7 +171,7 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
     "Ask me a question or tell me what you'd like to do.";
 
   const composer = (
-    <div data-ifund-chat-composer className={compactViewport
+    <div data-ifund-chat-composer className={compactViewport && !overlayMode
       ? "fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-30 min-w-0 rounded-2xl border border-border bg-card p-3 pl-14 text-foreground shadow-xl"
       : "mt-2 min-w-0 shrink-0 rounded-2xl border border-border bg-card p-3 text-foreground shadow-sm"}>
       <div className={waitingForResponse || running || needsInput || toolFailed ? "text-xs text-muted-foreground" : "sr-only"} role="status" aria-live="polite">{workStatus}</div>
@@ -192,8 +192,8 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
   // On small screens the composer lives at the body root, outside the
   // animated/overflow-clipped page. It remains visible above bottom navigation
   // while the conversation and workspace can scroll independently.
-  return <div className="flex min-w-0 min-h-0 flex-col pb-40 sm:pb-0 sm:h-[min(68dvh,40rem)]">
-    <div role="log" aria-label={`${agentLabel} conversation`} className="min-w-0 min-h-[12rem] h-[min(48dvh,32rem)] sm:h-auto sm:min-h-0 sm:flex-1 overflow-y-auto overscroll-y-contain touch-pan-y space-y-3 pr-1">
+  return <div className={overlayMode ? "flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden" : "flex min-w-0 min-h-0 flex-col pb-40 sm:pb-0 sm:h-[min(68dvh,40rem)]"}>
+    <div role="log" aria-label={`${agentLabel} conversation`} className={overlayMode ? "min-w-0 min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y space-y-3 pr-1" : "min-w-0 min-h-[12rem] h-[min(48dvh,32rem)] sm:h-auto sm:min-h-0 sm:flex-1 overflow-y-auto overscroll-y-contain touch-pan-y space-y-3 pr-1"}>
       {starting ? <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-primary" /></div> : <>
         <div className="bg-muted text-foreground border border-border rounded-2xl p-3 text-sm">{greeting}</div>
         {messages.filter((m) => m.content).map((m, i) => <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
@@ -204,6 +204,6 @@ export default function AgentChat({ agentName, agentLabel, greeting }) {
         {(sending || waitingForResponse || running) && <div className="flex justify-start"><div className="bg-card text-muted-foreground border border-border rounded-2xl px-4 py-2 text-sm flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Working…</div></div>}
       </>}
     </div>
-    {compactViewport ? createPortal(composer, document.body) : composer}
+    {compactViewport && !overlayMode ? createPortal(composer, document.body) : composer}
   </div>;
 }
