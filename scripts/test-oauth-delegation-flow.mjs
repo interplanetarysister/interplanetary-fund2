@@ -26,6 +26,7 @@ assert.throws(
   () => providerAuthorizationDestination('https://eventbrite.com/', 'https://www.eventbrite.com/'),
   /homepage rather than a permissions link/
 );
+assert.throws(() => providerAuthorizationDestination('https://accounts.google.com/'), /homepage rather than a permissions link/);
 assert.throws(() => providerAuthorizationDestination('http://example.com/auth'), /insecure link/);
 assert.throws(() => providerAuthorizationDestination('https://user:pass@example.com/auth'), /insecure link/);
 assert.throws(() => providerAuthorizationDestination('javascript:alert(1)'), /insecure link/);
