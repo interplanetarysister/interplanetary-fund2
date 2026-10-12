@@ -38,7 +38,7 @@ for (const source of [connections, count, migration, importedUi]) {
 assert.match(imported, /validRequestId/);
 assert.doesNotMatch(imported, /record\.sync_enabled!==true/);
 assert.match(importFn, /sync_enabled: false/);
-assert.match(importEntity, /"default":false/);
+assert.match(importEntity, /"default":\s*false/);
 assert.match(importEntity, /never authorizes unattended sync/);
 assert.match(capabilities, /poll_support is research metadata/);
 assert.match(capabilities, /never authorizes IFund polling/);
