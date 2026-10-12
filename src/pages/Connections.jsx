@@ -97,13 +97,13 @@ export default function Connections() {
     };
   }, []);
 
-  // Sync Linked Platforms / Count My Money / Migrate Funds all call the single
-  // centralized syncExternalFunds engine — never a separate implementation.
+  // This click is the authorization boundary for one bounded sync request.
+  // Loading the page, signing in, agents, and background work never call it.
   const syncAll = async () => {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user" });
+      const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user", request_id: crypto.randomUUID() });
       if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Malformed sync response");
       const safeResult = {
         overall_status: typeof data.overall_status === "string" ? data.overall_status : "partial",
