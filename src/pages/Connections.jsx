@@ -60,8 +60,7 @@ export default function Connections() {
       return;
     }
     const existing = connections.find((item) => item.platform === requested) || null;
-    const alreadyWorking = existing?.status === "connected" && existing?.verification_status === "verified";
-    setDialog({ platform, existing, quickConnect: platform.setupKind === "oauth" && !alreadyWorking });
+    setDialog({ platform, existing, quickConnect: false });
   }, [connections, location.search, location.hash, navigate]);
 
   // Help Center deep-links open the actual connection helper, even though
@@ -400,10 +399,9 @@ export default function Connections() {
       <div className="mb-8 rounded-2xl border border-cyan-200 bg-cyan-50 p-4" id="connection-help">
         <h2 className="font-semibold text-slate-950">Connect with IFund AI help</h2>
         <p className="text-sm text-slate-700 mt-1">
-          Choose a platform below, then select “Ask IFund to connect this account now.”
-          IFund checks your existing connection, starts a supported provider sign-in
-          when needed, or walks you through the provider’s own code or app-password setup.
-          You can use an account that’s already signed in on this device.
+          Choose a platform to open its IFund connection window. For supported providers,
+          select Connect to sign in and approve access. Otherwise, IFund shows the available
+          setup steps. No account is marked connected without provider verification.
         </p>
         <p className="text-xs text-slate-600 mt-2">
           {managedAvailable
