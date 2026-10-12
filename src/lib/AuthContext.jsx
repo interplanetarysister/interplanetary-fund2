@@ -4,6 +4,7 @@ import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { getFrontendIdentity } from '@/lib/adminBootstrap';
 import { isAndroidApp, disableAndroidPush } from '@/lib/androidFirebaseFeatures';
+import { reportFrontendError } from '@/lib/platformErrorReporter';
 
 const AuthContext = createContext();
 const SAFE_APP_ERROR = 'Unable to load the application. Please try again.';
@@ -62,6 +63,7 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
+        if (![401,403].includes(Number(appError?.status))) reportFrontendError({source:'app_startup',kind:'request',error:appError,summary:'Application startup settings failed'});
         
         // Preserve intentional auth-state messages but never expose provider/server exception text.
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
@@ -94,6 +96,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Unexpected error:', error);
+      reportFrontendError({source:'app_startup',kind:'request',error,summary:'Application bootstrap failed'});
       setAuthError({
         type: 'unknown',
         message: SAFE_APP_ERROR
@@ -122,6 +125,7 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
     } catch (error) {
       console.error('User auth check failed:', error);
+      if (![401,403].includes(Number(error?.status))) reportFrontendError({source:'app_startup',kind:'request',error,summary:'Session verification failed unexpectedly'});
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
