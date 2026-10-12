@@ -63,10 +63,10 @@ function feeFromTotal(total, rate, fixedDollars) {
 export function computePayPalProcessingFee(total) { return feeFromTotal(total, PAYPAL_PROCESSING_RATE, PAYPAL_PROCESSING_FIXED); }
 export function computePayPalWalletProcessingFee(total) { return feeFromTotal(total, PAYPAL_WALLET_PROCESSING_RATE, PAYPAL_WALLET_PROCESSING_FIXED); }
 
-// Matches createPayPalOrder: charge includes estimated PayPal/Google Pay processing.
+// Matches createPayPalOrder: charge includes estimated PayPal/Google Pay/Apple Pay processing.
 export function computePayPalBreakdown(total, optedIn, paymentChannel = "paypal") {
   const totalCharged = round2(Number(total) || 0);
-  const processing = paymentChannel === "googlepay"
+  const processing = ["googlepay", "applepay"].includes(paymentChannel)
     ? computePayPalWalletProcessingFee(totalCharged)
     : computePayPalProcessingFee(totalCharged);
   const amount = round2(Math.max(0, totalCharged - processing));
