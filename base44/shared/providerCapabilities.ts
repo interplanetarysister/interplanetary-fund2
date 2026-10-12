@@ -8,6 +8,9 @@
 // records override/extend it. Unknown capability NEVER becomes verified
 // capability — a platform missing from both SEED and storage resolves to a
 // fail-closed observe_only/research_required entry.
+// poll_support is research metadata about a provider's technical interface.
+// It never authorizes IFund polling, scheduled work, page-load sync, or agents;
+// external fundraising reads run only after an explicit authenticated request.
 
 export const CAPABILITY_SEED = [
   { platform:'gofundme', display_name:'GoFundMe', category:'crowdfunding', domain:'https://gofundme.com', campaign_import:true, campaign_sync:true, balance_read:false, payout_model:'user_action_required', payout_destination_configurable:true, api_transfer:false, authenticated_browser:false, connection_strategy:'manual', webhook_support:false, poll_support:true, capability_status:'verified', implementation_status:'implemented', test_status:'passing', adapter_reference:'discoverExternalCampaignSnapshot', supported_actions:['campaign_import','campaign_sync'], unsupported_actions:['api_transfer','withdrawal_initiation'], manual_required_actions:['bank_transfer_setup','identity_verification'], evidence_url:'https://support.gofundme.com/hc/en-us/articles/360041758152-Transfer-to-a-business-or-organization', notes:'GoFundMe supports recipient/business bank transfer setup, but recipient/decision-maker verification remains provider-controlled. IFund must not represent this as an API-initiated payout.' },
