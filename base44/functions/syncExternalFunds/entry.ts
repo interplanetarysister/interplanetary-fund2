@@ -72,12 +72,17 @@ async function adapterFor(connection) {
 }
 
 export default async function (req) {
+  let base44;
+  let sr;
+  let actor;
+  let activeRun;
   try {
-    const base44 = createClientFromRequest(req);
+    base44 = createClientFromRequest(req);
     const activeAccount = await assertActiveAccount(base44);
     if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
-    const sr = base44.asServiceRole;
+    sr = base44.asServiceRole;
     const user = await base44.auth.me().catch(() => null);
+    actor = user;
     if (!user) return Response.json({ error: 'Unauthorized.' }, { status: 401 });
     const body = await req.json().catch(() => ({}));
     const requestId = String(body.request_id || '').trim();
@@ -94,9 +99,11 @@ export default async function (req) {
     const isAdmin = ['admin', 'super_admin'].includes(user.role);
     if (requestedScope === 'all' && !isAdmin) return Response.json({ error: 'Admin access required for an all-campaign sync.' }, { status: 403 });
     if (requestedScope === 'campaign' && !body.campaign_id) return Response.json({ error: 'campaign_id is required for campaign scope.' }, { status: 400 });
+    if (body.campaign_id && requestedScope !== 'campaign') return Response.json({ error: 'campaign_id may only be used with campaign scope.' }, { status: 400 });
     if (body.obo_user_id && !isAdmin) return Response.json({ error: 'Only an admin may request an on-behalf-of synchronization.' }, { status: 403 });
     const scope = requestedScope;
     const oboUserId = isAdmin ? (body.obo_user_id || null) : null;
+    if (oboUserId && scope !== 'user') return Response.json({ error: 'obo_user_id may only be used with user scope.' }, { status: 400 });
     const initiatorType = isAdmin ? 'admin' : 'user';
     const targetUserId = oboUserId || (scope === 'user' ? user.id : null);
     const startedAt = new Date().toISOString();
@@ -130,8 +137,9 @@ export default async function (req) {
       discovered_totals: [], total_imported: 0, campaigns_covered: 0,
       description: 'Authenticated explicit request is in progress.',
     });
+    activeRun = run;
     if (existing) {
-      await sr.entities.SyncRun.update(existing.id, { started_at: startedAt, completed_at: null, overall_status: 'in_progress', description: 'Retrying a stale authenticated explicit request.' });
+      await sr.entities.SyncRun.update(existing.id, { started_at: startedAt, overall_status: 'in_progress', description: 'Retrying a stale authenticated explicit request.' });
     }
     const providerResults = [];
     const discoveredByCurrency = new Map();
@@ -343,6 +351,19 @@ export default async function (req) {
     return Response.json(publicRun(run));
   } catch (error) {
     console.error('syncExternalFunds error:', error?.name || 'UnknownError');
+    if (sr && activeRun?.id) {
+      const completedAt = new Date().toISOString();
+      await sr.entities.SyncRun.update(activeRun.id, {
+        completed_at: completedAt,
+        overall_status: 'failed',
+        description: 'The authenticated explicit request failed before completion.',
+      }).catch(() => {});
+      if (base44 && actor?.id) await logAudit(base44, {
+        action: 'external_funds_sync', actor_user_id: actor.id, target_type: 'SyncRun', target_id: activeRun.id,
+        detail: `request_id=${activeRun.request_id || 'unknown'} failed before completion`, status: 'failure',
+        metadata: { request_id: activeRun.request_id || null, request_origin: 'explicit_authenticated_action' },
+      }).catch(() => {});
+    }
     return Response.json({ error: 'Synchronization could not complete.' }, { status: 500 });
   }
 }
