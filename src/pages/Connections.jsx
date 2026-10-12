@@ -23,7 +23,7 @@ export default function Connections() {
   const navigate = useNavigate();
   const [connections, setConnections] = useState(null);
   const [user, setUser] = useState(null);
-  const [dialog, setDialog] = useState(null); // { platform, existing, quickConnect }
+  const [dialog, setDialog] = useState(null); // { platform, existing }
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -60,7 +60,7 @@ export default function Connections() {
       return;
     }
     const existing = connections.find((item) => item.platform === requested) || null;
-    setDialog({ platform, existing, quickConnect: false });
+    setDialog({ platform, existing });
   }, [connections, location.search, location.hash, navigate]);
 
   // Help Center deep-links open the actual connection helper, even though
@@ -532,7 +532,6 @@ export default function Connections() {
         <ConnectDialog
           platform={dialog.platform}
           existing={dialog.existing}
-          quickConnect={dialog.quickConnect === true}
           aiAuthorized={aiAuthorized}
           managedAvailable={managedAvailable}
           onManagedConnect={managedAvailable ? async ({ campaign_id }) =>
