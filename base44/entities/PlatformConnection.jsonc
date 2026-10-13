@@ -47,8 +47,10 @@
         "wordpress_com",
         "dropbox",
         "github",
-        "gitlab"
-      ]
+        "gitlab",
+        "buffer"
+      ],
+      "description": "Provider key for this specific authorized account. Buffer is a publishing/queue provider and must not be treated as a Facebook or Instagram messaging connection."
     },
     "kind": {
       "type": "string",
@@ -362,5 +364,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Per-user or authorized shared fundraising, social, and app connections. Connection success and granted capabilities require real provider verification; account authorization and secret references are managed separately."
 }
