@@ -76,5 +76,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Provider webhook processing receipts and idempotency state for safe retries, authenticity checks, and reconciliation."
 }
