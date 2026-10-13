@@ -52,9 +52,12 @@ for (const row of [
   {...eligible,created_by_id:'u2'},
 ]) assert.equal(crowdfundingConnectionEligibility(row,'u1').ok,false);
 
-function fakeService({ runs=[], claims=[], failReads=false, withMutex=true, loseMutexOnRenewal=false }={}) {
+function fakeService({
+  runs=[], claims=[], failReads=false, withMutex=true,
+  loseMutexOnRenewal=false, renewSameTokenBeforeAcquire=false,
+}={}) {
   let id=0;
-  const metrics={upserts:0,mutexCasWrites:0};
+  const metrics={upserts:0,mutexCasWrites:0,staleAcquireRenewals:0};
   if (withMutex && !claims.some((row)=>row.claim_key==='mutex:external-sync:v1')) {
     claims.push({
       id:'mutex-0',claim_key:'mutex:external-sync:v1',claim_type:'mutex',
@@ -85,8 +88,12 @@ function fakeService({ runs=[], claims=[], failReads=false, withMutex=true, lose
     async updateMany(filter,update){
       if(filter.claim_key==='mutex:external-sync:v1' && update.$set?.lock_expires_at) {
         metrics.mutexCasWrites++;
+        const current=claims.find((row)=>row.id===filter.id);
+        if(renewSameTokenBeforeAcquire && update.$set?.lock_token && metrics.staleAcquireRenewals===0) {
+          metrics.staleAcquireRenewals++;
+          if(current) current.lock_expires_at=new Date(Date.now()+60_000).toISOString();
+        }
         if(loseMutexOnRenewal && metrics.mutexCasWrites===2) {
-          const current=claims.find((row)=>row.id===filter.id);
           if(current) current.lock_token='stolen-by-expired-successor';
           return {success:true,updated:0,has_more:false};
         }
@@ -135,6 +142,26 @@ assert.equal(
 );
 assert.equal(bootstrap.runs.length,0,'missing coordinator starts no provider job');
 assert.equal(bootstrap.claims.length,0,'request traffic never creates duplicate or ambiguous coordinator rows');
+
+const sameTokenRenewal=fakeService({
+  renewSameTokenBeforeAcquire:true,
+  claims:[{
+    id:'mutex-renewed-by-owner',claim_key:'mutex:external-sync:v1',claim_type:'mutex',
+    request_key:'mutex',request_id:'mutex',request_fingerprint:'mutex-v1',
+    job_type:'external_funds',actor_user_id:'system',attempt_number:0,
+    claimed_at:new Date(0).toISOString(),lock_token:'owner-token-a',lock_expires_at:new Date(0).toISOString(),
+  }],
+});
+await assert.rejects(
+  ()=>beginExternalSyncRequest(sameTokenRenewal.sr,args),
+  (error)=>error.code==='backend_unavailable'&&error.status===503,
+  'a waiter cannot steal a lease renewed after its stale read with the same owner token',
+);
+assert.equal(sameTokenRenewal.metrics.staleAcquireRenewals,1,'test interleaving renewed the observed lease once');
+assert.equal(sameTokenRenewal.claims[0].lock_token,'owner-token-a','renewing owner retains the mutex token');
+assert.ok(Date.parse(sameTokenRenewal.claims[0].lock_expires_at)>Date.now(),'renewing owner retains a live lease');
+assert.equal(sameTokenRenewal.runs.length,0,'stale waiter starts no provider job');
+assert.equal(sameTokenRenewal.claims.filter((row)=>row.claim_type!=='mutex').length,0,'stale waiter writes no request or rate claim');
 
 await finishExternalSyncRequest(concurrent.sr,first.disposition==='acquired'?first.run:second.run,first.disposition==='acquired'?first.claimKey:second.claimKey,{overall_status:'success',result_payload:{ok:true}});
 const replay=await beginExternalSyncRequest(concurrent.sr,args);
