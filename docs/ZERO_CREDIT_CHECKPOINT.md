@@ -1,7 +1,7 @@
 # Zero-Credit Durable Checkpoint
 
 **Maintained by:** Lyra (Executive AI Program Director) under the Permanent Zero-Message-Credit Continuation Directive.
-**Last updated:** 2026-09-08 (UTC) — post PR #185 merge, #175 closure.
+**Last updated:** 2026-10-13 (UTC) — request-triggered external-sync CAS hardening in progress.
 
 This file is the durable resume point: any executor (agent turn, workflow, or human) should be able to continue from here without reconstructing context. Update it as work progresses.
 
@@ -39,6 +39,16 @@ All GitHub-native work on this repo is message-credit-dependent only via the age
 ## Next executable action
 
 Start #177's read/write-path inventory on current `main`. Work through the queue one item per turn, verifying with CI (`npm`-free path: `.github/workflows/quality-gates.yml` runs automatically on every PR to `main`).
+
+## External-sync CAS repair handoff — 2026-10-13
+
+- **Capability inspected:** distributed serialization for explicit, request-triggered external fundraising sync in the existing Base44 architecture.
+- **Open-source candidates evaluated:** [DirtyHairy/async-mutex](https://github.com/DirtyHairy/async-mutex) (MIT; maintained and compatible with JavaScript, but process-local only, so it cannot serialize Base44 serverless instances); [mike-marcacci/node-redlock](https://github.com/mike-marcacci/node-redlock) and [sesamecare/redlock](https://github.com/sesamecare/redlock) (MIT; maintained distributed-lock implementations, but require Redis/ioredis plus new infrastructure, credentials, operations, and possible cost).
+- **Decision:** reject those dependencies for this repair and reuse repository-native Base44 conditional `updateMany` compare-and-set. This preserves the current zero-cost/Base44 boundary and avoids a new network dependency.
+- **Implementation boundary:** request traffic never creates the singleton mutex because `claim_key` is not database-unique. Exactly one release-provisioned `mutex:external-sync:v1` row is required; zero or multiple rows fail closed without persistent writes. Lease ownership is conditionally renewed and re-read immediately before rate-claim, request-claim, and run writes. Completion conditionally updates only the matching in-progress run/claim and verifies the stored result.
+- **Test plan:** behavioral contention tests cover concurrent first use without a coordinator, six-request rate contention, lease ownership loss immediately before writes, and stale completion racing a recovered retry; then run typecheck, lint, payment/financial regression tests, and production build.
+- **Rollback plan:** revert the shared external-sync guard and its behavioral test together. Do not re-enable request-path mutex creation or remove finalization CAS. If the release-provisioned coordinator is absent, leave sync unavailable rather than weakening serialization.
+- **Buffer reminder:** unrelated Buffer source drift is retained. Buffer remains unverified until secret provisioning plus provider-backed connection and safe draft/publish tests succeed; no open-source-audit reminder has been sent.
 
 ## Standing constraints
 
