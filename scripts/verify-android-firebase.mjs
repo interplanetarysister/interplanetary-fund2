@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 
 const read = (path) => readFileSync(path, 'utf8');
 const json = (path) => JSON.parse(read(path));
@@ -59,5 +59,28 @@ assert.ok(read('src/pages/Register.jsx').includes('base44.auth.register'), 'Base
 assert.ok(read('wrangler.toml').includes('IFUND_BASE44_ORIGIN'), 'Existing hosting data plane changed');
 assert.equal(existsSync('firebase.json'), false, 'Firebase Hosting/deployment config not expected');
 
+// Shared-source parity: when a website build exists, the packaged native web
+// assets must match it exactly. This is not a distributed-APK verification.
+if (existsSync('dist/index.html')) {
+  const distRoot = 'dist';
+  const nativeRoot = 'android/app/src/main/assets/public';
+  assert.ok(existsSync(nativeRoot + '/index.html'), 'Android assets are missing; run npx cap copy android');
+  let verifiedFiles = 0;
+  function verifyDir(relative = '') {
+    for (const name of readdirSync(distRoot + (relative ? '/' + relative : ''))) {
+      const next = relative ? relative + '/' + name : name;
+      if (statSync(distRoot + '/' + next).isDirectory()) {
+        verifyDir(next);
+      } else {
+        assert.ok(existsSync(nativeRoot + '/' + next), 'Android missing web asset ' + next);
+        assert.deepEqual(readFileSync(nativeRoot + '/' + next), readFileSync(distRoot + '/' + next),
+          'Android web asset differs from website build: ' + next);
+        verifiedFiles++;
+      }
+    }
+  }
+  verifyDir();
+  console.log('PASS: Android project web assets match the current website build (' + verifiedFiles + ' files).');
+}
 console.log('PASS: Android scaffold and Firebase config match; Base44 auth, hosting and existing account model are preserved.');
 console.log('NOTE: Device sign-in, OAuth, FCM delivery and crash opt-in must be verified before Google Play release.');
