@@ -15,7 +15,8 @@ function publicWork(item: any) {
     result_summary: clean(item.result_summary, 500),
     next_step: clean(item.continuation_state?.pending_step, 120),
     external_requirement: clean(item.continuation_state?.external_requirement, 400),
-    connection_id: item.continuation_state?.continuation_ref === item.id
+    connection_id: item.destination_agent !== 'managed_connection_agent' ||
+      item.continuation_state?.continuation_ref === item.id
       ? null : clean(item.continuation_state?.continuation_ref, 120) || null,
     last_attempt_at: item.last_attempt_at || null,
     next_retry_at: item.next_retry_at || null,
