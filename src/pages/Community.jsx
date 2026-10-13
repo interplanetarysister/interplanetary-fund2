@@ -85,8 +85,8 @@ export default function Community() {
           <div className="rounded-2xl bg-gradient-to-br from-slate-950 to-indigo-950 text-white p-6">
             <Newspaper className="h-7 w-7 text-cyan-300 mb-2" />
             <h2 className="font-display text-2xl">Interplanetary Fund Reporter</h2>
-            <p className="text-slate-300 text-sm mt-2">Featured stories, the IFund insider diary, fundraising ideas and news from our community.</p>
-            <Link to="/blogs" className="inline-flex mt-4 min-h-11 items-center bg-cyan-500 rounded-xl px-4 text-sm font-semibold text-slate-950">Read the newsletter and blogs</Link>
+            <p className="text-slate-300 text-sm mt-2">Final newsletters, blogs, official reports, progress updates, research and slide presentations.</p>
+            <Link to="/social?tab=publications" className="inline-flex mt-4 min-h-11 items-center bg-cyan-500 rounded-xl px-4 text-sm font-semibold text-slate-950">Browse IFund publications</Link>
           </div>
           <div className="rounded-2xl border bg-white p-5">
             <h3 className="font-semibold text-slate-950">Your voice belongs here</h3>
