@@ -56,9 +56,19 @@ assert.match(imported, /beginExternalSyncRequest/);
 assert.match(importFn, /beginExternalSyncRequest/);
 assert.match(importFn, /externalCampaignImportTargetKey/);
 assert.match(importFn, /targetKey/);
-assert.match(importOperation, /external_import_recovery_token/);
+assert.match(importOperation, /external_import_private_marker/);
 assert.match(importOperation, /crypto\.randomUUID\(\)/,
   'campaign recovery must use an unguessable server-generated capability');
+assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"read"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
+  'campaign correlation marker must be hidden from owner/public reads');
+assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"update"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
+  'campaign correlation marker must be immutable to owners');
+assert.match(importOperation, /withoutPrivateCampaignFields/,
+  'function results must remove private campaign correlation fields');
+assert.match(importOperation, /withoutPrivateImportFields/,
+  'function results must remove private import operation fields');
+assert.doesNotMatch(importOperation, /ExternalCampaignImport\.create\(\{[\s\S]*?recovery_token:/,
+  'owner-readable import records must not receive the private recovery secret');
 assert.match(importOperation, /assertExternalSyncClaimActive/);
 assert.match(importOperationEntity, /Private server-only recovery and fencing state/);
 assert.match(importOperationEntity, /"read"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/);
