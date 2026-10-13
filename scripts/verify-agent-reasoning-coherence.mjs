@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 const dir = new URL("../base44/agents/", import.meta.url);
 const expectedAgents = [
+  // admin_builder_agent.jsonc: wired Admin Builder Coordinator (super-admin
+  // only, server-side owner allowlist in managePlatformIncidents); added
+  // 2026-10-11/12. Kept in the reviewed inventory with the same instruction
+  // discipline as the other agents.
+  "admin_builder_agent.jsonc",
   "chief_of_staff.jsonc",
   "communications_agent.jsonc",
   "connection_discovery_agent.jsonc",
@@ -29,4 +34,4 @@ for (const n of ["chief_of_staff.jsonc","communications_agent.jsonc","finance_ag
  assert.ok(c.memory_config?.enabled, `${n}: memory must remain enabled`);
  assert.match(c.memory_config.instructions||"",/Learning expands knowledge and reasoning, never permissions/);
 }
-console.log("Agent reasoning coherence contract passed for all 9 configured agents");
+console.log("Agent reasoning coherence contract passed for the full configured agent inventory");
