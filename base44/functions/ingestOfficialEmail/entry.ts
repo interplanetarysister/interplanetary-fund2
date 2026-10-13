@@ -30,7 +30,8 @@ export default async function (req: Request): Promise<Response> {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
   const secret = Deno.env.get('IFUND_MAIL_INGEST_SHARED_SECRET') || '';
   const ownerId = Deno.env.get('IFUND_MAIL_OWNER_USER_ID') || '';
-  const allowedAddresses = Deno.env.get('IFUND_MAIL_ALLOWED_ADDRESSES') || '';
+  const allowedAddresses = Deno.env.get('IFUND_MAIL_ALLOWED_ADDRESSES') ||
+    'support@interplanetaryfund.com,info@interplanetaryfund.com';
   if (secret.length < 32 || !ownerId || !allowedAddresses) {
     return Response.json({ error: 'Official inbox is not configured.' }, { status: 503 });
   }
