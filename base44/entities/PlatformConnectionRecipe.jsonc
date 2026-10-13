@@ -164,5 +164,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Documented and tested provider routes for authorized connection and publishing operations."
 }
