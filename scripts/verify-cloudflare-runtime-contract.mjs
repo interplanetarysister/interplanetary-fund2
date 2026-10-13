@@ -5,7 +5,7 @@ assert.match(wrangler,/^name\s*=\s*"interplanetary-fund2"\s*$/m); assert.match(w
 assert.match(wrangler,/IFUND_BASE44_ORIGIN\s*=\s*"https:\/\/interplanetaryfund\.base44\.app"/);
 for (const route of ["/v1/admin/agents/*","/api/health","/api/health/*","/api/mcp","/api/mcp/*","/api/apps/*/mcp","/api/apps/*/mcp/*","/.well-known/oauth-*","/.well-known/openid-configuration"]) assert.ok(wrangler.includes(`"${route}"`), `Cloudflare must run Worker compute first for ${route}`);
 assert.match(wrangler,/workers_dev\s*=\s*true/);
-assert.match(wrangler,/keep_vars\\s*=\\s*true/, "Cloudflare must retain existing dashboard admin backend settings");
+assert.ok(wrangler.includes("keep_vars = true"), "Cloudflare must retain existing dashboard admin backend settings");
 const publicOrigins = [
   "https://interplanetaryfund.com",
   "https://www.interplanetaryfund.com",
