@@ -124,5 +124,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Donation records reconciled with a provider or designated as unverified; only confirmed payment affects financial totals."
 }
