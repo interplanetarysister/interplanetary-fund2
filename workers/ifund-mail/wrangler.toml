@@ -1,0 +1,26 @@
+# Dedicated inbound-mail Worker. This is separate from IFund's public web/API Worker.
+# Provision the D1 database + private R2 bucket and insert the D1 UUID before deployment.
+# Enable Cloudflare Email Routing on the zone before deploying managed addresses.
+name = "ifund-domain-mail"
+main = "src/index.js"
+compatibility_date = "2026-10-13"
+workers_dev = true
+addresses = [
+  "admin@interplanetaryfund.com",
+  "support@interplanetaryfund.com",
+  "donations@interplanetaryfund.com",
+  "legal@interplanetaryfund.com",
+  "hello@interplanetaryfund.com"
+]
+
+[vars]
+MAIL_LOCAL_PARTS = "admin,support,donations,legal,hello"
+
+[[d1_databases]]
+binding = "MAIL_DB"
+database_name = "ifund-domain-mail"
+database_id = "REPLACE_WITH_ACTUAL_D1_DATABASE_UUID"
+
+[[r2_buckets]]
+binding = "MAIL_RAW"
+bucket_name = "ifund-domain-mail-raw"
