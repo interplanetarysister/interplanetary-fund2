@@ -33,7 +33,9 @@ assert.match(auth,/window\.location\.reload\(\)/);
 assert.doesNotMatch(auth.slice(auth.indexOf('if (error.status === 401 || error.status === 403)'),auth.indexOf('} else {',auth.indexOf('if (error.status === 401 || error.status === 403)'))).replace(/\/\/[^\n]*/g, ''),/base44\.auth\.logout/);
 
 const login=get('src/pages/Login.jsx');
-assert.match(login,/fetch\("\/api\/apps\/"/);
+assert.match(login,/fetch\(path,/);
+assert.match(login,/CapacitorHttp\.post/);
+assert.match(login,/https:\/\/interplanetaryfund\.base44\.app/);
 assert.match(login,/credentials: "same-origin"/);
 assert.match(login,/cache: "no-store"/);
 assert.match(login,/response\.status/);
