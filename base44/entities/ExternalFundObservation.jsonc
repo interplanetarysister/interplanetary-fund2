@@ -82,5 +82,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "External platform fundraising totals with source and verification status; not IFund-held withdrawable funds."
 }
