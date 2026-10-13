@@ -135,5 +135,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Per-platform publishing records, campaign links, authorization checks, and observed results."
 }
