@@ -48,7 +48,7 @@ export default async function(req) {
       // Observation freshness: never represent stale owner-reported balances as
       // freshly verified. The owner sees when the balance was last observed and
       // whether it is provider-verified or owner-reported provenance.
-      const observedAt = connection.last_synced || null;
+      const observedAt = connection.external_balance_observed_at || null;
       const dataSource = connection.external_data_source || 'owner_reported';
       const stale = observedAt ? (Date.now() - new Date(observedAt).getTime()) > 24 * 60 * 60 * 1000 : true;
       return {
