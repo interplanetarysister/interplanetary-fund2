@@ -88,5 +88,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Per-user IFund notices distinct from provider messages and financial ledger data."
 }
