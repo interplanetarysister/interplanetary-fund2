@@ -16,6 +16,32 @@
       "type": "string",
       "description": "Latest explicit authenticated request that converged this operation."
     },
+    "recovery_token": {
+      "type": "string",
+      "description": "Deprecated legacy field. New records do not copy the private operation secret; existing values are admin-only and grant no authority.",
+      "rls": {
+        "create": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "delete": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "platform": {
       "type": "string"
     },
