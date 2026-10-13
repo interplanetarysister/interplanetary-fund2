@@ -39,7 +39,6 @@ export default async function(req) {
     if (request.disposition === 'in_progress') return Response.json({ ok: false, request_id: requestId, status: 'in_progress', deduplicated: true }, { status: 202 });
     run = request.run; claimKey = request.claimKey;
     const operation = await convergeExternalCampaignImport({
-      base44,
       sr,
       user,
       connection,
