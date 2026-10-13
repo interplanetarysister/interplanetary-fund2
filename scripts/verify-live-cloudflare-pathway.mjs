@@ -82,7 +82,7 @@ const releases = [];
 for (const [name, host] of releaseSources) {
   const response = await fetch(host + "/ifund-release.json", { cache: "no-store" });
   assert.equal(response.status, 200, `${name}: missing release marker`);
-  assert.match(response.headers.get("content-type") || "", /application\\/json/i);
+  assert.ok((response.headers.get("content-type") || "").includes("application/json"), `${name}: invalid release marker MIME type`);
   const record = await response.json();
   assert.ok(record.release_id, `${name}: empty release identifier`);
   releases.push(record.release_id);
@@ -90,4 +90,4 @@ for (const [name, host] of releaseSources) {
 assert.equal(new Set(releases).size, 1,
   `IFund site/Worker/Base44 release mismatch: ${releaseSources.map(([name],i) => name + "=" + releases[i]).join("; ")}`);
 console.log("PASS: Cloudflare, custom domain, www, and Base44 release identifiers agree.");
-console.log("PASS: full IFund Cloudflare gateway routing is live on both hostnames.");
+console.log("PASS: full IFund Cloudflare gateway routing is live across all public hostnames.");
