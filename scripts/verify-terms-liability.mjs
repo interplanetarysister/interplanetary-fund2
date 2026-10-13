@@ -48,7 +48,7 @@ assert.match(recordSource, /accepted_at: new Date\(\)\.toISOString\(\)/);
 assert.match(schemaSource, /"role": "admin"/);
 assert.match(legalText, /TERMS_VERSION = "2026-10-13-v3"/);
 assert.match(recordSource, /TERMS_VERSION = '2026-10-13-v3'/);
-assert.match(legalText, /IFUND-CONTROLLED PAYMENT-PROVIDER ACCOUNT/);
+assert.match(legalText, /IF AND WHEN IFUND ENABLES ITS ON-PLATFORM CAMPAIGN CHECKOUT/);
 assert.match(legalText, /three calendar days/);
 assert.match(legalText, /14 calendar days/);
 assert.match(legalText, /one payout request per day/);
