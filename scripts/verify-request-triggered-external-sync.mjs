@@ -8,6 +8,7 @@ const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 const sync = read("base44/functions/syncExternalFunds/entry.ts");
 const imported = read("base44/functions/syncImportedCampaign/entry.ts");
 const importFn = read("base44/functions/importExternalCampaign/entry.ts");
+const importOperation = read("base44/functions/importExternalCampaign/importOperation.ts");
 const importEntity = read("base44/entities/ExternalCampaignImport.jsonc");
 const syncEntity = read("base44/entities/SyncRun.jsonc");
 const connections = read("src/pages/Connections.jsx");
@@ -42,6 +43,7 @@ assert.doesNotMatch(sync, /initiator_type === 'scheduled'/);
 assert.doesNotMatch(sync, /initiator_id \|\| 'workflow'/);
 assert.match(syncEntity, /"request_id"/);
 assert.match(syncEntity, /"request_fingerprint"/);
+assert.match(syncEntity, /"target_key"/);
 assert.match(syncEntity, /"in_progress"/);
 
 for (const source of [connections, count, migration, importedUi]) {
@@ -50,10 +52,14 @@ for (const source of [connections, count, migration, importedUi]) {
 assert.match(imported, /validExternalSyncRequestId/);
 assert.match(imported, /beginExternalSyncRequest/);
 assert.match(importFn, /beginExternalSyncRequest/);
+assert.match(importFn, /externalCampaignImportTargetKey/);
+assert.match(importFn, /targetKey/);
+assert.match(importOperation, /external_import_operation_key/);
+assert.match(importOperation, /Created campaign recovery identity could not be verified/);
 assert.doesNotMatch(createCampaign, /discoverExternalCampaignSnapshot/);
 assert.match(createCampaign, /request_id:\s*requestId/);
 assert.doesNotMatch(imported, /record\.sync_enabled!==true/);
-assert.match(importFn, /sync_enabled: false/);
+assert.match(importOperation, /sync_enabled: false/);
 assert.match(importEntity, /"default":\s*false/);
 assert.match(importEntity, /never authorizes unattended sync/);
 assert.match(capabilities, /poll_support is research metadata/);
