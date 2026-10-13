@@ -64,5 +64,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Owner-authored blog content and metadata within IFund."
 }
