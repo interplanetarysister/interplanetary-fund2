@@ -22,7 +22,7 @@ const app=get('src/App.jsx');
 assert.match(app,/path="\/login" element=\{<Login/);
 assert.match(app,/path="\/activate" element=\{<DeviceActivation/);
 assert.match(app,/path="\/devices" element=\{<ConnectedDevices/);
-assert.match(app,/encodeURIComponent\(pathname \+ search\)/);
+assert.match(app,/encodeURIComponent\(pathname \+ search \+ hash\)/);
 assert.doesNotMatch(app,/navigateToLogin\(\)/,'Expired sessions must not redirect the entire app away from its own login page');
 
 const auth=get('src/lib/AuthContext.jsx');
