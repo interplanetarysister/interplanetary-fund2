@@ -85,9 +85,10 @@ export default function TermsAcceptance({ children }) {
           <>
             <p className="text-sm leading-relaxed text-slate-200">
               Please review the Terms of Service and Privacy Policy before using your account.
-              The Terms explain payment risks, agent limitations, your content rights, liability
-              limits and dispute resolution. Your agreement is saved to your IFund account so
-              you will not need to accept it on every visit.
+              IFund currently holds on-platform donations in its business payment-provider
+              account before paying eligible campaign owners. The Terms explain safeguarding,
+              fees, expected withdrawal timing, AI limitations, intellectual property and
+              liability rules. Your agreement is saved so it need not appear on every visit.
             </p>
             <div className="flex flex-wrap gap-4 text-sm">
               <Link to="/terms" className="font-semibold text-cyan-200 underline">Read full Terms of Service</Link>
@@ -98,9 +99,10 @@ export default function TermsAcceptance({ children }) {
                 className="mt-1 h-5 w-5 shrink-0 accent-cyan-400" />
               <span className="text-sm leading-relaxed text-white">
                 I have had the opportunity to read the Terms of Service and Privacy Policy.
-                I agree to the Terms, including the stated limits on liability and payment
-                and AI-related risks. I understand separate approval is required for specific
-                connected-account actions and financial transactions.
+                I agree to the Terms, including how IFund holds and pays out campaign
+                donations, payment and AI-related risks, and the stated limits on liability.
+                I understand separate approval is required for connected-account actions
+                and individual financial transactions.
               </span>
             </label>
             <button type="button" onClick={accept} disabled={!agreed || submitting}
