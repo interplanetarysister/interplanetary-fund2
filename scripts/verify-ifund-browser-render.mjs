@@ -30,8 +30,8 @@ try {
     page.on('pageerror',err=>exceptions.push(err.message));
     const response=await page.goto(origin+route,{waitUntil:'domcontentloaded',timeout:25000});
     assert.equal(response?.status(),200,'HTML request failed for '+route);
-    await page.getByRole('button',{name:'I Agree — Continue'}).waitFor({timeout:12000});
-    await page.getByRole('button',{name:'I Agree — Continue'}).click();
+    // Public visitors may browse before signup; the user-account clickwrap
+    // is versioned and checked only for authenticated visitors.
     if(route==='/login'){
       await page.getByRole('heading',{name:'Welcome back'}).waitFor({timeout:12000});
       await page.getByLabel('Password').waitFor({timeout:12000});
