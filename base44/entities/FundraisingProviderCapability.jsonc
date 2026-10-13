@@ -284,5 +284,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Provider capability research and verification registry. Distinguishes documented, tested, supported, unsupported, and manual capabilities without assuming permissions."
 }
