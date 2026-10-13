@@ -118,5 +118,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Campaign-owner announcements and donor communications sent through IFund email or in-app channels. This is not a social-platform direct-message conversation; do not use it as the external inbox message store."
 }
