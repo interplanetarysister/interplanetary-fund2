@@ -16,10 +16,6 @@
       "type": "string",
       "description": "Latest explicit authenticated request that converged this operation."
     },
-    "recovery_token": {
-      "type": "string",
-      "description": "Unguesseable server recovery capability bound to the private import operation."
-    },
     "platform": {
       "type": "string"
     },
