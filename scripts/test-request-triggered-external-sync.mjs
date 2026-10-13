@@ -130,6 +130,39 @@ assert.deepEqual(
   'concurrent retry cannot mutate an immutable request fingerprint',
 );
 
+const targetScoped=fakeService();
+const targetArgs={
+  ...args,
+  jobType:'campaign_import',
+  fingerprint:JSON.stringify({connection_id:'connection-1',goal_amount:500}),
+  targetKey:'campaign_import:u1:connection-1',
+};
+const targetResults=await Promise.all([
+  beginExternalSyncRequest(targetScoped.sr,targetArgs),
+  beginExternalSyncRequest(targetScoped.sr,{...targetArgs,requestId:UUID2}),
+]);
+assert.deepEqual(
+  targetResults.map((result)=>result.disposition).sort(),
+  ['acquired','in_progress'],
+  'distinct request UUIDs for one connection serialize on one durable target run',
+);
+assert.equal(targetScoped.runs.length,1,'one connection target creates one durable import run');
+assert.equal(targetScoped.runs[0].target_key,targetArgs.targetKey);
+const targetOwner=targetResults.find((result)=>result.disposition==='acquired');
+await finishExternalSyncRequest(targetScoped.sr,targetOwner.run,targetOwner.claimKey,{
+  overall_status:'failed',
+  description:'simulated crash after campaign creation',
+});
+const recoveredTarget=await beginExternalSyncRequest(
+  targetScoped.sr,
+  {...targetArgs,requestId:UUID2},
+);
+assert.equal(recoveredTarget.disposition,'acquired','a failed target operation can be recovered explicitly');
+assert.equal(recoveredTarget.run.id,targetOwner.run.id,'target recovery reuses the durable operation run');
+assert.equal(recoveredTarget.run.attempt_number,2);
+assert.equal(recoveredTarget.run.request_id,UUID2);
+assert.equal(targetScoped.runs.length,1,'target recovery never creates a second operation run');
+
 const bootstrap=fakeService({withMutex:false});
 const bootstrapResults=await Promise.allSettled([
   beginExternalSyncRequest(bootstrap.sr,args),
