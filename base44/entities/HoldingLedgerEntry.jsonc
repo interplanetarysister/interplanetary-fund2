@@ -134,5 +134,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Protected ledger records for fund allocation, custody, holds, and release; settlement state requires server validation."
 }
