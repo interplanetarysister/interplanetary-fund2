@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { externalBalanceEvidenceChanged } from '../../shared/externalBalanceEvidence.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -76,20 +77,18 @@ export default async function(req) {
 
     const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
     const now = new Date().toISOString();
-    const priorTotal = Number(existing?.external_total ?? 0);
-    const priorDonors = Number(existing?.external_donor_count ?? 0);
-    const priorCurrency = String(existing?.external_currency || '').trim().toUpperCase();
-    const normalizedBalanceChanged = effectiveKind === 'crowdfunding' && (
-      reportedTotal !== priorTotal ||
-      reportedDonors !== priorDonors ||
-      String(effectiveCurrency || '') !== priorCurrency
-    );
     // The dialog always submits its displayed totals. Re-saving a URL or
     // rotating a credential must not make stale/provider-verified balance
     // evidence look newly owner-observed. Only a normalized value change or an
     // explicit owner reaffirmation refreshes provenance and observation time.
-    const balanceEvidenceChanged = effectiveKind === 'crowdfunding' &&
-      (normalizedBalanceChanged || balance_reaffirmed === true);
+    const balanceEvidenceChanged = externalBalanceEvidenceChanged({
+      kind: effectiveKind,
+      existing,
+      externalTotal: reportedTotal,
+      externalCurrency: effectiveCurrency,
+      externalDonorCount: reportedDonors,
+      reaffirmed: balance_reaffirmed,
+    });
     const data: any = {
       platform,
       kind: effectiveKind,
