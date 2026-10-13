@@ -8,8 +8,8 @@ function plainText(email) {
   // IFund never renders HTML as HTML: retain the original in private R2.
   if (email.html) {
     return String(email.html)
-      .replace(/<(script|style)[^>]*>[\\s\\S]*?<\\/\\1>/gi, " ")
-      .replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim() ||
+      .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() ||
       "[HTML-only email preserved in the private archive]";
   }
   return "[No readable text body — original email retained in private archive]";
