@@ -57,8 +57,8 @@ jobs:
       - name: Build shared website assets
         run: npm run build
 
-      - name: Copy exact website assets to Android
-        run: npx cap copy android
+      - name: Sync native Android plugins and exact website assets
+        run: npx cap sync android
 
       - name: Confirm Android bundle parity and Firebase configuration
         run: node scripts/verify-android-firebase.mjs
