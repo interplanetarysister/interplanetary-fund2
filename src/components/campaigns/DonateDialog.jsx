@@ -96,7 +96,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
           <div className="space-y-4">
             <PrelaunchNotice payment />
             <p className="text-sm leading-relaxed text-slate-100">This campaign is live and shareable, but it cannot accept donations while campaign fundraising is paused. The support button below helps Interplanetary Fund, not this campaign.</p>
-            <PayPalDonateButton label="Donate to Interplanetary Fund" />
+            <PayPalDonateButton label="Support Interplanetary Fund with PayPal" />
             <CryptoDonateOption platformSupport />
           </div>
         ) : confirmed ? (
