@@ -87,5 +87,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Individual entries within an IFund blog or editorial publication."
 }
