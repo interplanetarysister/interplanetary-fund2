@@ -8,6 +8,14 @@
     "connection_id": {
       "type": "string"
     },
+    "operation_key": {
+      "type": "string",
+      "description": "Stable server-derived recovery identity shared with the imported IFund campaign and SyncRun."
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Latest explicit authenticated request that converged this operation."
+    },
     "platform": {
       "type": "string"
     },
