@@ -70,7 +70,7 @@ export default function TermsAcceptance({ children }) {
   return (
     <div className="fixed inset-0 z-[60] deep-space flex items-center justify-center p-4 overflow-y-auto">
       <section role="dialog" aria-modal="true" aria-labelledby="ifund-terms-title"
-        className="glass-panel w-full max-w-lg rounded-3xl p-5 sm:p-8 shadow-2xl my-auto space-y-5 text-white">
+        className="glass-panel w-full max-w-lg max-w-full overflow-x-hidden rounded-3xl p-5 sm:p-8 shadow-2xl my-auto space-y-5 text-white">
         <BrandLogo size="sm" className="justify-center" />
         <h1 id="ifund-terms-title" className="font-display text-2xl text-center text-white">
           IFund user agreement
@@ -104,7 +104,7 @@ export default function TermsAcceptance({ children }) {
               </span>
             </label>
             <button type="button" onClick={accept} disabled={!agreed || submitting}
-              className="w-full min-h-12 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-3 font-semibold text-white">
+              className="w-full min-h-12 h-auto py-3 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 font-semibold text-white">
               {submitting ? "Saving agreement…" : "I Agree — Continue"}
             </button>
           </>
