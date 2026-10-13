@@ -7,7 +7,7 @@
 
 export const IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail.com";
 
-// Official IFund merchant Payment Link supplied by the account owner.
+// Official IFund Platform Support Payment Link supplied by the account owner.
 // This is not a PayPal Donate SDK/charity hosted-button ID.
 // The destination and available payment options remain under PayPal control.
 export const IFUND_PLATFORM_SUPPORT_PAYMENT_LINK =
