@@ -119,5 +119,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Privileged administrative approval requests and their decisions."
 }
