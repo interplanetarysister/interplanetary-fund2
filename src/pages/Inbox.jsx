@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MailOpen } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
+import CompanyMailCard from "@/components/inbox/CompanyMailCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
 import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
@@ -153,7 +154,8 @@ export default function Inbox() {
       ) : (
         <div className="space-y-3">
           {visible.map((i) => (
-            <InboxItemCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} />
+            {i.mail_id ? <CompanyMailCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} /> :
+              <InboxItemCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} />}
           ))}
         </div>
       )}
