@@ -70,6 +70,13 @@ assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"read"\s*:
   'campaign correlation marker must be hidden from owner/public reads');
 assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"update"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
   'campaign correlation marker must be immutable to owners');
+assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"delete"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
+  'campaign correlation marker deletion must remain server-only');
+for (const operation of ['create', 'read', 'update', 'delete']) {
+  assert.match(campaignEntity,
+    new RegExp(`"external_import_recovery_token"[\\s\\S]*?"${operation}"\\s*:\\s*\\{\\s*"user_condition"\\s*:\\s*\\{\\s*"role"\\s*:\\s*"admin"`),
+    `legacy campaign recovery token ${operation} must remain admin-only`);
+}
 assert.match(importOperation, /campaignForResponse\(campaign\)/,
   'import results must use the explicit Campaign API allowlist');
 assert.match(importOperation, /sr\.entities\.Campaign\.create\(\{[\s\S]*?created_by_id:\s*user\.id/,
