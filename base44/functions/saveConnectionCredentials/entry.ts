@@ -21,7 +21,8 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     const {
       connection_id, platform, kind, display_name, external_url,
-      campaign_id, automation_mode, external_total, external_currency, external_donor_count, credentials,
+      campaign_id, automation_mode, external_total, external_currency, external_donor_count,
+      balance_reaffirmed, credentials,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
@@ -75,9 +76,20 @@ export default async function(req) {
 
     const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
     const now = new Date().toISOString();
-    const balanceWasReported = effectiveKind === 'crowdfunding' &&
-      [external_total, external_currency, external_donor_count]
-        .some((value) => value !== undefined && value !== null);
+    const priorTotal = Number(existing?.external_total ?? 0);
+    const priorDonors = Number(existing?.external_donor_count ?? 0);
+    const priorCurrency = String(existing?.external_currency || '').trim().toUpperCase();
+    const normalizedBalanceChanged = effectiveKind === 'crowdfunding' && (
+      reportedTotal !== priorTotal ||
+      reportedDonors !== priorDonors ||
+      String(effectiveCurrency || '') !== priorCurrency
+    );
+    // The dialog always submits its displayed totals. Re-saving a URL or
+    // rotating a credential must not make stale/provider-verified balance
+    // evidence look newly owner-observed. Only a normalized value change or an
+    // explicit owner reaffirmation refreshes provenance and observation time.
+    const balanceEvidenceChanged = effectiveKind === 'crowdfunding' &&
+      (normalizedBalanceChanged || balance_reaffirmed === true);
     const data: any = {
       platform,
       kind: effectiveKind,
@@ -91,10 +103,10 @@ export default async function(req) {
       external_donor_count: reportedDonors,
       status: 'disconnected',
       verification_status: 'unverified',
-      external_data_source: balanceWasReported
+      external_data_source: balanceEvidenceChanged
         ? 'owner_reported'
         : (existing?.external_data_source || 'owner_reported'),
-      external_balance_observed_at: balanceWasReported
+      external_balance_observed_at: balanceEvidenceChanged
         ? now
         : (existing?.external_balance_observed_at || null),
       last_error: '',
