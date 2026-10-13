@@ -48,5 +48,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Replies attached to an IFund discussion or community post."
 }
