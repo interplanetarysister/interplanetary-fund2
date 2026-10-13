@@ -25,6 +25,15 @@ const withoutPrivateCampaignFields = (campaign) => {
   return publicCampaign;
 };
 
+const withoutPrivateImportFields = (imported) => {
+  const publicImport = { ...imported };
+  delete publicImport.recovery_token;
+  delete publicImport.connection_id;
+  delete publicImport.operation_key;
+  delete publicImport.owner_user_id;
+  return publicImport;
+};
+
 export async function externalCampaignImportTargetKey(ownerUserId, connectionId) {
   const input = new TextEncoder().encode(
     `campaign_import:v1:${String(ownerUserId)}:${String(connectionId)}`,
@@ -246,7 +255,7 @@ export async function convergeExternalCampaignImport({
       request_id: requestId,
       campaign_id: campaign.id,
       campaign: withoutPrivateCampaignFields(campaign),
-      import_record: imported,
+      import_record: withoutPrivateImportFields(imported),
     },
   };
 }
