@@ -62,5 +62,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Maps IFund subscription tiers to external billing plan identifiers and benefit rules."
 }
