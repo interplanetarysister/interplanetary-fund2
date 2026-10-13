@@ -66,5 +66,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Referenced external fundraising or social platform records used for integration bookkeeping and provenance."
 }
