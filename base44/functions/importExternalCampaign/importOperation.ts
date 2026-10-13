@@ -59,7 +59,6 @@ async function updateOperation(sr, operation, claimKey, patch) {
 }
 
 export async function convergeExternalCampaignImport({
-  base44,
   sr,
   user,
   connection,
