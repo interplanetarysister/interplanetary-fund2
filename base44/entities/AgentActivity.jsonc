@@ -113,5 +113,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Campaign-owner-visible records of specialist agent actions, rationale, outcomes, and suggested next steps."
 }
