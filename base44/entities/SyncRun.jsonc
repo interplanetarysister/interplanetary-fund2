@@ -197,5 +197,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "One explicit external fundraising sync request with authorization, scope, and result."
 }
