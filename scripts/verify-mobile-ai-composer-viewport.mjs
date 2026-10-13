@@ -42,7 +42,10 @@ try {
   const agree = page.getByRole("button", { name: /I Agree — Continue/ });
   if (await agree.isVisible().catch(() => false)) await agree.click();
   const input = page.getByRole("textbox", { name: "Message Chief of Staff" });
-  await input.waitFor({ state: "visible", timeout: 25000 });
+  await input.waitFor({ state: "visible", timeout: 12000 }).catch(async (error) => {
+    console.error("IFund mobile fixture screen:", (await page.locator("body").innerText()).slice(0, 1500));
+    throw error;
+  });
   const geom = await page.evaluate(() => {
     const composer = document.querySelector("[data-ifund-chat-composer]");
     const textarea = composer?.querySelector("textarea");
