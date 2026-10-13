@@ -1,0 +1,15 @@
+# Deploy this independent Worker only after staging tests and Cloudflare approval.
+# DO NOT change the existing root wrangler.toml or live gateway to enable email.
+name = "ifund-official-email"
+main = "worker.mjs"
+compatibility_date = "2026-10-13"
+workers_dev = false
+
+# Create this PRIVATE bucket in the owner Cloudflare account before deployment.
+[[r2_buckets]]
+binding = "IFUND_MAIL_ARCHIVE"
+bucket_name = "ifund-official-mail-private"
+
+# The recipient allowlist and HTTPS function URL are configured by the owner.
+# Set IFUND_MAIL_ALLOWED_ADDRESSES and IFUND_MAIL_INGEST_ENDPOINT as Worker vars.
+# Set IFUND_MAIL_INGEST_SHARED_SECRET with wrangler secret put, never in repo.
