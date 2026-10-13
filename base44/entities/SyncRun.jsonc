@@ -70,6 +70,11 @@
       "type": "string",
       "description": "Immutable claim allowed to finalize the current attempt."
     },
+    "claim_checked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Latest conditional active-claim fence immediately before provider I/O or a durable side effect."
+    },
     "result_payload": {
       "type": "object",
       "description": "Safe response payload retained so a completed request UUID can be replayed without provider I/O."
