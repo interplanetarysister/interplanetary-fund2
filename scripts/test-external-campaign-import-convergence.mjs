@@ -3,6 +3,7 @@ import {
   convergeExternalCampaignImport,
   externalCampaignImportTargetKey,
 } from '../base44/functions/importExternalCampaign/importOperation.ts';
+import { campaignForResponse } from '../base44/shared/campaignResponse.ts';
 
 const matches = (row, filter) =>
   Object.entries(filter).every(([key, value]) => row[key] === value);
@@ -76,6 +77,11 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
     },
   };
   const campaignEntity = entity(campaigns);
+  const serviceCreateCampaign = campaignEntity.create;
+  campaignEntity.create = async (data) => {
+    campaignCreates++;
+    return serviceCreateCampaign(data);
+  };
   const importEntity = entity(imports);
   const ownerVisibleCampaign = (id) => {
     const row = campaigns.find((item) => item.id === id);
@@ -85,10 +91,19 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
     delete visible.external_import_recovery_token;
     return visible;
   };
-  const ownerUpdateCampaign = (id, patch) => {
-    if ('external_import_private_marker' in patch || 'external_import_recovery_token' in patch) {
+  const rejectOwnerPrivateFields = (data) => {
+    if ('external_import_private_marker' in data || 'external_import_recovery_token' in data) {
       throw new Error('field-level security rejected private import marker mutation');
     }
+  };
+  const ownerCreateCampaign = (data) => {
+    rejectOwnerPrivateFields(data);
+    const row = { id: `owner-campaign-${++nextId}`, created_by_id: user.id, ...data };
+    campaigns.push(row);
+    return ownerVisibleCampaign(row.id);
+  };
+  const ownerUpdateCampaign = (id, patch) => {
+    rejectOwnerPrivateFields(patch);
     const row = campaigns.find((item) => item.id === id);
     if (!row) throw new Error('missing record');
     Object.assign(row, patch);
@@ -113,18 +128,7 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
       },
     },
   };
-  const base44 = {
-    entities: {
-      Campaign: {
-        async create(data) {
-          campaignCreates++;
-          const row = { id: `campaign-${++nextId}`, created_by_id: user.id, ...data };
-          campaigns.push(row);
-          return ownerVisibleCampaign(row.id);
-        },
-      },
-    },
-  };
+  const base44 = { entities: { Campaign: { create: ownerCreateCampaign } } };
   const input = {
     base44,
     sr,
@@ -139,6 +143,7 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
   return {
     user, connection, campaigns, imports, operations, syncRun, input,
     ownerVisibleCampaign,
+    ownerCreateCampaign,
     ownerUpdateCampaign,
     get campaignCreates() { return campaignCreates; },
   };
@@ -177,6 +182,23 @@ const snapshot = {
     'owner reads must not reveal the private campaign marker');
   assert.equal(h.ownerVisibleCampaign(h.campaigns[1].id).external_import_recovery_token, undefined,
     'legacy recovery secrets must not be visible');
+  const saveCampaignLikeResponse = campaignForResponse({
+    ...h.campaigns[1],
+    title: 'Saved through service-role update',
+  });
+  assert.equal(saveCampaignLikeResponse.external_import_private_marker, undefined,
+    'saveCampaign-like service-role serialization must not reveal the private marker');
+  assert.equal(saveCampaignLikeResponse.external_import_recovery_token, undefined,
+    'saveCampaign-like service-role serialization must not reveal legacy secrets');
+  assert.throws(
+    () => h.ownerCreateCampaign({
+      title: 'Replacement campaign',
+      status: 'draft',
+      external_import_private_marker: privateMarker,
+    }),
+    /field-level security rejected/,
+    'owners must not create an arbitrary campaign carrying the private marker',
+  );
   assert.throws(
     () => h.ownerUpdateCampaign(h.campaigns[0].id, { external_import_private_marker: privateMarker }),
     /field-level security rejected/,
