@@ -35,6 +35,10 @@
       "type": "string",
       "description": "Server-derived scope fingerprint used to reject request-id reuse across targets."
     },
+    "target_key": {
+      "type": "string",
+      "description": "Optional stable server-derived operation target. It serializes distinct request UUIDs aimed at the same side-effect target."
+    },
     "initiator_id": {
       "type": "string",
       "description": "Id of the user, agent, or workflow that initiated the run."
