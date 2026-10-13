@@ -30,11 +30,11 @@ export default async function(req:Request) {
     const user=guard.user, sr=base44.asServiceRole;
     const body=await req.json().catch(()=>({}));
     const mode=clean(body.mode||'list',30);
-    const allDrafts=await sr.entities.AgentContentDraft.filter({owner_user_id:user.id},'-created_date',150);
+    const allDrafts=await sr.entities.AgentContentDraft.filter({owner_user_id:user.id},'-created_date',500);
     const ownDrafts=(allDrafts||[]).filter((d:any)=>d.owner_user_id===user.id);
     const [byAuthor,byOwner]=await Promise.all([
-      sr.entities.DistributedPost.filter({created_by_id:user.id},'-created_date',150),
-      sr.entities.DistributedPost.filter({owner_user_id:user.id},'-created_date',150),
+      sr.entities.DistributedPost.filter({created_by_id:user.id},'-created_date',500),
+      sr.entities.DistributedPost.filter({owner_user_id:user.id},'-created_date',500),
     ]);
     const existing=[...new Map([...(byAuthor||[]),...(byOwner||[])]
       .filter((p:any)=>p.created_by_id===user.id||p.owner_user_id===user.id)
@@ -45,8 +45,8 @@ export default async function(req:Request) {
       const prepared=id?ownDrafts.filter((d:any)=>d.id===id):ownDrafts.filter((d:any)=>d.status==='draft');
       const external=id?existing.filter((d:any)=>d.id===id):eligible;
       if(id&&!prepared.length&&!external.length)return Response.json({error:'Draft not found'},{status:404});
-      return Response.json({ok:true,drafts:prepared.slice(0,50).map(summary),external_posts:external.slice(0,50).map(distributed),
-        total_drafts:prepared.length,total_external_posts:external.length,truncated:prepared.length>50||external.length>50},
+      return Response.json({ok:true,drafts:prepared.slice(0,12).map(summary),external_posts:external.slice(0,12).map(distributed),
+        total_drafts:prepared.length,total_external_posts:external.length,truncated:prepared.length>12||external.length>12},
         {headers:{'Cache-Control':'no-store'}});
     }
     if(mode!=='approve_all')return Response.json({error:'Unsupported action'},{status:400});
@@ -56,9 +56,12 @@ export default async function(req:Request) {
     // Snapshot candidate IDs once. Newly staged DistributedPost records are
     // published through their draft result rather than processed twice.
     const results:any[]=[];
-    const draftCandidates=ownDrafts.filter((d:any)=>d.status==='draft');
-    const candidates=draftCandidates.slice(0,100);
-    const initiallyEligible=eligible.slice(0,100);
+    const skippedDrafts=new Set((Array.isArray(body.excluded_draft_ids)?body.excluded_draft_ids:[]).slice(0,500).map((v:any)=>clean(v,100)));
+    const skippedPosts=new Set((Array.isArray(body.excluded_post_ids)?body.excluded_post_ids:[]).slice(0,500).map((v:any)=>clean(v,100)));
+    const draftCandidates=ownDrafts.filter((d:any)=>d.status==='draft'&&!skippedDrafts.has(d.id));
+    const candidates=draftCandidates.slice(0,12);
+    const publishCandidates=eligible.filter((p:any)=>!skippedPosts.has(p.id));
+    const initiallyEligible=publishCandidates.slice(0,12);
     for(const d of candidates){
       if(!POST_KINDS.has(d.kind)){
         results.push({draft_id:d.id,kind:d.kind,outcome:'needs_separate_review'});
@@ -135,7 +138,7 @@ export default async function(req:Request) {
       approved_manual:count('approved_manual'),
       needs_separate_review:count('needs_separate_review'),
       unconfirmed:count('unconfirmed')+count('publishing_unconfirmed')+count('staged_unconfirmed'),
-      remaining_unprocessed:Math.max(0,draftCandidates.length-100)+Math.max(0,eligible.length-100),
+      remaining_unprocessed:Math.max(0,draftCandidates.length-12)+Math.max(0,publishCandidates.length-12),
       results}, {headers:{'Cache-Control':'no-store'}});
   }catch(e){
     console.error('ownerAgentChatActions:',e instanceof Error?e.name:'Error');
