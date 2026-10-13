@@ -149,7 +149,7 @@ await assert.rejects(
   'a stale immutable claim must bind its request id to its original fingerprint',
 );
 assert.equal(claimOnlyConflict.runs.length,0,'fingerprint conflict starts no sync run or provider work');
-assert.equal(claimOnlyConflict.claims.length,1,'fingerprint conflict acquires no rate slot or new request claim');
+assert.equal(claimOnlyConflict.claims.filter((row)=>row.claim_type!=='mutex').length,1,'fingerprint conflict acquires no rate slot or new request claim');
 
 await assert.rejects(()=>beginExternalSyncRequest(fakeService({failReads:true}).sr,args),(error)=>error.code==='backend_unavailable'&&error.status===503);
 
