@@ -84,5 +84,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "User-to-user relationships and friend requests on IFund."
 }
