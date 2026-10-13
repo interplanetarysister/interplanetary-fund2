@@ -45,6 +45,9 @@ export default async function(req) {
       connection,
       incoming: { ...incoming, external_campaign_id: body.external_campaign_id },
       requestId,
+      requestFingerprint: fingerprint,
+      run,
+      claimKey,
       discover: discoverPublicCampaignSnapshot,
     });
     const { campaign, imported, result } = operation;
