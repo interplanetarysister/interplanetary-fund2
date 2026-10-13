@@ -67,6 +67,25 @@ assert.equal(recovered.disposition,'acquired');
 assert.equal(recovered.run.attempt_number,2);
 assert.match(recovered.claimKey,/:2$/);
 
+const claimOnlyConflict=fakeService({claims:[{
+  claim_key:`external_funds:u1:${UUID}:1`,
+  claim_type:'request_attempt',
+  request_key:`external_funds:u1:${UUID}`,
+  request_id:UUID,
+  request_fingerprint:'different-target',
+  job_type:'external_funds',
+  actor_user_id:'u1',
+  attempt_number:1,
+  claimed_at:new Date(oldTime).toISOString(),
+}]});
+await assert.rejects(
+  ()=>beginExternalSyncRequest(claimOnlyConflict.sr,args),
+  (error)=>error.code==='request_conflict'&&error.status===409,
+  'a stale immutable claim must bind its request id to its original fingerprint',
+);
+assert.equal(claimOnlyConflict.runs.length,0,'fingerprint conflict starts no sync run or provider work');
+assert.equal(claimOnlyConflict.claims.length,1,'fingerprint conflict acquires no rate slot or new request claim');
+
 await assert.rejects(()=>beginExternalSyncRequest(fakeService({failReads:true}).sr,args),(error)=>error.code==='backend_unavailable'&&error.status===503);
 
 const windowStart=Math.floor(args.nowMs/60000)*60000;
