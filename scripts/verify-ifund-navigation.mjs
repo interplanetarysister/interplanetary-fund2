@@ -40,7 +40,7 @@ try{
     if(msg.type()==='error' && /ReferenceError|TypeError|Route render error/.test(msg.text())) exceptions.push(msg.text().slice(0,220));
   });
   await page.goto(origin+'/discover',{waitUntil:'domcontentloaded',timeout:18000});
-  await page.getByRole('button',{name:/I Agree — Continue/}).click();
+  // Public visitors do not need to accept account terms to browse.
   const bottom=page.getByRole('navigation',{name:'Bottom navigation'});
   await bottom.waitFor({timeout:12000});
   async function bottomTab(name,path) {
@@ -93,7 +93,7 @@ try{
   const desktopExceptions=[];
   d.on('pageerror',error=>desktopExceptions.push(error.message));
   await d.goto(origin+'/discover',{waitUntil:'domcontentloaded'});
-  await d.getByRole('button',{name:/I Agree — Continue/}).click();
+  // Desktop public pages use the same visitor-access rules.
   await d.locator('aside').getByRole('link',{name:'Community'}).click({timeout:8500});
   await d.waitForURL(url=>url.pathname==='/community');
   assert.equal(await d.locator('aside').isVisible(),true);
@@ -116,6 +116,10 @@ try{
     status:200,contentType:'application/json',
     body:JSON.stringify({id:'mock-only-account',username:'TestViewer',role:'user',subscription_tier:'free'}),
   }));
+  await member.route('**/*recordLegalAcceptance*',route=>route.fulfill({
+    status:200,contentType:'application/json',
+    body:JSON.stringify({data:{accepted:true,terms_version:'2026-10-13-v3'}}),
+  }));
   const signed=await member.newPage(),authErrors=[];
   signed.on('pageerror',error=>authErrors.push(error.message));
   signed.on('console',msg=>{
@@ -123,7 +127,7 @@ try{
       authErrors.push(msg.text().slice(0,160));
   });
   await signed.goto(origin+'/dashboard',{waitUntil:'domcontentloaded'});
-  await signed.getByRole('button',{name:/I Agree — Continue/}).click();
+  // This mock user already accepted the current agreement version.
   const tabs=signed.getByRole('navigation',{name:'Bottom navigation'});
   await tabs.getByRole('link',{name:'AI Chat',exact:true}).waitFor({timeout:12000});
   for(const [label,path] of [
