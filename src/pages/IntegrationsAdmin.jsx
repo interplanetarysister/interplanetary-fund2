@@ -9,6 +9,8 @@ import PageError from "@/components/PageError";
 import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, normalizeIntegrationStatus } from "@/lib/integrationRegistryUi";
 import Base44ReleaseStatus from "@/components/admin/Base44ReleaseStatus";
 import AdminOAuthProviderReadiness from "@/components/connections/AdminOAuthProviderReadiness";
+import { Link, useLocation } from "react-router-dom";
+import AIConnections from "./Connect";
 
 const SAFE_REGISTRY_ERROR = "We couldn't load the integration registry. Please try again.";
 const SAFE_HEALTH_ERROR = "We couldn't complete the integration health check. Please try again.";
@@ -47,6 +49,8 @@ function isHealthResponse(value) {
 }
 
 export default function IntegrationsAdmin() {
+  const { search } = useLocation();
+  const aiView = new URLSearchParams(search).get("view") === "ai";
   const [user, setUser] = useState(null);
   const [authReady, setAuthReady] = useState(false);
   const [entries, setEntries] = useState(null);
@@ -116,9 +120,20 @@ export default function IntegrationsAdmin() {
     }
   };
 
-  if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
+  const sectionNavigation = (
+    <nav aria-label="Admin integration sections" className="flex flex-wrap gap-2 mb-6">
+      <Link to="/admin/integrations" aria-current={!aiView ? "page" : undefined}
+        className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold ${!aiView ? "bg-slate-900 text-white border-slate-900" : "bg-card text-foreground border-border hover:bg-muted"}`}>
+        Provider integrations
+      </Link>
+      <Link to="/admin/integrations?view=ai" aria-current={aiView ? "page" : undefined}
+        className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold ${aiView ? "bg-slate-900 text-white border-slate-900" : "bg-card text-foreground border-border hover:bg-muted"}`}>
+        AI Connections
+      </Link>
+    </nav>
+  );
 
-  if (registryError) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={registryError} onRetry={() => { setRegistryError(null); reload(); }} /></div>;
+  if (!authReady) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   if (!user) return <div className="max-w-6xl mx-auto px-4 py-10"><PageError message={SAFE_REGISTRY_ERROR} onRetry={reload} /></div>;
 
@@ -132,6 +147,14 @@ export default function IntegrationsAdmin() {
     );
   }
 
+  // External MCP clients share the existing OAuth consent backend.
+  // This admin view reuses the prior Connect content without creating a new server or grants.
+  if (aiView) return <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    {sectionNavigation}
+    <AIConnections />
+  </div>;
+
+  if (registryError) return <div className="max-w-6xl mx-auto px-4 py-10">{sectionNavigation}<PageError message={registryError} onRetry={() => { setRegistryError(null); reload(); }} /></div>;
   if (!entries) return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading integration registry</span></div>;
 
   const visibleEntries = entries.filter((e) => String(e.platform || "").toLowerCase() !== "convex");
@@ -140,6 +163,7 @@ export default function IntegrationsAdmin() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+      {sectionNavigation}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl text-stone-900">Integration Registry</h1>
