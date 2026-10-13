@@ -67,5 +67,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Campaign progress announcements published by authorized campaign owners."
 }
