@@ -9,7 +9,8 @@
     "deploy": "wrangler deploy",
     "db:init": "wrangler d1 execute ifund-domain-mail --remote --file schema.sql",
     "dev": "wrangler dev",
-    "check": "node --check src/index.js"
+    "check": "node --check src/index.js",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "postal-mime": "4.0.5"
