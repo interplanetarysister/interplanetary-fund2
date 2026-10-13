@@ -52,7 +52,18 @@ assert.match(prepare,/connection\.external_balance_observed_at \|\| null/);
 assert.doesNotMatch(prepare,/observedAt = connection\.last_synced/);
 assert.match(externalSync,/external_balance_observed_at = now/);
 assert.match(kofiWebhook,/external_balance_observed_at: now/);
-assert.match(saveCredentials,/external_balance_observed_at: balanceWasReported/);
+assert.match(saveCredentials,/external_balance_observed_at: balanceEvidenceChanged/);
+assert.match(saveCredentials,/externalBalanceEvidenceChanged/);
+const mixedCurrencyBranch = kofiWebhook.slice(
+  kofiWebhook.indexOf('if (priorCurrency && priorCurrency !== currency)'),
+  kofiWebhook.indexOf('} else {', kofiWebhook.indexOf('if (priorCurrency && priorCurrency !== currency)')),
+);
+assert.doesNotMatch(mixedCurrencyBranch,/external_data_source/,
+  'mixed-currency observation must preserve the retained total provenance');
+assert.doesNotMatch(mixedCurrencyBranch,/external_balance_observed_at/,
+  'mixed-currency observation must preserve the retained total observed-at timestamp');
+assert.match(mixedCurrencyBranch,/event: 'currency_mismatch'/,
+  'mixed-currency observation must be separately audited');
 assert.doesNotMatch(connectionSync,/external_balance_observed_at\s*:/,
   'scheduled connection health must not refresh external balance evidence');
 // Existing per-connection opt-outs remain binding after global permission.
