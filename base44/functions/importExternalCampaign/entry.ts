@@ -26,7 +26,7 @@ export default async function(req) {
     const ownerGoal = Number(incoming.goal_amount);
     if (!(Number.isFinite(ownerGoal) && ownerGoal > 0)) return Response.json({ error: 'Enter a campaign goal before importing this fundraiser.' }, { status: 400 });
     const fingerprint = JSON.stringify({ connection_id: connection.id, goal_amount: ownerGoal });
-    const targetKey = externalCampaignImportTargetKey(user.id, connection.id);
+    const targetKey = await externalCampaignImportTargetKey(user.id, connection.id);
     const request = await beginExternalSyncRequest(sr, {
       jobType: 'campaign_import',
       actorUserId: user.id,
