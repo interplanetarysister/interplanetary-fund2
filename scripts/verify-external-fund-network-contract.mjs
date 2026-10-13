@@ -12,6 +12,9 @@ const connect=read('src/components/connections/ConnectDialog.jsx');
 const registry=read('base44/shared/integrationRegistry.ts');
 const autopilot=read('base44/functions/runSocialAutopilot/entry.ts');
 const connectionSync=read('base44/functions/syncConnections/entry.ts');
+const platformConnection=read('base44/entities/PlatformConnection.jsonc');
+const externalSync=read('base44/functions/syncExternalFunds/entry.ts');
+const kofiWebhook=read('base44/functions/kofiWebhook/entry.ts');
 const saveCredentials=read('base44/functions/saveConnectionCredentials/entry.ts');
 const campaignUpdate=read('base44/functions/postCampaignUpdate/entry.ts');
 const finalizeOauth=read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
@@ -44,6 +47,14 @@ assert.match(registry,/if \(capability && !known\.has\(capability\)\)/);
 assert.match(registry,/\(connection\.automation_mode \|\| 'manual'\) !== 'auto'/);
 assert.doesNotMatch(autopilot,/c\.obo_consent\?\.granted === true/);
 assert.doesNotMatch(connectionSync,/connectionAutomationAllowed/);
+assert.match(platformConnection,/"external_balance_observed_at"/);
+assert.match(prepare,/connection\.external_balance_observed_at \|\| null/);
+assert.doesNotMatch(prepare,/observedAt = connection\.last_synced/);
+assert.match(externalSync,/external_balance_observed_at = now/);
+assert.match(kofiWebhook,/external_balance_observed_at: now/);
+assert.match(saveCredentials,/external_balance_observed_at: balanceWasReported/);
+assert.doesNotMatch(connectionSync,/external_balance_observed_at\s*:/,
+  'scheduled connection health must not refresh external balance evidence');
 // Existing per-connection opt-outs remain binding after global permission.
 assert.match(saveCredentials,/granted: accountAiConsent/);
 assert.match(saveCredentials,/shared_with_agents: accountAiConsent/);
