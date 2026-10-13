@@ -92,5 +92,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Tracks publication and provider verification of an IFund campaign on an external service."
 }
