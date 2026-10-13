@@ -1,0 +1,36 @@
+name: IFund Domain Mail (Staging)
+on:
+  pull_request:
+    paths:
+      - 'workers/ifund-mail/**'
+      - 'base44/functions/ifundDomainMail/**'
+      - 'src/pages/Inbox.jsx'
+      - 'src/components/inbox/CompanyMailCard.jsx'
+      - '.github/workflows/test-ifund-mail.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inbound-mail-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: workers/ifund-mail/package.json
+      - name: Install mail worker dependencies
+        working-directory: workers/ifund-mail
+        run: npm install --no-audit --no-fund
+      - name: Run syntax and behavior tests
+        working-directory: workers/ifund-mail
+        run: |
+          npm run check
+          npm test
+      - name: Verify inbox uses the same backend function and isolated email UI
+        run: |
+          grep -q 'ifundDomainMail' src/pages/Inbox.jsx
+          grep -q 'CompanyMailCard' src/pages/Inbox.jsx
+          grep -q 'ifundDomainMail' src/components/inbox/CompanyMailCard.jsx
+          test ! -f base44/functions/getCompanyMailbox/entry.ts
