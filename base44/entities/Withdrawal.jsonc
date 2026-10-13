@@ -127,5 +127,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "User withdrawal request and processing state; confirmed payout amounts must derive from authoritative financial records."
 }
