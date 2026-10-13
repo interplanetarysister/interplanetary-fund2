@@ -20,11 +20,11 @@ export default function MyBlog(){
   if(!r.data?.ok)throw new Error(r.data?.error||"Blog studio unavailable");
   setState(r.data);setCampaigns(cs||[]);if(r.data.blog){setBlogTitle(r.data.blog.title);setBlogDesc(r.data.blog.description||"");}
  },[]);
- useEffect(()=>{load().catch(e=>setError(e.message));},[load]);
+ useEffect(()=>{load().catch(e=>{console.error("Blog state load failed:",e?.name||"BlogLoadError");setError("Unable to load your blog right now.");});},[load]);
  const call=async(body,success)=>{setBusy(true);setError("");setNotice("");
   try{const r=await base44.functions.invoke("manageBlog",body);if(!r.data?.ok)throw new Error(r.data?.error||"Could not save.");
    setNotice(success);await load();return r.data;
-  }catch(e){setError(e?.message||"Unable to save.");return null;}finally{setBusy(false);}
+  }catch(e){console.error("Blog save failed:",e?.name||"BlogSaveError");setError("Unable to save.");return null;}finally{setBusy(false);}
  };
  if(!state)return <div role="status" className="mx-auto max-w-3xl p-8">{error||<Loader2 className="animate-spin"/>}</div>;
  const b=state.blog;

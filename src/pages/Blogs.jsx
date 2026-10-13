@@ -11,7 +11,7 @@ export default function Blogs(){
   base44.functions.invoke("manageBlog",{mode:"feed"}).then(r=>{
    if(!r.data?.ok)throw new Error(r.data?.error||"Blog index unavailable");
    if(active)setItems(r.data.entries||[]);
-  }).catch(e=>{if(active)setError(e?.message||"Unable to load stories");}).finally(()=>{if(active)setLoading(false);});
+  }).catch(e=>{if(active){console.error("Blog index load failed:",e?.name||"BlogLoadError");setError("Unable to load stories");}}).finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[]);
  const visible=items.filter(e=>!author||e.owner_user_id===author);

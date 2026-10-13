@@ -43,7 +43,8 @@ export default function JustGivingStagingPilot({ campaign }) {
       if (action === "preview") setPreview(data);
       else setResult(data);
     } catch (e) {
-      setError(e?.message || "The JustGiving staging operation was not completed.");
+      console.error("JustGiving staging operation failed:", e?.name || "JustGivingPilotError");
+      setError("The JustGiving staging operation was not completed.");
     } finally { setBusy(false); }
   };
 

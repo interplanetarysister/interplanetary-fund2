@@ -81,7 +81,13 @@ expect(!importedCampaignUi.includes('discoverExternalCampaignSnapshot'), 'client
 expect(saveConnectionCredentials.includes("Number(existing?.external_total ?? 0)"), 'connection edits must preserve an existing external total when omitted');
 expect(saveConnectionCredentials.includes("Number(existing?.external_donor_count ?? 0)"), 'connection edits must preserve an existing donor count when omitted');
 expect(!saveConnectionCredentials.includes("Number(external_total ?? 0)"), 'connection edits must not silently reset external totals to zero');
-expect(syncExternalFunds.includes('await verifyPublicCampaignConnection(conn)'), 'link-based fund sync must verify the provider page before green state');
+// Link-based connections reach green state only after provider-page
+// verification in the authoritative verification functions; fund sync then
+// consumes verified state only via the eligibility gate.
+const verifyPlatformConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
+expect(verifyPlatformConnection.includes('await verifyPublicCampaignConnection(connection)'), 'link-based connections must verify the provider page before green state');
+expect(syncConnections.includes('await verifyPublicCampaignConnection(c)'), 'scheduled connection sync must re-verify the provider page before green state');
+expect(syncExternalFunds.includes('crowdfundingConnectionEligibility(conn'), 'fund sync must consume connections only through the verified-state eligibility gate');
 expect(!syncExternalFunds.includes("last_error: String(err?.message"), 'external fund sync must not persist raw provider errors');
 expect(providerCapabilities.includes("merged[key] = Boolean(base[key]) && Boolean(merged[key])"), 'stored capability rows must not manufacture unsupported runtime capabilities');
 expect(!providerCapabilities.includes('balance_read:true'), 'runtime registry must not advertise an unimplemented balance-read adapter');
