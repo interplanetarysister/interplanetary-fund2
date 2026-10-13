@@ -61,7 +61,7 @@ assert.match(importOperation, /crypto\.randomUUID\(\)/,
   'campaign recovery must use an unguessable server-generated capability');
 assert.match(importOperation, /assertExternalSyncClaimActive/);
 assert.match(importOperationEntity, /Private server-only recovery and fencing state/);
-assert.match(importOperationEntity, /"read": \{ "user_condition": \{ "role": "admin" \} \}/);
+assert.match(importOperationEntity, /"read"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/);
 assert.doesNotMatch(campaignEntity, /external_import_connection_id/,
   'campaign/public schema must not expose raw provider connection ids');
 assert.doesNotMatch(campaignEntity, /external_import_operation_key/,
