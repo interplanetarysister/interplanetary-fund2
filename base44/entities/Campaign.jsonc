@@ -74,9 +74,29 @@
       "type": "string",
       "description": "Optional owner-selected external fundraiser connection for campaign promotion. Empty uses IFund checkout; never transfers external funds."
     },
-    "external_import_recovery_token": {
+    "external_import_private_marker": {
       "type": "string",
-      "description": "Opaque random recovery capability. It contains no provider, owner, or connection identifier; authority remains in the admin-only import operation."
+      "description": "Server-generated import correlation marker. Field-level security keeps it hidden and immutable to campaign owners and public readers; authority remains in the admin-only import operation.",
+      "rls": {
+        "create": {
+          "created_by_id": "{{user.id}}"
+        },
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "delete": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "accept_crypto_donations": {
       "type": "boolean",
