@@ -349,6 +349,25 @@ export async function finishExternalSyncRequest(sr, run, claimKey, patch) {
   return current;
 }
 
+// Revalidate the exact attempt immediately before provider I/O or a durable
+// side effect. A plain read can be stale while a TTL retry replaces the claim.
+export async function assertExternalSyncClaimActive(sr, run, claimKey) {
+  const checkedAt = new Date().toISOString();
+  const result = await sr.entities.SyncRun.updateMany(
+    { id: run.id, active_claim_key: claimKey, overall_status: 'in_progress' },
+    { $set: { claim_checked_at: checkedAt } },
+  );
+  if (Number(result?.updated || 0) !== 1) {
+    throw new ExternalSyncRequestError('claim_lost', 'Synchronization claim is no longer active.', 409);
+  }
+  const current = await sr.entities.SyncRun.get(run.id);
+  if (!current || current.active_claim_key !== claimKey ||
+      current.overall_status !== 'in_progress' || current.claim_checked_at !== checkedAt) {
+    throw new ExternalSyncRequestError('claim_lost', 'Synchronization claim could not be fenced.', 409);
+  }
+  return current;
+}
+
 export async function failExternalSyncRequest(sr, run, claimKey, description) {
   try {
     return await finishExternalSyncRequest(sr, run, claimKey, {
