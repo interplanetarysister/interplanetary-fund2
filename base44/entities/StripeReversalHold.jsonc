@@ -55,5 +55,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Protected amounts associated with possible Stripe reversal, dispute, or chargeback; not proof of confirmed loss."
 }
