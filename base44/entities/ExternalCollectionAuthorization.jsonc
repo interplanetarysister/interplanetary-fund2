@@ -122,5 +122,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Explicit authorization for external fundraising collection or transfer, distinct from balance observations."
 }
