@@ -200,6 +200,14 @@ const snapshot = {
     'owner-readable import records must not copy the recovery secret');
   assert.equal(recovered.result.campaign.external_import_private_marker, undefined,
     'function responses must not serialize the private marker');
+  assert.equal(recovered.result.import_record.connection_id, undefined,
+    'function responses must not serialize raw connection identifiers');
+  assert.equal(recovered.result.import_record.operation_key, undefined,
+    'function responses must not serialize private operation identifiers');
+  assert.equal(recovered.result.import_record.owner_user_id, undefined,
+    'function responses must not serialize internal ownership fields');
+  assert.equal(recovered.result.import_record.recovery_token, undefined,
+    'function responses must not serialize legacy recovery secrets');
   assert.equal(JSON.stringify(recovered.result).includes(privateMarker), false,
     'function results and stored result payloads must not expose the recovery secret');
   assert.equal(h.connection.campaign_id, h.campaigns[1].id);
