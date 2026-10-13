@@ -91,5 +91,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Institution-specific campaign, funding, grant, or partnership opportunities associated with an institution."
 }
