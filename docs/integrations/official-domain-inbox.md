@@ -38,7 +38,7 @@ Owner decision: receive official domain mail **inside IFund's existing Universal
 The owner approved defaulting to `support@interplanetaryfund.com` and `info@interplanetaryfund.com`. Deployment requires authorized access to the Cloudflare dashboard (not available through this chat) and approved Base44 server secret configuration.
 
 ## Test evidence (2026-10-13)
-- Executed three local Node 22 tests from an exact copy of `host/email/signature.mjs` and `signature.test.mjs`: approved-recipient allowlist, HMAC signing and payload tamper detection, SHA-256 known vector — **3/3 pass**.
+- Executed local Node 22 tests from mirrored `host/email/signature.mjs`, `handler.mjs` and their test contracts: approved-recipient allowlist, HMAC tamper detection, SHA-256 known vector, dual-address archive-then-ingest, unsafe destination rejection, oversized mail, failed archive, and failed ingress — **9/9 pass**. The mirrored harness was tested without live providers; full GitHub/Cloudflare integration is not yet verified.
 - The actual Cloudflare/PostalMime handler, Base44 ingress function, R2, production DNS, and Android runtime have **not** been integration-tested.
 - Confirmed existing production deploy workflow only triggers on a successful `main` quality-gates workflow, therefore this draft branch does not auto-deploy Cloudflare.
 - Cloudflare docs confirm Email Routing routes incoming mail via the `email()` handler, and provider-generated DNS records should be reviewed rather than manually guessed: https://developers.cloudflare.com/email-service/get-started/route-emails/
