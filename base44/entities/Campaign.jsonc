@@ -244,5 +244,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Primary IFund fundraising campaigns with creator, goal, lifecycle, and provider-verified donation aggregates."
 }
