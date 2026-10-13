@@ -82,11 +82,17 @@ async function acquireExternalSyncMutex(sr, nowMs) {
       throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are ambiguous. Try again later.');
     }
     const current = currentRows[0];
-    const expiresAt = time(current.lock_expires_at);
+    const currentExpiry = String(current.lock_expires_at || '');
+    const expiresAt = time(currentExpiry);
     const currentToken = String(current.lock_token || '');
     if (!currentToken || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
       const result = await sr.entities.ExternalSyncClaim.updateMany(
-        { id: current.id, claim_key: EXTERNAL_SYNC_MUTEX_KEY, lock_token: currentToken },
+        {
+          id: current.id,
+          claim_key: EXTERNAL_SYNC_MUTEX_KEY,
+          lock_token: currentToken,
+          lock_expires_at: currentExpiry,
+        },
         { $set: {
           lock_token: token,
           lock_expires_at: new Date(Math.max(Date.now(), nowMs) + EXTERNAL_SYNC_MUTEX_LEASE_MS).toISOString(),
