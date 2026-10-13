@@ -74,23 +74,9 @@
       "type": "string",
       "description": "Optional owner-selected external fundraiser connection for campaign promotion. Empty uses IFund checkout; never transfers external funds."
     },
-    "external_import_operation_key": {
+    "external_import_recovery_token": {
       "type": "string",
-      "description": "Server-derived recovery identity for one explicit connected-campaign import. Never supplied by clients."
-    },
-    "external_import_connection_id": {
-      "type": "string",
-      "description": "Connected fundraiser used by the durable import operation."
-    },
-    "external_import_source_url": {
-      "type": "string"
-    },
-    "external_import_source_type": {
-      "type": "string"
-    },
-    "external_imported_at": {
-      "type": "string",
-      "format": "date-time"
+      "description": "Opaque random recovery capability. It contains no provider, owner, or connection identifier; authority remains in the admin-only import operation."
     },
     "accept_crypto_donations": {
       "type": "boolean",
