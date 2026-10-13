@@ -83,5 +83,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Activity-feed events for platform, campaign, or user activity with appropriate visibility."
 }
