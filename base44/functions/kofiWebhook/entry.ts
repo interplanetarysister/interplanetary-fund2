@@ -158,6 +158,7 @@ export default async function(req) {
         status: 'error',
         verification_status: 'verified',
         external_data_source: 'provider_verified',
+        external_balance_observed_at: now,
         last_synced: now,
         last_error: `Ko-fi observation received in ${currency}; existing connection total is ${priorCurrency}. Currency conversion/reconciliation required.`,
       });
@@ -169,6 +170,7 @@ export default async function(req) {
         status: 'connected',
         verification_status: 'verified',
         external_data_source: 'provider_verified',
+        external_balance_observed_at: now,
         last_synced: now,
         last_error: '',
         history: [
