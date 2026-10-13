@@ -103,6 +103,9 @@ export async function beginExternalSyncRequest(sr, options) {
   }
 
   const latestClaim = [...(claims || [])].sort((a, b) => Number(b.attempt_number || 0) - Number(a.attempt_number || 0))[0] || null;
+  if (latestClaim?.request_fingerprint && latestClaim.request_fingerprint !== options.fingerprint) {
+    throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
+  }
   const activeStartedAt = existing?.started_at || latestClaim?.claimed_at;
   const activeAge = nowMs - time(activeStartedAt);
   if ((existing?.overall_status === 'in_progress' || (!existing && latestClaim)) &&
