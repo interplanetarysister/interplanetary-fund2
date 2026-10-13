@@ -85,10 +85,11 @@ export default function TermsAcceptance({ children }) {
           <>
             <p className="text-sm leading-relaxed text-slate-200">
               Please review the Terms of Service and Privacy Policy before using your account.
-              IFund currently holds on-platform donations in its business payment-provider
-              account before paying eligible campaign owners. The Terms explain safeguarding,
-              fees, expected withdrawal timing, AI limitations, intellectual property and
-              liability rules. Your agreement is saved so it need not appear on every visit.
+              IFund helps create, manage, and promote fundraisers, including on authorized
+              outside platforms when those platforms permit it. IFund's planned campaign
+              checkout receives money into an IFund-controlled payment-provider account
+              before beneficiary payout, if and when enabled. Review the Terms for campaign,
+              AI, payment, and liability rules. Your agreement is saved to your account.
             </p>
             <div className="flex flex-wrap gap-4 text-sm">
               <Link to="/terms" className="font-semibold text-cyan-200 underline">Read full Terms of Service</Link>
@@ -99,10 +100,10 @@ export default function TermsAcceptance({ children }) {
                 className="mt-1 h-5 w-5 shrink-0 accent-cyan-400" />
               <span className="text-sm leading-relaxed text-white">
                 I have had the opportunity to read the Terms of Service and Privacy Policy.
-                I agree to the Terms, including how IFund holds and pays out campaign
-                donations, payment and AI-related risks, and the stated limits on liability.
-                I understand separate approval is required for connected-account actions
-                and individual financial transactions.
+                I agree to the Terms, including IFund's role in managing and promoting
+                campaigns, future handling and payout of donations, payment and AI risks,
+                and the stated limits on liability. I understand external-account actions
+                and financial transactions need separate approval and provider permission.
               </span>
             </label>
             <button type="button" onClick={accept} disabled={!agreed || submitting}
