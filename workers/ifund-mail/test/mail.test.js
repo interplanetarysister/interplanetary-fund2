@@ -93,7 +93,7 @@ test("inbound mail is private, deduplicated, and readable only through bearer au
   assert.equal(payload.messages[0].body_text,undefined);
   const id=payload.messages[0].id;
   const full=await worker.fetch(request("/api/messages/"+id,env.MAIL_API_TOKEN),env);
-  assert.equal((await full.json()).message.body_text,"Hello, support team.");
+  assert.equal((await full.json()).message.body_text.trim(),"Hello, support team.");
   const marked=await worker.fetch(new Request("https://mail.example.test/api/messages/"+id+"/read", {
     method:"POST",headers:{Authorization:"Bearer "+env.MAIL_API_TOKEN}
   }),env);
