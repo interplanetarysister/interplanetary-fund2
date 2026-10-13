@@ -71,5 +71,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Owner-selected campaign monitoring and agent observations."
 }
