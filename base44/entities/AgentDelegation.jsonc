@@ -214,5 +214,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Per-user agent delegation instructions and consent scopes for authorized actions."
 }
