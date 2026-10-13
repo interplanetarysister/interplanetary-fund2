@@ -10,6 +10,10 @@ workers_dev = false
 binding = "IFUND_MAIL_ARCHIVE"
 bucket_name = "ifund-official-mail-private"
 
-# The recipient allowlist and HTTPS function URL are configured by the owner.
-# Set IFUND_MAIL_ALLOWED_ADDRESSES and IFUND_MAIL_INGEST_ENDPOINT as Worker vars.
-# Set IFUND_MAIL_INGEST_SHARED_SECRET with wrangler secret put, never in repo.
+# The two initial public recipient addresses are approved by the owner.
+# Configure the verified Base44 HTTPS ingest URL before deployment.
+[vars]
+IFUND_MAIL_ALLOWED_ADDRESSES = "support@interplanetaryfund.com,info@interplanetaryfund.com"
+
+# Provision IFUND_MAIL_INGEST_ENDPOINT as a Worker variable.
+# Provision IFUND_MAIL_INGEST_SHARED_SECRET as a secret, never in this file.
