@@ -31,6 +31,10 @@ try {
     status: 200, contentType: "application/json",
     body: JSON.stringify({ id: "layout-fixture", username: "Preview", role: "admin" }),
   }));
+  await context.route("**/*recordLegalAcceptance*", route => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ data: { accepted: true, terms_version: "2026-10-13-v3" } }),
+  }));
   const page = await context.newPage();
   const crashes = [];
   page.on("pageerror", (err) => crashes.push(err.message));
