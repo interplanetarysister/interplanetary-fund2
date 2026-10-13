@@ -79,7 +79,9 @@
       "description": "Server-generated import correlation marker. Field-level security keeps it hidden and immutable to campaign owners and public readers; authority remains in the admin-only import operation.",
       "rls": {
         "create": {
-          "created_by_id": "{{user.id}}"
+          "user_condition": {
+            "role": "admin"
+          }
         },
         "read": {
           "user_condition": {
