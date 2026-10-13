@@ -6,7 +6,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 // "Approve all drafts" is the account owner's deliberate instruction, not
 // permission for an LLM or a different account to approve on their behalf.
 const clean=(v:any,n=160)=>String(v??'').trim().slice(0,n);
-const POST_KINDS=new Set(['social_post','campaign_update','external_post','discussion_post','discussion_reply']);
+const POST_KINDS=new Set(['social_post','campaign_update','external_post','blog_entry','discussion_post','discussion_reply']);
 const AUTHORIZED=/^(?:please\s+)?(?:approve(?:\s+and\s+publish)?|publish|post)\s+(?:all|every)\s+(?:my\s+)?(?:pending\s+)?(?:drafts?|posts?)(?:\s+(?:now|please))?[.!]?$/i;
 const summary=(d:any)=>({
   id:d.id,kind:d.kind,status:d.status,campaign_id:d.campaign_id||'',
@@ -70,6 +70,23 @@ export default async function(req:Request) {
         const data=response?.data||response;
         if(data?.ok!==true){
           results.push({draft_id:d.id,kind:d.kind,outcome:'unconfirmed'});
+          continue;
+        }
+        if(d.kind==='blog_entry'){
+          // The existing apply function saves the article, but doesn't
+          // publish it. The owner's bulk instruction requests both steps.
+          if(!data.result_id){
+            results.push({draft_id:d.id,kind:d.kind,outcome:'staged_unconfirmed'});
+            continue;
+          }
+          const article=await base44.functions.invoke('manageBlog',{
+            mode:'publish_entry',blog_id:d.payload?.blog_id,entry_id:data.result_id,
+            title:d.payload?.title,summary:d.payload?.summary,body:d.payload?.body
+          });
+          const published=article?.data||article;
+          results.push({draft_id:d.id,kind:d.kind,result_id:data.result_id,
+            outcome:published?.ok===true&&published?.entry?.status==='published'
+              ?'applied_to_ifund':'staged_unconfirmed'});
           continue;
         }
         if(d.kind!=='external_post'){
