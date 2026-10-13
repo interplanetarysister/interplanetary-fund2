@@ -55,31 +55,16 @@ async function exactClaims(sr, filter, limit = 3) {
 }
 
 async function acquireExternalSyncMutex(sr, nowMs) {
-  // Base44 upsert updates existing rows, so it is not an immutable claim
-  // primitive. A single persistent mutex row plus conditional updateMany is
-  // the supported compare-and-set boundary. Bootstrap never performs work:
-  // the first request creates the empty row and fails closed so a concurrent
-  // initializer cannot slip past an incomplete uniqueness check.
+  // claim_key is not database-unique, so request traffic must never bootstrap
+  // this coordinator by creating a row. Provision exactly one mutex record as
+  // controlled release data; zero or multiple rows fail closed without writes.
   let rows;
   try {
     rows = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
     if (rows.length === 0) {
-      await sr.entities.ExternalSyncClaim.create({
-        claim_key: EXTERNAL_SYNC_MUTEX_KEY,
-        claim_type: 'mutex',
-        request_key: 'mutex',
-        request_id: 'mutex',
-        request_fingerprint: 'mutex-v1',
-        job_type: 'external_funds',
-        actor_user_id: 'system',
-        attempt_number: 0,
-        claimed_at: new Date(0).toISOString(),
-        lock_token: '',
-        lock_expires_at: new Date(0).toISOString(),
-      });
       throw new ExternalSyncRequestError(
         'backend_unavailable',
-        'Synchronization safeguards were initialized. Try the request again.',
+        'Synchronization safeguards are not provisioned. Try again later.',
       );
     }
   } catch (error) {
@@ -109,8 +94,11 @@ async function acquireExternalSyncMutex(sr, nowMs) {
       );
       if (Number(result?.updated || 0) === 1) {
         const verified = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
-        if (verified.length === 1 && verified[0].lock_token === token) {
-          return { id: current.id, token };
+        if (verified.length === 1 &&
+            verified[0].id === current.id &&
+            verified[0].lock_token === token &&
+            time(verified[0].lock_expires_at) > Date.now()) {
+          return { id: current.id, token, expiresAt: verified[0].lock_expires_at };
         }
         throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards could not be verified.');
       }
@@ -118,6 +106,46 @@ async function acquireExternalSyncMutex(sr, nowMs) {
     await wait(15);
   }
   throw new ExternalSyncRequestError('backend_unavailable', 'Another synchronization request is being recorded. Try again.');
+}
+
+async function renewAndVerifyExternalSyncMutex(sr, mutex) {
+  if (!mutex) {
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization lease is unavailable.');
+  }
+  const rows = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
+  const current = rows.length === 1 ? rows[0] : null;
+  const previousExpiry = current?.lock_expires_at;
+  if (!current ||
+      current.id !== mutex.id ||
+      current.lock_token !== mutex.token ||
+      time(previousExpiry) <= Date.now()) {
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization lease ownership was lost.');
+  }
+
+  const renewedExpiry = new Date(Date.now() + EXTERNAL_SYNC_MUTEX_LEASE_MS).toISOString();
+  const result = await sr.entities.ExternalSyncClaim.updateMany(
+    {
+      id: mutex.id,
+      claim_key: EXTERNAL_SYNC_MUTEX_KEY,
+      lock_token: mutex.token,
+      lock_expires_at: previousExpiry,
+    },
+    { $set: { lock_expires_at: renewedExpiry } },
+  );
+  if (Number(result?.updated || 0) !== 1) {
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization lease renewal failed.');
+  }
+
+  const verified = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
+  if (verified.length !== 1 ||
+      verified[0].id !== mutex.id ||
+      verified[0].lock_token !== mutex.token ||
+      verified[0].lock_expires_at !== renewedExpiry ||
+      time(verified[0].lock_expires_at) <= Date.now()) {
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization lease renewal could not be verified.');
+  }
+  mutex.expiresAt = renewedExpiry;
+  return mutex;
 }
 
 async function releaseExternalSyncMutex(sr, mutex) {
@@ -128,7 +156,7 @@ async function releaseExternalSyncMutex(sr, mutex) {
   ).catch(() => {});
 }
 
-async function acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now) {
+async function acquireExternalSyncRateSlot(sr, mutex, options, requestKey, nowMs, now) {
   const windowStartMs = Math.floor(nowMs / EXTERNAL_SYNC_RATE_WINDOW_MS) * EXTERNAL_SYNC_RATE_WINDOW_MS;
   const windowStartedAt = new Date(windowStartMs).toISOString();
   const records = await exactClaims(sr, {
@@ -150,6 +178,7 @@ async function acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now) 
   }
 
   const claimKey = `rate:${String(options.jobType)}:${String(options.actorUserId)}:${windowStartMs}:${requestKey}`;
+  await renewAndVerifyExternalSyncMutex(sr, mutex);
   await sr.entities.ExternalSyncClaim.create({
     claim_key: claimKey,
     claim_type: 'rate_slot',
@@ -211,7 +240,7 @@ export async function beginExternalSyncRequest(sr, options) {
       return { disposition: 'in_progress', run: existing, requestKey };
     }
 
-    await acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now);
+    await acquireExternalSyncRateSlot(sr, mutex, options, requestKey, nowMs, now);
 
     const attempt = Math.max(Number(existing?.attempt_number || 0), Number(latestClaim?.attempt_number || 0)) + 1;
     const claimKey = `${requestKey}:${attempt}`;
@@ -226,6 +255,7 @@ export async function beginExternalSyncRequest(sr, options) {
       return { disposition: 'in_progress', run: existing, requestKey, claimKey };
     }
 
+    await renewAndVerifyExternalSyncMutex(sr, mutex);
     await sr.entities.ExternalSyncClaim.create({
       claim_key: claimKey,
       claim_type: 'request_attempt',
@@ -266,6 +296,7 @@ export async function beginExternalSyncRequest(sr, options) {
       active_claim_key: claimKey,
       description: attempt > 1 ? 'Retrying a stale authenticated explicit request.' : 'Authenticated explicit request is in progress.',
     };
+    await renewAndVerifyExternalSyncMutex(sr, mutex);
     const run = existing
       ? await sr.entities.SyncRun.update(existing.id, runData)
       : await sr.entities.SyncRun.create(runData);
@@ -279,11 +310,23 @@ export async function beginExternalSyncRequest(sr, options) {
 }
 
 export async function finishExternalSyncRequest(sr, run, claimKey, patch) {
-  const current = await sr.entities.SyncRun.get(run.id);
-  if (!current || current.active_claim_key !== claimKey || current.overall_status !== 'in_progress') {
+  const completedAt = patch.completed_at || new Date().toISOString();
+  const result = await sr.entities.SyncRun.updateMany(
+    { id: run.id, active_claim_key: claimKey, overall_status: 'in_progress' },
+    { $set: { ...patch, completed_at: completedAt } },
+  );
+  if (Number(result?.updated || 0) !== 1) {
     throw new ExternalSyncRequestError('claim_lost', 'Synchronization claim is no longer active.', 409);
   }
-  return sr.entities.SyncRun.update(run.id, { ...patch, completed_at: patch.completed_at || new Date().toISOString() });
+
+  const current = await sr.entities.SyncRun.get(run.id);
+  if (!current ||
+      current.active_claim_key !== claimKey ||
+      current.overall_status !== patch.overall_status ||
+      current.completed_at !== completedAt) {
+    throw new ExternalSyncRequestError('claim_lost', 'Synchronization completion could not be verified.', 409);
+  }
+  return current;
 }
 
 export async function failExternalSyncRequest(sr, run, claimKey, description) {
