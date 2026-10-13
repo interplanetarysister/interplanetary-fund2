@@ -52,5 +52,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "PayPal billing webhook processing receipts used for idempotent subscription reconciliation."
 }
