@@ -70,7 +70,7 @@ export default function InboxItemCard({ item, onChanged }) {
             <>
               <p className="text-sm text-stone-800 mt-2 break-words">
                 {item.author && <span className="font-semibold">{item.author}: </span>}
-                {String(item.content || "").split("\\n").find((line) => line.startsWith("Subject: ")) || "Email received"}
+                {String(item.content || "").split("\n").find((line) => line.startsWith("Subject: ")) || "Email received"}
               </p>
               <details className="mt-2">
                 <summary className="text-sm font-medium text-blue-700 cursor-pointer">Read email</summary>
