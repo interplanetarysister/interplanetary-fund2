@@ -71,5 +71,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Explicit posting permits governing who may schedule or automate a specific authorized social publishing action."
 }
