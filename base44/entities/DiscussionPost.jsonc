@@ -68,5 +68,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Posts within the IFund social community/discussion feed."
 }
