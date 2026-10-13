@@ -98,6 +98,32 @@
         }
       }
     },
+    "external_import_recovery_token": {
+      "type": "string",
+      "description": "Deprecated legacy field. It grants no recovery authority and is hidden and immutable outside service-role/admin access.",
+      "rls": {
+        "create": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "delete": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "accept_crypto_donations": {
       "type": "boolean",
       "description": "Creator opts into cryptocurrency giving. Checkout requires independently verified settlement readiness; opt-in alone never activates transfers.",
