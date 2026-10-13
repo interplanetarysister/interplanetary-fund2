@@ -20,6 +20,11 @@ for (const route of [
   "interplanetaryfund.com/v1/admin/agents/*",
   "interplanetaryfund.com/.well-known/oauth-*",
   "interplanetaryfund.com/.well-known/openid-configuration*",
+  "www.interplanetaryfund.com/api/health*",
+  "www.interplanetaryfund.com/api/mcp*",
+  "www.interplanetaryfund.com/v1/admin/agents/*",
+  "www.interplanetaryfund.com/.well-known/oauth-*",
+  "www.interplanetaryfund.com/.well-known/openid-configuration*",
 ]) {
   assert.ok(wrangler.includes(`pattern = "${route}"`), `production custom-domain Worker route missing for ${route}`);
 }
