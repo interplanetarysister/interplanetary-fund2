@@ -1,113 +1,117 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { TERMS_VERSION } from "@/lib/legalPolicy";
 import BrandLogo from "@/components/brand/BrandLogo";
 
-// Per-session permissions gate. Stored in sessionStorage so it re-appears
-// every time a user opens the app in a new browser session. Does NOT auto-
-// accept — the user must explicitly activate the agreement button. No
-// timeout, focus, backdrop, navigation, or initialization dismissal.
-const SESSION_KEY = "if_permissions_session_v1";
-
-const PERMISSIONS = [
-  { label: "Account & Profile", detail: "Create your account, set a username, and manage your identity." },
-  { label: "Campaigns & Donations", detail: "Create fundraisers, receive donations, and process payments." },
-  { label: "Social Publishing", detail: "Post to the Interplanetary Fund feed and connected social platforms." },
-  { label: "Platform Connections", detail: "Connect external accounts (Google, Apple, Facebook, Instagram, TikTok) for cross-posting." },
-  { label: "AI Agents & Automation", detail: "Authorize agents to draft content, schedule posts, and suggest outreach." },
-  { label: "Notifications", detail: "Receive email and in-app updates about campaigns and activity." },
-  { label: "Analytics & Insights", detail: "Track campaign performance, donor activity, and engagement metrics." },
-];
+// Legal assent is bound to the authenticated IFund account and persisted by
+// the server. Browsing alone, a previous session checkbox, and a browser
+// storage flag are never evidence of acceptance.
+const PUBLIC_LEGAL_ROUTES = new Set([
+  "/terms", "/privacy", "/contact", "/help", "/login", "/register",
+  "/forgot-password", "/reset-password",
+]);
 
 export default function TermsAcceptance({ children }) {
   const { pathname } = useLocation();
-  const [accepted, setAccepted] = useState(false);
-  const [initialized, setInitialized] = useState(false);
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  const [status, setStatus] = useState("checking");
+  const [agreed, setAgreed] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
+  const check = async () => {
+    setStatus("checking");
+    setError("");
     try {
-      setAccepted(sessionStorage.getItem(SESSION_KEY) === "true");
+      const response = await base44.functions.invoke("recordLegalAcceptance", { mode: "status" });
+      const result = response?.data || response;
+      if (result?.terms_version !== TERMS_VERSION || typeof result?.accepted !== "boolean") throw new Error("Unexpected legal agreement response");
+      setStatus(result.accepted ? "accepted" : "pending");
     } catch {
-      setAccepted(false);
-    } finally {
-      setInitialized(true);
+      setStatus("error");
+      setError("We could not verify your agreement. Please retry.");
     }
-  }, []);
-
-  const accept = () => {
-    try {
-      sessionStorage.setItem(SESSION_KEY, "true");
-    } catch {
-      // Storage failure must not block an explicit acceptance.
-    }
-    setAccepted(true);
   };
 
-  // Embed routes and public iframe content bypass the per-session gate so
-  // embedded campaign cards render on external sites without a click.
-  const isEmbedRoute = pathname.startsWith("/embed/");
-  if (!initialized) return null;
-  // Reading public support information does not require consent to account features.
-  // The regular app permission gate still applies when leaving these public help routes.
-  const isHelpRoute = pathname === "/help" || pathname.startsWith("/help/") || pathname === "/contact";
-  if (accepted || isEmbedRoute || isHelpRoute) return <>{children}</>;
+  useEffect(() => {
+    if (isAuthenticated && !isLoadingAuth) check();
+    else {
+      setStatus("checking");
+      setAgreed(false);
+    }
+  }, [isAuthenticated, isLoadingAuth]);
+
+  const accept = async () => {
+    if (!agreed || submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const response = await base44.functions.invoke("recordLegalAcceptance", {
+        mode: "accept", terms_version: TERMS_VERSION, explicit_consent: true,
+      });
+      const result = response?.data || response;
+      if (result?.accepted !== true || result?.terms_version !== TERMS_VERSION) throw new Error("Agreement not recorded");
+      setStatus("accepted");
+    } catch {
+      setError("Agreement could not be saved. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Browsers may inspect legal materials without registering or agreeing.
+  // Ordinary public visitors and embedded fundraising cards are not blocked.
+  if (!isAuthenticated || PUBLIC_LEGAL_ROUTES.has(pathname) || pathname.startsWith("/help/") ||
+      pathname.startsWith("/embed/")) return <>{children}</>;
+  if (status === "accepted") return <>{children}</>;
 
   return (
     <div className="fixed inset-0 z-[60] deep-space flex items-center justify-center p-4 overflow-y-auto">
-      <div className="w-full min-w-0 max-w-lg animate-fade-up my-auto">
-        <div className="text-center mb-6">
-          <BrandLogo size="lg" className="justify-center mb-4" nameClassName="text-slate-100" />
-        </div>
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="perm-title"
-          className="glass-panel min-w-0 max-w-full overflow-x-hidden rounded-3xl p-4 sm:p-8 shadow-2xl"
-        >
-          <div className="text-center mb-6">
-            <h2 id="perm-title" className="font-display text-2xl text-white">
-              Permissions & Agreement
-            </h2>
-            <p className="text-slate-400 text-sm mt-2">
-              Interplanetary Fund needs the following permissions to operate.
-              Review them each time you start a session.
-            </p>
-          </div>
-
-          <div className="space-y-2 mb-6 max-h-[340px] overflow-y-auto pr-1 scrollbar-hide">
-            {PERMISSIONS.map((p) => (
-              <div
-                key={p.label}
-                className="flex gap-3 rounded-xl bg-white/5 border border-white/10 p-3"
-              >
-                <div className="mt-0.5 w-5 h-5 rounded-full bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center shrink-0">
-                  <svg viewBox="0 0 24 24" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3">
-                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-100">{p.label}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">{p.detail}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="text-slate-500 text-xs mb-5 leading-relaxed">
-            By continuing, you agree to the Interplanetary Fund Terms of Service
-            and Privacy Policy. The platform is provided "AS IS" without
-            warranties. Campaign outcomes, donations, and third-party services may involve risks.
-            Users are responsible for the campaigns, content, and actions they initiate through the platform.
-          </p>
-
-          <button
-            type="button"
-            onClick={accept}
-            className="w-full min-w-0 min-h-12 h-auto py-3 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-500 text-white font-semibold text-base whitespace-normal break-words hover:opacity-90 transition-opacity glow-primary"
-          >
-            I Agree — Continue
+      <section role="dialog" aria-modal="true" aria-labelledby="ifund-terms-title"
+        className="glass-panel w-full max-w-lg rounded-3xl p-5 sm:p-8 shadow-2xl my-auto space-y-5 text-white">
+        <BrandLogo size="sm" className="justify-center" />
+        <h1 id="ifund-terms-title" className="font-display text-2xl text-center text-white">
+          IFund user agreement
+        </h1>
+        {status === "checking" ? (
+          <p role="status" className="text-sm text-slate-200">Checking your agreement…</p>
+        ) : status === "error" ? (
+          <button type="button" onClick={check} className="min-h-11 rounded-lg bg-blue-600 px-4 text-white">
+            Retry agreement check
           </button>
-        </div>
-      </div>
+        ) : (
+          <>
+            <p className="text-sm leading-relaxed text-slate-200">
+              Please review the Terms of Service and Privacy Policy before using your account.
+              The Terms explain payment risks, agent limitations, your content rights, liability
+              limits and dispute resolution. Your agreement is saved to your IFund account so
+              you will not need to accept it on every visit.
+            </p>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <Link to="/terms" className="font-semibold text-cyan-200 underline">Read full Terms of Service</Link>
+              <Link to="/privacy" className="font-semibold text-cyan-200 underline">Read Privacy Policy</Link>
+            </div>
+            <label className="flex items-start gap-3 rounded-xl border border-white/25 bg-white/10 p-4">
+              <input type="checkbox" checked={agreed} onChange={e=>setAgreed(e.target.checked)}
+                className="mt-1 h-5 w-5 shrink-0 accent-cyan-400" />
+              <span className="text-sm leading-relaxed text-white">
+                I have had the opportunity to read the Terms of Service and Privacy Policy.
+                I agree to the Terms, including the stated limits on liability and payment
+                and AI-related risks. I understand separate approval is required for specific
+                connected-account actions and financial transactions.
+              </span>
+            </label>
+            <button type="button" onClick={accept} disabled={!agreed || submitting}
+              className="w-full min-h-12 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-3 font-semibold text-white">
+              {submitting ? "Saving agreement…" : "I Agree — Continue"}
+            </button>
+          </>
+        )}
+        {error ? <p role="alert" className="text-sm text-red-200">{error}</p> : null}
+        <p className="text-xs text-slate-300">Agreement version {TERMS_VERSION} · This does not authorize AI spending or external posting.</p>
+      </section>
     </div>
   );
 }
