@@ -10,10 +10,22 @@ export default function PayPalDonateButton({ campaignTitle = "Interplanetary Fun
   // This platform-support link remains available in both fundraising modes.
   // Campaign gifts always use the separately tracked checkout.
   const href = generatePayPalLink(campaignTitle, amount);
+  const openPayPal = (event) => {
+    // Browser-permitted small window; blocked pop-ups use normal new tab.
+    if (typeof window === "undefined" || window.innerWidth < 640) return;
+    const popup = window.open(href, "ifund-paypal-platform-support",
+      "width=540,height=720,scrollbars=yes,resizable=yes");
+    if (popup) {
+      try { popup.opener = null; } catch { /* Cross-origin restrictions */ }
+      event.preventDefault();
+      popup.focus();
+    }
+  };
   return (
     <div className="w-full flex flex-col items-center gap-2">
       <a
         href={href}
+        onClick={openPayPal}
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${label} — PayPal (opens in a new tab)`}
@@ -21,6 +33,7 @@ export default function PayPalDonateButton({ campaignTitle = "Interplanetary Fun
       >
         {label}
       </a>
+      <p className="text-center text-[11px] text-muted-foreground">Payment supports IFund only; PayPal controls checkout options.</p>
       <section className="flex items-center gap-1 text-[11px] text-stone-400">
         Powered by
         <img

@@ -22,7 +22,10 @@ assert.match(caps, /account_ref: IFUND_PAYPAL_ACCOUNT_REF/);
 assert.match(caps, /account_type: IFUND_PAYPAL_ACCOUNT_TYPE/);
 
 assert.match(link, /IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail\.com"/);
-assert.match(link, /business: IFUND_PAYPAL_BUSINESS_EMAIL/);
+assert.match(link, /IFUND_PLATFORM_SUPPORT_PAYMENT_LINK/);
+assert.match(link, /paypal\.com\/ncp\/payment\/VMW5XU3Y46K5J/);
+assert.doesNotMatch(link, /cmd: "_donations"/);
+assert.doesNotMatch(link, /https:\/\/www\.paypal\.com\/donate\//);
 
 for (const p of [
   'base44/functions/capturePayPalOrder/entry.ts',

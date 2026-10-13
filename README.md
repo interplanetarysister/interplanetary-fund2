@@ -75,3 +75,8 @@ Documentation: [https://docs.base44.com/Integrations/Using-GitHub](https://docs.
 Base44 CLI command reference: [https://docs.base44.com/developers/references/cli/commands/introduction](https://docs.base44.com/developers/references/cli/commands/introduction)
 
 Support: [https://app.base44.com/support](https://app.base44.com/support)
+
+
+## Copyright and reuse
+
+© 2026 Interplanetary Fund. All rights reserved in original protectable IFund materials held by their lawful owners. Details: [LICENSE](LICENSE) and [Copyright & Intellectual Property](https://interplanetaryfund.com/help/copyright-and-intellectual-property). Third-party open-source software and member submissions remain governed by their own rights and licenses.

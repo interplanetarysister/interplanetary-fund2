@@ -7,15 +7,15 @@
 
 export const IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail.com";
 
-export function generatePayPalLink(_campaignTitle, amount) {
-  const params = new URLSearchParams({
-    cmd: "_donations",
-    business: IFUND_PAYPAL_BUSINESS_EMAIL,
-    item_name: "Interplanetary Fund - Platform Support",
-    currency_code: "USD",
-  });
-  if (amount) params.set("amount", String(amount));
-  return `https://www.paypal.com/donate/?${params.toString()}`;
+// Official IFund merchant Payment Link supplied by the account owner.
+// This is not a PayPal Donate SDK/charity hosted-button ID.
+// The destination and available payment options remain under PayPal control.
+export const IFUND_PLATFORM_SUPPORT_PAYMENT_LINK =
+  "https://www.paypal.com/ncp/payment/VMW5XU3Y46K5J";
+
+export function generatePayPalLink(_campaignTitle, _amount) {
+  // Do not append unverified recipient, charity or amount parameters.
+  return IFUND_PLATFORM_SUPPORT_PAYMENT_LINK;
 }
 
 // Full donation block appended to cross-posted campaign content so a
