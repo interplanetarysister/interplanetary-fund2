@@ -68,5 +68,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "PayPal subscription enrollment or change requests pending provider confirmation."
 }
