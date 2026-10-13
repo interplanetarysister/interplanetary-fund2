@@ -116,5 +116,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Server-authoritative financial operation records for payment reconciliation and deduplication."
 }
