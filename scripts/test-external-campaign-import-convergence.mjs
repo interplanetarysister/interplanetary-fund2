@@ -163,6 +163,10 @@ const snapshot = {
 // owner updates cannot move it to another campaign.
 {
   const h = makeHarness({ crashAfterCampaign: true });
+  const ordinaryCampaign = h.ownerCreateCampaign({ title: 'Ordinary owner draft', status: 'draft' });
+  assert.equal(ordinaryCampaign.title, 'Ordinary owner draft',
+    'ordinary campaign creation without private fields must remain available');
+  h.campaigns.pop();
   let discoveryCalls = 0;
   const discover = async () => {
     discoveryCalls++;
@@ -176,6 +180,8 @@ const snapshot = {
   assert.equal(h.campaignCreates, 1);
   const privateMarker = h.campaigns[1].external_import_private_marker;
   assert.equal(typeof privateMarker, 'string');
+  assert.equal(h.campaigns[1].created_by_id, h.user.id,
+    'service-role import must preserve the authenticated campaign owner');
   assert.equal(h.ownerVisibleCampaign(h.campaigns[1].id).external_import_private_marker, undefined,
     'owner reads must not reveal the private campaign marker');
   assert.equal(h.ownerVisibleCampaign(h.campaigns[1].id).external_import_recovery_token, undefined,
