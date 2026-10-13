@@ -45,35 +45,130 @@ export class ExternalSyncRequestError extends Error {
 const time = (value) => new Date(value || 0).getTime();
 const isFinal = (status) => status && status !== 'in_progress';
 
-async function acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now) {
-  const windowStartMs = Math.floor(nowMs / EXTERNAL_SYNC_RATE_WINDOW_MS) * EXTERNAL_SYNC_RATE_WINDOW_MS;
-  const windowKey = `rate:${String(options.jobType)}:${String(options.actorUserId)}:${windowStartMs}`;
+const EXTERNAL_SYNC_MUTEX_KEY = 'mutex:external-sync:v1';
+const EXTERNAL_SYNC_MUTEX_LEASE_MS = 2 * 60 * 1000;
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  for (let slot = 0; slot < EXTERNAL_SYNC_RATE_LIMIT; slot++) {
-    let result;
-    try {
-      result = await sr.entities.ExternalSyncClaim.upsert([{
-        claim_key: `${windowKey}:${slot}`,
-        claim_type: 'rate_slot',
-        request_key: requestKey,
-        request_id: options.requestId,
-        request_fingerprint: options.fingerprint,
-        job_type: options.jobType,
-        actor_user_id: options.actorUserId,
+async function exactClaims(sr, filter, limit = 3) {
+  const rows = await sr.entities.ExternalSyncClaim.filter(filter, '-created_date', limit);
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function acquireExternalSyncMutex(sr, nowMs) {
+  // Base44 upsert updates existing rows, so it is not an immutable claim
+  // primitive. A single persistent mutex row plus conditional updateMany is
+  // the supported compare-and-set boundary. Bootstrap never performs work:
+  // the first request creates the empty row and fails closed so a concurrent
+  // initializer cannot slip past an incomplete uniqueness check.
+  let rows;
+  try {
+    rows = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
+    if (rows.length === 0) {
+      await sr.entities.ExternalSyncClaim.create({
+        claim_key: EXTERNAL_SYNC_MUTEX_KEY,
+        claim_type: 'mutex',
+        request_key: 'mutex',
+        request_id: 'mutex',
+        request_fingerprint: 'mutex-v1',
+        job_type: 'external_funds',
+        actor_user_id: 'system',
         attempt_number: 0,
-        claimed_at: now,
-        rate_window_started_at: new Date(windowStartMs).toISOString(),
-        rate_slot: slot,
-      }], { key: ['claim_key'] });
-    } catch {
-      throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
+        claimed_at: new Date(0).toISOString(),
+        lock_token: '',
+        lock_expires_at: null,
+      });
+      throw new ExternalSyncRequestError(
+        'backend_unavailable',
+        'Synchronization safeguards were initialized. Try the request again.',
+      );
     }
-
-    const record = result?.records?.[0] || null;
-    if (Number(result?.created || 0) === 1 || record?.request_key === requestKey) return;
+  } catch (error) {
+    if (error instanceof ExternalSyncRequestError) throw error;
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
+  }
+  if (rows.length !== 1) {
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are ambiguous. Try again later.');
   }
 
-  throw new ExternalSyncRequestError('rate_limited', 'Too many synchronization requests. Wait a minute and try again.', 429);
+  const token = crypto.randomUUID();
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const currentRows = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
+    if (currentRows.length !== 1) {
+      throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are ambiguous. Try again later.');
+    }
+    const current = currentRows[0];
+    const expiresAt = time(current.lock_expires_at);
+    const currentToken = String(current.lock_token || '');
+    if (!currentToken || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      const result = await sr.entities.ExternalSyncClaim.updateMany(
+        { id: current.id, claim_key: EXTERNAL_SYNC_MUTEX_KEY, lock_token: currentToken },
+        { $set: {
+          lock_token: token,
+          lock_expires_at: new Date(Math.max(Date.now(), nowMs) + EXTERNAL_SYNC_MUTEX_LEASE_MS).toISOString(),
+        } },
+      );
+      if (Number(result?.updated || 0) === 1) {
+        const verified = await exactClaims(sr, { claim_key: EXTERNAL_SYNC_MUTEX_KEY });
+        if (verified.length === 1 && verified[0].lock_token === token) {
+          return { id: current.id, token };
+        }
+        throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards could not be verified.');
+      }
+    }
+    await wait(15);
+  }
+  throw new ExternalSyncRequestError('backend_unavailable', 'Another synchronization request is being recorded. Try again.');
+}
+
+async function releaseExternalSyncMutex(sr, mutex) {
+  if (!mutex) return;
+  await sr.entities.ExternalSyncClaim.updateMany(
+    { id: mutex.id, claim_key: EXTERNAL_SYNC_MUTEX_KEY, lock_token: mutex.token },
+    { $set: { lock_token: '', lock_expires_at: null } },
+  ).catch(() => {});
+}
+
+async function acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now) {
+  const windowStartMs = Math.floor(nowMs / EXTERNAL_SYNC_RATE_WINDOW_MS) * EXTERNAL_SYNC_RATE_WINDOW_MS;
+  const windowStartedAt = new Date(windowStartMs).toISOString();
+  const records = await exactClaims(sr, {
+    claim_type: 'rate_slot',
+    job_type: options.jobType,
+    actor_user_id: options.actorUserId,
+    rate_window_started_at: windowStartedAt,
+  }, EXTERNAL_SYNC_RATE_LIMIT + 2);
+
+  const owned = records.find((row) => row.request_key === requestKey);
+  if (owned) {
+    if (owned.request_fingerprint !== options.fingerprint) {
+      throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
+    }
+    return;
+  }
+  if (records.length >= EXTERNAL_SYNC_RATE_LIMIT) {
+    throw new ExternalSyncRequestError('rate_limited', 'Too many synchronization requests. Wait a minute and try again.', 429);
+  }
+
+  const claimKey = `rate:${String(options.jobType)}:${String(options.actorUserId)}:${windowStartMs}:${requestKey}`;
+  await sr.entities.ExternalSyncClaim.create({
+    claim_key: claimKey,
+    claim_type: 'rate_slot',
+    request_key: requestKey,
+    request_id: options.requestId,
+    request_fingerprint: options.fingerprint,
+    job_type: options.jobType,
+    actor_user_id: options.actorUserId,
+    attempt_number: 0,
+    claimed_at: now,
+    rate_window_started_at: windowStartedAt,
+    rate_slot: records.length,
+  });
+  const verified = await exactClaims(sr, { claim_key: claimKey });
+  if (verified.length !== 1 ||
+      verified[0].request_key !== requestKey ||
+      verified[0].request_fingerprint !== options.fingerprint) {
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization rate claim could not be verified.');
+  }
 }
 
 export async function beginExternalSyncRequest(sr, options) {
