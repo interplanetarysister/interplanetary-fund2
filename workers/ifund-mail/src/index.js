@@ -63,7 +63,8 @@ async function receive(message, env) {
     message.setReject("Message exceeds the 10 MB mailbox limit");
     return;
   }
-  const parsed = await PostalMime.parse(raw);
+  const parser = new PostalMime();
+  const parsed = await parser.parse(raw);
   const id = await fingerprint(raw, recipient);
   const rawKey = `mail/${id}.eml`;
   const bodyText = textFrom(parsed);
@@ -84,8 +85,7 @@ async function receive(message, env) {
     ).bind(id, recipient, sender, subject, bodyText.slice(0, 240),
       bodyText, received, rawKey, raw.byteLength).run();
   } catch (error) {
-    // Do not acknowledge mail unless both stores succeeded; provider may retry.
-    await env.MAIL_RAW.delete(rawKey).catch(() => {});
+    // Keep the R2 original if D1 fails. Mail retries are idempotent and can heal D1 later.
     throw error;
   }
 }
