@@ -75,6 +75,9 @@ export default async function(req) {
 
     const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
     const now = new Date().toISOString();
+    const balanceWasReported = effectiveKind === 'crowdfunding' &&
+      [external_total, external_currency, external_donor_count]
+        .some((value) => value !== undefined && value !== null);
     const data: any = {
       platform,
       kind: effectiveKind,
@@ -88,7 +91,12 @@ export default async function(req) {
       external_donor_count: reportedDonors,
       status: 'disconnected',
       verification_status: 'unverified',
-      external_data_source: 'owner_reported',
+      external_data_source: balanceWasReported
+        ? 'owner_reported'
+        : (existing?.external_data_source || 'owner_reported'),
+      external_balance_observed_at: balanceWasReported
+        ? now
+        : (existing?.external_balance_observed_at || null),
       last_error: '',
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };
