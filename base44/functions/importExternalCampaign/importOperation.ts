@@ -54,8 +54,8 @@ export async function convergeExternalCampaignImport({
     const snapshot = await discover(connection);
     const importedAt = new Date().toISOString();
     const payload = {
-      status: 'draft',
       ...snapshot.campaign,
+      status: 'draft',
       goal_amount: Number(incoming.goal_amount),
       external_import_operation_key: targetKey,
       external_import_connection_id: connection.id,
@@ -142,6 +142,7 @@ export async function convergeExternalCampaignImport({
     imported,
     result: {
       ok: true,
+      duplicate: recovered,
       request_id: requestId,
       campaign_id: campaign.id,
       campaign,
