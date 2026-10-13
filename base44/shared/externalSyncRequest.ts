@@ -210,6 +210,7 @@ export async function beginExternalSyncRequest(sr, options) {
   const nowMs = options.nowMs ?? Date.now();
   const now = new Date(nowMs).toISOString();
   const requestKey = externalSyncRequestKey(options.jobType, options.actorUserId, options.requestId);
+  const targetKey = String(options.targetKey || '').trim();
   let mutex = null;
 
   try {
@@ -218,23 +219,35 @@ export async function beginExternalSyncRequest(sr, options) {
     // All idempotency, rate-limit, claim, and run writes occur while the
     // conditional global lease is held. Provider I/O begins only after an
     // immutable request claim and its SyncRun have both been verified.
-    const [runs, claims] = await Promise.all([
+    const [runs, claims, targetRuns] = await Promise.all([
       sr.entities.SyncRun.filter({ request_key: requestKey }, '-created_date', 5),
       exactClaims(sr, { request_key: requestKey }, 10),
+      targetKey
+        ? sr.entities.SyncRun.filter({ target_key: targetKey }, '-created_date', 5)
+        : Promise.resolve([]),
     ]);
-    if ((runs || []).length > 1) {
+    if ((runs || []).length > 1 || (targetRuns || []).length > 1) {
       throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization request state is ambiguous.');
     }
 
-    const existing = runs?.[0] || null;
+    const requestRun = runs?.[0] || null;
+    const targetRun = targetRuns?.[0] || null;
+    if (requestRun && targetRun && requestRun.id !== targetRun.id) {
+      throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
+    }
+    const existing = targetRun || requestRun;
     const attemptClaims = (claims || []).filter((row) => row.claim_type !== 'rate_slot');
     const conflicting = [...(claims || []), ...(runs || [])]
       .find((row) => row.request_fingerprint && row.request_fingerprint !== options.fingerprint);
     if (conflicting) {
       throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
     }
-    if (existing && isFinal(existing.overall_status)) {
-      return { disposition: 'completed', run: existing, requestKey };
+    if (targetRun?.request_fingerprint && targetRun.request_fingerprint !== options.fingerprint) {
+      throw new ExternalSyncRequestError('target_conflict', 'This target already has an import with different parameters.', 409);
+    }
+    if (existing && isFinal(existing.overall_status) &&
+        (!targetKey || existing.overall_status !== 'failed')) {
+      return { disposition: 'completed', run: existing, requestKey, targetKey };
     }
 
     const latestClaim = [...attemptClaims]
@@ -284,6 +297,7 @@ export async function beginExternalSyncRequest(sr, options) {
       request_key: requestKey,
       request_id: options.requestId,
       request_fingerprint: options.fingerprint,
+      target_key: targetKey || null,
       job_type: options.jobType,
       initiator_type: options.initiatorType || 'user',
       initiator_id: options.actorUserId,
