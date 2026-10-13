@@ -52,9 +52,9 @@ for (const row of [
   {...eligible,created_by_id:'u2'},
 ]) assert.equal(crowdfundingConnectionEligibility(row,'u1').ok,false);
 
-function fakeService({ runs=[], claims=[], failReads=false, withMutex=true }={}) {
+function fakeService({ runs=[], claims=[], failReads=false, withMutex=true, loseMutexOnRenewal=false }={}) {
   let id=0;
-  const metrics={upserts:0};
+  const metrics={upserts:0,mutexCasWrites:0};
   if (withMutex && !claims.some((row)=>row.claim_key==='mutex:external-sync:v1')) {
     claims.push({
       id:'mutex-0',claim_key:'mutex:external-sync:v1',claim_type:'mutex',
@@ -64,21 +64,35 @@ function fakeService({ runs=[], claims=[], failReads=false, withMutex=true }={})
     });
   }
   const matches=(row,filter)=>Object.entries(filter).every(([key,value])=>row[key]===value);
+  const applyUpdate=(row,update)=>{
+    if(update.$set) Object.assign(row,update.$set);
+    if(update.$inc) for(const [key,value] of Object.entries(update.$inc)) row[key]=Number(row[key]||0)+Number(value);
+  };
   const SyncRun={
     async filter(filter){ if(failReads) throw new Error('backend'); return runs.filter((row)=>matches(row,filter)); },
-    async create(data){ const row={id:`run-${++id}`,...data}; runs.push(row); return row; },
+    async create(data){ const row={id:`run-${++id}`,...data}; runs.push(row); return {...row}; },
     async update(rowId,data){ const row=runs.find((item)=>item.id===rowId); if(!row) throw new Error('missing'); Object.assign(row,data); return {...row}; },
-    async get(rowId){ return runs.find((item)=>item.id===rowId)||null; },
+    async updateMany(filter,update){
+      const matched=runs.filter((row)=>matches(row,filter));
+      for(const row of matched) applyUpdate(row,update);
+      return {success:true,updated:matched.length,has_more:false};
+    },
+    async get(rowId){ const row=runs.find((item)=>item.id===rowId); return row?{...row}:null; },
   };
   const ExternalSyncClaim={
     async filter(filter){ if(failReads) throw new Error('backend'); return claims.filter((row)=>matches(row,filter)); },
     async create(data){ const row={id:`claim-${++id}`,...data}; claims.push(row); return {...row}; },
     async updateMany(filter,update){
-      const matched=claims.filter((row)=>matches(row,filter));
-      for(const row of matched) {
-        if(update.$set) Object.assign(row,update.$set);
-        if(update.$inc) for(const [key,value] of Object.entries(update.$inc)) row[key]=Number(row[key]||0)+Number(value);
+      if(filter.claim_key==='mutex:external-sync:v1' && update.$set?.lock_expires_at) {
+        metrics.mutexCasWrites++;
+        if(loseMutexOnRenewal && metrics.mutexCasWrites===2) {
+          const current=claims.find((row)=>row.id===filter.id);
+          if(current) current.lock_token='stolen-by-expired-successor';
+          return {success:true,updated:0,has_more:false};
+        }
       }
+      const matched=claims.filter((row)=>matches(row,filter));
+      for(const row of matched) applyUpdate(row,update);
       return {success:true,updated:matched.length,has_more:false};
     },
     // Mirrors Base44 semantics: upsert mutates an existing natural-key row.
@@ -110,15 +124,17 @@ assert.deepEqual(
 );
 
 const bootstrap=fakeService({withMutex:false});
-await assert.rejects(
-  ()=>beginExternalSyncRequest(bootstrap.sr,args),
-  (error)=>error.code==='backend_unavailable'&&error.status===503,
-  'missing mutex bootstraps once and fails closed before provider work',
+const bootstrapResults=await Promise.allSettled([
+  beginExternalSyncRequest(bootstrap.sr,args),
+  beginExternalSyncRequest(bootstrap.sr,{...args,requestId:UUID2}),
+]);
+assert.equal(
+  bootstrapResults.filter((result)=>result.status==='rejected'&&result.reason?.code==='backend_unavailable'&&result.reason?.status===503).length,
+  2,
+  'concurrent first use fails closed when the release-provisioned coordinator is absent',
 );
-assert.equal(bootstrap.runs.length,0,'mutex bootstrap starts no provider job');
-assert.equal(bootstrap.claims.filter((row)=>row.claim_type==='mutex').length,1);
-const afterBootstrap=await beginExternalSyncRequest(bootstrap.sr,args);
-assert.equal(afterBootstrap.disposition,'acquired','retry can proceed after safe mutex bootstrap');
+assert.equal(bootstrap.runs.length,0,'missing coordinator starts no provider job');
+assert.equal(bootstrap.claims.length,0,'request traffic never creates duplicate or ambiguous coordinator rows');
 
 await finishExternalSyncRequest(concurrent.sr,first.disposition==='acquired'?first.run:second.run,first.disposition==='acquired'?first.claimKey:second.claimKey,{overall_status:'success',result_payload:{ok:true}});
 const replay=await beginExternalSyncRequest(concurrent.sr,args);
@@ -127,10 +143,20 @@ assert.deepEqual(replay.run.result_payload,{ok:true});
 
 const oldTime=args.nowMs-EXTERNAL_SYNC_RUN_TTL_MS-1;
 const stale=fakeService({runs:[{id:'old',request_key:`external_funds:u1:${UUID}`,request_id:UUID,request_fingerprint:'user-scope',job_type:'external_funds',initiator_user_id:'u1',started_at:new Date(oldTime).toISOString(),overall_status:'in_progress',attempt_number:1,active_claim_key:`external_funds:u1:${UUID}:1`}],claims:[{claim_key:`external_funds:u1:${UUID}:1`,request_key:`external_funds:u1:${UUID}`,request_id:UUID,job_type:'external_funds',actor_user_id:'u1',attempt_number:1,claimed_at:new Date(oldTime).toISOString()}]});
+const staleRunBeforeRetry={...stale.runs[0]};
+const staleClaimKey=staleRunBeforeRetry.active_claim_key;
 const recovered=await beginExternalSyncRequest(stale.sr,args);
 assert.equal(recovered.disposition,'acquired');
 assert.equal(recovered.run.attempt_number,2);
 assert.match(recovered.claimKey,/:2$/);
+await assert.rejects(
+  ()=>finishExternalSyncRequest(stale.sr,staleRunBeforeRetry,staleClaimKey,{overall_status:'success',result_payload:{stale:true}}),
+  (error)=>error.code==='claim_lost'&&error.status===409,
+  'a stale provider completion cannot overwrite a recovered attempt',
+);
+assert.equal(stale.runs[0].active_claim_key,recovered.claimKey);
+assert.equal(stale.runs[0].overall_status,'in_progress');
+assert.equal(stale.runs[0].result_payload,undefined);
 
 const claimOnlyConflict=fakeService({claims:[{
   claim_key:`external_funds:u1:${UUID}:1`,
@@ -152,6 +178,15 @@ assert.equal(claimOnlyConflict.runs.length,0,'fingerprint conflict starts no syn
 assert.equal(claimOnlyConflict.claims.filter((row)=>row.claim_type!=='mutex').length,1,'fingerprint conflict acquires no rate slot or new request claim');
 
 await assert.rejects(()=>beginExternalSyncRequest(fakeService({failReads:true}).sr,args),(error)=>error.code==='backend_unavailable'&&error.status===503);
+
+const leaseLost=fakeService({loseMutexOnRenewal:true});
+await assert.rejects(
+  ()=>beginExternalSyncRequest(leaseLost.sr,args),
+  (error)=>error.code==='backend_unavailable'&&error.status===503,
+  'ownership loss at the pre-write lease CAS fails closed',
+);
+assert.equal(leaseLost.runs.length,0,'lost lease creates no run');
+assert.equal(leaseLost.claims.filter((row)=>row.claim_type!=='mutex').length,0,'lost lease creates no rate or execution claim');
 
 const windowStart=Math.floor(args.nowMs/60000)*60000;
 const limitedClaims=Array.from({length:5},(_,index)=>({
