@@ -42,5 +42,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Usage counters and reset windows used to prevent excessive calls to external providers and internal services."
 }
