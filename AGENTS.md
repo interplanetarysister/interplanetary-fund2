@@ -13,6 +13,21 @@ This is the **authoritative user-facing Interplanetary Fund application implemen
 
 A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
 
+## Mandatory isolated-change gate — owner directive 2026-10-13
+
+**Protect `main` and the live IFund application.** Every change, including urgent hotfixes, new features, security fixes, configuration, UI, legal documents, web/PWA changes, and Android changes, must begin in an isolated working copy/branch derived from the verified current source of truth. Never edit, commit, force-push, or run test mutations directly against `main`, the production app, production data, or payment infrastructure. The same rule applies to repository-connected apps and every agent/tool used for the work.
+
+Required change sequence:
+1. Inspect exact current `main`, relevant existing issue/PR, known-good checkpoint and release versions; reuse the canonical repair branch rather than spawning duplicate branches.
+2. Create a disposable local worktree/clone or existing canonical isolated GitHub branch. For Base44, GitHub branches isolate code but **do not isolate real data or provider side effects**; use a dedicated test app/environment with separate test data, non-production credentials, disabled live workflows and payment-provider sandbox accounts before any interactive tests. If this is unavailable, limit validation to read-only/deterministic tests and record the blocked runtime test.
+3. Change only the isolated branch/workspace. Keep financial ledgers, payment capture, payouts, real user records, live webhooks, live agents, external publishing and scheduled jobs untouched during testing. Never treat a visual preview or branch as proof of production isolation.
+4. Run relevant exact-head checks (locked install, lint, typecheck, build, focused regression/security tests and deterministic negative fixtures). Verify the website/PWA and Android builds together, with explicit limitations for tests requiring an emulator/device or signed APK.
+5. Review the complete diff for scope, secrets, unintended permission changes, compatibility, and rollback. Require an independent review and passing required GitHub checks; resolve blockers before a PR can be approved. Rebase/reconcile against a fresh current `main`, then repeat gates on the final exact head.
+6. A merge into `main` or Base44 publish is a **separate controlled promotion**, never a test. No direct `main` commits, no force pushes, no auto-publish of an unverified candidate; merge only after explicit release authorization and a reversible deployment plan. Verify separately that the website is published and the native Android release is built/signed/distributed.
+7. Immediately stop if tools unexpectedly target `main`, a production resource, or require live credentials, a paid build, or a destructive action. Record the limitation instead of testing on production.
+
+GitHub branch protection should independently require PR review, required green checks, disallow direct and force pushes, disallow branch deletion, and apply to administrators/bots; repository instructions alone cannot enforce those settings.
+
 ## Required first reads
 
 Before substantial work, read:
