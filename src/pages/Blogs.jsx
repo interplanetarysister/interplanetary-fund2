@@ -20,7 +20,7 @@ export default function Blogs(){
   <header className="flex flex-wrap items-start justify-between gap-3">
    <div><h1 className="text-3xl font-display font-semibold text-slate-950">IFund Stories & Blogs</h1>
     <p className="mt-2 text-slate-600">Our insider reporter’s diary, community stories, ideas and member journalism.</p></div>
-   <Link to="/my-blog"><Button>Write a blog</Button></Link>
+   <div className="flex flex-wrap items-center gap-3"><Link to="/social?tab=publications" className="text-blue-800 underline font-medium text-sm">All IFund publications</Link><Link to="/my-blog"><Button>Write a blog</Button></Link></div>
   </header>
   {loading&&<p role="status" className="flex items-center gap-2"><Loader2 className="animate-spin w-4 h-4"/>Loading stories…</p>}
   {error&&<p role="alert" className="text-red-700">{error}</p>}
