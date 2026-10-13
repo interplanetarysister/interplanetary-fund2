@@ -10,8 +10,16 @@ const rows = async (entity, filter, limit = 3) => {
 const ambiguous = (message) =>
   new ExternalSyncRequestError('backend_unavailable', message, 503);
 
-export const externalCampaignImportTargetKey = (ownerUserId, connectionId) =>
-  `campaign_import:${String(ownerUserId)}:${String(connectionId)}`;
+export async function externalCampaignImportTargetKey(ownerUserId, connectionId) {
+  const input = new TextEncoder().encode(
+    `campaign_import:v1:${String(ownerUserId)}:${String(connectionId)}`,
+  );
+  const digest = await crypto.subtle.digest('SHA-256', input);
+  const encoded = [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+  return `campaign_import:v1:${encoded}`;
+}
 
 export async function convergeExternalCampaignImport({
   base44,
@@ -22,7 +30,7 @@ export async function convergeExternalCampaignImport({
   requestId,
   discover,
 }) {
-  const targetKey = externalCampaignImportTargetKey(user.id, connection.id);
+  const targetKey = await externalCampaignImportTargetKey(user.id, connection.id);
   const importFilter = { owner_user_id: user.id, connection_id: connection.id };
   const campaignFilter = { external_import_operation_key: targetKey };
 
