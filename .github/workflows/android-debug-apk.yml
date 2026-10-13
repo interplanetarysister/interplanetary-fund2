@@ -80,8 +80,9 @@ jobs:
               embedded = archive.read('assets/public/ifund-release.json')
               assert embedded == Path('dist/ifund-release.json').read_bytes()
               assert json.loads(embedded)['release_id'] == 'ifund-20261013-legal-help-paypal-mobile-parity-v4'
-              for filename in ('assets/public/index.html', 'assets/public/assets/LegalFooter-1xA1rvld.js'):
-                  assert filename in archive.namelist()
+              names = archive.namelist()
+              assert 'assets/public/index.html' in names
+              assert any(name.startswith('assets/public/assets/LegalFooter-') and name.endswith('.js') for name in names)
           print('Verified Android debug APK:', p.stat().st_size, 'bytes, sha256', hashlib.sha256(p.read_bytes()).hexdigest())
           PY
 
