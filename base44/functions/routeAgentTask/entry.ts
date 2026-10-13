@@ -127,7 +127,7 @@ export default async function(req:Request) {
       });
       await logAudit(base44,{action:'agent_specialist_handoff',
         actor_user_id:user.id,target_type:'AgentDelegation',target_id:record.id,
-        detail:'Task dispatched to '+target,status:'success'});
+        detail:'Task dispatched to '+target,status:'success'}).catch(() => {});
       return Response.json({ok:true,dispatched:true,handoff:publicItem(updated)});
     }catch(error){
       await sr.entities.AgentDelegation.update(record.id,{
