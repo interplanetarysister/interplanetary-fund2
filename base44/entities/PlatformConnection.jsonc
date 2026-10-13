@@ -249,7 +249,13 @@
     },
     "last_synced": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Most recent connection-health, publish, or provider interaction timestamp. This is not evidence that the external balance was observed."
+    },
+    "external_balance_observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When external_total was last observed from its stated provenance. Only balance-changing owner input or provider-backed fundraising data may update this timestamp; health checks and publishing must not."
     },
     "last_error": {
       "type": "string",
