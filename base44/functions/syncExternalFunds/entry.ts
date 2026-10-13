@@ -223,6 +223,7 @@ export default async function (req) {
           };
           if (lastObservation && observedCurrency) {
             update.external_data_source = 'provider_verified';
+            update.external_balance_observed_at = now;
             update.last_synced = now;
             update.external_total = Number(lastObservation.observedTotal || 0);
             update.external_donor_count = Number(lastObservation.observedCount || 0);
