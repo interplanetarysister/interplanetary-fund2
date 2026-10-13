@@ -99,5 +99,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Imported/linked external campaign reference with provenance and validation state."
 }
