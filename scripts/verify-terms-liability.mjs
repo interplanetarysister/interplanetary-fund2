@@ -53,7 +53,7 @@ assert.match(legalText, /three calendar days/);
 assert.match(legalText, /14 calendar days/);
 assert.match(legalText, /one payout request per day/);
 assert.match(legalText, /may NOT lend, spend, pledge, collateralize/);
-assert.match(termsSource, /planned campaign checkout/);
+assert.match(termsSource, /planned campaign\s+checkout/);
 assert.match(legalText, /authorized fundraising manager, promoter, publisher, or agent/);
 assert.match(legalText, /negotiated exceptions or special permissions/);
 assert.match(legalText, /THIS CAP DOES NOT APPLY TO AMOUNTS IFUND IS REQUIRED TO RETURN OR REMIT/);
