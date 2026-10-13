@@ -45,5 +45,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Runtime feature controls and rollout settings; an enabled flag does not override authentication, provider scopes, or policy."
 }
