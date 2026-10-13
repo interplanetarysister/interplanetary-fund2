@@ -13,6 +13,7 @@ const connection = {
   status: 'connected',
   verification_status: 'verified',
 };
+const expectedTargetKey = await externalCampaignImportTargetKey(user.id, connection.id);
 const campaigns = [];
 const imports = [];
 let nextId = 0;
@@ -106,7 +107,7 @@ assert.equal(imports.length, 0, 'the injected crash happens before the import re
 assert.equal(campaigns[0].status, 'draft');
 assert.equal(
   campaigns[0].external_import_operation_key,
-  externalCampaignImportTargetKey(user.id, connection.id),
+  expectedTargetKey,
 );
 
 const recovered = await convergeExternalCampaignImport({
@@ -121,7 +122,7 @@ assert.equal(campaigns.length, 1, 'retry converges on the marked campaign');
 assert.equal(imports.length, 1, 'retry creates exactly one canonical import record');
 assert.equal(connection.campaign_id, campaigns[0].id, 'connection converges on the recovered campaign');
 assert.equal(imports[0].owner_user_id, user.id);
-assert.equal(imports[0].operation_key, externalCampaignImportTargetKey(user.id, connection.id));
+assert.equal(imports[0].operation_key, expectedTargetKey);
 assert.equal(imports[0].field_provenance.goal_amount.source, 'owner_supplied');
 assert.equal(discoveryCalls, 1, 'recovery does not repeat provider discovery after the durable campaign marker');
 assert.equal(campaignCreates, 1);
