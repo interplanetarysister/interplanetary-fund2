@@ -18,6 +18,7 @@ const connectionRecipe = read('base44/functions/resolvePlatformConnectionRecipe/
 const connectionStatus = read('base44/functions/resolveConnectionStatus/entry.ts');
 const sharedConnectorStatus = read('base44/functions/getSharedConnectorStatus/entry.ts');
 const importExternalCampaign = read('base44/functions/importExternalCampaign/entry.ts');
+const importOperation = read('base44/functions/importExternalCampaign/importOperation.ts');
 const syncImportedCampaign = read('base44/functions/syncImportedCampaign/entry.ts');
 const importedCampaignUi = read('src/components/campaigns/ImportedCampaignSync.jsx');
 const saveConnectionCredentials = read('base44/functions/saveConnectionCredentials/entry.ts');
@@ -71,9 +72,11 @@ expect(connectionStatus.includes("This connection needs attention."), 'canonical
 expect(!connectionStatus.includes("last_error: shared?.last_error || connection?.last_error"), 'canonical connection status must not return stored raw provider errors');
 expect(!sharedConnectorStatus.includes("String(auth.error"), 'shared status must not expose provider error strings');
 expect(!sharedConnectorStatus.includes("Wix verification failed (${res.status})"), 'shared status must not expose provider HTTP detail');
-expect(importExternalCampaign.includes('discoverPublicCampaignSnapshot(connection)'), 'external imports must use provider-backed discovery');
-expect(importExternalCampaign.includes("source: key === 'goal_amount' ? 'owner_supplied' : key === 'category' ? 'system_default' : snapshot.source"), 'owner goal and system default category must not be attributed to provider data');
-expect(!importExternalCampaign.includes("payload.goal_amount = Number(payload.goal_amount || 1)"), 'imports must not fabricate a goal amount');
+expect(importExternalCampaign.includes('discover: discoverPublicCampaignSnapshot'), 'external imports must use provider-backed discovery');
+expect(importOperation.includes('const snapshot = await discover(connection)'), 'external import discovery must remain server-side');
+expect(importOperation.includes("key === 'goal_amount'"), 'owner goal provenance must remain explicit');
+expect(importOperation.includes("? 'system_default'"), 'system default category provenance must remain explicit');
+expect(!importOperation.includes("payload.goal_amount = Number(payload.goal_amount || 1)"), 'imports must not fabricate a goal amount');
 expect(syncImportedCampaign.includes('discoverPublicCampaignSnapshot(connection)'), 'refresh must rediscover provider data server-side');
 expect(syncImportedCampaign.includes("source:key==='category'?'system_default':discovered.source"), 'refresh must preserve truthful default-category provenance');
 expect(!syncImportedCampaign.includes("body.campaign&&typeof body.campaign==='object'"), 'refresh must not trust caller-supplied campaign snapshots');
