@@ -90,5 +90,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Owner-approved on-behalf-of grants describing the agent, platform, scope, status, and revocation of delegated actions."
 }
