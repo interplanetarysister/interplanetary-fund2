@@ -129,10 +129,10 @@ try{
   await signed.goto(origin+'/dashboard',{waitUntil:'domcontentloaded'});
   // This mock user already accepted the current agreement version.
   const tabs=signed.getByRole('navigation',{name:'Bottom navigation'});
-  await tabs.getByRole('link',{name:'AI Chat',exact:true}).waitFor({timeout:12000});
+  await tabs.getByRole('link',{name:'AI Team',exact:true}).waitFor({timeout:12000});
   for(const [label,path] of [
     ['IFund Social','/social'],['Forums','/community'],
-    ['Profile','/profile'],['AI Chat','/agents'],
+    ['Profile','/profile'],['AI Team','/agents'],
   ]){
     await tabs.getByRole('link',{name:label,exact:true}).click({timeout:8000});
     await signed.waitForURL(url=>url.pathname===path,{timeout:10000});
@@ -143,7 +143,7 @@ try{
     assert.deepEqual(await tabs.locator('a.text-cyan-400').allTextContents(),[label]);
   }
   assert.deepEqual(authErrors,[],'Authenticated bottom navigation must not crash');
-  console.log('PASS: authenticated AI Chat, Profile, Social and Forums navigation using mocked account data');
+  console.log('PASS: authenticated AI Team, Profile, Social and Forums navigation using mocked account data');
   await member.close();
 }finally{
   await browser?.close();
