@@ -31,8 +31,17 @@ for (const row of [
   {...eligible,created_by_id:'u2'},
 ]) assert.equal(crowdfundingConnectionEligibility(row,'u1').ok,false);
 
-function fakeService({ runs=[], claims=[], failReads=false }={}) {
+function fakeService({ runs=[], claims=[], failReads=false, withMutex=true }={}) {
   let id=0;
+  const metrics={upserts:0};
+  if (withMutex && !claims.some((row)=>row.claim_key==='mutex:external-sync:v1')) {
+    claims.push({
+      id:'mutex-0',claim_key:'mutex:external-sync:v1',claim_type:'mutex',
+      request_key:'mutex',request_id:'mutex',request_fingerprint:'mutex-v1',
+      job_type:'external_funds',actor_user_id:'system',attempt_number:0,
+      claimed_at:new Date(0).toISOString(),lock_token:'',lock_expires_at:new Date(0).toISOString(),
+    });
+  }
   const matches=(row,filter)=>Object.entries(filter).every(([key,value])=>row[key]===value);
   const SyncRun={
     async filter(filter){ if(failReads) throw new Error('backend'); return runs.filter((row)=>matches(row,filter)); },
@@ -42,9 +51,27 @@ function fakeService({ runs=[], claims=[], failReads=false }={}) {
   };
   const ExternalSyncClaim={
     async filter(filter){ if(failReads) throw new Error('backend'); return claims.filter((row)=>matches(row,filter)); },
-    async upsert(records){ const data=records[0]; const prior=claims.find((row)=>row.claim_key===data.claim_key); if(prior) return {created:0,records:[prior]}; const row={id:`claim-${++id}`,...data}; claims.push(row); return {created:1,records:[row]}; },
+    async create(data){ const row={id:`claim-${++id}`,...data}; claims.push(row); return {...row}; },
+    async updateMany(filter,update){
+      const matched=claims.filter((row)=>matches(row,filter));
+      for(const row of matched) {
+        if(update.$set) Object.assign(row,update.$set);
+        if(update.$inc) for(const [key,value] of Object.entries(update.$inc)) row[key]=Number(row[key]||0)+Number(value);
+      }
+      return {success:true,updated:matched.length,has_more:false};
+    },
+    // Mirrors Base44 semantics: upsert mutates an existing natural-key row.
+    // Production claim code must never call this audit-corrupting path.
+    async upsert(records){
+      metrics.upserts++;
+      const data=records[0];
+      const prior=claims.find((row)=>row.claim_key===data.claim_key);
+      if(prior){ Object.assign(prior,data); return {created:0,updated:1,records:[{...prior}]}; }
+      const row={id:`claim-${++id}`,...data}; claims.push(row);
+      return {created:1,updated:0,records:[{...row}]};
+    },
   };
-  return { sr:{entities:{SyncRun,ExternalSyncClaim}}, runs, claims };
+  return { sr:{entities:{SyncRun,ExternalSyncClaim}}, runs, claims, metrics };
 }
 
 const args={jobType:'external_funds',actorUserId:'u1',requestId:UUID,fingerprint:'user-scope',scope:'user',nowMs:Date.parse('2026-10-12T00:00:00.000Z')};
