@@ -18,6 +18,13 @@ const requireOne = (records, message) => {
   return records[0];
 };
 
+const withoutPrivateCampaignFields = (campaign) => {
+  const publicCampaign = { ...campaign };
+  delete publicCampaign.external_import_private_marker;
+  delete publicCampaign.external_import_recovery_token;
+  return publicCampaign;
+};
+
 export async function externalCampaignImportTargetKey(ownerUserId, connectionId) {
   const input = new TextEncoder().encode(
     `campaign_import:v1:${String(ownerUserId)}:${String(connectionId)}`,
@@ -122,12 +129,12 @@ export async function convergeExternalCampaignImport({
   if (operation.campaign_id) {
     campaign = await sr.entities.Campaign.get(operation.campaign_id);
     if (!campaign || campaign.created_by_id !== user.id ||
-        campaign.external_import_recovery_token !== operation.recovery_token) {
+        campaign.external_import_private_marker !== operation.recovery_token) {
       throw unavailable('Recovered campaign ownership could not be verified.');
     }
   } else {
     const candidates = await rows(sr.entities.Campaign, {
-      external_import_recovery_token: operation.recovery_token,
+      external_import_private_marker: operation.recovery_token,
     });
     if (candidates.length > 1) throw unavailable('Campaign recovery identity is ambiguous.');
     campaign = candidates[0] || null;
@@ -140,10 +147,10 @@ export async function convergeExternalCampaignImport({
         ...snapshot.campaign,
         status: 'draft',
         goal_amount: Number(incoming.goal_amount),
-        external_import_recovery_token: operation.recovery_token,
+        external_import_private_marker: operation.recovery_token,
       });
       const verified = await rows(sr.entities.Campaign, {
-        external_import_recovery_token: operation.recovery_token,
+        external_import_private_marker: operation.recovery_token,
       });
       campaign = requireOne(verified, 'Created campaign recovery identity could not be verified.');
       if (campaign.created_by_id !== user.id) {
@@ -163,12 +170,12 @@ export async function convergeExternalCampaignImport({
     if (!imported || imported.owner_user_id !== user.id ||
         imported.connection_id !== connection.id ||
         imported.campaign_id !== campaign.id ||
-        imported.recovery_token !== operation.recovery_token) {
+        imported.operation_key !== targetKey) {
       throw unavailable('Recovered import record ownership could not be verified.');
     }
   } else {
     const candidates = await rows(sr.entities.ExternalCampaignImport, {
-      recovery_token: operation.recovery_token,
+      operation_key: targetKey,
     });
     if (candidates.length > 1) throw unavailable('Campaign import record is ambiguous.');
     imported = candidates[0] || null;
@@ -191,7 +198,6 @@ export async function convergeExternalCampaignImport({
         owner_user_id: user.id,
         connection_id: connection.id,
         operation_key: targetKey,
-        recovery_token: operation.recovery_token,
         request_id: requestId,
         platform: connection.platform,
         external_campaign_id: String(incoming.external_campaign_id || ''),
@@ -204,7 +210,7 @@ export async function convergeExternalCampaignImport({
         status: 'imported',
       });
       const verified = await rows(sr.entities.ExternalCampaignImport, {
-        recovery_token: operation.recovery_token,
+        operation_key: targetKey,
       });
       imported = requireOne(verified, 'External campaign import record could not be verified.');
     }
@@ -239,7 +245,7 @@ export async function convergeExternalCampaignImport({
       duplicate: recovered,
       request_id: requestId,
       campaign_id: campaign.id,
-      campaign,
+      campaign: withoutPrivateCampaignFields(campaign),
       import_record: imported,
     },
   };
