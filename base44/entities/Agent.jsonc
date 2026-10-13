@@ -42,5 +42,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Configuration metadata for IFund specialist agents; permissions and external capabilities must be checked separately."
 }
