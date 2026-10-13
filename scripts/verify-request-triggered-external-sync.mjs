@@ -10,6 +10,8 @@ const imported = read("base44/functions/syncImportedCampaign/entry.ts");
 const importFn = read("base44/functions/importExternalCampaign/entry.ts");
 const importOperation = read("base44/functions/importExternalCampaign/importOperation.ts");
 const importEntity = read("base44/entities/ExternalCampaignImport.jsonc");
+const importOperationEntity = read("base44/entities/ExternalCampaignImportOperation.jsonc");
+const campaignEntity = read("base44/entities/Campaign.jsonc");
 const syncEntity = read("base44/entities/SyncRun.jsonc");
 const connections = read("src/pages/Connections.jsx");
 const count = read("src/components/account/CountMyMoney.jsx");
@@ -54,9 +56,16 @@ assert.match(imported, /beginExternalSyncRequest/);
 assert.match(importFn, /beginExternalSyncRequest/);
 assert.match(importFn, /externalCampaignImportTargetKey/);
 assert.match(importFn, /targetKey/);
-assert.match(importOperation, /external_import_operation_key/);
-assert.match(importOperation, /crypto\.subtle\.digest\('SHA-256'/,
-  'publicly readable campaign recovery markers must not expose raw owner or connection ids');
+assert.match(importOperation, /external_import_recovery_token/);
+assert.match(importOperation, /crypto\.randomUUID\(\)/,
+  'campaign recovery must use an unguessable server-generated capability');
+assert.match(importOperation, /assertExternalSyncClaimActive/);
+assert.match(importOperationEntity, /Private server-only recovery and fencing state/);
+assert.match(importOperationEntity, /"read": \{ "user_condition": \{ "role": "admin" \} \}/);
+assert.doesNotMatch(campaignEntity, /external_import_connection_id/,
+  'campaign/public schema must not expose raw provider connection ids');
+assert.doesNotMatch(campaignEntity, /external_import_operation_key/,
+  'campaign recovery authority must not be deterministic client-writable state');
 assert.match(importOperation, /Created campaign recovery identity could not be verified/);
 assert.doesNotMatch(createCampaign, /discoverExternalCampaignSnapshot/);
 assert.match(createCampaign, /request_id:\s*requestId/);
