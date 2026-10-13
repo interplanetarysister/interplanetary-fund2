@@ -129,5 +129,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Public IFund social posts and authorized third-party mirrors, not private direct messages."
 }
