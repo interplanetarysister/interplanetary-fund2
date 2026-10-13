@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Mail, MessageSquare, CheckCircle2, ArrowRight } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
+import LegalFooter from "@/components/LegalFooter";
 
 const CONTACT_EMAIL = "hello@interplanetaryfund.com";
 
@@ -104,6 +105,7 @@ export default function Contact() {
           </form>
         )}
       </section>
+      <LegalFooter />
     </div>
   );
 }

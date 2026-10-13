@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Compass, Sparkles } from "lucide-react";
 import BrandLogo from "@/components/brand/BrandLogo";
+import LegalFooter from "@/components/LegalFooter";
 
 export default function About() {
   return (
@@ -54,6 +55,7 @@ export default function About() {
           <Link to="/create"><Button className="rounded-xl bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 hover:opacity-90"><Sparkles className="w-4 h-4 mr-2" /> Start a campaign <ArrowRight className="w-4 h-4 ml-2" /></Button></Link>
         </div>
       </section>
+      <LegalFooter />
     </div>
   );
 }

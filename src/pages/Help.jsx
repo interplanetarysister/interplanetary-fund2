@@ -102,6 +102,24 @@ export default function Help() {
         </div>
       </section>
 
+      <section aria-labelledby="help-legal-heading" className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+        <h2 id="help-legal-heading" className="text-xl font-semibold text-foreground">Legal documents & rights</h2>
+        <p className="mt-2 text-sm text-muted-foreground">Public IFund agreements, privacy information, copyright and campaign permissions. No sign-in required.</p>
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            ["/help/terms-of-service", "Terms of Service"],
+            ["/help/privacy-policy", "Privacy Policy"],
+            ["/help/copyright-and-intellectual-property", "Copyright & Intellectual Property"],
+            ["/help/campaign-authority-and-ai-permissions", "Campaign & AI Permissions"],
+            ["/help/payment-holding-and-withdrawals", "Payments & Withdrawals"],
+            ["/help/copyright-permissions-and-reporting", "Permissions & Infringement Reports"],
+          ].map(([path, label]) => <li key={path}><Link to={path}
+            className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-border px-4 py-3 font-medium text-foreground hover:border-cyan-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-500">
+            {label}<ArrowRight className="h-4 w-4 shrink-0 text-cyan-600" />
+          </Link></li>)}
+        </ul>
+      </section>
+
       <section aria-labelledby="help-articles-heading">
         <h2 id="help-articles-heading" className="font-display text-xl sm:text-2xl text-foreground mb-4">{query || category ? "Matching articles" : "Help articles"}</h2>
         {loading && <p className="text-muted-foreground" role="status">Loading help articles…</p>}

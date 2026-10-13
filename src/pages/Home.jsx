@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/brand/BrandLogo";
+import LegalFooter from "@/components/LegalFooter";
 import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
@@ -117,6 +118,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <LegalFooter />
     </div>
   );
 }

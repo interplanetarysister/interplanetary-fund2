@@ -10,6 +10,7 @@ export const HELP_CATEGORIES = Object.freeze([
   { name: "Subscriptions", description: "Plans, charges and billing", icon: "CreditCard" },
   { name: "AI Assistance", description: "How IFund assistants can help", icon: "Bot" },
   { name: "Community", description: "Groups, posts and conversations", icon: "Users" },
+  { name: "Legal & Policies", description: "Terms, privacy, copyright and permissions", icon: "ShieldCheck" },
 ]);
 export const HELP_CATEGORY_NAMES = HELP_CATEGORIES.map((item) => item.name);
 const LEGACY_CATEGORY_MAP = Object.freeze({
