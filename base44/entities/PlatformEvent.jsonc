@@ -55,5 +55,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Sanitized operational event summaries for configuration, security, deployments, recovery, and system health."
 }
