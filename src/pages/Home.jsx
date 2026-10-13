@@ -113,7 +113,7 @@ export default function Home() {
           <div className="max-w-sm mx-auto mt-9 rounded-2xl border border-border p-4 text-center">
             <p className="text-sm font-medium text-foreground mb-2">Support Interplanetary Fund itself</p>
             <p className="text-xs text-muted-foreground mb-3">This donation helps operate the platform. It is not credited to any individual campaign.</p>
-            <PayPalDonateButton label="Donate to Interplanetary Fund" />
+            <PayPalDonateButton label="Support Interplanetary Fund with PayPal" />
             <p className="mt-3 text-sm font-semibold text-foreground">Cryptocurrency donations — Coming soon…</p>
           </div>
         </div>
