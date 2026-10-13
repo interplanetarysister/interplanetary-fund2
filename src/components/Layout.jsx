@@ -265,7 +265,7 @@ export default function Layout() {
         </AnimatePresence>
         <QuickActions user={user} />
         <BackToTop />
-        <div className="md:block hidden"><LegalFooter /></div>
+        <div><LegalFooter /></div>
       </main>
     </div>
   );
