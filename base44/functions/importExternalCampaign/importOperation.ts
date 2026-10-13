@@ -2,6 +2,7 @@ import {
   assertExternalSyncClaimActive,
   ExternalSyncRequestError,
 } from '../../shared/externalSyncRequest.ts';
+import { campaignForResponse } from '../../shared/campaignResponse.ts';
 
 const ALLOWED = ['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
 
@@ -16,13 +17,6 @@ const unavailable = (message) =>
 const requireOne = (records, message) => {
   if (records.length !== 1) throw unavailable(message);
   return records[0];
-};
-
-const withoutPrivateCampaignFields = (campaign) => {
-  const publicCampaign = { ...campaign };
-  delete publicCampaign.external_import_private_marker;
-  delete publicCampaign.external_import_recovery_token;
-  return publicCampaign;
 };
 
 const withoutPrivateImportFields = (imported) => {
@@ -152,8 +146,9 @@ export async function convergeExternalCampaignImport({
     }
     if (!campaign) {
       await fence(sr, run, claimKey);
-      campaign = await base44.entities.Campaign.create({
+      campaign = await sr.entities.Campaign.create({
         ...snapshot.campaign,
+        created_by_id: user.id,
         status: 'draft',
         goal_amount: Number(incoming.goal_amount),
         external_import_private_marker: operation.recovery_token,
@@ -254,7 +249,7 @@ export async function convergeExternalCampaignImport({
       duplicate: recovered,
       request_id: requestId,
       campaign_id: campaign.id,
-      campaign: withoutPrivateCampaignFields(campaign),
+      campaign: campaignForResponse(campaign),
       import_record: withoutPrivateImportFields(imported),
     },
   };
