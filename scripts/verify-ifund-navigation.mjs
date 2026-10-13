@@ -118,7 +118,7 @@ try{
   }));
   await member.route('**/*recordLegalAcceptance*',route=>route.fulfill({
     status:200,contentType:'application/json',
-    body:JSON.stringify({data:{accepted:true,terms_version:'2026-10-13-v3'}}),
+    body:JSON.stringify({accepted:true,terms_version:'2026-10-13-v3'}),
   }));
   const signed=await member.newPage(),authErrors=[];
   signed.on('pageerror',error=>authErrors.push(error.message));
