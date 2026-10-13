@@ -41,6 +41,8 @@ try {
   await page.goto(origin + "/agents", { waitUntil: "domcontentloaded", timeout: 25000 });
   const agree = page.getByRole("button", { name: /I Agree — Continue/ });
   if (await agree.isVisible().catch(() => false)) await agree.click();
+  // The current AI team opens an agent-specific chat in an overlay sheet.
+  await page.getByRole("button", { name: /Talk to Chief of Staff/ }).click();
   const input = page.getByRole("textbox", { name: "Message Chief of Staff" });
   await input.waitFor({ state: "visible", timeout: 12000 }).catch(async (error) => {
     console.error("IFund mobile fixture screen:", (await page.locator("body").innerText()).slice(0, 1500));
@@ -54,10 +56,10 @@ try {
     return { position: composer ? getComputedStyle(composer).position : null, bodyRoot: composer?.parentElement === document.body,
       inputBottom: rect?.bottom, inputTop: rect?.top, navTop: navRect?.top, viewportHeight: innerHeight };
   });
-  assert.equal(geom.position, "fixed", "Mobile composer must be fixed independently of scrolling page");
-  assert.equal(geom.bodyRoot, true, "Mobile composer must be portaled outside clipped page containers");
+  assert.notEqual(geom.position, "fixed", "The selected agent chat belongs inside the full-height overlay sheet");
+  assert.equal(geom.bodyRoot, false, "The agent chat composer stays inside its overflow-safe overlay");
   assert.ok(Number.isFinite(geom.inputBottom) && Number.isFinite(geom.navTop), "Composer and navigation must be rendered");
-  assert.ok(geom.inputTop >= 0 && geom.inputBottom < geom.navTop, "Message field must be fully visible above the bottom nav: " + JSON.stringify(geom));
+  assert.ok(geom.inputTop >= 0 && geom.inputBottom <= geom.viewportHeight, "Message field must remain fully visible in the mobile chat sheet: " + JSON.stringify(geom));
   assert.deepEqual(crashes, [], "No uncaught errors rendering mobile chat");
   console.log("PASS: mobile message entry is visible above bottom navigation:", JSON.stringify(geom));
   await context.close();
