@@ -2,7 +2,14 @@ name = "interplanetary-fund2"
 main = "host/gateway/worker.js"
 compatibility_date = "2026-09-29"
 workers_dev = true
+# Preserve existing dashboard-configured non-secret admin backend URLs on deploy.
+# Encrypted secrets are preserved by Wrangler separately.
+keep_vars = true
 
+# These hostname routes require authoritative DNS on Cloudflare and a proxied
+# interplanetaryfund.com record. DNS is currently delegated to Wix, so these
+# declarations alone cannot activate the public paths. Preserve production
+# until the DNS cutover has a proven rollback and service-record inventory.
 [[routes]]
 pattern = "interplanetaryfund.com/api/health*"
 zone_name = "interplanetaryfund.com"
@@ -25,6 +32,9 @@ zone_name = "interplanetaryfund.com"
 
 [vars]
 IFUND_BASE44_ORIGIN = "https://interplanetaryfund.base44.app"
+# Exact known IFund browser origins only; no wildcards or reflected Origin.
+# This must ship with Worker deployment, not depend on dashboard-only state.
+IFUND_ALLOWED_ORIGINS = "https://interplanetaryfund.com,https://www.interplanetaryfund.com,https://interplanetaryfund.base44.app,https://interplanetary-fund2.interplanetary-fund.workers.dev"
 
 [assets]
 directory = "./dist"
