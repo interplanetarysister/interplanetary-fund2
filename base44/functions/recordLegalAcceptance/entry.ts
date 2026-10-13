@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 
-const TERMS_VERSION = '2026-10-13-v1';
+const TERMS_VERSION = '2026-10-13-v2';
 
 // Only the signed-in owner can record an acceptance; data written by the server.
 // This is an audit record, never an AI, external account, or money authorization.
