@@ -128,9 +128,7 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
       },
     },
   };
-  const base44 = { entities: { Campaign: { create: ownerCreateCampaign } } };
   const input = {
-    base44,
     sr,
     user,
     connection,
