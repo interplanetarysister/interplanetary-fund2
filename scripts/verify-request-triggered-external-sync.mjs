@@ -9,6 +9,11 @@ const sync = read("base44/functions/syncExternalFunds/entry.ts");
 const imported = read("base44/functions/syncImportedCampaign/entry.ts");
 const importFn = read("base44/functions/importExternalCampaign/entry.ts");
 const importOperation = read("base44/functions/importExternalCampaign/importOperation.ts");
+const saveCampaign = read("base44/functions/saveCampaign/entry.ts");
+const campaignResponse = read("base44/shared/campaignResponse.ts");
+const functionSources = fs.readdirSync(path.join(root, "base44/functions"), { recursive: true })
+  .filter((file) => typeof file === "string" && /entry\.(?:ts|js)$/.test(file))
+  .map((file) => read(path.join("base44/functions", file)));
 const importEntity = read("base44/entities/ExternalCampaignImport.jsonc");
 const importOperationEntity = read("base44/entities/ExternalCampaignImportOperation.jsonc");
 const campaignEntity = read("base44/entities/Campaign.jsonc");
@@ -59,12 +64,32 @@ assert.match(importFn, /targetKey/);
 assert.match(importOperation, /external_import_private_marker/);
 assert.match(importOperation, /crypto\.randomUUID\(\)/,
   'campaign recovery must use an unguessable server-generated capability');
+assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"create"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
+  'campaign correlation marker must reject owner-controlled creation');
 assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"read"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
   'campaign correlation marker must be hidden from owner/public reads');
 assert.match(campaignEntity, /"external_import_private_marker"[\s\S]*?"update"\s*:\s*\{\s*"user_condition"\s*:\s*\{\s*"role"\s*:\s*"admin"/,
   'campaign correlation marker must be immutable to owners');
-assert.match(importOperation, /withoutPrivateCampaignFields/,
-  'function results must remove private campaign correlation fields');
+assert.match(importOperation, /campaignForResponse\(campaign\)/,
+  'import results must use the explicit Campaign API allowlist');
+assert.match(importOperation, /sr\.entities\.Campaign\.create\(\{[\s\S]*?created_by_id:\s*user\.id/,
+  'service-role import must set the authenticated owner explicitly');
+assert.doesNotMatch(importOperation, /base44\.entities\.Campaign\.create/,
+  'owner-context Campaign creation cannot set the private marker');
+assert.match(saveCampaign, /campaignForResponse\(\{ \.\.\.existing, \.\.\.safe, id: campaignId \}\)/,
+  'service-role save responses must use the Campaign API allowlist');
+assert.match(saveCampaign, /campaignForResponse\(created\)/,
+  'ordinary campaign create responses must use the same allowlist');
+assert.doesNotMatch(campaignResponse, /external_import_private_marker|external_import_recovery_token/,
+  'private Campaign fields must never enter the response allowlist');
+for (const source of functionSources) {
+  assert.doesNotMatch(source, /campaign\s*:\s*\{\s*\.\.\.(?:existing|campaign)\b/,
+    'functions must not spread service-role Campaign records into API responses');
+  assert.doesNotMatch(source, /campaign\s*:\s*(?:created|existing|campaign)\s*[,}]/,
+    'functions must not return raw Campaign records from API responses');
+  assert.doesNotMatch(source, /Response\.json\(\s*campaigns?\s*[,)]/,
+    'functions must not return raw Campaign records as API response roots');
+}
 assert.match(importOperation, /withoutPrivateImportFields/,
   'function results must remove private import operation fields');
 assert.doesNotMatch(importOperation, /ExternalCampaignImport\.create\(\{[\s\S]*?recovery_token:/,
