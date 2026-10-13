@@ -106,10 +106,30 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     const prepared = Array.isArray(data[2]?.drafts) && data[2]?.ok ? data[2].drafts : null;
     const suggestionsResult = results[3].status === "fulfilled" && Array.isArray(results[3].value)
       ? results[3].value : null;
-    if (tasks !== null) setWork(tasks);
+    // Refresh actual specialist handoff results. A record marked "assigned"
+    // is not completion; only a resolved specialist response can advance it.
+    let checkedTasks = tasks;
+    if (tasks !== null) {
+      const active = tasks.filter((task) => task.status === "in_progress" &&
+        task.agent !== "managed_connection_agent").slice(0, 8);
+      if (active.length) {
+        const checks = await Promise.allSettled(active.map((task) =>
+          base44.functions.invoke("routeAgentTask", { mode: "status", delegation_id: task.id })));
+        const updates = new Map(checks.flatMap((result) => {
+          const handoff = result.status === "fulfilled" ? result.value?.data?.handoff : null;
+          return handoff?.id ? [[handoff.id, handoff]] : [];
+        }));
+        checkedTasks = tasks.map((task) => {
+          const updated = updates.get(task.id);
+          return updated ? { ...task, status: updated.status, agent: updated.destination_agent,
+            result_summary: updated.result_summary, updated_at: updated.updated_at } : task;
+        });
+      }
+    }
+    if (checkedTasks !== null) setWork(checkedTasks);
     if (chats !== null) setWork((current) => {
       // Keep fresh delegated tasks if their independent request succeeded.
-      const source = tasks !== null ? tasks : current.filter((item) => item.kind !== "chat");
+      const source = checkedTasks !== null ? checkedTasks : current.filter((item) => item.kind !== "chat");
       return [...source, ...chats];
     });
     if (prepared !== null) setDrafts(prepared);
