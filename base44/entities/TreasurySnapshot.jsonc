@@ -67,5 +67,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Admin-oriented point-in-time totals for IFund treasury reporting. A snapshot is informational and never replaces reconciled processor settlements or ledger entries."
 }
