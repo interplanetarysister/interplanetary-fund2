@@ -8,6 +8,10 @@ export default function LegalFooter() {
         <Link to="/about" className="hover:text-stone-600 transition-colors">About</Link>
         <span>·</span>
         <Link to="/contact" className="hover:text-stone-600 transition-colors">Contact</Link>
+        <span>·</span>
+        <Link to="/terms" className="hover:text-stone-600 transition-colors">Terms</Link>
+        <span>·</span>
+        <Link to="/privacy" className="hover:text-stone-600 transition-colors">Privacy</Link>
       </div>
       © 2026 Michelle Rogers · Interplanetary Fund · All Rights Reserved ·{" "}
       <span className="italic">Donations are voluntary and may not reach campaign goals.</span>
