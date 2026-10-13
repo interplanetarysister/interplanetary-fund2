@@ -52,14 +52,14 @@ export default function Connect() {
   ];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+    <div className="max-w-2xl mx-auto py-4 sm:py-6">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
           <Plug className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="font-display text-2xl sm:text-3xl text-foreground">Connect an AI Assistant</h1>
-          <p className="text-sm text-muted-foreground">Point any MCP-compatible AI client at your Interplanetary Fund workspace.</p>
+          <h1 className="font-display text-2xl sm:text-3xl text-foreground">AI Connections</h1>
+          <p className="text-sm text-muted-foreground">Connect an external AI client to your IFund workspace. Built-in IFund specialist agents remain in the AI Team.</p>
         </div>
       </div>
 
