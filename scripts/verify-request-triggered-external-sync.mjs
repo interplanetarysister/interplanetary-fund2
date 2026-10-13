@@ -55,6 +55,8 @@ assert.match(importFn, /beginExternalSyncRequest/);
 assert.match(importFn, /externalCampaignImportTargetKey/);
 assert.match(importFn, /targetKey/);
 assert.match(importOperation, /external_import_operation_key/);
+assert.match(importOperation, /crypto\.subtle\.digest\('SHA-256'/,
+  'publicly readable campaign recovery markers must not expose raw owner or connection ids');
 assert.match(importOperation, /Created campaign recovery identity could not be verified/);
 assert.doesNotMatch(createCampaign, /discoverExternalCampaignSnapshot/);
 assert.match(createCampaign, /request_id:\s*requestId/);
