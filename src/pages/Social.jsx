@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Radio, Loader2, Link2, RefreshCw, Users } from "lucide-react";
+import { Radio, Loader2, Link2, RefreshCw, Users, Newspaper } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PostComposer from "@/components/social/PostComposer";
 import SocialFeed from "@/components/social/SocialFeed";
 import ProfileBanner, { getTierFromScore } from "@/components/social/ProfileBanner";
 import ShareToProfileDialog from "@/components/social/ShareToProfileDialog";
 import AdminContentPanel from "@/components/social/AdminContentPanel";
+import OfficialPublications from "@/components/social/OfficialPublications";
 import ActivityFeed from "@/components/community/ActivityFeed";
 import PageError from "@/components/PageError";
 import { isUsableConnection } from "@/lib/connectionHealth";
@@ -19,7 +20,8 @@ export default function Social() {
   const [providerCapabilities, setProviderCapabilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("social");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => ["social", "community", "publications"].includes(searchParams.get("tab")) ? searchParams.get("tab") : "social");
   const [refreshKey, setRefreshKey] = useState(0);
   const [shareTarget, setShareTarget] = useState(null); // { sourceType, sourceId }
 
@@ -54,6 +56,10 @@ export default function Social() {
   }, []);
 
   useEffect(() => { loadUser(); }, [loadUser]);
+  useEffect(() => {
+    const requested = searchParams.get("tab") || "social";
+    if (["social", "community", "publications"].includes(requested)) setTab(requested);
+  }, [searchParams]);
 
   const handlePosted = (_post, newScore, newTier) => {
     setUser((prev) => ({ ...prev, social_score: newScore, banner_tier: newTier }));
@@ -100,14 +106,17 @@ export default function Social() {
           </button>
         </div>
 
-        {/* Tabs: Social + Community combined */}
-        <Tabs value={tab} onValueChange={setTab} className="mb-6">
-          <TabsList className="bg-white/5 border border-white/10">
+        {/* One social hub for the feed, community, and finalized publications. */}
+        <Tabs value={tab} onValueChange={(value) => { setTab(value); setSearchParams(value === "social" ? {} : { tab: value }); }} className="mb-6">
+          <TabsList className="bg-white/5 border border-white/10 h-auto flex flex-wrap gap-1 p-1">
             <TabsTrigger value="social" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-200">
               <Radio className="w-3.5 h-3.5 mr-1.5" /> Social
             </TabsTrigger>
             <TabsTrigger value="community" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-200">
               <Users className="w-3.5 h-3.5 mr-1.5" /> Community
+            </TabsTrigger>
+            <TabsTrigger value="publications" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-200">
+              <Newspaper className="w-3.5 h-3.5 mr-1.5" /> Publications
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -135,6 +144,8 @@ export default function Social() {
                   onShare={user ? (post) => setShareTarget({ sourceType: "social_post", sourceId: post.id }) : undefined}
                 />
               </>
+            ) : tab === "publications" ? (
+              <OfficialPublications isAdmin={isAdmin} />
             ) : (
               <ActivityFeed />
             )}
