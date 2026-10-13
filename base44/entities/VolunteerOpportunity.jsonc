@@ -77,5 +77,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Campaign or organization volunteer roles available to IFund users."
 }
