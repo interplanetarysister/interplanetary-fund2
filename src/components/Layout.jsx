@@ -25,7 +25,7 @@ const PAGE_TITLES = {
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
-  "/social": "Social", "/blogs": "Stories & Blogs", "/my-blog": "My Blog Studio", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "Connect AI Assistant", "/admin/external-accounts": "Connections", "/admin/integrations": "Connections", "/admin/audit": "Audit Log", "/admin/sustainability": "Planet Impact",
+  "/social": "Social", "/blogs": "Stories & Blogs", "/my-blog": "My Blog Studio", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "AI Connections", "/admin/external-accounts": "Connections", "/admin/integrations": "Admin Integrations", "/admin/audit": "Audit Log", "/admin/sustainability": "Planet Impact",
 };
 function pageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -77,7 +77,7 @@ const navSections = [
       { to: "/agents", label: "AI Team", icon: Bot },
       { to: "/ops", label: "Ops Center", icon: Satellite },
       { to: "/analytics", label: "Command Center", icon: BarChart3 },
-      { to: "/connect", label: "Admin connection setup", icon: Plug },
+      { to: "/admin/integrations", label: "Admin Integrations", icon: Plug },
       { to: "/admin/audit", label: "Audit Log", icon: Server },
       { to: "/admin/sustainability", label: "Planet Impact", icon: Leaf },
       { to: "/admin/help", label: "Help Center Editor", icon: BookOpen },
