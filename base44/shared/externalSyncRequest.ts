@@ -75,7 +75,7 @@ async function acquireExternalSyncMutex(sr, nowMs) {
         attempt_number: 0,
         claimed_at: new Date(0).toISOString(),
         lock_token: '',
-        lock_expires_at: null,
+        lock_expires_at: new Date(0).toISOString(),
       });
       throw new ExternalSyncRequestError(
         'backend_unavailable',
@@ -124,7 +124,7 @@ async function releaseExternalSyncMutex(sr, mutex) {
   if (!mutex) return;
   await sr.entities.ExternalSyncClaim.updateMany(
     { id: mutex.id, claim_key: EXTERNAL_SYNC_MUTEX_KEY, lock_token: mutex.token },
-    { $set: { lock_token: '', lock_expires_at: null } },
+    { $set: { lock_token: '', lock_expires_at: new Date(0).toISOString() } },
   ).catch(() => {});
 }
 
