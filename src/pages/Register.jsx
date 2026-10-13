@@ -168,6 +168,7 @@ export default function Register() {
         </div>
       )}
 
+      <p className="text-sm text-muted-foreground">After verification, you will review and accept our <Link className="underline text-primary" to="/terms">Terms of Service</Link> and <Link className="underline text-primary" to="/privacy">Privacy Policy</Link> before using IFund account features.</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="username">Username</Label>
