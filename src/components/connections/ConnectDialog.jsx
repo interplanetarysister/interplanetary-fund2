@@ -136,7 +136,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     } catch (e) {
       localStorage.removeItem("ifund_pending_platform_connection");
       console.error("Provider OAuth start failed:", e?.name || "ProviderConnectionError");
-      setError(e?.message?.includes("homepage rather than a permissions link")
+      const missingPermissionsLink = e?.message?.includes("homepage rather than a permissions link");
+      setError(missingPermissionsLink
         ? `IFund did not receive a ${platform.name} permission request. Your account was not connected. IFund must repair this provider setup.`
         : "The provider connection could not start. Try Connect again for a fresh authorization link.");
     } finally {
@@ -172,7 +173,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         setHelpDetails("If you’re already logged in on this device, open that platform’s account settings and generate its official app password/token. Enter it only in this secure IFund form; save to request verification.");
       }
     } catch (e) {
-      setError(e?.message || "The connection request could not start.");
+      console.error("Managed account connection start failed:", e?.name || "ManagedConnectionError");
+      setError("The connection request could not start.");
     } finally { setManagedBusy(false); }
   };
 

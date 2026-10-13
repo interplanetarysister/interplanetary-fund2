@@ -83,7 +83,7 @@ export default function Subscriptions() {
       if (!data?.ok) throw new Error(data?.error || "Trial is unavailable.");
       await refresh();
       setNotice("Your free Basic trial is active for three days. No card or automatic payment is required.");
-    } catch (e) { setError(e?.message || "Could not activate the free trial."); }
+    } catch (e) { console.error("Free trial activation failed:", e?.name || "TrialActivationError"); setError("Could not activate the free trial."); }
     finally { setSubscribing(null); }
   };
 

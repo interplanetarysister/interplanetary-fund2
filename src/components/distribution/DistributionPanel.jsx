@@ -58,7 +58,7 @@ export default function DistributionPanel({ campaign }) {
       const {data}=await base44.functions.invoke("updateCampaignSettings",{campaign_id:campaign.id,patch:{distribution_donation_connection_id:id==="ifund"?"":id}});
       if(data?.ok!==true) throw new Error(data?.error||"Destination could not be saved.");
       toast({title:"Campaign destination saved",description:id==="ifund"?"New promotion links use IFund checkout.":"New promotion links use the selected external fundraiser."});
-    }catch(e){setDonationTarget(previous);setError(e?.message||"The donation destination could not be saved.");}
+    }catch(e){setDonationTarget(previous);console.error("Donation destination save failed:",e?.name||"DestinationSaveError");setError("The donation destination could not be saved.");}
     finally{setSavingDestination(false);}
   };
   const copyCampaignStarter=async()=>{

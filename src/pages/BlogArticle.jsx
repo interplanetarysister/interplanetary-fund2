@@ -9,7 +9,7 @@ export default function BlogArticle(){
  const {id}=useParams();const [data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[copied,setCopied]=useState(false);
  useEffect(()=>{let active=true;setLoading(true);
   base44.functions.invoke("manageBlog",{mode:"article",entry_id:id}).then(r=>{if(!r.data?.ok)throw new Error(r.data?.error||"Article unavailable");if(active)setData(r.data);})
-   .catch(e=>{if(active)setError(e.message);}).finally(()=>{if(active)setLoading(false);});
+   .catch(e=>{if(active){console.error("Blog article load failed:",e?.name||"BlogLoadError");setError("Unable to load this story.");}}).finally(()=>{if(active)setLoading(false);});
   return()=>{active=false;};
  },[id]);
  if(loading)return <div className="flex justify-center py-20"><Loader2 className="animate-spin"/></div>;

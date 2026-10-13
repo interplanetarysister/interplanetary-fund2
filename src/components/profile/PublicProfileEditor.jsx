@@ -39,7 +39,7 @@ export default function PublicProfileEditor({user}) {
   try{const r=await base44.functions.invoke("managePublicProfile",{mode:"save",...data});
    if(!r.data?.ok)throw new Error(r.data?.error||"Could not save.");
    setData(p=>({...p,...r.data.profile}));setNotice("Public profile saved.");
-  }catch(e){setError(e?.message||"Could not save profile.");}finally{setBusy(false);}
+  }catch(e){console.error("Public profile save failed:",e?.name||"ProfileSaveError");setError("Could not save profile.");}finally{setBusy(false);}
  };
  const pasteCampaign=()=>{const ids=extractCampaignIds(paste).filter(id=>candidates.some(c=>c.id===id));if(!ids.length){setError("Paste a valid IFund embed for a campaign you own or follow.");return;}setData(p=>({...p,focus_campaign_ids:[...new Set([...p.focus_campaign_ids,...ids])].slice(0,6)}));setPaste("");setError("");};
  return <section className="rounded-2xl bg-white border border-stone-200 p-5 mt-6 space-y-4">

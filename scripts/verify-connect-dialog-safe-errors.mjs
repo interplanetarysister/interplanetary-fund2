@@ -64,7 +64,14 @@ assert.match(save, /external_donor_count must be a non-negative integer/);
 assert.match(save, /\^\[A-Z\]\{3\}\$/);
 assert.match(save, /status: 'disconnected'/);
 assert.match(save, /verification_status: 'unverified'/);
-assert.match(save, /external_data_source: 'owner_reported'/);
+// Saving credentials or a URL is configuration, not verification: this path
+// must never claim provider verification for balance evidence. Provenance is
+// owner-reported when balance evidence changes (or an owner reaffirms it) and
+// is otherwise preserved, so provider-verified evidence is not silently
+// reclassified by an unrelated configuration save.
+assert.doesNotMatch(save, /external_data_source:\s*'provider_verified'/);
+assert.match(save, /balanceEvidenceChanged\s*\?\s*'owner_reported'/);
+assert.match(save, /\|\|\s*'owner_reported'/);
 assert.doesNotMatch(save, /status: 'connected'/);
 assert.match(save, /effectiveAutomationMode !== 'manual'/);
 assert.match(save, /hasUnifiedOboConsent\(consentOwner\)/);
@@ -89,7 +96,10 @@ assert.doesNotMatch(card, /external_currency \|\| "USD"/);
 assert.match(sync, /discoveredByCurrency/);
 assert.match(sync, /discovered_totals: discoveredTotals/);
 assert.match(sync, /total_discovered: totalDiscoveredUsd/);
-assert.match(sync, /c\.created_by_id !== user\.id/);
+// Campaign-scoped synchronization authorization moved to the shared
+// authorizeExternalSyncScope helper, which fails closed (owner_required) for
+// non-admin actors outside their own campaigns.
+assert.match(sync, /authorizeExternalSyncScope\(\{ actorId: user\.id, actorRole: user\.role, scope, campaignOwnerId: c\.created_by_id \}\)/);
 assert.match(sync, /if \(!user\)/);
 assert.match(sync, /A valid request_id is required for an explicit synchronization request/);
 assert.match(sync, /Scheduled, workflow, and agent synchronization is disabled/);
