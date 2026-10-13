@@ -92,5 +92,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "IFund-owned external account metadata, kept separate from users' connected accounts and raw credentials."
 }
