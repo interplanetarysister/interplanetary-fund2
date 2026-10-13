@@ -71,5 +71,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Non-secret checkpoints for Base44\u2013GitHub synchronization and recovery tracking."
 }
