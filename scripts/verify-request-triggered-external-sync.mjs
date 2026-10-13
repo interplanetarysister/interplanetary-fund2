@@ -28,8 +28,12 @@ assert.match(requestGuard, /request_fingerprint/);
 assert.match(sync, /beginExternalSyncRequest/);
 assert.match(sync, /crowdfundingConnectionEligibility/);
 assert.match(requestGuard, /EXTERNAL_SYNC_RATE_LIMIT = 5/);
-assert.match(requestGuard, /ExternalSyncClaim\.upsert/);
-assert.match(requestGuard, /Number\(claimResult\?\.created \|\| 0\) !== 1/);
+assert.doesNotMatch(requestGuard, /ExternalSyncClaim\.upsert/,
+  'mutating Base44 upsert cannot protect immutable sync claims');
+assert.match(requestGuard, /EXTERNAL_SYNC_MUTEX_KEY/);
+assert.match(requestGuard, /ExternalSyncClaim\.updateMany/);
+assert.match(requestGuard, /Number\(result\?\.updated \|\| 0\) === 1/);
+assert.match(requestGuard, /ExternalSyncClaim\.create/);
 assert.match(requestGuard, /active_claim_key !== claimKey/);
 assert.match(claimEntity, /"claim_key"/);
 assert.doesNotMatch(sync, /initiator_type === 'scheduled'/);
