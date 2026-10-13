@@ -216,5 +216,6 @@
   },
   "required": [
     "role"
-  ]
+  ],
+  "description": "Built-in IFund account profile and user preferences; authentication, user roles, and elevated privileges require server-authoritative authorization."
 }
