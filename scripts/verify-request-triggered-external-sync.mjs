@@ -32,6 +32,8 @@ assert.doesNotMatch(requestGuard, /ExternalSyncClaim\.upsert/,
   'mutating Base44 upsert cannot protect immutable sync claims');
 assert.match(requestGuard, /EXTERNAL_SYNC_MUTEX_KEY/);
 assert.match(requestGuard, /ExternalSyncClaim\.updateMany/);
+assert.match(requestGuard, /lock_token: currentToken,\s*lock_expires_at: currentExpiry/,
+  'mutex acquisition CAS must compare both the observed token and expiry');
 assert.match(requestGuard, /Number\(result\?\.updated \|\| 0\) === 1/);
 assert.match(requestGuard, /ExternalSyncClaim\.create/);
 assert.match(requestGuard, /active_claim_key !== claimKey/);
