@@ -1,7 +1,7 @@
 # Official @interplanetaryfund.com mail inside IFund — staged implementation
 
 **Status: CODE ONLY / NOT DEPLOYED / NO DNS CHANGES / NO LIVE MAIL PROOF.**  
-Owner decision: receive official domain mail **inside IFund's existing Universal Inbox** on the same Base44-backed web and Android app, not in a Gmail-forwarded inbox.
+Owner decision: receive official domain mail **inside IFund's existing Universal Inbox** on the same Base44-backed web and Android app, not in a Gmail-forwarded inbox. Initial approved mailboxes: **support@interplanetaryfund.com** and **info@interplanetaryfund.com**.
 
 ## Reuse decision (required GitHub OSS discovery)
 - Existing `src/pages/Inbox.jsx` + `InboxItem` entity already expose owner-scoped incoming items. Extend them instead of shipping a duplicate webmail UI.
@@ -22,7 +22,7 @@ Owner decision: receive official domain mail **inside IFund's existing Universal
 4. Create a private Cloudflare R2 bucket `ifund-official-mail-private` subject to explicit account/billing approval. Apply limited access and a retention/deletion policy before live mail. Do not make bucket public.
 5. Deploy the **independent** Worker with `host/email/wrangler.toml` only after offline and staging tests. Keep the existing root `wrangler.toml` and production website untouched.
 6. Provision **the same high-entropy 32+ character secret** as `IFUND_MAIL_INGEST_SHARED_SECRET` in both the Cloudflare Worker and Base44 function environment. Keep it server-side; rotate if disclosed.
-7. Cloudflare Worker environment: `IFUND_MAIL_ALLOWED_ADDRESSES` (comma-separated exact official addresses), `IFUND_MAIL_INGEST_ENDPOINT` (verified HTTPS Base44 function URL), `IFUND_MAIL_INGEST_SHARED_SECRET`, `IFUND_MAIL_ARCHIVE` R2 binding.
+7. Cloudflare Worker environment: `IFUND_MAIL_ALLOWED_ADDRESSES` is preconfigured to the two approved addresses in `host/email/wrangler.toml`; provision `IFUND_MAIL_INGEST_ENDPOINT` (verified HTTPS Base44 function URL), `IFUND_MAIL_INGEST_SHARED_SECRET`, and the `IFUND_MAIL_ARCHIVE` R2 binding.
 8. Base44 function environment: `IFUND_MAIL_ALLOWED_ADDRESSES`, `IFUND_MAIL_INGEST_SHARED_SECRET`, `IFUND_MAIL_OWNER_USER_ID` (verified active admin's Base44 User ID, **not** an email string). Never expose as Vite/client values.
 9. In Cloudflare **Email Routing → Routing rules**, create **explicit mailbox addresses** targeting the dedicated Email Worker. Do not enable catch-all without an owner decision: it increases unsolicited mail. No Gmail destination is needed for this design.
 10. Verify an independently sent test email arrives in Cloudflare Email logs, R2 and IFund's existing Inbox on the web and Android app with the correct subject, sender and content. Confirm unauthorized/unknown addresses reject safely, duplicate deliveries do not add extra items, attachments are archived privately, message size failures are clear, and malformed or unsigned ingress cannot create records. Verify unrelated website/app routes and payments still work. Only then consider publishing; an actual receiving proof is required.
@@ -35,7 +35,13 @@ Owner decision: receive official domain mail **inside IFund's existing Universal
 - Do **not** merge or enable live DNS solely because static tests pass.
 
 ## Next decision
-Owner to choose initial authorized address(es), e.g. `support@interplanetaryfund.com`, `info@interplanetaryfund.com`, or an explicit alternative. Deployment requires authorized access to the Cloudflare dashboard (not available through this chat) and approved Base44 server secret configuration.
+The owner approved defaulting to `support@interplanetaryfund.com` and `info@interplanetaryfund.com`. Deployment requires authorized access to the Cloudflare dashboard (not available through this chat) and approved Base44 server secret configuration.
+
+## Test evidence (2026-10-13)
+- Executed three local Node 22 tests from an exact copy of `host/email/signature.mjs` and `signature.test.mjs`: approved-recipient allowlist, HMAC signing and payload tamper detection, SHA-256 known vector — **3/3 pass**.
+- The actual Cloudflare/PostalMime handler, Base44 ingress function, R2, production DNS, and Android runtime have **not** been integration-tested.
+- Confirmed existing production deploy workflow only triggers on a successful `main` quality-gates workflow, therefore this draft branch does not auto-deploy Cloudflare.
+- Cloudflare docs confirm Email Routing routes incoming mail via the `email()` handler, and provider-generated DNS records should be reviewed rather than manually guessed: https://developers.cloudflare.com/email-service/get-started/route-emails/
 
 ## Recovery
 Disable Cloudflare Email Routing rule to the Worker **only after** verifying an alternate valid MX receiver. Keep the private R2 archive for controlled message recovery. Revert the staging branch without touching production HTTP routes. Never delete or overwrite prior MX records during rollback without a receiving mail service.
