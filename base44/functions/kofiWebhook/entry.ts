@@ -152,14 +152,19 @@ export default async function(req) {
     const now = new Date().toISOString();
     const priorCurrency = String(connection.external_currency || '').trim().toUpperCase();
     if (priorCurrency && priorCurrency !== currency) {
-      // Never combine currencies in one numeric total. The canonical observation
-      // is retained; the connection is flagged for explicit conversion/review.
+      // Never combine currencies in one numeric total. The incoming canonical
+      // observation remains independently auditable, while the connection's
+      // retained total keeps its original source and observed-at timestamp.
+      const mismatchDetail = `Ko-fi observation received in ${currency}; existing connection total is ${priorCurrency}. Currency conversion/reconciliation required.`;
       await sr.entities.PlatformConnection.update(connection.id, {
         status: 'error',
         verification_status: 'verified',
-        external_data_source: 'provider_verified',
         last_synced: now,
-        last_error: `Ko-fi observation received in ${currency}; existing connection total is ${priorCurrency}. Currency conversion/reconciliation required.`,
+        last_error: mismatchDetail,
+        history: [
+          ...(connection.history || []),
+          { at: now, event: 'currency_mismatch', detail: mismatchDetail },
+        ].slice(-30),
       });
     } else {
       await sr.entities.PlatformConnection.update(connection.id, {
