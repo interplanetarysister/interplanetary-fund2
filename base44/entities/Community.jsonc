@@ -68,5 +68,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Community/group metadata for IFund's unified social experience."
 }
