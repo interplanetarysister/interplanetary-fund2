@@ -79,5 +79,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Safe execution tracking for agent chat requests and their verified results, distinct from user-facing message transcripts."
 }
