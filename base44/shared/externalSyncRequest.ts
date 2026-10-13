@@ -175,49 +175,58 @@ export async function beginExternalSyncRequest(sr, options) {
   const nowMs = options.nowMs ?? Date.now();
   const now = new Date(nowMs).toISOString();
   const requestKey = externalSyncRequestKey(options.jobType, options.actorUserId, options.requestId);
+  let mutex = null;
 
-  // These reads intentionally have no fail-open fallback. If the idempotency
-  // or limiter backend cannot be read, provider I/O must not begin.
-  let runs;
-  let claims;
   try {
-    [runs, claims] = await Promise.all([
+    mutex = await acquireExternalSyncMutex(sr, nowMs);
+
+    // All idempotency, rate-limit, claim, and run writes occur while the
+    // conditional global lease is held. Provider I/O begins only after an
+    // immutable request claim and its SyncRun have both been verified.
+    const [runs, claims] = await Promise.all([
       sr.entities.SyncRun.filter({ request_key: requestKey }, '-created_date', 5),
-      sr.entities.ExternalSyncClaim.filter({ request_key: requestKey }, '-attempt_number', 10),
+      exactClaims(sr, { request_key: requestKey }, 10),
     ]);
-  } catch {
-    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
-  }
+    if ((runs || []).length > 1) {
+      throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization request state is ambiguous.');
+    }
 
-  const existing = runs?.[0] || null;
-  if (existing?.request_fingerprint && existing.request_fingerprint !== options.fingerprint) {
-    throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
-  }
-  if (existing && isFinal(existing.overall_status)) {
-    return { disposition: 'completed', run: existing, requestKey };
-  }
+    const existing = runs?.[0] || null;
+    const attemptClaims = (claims || []).filter((row) => row.claim_type !== 'rate_slot');
+    const conflicting = [...(claims || []), ...(runs || [])]
+      .find((row) => row.request_fingerprint && row.request_fingerprint !== options.fingerprint);
+    if (conflicting) {
+      throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
+    }
+    if (existing && isFinal(existing.overall_status)) {
+      return { disposition: 'completed', run: existing, requestKey };
+    }
 
-  const latestClaim = [...(claims || [])].sort((a, b) => Number(b.attempt_number || 0) - Number(a.attempt_number || 0))[0] || null;
-  if (latestClaim?.request_fingerprint && latestClaim.request_fingerprint !== options.fingerprint) {
-    throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
-  }
-  const activeStartedAt = existing?.started_at || latestClaim?.claimed_at;
-  const activeAge = nowMs - time(activeStartedAt);
-  if ((existing?.overall_status === 'in_progress' || (!existing && latestClaim)) &&
-      Number.isFinite(activeAge) && activeAge >= 0 && activeAge < EXTERNAL_SYNC_RUN_TTL_MS) {
-    return { disposition: 'in_progress', run: existing, requestKey };
-  }
+    const latestClaim = [...attemptClaims]
+      .sort((a, b) => Number(b.attempt_number || 0) - Number(a.attempt_number || 0))[0] || null;
+    const activeStartedAt = existing?.started_at || latestClaim?.claimed_at;
+    const activeAge = nowMs - time(activeStartedAt);
+    if ((existing?.overall_status === 'in_progress' || (!existing && latestClaim)) &&
+        Number.isFinite(activeAge) && activeAge >= 0 && activeAge < EXTERNAL_SYNC_RUN_TTL_MS) {
+      return { disposition: 'in_progress', run: existing, requestKey };
+    }
 
-  // A deterministic five-slot window turns the limit into an atomic claim.
-  // Concurrent distinct request IDs compete for unique slots before any
-  // provider I/O; retries for the same request reuse their existing slot.
-  await acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now);
+    await acquireExternalSyncRateSlot(sr, options, requestKey, nowMs, now);
 
-  const attempt = Math.max(Number(existing?.attempt_number || 0), Number(latestClaim?.attempt_number || 0)) + 1;
-  const claimKey = `${requestKey}:${attempt}`;
-  let claimResult;
-  try {
-    claimResult = await sr.entities.ExternalSyncClaim.upsert([{
+    const attempt = Math.max(Number(existing?.attempt_number || 0), Number(latestClaim?.attempt_number || 0)) + 1;
+    const claimKey = `${requestKey}:${attempt}`;
+    const sameKey = await exactClaims(sr, { claim_key: claimKey });
+    if (sameKey.length > 1) {
+      throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization claim state is ambiguous.');
+    }
+    if (sameKey.length === 1) {
+      if (sameKey[0].request_fingerprint !== options.fingerprint) {
+        throw new ExternalSyncRequestError('request_conflict', 'request_id was already used for a different target.', 409);
+      }
+      return { disposition: 'in_progress', run: existing, requestKey, claimKey };
+    }
+
+    await sr.entities.ExternalSyncClaim.create({
       claim_key: claimKey,
       claim_type: 'request_attempt',
       request_key: requestKey,
@@ -227,48 +236,45 @@ export async function beginExternalSyncRequest(sr, options) {
       actor_user_id: options.actorUserId,
       attempt_number: attempt,
       claimed_at: now,
-    }], { key: ['claim_key'] });
-  } catch {
-    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
-  }
+    });
+    const verifiedClaim = await exactClaims(sr, { claim_key: claimKey });
+    if (verifiedClaim.length !== 1 ||
+        verifiedClaim[0].request_key !== requestKey ||
+        verifiedClaim[0].request_fingerprint !== options.fingerprint) {
+      throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization claim could not be verified.');
+    }
 
-  // Atomic unique upsert is the claim boundary. Only the caller that created
-  // this immutable attempt may perform provider I/O.
-  if (Number(claimResult?.created || 0) !== 1) {
-    return { disposition: 'in_progress', run: existing, requestKey, claimKey };
-  }
-
-  const runData = {
-    request_key: requestKey,
-    request_id: options.requestId,
-    request_fingerprint: options.fingerprint,
-    job_type: options.jobType,
-    initiator_type: options.initiatorType || 'user',
-    initiator_id: options.actorUserId,
-    initiator_user_id: options.actorUserId,
-    scope: options.scope || 'user',
-    campaign_id: options.campaignId || null,
-    started_at: now,
-    completed_at: null,
-    overall_status: 'in_progress',
-    provider_results: [],
-    total_discovered: 0,
-    discovered_totals: [],
-    total_imported: 0,
-    campaigns_covered: 0,
-    attempt_number: attempt,
-    active_claim_key: claimKey,
-    description: attempt > 1 ? 'Retrying a stale authenticated explicit request.' : 'Authenticated explicit request is in progress.',
-  };
-  try {
+    const runData = {
+      request_key: requestKey,
+      request_id: options.requestId,
+      request_fingerprint: options.fingerprint,
+      job_type: options.jobType,
+      initiator_type: options.initiatorType || 'user',
+      initiator_id: options.actorUserId,
+      initiator_user_id: options.actorUserId,
+      scope: options.scope || 'user',
+      campaign_id: options.campaignId || null,
+      started_at: now,
+      completed_at: null,
+      overall_status: 'in_progress',
+      provider_results: [],
+      total_discovered: 0,
+      discovered_totals: [],
+      total_imported: 0,
+      campaigns_covered: 0,
+      attempt_number: attempt,
+      active_claim_key: claimKey,
+      description: attempt > 1 ? 'Retrying a stale authenticated explicit request.' : 'Authenticated explicit request is in progress.',
+    };
     const run = existing
       ? await sr.entities.SyncRun.update(existing.id, runData)
       : await sr.entities.SyncRun.create(runData);
     return { disposition: 'acquired', run, requestKey, claimKey };
-  } catch {
-    // The immutable claim prevents a second provider call. A retry receives
-    // in-progress until the claim expires, then safely acquires a new attempt.
-    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization request could not be recorded. Try again later.');
+  } catch (error) {
+    if (error instanceof ExternalSyncRequestError) throw error;
+    throw new ExternalSyncRequestError('backend_unavailable', 'Synchronization safeguards are unavailable. Try again later.');
+  } finally {
+    await releaseExternalSyncMutex(sr, mutex);
   }
 }
 
