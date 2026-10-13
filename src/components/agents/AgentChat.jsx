@@ -11,6 +11,42 @@ import { createPortal } from "react-dom";
 // bulk approval. The AI never gets permission to call this owner-only route.
 const OWNER_APPROVAL = /^(?:please\s+)?(?:approve(?:\s+and\s+publish)?|publish|post)\s+(?:all|every)\s+(?:my\s+)?(?:pending\s+)?(?:drafts?|posts?)(?:\s+(?:now|please))?[.!]?$/i;
 const DRAFT_LOOKUP = /\b(?:show|view|open|list|read|display)\b.{0,50}\b(?:drafts?|pending posts?)\b/i;
+async function approveAllOwnedDrafts(instruction) {
+  const totals = { processed: 0, published: 0, applied_to_ifund: 0,
+    approved_manual: 0, needs_separate_review: 0, unconfirmed: 0,
+    remaining_unprocessed: 0, results: [] };
+  const excludedDraftIds = new Set();
+  const excludedPostIds = new Set();
+  for (let batch = 0; batch < 45; batch += 1) {
+    let receipt;
+    try {
+      const response = await base44.functions.invoke("ownerAgentChatActions", {
+        mode: "approve_all", owner_instruction: instruction,
+        owner_chat_authorized: true, excluded_draft_ids: [...excludedDraftIds],
+        excluded_post_ids: [...excludedPostIds],
+      });
+      receipt = response?.data;
+      if (receipt?.ok !== true) throw new Error("Unconfirmed owner approval batch");
+    } catch (e) {
+      if (!totals.processed) throw e;
+      totals.unconfirmed += 1;
+      totals.remaining_unprocessed = Math.max(1, totals.remaining_unprocessed);
+      break;
+    }
+    for (const key of ["processed", "published", "applied_to_ifund",
+      "approved_manual", "needs_separate_review", "unconfirmed"]) {
+      totals[key] += Number(receipt[key] || 0);
+    }
+    totals.remaining_unprocessed = Number(receipt.remaining_unprocessed || 0);
+    for (const outcome of receipt.results || []) {
+      totals.results.push(outcome);
+      if (outcome.draft_id) excludedDraftIds.add(outcome.draft_id);
+      if (outcome.post_id) excludedPostIds.add(outcome.post_id);
+    }
+    if (!totals.remaining_unprocessed || !(receipt.results || []).length) break;
+  }
+  return totals;
+}
 const summarizeApproval = (r) => [
   "IFund server-confirmed action results (not a claim by this agent):",
   `Processed: ${r.processed || 0}.`,
@@ -150,11 +186,8 @@ export default function AgentChat({ agentName, agentLabel, greeting, overlayMode
       // backend first. The specialist sees actual receipts, not a fake
       // conversational claim that approvals were recorded.
       if (OWNER_APPROVAL.test(content)) {
-        const response = await base44.functions.invoke("ownerAgentChatActions", {
-          mode: "approve_all", owner_instruction: content, owner_chat_authorized: true,
-        });
-        if (response?.data?.ok !== true) throw new Error("Owner draft approval was not confirmed");
-        agentContent = content + "\n\n" + summarizeApproval(response.data);
+        const receipt = await approveAllOwnedDrafts(content);
+        agentContent = content + "\n\n" + summarizeApproval(receipt);
       } else if (DRAFT_LOOKUP.test(content)) {
         const match = content.match(/\b(?:draft|post)\s+#?([a-f0-9-]{12,})\b/i);
         const response = await base44.functions.invoke("ownerAgentChatActions", {
