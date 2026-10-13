@@ -97,5 +97,6 @@
     "delete": {
       "data.user_id": "{{user.id}}"
     }
-  }
+  },
+  "description": "User-to-campaign follow relationships used for updates and personalized activity."
 }
