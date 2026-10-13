@@ -40,6 +40,20 @@ While the zero-credit constraint is active:
 The goal is a self-checking, resumable, deterministic, low-resource development system, not endless agent execution.
 
 
+## Mandatory GitHub open-source discovery — owner directive 2026-10-13
+
+**Before implementing EVERY new feature, integration, significant enhancement, or repair**, search GitHub for existing open-source software, libraries, adapters, SDKs, and self-hostable services that can safely provide the needed capability. Treat this as a pre-build discovery and reuse gate, not as permission to replace the product or its hosting.
+
+For each feature:
+1. Describe the capability and inspect IFund's current implementation to avoid rebuilding what exists.
+2. Search GitHub and verify candidate repositories at the source, prioritizing maintained, documented, reusable projects.
+3. Evaluate each candidate's actual license (including dependency licenses and trademark/commercial constraints), maintenance/commit activity, known security issues, integration/API fit, platform/runtime compatibility, privacy/credential handling, and realistic operating costs. Publicly viewable source alone is not proof of an open-source license.
+4. Choose reuse, adaptation, a small compatible integration, or original code based on evidence. Record the evaluated candidate links, decision, reasons for rejection, and test/rollback plan in the current canonical issue, PR, or implementation handoff.
+5. Preserve existing working Base44/GitHub architecture, grants, UI, credentials, and integrations. Never replace or activate a third-party service, deploy infrastructure, or incur fees without appropriate authorization and verification. Prefer modular adapters so providers can be exchanged without rewriting IFund features.
+6. Verify the resulting implementation and provider permissions end-to-end before describing it as operational. An open-source repository is not a verified live connection.
+
+**Current milestone:** Buffer personal-API-key integration is an optional admin-account social-publishing adapter, not a replacement for IFund's social messaging, connections hub, or existing publishers. Keep it disconnected/unverified until the secret is securely provisioned and actual Buffer API access and safe publishing behavior are tested. **After that integration is verified functioning, remind the owner to initiate a dedicated GitHub open-source reuse audit of failing IFund software**; do not prematurely claim the audit occurred or automatically replace functionality.
+
 ## Base44 portability freeze — effective 2026-09-28
 
 Feature development is temporarily frozen while Interplanetary Fund is prepared for host portability.
