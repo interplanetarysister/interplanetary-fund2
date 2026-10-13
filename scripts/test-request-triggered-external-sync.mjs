@@ -7,6 +7,27 @@ import {
   finishExternalSyncRequest,
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
+import { externalBalanceEvidenceChanged } from '../base44/shared/externalBalanceEvidence.ts';
+
+const preservedEvidence = {
+  external_total: 125.5,
+  external_currency: 'USD',
+  external_donor_count: 7,
+  external_data_source: 'provider_verified',
+  external_balance_observed_at: '2026-10-11T10:00:00.000Z',
+};
+assert.equal(externalBalanceEvidenceChanged({
+  kind:'crowdfunding',existing:preservedEvidence,
+  externalTotal:125.5,externalCurrency:'usd',externalDonorCount:7,
+}),false,'unchanged dialog totals do not refresh balance evidence');
+assert.equal(externalBalanceEvidenceChanged({
+  kind:'crowdfunding',existing:preservedEvidence,
+  externalTotal:126,externalCurrency:'USD',externalDonorCount:7,
+}),true,'a normalized total change refreshes owner-reported evidence');
+assert.equal(externalBalanceEvidenceChanged({
+  kind:'crowdfunding',existing:preservedEvidence,
+  externalTotal:125.5,externalCurrency:'USD',externalDonorCount:7,reaffirmed:true,
+}),true,'explicit owner reaffirmation refreshes balance evidence');
 
 const UUID = '8c0b75c0-6b2d-4b14-8c0f-8c21f5df4781';
 const UUID2 = 'f95911e3-aaf2-48a9-bd43-2f38a265de1e';
@@ -81,6 +102,23 @@ assert.deepEqual([first.disposition,second.disposition].sort(),['acquired','in_p
 assert.equal(concurrent.claims.filter((row)=>row.claim_type==='request_attempt').length,1,'concurrent retry has one atomic request claim');
 assert.equal(concurrent.claims.filter((row)=>row.claim_type==='rate_slot').length,1,'concurrent retry reuses one atomic rate slot');
 assert.equal(concurrent.runs.length,1,'concurrent retry has one run');
+assert.equal(concurrent.metrics.upserts,0,'claim code never calls Base44 mutating upsert');
+assert.deepEqual(
+  [...new Set(concurrent.claims.filter((row)=>row.claim_type!=='mutex').map((row)=>row.request_fingerprint))],
+  ['user-scope'],
+  'concurrent retry cannot mutate an immutable request fingerprint',
+);
+
+const bootstrap=fakeService({withMutex:false});
+await assert.rejects(
+  ()=>beginExternalSyncRequest(bootstrap.sr,args),
+  (error)=>error.code==='backend_unavailable'&&error.status===503,
+  'missing mutex bootstraps once and fails closed before provider work',
+);
+assert.equal(bootstrap.runs.length,0,'mutex bootstrap starts no provider job');
+assert.equal(bootstrap.claims.filter((row)=>row.claim_type==='mutex').length,1);
+const afterBootstrap=await beginExternalSyncRequest(bootstrap.sr,args);
+assert.equal(afterBootstrap.disposition,'acquired','retry can proceed after safe mutex bootstrap');
 
 await finishExternalSyncRequest(concurrent.sr,first.disposition==='acquired'?first.run:second.run,first.disposition==='acquired'?first.claimKey:second.claimKey,{overall_status:'success',result_payload:{ok:true}});
 const replay=await beginExternalSyncRequest(concurrent.sr,args);
@@ -138,6 +176,10 @@ assert.equal(burstResults.filter((result)=>result.status==='fulfilled'&&result.v
 assert.equal(burstResults.filter((result)=>result.status==='rejected'&&result.reason?.code==='rate_limited'&&result.reason?.status===429).length,1,'sixth concurrent distinct request is atomically rate limited');
 assert.equal(burst.runs.length,5,'atomic limiter creates only five runs');
 assert.equal(burst.claims.filter((row)=>row.claim_type==='rate_slot').length,5,'atomic limiter creates only five rate slots');
+assert.equal(burst.metrics.upserts,0,'six-way contention never invokes mutating upsert');
+for(const row of burst.claims.filter((claim)=>claim.claim_type==='request_attempt')) {
+  assert.equal(row.request_fingerprint,`burst-${row.request_id}`,'request fingerprint stays bound to its original immutable claim');
+}
 
 const paths=fakeService();
 const imported=await beginExternalSyncRequest(paths.sr,{...args,jobType:'campaign_import'});
