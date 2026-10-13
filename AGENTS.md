@@ -164,3 +164,17 @@ Before creating an issue, branch, PR, workflow, verifier, entity, component, fun
 Do not create date-suffixed, `current-main`, `v2`, retry, run-number, or agent-number variants merely because existing work needs revision. A new location requires a concrete architectural reason the canonical artifact cannot safely represent the change. Reconcile and close superseded work rather than abandoning it beside a replacement.
 
 Preserve published main history. Consolidation means reducing the active work surface, not rewriting old evidence. Before deleting a branch, verify that its unique work is in current `main` or intentionally preserved in a canonical tracker/artifact. One logical repair batch should normally produce one coherent branch/PR/commit path.
+
+
+## Unified website, PWA, and Android release requirement (2026-10-13)
+
+IFund is one product delivered as the Base44-hosted website, installable browser PWA, and a Capacitor Android package. Every user-facing feature, legal notice, payment-button, account, UI, or security change must be evaluated for **both website and app surfaces**; a green GitHub sync is not a published release.
+
+1. Update canonical shared source and backend once, rather than creating drifting web and Android implementations. Preserve user sessions, backend ledger integrity, original Base44 agents/skills, and platform permissions.
+2. After shared frontend changes, build the website and copy the exact \`dist\` into Capacitor Android with \`npx cap copy android\`. Confirm \`index.html\` and \`ifund-release.json\` have identical hashes and update the release marker for a new material release. Running this copy does **not** rebuild or distribute an APK.
+3. Run the existing safe release validation with \`IFUND_VALIDATE_ONLY=1 bash scripts/publish-ifund-safe.sh\`, website payment/legal regression tests, and Android configuration checks. Do not bypass failing security, identity, payment, or browser regression gates. Keep mock tests synchronized with actual UI behavior.
+4. Deploy the website **only through an authenticated Base44 site publication route** (never aggregate \`base44 deploy\`, which can replace remote agents/skills). Verify the live release manifest and served browser asset on *both* \`interplanetaryfund.com\` and \`interplanetaryfund.base44.app\`; a successful HTTP 200, GitHub commit or published HelpArticle entity does not prove a current frontend deployment.
+5. A browser-installed PWA obtains updated web assets after website publication and appropriate reload/cache refresh. A Capacitor Android app bundles its JavaScript; an already-installed APK must be **rebuilt, signed, distributed, and installed/updated** separately. No claim of native production parity without inspecting the shipped APK/AAB, release ID, Android device tests and version code.
+6. If a publish step requires account-owner sign-in, provider authentication or Android signing credentials, stop at that gate, record the exact blocker, and report **source ready / website not published / native app not distributed**. Never infer success or invent an approval.
+
+These conditions apply to all future changes, not just copyright/legal and PayPal releases.
