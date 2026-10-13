@@ -82,5 +82,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Source-backed writing and research briefs awaiting review or publication."
 }
