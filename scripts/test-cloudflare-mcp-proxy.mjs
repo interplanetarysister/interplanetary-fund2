@@ -58,6 +58,49 @@ try {
   const admin = await worker.fetch(new Request("https://interplanetaryfund.com/v1/admin/agents/session", { method: "POST" }), {});
   assert.equal(admin.status, 403, "Admin gateway must retain its separate origin/admin authorization boundary");
 
+  // Exercise the complete browser preflight and unauthenticated admin path,
+  // not merely the Worker health endpoint. These must be true for all IFund
+  // frontend origins without granting any admin privileges.
+  const allowedOrigins = [
+    "https://interplanetaryfund.com",
+    "https://www.interplanetaryfund.com",
+    "https://interplanetaryfund.base44.app",
+    "https://interplanetary-fund2.interplanetary-fund.workers.dev",
+  ];
+  const gatewayEnv = { IFUND_ALLOWED_ORIGINS: allowedOrigins.join(",") };
+  for (const origin of allowedOrigins) {
+    const url = "https://interplanetary-fund2.interplanetary-fund.workers.dev/v1/admin/agents/session";
+    const preflight = await worker.fetch(new Request(url, {
+      method: "OPTIONS",
+      headers: {
+        origin,
+        "access-control-request-method": "POST",
+        "access-control-request-headers": "authorization,content-type",
+      },
+    }), gatewayEnv);
+    assert.equal(preflight.status, 204, `Allowed origin ${origin} must pass preflight`);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), origin);
+    assert.equal(preflight.headers.get("access-control-allow-credentials"), "true");
+    assert.match(preflight.headers.get("access-control-allow-headers") || "", /authorization/);
+
+    const blockedAdmin = await worker.fetch(new Request(url, {
+      method: "POST",
+      headers: { origin, "content-type": "application/json" },
+      body: "{}",
+    }), gatewayEnv);
+    assert.equal(blockedAdmin.status, 403, "No authentication must never grant admin access");
+    assert.equal((await blockedAdmin.json()).error, "Administrator authorization required.");
+    assert.equal(blockedAdmin.headers.get("access-control-allow-origin"), origin);
+  }
+  for (const origin of ["https://untrusted.example", "https://interplanetaryfund.com.evil.example"]) {
+    const denied = await worker.fetch(new Request("https://interplanetaryfund.com/v1/admin/agents/session", {
+      method: "OPTIONS", headers: { origin },
+    }), gatewayEnv);
+    assert.equal(denied.status, 403, `Untrusted origin ${origin} must be denied`);
+    assert.equal(denied.headers.get("access-control-allow-origin"), null);
+    assert.equal((await denied.json()).error, "Origin denied");
+  }
+
   console.log("Cloudflare MCP proxy behavior passed.");
 } finally {
   globalThis.fetch = originalFetch;
