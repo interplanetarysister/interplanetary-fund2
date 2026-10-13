@@ -146,5 +146,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Central non-secret inventory of integration access, protected secret references, and verified health."
 }
