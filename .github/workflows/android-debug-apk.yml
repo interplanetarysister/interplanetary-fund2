@@ -38,12 +38,10 @@ jobs:
           java-version: '21'
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android 16 SDK
+      - name: Install Android 16 SDK using hosted runner tools
         run: |
-          sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
+          test -n "${ANDROID_HOME:-}" || { echo 'Android SDK unavailable on runner'; exit 1; }
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools'
 
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --no-audit --no-fund
