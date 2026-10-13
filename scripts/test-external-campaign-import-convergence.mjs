@@ -18,12 +18,10 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
     verification_status: 'verified',
   };
   const campaigns = [{
-    id: 'forged-campaign',
+    id: 'arbitrary-campaign',
     created_by_id: user.id,
-    title: 'Client-forged marker',
-    external_import_recovery_token: 'predictable-forged-value',
-    external_import_operation_key: 'campaign_import:v1:forged',
-    external_import_connection_id: connection.id,
+    title: 'Owner-controlled campaign',
+    status: 'draft',
   }];
   const imports = [];
   const operations = [];
@@ -79,6 +77,23 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
   };
   const campaignEntity = entity(campaigns);
   const importEntity = entity(imports);
+  const ownerVisibleCampaign = (id) => {
+    const row = campaigns.find((item) => item.id === id);
+    if (!row) return null;
+    const visible = { ...row };
+    delete visible.external_import_private_marker;
+    delete visible.external_import_recovery_token;
+    return visible;
+  };
+  const ownerUpdateCampaign = (id, patch) => {
+    if ('external_import_private_marker' in patch || 'external_import_recovery_token' in patch) {
+      throw new Error('field-level security rejected private import marker mutation');
+    }
+    const row = campaigns.find((item) => item.id === id);
+    if (!row) throw new Error('missing record');
+    Object.assign(row, patch);
+    return ownerVisibleCampaign(id);
+  };
 
   const sr = {
     entities: {
@@ -105,7 +120,7 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
           campaignCreates++;
           const row = { id: `campaign-${++nextId}`, created_by_id: user.id, ...data };
           campaigns.push(row);
-          return { ...row };
+          return ownerVisibleCampaign(row.id);
         },
       },
     },
@@ -123,6 +138,8 @@ function makeHarness({ crashAfterCampaign = false } = {}) {
   };
   return {
     user, connection, campaigns, imports, operations, syncRun, input,
+    ownerVisibleCampaign,
+    ownerUpdateCampaign,
     get campaignCreates() { return campaignCreates; },
   };
 }
@@ -138,8 +155,9 @@ const snapshot = {
   },
 };
 
-// Crash recovery uses a random capability stored only in the admin operation;
-// a client-forged deterministic marker is never considered.
+// Crash recovery uses an admin-only operation plus a field-level protected
+// campaign correlation marker. Owner/public reads cannot see the marker and
+// owner updates cannot move it to another campaign.
 {
   const h = makeHarness({ crashAfterCampaign: true });
   let discoveryCalls = 0;
@@ -153,13 +171,19 @@ const snapshot = {
   );
   assert.equal(h.campaigns.length, 2);
   assert.equal(h.campaignCreates, 1);
-  assert.notEqual(
-    h.campaigns[1].external_import_recovery_token,
-    h.campaigns[0].external_import_recovery_token,
-    'a guessed client marker must not match the private operation capability',
+  const privateMarker = h.campaigns[1].external_import_private_marker;
+  assert.equal(typeof privateMarker, 'string');
+  assert.equal(h.ownerVisibleCampaign(h.campaigns[1].id).external_import_private_marker, undefined,
+    'owner reads must not reveal the private campaign marker');
+  assert.equal(h.ownerVisibleCampaign(h.campaigns[1].id).external_import_recovery_token, undefined,
+    'legacy recovery secrets must not be visible');
+  assert.throws(
+    () => h.ownerUpdateCampaign(h.campaigns[0].id, { external_import_private_marker: privateMarker }),
+    /field-level security rejected/,
+    'owners must not move the private marker to an arbitrary campaign',
   );
-  assert.equal(h.campaigns[1].external_import_connection_id, undefined,
-    'campaign/public state must not contain a raw connection id');
+  h.ownerUpdateCampaign(h.campaigns[0].id, { title: 'Mutated owner-visible campaign' });
+  h.ownerUpdateCampaign(h.campaigns[1].id, { title: 'Mutated legitimate draft title' });
 
   h.syncRun.active_claim_key = 'claim-2';
   const recovered = await convergeExternalCampaignImport({
@@ -172,6 +196,12 @@ const snapshot = {
   assert.equal(recovered.campaign.id, h.campaigns[1].id);
   assert.equal(h.campaigns.length, 2, 'retry reuses the one legitimate draft');
   assert.equal(h.imports.length, 1);
+  assert.equal(h.imports[0].recovery_token, undefined,
+    'owner-readable import records must not copy the recovery secret');
+  assert.equal(recovered.result.campaign.external_import_private_marker, undefined,
+    'function responses must not serialize the private marker');
+  assert.equal(JSON.stringify(recovered.result).includes(privateMarker), false,
+    'function results and stored result payloads must not expose the recovery secret');
   assert.equal(h.connection.campaign_id, h.campaigns[1].id);
   assert.equal(discoveryCalls, 1, 'durable private snapshot avoids rediscovery');
 }
