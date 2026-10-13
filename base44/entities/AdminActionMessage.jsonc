@@ -79,5 +79,6 @@
         "role": "admin"
       }
     }
-  }
+  },
+  "description": "Internal messages, evidence, and progress updates within administrator approval cases."
 }
