@@ -1,19 +1,28 @@
 {
   "name": "ExternalSyncClaim",
   "type": "object",
-  "description": "Immutable atomic claim for one bounded request-triggered external fundraising provider job.",
+  "description": "Immutable claim records for bounded request-triggered external fundraising jobs, serialized by one conditional global lease.",
   "properties": {
     "claim_key": {
       "type": "string",
-      "description": "Unique request-attempt key or deterministic per-window rate-slot key; used as the atomic upsert key."
+      "description": "Stable immutable request/rate identity or the singleton mutex identity. Upsert is forbidden for this entity because it mutates prior audit evidence."
     },
     "claim_type": {
       "type": "string",
       "enum": [
         "request_attempt",
-        "rate_slot"
+        "rate_slot",
+        "mutex"
       ],
       "description": "Optional for legacy rows; distinguishes request execution claims from atomic rate-limit slots."
+    },
+    "lock_token": {
+      "type": "string",
+      "description": "Opaque short-lived owner token for the global compare-and-set lease."
+    },
+    "lock_expires_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "rate_window_started_at": {
       "type": "string",
