@@ -57,5 +57,6 @@
         }
       ]
     }
-  }
+  },
+  "description": "Membership and role associations between IFund users and communities."
 }
