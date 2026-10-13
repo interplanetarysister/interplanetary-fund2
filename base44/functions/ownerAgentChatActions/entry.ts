@@ -128,7 +128,7 @@ export default async function(req:Request) {
     await logAudit(base44,{action:'owner_approved_drafts_from_chat',
       actor_user_id:user.id,target_type:'AgentContentDraft',target_id:user.id,
       detail:'Owner chat command processed '+results.length+' owned draft/post records',
-      status:'success'});
+      status:'success'}).catch(() => {});
     const count=(outcome:string)=>results.filter(r=>r.outcome===outcome).length;
     return Response.json({ok:true,processed:results.length,
       published:count('published'),applied_to_ifund:count('applied_to_ifund'),
