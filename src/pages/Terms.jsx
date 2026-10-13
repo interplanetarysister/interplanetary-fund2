@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import LegalFooter from "@/components/LegalFooter";
 import { TERMS_SECTIONS, TERMS_VERSION, LEGAL_EFFECTIVE_DATE, LEGAL_CONTACT } from "@/lib/legalPolicy";
 
 export default function Terms() {
@@ -15,5 +16,6 @@ export default function Terms() {
       </section>)}
       <div className="border-t border-border pt-4 text-sm">Privacy details: <Link to="/privacy" className="text-primary underline">Privacy Policy</Link> · Questions: <a href={`mailto:${LEGAL_CONTACT}`} className="underline">{LEGAL_CONTACT}</a></div>
     </article>
+    <LegalFooter />
   </main>;
 }
