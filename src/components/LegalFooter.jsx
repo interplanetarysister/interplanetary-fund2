@@ -1,9 +1,12 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import InstallIFundApp from "@/components/InstallIFundApp";
 
 // Legal footer — copyright, disclaimer, and trust page links shown at the bottom of the platform.
 export default function LegalFooter() {
+  const { pathname } = useLocation();
   return (
     <footer className="text-center text-[11px] text-muted-foreground py-4 px-4 border-t border-border">
+      {(pathname === "/" || pathname === "/home") && <InstallIFundApp />}
       <div className="flex items-center justify-center gap-2 mb-1">
         <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
         <span>·</span>
