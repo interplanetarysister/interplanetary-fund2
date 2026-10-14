@@ -23,13 +23,18 @@ export default function InstallIFundApp() {
       const verified = android.status === "published" &&
         web.release_id === android.release_id &&
         /^[0-9a-f]{64}$/i.test(android.apk_sha256 || "") &&
-        /^[0-9a-f]{40}$/i.test(android.source_commit || "");
+        /^[0-9a-f]{40}$/i.test(web.source_commit || "") &&
+        web.source_commit === android.source_commit;
       let url = null;
       try {
         const candidate = new URL(android.apk_url, window.location.origin);
+        const isOfficialRelease = candidate.hostname === "github.com" &&
+          candidate.pathname.startsWith("/interplanetarysister/interplanetary-fund2/releases/download/") &&
+          candidate.pathname.toLowerCase().endsWith(".apk");
+        const isOfficialDownload = candidate.origin === window.location.origin &&
+          candidate.pathname.startsWith("/downloads/") && candidate.pathname.toLowerCase().endsWith(".apk");
         if (candidate.protocol === "https:" && !candidate.username && !candidate.password &&
-            (candidate.origin === window.location.origin ||
-             candidate.hostname === "github.com")) url = candidate.href;
+            (isOfficialRelease || isOfficialDownload)) url = candidate.href;
       } catch { /* No published APK available. */ }
       if (verified && url) setApk({ url, release: android.release_id });
     }).catch(() => { /* Website installation option remains available. */ });
