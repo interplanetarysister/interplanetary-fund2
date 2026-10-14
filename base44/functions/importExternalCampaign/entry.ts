@@ -55,8 +55,9 @@ export default async function(req) {
     return Response.json(result);
   } catch (error) {
     console.error('importExternalCampaign failed:', error?.name || 'UnknownError');
-    if (sr && run && claimKey) await failExternalSyncRequest(sr, run, claimKey, 'Explicit external campaign import failed.').catch(() => {});
-    if (base44 && user?.id) await logAudit(base44, { action: 'external_campaign_import_failed', actor_user_id: user.id, target_type: 'SyncRun', target_id: run?.id || requestId, detail: 'Explicit external campaign import failed safely.', status: 'failure', metadata: { request_id: requestId || null, reason: error?.code || 'provider_error' } }).catch(() => {});
+    const claimLost = error?.code === 'claim_lost';
+    if (!claimLost && sr && run && claimKey) await failExternalSyncRequest(sr, run, claimKey, 'Explicit external campaign import failed.').catch(() => {});
+    if (!claimLost && base44 && user?.id) await logAudit(base44, { action: 'external_campaign_import_failed', actor_user_id: user.id, target_type: 'SyncRun', target_id: run?.id || requestId, detail: 'Explicit external campaign import failed safely.', status: 'failure', metadata: { request_id: requestId || null, reason: error?.code || 'provider_error' } }).catch(() => {});
     return Response.json({ error: error?.message || 'External campaign could not be imported.' }, { status: error?.status || 500 });
   }
 }
