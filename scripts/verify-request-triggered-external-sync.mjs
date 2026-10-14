@@ -7,6 +7,7 @@ const root = fileURLToPath(new URL("../", import.meta.url));
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 const sync = read("base44/functions/syncExternalFunds/entry.ts");
 const imported = read("base44/functions/syncImportedCampaign/entry.ts");
+const discovery = read("base44/functions/discoverExternalCampaignSnapshot/entry.ts");
 const importFn = read("base44/functions/importExternalCampaign/entry.ts");
 const importOperation = read("base44/functions/importExternalCampaign/importOperation.ts");
 const saveCampaign = read("base44/functions/saveCampaign/entry.ts");
@@ -45,6 +46,16 @@ assert.match(requestGuard, /lock_token: currentToken,\s*lock_expires_at: current
 assert.match(requestGuard, /Number\(result\?\.updated \|\| 0\) === 1/);
 assert.match(requestGuard, /ExternalSyncClaim\.create/);
 assert.match(requestGuard, /active_claim_key !== claimKey/);
+assert.match(requestGuard, /claim_checked_at: checkedAt, started_at: checkedAt/,
+  'claim fence must heartbeat the stale-takeover clock atomically');
+assert.match(requestGuard, /Synchronization retry lost its takeover race/,
+  'stale retry replacement must use compare-and-set');
+assert.ok((sync.match(/assertExternalSyncClaimActive/g) || []).length >= 7,
+  'fund sync must fence provider I/O and every canonical, observation, and connection write');
+assert.ok((imported.match(/assertExternalSyncClaimActive/g) || []).length >= 5,
+  'import refresh must fence discovery and both durable writes');
+assert.ok((discovery.match(/assertExternalSyncClaimActive/g) || []).length >= 3,
+  'campaign discovery must fence provider I/O and completion');
 assert.match(claimEntity, /"claim_key"/);
 assert.doesNotMatch(sync, /initiator_type === 'scheduled'/);
 assert.doesNotMatch(sync, /initiator_id \|\| 'workflow'/);
@@ -57,6 +68,10 @@ for (const source of [connections, count, migration, importedUi]) {
   assert.match(source, /request_id:\s*crypto\.randomUUID\(\)/);
 }
 assert.match(imported, /validExternalSyncRequestId/);
+for (const source of [sync, imported, discovery, importFn]) {
+  assert.match(source, /claimLost/,
+    'superseded workers must not emit failure audit writes after claim replacement');
+}
 assert.match(imported, /beginExternalSyncRequest/);
 assert.match(importFn, /beginExternalSyncRequest/);
 assert.match(importFn, /externalCampaignImportTargetKey/);
