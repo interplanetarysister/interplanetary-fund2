@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Megaphone, Sparkles, Rocket, CheckCircle2, Clipboard } from "lucide-react";
 import { Link } from "react-router-dom";
 import DistributedPostCard from "./DistributedPostCard";
+import RequestOutreachAnalysisButton from "./RequestOutreachAnalysisButton";
 const JustGivingStagingPilot = React.lazy(() => import("./JustGivingStagingPilot"));
 import { platformName } from "@/components/connections/platformCatalog";
 import { isUsableConnection } from "@/lib/connectionHealth";
@@ -87,6 +88,7 @@ export default function DistributionPanel({ campaign }) {
         actionContext:{campaignId:campaign.id,action:"cross-platform distribution"},actionLabel:"Review posts"})}}catch(e){console.error("Distribution broadcast failed:",e?.name||"UnknownError");setError("Couldn't send the posts. Please try again.")}setBroadcasting(false)};
   return <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
     <h3 className="flex items-center gap-2 font-display text-xl text-stone-900 mb-1"><Megaphone className="w-5 h-5 text-primary"/>Broadcast your campaign</h3>
+    <RequestOutreachAnalysisButton campaign={campaign} />
     <p className="text-sm text-stone-600 mb-4">Create campaign updates for your connected accounts. Automatic social posting only works for destinations with verified write access. Creating a fundraiser on another crowdfunding website currently requires that provider’s official setup flow.</p>
     <section aria-label="External fundraiser publishing status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
       <p className="font-semibold">External crowdfunding: manual creation required</p>
