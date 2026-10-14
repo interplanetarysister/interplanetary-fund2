@@ -34,8 +34,9 @@ export default async function(req) {
   } catch (error) {
     console.error('discoverExternalCampaignSnapshot failed:', error?.name || 'UnknownError');
     const claimLost = error?.code === 'claim_lost';
-    if (!claimLost && sr && run && claimKey) await failExternalSyncRequest(sr, run, claimKey, 'Explicit external campaign discovery failed.').catch(() => {});
-    if (!claimLost && base44 && user?.id) await logAudit(base44, { action: 'external_campaign_discovery_failed', actor_user_id: user.id, target_type: 'SyncRun', target_id: run?.id || requestId, detail: 'Explicit external campaign discovery failed safely.', status: 'failure', metadata: { request_id: requestId || null, reason: error?.code || 'provider_error' } }).catch(() => {});
+    let failureFinalized = !run;
+    if (!claimLost && sr && run && claimKey) failureFinalized = Boolean(await failExternalSyncRequest(sr, run, claimKey, 'Explicit external campaign discovery failed.').catch(() => null));
+    if (!claimLost && failureFinalized && base44 && user?.id) await logAudit(base44, { action: 'external_campaign_discovery_failed', actor_user_id: user.id, target_type: 'SyncRun', target_id: run?.id || requestId, detail: 'Explicit external campaign discovery failed safely.', status: 'failure', metadata: { request_id: requestId || null, reason: error?.code || 'provider_error' } }).catch(() => {});
     return Response.json({ error: error?.message || 'The external campaign could not be discovered safely.' }, { status: error?.status || 500 });
   }
 }
