@@ -72,8 +72,8 @@ for (const source of [sync, imported, discovery, importFn]) {
   assert.match(source, /claimLost/,
     'superseded workers must not emit failure audit writes after claim replacement');
 }
-for (const source of [imported, discovery, importFn]) {
-  assert.match(source, /failureFinalized\s*=\s*!run/,
+for (const source of [sync, imported, discovery, importFn]) {
+  assert.match(source, /failureFinalized\s*=\s*!(?:activeRun|run)/,
     'pre-run failures may audit, while claimed failures must prove current-claim finalization');
   assert.match(source, /failureFinalized[^\n]*&&\s*base44/,
     'provider failure audit must be gated on successful current-claim finalization');
