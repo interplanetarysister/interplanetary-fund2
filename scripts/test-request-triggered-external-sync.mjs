@@ -9,7 +9,7 @@ import {
   finishExternalSyncRequest,
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
-import { externalBalanceEvidenceChanged } from '../base44/shared/externalBalanceEvidence.ts';
+import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity } from '../base44/shared/externalBalanceEvidence.ts';
 
 const preservedEvidence = {
   external_total: 125.5,
@@ -30,6 +30,46 @@ assert.equal(externalBalanceEvidenceChanged({
   kind:'crowdfunding',existing:preservedEvidence,
   externalTotal:125.5,externalCurrency:'USD',externalDonorCount:7,reaffirmed:true,
 }),true,'explicit owner reaffirmation refreshes balance evidence');
+
+const priorIdentity = {
+  ...preservedEvidence,
+  platform: 'kofi',
+  kind: 'crowdfunding',
+  external_url: 'https://ko-fi.com/original',
+};
+for (const [label, change] of [
+  ['provider URL', { externalUrl:'https://ko-fi.com/replacement' }],
+  ['currency', { externalCurrency:'EUR' }],
+  ['credentials', { credentialsChanged:true }],
+  ['platform', { platform:'patreon' }],
+]) {
+  const reconciled = reconcileExternalBalanceIdentity({
+    existing:priorIdentity,
+    platform:'kofi',
+    kind:'crowdfunding',
+    externalUrl:priorIdentity.external_url,
+    externalCurrency:'USD',
+    externalTotal:125.5,
+    externalDonorCount:7,
+    ...change,
+  });
+  assert.equal(reconciled.reset,true,`${label} change clears prior balance evidence`);
+  assert.equal(reconciled.externalTotal,0,`${label} change cannot carry a prior amount`);
+  assert.equal(reconciled.externalDonorCount,0,`${label} change cannot carry a prior donor count`);
+}
+const reaffirmedIdentity = reconcileExternalBalanceIdentity({
+  existing:priorIdentity,
+  platform:'kofi',
+  kind:'crowdfunding',
+  externalUrl:'https://ko-fi.com/replacement',
+  externalCurrency:'USD',
+  externalTotal:125.5,
+  externalDonorCount:7,
+  reaffirmed:true,
+});
+assert.equal(reaffirmedIdentity.reset,false,'explicit reaffirmation may bind owner-reported values to the new identity');
+assert.equal(reaffirmedIdentity.externalTotal,125.5);
+assert.equal(reaffirmedIdentity.externalDonorCount,7);
 
 const UUID = '8c0b75c0-6b2d-4b14-8c0f-8c21f5df4781';
 const UUID2 = 'f95911e3-aaf2-48a9-bd43-2f38a265de1e';

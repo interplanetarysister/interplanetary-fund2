@@ -15,3 +15,62 @@ export function externalBalanceEvidenceChanged({
     Number(externalDonorCount) !== priorDonors ||
     String(externalCurrency || '').trim().toUpperCase() !== priorCurrency;
 }
+
+
+function normalizedIdentityValue(value) {
+  return String(value || '').trim();
+}
+
+export function externalBalanceIdentityChanged({
+  existing,
+  platform,
+  kind,
+  externalUrl,
+  externalCurrency,
+  credentialsChanged = false,
+}) {
+  if (!existing) return false;
+  const priorPlatform = normalizedIdentityValue(existing.platform).toLowerCase();
+  const nextPlatform = normalizedIdentityValue(platform || existing.platform).toLowerCase();
+  const priorKind = normalizedIdentityValue(existing.kind || 'crowdfunding').toLowerCase();
+  const nextKind = normalizedIdentityValue(kind || existing.kind || 'crowdfunding').toLowerCase();
+  const priorUrl = normalizedIdentityValue(existing.external_url);
+  const nextUrl = externalUrl === undefined || externalUrl === null
+    ? priorUrl
+    : normalizedIdentityValue(externalUrl);
+  const priorCurrency = normalizedIdentityValue(existing.external_currency).toUpperCase();
+  const nextCurrency = normalizedIdentityValue(externalCurrency).toUpperCase();
+  return priorPlatform !== nextPlatform ||
+    priorKind !== nextKind ||
+    priorUrl !== nextUrl ||
+    priorCurrency !== nextCurrency ||
+    credentialsChanged === true;
+}
+
+export function reconcileExternalBalanceIdentity({
+  existing,
+  platform,
+  kind,
+  externalUrl,
+  externalCurrency,
+  externalTotal,
+  externalDonorCount,
+  credentialsChanged = false,
+  reaffirmed = false,
+}) {
+  const identityChanged = externalBalanceIdentityChanged({
+    existing,
+    platform,
+    kind,
+    externalUrl,
+    externalCurrency,
+    credentialsChanged,
+  });
+  const reset = identityChanged && reaffirmed !== true;
+  return {
+    identityChanged,
+    reset,
+    externalTotal: reset ? 0 : Number(externalTotal),
+    externalDonorCount: reset ? 0 : Number(externalDonorCount),
+  };
+}
