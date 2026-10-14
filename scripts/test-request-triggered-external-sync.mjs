@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   EXTERNAL_SYNC_RUN_TTL_MS,
+  assertExternalSyncClaimActive,
   authorizeExternalSyncScope,
   beginExternalSyncRequest,
   crowdfundingConnectionEligibility,
@@ -217,6 +218,20 @@ await assert.rejects(
 assert.equal(stale.runs[0].active_claim_key,recovered.claimKey);
 assert.equal(stale.runs[0].overall_status,'in_progress');
 assert.equal(stale.runs[0].result_payload,undefined);
+
+let staleWorkerProviderCalls=0;
+let staleWorkerDurableWrites=0;
+await assert.rejects(
+  async()=>{
+    await assertExternalSyncClaimActive(stale.sr,staleRunBeforeRetry,staleClaimKey);
+    staleWorkerProviderCalls++;
+    staleWorkerDurableWrites++;
+  },
+  (error)=>error.code==='claim_lost'&&error.status===409,
+  'a stale worker is fenced before provider I/O or durable writes after takeover',
+);
+assert.equal(staleWorkerProviderCalls,0,'superseded worker performs no provider I/O');
+assert.equal(staleWorkerDurableWrites,0,'superseded worker performs no durable write');
 
 const claimOnlyConflict=fakeService({claims:[{
   claim_key:`external_funds:u1:${UUID}:1`,
