@@ -11,9 +11,10 @@ const CAMPAIGN_RESPONSE_FIELDS = [
   'draft_step', 'outreach_last_run_at', 'outreach_last_attempt_at',
   'outreach_last_error', 'social_last_generated_at',
   'social_last_generation_attempt_at',
-] as const;
+];
 
-export function campaignForResponse(campaign: Record<string, unknown> | null | undefined) {
+/** @param {Record<string, unknown> | null | undefined} campaign */
+export function campaignForResponse(campaign) {
   if (!campaign) return campaign;
   return Object.fromEntries(
     CAMPAIGN_RESPONSE_FIELDS
