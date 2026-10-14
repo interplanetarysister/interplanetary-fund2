@@ -24,22 +24,6 @@
       }
     ]
   },
-  "description": "Runs the autonomous AI Outreach Agent on a schedule for campaigns opted in by creators with an active outreach-tier subscription. Every action is recorded for owner approval.",
-  "trigger": {
-    "condition": null,
-    "config": {
-      "trigger_type": "scheduled",
-      "events": [],
-      "schedule_mode": "recurring",
-      "cron_expression": "0 */6 * * *",
-      "one_time_date": null,
-      "timezone": "UTC",
-      "interval_value": null,
-      "interval_unit": null,
-      "interval_anchor": null,
-      "ends_type": "never",
-      "ends_on_date": null,
-      "ends_after_count": null
-    }
-  }
+  "description": "Paused legacy schedule. An authenticated campaign owner now explicitly requests one outreach analysis from the campaign distribution page. The backend checks campaign ownership, OBO consent and subscription; it produces recommendations/drafts, not external publications.",
+  "trigger": null
 }
