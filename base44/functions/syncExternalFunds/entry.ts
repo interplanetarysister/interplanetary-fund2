@@ -338,9 +338,10 @@ export default async function (req) {
   } catch (error) {
     console.error('syncExternalFunds error:', error?.name || 'UnknownError');
     const claimLost = error?.code === 'claim_lost';
+    let failureFinalized = !activeRun;
     if (!claimLost && sr && activeRun?.id) {
-      await failExternalSyncRequest(sr, activeRun, activeClaimKey, 'The authenticated explicit request failed before completion.').catch(() => {});
-      if (base44 && actor?.id) await logAudit(base44, {
+      failureFinalized = Boolean(await failExternalSyncRequest(sr, activeRun, activeClaimKey, 'The authenticated explicit request failed before completion.').catch(() => null));
+      if (failureFinalized && base44 && actor?.id) await logAudit(base44, {
         action: 'external_funds_sync', actor_user_id: actor.id, target_type: 'SyncRun', target_id: activeRun.id,
         detail: `request_id=${activeRun.request_id || 'unknown'} failed before completion`, status: 'failure',
         metadata: { request_id: activeRun.request_id || null, request_origin: 'explicit_authenticated_action' },
