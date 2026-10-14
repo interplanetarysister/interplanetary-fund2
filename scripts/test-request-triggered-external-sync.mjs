@@ -42,6 +42,7 @@ for (const [label, change] of [
   ['currency', { externalCurrency:'EUR' }],
   ['credentials', { credentialsChanged:true }],
   ['platform', { platform:'patreon' }],
+  ['kind', { kind:'social' }],
 ]) {
   const reconciled = reconcileExternalBalanceIdentity({
     existing:priorIdentity,
@@ -56,7 +57,19 @@ for (const [label, change] of [
   assert.equal(reconciled.reset,true,`${label} change clears prior balance evidence`);
   assert.equal(reconciled.externalTotal,0,`${label} change cannot carry a prior amount`);
   assert.equal(reconciled.externalDonorCount,0,`${label} change cannot carry a prior donor count`);
+  assert.equal(reconciled.externalDataSource,'owner_reported',`${label} change invalidates provider provenance`);
 }
+const zeroProviderEvidence = reconcileExternalBalanceIdentity({
+  existing:{ ...priorIdentity, external_total:0, external_donor_count:0, external_data_source:'provider_verified' },
+  platform:'kofi',
+  kind:'crowdfunding',
+  externalUrl:priorIdentity.external_url,
+  externalCurrency:'EUR',
+  externalTotal:0,
+  externalDonorCount:0,
+});
+assert.equal(zeroProviderEvidence.reset,true,'identity change invalidates even zero-valued provider evidence');
+assert.equal(zeroProviderEvidence.externalDataSource,'owner_reported','zero-valued evidence cannot keep a provider-verified label');
 const reaffirmedIdentity = reconcileExternalBalanceIdentity({
   existing:priorIdentity,
   platform:'kofi',

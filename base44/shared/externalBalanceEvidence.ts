@@ -72,5 +72,10 @@ export function reconcileExternalBalanceIdentity({
     reset,
     externalTotal: reset ? 0 : Number(externalTotal),
     externalDonorCount: reset ? 0 : Number(externalDonorCount),
+    // The entity currently supports owner_reported/provider_verified only.
+    // A reset has no live provider evidence, so it must never retain the
+    // provider_verified label; the null observation timestamp is the explicit
+    // signal that the reset zero is not an observed balance.
+    externalDataSource: reset ? 'owner_reported' : (existing?.external_data_source || 'owner_reported'),
   };
 }

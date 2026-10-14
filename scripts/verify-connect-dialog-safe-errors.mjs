@@ -50,6 +50,9 @@ assert.doesNotMatch(source, /PlatformConnection\s*\.\s*(?:update|create)\s*\(/);
 assert.match(source, /external_currency/);
 assert.match(source, /existing \? \(existing\.external_currency \|\| ""\) : "USD"/);
 assert.doesNotMatch(source, /existing\?\.external_currency \|\| "USD"/);
+assert.match(source, /balance_reaffirmed: externalIdentityChanged && balanceReaffirmed/);
+assert.match(source, /I confirm this displayed amount, currency, and donor count belong to the changed provider connection\./);
+assert.match(source, /balanceReaffirmationRequired/);
 
 assert.match(save, /base44\.auth\.me\(\)/);
 assert.match(save, /Campaign\.get\(effectiveCampaignId\)/);
@@ -70,6 +73,7 @@ assert.match(save, /verification_status: 'unverified'/);
 // is otherwise preserved, so provider-verified evidence is not silently
 // reclassified by an unrelated configuration save.
 assert.doesNotMatch(save, /external_data_source:\s*'provider_verified'/);
+assert.match(save, /balanceReconciliation\.reset[\s\S]{0,120}balanceReconciliation\.externalDataSource/);
 assert.match(save, /balanceEvidenceChanged\s*\?\s*'owner_reported'/);
 assert.match(save, /\|\|\s*'owner_reported'/);
 assert.doesNotMatch(save, /status: 'connected'/);
