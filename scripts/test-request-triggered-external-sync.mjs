@@ -235,6 +235,7 @@ assert.equal(staleWorkerProviderCalls,0,'superseded worker performs no provider 
 assert.equal(staleWorkerDurableWrites,0,'superseded worker performs no durable write');
 
 for (const handlerName of [
+  'syncExternalFunds',
   'discoverExternalCampaignSnapshot',
   'syncImportedCampaign',
   'importExternalCampaign',
