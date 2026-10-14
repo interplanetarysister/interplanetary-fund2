@@ -326,10 +326,10 @@ export async function beginExternalSyncRequest(sr, options) {
         active_claim_key: existing.active_claim_key,
         overall_status: existing.overall_status,
         started_at: existing.started_at,
+        ...(existing.claim_checked_at !== undefined
+          ? { claim_checked_at: existing.claim_checked_at }
+          : {}),
       };
-      if (existing.claim_checked_at !== undefined) {
-        takeoverFilter.claim_checked_at = existing.claim_checked_at;
-      }
       const takeover = await sr.entities.SyncRun.updateMany(
         takeoverFilter,
         { $set: runData },
