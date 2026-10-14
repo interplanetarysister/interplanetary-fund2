@@ -1,4 +1,5 @@
 import { isFeatureEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
+import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { hasSubscriptionLevel } from '../../shared/subscriptionEntitlements.ts';
@@ -11,9 +12,9 @@ import { latestWritingGuidance } from '../../shared/writingGuidance.ts';
 // and records recommendations + an activity log entry. Every artifact stays
 // truthful and is left for the owner to approve, reject, edit, or pause.
 
-const MAX_ANALYSES_PER_RUN = 5;
-const SUCCESS_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const FAILURE_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+const MAX_ANALYSES_PER_RUN = 1;
+const SUCCESS_COOLDOWN_MS = 2 * 60 * 1000;
+const FAILURE_COOLDOWN_MS = 30 * 1000;
 
 const COMPLIANCE = `Compliance and safety (non-negotiable):
 - Never fabricate facts, names, amounts, dates, statistics, or outcomes.
@@ -47,10 +48,23 @@ export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     if (!(await isFeatureEnabled(base44, 'ai_outreach_agent'))) return Response.json({ skipped: true, flag: 'ai_outreach_agent', reason: 'disabled' });
+    // A request must originate from the signed-in campaign owner.
+    // Scheduled/service-wide invocations are rejected rather than spending AI credits.
+    const activeAccount = await assertActiveAccount(base44);
+    if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
+    const user = activeAccount.user;
+    const body = await req.json().catch(() => ({}));
+    const campaignId = String(body?.campaign_id || '').trim().slice(0, 100);
+    if (!campaignId) return Response.json({ error: 'Select a campaign to analyze.' }, { status: 400 });
+    const campaign = await base44.entities.Campaign.get(campaignId).catch(() => null);
+    if (!campaign || campaign.created_by_id !== user.id) {
+      return Response.json({ error: 'Campaign not found.' }, { status: 404 });
+    }
+    if (!campaign.outreach_enabled || campaign.outreach_paused || campaign.status !== 'active') {
+      return Response.json({ error: 'Enable outreach for this active campaign before requesting analysis.' }, { status: 409 });
+    }
     const sr = base44.asServiceRole;
-
-    const campaigns = await sr.entities.Campaign.filter(
-      { outreach_enabled: true, status: 'active' }, '-updated_date', 200);
+    const campaigns = [campaign];
     const processed = [];
     const research = await latestWritingGuidance(sr);
     const now = Date.now();
@@ -167,8 +181,8 @@ ${context}`;
         campaign_title: campaign.title,
         owner_user_id: ownerId,
         category: 'outreach',
-        action: 'Ran autonomous outreach analysis and generated recommendations plus a draft outreach message.',
-        reason: 'Campaign is opted into the AI Outreach Agent; periodic monitoring improves outreach performance.',
+        action: 'Completed the owner-requested outreach analysis and prepared recommendations and a draft message.',
+        reason: 'Authenticated campaign owner requested this outreach analysis.',
         expected_impact: 'Sharper audience targeting and ready-to-send donor messaging.',
         result: `Generated ${recIds.length} recommendation(s)${draftMessage ? ' and an outreach draft' : ''}.`,
         description: draftMessage,
@@ -185,9 +199,9 @@ ${context}`;
       } catch (campaignError) {
         console.error('runOutreachAgent campaign failed:', campaignError?.name || 'UnknownError');
         await sr.entities.Campaign.update(campaign.id, {
-          outreach_last_error: 'Analysis could not be completed. It will be retried after a cooldown.',
+          outreach_last_error: 'Analysis could not be completed. Ask to retry after reviewing the error.',
         }).catch(() => {});
-        processed.push({ id: campaign.id, skipped: 'analysis unavailable; retry on next run' });
+        processed.push({ id: campaign.id, skipped: 'analysis unavailable; retry only when requested' });
       }
     }
 
