@@ -61,8 +61,9 @@ export default async function(req){
   }catch(error){
     console.error('syncImportedCampaign failed:',error?.name||'UnknownError');
     const claimLost=error?.code==='claim_lost';
-    if(!claimLost&&sr&&run&&claimKey) await failExternalSyncRequest(sr,run,claimKey,'Explicit imported campaign refresh failed.').catch(()=>{});
-    if(!claimLost&&base44&&user?.id) await logAudit(base44,{action:'external_campaign_sync_failed',actor_user_id:user.id,target_type:'SyncRun',target_id:run?.id||requestId,detail:'Explicit imported campaign refresh failed safely.',status:'failure',metadata:{request_id:requestId||null,reason:error?.code||'provider_error'}}).catch(()=>{});
+    let failureFinalized=!run;
+    if(!claimLost&&sr&&run&&claimKey) failureFinalized=Boolean(await failExternalSyncRequest(sr,run,claimKey,'Explicit imported campaign refresh failed.').catch(()=>null));
+    if(!claimLost&&failureFinalized&&base44&&user?.id) await logAudit(base44,{action:'external_campaign_sync_failed',actor_user_id:user.id,target_type:'SyncRun',target_id:run?.id||requestId,detail:'Explicit imported campaign refresh failed safely.',status:'failure',metadata:{request_id:requestId||null,reason:error?.code||'provider_error'}}).catch(()=>{});
     return Response.json({error:error?.message||'Imported campaign synchronization could not complete.'},{status:error?.status||500});
   }
 }
