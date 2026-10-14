@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Download, Smartphone } from "lucide-react";
+import { isAndroidApp } from "@/lib/androidFirebaseFeatures";
 
 // The PWA runs the live website. Native downloads are shown only when a
 // published, verified APK matches the current web release marker.
@@ -59,27 +60,29 @@ export default function InstallIFundApp() {
     }
   }
 
+  if (isAndroidApp) return null;
+
   return (
     <div className="mt-6 flex flex-col items-center gap-2" aria-label="Install Interplanetary Fund">
       <button type="button" onClick={install}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-300/50 bg-cyan-400/15 px-5 py-3 text-sm font-semibold text-cyan-50 hover:bg-cyan-400/25">
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90">
         <Smartphone className="h-4 w-4" aria-hidden="true" />
         Install IFund web app
       </button>
-      <p className="max-w-sm text-center text-xs text-slate-300">
+      <p className="max-w-sm text-center text-xs text-muted-foreground">
         Uses the current website. No separate app download needed.
       </p>
       {apk ? (
-        <a href={apk.url} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-cyan-200 underline underline-offset-4">
+        <a href={apk.url} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary underline underline-offset-4">
           <Download className="h-4 w-4" aria-hidden="true" />
           Download verified Android APK
         </a>
       ) : (
-        <p className="text-center text-xs text-slate-400">
+        <p className="text-center text-xs text-muted-foreground">
           Native Android download will appear here after its release is verified.
         </p>
       )}
-      {message && <p role="status" className="max-w-sm text-center text-sm text-slate-200">{message}</p>}
+      {message && <p role="status" className="max-w-sm text-center text-sm text-foreground">{message}</p>}
     </div>
   );
 }
