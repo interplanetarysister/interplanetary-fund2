@@ -1,0 +1,8 @@
+{
+  "status": "not_published",
+  "release_id": "ifund-20261013-legal-help-paypal-mobile-parity-v4",
+  "source_commit": null,
+  "apk_url": null,
+  "apk_sha256": null,
+  "notes": "Android APK distribution requires device tests, permanent signing and a verified release. Do not publish a debug artifact as a stable download."
+}
