@@ -71,6 +71,41 @@ export default function Home() {
               </>
             )}
           </div>
+          {/* Clearly identify the real payment provider without implying a formal sponsorship. */}
+          <div className="mt-9 mx-auto max-w-xl rounded-2xl border border-white/25 bg-slate-950/75 px-5 py-5 sm:px-7 sm:py-6 shadow-lg text-left">
+            <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-start">
+              <div className="shrink-0 rounded-xl bg-white px-4 py-3">
+                <img
+                  src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg"
+                  alt="PayPal"
+                  className="h-9 sm:h-11 w-auto max-w-[180px] object-contain"
+                  loading="lazy"
+                />
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-xl sm:text-2xl font-display font-semibold text-white">
+                  {platformOnlyMode ? "Support IFund with PayPal" : "PayPal payment integration"}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-200">
+                  {platformOnlyMode
+                    ? "Your contribution supports Interplanetary Fund's development and operations, not an individual campaign."
+                    : "Campaigns that are enabled for fundraising can offer PayPal checkout, with verified payments recorded to their campaign."}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              {platformOnlyMode ? (
+                <PayPalDonateButton label="Support IFund with PayPal" />
+              ) : (
+                <Link to="/discover" className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#FFD140] px-5 py-3 text-base font-bold text-[#003087] hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+                  Find a campaign to support with PayPal <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
+                </Link>
+              )}
+            </div>
+            <p className="mt-3 text-center text-xs leading-relaxed text-slate-300">
+              PayPal provides payment services. IFund is an independent platform and is not sponsored or endorsed by PayPal.
+            </p>
+          </div>
           {!isAuthenticated && (
             <p className="mt-8 text-sm text-slate-400">Already have an account? <Link to="/login" className="text-cyan-300 hover:text-cyan-200 font-medium">Log in</Link> · <Link to="/register" className="text-cyan-300 hover:text-cyan-200 font-medium">Create one</Link></p>
           )}
