@@ -83,6 +83,20 @@ const reaffirmedIdentity = reconcileExternalBalanceIdentity({
 assert.equal(reaffirmedIdentity.reset,false,'explicit reaffirmation may bind owner-reported values to the new identity');
 assert.equal(reaffirmedIdentity.externalTotal,125.5);
 assert.equal(reaffirmedIdentity.externalDonorCount,7);
+const nonFundraisingReaffirmation = reconcileExternalBalanceIdentity({
+  existing:priorIdentity,
+  platform:'kofi',
+  kind:'social',
+  externalUrl:priorIdentity.external_url,
+  externalCurrency:'',
+  externalTotal:125.5,
+  externalDonorCount:7,
+  reaffirmed:true,
+});
+assert.equal(nonFundraisingReaffirmation.reset,true,'reaffirmation cannot carry fundraising evidence into a non-fundraising kind');
+assert.equal(nonFundraisingReaffirmation.externalTotal,0);
+assert.equal(nonFundraisingReaffirmation.externalDonorCount,0);
+assert.equal(nonFundraisingReaffirmation.externalDataSource,'owner_reported');
 
 const oauthReauthorization = reconcileOAuthExternalBalance({ existing:priorIdentity, kind:'crowdfunding' });
 assert.deepEqual(oauthReauthorization,{

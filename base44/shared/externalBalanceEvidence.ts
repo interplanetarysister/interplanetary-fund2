@@ -66,7 +66,8 @@ export function reconcileExternalBalanceIdentity({
     externalCurrency,
     credentialsChanged,
   });
-  const reset = identityChanged && reaffirmed !== true;
+  const canReaffirm = reaffirmed === true && normalizedIdentityValue(kind).toLowerCase() === 'crowdfunding';
+  const reset = identityChanged && !canReaffirm;
   return {
     identityChanged,
     reset,
