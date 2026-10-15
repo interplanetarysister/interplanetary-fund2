@@ -20,6 +20,8 @@ function test(label,mutate,expected){
 }
 test('modern Node supported',()=>{},errors=>errors.length===0);
 test('hardcoded lane rejected',d=>writeFileSync(join(d,'.github/workflows/check.yml'),"jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 22\n"),errors=>errors.some(e=>e.includes('pins a Node major')));
+test('Node 20 minimum-runtime CI lane allowed',d=>writeFileSync(join(d,'.github/workflows/quality-gates.yml'),"jobs:\\n  quality:\\n    name: Node 20 Base44 compatibility build\\n    steps:\\n      - uses: actions/setup-node@v4\\n        with:\\n          node-version: '20'\\n"),errors=>errors.length===0);
+test('Node 20 pin rejected outside dedicated lane',d=>writeFileSync(join(d,'.github/workflows/check.yml'),"jobs:\\n  test:\\n    steps:\\n      - uses: actions/setup-node@v4\\n        with:\\n          node-version: '20'\\n"),errors=>errors.some(e=>e.includes('pins a Node major')));
 test('engines upper bound rejected',d=>writeFileSync(join(d,'package.json'),JSON.stringify({engines:{node:'>=20 <26'}})),errors=>errors.some(e=>e.includes('engine')));
 test('pinned nvm rejected',d=>writeFileSync(join(d,'.nvmrc'),'20\n'),errors=>errors.some(e=>e.includes('.nvmrc')));
 test('malformed metadata rejected',d=>writeFileSync(join(d,'package.json'),'{'),errors=>errors.some(e=>e.includes('malformed:')));
