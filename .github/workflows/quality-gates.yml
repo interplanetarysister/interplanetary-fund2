@@ -36,6 +36,11 @@ jobs:
           node-version: '20'
           cache: npm
 
+      - name: Explain locked Node 20 dependency incompatibilities
+        run: |
+          node scripts/test-locked-node20-engines.mjs
+          node scripts/verify-locked-node20-engines.mjs --target=20.20.2
+
       - name: Install locked dependencies with lifecycle scripts
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
