@@ -73,7 +73,7 @@ expect(!connectionStatus.includes("last_error: shared?.last_error || connection?
 expect(!sharedConnectorStatus.includes("String(auth.error"), 'shared status must not expose provider error strings');
 expect(!sharedConnectorStatus.includes("Wix verification failed (${res.status})"), 'shared status must not expose provider HTTP detail');
 expect(importExternalCampaign.includes('discover: discoverPublicCampaignSnapshot'), 'external imports must use provider-backed discovery');
-expect(importOperation.includes('const snapshot = await discover(connection)'), 'external import discovery must remain server-side');
+expect(/snapshot\s*=\s*await discover\(connection\)/.test(importOperation), 'external import discovery must remain server-side');
 expect(importOperation.includes("key === 'goal_amount'"), 'owner goal provenance must remain explicit');
 expect(importOperation.includes("? 'system_default'"), 'system default category provenance must remain explicit');
 expect(!importOperation.includes("payload.goal_amount = Number(payload.goal_amount || 1)"), 'imports must not fabricate a goal amount');
