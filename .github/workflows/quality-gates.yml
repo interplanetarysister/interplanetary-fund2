@@ -211,6 +211,8 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: npm run build
+      - name: Verify campaign share destinations
+        run: node scripts/test-social-share-targets.mjs
 
   typecheck:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
