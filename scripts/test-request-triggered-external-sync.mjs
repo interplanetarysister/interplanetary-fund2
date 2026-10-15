@@ -9,7 +9,7 @@ import {
   finishExternalSyncRequest,
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
-import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity } from '../base44/shared/externalBalanceEvidence.ts';
+import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity, reconcileOAuthExternalBalance } from '../base44/shared/externalBalanceEvidence.ts';
 
 const preservedEvidence = {
   external_total: 125.5,
@@ -83,6 +83,20 @@ const reaffirmedIdentity = reconcileExternalBalanceIdentity({
 assert.equal(reaffirmedIdentity.reset,false,'explicit reaffirmation may bind owner-reported values to the new identity');
 assert.equal(reaffirmedIdentity.externalTotal,125.5);
 assert.equal(reaffirmedIdentity.externalDonorCount,7);
+
+const oauthReauthorization = reconcileOAuthExternalBalance({ existing:priorIdentity, kind:'crowdfunding' });
+assert.deepEqual(oauthReauthorization,{
+  external_data_source:'owner_reported',
+  external_total:0,
+  external_donor_count:0,
+  external_currency:'',
+  external_balance_observed_at:null,
+},'OAuth reauthorization cannot carry balance evidence from a potentially different provider account');
+assert.deepEqual(
+  reconcileOAuthExternalBalance({ existing:priorIdentity, kind:'social' }),
+  { external_data_source:'provider_verified' },
+  'non-fundraising OAuth reauthorization does not invent balance fields',
+);
 
 const UUID = '8c0b75c0-6b2d-4b14-8c0f-8c21f5df4781';
 const UUID2 = 'f95911e3-aaf2-48a9-bd43-2f38a265de1e';

@@ -77,7 +77,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
 
   const set = (k, v) => {
     setForm((f) => ({ ...f, [k]: v }));
-    if (k === "external_url" || k === "external_currency") setBalanceReaffirmed(false);
+    if (["external_url", "external_currency", "external_total", "external_donor_count"].includes(k)) setBalanceReaffirmed(false);
   };
   const selectedCampaign = campaigns.find((campaign) => campaign.id === form.campaign_id) || null;
   const externalIdentityChanged = Boolean(existing && isCrowd && (

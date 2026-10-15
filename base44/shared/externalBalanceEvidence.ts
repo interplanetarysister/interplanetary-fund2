@@ -79,3 +79,21 @@ export function reconcileExternalBalanceIdentity({
     externalDataSource: reset ? 'owner_reported' : (existing?.external_data_source || 'owner_reported'),
   };
 }
+
+
+export function reconcileOAuthExternalBalance({ existing, kind }) {
+  const externalDataSource = existing?.external_data_source || 'owner_reported';
+  if (!existing || kind !== 'crowdfunding') {
+    return { external_data_source: externalDataSource };
+  }
+  // A fresh OAuth grant can authorize a different provider account. Until a
+  // live read observes that account, no amount, donor count, currency, or
+  // provider provenance from the prior authorization may cross the boundary.
+  return {
+    external_data_source: 'owner_reported',
+    external_total: 0,
+    external_donor_count: 0,
+    external_currency: '',
+    external_balance_observed_at: null,
+  };
+}

@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { reconcileOAuthExternalBalance } from '../../shared/externalBalanceEvidence.ts';
 
 const COMMON_IF_CAPABILITIES = [
   'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
@@ -106,6 +107,7 @@ export default async function(req) {
     const requestedDisplayName = String(body.display_name || pairedCampaign?.title || existing?.display_name || key).trim().slice(0, 200);
     const now = new Date().toISOString();
     const confirmed = providerCapabilities(oauth);
+    const oauthBalanceEvidence = reconcileOAuthExternalBalance({ existing, kind: cfg.kind });
     const unifiedObo = hasUnifiedOboConsent(user) &&
       existing?.obo_consent?.opted_out !== true &&
       // Legacy per-connection refusals remain refusals; a new OAuth account
@@ -139,7 +141,7 @@ export default async function(req) {
       status: 'disconnected',
       verification_status: 'unverified',
       capability_status: confirmed.length ? 'confirmed' : 'unknown',
-      external_data_source: existing?.external_data_source || 'owner_reported',
+      ...oauthBalanceEvidence,
       last_error: 'Provider authorization received; live provider verification is pending.',
       history: [...(existing?.history || []), {
         at: now,
