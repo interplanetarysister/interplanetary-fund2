@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import DonateDialog from "@/components/campaigns/DonateDialog";
 import CampaignFundingCard from "@/components/campaigns/CampaignFundingCard";
 import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
+import CampaignSharePanel from "@/components/campaigns/CampaignSharePanel";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
 import CryptoCampaignSettings from "@/components/campaigns/CryptoCampaignSettings";
@@ -127,6 +128,7 @@ export default function CampaignDetail() {
               so the primary action is visible without scrolling. */}
           <div id="campaign-funding-mobile" tabIndex={-1} className="scroll-mt-24 lg:hidden">
             <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
+            {campaign.status === "active" && <div className="mt-3"><CampaignSharePanel campaign={campaign} /></div>}
           </div>
           {campaign.story && (
             <div id="campaign-story" tabIndex={-1} className="scroll-mt-24 bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
@@ -148,6 +150,7 @@ export default function CampaignDetail() {
             <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
           </div>
 
+          {campaign.status === "active" && <div className="hidden lg:block"><CampaignSharePanel campaign={campaign} /></div>}
           {canManage && <div id="campaign-share" tabIndex={-1} className="scroll-mt-24">
             <ShareCampaignKit campaign={campaign} />
           </div>}
