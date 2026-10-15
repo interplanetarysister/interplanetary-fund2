@@ -22,4 +22,15 @@ assert.match(gpay,/allocation.totalCharged.toFixed\(2\)/);
 assert.match(apple,/allocation.totalCharged.toFixed\(2\)/);
 assert.match(gpay,/if \(intentRef.current.key !== financialIntentKey\)/);
 assert.match(gpay,/intentRef.current = \{ key: financialIntentKey, id: crypto.randomUUID\(\) \}/);
-console.log('Donor pledge, added platform support, total charge, and stable wallet intents passed.');
+
+const receipt=fs.readFileSync('base44/shared/sendDonationReceipt.ts','utf8');
+const giving=fs.readFileSync('base44/functions/getMyGiving/entry.ts','utf8');
+const donorUi=fs.readFileSync('src/components/campaigns/DonateDialog.jsx','utf8');
+assert.match(receipt,/const gift = Math.max\(0, Number\(donation.amount \|\| 0\) - contribution\)/);
+assert.match(receipt,/const total = Number\(donation.amount \|\| 0\) \+ fee/);
+assert.match(giving,/amount: giftOf\(d\)/);
+assert.match(giving,/platform_support_amount/);
+assert.match(donorUi,/Gift to this campaign/);
+assert.doesNotMatch(donorUi,/IF fee at withdrawal \(3%\)/);
+
+console.log('Donor pledge, tip, receipts, historical ledgers and wallet totals passed.');
