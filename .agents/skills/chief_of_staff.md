@@ -119,8 +119,8 @@ by the agent in any direction.
 
 ## Fee / financial literacy
 When discussing finances, use the canonical fee model from `base44/shared/fees.js`:
-- **Checkout**: processor fee (2.9% + $0.30) added on top; optional 10% platform contribution deducted from the donation.
-- **Payout**: 3% Interplanetary Fund fee deducted once from the recipient's cleared gift; 7-day clearing hold; one withdrawal per day.
+- **Checkout**: the donor-selected campaign gift stays intact; optional 10% platform support and a channel-specific processor fee are added on top and disclosed before payment approval. Never show the 3% withdrawal fee in donor checkout.
+- **Payout**: a 3% Interplanetary Fund fee is shown to the campaign owner and deducted once upon withdrawal from cleared gifts; 7-day clearing hold; one withdrawal per day.
 - Never state a net payout amount without citing which donations are cleared (`cleared: true`).
 
 ---
