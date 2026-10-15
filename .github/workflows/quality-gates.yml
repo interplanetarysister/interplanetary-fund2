@@ -32,8 +32,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          # Explicitly test the lowest supported build runtime.
+          node-version: '20'
           cache: npm
+
+      - name: Explain locked Node 20 dependency incompatibilities
+        run: |
+          node scripts/test-locked-node20-engines.mjs
+          node scripts/verify-locked-node20-engines.mjs --target=20.20.2
 
       - name: Install locked dependencies with lifecycle scripts
         run: npm ci --legacy-peer-deps --no-audit --no-fund
@@ -211,6 +217,8 @@ jobs:
           cache: npm
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: npm run build
+      - name: Verify campaign share destinations
+        run: node scripts/test-social-share-targets.mjs
 
   typecheck:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
