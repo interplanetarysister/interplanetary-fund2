@@ -130,6 +130,8 @@ Use the existing Base44 application architecture in this repository for product 
 - Repository lifecycle checks may warn when a runtime is newer than established tested lanes, but they must not fail solely because Node is newer than 22. Concrete incompatibilities should be fixed or documented based on evidence rather than a hard-coded future-major block.
 - Base44 backend functions use their platform Deno runtime; the Node 20/22 rule concerns Node-based development/build tooling.
 
+- Do not restore floating `.nvmrc` / `.node-version` files containing `node`: Cloudflare Workers Builds interprets them as invalid explicit version overrides. Base44 and Cloudflare should use their managed build defaults; retain the `>=20` engine minimum and CI checks for Node 20 and the current Node release. The managed defaults may differ by provider; verify each build.
+
 ## Working Notes
 
 - Do not trigger Base44 commands merely to test whether credits remain.

@@ -8,8 +8,6 @@ function fixture() {
  mkdirSync(join(dir,'.github/workflows'),{recursive:true});
  writeFileSync(join(dir,'package.json'),JSON.stringify({engines:{node:'>=20'}}));
  writeFileSync(join(dir,'package-lock.json'),JSON.stringify({packages:{'':{engines:{node:'>=20'}}}}));
- writeFileSync(join(dir,'.node-version'),'node\n');
- writeFileSync(join(dir,'.nvmrc'),'node\n');
  writeFileSync(join(dir,'.github/workflows/check.yml'),"jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 'node'\n");
  return dir;
 }
@@ -23,7 +21,8 @@ test('hardcoded lane rejected',d=>writeFileSync(join(d,'.github/workflows/check.
 test('Node 20 minimum-runtime CI lane allowed',d=>writeFileSync(join(d,'.github/workflows/quality-gates.yml'),"jobs:\n  quality:\n    name: Node 20 Base44 compatibility build\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n"),errors=>errors.length===0);
 test('Node 20 pin rejected outside dedicated lane',d=>writeFileSync(join(d,'.github/workflows/check.yml'),"jobs:\n  test:\n    steps:\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n"),errors=>errors.some(e=>e.includes('pins a Node major')));
 test('engines upper bound rejected',d=>writeFileSync(join(d,'package.json'),JSON.stringify({engines:{node:'>=20 <26'}})),errors=>errors.some(e=>e.includes('engine')));
-test('pinned nvm rejected',d=>writeFileSync(join(d,'.nvmrc'),'20\n'),errors=>errors.some(e=>e.includes('.nvmrc')));
+test('version file override rejected',d=>writeFileSync(join(d,'.nvmrc'),'20\n'),errors=>errors.some(e=>e.includes('.nvmrc')));
+test('literal node version file rejected',d=>writeFileSync(join(d,'.node-version'),'node\\n'),errors=>errors.some(e=>e.includes('.node-version')));
 test('malformed metadata rejected',d=>writeFileSync(join(d,'package.json'),'{'),errors=>errors.some(e=>e.includes('malformed:')));
 const source=readFileSync(new URL('./require-node22.mjs',import.meta.url),'utf8');
 assert.match(source,/MINIMUM_NODE_MAJOR = 20/);

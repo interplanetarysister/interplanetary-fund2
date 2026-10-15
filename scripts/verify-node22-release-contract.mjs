@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import yaml from 'js-yaml';
@@ -9,8 +9,11 @@ export function verifyReleaseContract(root=process.cwd()) {
   const json=(p)=>{try{return JSON.parse(read(p))}catch{errors.push('malformed:'+p);return null}};
   const pkg=json('package.json');
   if(pkg?.engines?.node!=='>=20')errors.push('Node engine must allow every major release 20 and greater');
-  if(read('.node-version').trim()!=='node')errors.push('.node-version must track the current Node release');
-  if(read('.nvmrc').trim()!=='node')errors.push('.nvmrc must track the current Node release');
+  // Host-managed defaults are the portable floating selector. Cloudflare Workers
+  // Builds interprets "node" in version files as an invalid install version.
+  for (const filename of ['.node-version', '.nvmrc']) {
+    if (existsSync(join(root, filename))) errors.push(filename + ' overrides managed Node selection; remove the version file');
+  }
   if(Number(process.versions.node.split('.')[0])<20)errors.push('Node 20 or newer required');
   const lock=json('package-lock.json');
   if(lock?.packages?.['']?.engines?.node!=='>=20')errors.push('Lockfile must declare Node >=20');

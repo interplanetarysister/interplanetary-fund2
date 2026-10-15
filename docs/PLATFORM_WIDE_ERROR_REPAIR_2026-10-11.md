@@ -1,7 +1,7 @@
 # IFund platform-wide error repair workflow
 
 ## Runtime policy
-IFund accepts every Node.js major version **20 or greater**, without a frozen upper bound. package.json and lockfile declare >=20; .nvmrc/.node-version and GitHub setup-node track the current Node release ("node"). No CI workflow is intentionally triggered by this document. Real upgrades still require green build and compatibility tests before deployment.
+IFund accepts every Node.js major version **20 or greater**, without a frozen upper bound. package.json and lockfile declare >=20; GitHub has an explicit Node 20 compatibility job and a separate latest-Node job. Root .nvmrc and .node-version files are intentionally absent so Base44 and Cloudflare select their current managed Node build versions automatically. Cloudflare Workers Builds treats a literal "node" version file as an invalid install target. No CI workflow is intentionally triggered by this document. Real upgrades still require green build and compatibility tests before deployment.
 
 ## User-visible error -> system-wide fix
 1. Global script/resource errors, unhandled promises, React rendering failures, failed page views, query/mutation failures, and unexpected app startup errors report through src/lib/platformErrorReporter.js. A swallowed error that is not surfaced through these integration points still needs explicit instrumentation.

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import * as ts from 'typescript';
 
 const root = new URL('../', import.meta.url);
@@ -7,12 +7,10 @@ const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const syncSource = read('base44/functions/syncGitHub/entry.ts');
 const runbook = read('docs/deferred-base44-workflows.md');
 const pkg = JSON.parse(read('package.json'));
-const nodeVersion = read('.node-version').trim();
-const nvmrc = read('.nvmrc').trim();
 const quality = read('.github/workflows/quality-gates.yml');
 
-assert.equal(nodeVersion, 'node', '.node-version must follow current Node releases');
-assert.equal(nvmrc, 'node', '.nvmrc must follow current Node releases');
+assert.equal(existsSync(new URL('.node-version', root)), false, 'managed Node selection must not be overridden by .node-version');
+assert.equal(existsSync(new URL('.nvmrc', root)), false, 'managed Node selection must not be overridden by .nvmrc');
 assert.equal(pkg.engines?.node, '>=20', 'package engine must accept Node 20 and newer while CI retains tested compatibility lanes');
 assert.match(quality, /node-version:\s*['"]node['"]/, 'quality gates must track current Node releases');
 
