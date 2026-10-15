@@ -3,7 +3,7 @@ import { secrets } from 'base44:runtime';
 import { createOrder } from '../../shared/paypal.ts';
 import { checkRateLimit } from '../../shared/rateLimit.ts';
 import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
-import { validateDonationAmount, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeContribution, round2 } from '../../shared/fees.js';
+import { validateDonationAmount, computePayPalBreakdown, round2 } from '../../shared/fees.js';
 import { ensureCanonicalCampaign } from '../../shared/base44Financial.ts';
 import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
 import { areFeaturesEnabled, featureUnavailable } from '../../shared/featureFlagGate.ts';
@@ -31,7 +31,9 @@ export default async function (req) {
     const channel = ['paypal', 'googlepay', 'applepay'].includes(payment_channel) ? payment_channel : '';
     if (!channel) return Response.json({ error: 'A supported payment channel is required' }, { status: 400 });
     if (!(await areFeaturesEnabled(base44, ['payment_checkout_enabled', channel === 'googlepay' ? 'google_pay_checkout' : channel === 'applepay' ? 'apple_pay_checkout' : 'paypal_checkout']))) return featureUnavailable('This payment method');
-    const totalCharge = round2(Number(amount));
+    const quote = computePayPalBreakdown(Number(amount), platform_contribution === true, channel);
+    const totalCharge = quote.totalCharged;
+    if (!(totalCharge > 0) || totalCharge > 1000000) return Response.json({ error: 'The total payment amount is too large.' }, { status: 400 });
 
     const ip = (req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'anon').split(',')[0].trim();
     const rl = await checkRateLimit(base44, `createPayPalOrder:${ip}`, 10, 60);
@@ -45,15 +47,13 @@ export default async function (req) {
 
     await ensureCanonicalCampaign(sr, campaign);
 
-    const processing = ['googlepay', 'applepay'].includes(channel) ? computePayPalWalletProcessingFee(totalCharge) : computePayPalProcessingFee(totalCharge);
-    const value = round2(totalCharge - processing);
-    const contribution = computeContribution(value, !!platform_contribution);
-    // Validate the complete provider allocation before creating an order. A
-    // valid donor-entered minimum can be below the donation minimum after the
-    // processor takes its fee; that is expected, but both the donation value
-    // and campaign gift must remain positive.
+    const processing = quote.processing;
+    const value = quote.amount; // promised campaign gift + optional tip
+    const contribution = quote.contribution; // optional tip, added on top
+    // Keep the user's pledged campaign gift intact; never silently reduce it
+    // to fund platform support or PayPal processing.
     if (!(value > 0) || !(round2(value - contribution) > 0)) {
-      return Response.json({ error: 'This amount cannot produce a campaign gift after PayPal processing.' }, { status: 400 });
+      return Response.json({ error: 'The campaign gift must remain positive.' }, { status: 400 });
     }
     const order = await createOrder({
       amount: totalCharge,
@@ -64,6 +64,7 @@ export default async function (req) {
         Math.round(processing * 100),
         Math.round(contribution * 100),
         channel,
+        'gift_first_v2', // new orders only; old five-field orders retain original allocation
       ].join('|'),
       requestId: String(intent_id),
     });

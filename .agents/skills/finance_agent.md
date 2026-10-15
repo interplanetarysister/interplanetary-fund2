@@ -53,9 +53,9 @@ deletes financial records.
 
 **Always inspect the current fee implementation** before quoting processing fees or estimating a payout; historical values below are examples, not immutable pricing or verified provider charges.
 
-- Donor-entered amount is the **total charged**; the processor estimate is derived *within* that amount so the checkout must not charge an unapproved larger total.
+- The donor-entered amount is the **campaign gift**. New PayPal-based checkouts separately show and charge the optional 10% support plus the estimated processing fee; consent covers the complete total.
 - Payment-rail processing rates differ. Source-code defaults currently include Stripe 2.9% + $0.30, standard PayPal Checkout 3.49% + $0.49, and PayPal wallet 2.89% + $0.29. These may differ from the actual provider's contract, payment type and effective rate; never claim retired Stripe purchase routes are usable.
-- Optional 10% donor contribution is allocated **from** the donation after processor fees, not added to the total.
+- Optional 10% platform support is **added on top** of the selected campaign gift for new provider checkouts, never deducted from that pledged gift. Historical transactions preserve their original recorded allocations.
 - A 3% IFund fee is deducted **once at withdrawal** from the verified recipient gift; no second processor fee at withdrawal.
 - PayPal donate links and manual confirmation have separate provider accounting; an unverifiable off-platform report is not withdrawable money.
 - For precise values use the exported `computeProcessorBreakdown`, `computePayPalBreakdown`, `computePayPalWalletBreakdown` and `computeWithdrawal` functions, and keep fee source attribution visible.

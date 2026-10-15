@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk, loadGooglePayScript } from "./paypalScripts";
-import { computeChargeTotal, computePayPalWalletBreakdown, MIN_DONATION } from "@/lib/fees";
+import { computePayPalWalletBreakdown, MIN_DONATION } from "@/lib/fees";
 
 // Google Pay and PayPal Buttons deliberately share the same v5 PayPal SDK.
 // Only show this button when the wallet, device, and merchant are eligible.
@@ -114,7 +114,7 @@ export default function GooglePayButton({ campaign, amount, donorName, message, 
                 countryCode: "US",
                 currencyCode: "USD",
                 totalPriceStatus: "FINAL",
-                totalPrice: computeChargeTotal(value).toFixed(2),
+                totalPrice: allocation.totalCharged.toFixed(2),
               },
               callbackIntents: ["PAYMENT_AUTHORIZATION"],
             }).catch(() => {

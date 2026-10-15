@@ -9,6 +9,7 @@ export function resolvePayPalCaptureAllocation({
   quotedContribution,
   providerReceivable = null,
   providerFee = null,
+  preservePledgedGift = false,
 }) {
   const charge = round2(chargedAmount);
   const quote = round2(quotedDonation);
@@ -45,7 +46,19 @@ export function resolvePayPalCaptureAllocation({
   }
 
   if (!(amount > 0)) return { ok: false, reason: 'provider_receivable_not_positive' };
-  const platformContribution = Number(quotedContribution) > 0 ? computeContribution(amount, true) : 0;
+  // Existing five-field PayPal orders remain on their original allocation rules.
+  // New orders promise a fixed gift to the campaign. Allocate processor variance
+  // against the platform portion first and never credit money PayPal did not send.
+  let platformContribution;
+  if (preservePledgedGift) {
+    const promisedGift = round2(quote - round2(quotedContribution));
+    if (!(promisedGift > 0) || amount < promisedGift) {
+      return { ok: false, reason: 'pledged_campaign_gift_shortfall' };
+    }
+    platformContribution = round2(Math.min(round2(quotedContribution), amount - promisedGift));
+  } else {
+    platformContribution = Number(quotedContribution) > 0 ? computeContribution(amount, true) : 0;
+  }
   if (!(round2(amount - platformContribution) > 0)) {
     return { ok: false, reason: 'campaign_allocation_not_positive' };
   }

@@ -1,26 +1,11 @@
-// Single source of truth for the donation fee breakdown. Pure functions, no
-// I/O — identical on client and server and safe to unit-test.
-//
-// APPROVED FEE POLICY (each fee applied in exactly one place — never double-charged):
-//  - The donor's entered amount is the TOTAL CHARGED. The processor fee is
-//    derived from that total and the remainder becomes the donation. This keeps
-//    checkout totals identical to the amount the donor explicitly entered.
-//  - The optional 10% platform contribution is an ALLOCATION FROM the donation
-//    (never added on top), directed to the platform. Recipient's gift =
-//    donation − contribution.
-//  - Exactly ONE processing fee — the payment processor's, identified by its
-//    actual source (Stripe / PayPal). It is NOT an Interplanetary Fund fee.
-//    Manual-confirmation methods (PayPal donate link, Cash App) charge their own
-//    fee directly on their site, so IF adds nothing there (processing = 0).
-//  - 3% Interplanetary Fund fee — deducted ONCE, at payout (withdrawal), from
-//    the recipient's gift. Never at checkout.
-//  - Recipient net = recipient gift − 3% platform fee. This matches the
-//    withdrawal payout exactly, so the checkout projection never overstates
-//    what the campaign actually receives.
-//
-// All money math is performed in integer minor units (cents) to avoid
-// floating-point drift; results convert back to dollars with safe rounding.
-// No function ever returns a negative gift, fee, or payout.
+// Shared money arithmetic. Historical donations keep their original recorded
+// allocations; new PayPal orders use gift-first checkout quotes below.
+// Donor selects the campaign gift. Optional 10% platform support is an
+// ADDITIONAL CHARGE, not a deduction from that gift. Processor fees are also
+// separately included in the explicitly displayed total. IFund's 3% fee is
+// deducted once at withdrawal and is disclosed to the campaign owner there.
+// Quotes are estimates until the provider's capture is verified. Never credit
+// unverified funds or silently reduce a promised campaign gift.
 
 export const PLATFORM_FEE_RATE = 0.03;
 export const CONTRIBUTION_RATE = 0.10;
@@ -54,16 +39,16 @@ export function validateDonationAmount(amount) {
   return { ok: true };
 }
 
-// Optional contribution allocated FROM the entered amount (never added on top).
-// Computed in cents so the donor's total is always exactly the amount entered.
+// Optional 10% added on top of a donor-entered campaign gift for new checkouts.
+// Historical stored donations still use amount minus platform_contribution.
 export function computeContribution(amount, optedIn) {
   const a = toCents(amount);
   if (!optedIn || a <= 0) return 0;
   return fromCents(a * CONTRIBUTION_RATE);
 }
 
-// The recipient's gift: the entered amount minus the optional contribution.
-// Never negative.
+// Historical stored-allocation calculation (not the new checkout quote).
+// The gift from a recorded Donation is always gross minus contribution.
 export function recipientGift(amount, optedIn) {
   const a = toCents(amount);
   const c = toCents(computeContribution(amount, optedIn));
@@ -115,15 +100,14 @@ export function computeRecipientNet(amount, optedIn) {
   return fromCents(Math.max(0, gift - fee));
 }
 
-// Full breakdown for the donor-facing UI.
-export function computeBreakdown(total, optedIn) {
-  return computeProcessorBreakdown(total, optedIn, computeProcessingFee);
+// Gift-first estimate for generic card processing. The donor must approve the
+// complete amount, including optional support and provider processing costs.
+export function computeBreakdown(gift, optedIn) {
+  return quoteGiftFirst(gift, optedIn, PROCESSING_RATE, PROCESSING_FIXED);
 }
 
-// Rail-specific donor breakdown. The donor-entered total and 3% withdrawal
-// policy are identical across rails; only the processor's published fee model
-// varies. Keeping the fee function explicit prevents PayPal/Google Pay UI from
-// accidentally presenting Stripe estimates.
+// Legacy breakdown function retained for historical estimate comparisons. New
+// checkout flows must use quoteGiftFirst so entered gifts stay intact.
 export function computeProcessorBreakdown(total, optedIn, processingFeeForTotal) {
   const totalCharged = round2(Number(total) || 0);
   const processing = round2(processingFeeForTotal(totalCharged));
@@ -135,12 +119,38 @@ export function computeProcessorBreakdown(total, optedIn, processingFeeForTotal)
   return { amount: a, contribution, recipientGift: gift, processing, platformFee, recipientNet, totalCharged };
 }
 
-export function computePayPalBreakdown(total, optedIn) {
-  return computeProcessorBreakdown(total, optedIn, computePayPalProcessingFee);
+export function computePayPalBreakdown(gift, optedIn, paymentChannel = 'paypal') {
+  return ['googlepay', 'applepay'].includes(paymentChannel)
+    ? quoteGiftFirst(gift, optedIn, PAYPAL_WALLET_PROCESSING_RATE, PAYPAL_WALLET_PROCESSING_FIXED)
+    : quoteGiftFirst(gift, optedIn, PAYPAL_PROCESSING_RATE, PAYPAL_PROCESSING_FIXED);
 }
 
-export function computePayPalWalletBreakdown(total, optedIn) {
-  return computeProcessorBreakdown(total, optedIn, computePayPalWalletProcessingFee);
+export function computePayPalWalletBreakdown(gift, optedIn) {
+  return quoteGiftFirst(gift, optedIn, PAYPAL_WALLET_PROCESSING_RATE, PAYPAL_WALLET_PROCESSING_FIXED);
+}
+
+// Gift-first quote in integer cents. Gross up for the processor's percentage
+// on the TOTAL charge plus fixed fee. Using a conservative whole-cent charge
+// guarantees the estimated net is at least the donor's promised gift + tip.
+export function quoteGiftFirst(gift, optedIn, rate, fixedDollars) {
+  const raw = Number(gift);
+  if (!Number.isFinite(raw) || raw <= 0) return { amount: 0, contribution: 0, recipientGift: 0, processing: 0, platformFee: 0, recipientNet: 0, totalCharged: 0 };
+  const giftCents = toCents(raw);
+  const tipCents = optedIn ? Math.round(giftCents * CONTRIBUTION_RATE) : 0;
+  const allocationCents = giftCents + tipCents;
+  const fixedCents = toCents(fixedDollars);
+  let chargeCents = Math.ceil((allocationCents + fixedCents) / (1 - rate));
+  while (chargeCents - Math.round(chargeCents * rate + fixedCents) < allocationCents) chargeCents++;
+  const withdrawal = computeWithdrawal(fromCents(giftCents));
+  return {
+    amount: fromCents(allocationCents),
+    contribution: fromCents(tipCents),
+    recipientGift: fromCents(giftCents),
+    processing: fromCents(chargeCents - allocationCents),
+    platformFee: withdrawal.fee, // only render in the campaign owner's withdrawal view
+    recipientNet: withdrawal.net, // never show a premature net gift to donors
+    totalCharged: fromCents(chargeCents),
+  };
 }
 
 // Withdrawal math for a set of recipient gifts: the single 3% platform fee and
