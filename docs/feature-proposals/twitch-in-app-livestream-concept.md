@@ -44,6 +44,50 @@ A campaign creator or authorized host can open the campaign's **Live** controls,
 
 **Implementation caution:** Native Android streaming requires a suitable camera/microphone capture and realtime video/audio encoder and secure Twitch ingest; browser-based capture has device and platform limitations. Research Twitch's current ingest/broadcast requirements and the Android APK's capabilities before selecting architecture. Never expose a Twitch stream key to other viewers, log it, or embed it in frontend bundles.
 
+## Required infrastructure decision: Twitch carries IFund Live video
+
+**Owner clarification (October 15, 2026):** Users must be able to stay **inside the IFund app** both when broadcasting and when watching, while IFund uses **Twitch's ingest and video delivery infrastructure/bandwidth** rather than hosting or distributing livestream video on IFund servers.
+
+### Target network and responsibility map
+
+```text
+IFund creator camera + microphone (Android native encoder)
+    -> authenticated RTMP/RTMPS stream to Twitch ingest
+    -> Twitch streaming infrastructure, transcoding and CDN
+    -> official Twitch embedded player in IFund campaign/live screen
+    -> viewer stays on IFund: [Donate] [Bid] [Rewards] [Chat]
+
+IFund API/storage: campaign authorization, Twitch account link/status,
+auction bids and close/winner, donations, purchase receipts, payout accounting.
+NO default IFund media ingest, video relay, streaming CDN, or video archive.
+```
+
+**Bandwidth ownership:** Broadcaster still uses their own device's upload bandwidth to reach Twitch; **Twitch** handles video ingest and distribution to viewers. IFund incurs normal app/API traffic and integration costs (and may incur separate encoder, mobile support or implementation costs), but should not carry the live video stream through IFund hosting. Do not claim this means video is cost-free or that Twitch guarantees unrestricted embed access.
+
+### Android APK: creator remains in IFund for Go Live
+
+- Use native Android camera/microphone capture and on-device real-time encoder, feeding Twitch's documented RTMP ingest (or currently Twitch-approved secure transport if available). Avoid routing the actual video through Base44 functions or Cloudflare Workers.
+- Users connect their own Twitch account via OAuth and see connection status, stream preview, start/stop, bitrate/connectivity warnings, title and moderation **inside IFund**. Login authorization may require an external secure consent page / Android Custom Tab; return to IFund automatically afterward.
+- An IFund backend authenticates the creator, connects Twitch API credentials, fetches or authorizes access to channel-specific ingest credentials, and protects them. Never commit stream keys or reusable tokens to source or analytics, expose them in public frontend bundles, or persist plaintext client storage. Sending video directly from a device may require transmitting a stream credential to its trusted runtime; assess risks, permissions, rotation and revocation.
+- Twitch's server publishes the broadcast, and IFund loads the linked channel's approved embedded player in creator/viewer campaign screens. Verify actual stream-live status rather than assuming a Go Live button means it was published.
+- Validate Android native/Wix/Base44 webview playback requirements and approved embed domains. If Twitch blocks playback in an APK WebView, use a permitted in-app web surface / app-compliant fallback and document any unavoidable external Twitch login or playback.
+
+### Website: watch stays inside IFund; web Go Live needs extra technology
+
+- Viewer playback/chat use Twitch's official embed on HTTPS with accurate `parent` domain(s), minimum player dimensions and unobstructed Twitch controls and ads.
+- Browser camera APIs can capture audio/video but ordinary browsers **do not directly publish RTMP to Twitch**. A browser-only Go Live path requires a compatible client-side encoder or a **separately costed WebRTC-to-RTMP gateway**. Prioritize direct-to-Twitch Android capture first; do not quietly deploy an IFund-hosted high-bandwidth bridge contrary to the user's direction.
+- Keep all IFund checkout, auction-bid and reward flows in the surrounding IFund app, not in a Twitch Extension or embedded Twitch checkout. Separate session state from video buffering and network failure.
+- Twitch's embed may ask for Twitch login or popups for chat, subscription or consent, even if the viewing page never navigates away. IFund cannot override Twitch authentication controls.
+
+### Source references verified October 15, 2026
+
+- Official Twitch broadcast transport/ingest: https://dev.twitch.tv/docs/video-broadcast/
+- Twitch approved video player/HTTPS parent-domain/controls: https://dev.twitch.tv/docs/embed/
+- Twitch embedded chat: https://dev.twitch.tv/docs/embed/chat/
+- Twitch Extensions commerce restrictions: https://dev.twitch.tv/docs/extensions/guidelines-and-policies/
+
+**This is a binding design constraint for the feature branch, not a claim of an operating Twitch integration.** Prototype and verify the entire Android and website flow in this isolated workspace. Do not change existing live video/payment providers or publish until permission, policy, performance, settlement and security tests pass.
+
 ## Streaming + auctions + campaign rewards
 
 - Creator-defined donation incentives and fulfillment commitments appear near the live stream, with clear eligibility and remaining inventory.
