@@ -3,9 +3,6 @@ main = "host/gateway/worker.js"
 compatibility_date = "2026-09-29"
 workers_dev = true
 
-# Non-production branch previews use the same compiled assets, without
-# assigning or modifying production routes. Required by wrangler preview.
-previews = {}
 
 [[routes]]
 pattern = "interplanetaryfund.com/api/health*"
@@ -45,3 +42,9 @@ run_worker_first = [
   "/.well-known/oauth-*",
   "/.well-known/openid-configuration"
 ]
+
+# Worker Previews are isolated from production routes; this is a public
+# Base44 API origin, not a credential. Build-time VITE_* variables are
+# configured separately on the Cloudflare feature-branch build trigger.
+[previews.vars]
+IFUND_BASE44_ORIGIN = "https://interplanetaryfund.base44.app"
