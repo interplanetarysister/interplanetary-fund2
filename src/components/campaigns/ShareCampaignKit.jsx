@@ -24,13 +24,6 @@ export default function ShareCampaignKit({ campaign }) {
     setWarning(success ? "" : "Clipboard access is unavailable. Tap the code field, select its text and use Copy.");
     if (success) setTimeout(() => setCopied(""), 2200);
   };
-  const share = async () => {
-    if (navigator.share) {
-      try { await navigator.share({ title: campaign.title || "Campaign", url: embed.url }); return; }
-      catch { /* user canceled or native share unavailable */ }
-    }
-    await copy("link", embed.url, linkRef);
-  };
 
   return (
     <section className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm" aria-label="Share and embed campaign">
@@ -50,7 +43,6 @@ export default function ShareCampaignKit({ campaign }) {
         <Button type="button" variant="outline" size="sm" onClick={() => copy("link", embed.url, linkRef)}>
           {copied === "link" ? <Check /> : <Copy />} {copied === "link" ? "Link copied" : "Copy link"}
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={share}><Share2 /> Share</Button>
       </div>
 
       <label htmlFor="ifund-campaign-card-code" className="block text-xs font-semibold text-stone-700 mb-1">Embed campaign card — copy all HTML</label>
