@@ -53,7 +53,9 @@ assert.match(prepare,/connection\.external_balance_observed_at \|\| null/);
 assert.doesNotMatch(prepare,/observedAt = connection\.last_synced/);
 assert.match(externalSync,/external_balance_observed_at = now/);
 assert.match(kofiWebhook,/external_balance_observed_at: now/);
-assert.match(saveCredentials,/external_balance_observed_at: balanceEvidenceChanged/);
+assert.match(saveCredentials,/reconcileExternalBalanceIdentity/);
+assert.match(saveCredentials,/external_balance_observed_at:\\s*balanceReconciliation\\.reset/);
+assert.match(saveCredentials,/\\? null\\s*:\\s*\\(balanceEvidenceChanged \\? now/);
 assert.match(saveCredentials,/externalBalanceEvidenceChanged/);
 const mixedCurrencyBranch = kofiWebhook.slice(
   kofiWebhook.indexOf('if (priorCurrency && priorCurrency !== currency)'),
