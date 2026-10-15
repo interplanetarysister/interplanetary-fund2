@@ -13,6 +13,8 @@
 5. Campaign hosts should be able to **live stream** and let viewers **donate to the associated campaign while watching**, and optionally view/bid on live auction items.
 6. **Twitch integration is required**, alongside any future first-party streaming capabilities. Streamers should be able to connect a Twitch channel, show its live video on their IFund campaign or auction page, and retain access to IFund's donations/bidding UI.
 
+**Approved concept for exploration:** Support both in-app watching and in-app creator broadcasting to Twitch, with campaign **Donate**, **Bid live** and **Chat** controls alongside the video. [Detailed UI mockup and streaming concept](./twitch-in-app-livestream-concept.md).
+
 ## Twitch-specific integration path (subject to provider validation)
 
 - First phase: **Twitch OAuth** for account linking, stream/channel verification, live/offline state; an HTTPS **Twitch-approved embedded player/chat** on the IFund website, with the required `parent` domain(s), official player controls and minimum player sizes.
