@@ -15,10 +15,11 @@ for (const [rail, buildBreakdown] of [
 ]) {
   for (const optedIn of [false, true]) {
     const breakdown = buildBreakdown(1, optedIn);
-    assert.equal(breakdown.totalCharged, 1, `${rail} must preserve the donor-entered $1 charge`);
-    assert.equal(validateDonationAmount(breakdown.totalCharged).ok, true, `${rail} $1 charge must meet the donor minimum`);
-    assert.ok(breakdown.amount > 0 && breakdown.amount < 1, `${rail} must leave a positive post-processing donation below $1`);
-    assert.ok(breakdown.recipientNet > 0, `${rail} must leave a positive campaign payout`);
+    assert.equal(validateDonationAmount(1).ok, true, `${rail} $1 campaign gift must meet minimum`);
+    assert.equal(breakdown.recipientGift, 1, `${rail} must preserve donor's pledged campaign gift`);
+    assert.equal(breakdown.contribution, optedIn ? .10 : 0, `${rail} must add optional 10% support`);
+    assert.ok(breakdown.totalCharged > 1, `${rail} processor costs must be covered separately`);
+    assert.equal(Number((breakdown.amount + breakdown.processing).toFixed(2)), breakdown.totalCharged);
   }
 }
 
