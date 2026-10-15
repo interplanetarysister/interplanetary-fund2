@@ -6,7 +6,7 @@
 - `base44/functions/createPayPalOrder/entry.ts` creates an IFund merchant PayPal checkout.
 - `base44/functions/capturePayPalOrder/entry.ts` says the PayPal business account receives settled funds and records a campaign-level `HoldingLedgerEntry`.
 - `base44/functions/requestWithdrawal/entry.ts` uses canonical ledger reservations, sends payouts through the IFund PayPal business account, and limits nonsubscribers to one withdrawal request per day; eligible subscriptions remove that request-frequency limit.
-- `base44/shared/fees.js`: donor total includes processor fee; optional 10% platform contribution is deducted from remaining donation only when selected; 3% IFund fee is deducted once at withdrawal.
+- `base44/shared/fees.js`: proposed gift-first checkout quotes preserve the donor's chosen campaign gift and add optional 10% support and channel processing costs to the total; 3% IFund fee is deducted once at withdrawal, visible to the campaign owner. Historic donor payments retain their original recorded allocations.
 - **Unverified operational facts**: real PayPal merchant approval for fundraising/payment facilitation; bank/payments licensing; actual trust or FBO account status; verified funds held vs donor liabilities; processor hold periods; state registration; payout authorization and eligibility; compliance with the target 3-day/14-day schedule. A compile/test cannot verify these.
 
 ## User-requested intent and legally prudent implementation
