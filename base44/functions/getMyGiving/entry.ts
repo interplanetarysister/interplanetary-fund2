@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { giftOf, round2 } from '../../shared/fees.js';
 
 // Owner-scoped giving history. The browser never receives pending donations or
 // provider/ledger internals and therefore cannot use client filtering as an
@@ -24,7 +25,10 @@ export default async function(req) {
         id: d.id,
         campaign_id: d.campaign_id,
         campaign_title: d.campaign_title || '',
-        amount: Number(d.amount || 0),
+        amount: giftOf(d), // campaign gift, excluding optional platform support
+        platform_support_amount: round2(Number(d.platform_contribution || 0)),
+        processing_fee: round2(Number(d.processing_fee || 0)),
+        total_charged: round2(Number(d.amount || 0) + Number(d.processing_fee || 0)),
         donor_name: d.donor_name || 'Anonymous',
         is_recurring: !!d.is_recurring,
         recurring_status: d.recurring_status || (d.is_recurring ? 'active' : undefined),
