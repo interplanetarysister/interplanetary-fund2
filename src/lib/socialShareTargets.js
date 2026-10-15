@@ -32,6 +32,7 @@ export function buildSocialShareTargets({ url, title, image } = {}) {
     { id: "whatsapp", name: "WhatsApp", href: composeUrl("https://api.whatsapp.com/send", { text: combined }) },
     { id: "telegram", name: "Telegram", href: composeUrl("https://t.me/share/url", { url: canonical, text: blurb }) },
     { id: "bluesky", name: "Bluesky", href: composeUrl("https://bsky.app/intent/compose", { text: combined }) },
+    { id: "threads", name: "Threads", href: composeUrl("https://www.threads.com/intent/post", { text: combined }) },
     { id: "tumblr", name: "Tumblr", href: composeUrl("https://www.tumblr.com/widgets/share/tool", { canonicalUrl: canonical, title: name, caption: blurb }) },
     { id: "email", name: "Email", href: `mailto:?subject=${encodeURIComponent(name)}&body=${encodeURIComponent(combined)}`, external: false },
     { id: "sms", name: "Text message", href: `sms:?body=${encodeURIComponent(combined)}`, external: false },
