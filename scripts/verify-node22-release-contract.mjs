@@ -22,12 +22,16 @@ export function verifyReleaseContract(root=process.cwd()) {
     const p=join('.github/workflows',file);
     let workflow;
     try{workflow=yaml.load(read(p))}catch{errors.push('malformed:'+p);continue}
-    for(const job of Object.values(workflow?.jobs||{})){
+    for(const [jobId,job] of Object.entries(workflow?.jobs||{})){
       for(const step of job?.steps||[]){
         if(!/^actions\/setup-node@/i.test(step?.uses||''))continue;
         found++;
         const version=String(step.with?.['node-version']||'').trim();
-        if(!['node','>=20'].includes(version))errors.push(p+' pins a Node major instead of using a floating Node 20+ selector');
+        // A Node 20 pin is allowed only for the dedicated minimum-runtime CI lane.
+        // All other build/runtime jobs must use a floating supported selector.
+        const minimumRuntimeLane = file==='quality-gates.yml' && jobId==='quality' && job.name==='Node 20 Base44 compatibility build';
+        if(!['node','>=20'].includes(version) && !(minimumRuntimeLane && version==='20'))
+          errors.push(p+' pins a Node major outside the dedicated Node 20 compatibility lane');
       }
     }
   }
