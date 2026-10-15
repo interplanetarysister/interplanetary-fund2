@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadApplePayScript, loadPayPalSdk } from "./paypalScripts";
-import { computeChargeTotal, computePayPalWalletBreakdown, MIN_DONATION } from "@/lib/fees";
+import { computePayPalWalletBreakdown, MIN_DONATION } from "@/lib/fees";
 
 // PayPal v5 Apple Pay: no separate merchant, ledger, or processor account.
 // The button is shown ONLY if the device and the PayPal merchant are eligible,
@@ -83,7 +83,7 @@ export default function ApplePayButton({
               total: {
                 label: "Interplanetary Fund",
                 type: "final",
-                amount: computeChargeTotal(value).toFixed(2),
+                amount: allocation.totalCharged.toFixed(2),
               },
             });
           } catch (_) {

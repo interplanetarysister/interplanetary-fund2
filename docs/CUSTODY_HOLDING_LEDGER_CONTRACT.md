@@ -22,6 +22,16 @@ The holding-account designation is configuration, not proof of a transaction. Co
 - Bind every provider request identity to campaign, donor-entered total, payment channel, and optional platform-contribution choice. Rotate the identity whenever any bound field changes.
 - Donor-facing estimates must name the actual rail and use that rail's processor fee model. The Interplanetary Fund fee remains 3% of the campaign gift at withdrawal, never a checkout processor fee.
 
+## New gift-first donation quotes (October 15, 2026 proposal)
+
+- The entered amount is the **campaign's pledged gift**, not the charge total.
+- A donor who opts in to support Interplanetary Fund adds 10% of the pledged gift to the payment total, not deducted from the campaign's gift.
+- The processor's estimate is added as an explicitly displayed, separate amount. Provider-approved total must equal the amount shown in the applicable payment sheet.
+- The 3% IFund fee is applied exactly once at withdrawal and disclosed to the campaign owner in the withdrawal breakdown; donor checkout does not pre-deduct or display it.
+- New PayPal order metadata includes a gift_first_v2 version marker. Prior five-part metadata and existing canonical receipts retain their historical calculations without migration.
+- If a verified provider receipt cannot cover the promised gift, do not post a false donation or silently reduce the gift: retain receipt evidence for financial reconciliation. Never auto-retry a completed charge.
+- Cash App sends funds to a creator-controlled account; IFund cannot collect a platform tip on that path and must not deduct one from a manually reported amount.
+
 ## Financial states
 
 1. **External observed** — money reported by a connected crowdfunding/provider account. This is informational and is not Interplanetary Fund-held or withdrawable.
