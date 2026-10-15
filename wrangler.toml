@@ -3,6 +3,10 @@ main = "host/gateway/worker.js"
 compatibility_date = "2026-09-29"
 workers_dev = true
 
+# Non-production branch previews use the same compiled assets, without
+# assigning or modifying production routes. Required by wrangler preview.
+previews = {}
+
 [[routes]]
 pattern = "interplanetaryfund.com/api/health*"
 zone_name = "interplanetaryfund.com"
