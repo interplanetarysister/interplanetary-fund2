@@ -3,6 +3,7 @@ import { resolvePayPalCaptureAllocation } from "../base44/shared/paypalAllocatio
 import { readFileSync } from "node:fs";
 import {
   computePayPalBreakdown,
+  computePayPalWalletBreakdown,
   computePayPalProcessingFee,
   computePayPalWalletProcessingFee,
   MIN_DONATION,
