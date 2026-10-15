@@ -9,6 +9,9 @@ function handler(path,base44) {
  const exports={};
  const require=(name)=>{
   if(name.startsWith('npm:@base44/sdk'))return{createClientFromRequest:()=>base44};
+  // saveCampaign now sanitizes responses through this separate audited helper.
+  // Keep this handler-focused mock narrow; response allowlisting has its own tests.
+  if(name==='../../shared/campaignResponse.ts')return{campaignForResponse:(row)=>row};
   if(name==='../../shared/accountGuard.ts')return{assertActiveAccount:async(client)=>{
     const user=await client.auth.me();
     return user?{ok:true,user}:{ok:false,status:401,error:'Authentication required'};
