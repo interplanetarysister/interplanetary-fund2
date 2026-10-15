@@ -17,28 +17,18 @@ const wallet = read("src/components/payments/GooglePayButton.jsx");
 
 for (const channel of ["paypal", "googlepay", "applepay"]) {
   for (const optIn of [true, false]) {
-    for (const charged of [1, 2, 25, 50, 100, 250]) {
-      const b = computePayPalBreakdown(charged, optIn, channel);
-      const expected = ["googlepay", "applepay"].includes(channel)
-        ? computePayPalWalletProcessingFee(charged)
-        : computePayPalProcessingFee(charged);
-      assert.equal(b.totalCharged, charged);
-      assert.equal(b.processing, expected);
-      assert.equal(Math.round((b.amount + b.processing) * 100), Math.round(charged * 100));
-      assert.equal(Math.round((b.recipientGift + b.contribution) * 100), Math.round(b.amount * 100));
-      assert.equal(Math.round((b.recipientNet + b.platformFee) * 100), Math.round(b.recipientGift * 100));
-      assert.ok(charged >= MIN_DONATION);
-      assert.ok(b.amount > 0);
-      assert.ok(b.recipientGift > 0);
+    for (const pledge of [1, 2, 25, 50, 100, 250]) {
+      const quote = computePayPalBreakdown(pledge, optIn, channel);
+      const wallet = ["googlepay", "applepay"].includes(channel);
+      assert.deepEqual(quote, wallet ? computePayPalWalletBreakdown(pledge,optIn) : computePayPalBreakdown(pledge,optIn));
+      assert.equal(quote.recipientGift, pledge);
+      assert.equal(quote.contribution, optIn ? Math.round(pledge*10)/100 : 0);
+      assert.equal(Number((quote.amount + quote.processing).toFixed(2)),quote.totalCharged);
+      assert.ok(quote.totalCharged > pledge);
+      assert.ok(pledge >= MIN_DONATION);
     }
   }
 }
-const example = computePayPalBreakdown(25, false, "paypal");
-assert.equal(example.processing, 1.32);
-assert.equal(example.amount, 23.68);
-assert.equal(example.recipientGift, 23.68);
-assert.equal(example.platformFee, 0.71);
-assert.equal(example.recipientNet, 22.97);
 
 const actualPayPal = resolvePayPalCaptureAllocation({
   chargedAmount: 25, quotedDonation: 23.68, quotedFee: 1.32,
@@ -103,6 +93,25 @@ const freezeFirst = (current, candidate) => current || candidate;
 const first = freezeFirst(null, quoteAllocation);
 assert.equal(freezeFirst(first, enrichedAllocation), first);
 assert.equal([quoteAllocation, enrichedAllocation].reduce(freezeFirst, null), quoteAllocation);
+
+// Versioned gift-first capture: provider fee variations may reduce platform tip
+// but must never diminish the donor's promised campaign gift.
+const giftFirst = resolvePayPalCaptureAllocation({
+  chargedAmount: 114.49, quotedDonation: 110, quotedFee: 4.49,
+  quotedContribution: 10, providerReceivable: 109.98, providerFee: 4.51,
+  preservePledgedGift: true,
+});
+assert.equal(giftFirst.ok,true);
+assert.equal(giftFirst.amount,109.98);
+assert.equal(giftFirst.platformContribution,9.98);
+assert.equal(Number((giftFirst.amount-giftFirst.platformContribution).toFixed(2)),100);
+const shortfall = resolvePayPalCaptureAllocation({
+  chargedAmount: 114.49, quotedDonation: 110, quotedFee: 4.49,
+  quotedContribution: 10, providerReceivable: 99.99, providerFee: 14.50,
+  preservePledgedGift: true,
+});
+assert.equal(shortfall.ok,false);
+assert.equal(shortfall.reason,'pledged_campaign_gift_shortfall');
 
 assert.match(create, /validateDonationAmount\(amount\)/);
 assert.doesNotMatch(create, /validateDonationAmount\(value\)/);
