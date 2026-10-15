@@ -28,6 +28,8 @@ function providerLabel(method) {
     case "stripe": return "Card (Stripe)";
     case "paypal": return "PayPal";
     case "cashapp": return "Cash App";
+    case "googlepay": return "Google Pay via PayPal";
+    case "applepay": return "Apple Pay via PayPal";
     default: return "Interplanetary Fund";
   }
 }
@@ -41,10 +43,12 @@ export async function sendDonationReceipt(sr, donation, campaign) {
 
   const title = campaign?.title || donation.campaign_title || "Interplanetary Fund campaign";
   const donorName = donation.donor_name || "Friend";
-  const amount = money(donation.amount);
   const contribution = Number(donation.platform_contribution || 0);
+  const gift = Math.max(0, Number(donation.amount || 0) - contribution);
+  const amount = money(gift);
   const fee = Number(donation.processing_fee || 0);
-  const total = Number(donation.amount || 0) + contribution + fee;
+  // Donation.amount already INCLUDES the platform contribution; never add twice.
+  const total = Number(donation.amount || 0) + fee;
   const isRecurring = !!donation.is_recurring;
   const receiptId = String(donation.id || donation.canonical_operation_id || "").slice(0, 12).toUpperCase();
   const date = dateLabel(donation.created_date);
