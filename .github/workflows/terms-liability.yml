@@ -1,14 +1,11 @@
 name: Terms Liability Verification
 
 on:
+  workflow_dispatch:
+  # Avoid running on every intermediate commit or every main push.
   pull_request:
-    paths:
-      - "src/**"
-      - "scripts/verify-terms-liability.mjs"
-      - ".github/workflows/terms-liability.yml"
-  push:
-    branches:
-      - main
+    types: [ready_for_review]
+    branches: [main]
 
 jobs:
   verify-terms-liability:
