@@ -266,7 +266,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : platform.setupKind === "link" ? "Link a page on" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform and approve its permissions. No post will be sent." : platform.setupKind === "link" ? "This links an existing public fundraising page. It does not authorize account access or publishing." : "Follow the official connection steps below."}</p>
-        {usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
+        {usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} legacyScope={!!existing && !existing.obo_consent?.scope_choice} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
         {usesProviderOAuth && (
           <div className="space-y-3 min-w-0">
             <p className="text-sm text-foreground">{connecting ? `Opening ${platform.name} sign-in…` : "One link. Provider sign-in. Back to IFund for verification."}</p>
@@ -325,7 +325,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
 
-          {!usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
+          {!usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} legacyScope={!!existing && !existing.obo_consent?.scope_choice} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
           <PasswordVaultPanel platform={platform} />
           <VerificationInboxPanel platform={platform.id} />
           {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/30 p-3">

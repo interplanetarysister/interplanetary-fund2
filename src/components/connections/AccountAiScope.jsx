@@ -16,7 +16,7 @@ const CHOICES = [
  ["posting", "Posts and outreach", "AI can help with campaigns, posts, images, sharing, comments and basic public interactions."],
  ["read_only", "Read and help me plan", "AI can read supported account information and help plan, but cannot publish or send messages."]
 ];
-export default function AccountAiScope({ platform, checked, onChange, existing = false, scopeChoice = "full", onScopeChange, globalEnabled = false, busy = false }) {
+export default function AccountAiScope({ platform, checked, onChange, existing = false, scopeChoice = "full", legacyScope = false, onScopeChange, globalEnabled = false, busy = false }) {
   return <section className="rounded-2xl border-2 border-cyan-300 bg-card p-4 space-y-3" aria-label="AI account permissions">
     <h3 className="text-base font-bold flex gap-2 items-center"><ShieldCheck className="w-5 h-5 text-cyan-600" /> AI permissions for {platform.name}</h3>
     <p className="text-sm text-muted-foreground">You decide whether IFund AI can act on this specific account. This is separate from signing in or saving passwords.</p>
@@ -31,7 +31,7 @@ export default function AccountAiScope({ platform, checked, onChange, existing =
     <div className="rounded-xl border border-border p-3 space-y-2">
       <p className="text-sm font-bold">What AI can do with this account</p>
       {existing
-        ? <p className="text-sm">Saved access: {CHOICES.find(item => item[0] === scopeChoice)?.[1] || "Custom previously selected access"}. To pick a different scope, disconnect this account, then connect it again.</p>
+        ? <p className="text-sm">Saved access: {legacyScope ? "Previous connection permissions" : (CHOICES.find(item => item[0] === scopeChoice)?.[1] || "Previously selected access")}. To pick a different scope, disconnect this account, then connect it again.</p>
         : <div role="group" aria-label="Choose AI access scope" className="space-y-2">
           {CHOICES.map(([value, title, description]) => <label key={value} className="flex gap-3 border border-border rounded-lg p-3 cursor-pointer">
             <input className="h-5 w-5 shrink-0" type="radio" name={"scope-" + platform.id} value={value} checked={scopeChoice === value} onChange={() => onScopeChange?.(value)} />

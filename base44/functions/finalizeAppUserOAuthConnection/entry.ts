@@ -111,12 +111,12 @@ export default async function(req) {
     // delegation consent. Existing per-account revocations stay revoked unless
     // the owner explicitly checks the box again when reconnecting.
     const unifiedObo = hasUnifiedOboConsent(user) && body.ai_account_authorized === true;
-    const scopeChoice = existing?.obo_consent?.scope_choice || String(body.ai_scope_choice || 'full');
+    const scopeChoice = existing ? (existing?.obo_consent?.scope_choice || 'legacy') : String(body.ai_scope_choice || 'full');
     let selectedCapabilities;
-    try { selectedCapabilities = existing?.obo_consent?.requested_capabilities?.length
-      ? existing.obo_consent.requested_capabilities : requestedAgentScope(scopeChoice); }
+    try { selectedCapabilities = existing ? (existing?.obo_consent?.requested_capabilities || [])
+      : requestedAgentScope(scopeChoice); }
     catch {return Response.json({error:'Unsupported AI scope'},{status:400});}
-    if (existing && body.ai_scope_choice && body.ai_scope_choice !== scopeChoice)
+    if (existing && existing.obo_consent?.scope_choice && body.ai_scope_choice && body.ai_scope_choice !== scopeChoice)
       return Response.json({error:'Disconnect and reconnect to change AI scope'},{status:409});
     const data = {
       platform: key,
@@ -129,7 +129,7 @@ export default async function(req) {
         granted: unifiedObo,
         granted_at: unifiedObo ? now : null,
         scope_version: existing?.obo_consent?.scope_version || AI_CONNECTION_SCOPE_VERSION,
-        scope_choice: scopeChoice,
+        scope_choice: existing ? existing.obo_consent?.scope_choice : scopeChoice,
         permission_version: String(user.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
         opted_out: !unifiedObo,
         revoked_at: existing?.obo_consent?.revoked_at || undefined,

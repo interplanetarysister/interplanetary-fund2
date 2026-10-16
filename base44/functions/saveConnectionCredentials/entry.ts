@@ -62,12 +62,12 @@ export default async function(req) {
     const accountConsentRequested = existing
       ? existing.obo_consent?.granted === true && existing.obo_consent?.opted_out !== true
       : ai_account_authorized === true;
-    const selectedScope = existing?.obo_consent?.scope_choice || String(ai_scope_choice || 'full');
+    const selectedScope = existing ? (existing.obo_consent?.scope_choice || 'legacy') : String(ai_scope_choice || 'full');
     let requestedScope: string[];
-    try { requestedScope = existing?.obo_consent?.requested_capabilities?.length
-      ? existing.obo_consent.requested_capabilities : requestedAgentScope(selectedScope); }
+    try { requestedScope = existing ? (existing.obo_consent?.requested_capabilities || [])
+      : requestedAgentScope(selectedScope); }
     catch { return Response.json({error:'Select a supported AI scope.'},{status:400}); }
-    if (existing && ai_scope_choice && ai_scope_choice !== selectedScope)
+    if (existing && existing.obo_consent?.scope_choice && ai_scope_choice && ai_scope_choice !== selectedScope)
       return Response.json({error:'Disconnect and reconnect to change AI scope.'},{status:409});
     const effectiveAutomationMode = accountConsentRequested
       ? (automation_mode || existing?.automation_mode || 'manual') : 'manual';
@@ -177,7 +177,7 @@ export default async function(req) {
       revoked_at: accountAiConsent ? null : (currentConsent.revoked_at || now),
       granted_at: accountAiConsent ? (currentConsent.granted_at || now) : null,
       scope_version: existing?.obo_consent?.scope_version || AI_CONNECTION_SCOPE_VERSION,
-      scope_choice: selectedScope,
+      scope_choice: existing ? existing?.obo_consent?.scope_choice : selectedScope,
       requested_capabilities: requestedScope,
       permission_version: String(consentOwner.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
       granted_capabilities: accountAiConsent
