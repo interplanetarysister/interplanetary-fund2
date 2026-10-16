@@ -136,6 +136,15 @@ export default async function(req) {
     )) {
       return reply({ error: 'Translation could not be checked. Nothing was published.' }, 502);
     }
+    // Preserve every URL and numeric fact. If the model changes a stated sum,
+    // date, quantity or link, refuse to store that generated version.
+    const facts = text => [...text.matchAll(/https?:\/\/[^\s]+|[$€£]?\d[\d.,]*/g)]
+      .map(match => match[0]).sort();
+    if (['title', 'summary', 'story'].some(key =>
+      JSON.stringify(facts(source[key])) !== JSON.stringify(facts(result[key]))
+    )) {
+      return reply({ error: 'Translation changed a number or link. Nothing was published.' }, 502);
+    }
     // Recheck source before writing: a creator might have edited it during generation.
     const latest = await sr.entities.Campaign.get(campaign_id).catch(() => null);
     if (!latest || await fingerprint(latest) !== currentHash) {
