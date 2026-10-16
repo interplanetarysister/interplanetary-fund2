@@ -56,7 +56,7 @@ try {
         overflow:document.documentElement.scrollWidth - innerWidth,
         bodyFont:getComputedStyle(document.body).fontFamily,
         headingFont:getComputedStyle(document.querySelector('h1,h2')||document.body).fontFamily,
-        workspace:document.querySelectorAll('.ifund-workspace-bar').length,
+        workspace:[...document.querySelectorAll('.ifund-workspace-bar')].filter(el=>getComputedStyle(el).display!=='none').length,
         nav:document.querySelectorAll('nav[aria-label="Bottom navigation"]').length,
       }));
       assert.ok(info.root>0,'No React root rendered for '+route+' '+setting.name);
@@ -65,7 +65,8 @@ try {
       assert.deepEqual(exceptions,[],'Runtime exception '+route+' '+setting.name);
       assert.ok(info.overflow<=3,'Unexpected horizontal viewport overflow '+route+' '+setting.name+' '+info.overflow+'px');
       if(['/discover','/community','/help'].includes(route)){
-        assert.equal(info.workspace,1,'Missing cohesive shared workspace bar '+route);
+        assert.equal(info.workspace,setting.width<768?0:1,
+          'Mobile must have only one header; desktop keeps its page context '+route);
         assert.equal(info.nav,1,'Missing responsive navigation '+route);
       }
       if(['/about','/contact'].includes(route)){

@@ -3,6 +3,22 @@
 const updated = "2026-10-16";
 const guides = [
   {
+    slug: "find-your-way-around-ifund", category: "Getting Started",
+    question: "How do I find pages in IFund?",
+    description: "Open the small side menu to find what you want.",
+    answer: `1. On your phone, tap the three lines at the top left.
+2. Look in Explore for Discover, the Globe, and your Dashboard if signed in.
+3. Look in Campaigns & Giving to make a campaign or check gifts and withdrawals.
+4. Use Community for posts, stories, and messages. Use Account & Help for your settings and Help Center.
+5. Tap a page name to go there. The menu closes by itself.
+6. To close without choosing a page, tap X, tap outside the menu, or press Escape on a keyboard.
+7. On a large screen, the small menu stays on the left.
+
+The page behind the open menu gets a little darker and blurry, but your words are still there.
+Updated: ${updated}.`,
+    keywords: ["menu", "sidebar", "navigation", "pages", "help", "find", "drawer"]
+  },
+  {
     slug: "translate-a-campaign", category: "Campaigns",
     question: "How do I translate a campaign into another language?",
     description: "Read a campaign in another language, or publish a translation for your visitors.",

@@ -376,3 +376,33 @@ body {
   .ifund-platform-choice { min-height: 70px; }
   .ifund-sidebar .ifund-nav-link { min-height: 45px; }
 }
+
+
+/* One navigation frame on mobile; fit the sidebar to the longest visible link.
+   Desktop navigation participates in the flex layout: no fixed 240px gutter. */
+.ifund-desktop-sidebar,
+.ifund-drawer {
+  inline-size: max-content;
+  max-inline-size: calc(100vw - 1.5rem);
+}
+.ifund-sidebar-nav {
+  inline-size: max-content;
+  max-inline-size: 100%;
+  align-self: flex-start;
+}
+.ifund-sidebar-nav .ifund-nav-label {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ifund-desktop-sidebar {
+  height: 100%;
+}
+.ifund-drawer {
+  max-height: 100dvh;
+  background: rgb(248 249 255 / .88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.dark .ifund-drawer {
+  background: rgb(16 27 52 / .88);
+}
