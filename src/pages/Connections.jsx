@@ -3,8 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Link2, RefreshCw, Search, ChevronDown, History } from "lucide-react";
+import { Loader2, Link2, RefreshCw, Search, History, PlugZap, CircleCheck, Globe2, Share2, AppWindow } from "lucide-react";
 import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
+import PlatformLogo from "@/components/connections/PlatformLogo";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import ConnectionCard from "@/components/connections/ConnectionCard";
@@ -30,6 +31,7 @@ export default function Connections() {
   const [syncResult, setSyncResult] = useState(null);
   const [connectionNotice, setConnectionNotice] = useState(null);
   const [platformSearch, setPlatformSearch] = useState("");
+  const [platformCategory, setPlatformCategory] = useState("all");
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const [sharedIntegrations, setSharedIntegrations] = useState(null);
   const [historyKey, setHistoryKey] = useState(0);
@@ -263,6 +265,7 @@ export default function Connections() {
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
     (p.id === "custom" || !connectedIds.includes(p.id)) &&
+    (platformCategory === "all" || p.kind === platformCategory) &&
     (`${p.name} ${p.kind || ""}`.toLowerCase().includes(platformSearch.trim().toLowerCase()))
   );
 
@@ -304,16 +307,17 @@ export default function Connections() {
 
   return (
     <div className="connections-hub max-w-4xl mx-auto min-w-0 px-4 sm:px-6 pt-6 sm:pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-10">
-      <div className="rounded-[2rem] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-5 sm:p-7 shadow-xl mb-7">
-      <h1 className="flex items-center gap-2.5 font-display text-3xl text-cyan-50 mb-1">
+      <div className="ifund-connections-hero rounded-[2rem] border p-5 sm:p-7 shadow-sm mb-7">
+      <h1 className="flex items-center gap-2.5 font-display text-3xl text-slate-950 dark:text-white mb-1">
         <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
           <Link2 className="w-5 h-5 text-white" />
         </span>
         Connections
       </h1>
-      <p className="text-slate-300 mb-5">Explore the platforms you already use. IFund checks sign-in availability after you choose one; Connected means a provider-backed check succeeded.</p>
-      <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} connected</span>
+      <p className="text-slate-600 dark:text-slate-200 mb-5">All the platforms you use, in one place. Choose a service to set it up. Only verified connections show as working.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="ifund-connection-stat rounded-2xl border p-4"><div className="flex items-center gap-2 text-sm"><CircleCheck className="w-4 h-4 text-emerald-500" /> Working</div><p className="text-3xl font-bold mt-1">{workingCount}</p></div>
+        <div className="ifund-connection-stat rounded-2xl border p-4"><div className="flex items-center gap-2 text-sm"><PlugZap className="w-4 h-4 text-violet-500" /> Available platforms</div><p className="text-3xl font-bold mt-1">{ALL_PLATFORMS.length}</p></div>
       </div>
       </div>
 
