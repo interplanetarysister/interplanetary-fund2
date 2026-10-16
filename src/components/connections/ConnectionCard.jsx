@@ -74,28 +74,6 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
     } finally { setRevokeBusy(false); }
   };
 
-  const authorizeAi = async () => {
-    if (revokeBusy || !aiAuthorized) return;
-    setRevokeBusy(true);
-    setPermissionError("");
-    try {
-      const { data } = await base44.functions.invoke("authorizeConnectionAi", {
-        connection_id: connection.id, granted: true,
-      });
-      if (data?.ok !== true) throw new Error("Permission not saved");
-      onUpdated?.({
-        ...connection,
-        obo_consent: { ...(connection.obo_consent || {}), granted: true, opted_out: false },
-        agent_access: {
-          ...(connection.agent_access || {}), shared_with_agents: true,
-          automation_enabled: data.automation_enabled === true,
-        },
-      });
-    } catch {
-      setPermissionError("Could not turn on AI for this account. Try again.");
-    } finally { setRevokeBusy(false); }
-  };
-
   const managedRepair = async () => {
     if (!onManagedRepair || managedBusy) return;
     setManagedBusy(true);
@@ -190,8 +168,8 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       {aiAuthorized && connection.obo_consent?.granted !== true && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs text-amber-950">This older connection has no active AI account permission.</span>
-          <Button type="button" size="sm" variant="outline" onClick={authorizeAi} disabled={revokeBusy}>
-            {revokeBusy ? "Saving…" : "Allow IFund AI for this account"}
+          <Button type="button" size="sm" variant="outline" onClick={onManage}>
+            Review AI access and approve
           </Button>
         </div>
       )}
