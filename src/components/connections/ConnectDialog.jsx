@@ -20,7 +20,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
-  const [credentialsDirty, setCredentialsDirty] = useState(false);
   const [balanceReaffirmed, setBalanceReaffirmed] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -45,7 +44,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
-    setCredentialsDirty(false);
     setBalanceReaffirmed(false);
     setHelpDetails("");
     base44.auth.me()
@@ -85,7 +83,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     (platform.kind || 'crowdfunding') !== (existing.kind || 'crowdfunding') ||
     form.external_url.trim() !== String(existing.external_url || "").trim() ||
     form.external_currency.trim().toUpperCase() !== String(existing.external_currency || "").trim().toUpperCase() ||
-    credentialsDirty
+    Object.entries(credentials).some(([key, value]) => String(value ?? "").trim() !== "" && String(value).trim() !== String(existing?.credentials?.[key] ?? "").trim())
   ));
   const hasDisplayedBalance = Number(form.external_total || 0) > 0 || Number(form.external_donor_count || 0) > 0;
   const balanceReaffirmationRequired = externalIdentityChanged && hasDisplayedBalance && !balanceReaffirmed;
@@ -266,7 +264,6 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           </div>}
           {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={(nextCredentials) => {
             setCredentials(nextCredentials);
-            setCredentialsDirty(true);
             setBalanceReaffirmed(false);
           }} />}
           {!usesProviderOAuth && <div className="space-y-1.5">
