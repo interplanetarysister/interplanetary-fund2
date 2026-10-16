@@ -68,7 +68,8 @@ try{
   await page.getByRole('heading',{name:'IFund Stories & Blogs'}).waitFor({timeout:12000});
   await page.goto(origin+'/community',{waitUntil:'domcontentloaded'});
 
-  await page.getByRole('button',{name:'Toggle menu'}).click({timeout:7500});
+  await page.getByRole('button',{name:'Open navigation'}).click({timeout:7500});
+  await page.getByRole('dialog',{name:'IFund navigation'}).waitFor({state:'visible',timeout:7500});
   assert.equal(await page.locator('#mobile-menu').isVisible(),true,
     'Empty toast overlay must not intercept the mobile menu button');
   await page.locator('#mobile-menu').getByRole('link',{name:'Community'}).click();
