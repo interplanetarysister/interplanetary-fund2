@@ -37,10 +37,12 @@ the original recipient.
 
 ## Configuration and activation
 
-1. Set Base44 runtime encrypted secrets:
+1. The authorized mailbox owner is **cuddlemeplatonically@gmail.com**, verified
+   as a current IFund admin. Its stable Base44 user ID is pinned in the receiver
+   with a role-and-email check. Do not derive ownership from email contents.
+   Set the Base44 runtime encrypted secret:
    - `IFUND_EMAIL_INGRESS_SECRET`: new randomly generated string >= 32 characters.
-   - `IFUND_EMAIL_INBOX_OWNER_ID`: verified IFund admin account ID approved
-     to receive all domain email. Keep mailbox messages private to that user.
+   Keep messages private to the selected owner in the IFund inbox.
 2. The dedicated Cloudflare Worker is uploaded under `ifund-email-ingress`.
    Configure its encrypted Worker secrets:
    - `IFUND_EMAIL_INGRESS_SECRET`: EXACTLY the Base44 secret from step 1.
