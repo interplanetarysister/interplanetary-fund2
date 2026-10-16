@@ -32,7 +32,6 @@ export default function Connections() {
   const [connectionNotice, setConnectionNotice] = useState(null);
   const [platformSearch, setPlatformSearch] = useState("");
   const [platformCategory, setPlatformCategory] = useState("all");
-  const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const [sharedIntegrations, setSharedIntegrations] = useState(null);
   const [historyKey, setHistoryKey] = useState(0);
   const [wixSyncing, setWixSyncing] = useState(false);
@@ -272,7 +271,6 @@ export default function Connections() {
   const choosePlatform = (platform) => {
     setDialog({ platform });
     setPlatformSearch("");
-    setPlatformMenuOpen(false);
   };
 
   const requestManagedAction = async ({ platform, action, connection = null, campaign_id }) => {
@@ -381,8 +379,7 @@ export default function Connections() {
             : "You can still use guided sign-in. Automatic connection management requires an eligible paid tier and IFund AI permission."}
         </p>
         <Button type="button" variant="outline" className="mt-3 bg-white text-slate-900"
-          onClick={() => { setPlatformMenuOpen(true);
-            document.getElementById("connection-chooser")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+          onClick={() => { document.getElementById("connection-chooser")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
           Choose a platform to connect
         </Button>
       </div>
