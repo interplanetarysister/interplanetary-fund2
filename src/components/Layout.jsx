@@ -3,7 +3,7 @@ import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-do
 import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen, House, CircleHelp, Leaf } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
-import { SLOGAN, SLOGAN_LONG } from "@/components/brand/brand";
+import { SLOGAN } from "@/components/brand/brand";
 import useSwipeBack from "@/hooks/useSwipeBack";
 import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
@@ -13,7 +13,7 @@ import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { useAuth } from "@/lib/AuthContext";
-import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
+import { navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
 import { helpPathForLocation } from "@/lib/helpCenter";
 import { LifeBuoy, ArrowUpRight, Sun, Moon } from "lucide-react";
@@ -38,58 +38,66 @@ function pageTitle(pathname) {
   return "Interplanetary Fund";
 }
 
+// Order follows the tasks people do: explore, create, connect, then manage.
+// Keep a single destination per section and preserve existing authorization gates.
 const navSections = [
   {
-    label: "Fundraise",
+    label: "Explore",
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/create", label: "New Campaign", icon: PlusCircle },
-      { to: "/donors", label: "Supporters", icon: Users },
       { to: "/discover", label: "Discover", icon: Compass },
       { to: "/globe", label: "Global Globe", icon: Globe2 },
     ],
   },
   {
-    label: "Giving",
+    label: "Campaigns & Giving",
     items: [
+      { to: "/create", label: "New Campaign", icon: PlusCircle },
+      { to: "/donors", label: "Supporters", icon: Users },
       { to: "/giving", label: "My Giving", icon: HeartHandshake },
       { to: "/following", label: "Following", icon: Heart },
       { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
       { to: "/ledger", label: "Financial Ledger", icon: BookOpen },
-      { to: "/subscriptions", label: "Plans", icon: CreditCard },
     ],
   },
   {
-    label: "Engage",
+    label: "Community",
     items: [
-      { to: "/social", label: "Interplanetary Social", icon: Radio },
+      { to: "/social", label: "IFund Social", icon: Radio },
       { to: "/community", label: "Community", icon: Users },
       { to: "/blogs", label: "Stories & Blogs", icon: BookOpen },
+      { to: "/my-blog", label: "My Blog", icon: BookOpen },
       { to: "/institutions", label: "Institutions", icon: Building2 },
       { to: "/communications", label: "Messages", icon: MessageSquare },
       { to: "/inbox", label: "Inbox", icon: MailOpen },
     ],
   },
   {
-    label: "Intelligence",
+    label: "AI Tools",
     items: [
-      { to: "/mission", label: "Mission Control", icon: Sparkles },
       { to: "/agents", label: "AI Team", icon: Bot },
+      { to: "/mission", label: "Mission Control", icon: Sparkles },
+    ],
+  },
+  {
+    label: "Account & Help",
+    items: [
+      { to: "/profile", label: "Profile", icon: User },
+      { to: "/connections", label: "Connections", icon: Link2 },
+      { to: "/subscriptions", label: "Plans", icon: CreditCard },
+      { to: "/help", label: "Help Center", icon: CircleHelp },
+    ],
+  },
+  {
+    label: "Administration",
+    items: [
       { to: "/ops", label: "Ops Center", icon: Satellite },
       { to: "/analytics", label: "Command Center", icon: BarChart3 },
+      { to: "/platform", label: "Platform", icon: Server },
       { to: "/admin/integrations", label: "Admin Integrations", icon: Plug },
       { to: "/admin/audit", label: "Audit Log", icon: Server },
       { to: "/admin/sustainability", label: "Planet Impact", icon: Leaf },
       { to: "/admin/help", label: "Help Center Editor", icon: BookOpen },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { to: "/connections", label: "Connections", icon: Link2 },
-      { to: "/platform", label: "Platform", icon: Server },
-      { to: "/profile", label: "Profile", icon: User },
-      { to: "/my-blog", label: "My Blog", icon: BookOpen },
     ],
   },
 ];
@@ -100,19 +108,14 @@ const navItems = navSections.flatMap((s) => s.items);
 const publicNavItems = [
   { to: "/", label: "Home", icon: House },
   { to: "/discover", label: "Discover", icon: Compass },
-  { to: "/globe", label: "Global Globe", icon: Globe2 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/social", label: "IFund Social", icon: Radio },
-  { to: "/blogs", label: "Stories", icon: BookOpen },
-  { to: "/help", label: "Help", icon: CircleHelp },
+  { to: "/globe", label: "Global Globe", icon: Globe2 },
+  { to: "/blogs", label: "Stories & Blogs", icon: BookOpen },
+  { to: "/help", label: "Help Center", icon: CircleHelp },
 ];
 
-const bottomNavItems = [
-  { to: "/agents", label: "AI Team", icon: Bot },
-  { to: "/profile", label: "Profile", icon: User },
-  { to: "/social", label: "IFund Social", icon: Radio },
-  { to: "/community", label: "Forums", icon: Users },
-];
+
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
@@ -149,7 +152,6 @@ export default function Layout() {
     : ["/discover", "/campaign", "/community", "/help"].some(v => pathname.startsWith(v)) ? "Explore"
     : "Your workspace";
   const navigate = useNavigate();
-  const activeTab = owningNavigationTab(pathname, !!user);
   const isRoot = ["/", "/dashboard", "/discover", "/social", "/inbox",
     "/profile", "/community", "/help", "/globe"].includes(pathname);
   const goBack = () => {
@@ -184,20 +186,20 @@ export default function Layout() {
   }, [open]);
 
   const nav = (
-    <nav aria-label="Main navigation" className="flex min-h-0 flex-1 flex-col gap-3 px-3 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <nav aria-label="Main navigation" className="ifund-sidebar-nav flex min-h-0 flex-1 flex-col gap-3 px-2 overflow-y-auto overscroll-contain scrollbar-hide pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {!user ? (
         <div>
           <p className="ifund-nav-section-title px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/90">Explore</p>
           <div className="flex flex-col gap-0.5">
             {publicNavItems.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `ifund-nav-link flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"}`}>
-                <span className="ifund-nav-icon"><Icon className="w-5 h-5 shrink-0" strokeWidth={1.85} /></span><span className="truncate">{label}</span>
+              <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `ifund-nav-link flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"}`}>
+                <span className="ifund-nav-icon"><Icon className="w-5 h-5 shrink-0" strokeWidth={1.85} /></span><span className="ifund-nav-label">{label}</span>
               </NavLink>
             ))}
           </div>
         </div>
-      ) : navSections.map((section) => (
-        <div key={section.label}>
+      ) : navSections.filter(section => isAdmin || section.label !== "Administration").map((section) => (
+        <div key={section.label} data-ifund-nav-group={section.label}>
           <p className="ifund-nav-section-title px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400/90">{section.label}</p>
           <div className="flex flex-col gap-0.5">
             {section.items.filter(({ to }) => {
@@ -211,13 +213,13 @@ export default function Layout() {
                 end={to === "/"}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                `ifund-nav-link flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                `ifund-nav-link flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors ${
                   isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
                 }`
                 }
               >
                 <span className="ifund-nav-icon"><Icon className="w-5 h-5 shrink-0" strokeWidth={1.85} /></span>
-                <span className="truncate">{label}</span>
+                <span className="ifund-nav-label">{label}</span>
               </NavLink>
             ))}
           </div>
@@ -227,20 +229,19 @@ export default function Layout() {
   );
 
   return (
-    <div className="ifund-shell h-dvh w-full min-w-0 overflow-hidden bg-background text-foreground flex flex-col">
-      <aside className="ifund-sidebar hidden md:flex fixed inset-y-0 left-0 w-60 flex-col py-6 z-40">
-        <div className="px-5 mb-8">
-          <div className="flex items-start justify-between gap-2">
-            <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
-              <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
+    <div className="ifund-shell h-dvh w-full min-w-0 overflow-hidden bg-background text-foreground flex flex-col md:flex-row">
+      <aside className="ifund-sidebar ifund-desktop-sidebar hidden md:flex relative self-stretch shrink-0 w-max flex-col py-6 z-40">
+        <div className="px-3 mb-5">
+          <div className="flex items-center justify-between gap-2">
+            <Link to={user ? "/dashboard" : "/"} className="min-w-0 flex items-center gap-2 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
+              <BrandLogo size="sm" showName={false} />
+              <span className="font-display text-sm font-bold text-foreground">IFund</span>
             </Link>
             <button type="button" onClick={toggleTheme} className="ifund-sidebar-theme rounded-xl p-2" aria-label={darkTheme ? "Switch to light theme" : "Switch to dark theme"} title={darkTheme ? "Light theme" : "Dark theme"}>{darkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button>
           </div>
           <p className="mt-3 font-display text-base brand-gradient-text">{SLOGAN}</p>
-          <p className="mt-2 text-[10px] uppercase tracking-[.17em] text-slate-400">Fundraising, connected.</p>
         </div>
         {nav}
-        <p className="mt-auto px-6 text-[11px] leading-relaxed text-slate-500">{SLOGAN_LONG}</p>
       </aside>
 
       <header className="ifund-mobile-header md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 px-3 py-3 pt-safe">
@@ -266,10 +267,10 @@ export default function Layout() {
       <OfflineBanner />
       {open && (
         <>
-          <div className="md:hidden fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-[3px]" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div className="ifund-drawer-backdrop md:hidden fixed inset-0 z-[60] bg-slate-950/25 backdrop-blur-[1px]" onClick={() => setOpen(false)} aria-hidden="true" />
           <div id="mobile-menu" role="dialog" aria-modal="true" aria-label="IFund navigation"
-               className="ifund-sidebar md:hidden fixed inset-y-0 left-0 w-[min(85vw,350px)] z-[70] pt-safe shadow-2xl flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-current/10">
+               className="ifund-sidebar ifund-drawer md:hidden fixed inset-y-0 left-0 z-[70] pt-safe shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between gap-2 px-3 py-3 border-b border-current/10">
               <span className="font-display text-base font-bold">Explore IFund</span>
               <button type="button" ref={drawerCloseRef} onClick={() => setOpen(false)} className="ifund-sidebar-theme rounded-xl p-3" aria-label="Close navigation"><X className="w-5 h-5" /></button>
             </div>
@@ -280,8 +281,8 @@ export default function Layout() {
 
       <MobileBottomNav user={user} onNavigate={() => setOpen(false)} />
 
-      <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
-        <div className="ifund-workspace-bar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-7">
+      <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
+        <div className="ifund-workspace-bar hidden md:flex sticky top-0 z-20 items-center justify-between gap-3 px-4 py-3 sm:px-7">
           <div className="flex items-center gap-3 min-w-0">
             <span className="ifund-page-icon" aria-hidden="true"><PageIcon className="w-5 h-5" strokeWidth={1.85} /></span>
             <div className="min-w-0">

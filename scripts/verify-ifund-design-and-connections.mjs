@@ -35,7 +35,7 @@ try {
   await page.getByRole('button',{name:'Close navigation'}).waitFor();
   await page.waitForFunction(()=>document.activeElement?.getAttribute('aria-label')==='Close navigation');
   assert.equal(await page.locator('body').evaluate(el=>el.style.overflow),'hidden');
-  assert.equal(await page.locator('.backdrop-blur-\\[3px\\]').count(),1,'Drawer should soften/dim rest of page');
+  assert.equal(await page.locator('.ifund-drawer-backdrop').count(),1,'Drawer should soften/dim rest of page');
   await page.keyboard.press('Escape');
   await drawer.waitFor({state:'detached'});
   assert.notEqual(await page.locator('body').evaluate(el=>el.style.overflow),'hidden');
