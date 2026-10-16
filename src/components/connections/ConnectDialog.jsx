@@ -83,7 +83,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     (platform.kind || 'crowdfunding') !== (existing.kind || 'crowdfunding') ||
     form.external_url.trim() !== String(existing.external_url || "").trim() ||
     form.external_currency.trim().toUpperCase() !== String(existing.external_currency || "").trim().toUpperCase() ||
-    Object.entries(credentials).some(([key, value]) => String(value ?? "").trim() !== "" && String(value).trim() !== String(existing?.credentials?.[key] ?? "").trim())
+    Object.entries(credentials).some(([key, value]) => ["kofi_verification_token", "bluesky_app_password", "mastodon_access_token"].includes(key) && String(value ?? "").trim() !== "" && String(value).trim() !== String(existing?.credentials?.[key] ?? "").trim())
   ));
   const hasDisplayedBalance = Number(form.external_total || 0) > 0 || Number(form.external_donor_count || 0) > 0;
   const balanceReaffirmationRequired = externalIdentityChanged && hasDisplayedBalance && !balanceReaffirmed;
