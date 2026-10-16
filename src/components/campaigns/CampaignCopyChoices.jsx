@@ -17,6 +17,12 @@ export default function CampaignCopyChoices({ form, onChange }) {
   const [error, setError] = useState("");
   const hasBrief = Boolean(form.ai_profile?.primary_goal?.trim() || form.ai_profile?.who_helping?.trim() || form.title?.trim());
 
+  const applyChoice = (field, text) => {
+    onChange(field, text);
+    // Summary suggestions must not describe a title that was just replaced.
+    if (field === "title") setSuggestions((prev) => ({ ...prev, summary: [] }));
+  };
+
   const generate = async (field) => {
     if (!available || busy || (field === "title" && !hasBrief) || (field === "summary" && !form.title?.trim())) return;
     setBusy(field);
@@ -41,7 +47,7 @@ Return ONLY JSON with an "options" array containing exactly five strings. No dup
       });
       const limit = field === "title" ? 100 : 180;
       const choices = [...new Set((Array.isArray(response?.options) ? response.options : [])
-        .map((s) => typeof s === "string" ? s.trim().replace(/^\\d+[.)]\\s*/, "").slice(0, limit) : "")
+        .map((s) => typeof s === "string" ? s.trim().replace(/^\d+[.)]\s*/, "").slice(0, limit) : "")
         .filter(Boolean))].slice(0, 5);
       if (choices.length !== 5) throw new Error("Need five unique choices");
       setSuggestions((prev) => ({ ...prev, [field]: choices }));
@@ -65,7 +71,7 @@ Return ONLY JSON with an "options" array containing exactly five strings. No dup
           </div>
           <Label htmlFor={`campaign-${field}`} className="quest-label">Your {field === "title" ? "title" : "description"}</Label>
           <Input id={`campaign-${field}`} className="quest-input" placeholder={placeholder}
-            value={form[field] || ""} onChange={(e) => onChange(field, e.target.value)} maxLength={field === "title" ? 160 : 500} />
+            value={form[field] || ""} onChange={(e) => applyChoice(field, e.target.value)} maxLength={field === "title" ? 160 : 500} />
           <Button type="button" variant="outline" className="quest-button w-full sm:w-auto"
             disabled={!available || disabled || Boolean(busy)} onClick={() => generate(field)}>
             {busy === field ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
@@ -76,7 +82,7 @@ Return ONLY JSON with an "options" array containing exactly five strings. No dup
           {suggestions[field].length > 0 && <div role="group" aria-label={`Five ${field} options`} className="grid gap-2">
             {suggestions[field].map((choice, i) => (
               <button key={`${field}-${i}`} type="button" aria-pressed={form[field] === choice}
-                onClick={() => onChange(field, choice)}
+                onClick={() => applyChoice(field, choice)}
                 className={`w-full min-w-0 rounded-xl border px-4 py-3 text-left text-sm break-words transition-colors ${form[field] === choice ? "border-cyan-400 bg-cyan-400/20 ring-1 ring-cyan-300/40" : "border-white/15 bg-slate-950/35 hover:border-cyan-400/50"}`}>
                 <span className="flex items-start gap-2"><span className="font-semibold text-cyan-300 shrink-0">{i + 1}.</span>
                   <span className="flex-1 text-slate-100">{choice}</span>{form[field] === choice && <Check aria-label="Selected" className="h-4 w-4 text-cyan-300 shrink-0" />}</span>
