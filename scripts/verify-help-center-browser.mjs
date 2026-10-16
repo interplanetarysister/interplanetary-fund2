@@ -33,6 +33,8 @@ try {
     assert.match(page.url(), /category=Connections/);
     const input = page.getByRole("textbox", { name: "Search IFund help articles" });
     await input.fill("my campaign");
+    // React Router updates the address bar asynchronously after the input event.
+    await page.waitForURL((url) => url.searchParams.get("q") === "my campaign", { timeout: 7000 });
     assert.match(page.url(), /q=my/);
     const overflow = await page.evaluate(() =>
       document.documentElement.scrollWidth - window.innerWidth);
