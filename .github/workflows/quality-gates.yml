@@ -38,6 +38,9 @@ jobs:
       - name: Install locked dependencies with lifecycle scripts
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
+      - name: Ensure Android APK builds stay manual-only
+        run: node scripts/verify-manual-android-build-contract.mjs
+
       - name: Verify Node 24.12+ runtime contract
         run: npm run verify:node22-release-contract
 
