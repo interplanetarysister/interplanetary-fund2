@@ -266,6 +266,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : platform.setupKind === "link" ? "Link a page on" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform and approve its permissions. No post will be sent." : platform.setupKind === "link" ? "This links an existing public fundraising page. It does not authorize account access or publishing." : "Follow the official connection steps below."}</p>
+        {usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
         {usesProviderOAuth && (
           <div className="space-y-3 min-w-0">
             <p className="text-sm text-foreground">{connecting ? `Opening ${platform.name} sign-in…` : "One link. Provider sign-in. Back to IFund for verification."}</p>
@@ -323,12 +324,13 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </div>
             </div>
           )}
-          <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />
+
+          {!usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
           <PasswordVaultPanel platform={platform} />
           <VerificationInboxPanel platform={platform.id} />
           {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
-            <p className="text-xs text-muted-foreground mt-1 break-words">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
+            <p className="text-xs text-muted-foreground mt-1 break-words">{aiAuthorized ? "The big IFund AI switch is on. Each outside account needs its own AI switch, and only provider-approved actions will work." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
           </div>}
           {usesProviderOAuth && oauthReadiness === "unavailable" &&
             <p role="status" className="text-sm text-amber-600 break-words">IFund could not check the connection setup right now. You can retry Connect.</p>}
