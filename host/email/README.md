@@ -1,80 +1,76 @@
-# IFund Email Routing — catch-all and priority mailboxes
+# Interplanetary Fund — inbound email routing
 
-Status: **staged, not live**. Wix nameservers stay unchanged until the complete
-mail delivery path is verified. Cloudflare Email Routing must remain disabled
-until all prerequisites pass.
+## Current state
+Code staged and Cloudflare Email Worker deployed. **Not live yet.**
+Cloudflare domain remains pending Wix nameserver switch, and the current
+remote Base44 function is an earlier deployed revision.
 
-## Architecture
+## Delivery flow
+Cloudflare catch-all for all valid `*@interplanetaryfund.com` recipients
+→ `ifund-email-ingress` dedicated Email Worker
+→ verified owner forwarding destination `cuddlemeplatonically@gmail.com`
+→ optional ECDSA P-256 signed HTTPS mirror into Base44
+`receiveCloudflareEmail` → private owner-scoped `InboxItem`
+→ IFund Universal Inbox, web and APK.
 
-Cloudflare Email Routing (catch-all for *@interplanetaryfund.com)
-→ dedicated `ifund-email-ingress` Cloudflare Email Worker
-→ HTTPS request signed with HMAC-SHA256
-→ Base44 `receiveCloudflareEmail`
-→ private owner-scoped `InboxItem`
-→ IFund Universal Inbox on web and APK.
+Gmail forwarding is a fail-safe; the Worker attempts IFund mirroring even when
+the forwarded email already succeeded. The signed mirror uses a **private key
+stored only in Cloudflare Worker secrets** and a **public key** pinned in the
+Base44 receiver's source code. No Base44 secret-management access is needed.
 
-The receiving Worker is separate from the existing website/MCP Worker. Do not
-assign website routes to it or modify the website Worker for mail delivery.
+## Priority mailbox categories
 
-## Priority mailboxes
+Priority: `contact`, `support`, `admin`, `ifund`, `campaigns`, `help`,
+`developer`, `partner`, `crowdfund` under `@interplanetaryfund.com`.
 
-- contact@interplanetaryfund.com
-- support@interplanetaryfund.com
-- admin@interplanetaryfund.com
-- ifund@interplanetaryfund.com
-- campaigns@interplanetaryfund.com
-- help@interplanetaryfund.com
-- developer@interplanetaryfund.com
-- partner@interplanetaryfund.com
-- crowdfund@interplanetaryfund.com
+All other valid recipient local parts receive normal priority.
+IFund's `InboxItem.mailbox_priority` and `recipient_address` are stored,
+and the inbox displays Priority and the actual To address. These are not
+nine separate mailbox accounts.
 
-These nine are marked `mailbox_priority = priority` in IFund.
-Every other syntactically valid address at the domain receives
-`mailbox_priority = normal`. This is a catch-all, not nine separate mailbox
-accounts. IFund keeps the exact original address in `recipient_address`.
-The inbox sorts open priority messages ahead of other messages and displays
-the original recipient.
+## Verified preparation
+- Dedicated `ifund-email-ingress` Worker exists in Cloudflare.
+- Cloudflare has encrypted `IFUND_EMAIL_SIGNING_PRIVATE_KEY` and
+  `IFUND_EMAIL_RECEIVER_URL` bindings.
+- Recipient destination `cuddlemeplatonically@gmail.com` is verified
+  in Cloudflare Email Routing.
+- Local compiled Worker in-memory signed-delivery and forwarding simulation
+  passed. This is **not** evidence of external SMTP receipt.
+- Cloudflare catch-all rule points to the Worker but is disabled.
+- Cloudflare Email Routing activation returned `Active zone required`.
+- Wix still serves authoritative DNS; Cloudflare zone status `pending`.
+- The deployed Base44 `receiveCloudflareEmail` function returned 503
+  `Email intake not configured` when probed, demonstrating that Base44's
+  **older** HMAC/secret-based version is still deployed. The new public-key
+  verifier is committed and checkpointed but must be deployed.
+- Base44 CLI function deployment requested interactive device authentication.
+  Do not interpret a saved checkpoint as proof of published backend updates.
 
-## Configuration and activation
+## Required activation
 
-1. The authorized mailbox owner is **cuddlemeplatonically@gmail.com**, verified
-   as a current IFund admin. Its stable Base44 user ID is pinned in the receiver
-   with a role-and-email check. Do not derive ownership from email contents.
-   Set the Base44 runtime encrypted secret:
-   - `IFUND_EMAIL_INGRESS_SECRET`: new randomly generated string >= 32 characters.
-   Keep messages private to the selected owner in the IFund inbox.
-2. The dedicated Cloudflare Worker is uploaded under `ifund-email-ingress`.
-   Configure its encrypted Worker secrets:
-   - `IFUND_EMAIL_INGRESS_SECRET`: EXACTLY the Base44 secret from step 1.
-   - `IFUND_EMAIL_RECEIVER_URL`: deployed, verified HTTPS endpoint of the
-     Base44 `receiveCloudflareEmail` function.
-3. Ensure the Base44 receiver deployment is active. Verify incorrect and
-   missing signatures fail with 401, wrong domain fails with 400, and correct
-   signed test delivery creates only one private inbox item on retries.
-4. Test at least one priority address and one non-priority address in both
-   web and app; check sender, recipient, original body, classification and
-   lack of cross-user access. Add inbound spam/abuse and storage protections.
-5. Only once these checks pass, enable Cloudflare Email Routing and its
-   catch-all worker rule. Wix still owns live DNS until you deliberately
-   replace Wix nameservers with the two assigned Cloudflare nameservers.
-   Check A/CNAME, MX/SPF/DKIM and HTTPS before making that switch.
-6. After delegation has propagated, test receiving an external email from
-   an unrelated provider to each category. Track and correct any failures.
+1. Authorize the Base44 CLI as the appropriate IFund admin using the device
+   login flow, then deploy only `receiveCloudflareEmail` and verify the
+   unauthorized request returns 401. Avoid a full site redeploy until the
+   user's current release batch is complete.
+2. Send one signed test request and verify that exactly one IFund `InboxItem`
+   appears for `cuddlemeplatonically@gmail.com`; invalid signatures must
+   return 401; repeat submissions must deduplicate; validate tenant isolation.
+3. Change Wix **registrar nameservers** (not ordinary NS DNS resource records)
+   to `angelina.ns.cloudflare.com` and `ed.ns.cloudflare.com`.
+   The Wix DNS-zone REST endpoint is not a registrar delegation endpoint.
+4. Wait for Cloudflare to show Active. Enable Cloudflare Email Routing and
+   the catch-all Worker rule. Then send a test email from an unrelated account
+   to `support@interplanetaryfund.com` and to a non-priority alias.
+5. Verify Gmail forwarding and IFund private inbox mirroring, mobile and web;
+   only then declare the mail system operational.
 
-Cloudflare catch-all currently points to `ifund-email-ingress` but is
-`enabled: false`. Turning it on early would not make email operational.
+## Known limitations
 
-## Security, limits and scope
-
-- This implementation receives **plain-text mail only**, not an SMTP/IMAP
-  mailbox. It does not provide outgoing replies, attachments, sent-mail
-  tracking, or HTML storage. The IFund reply draft button does not send email.
-- Worker refuses messages larger than 2 MB and validates the recipient domain.
-  Base44 stores at most 12,000 text characters per incoming message.
-- The shared HMAC signature, timestamp window, admin owner and RLS protect the
-  private backend. Never commit secret values or use unprotected HTTP routes.
-- Duplicate Message-IDs are filtered on a best-effort basis. Concurrency
-  handling and anti-spam controls need further validation before enablement.
-- A catch-all attracts spam, including guessed or random recipient aliases.
-  Filtering, alerting and quotas should be checked before switching DNS.
-- The Worker may not be used as a reason to publish an incomplete APK.
+- This is inbound plain-text mirroring, not an SMTP/IMAP mailbox.
+- Email HTML and attachments are retained by the forwarding Gmail destination,
+  but are not stored in Base44.
+- Mirroring failures are logged and do not block forwarding.
+- Email catch-all addresses are vulnerable to guessing/spam; use rate controls
+  and filtering before marketing these addresses.
+- The platform's existing notification/social inbox must not be disabled
+  and DNS changes must preserve the apex A and www CNAME website records.
