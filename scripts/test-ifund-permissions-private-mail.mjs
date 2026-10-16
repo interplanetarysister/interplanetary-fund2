@@ -1,7 +1,5 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { webcrypto } from 'node:crypto';
-globalThis.crypto = webcrypto;
 globalThis.isSecureContext = true;
 const read = (p) => fs.readFileSync(p, 'utf8');
 const {lockVaultEntry, unlockVaultEntry} = await import('../src/lib/credentialVault.js');
