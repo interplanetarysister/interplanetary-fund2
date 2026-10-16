@@ -364,7 +364,8 @@ body {
   border-color: #9675e7; box-shadow: 0 6px 18px rgb(83 56 167 / .11);
 }
 .dark .ifund-platform-choice, .dark .ifund-connection-card { background: #1d2b46; border-color: #3a4865; }
-.ifund-platform-logo { color: var(--brand-accent); }
+.ifund-platform-logo { color: var(--brand-accent); background: #fff !important; }
+.dark .ifund-platform-logo { background: #fff !important; border-color: #e0e4ef; color: var(--brand-accent); }
 @media (max-width: 420px) {
   .ifund-platform-choice { min-height: 70px; }
   .ifund-sidebar .ifund-nav-link { min-height: 45px; }
