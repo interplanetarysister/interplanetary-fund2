@@ -448,62 +448,60 @@ export default function Connections() {
         </div>
       )}
 
-      <div className="mb-8" id="connection-chooser">
-        <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
-        <p className="text-sm text-stone-500 mb-3">Choose a platform you already use. IFund will check its setup before offering provider sign-in.</p>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setPlatformMenuOpen((open) => !open)}
-            className="w-full min-h-14 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 px-4 py-3 text-left shadow-lg flex items-center justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-            aria-expanded={platformMenuOpen}
-          >
-            <span className="flex items-center gap-3 min-w-0">
-              <span className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0"><Search className="w-4 h-4 text-cyan-200" /></span>
-              <span>
-                <span className="block font-semibold text-cyan-50">Choose a platform</span>
-                <span className="block text-xs text-slate-400">Select one you use</span>
-              </span>
-            </span>
-            <ChevronDown className={`w-5 h-5 text-cyan-200 transition-transform ${platformMenuOpen ? "rotate-180" : ""}`} />
-          </button>
-
-          {platformMenuOpen && (
-            <div className="mt-2 rounded-2xl border border-cyan-300/20 bg-slate-950 shadow-2xl overflow-hidden">
-              <div className="p-3 border-b border-white/10">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  <Input
-                    autoFocus
-                    value={platformSearch}
-                    onChange={(e) => setPlatformSearch(e.target.value)}
-                    placeholder="Search platforms…"
-                    className="pl-9 h-11 rounded-xl border-cyan-300/20 bg-slate-900 text-cyan-50 placeholder:text-slate-500 focus-visible:ring-cyan-400/50"
-                  />
-                </div>
-              </div>
-              <div className="max-h-72 overflow-y-auto p-2">
-                {availablePlatforms.length ? availablePlatforms.map((p) => (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => choosePlatform(p)}
-                    className="w-full rounded-xl px-3 py-3 flex items-center gap-3 text-left hover:bg-cyan-400/10 focus:bg-cyan-400/10 focus:outline-none transition-colors"
-                  >
-                    <span className="text-xl w-8 text-center shrink-0" aria-hidden="true">{p.icon || "✦"}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
-                    </span>
-                    <span className="text-xs font-semibold text-cyan-200">{p.setupKind === "oauth" ? "Check setup" : "Open setup"}</span>
-                  </button>
-                )) : (
-                  <p className="px-3 py-6 text-center text-sm text-slate-400">No matching platforms.</p>
-                )}
-              </div>
-            </div>
-          )}
+      <section className="mb-8" id="connection-chooser">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="font-display text-xl text-stone-900 mb-1">Explore connections</h2>
+            <p className="text-sm text-stone-500">Select a platform to connect or link your account.</p>
+          </div>
+          <Globe2 className="w-6 h-6 text-violet-500 shrink-0" aria-hidden="true" />
         </div>
-      </div>
+        <div className="ifund-connection-browser rounded-[1.7rem] p-3 sm:p-5">
+          <div className="relative mb-4">
+            <Search className="absolute top-1/2 -translate-y-1/2 left-3 h-5 w-5 text-slate-500 pointer-events-none" />
+            <Input
+              value={platformSearch}
+              onChange={(e) => setPlatformSearch(e.target.value)}
+              placeholder="Search platforms"
+              aria-label="Search available platforms"
+              className="pl-11 h-12 rounded-2xl bg-white dark:bg-slate-900 dark:text-white"
+            />
+          </div>
+          <div role="group" aria-label="Filter platforms" className="flex gap-2 overflow-x-auto pb-2 mb-3">
+            {[
+              { id: "all", label: "All", Icon: PlugZap },
+              { id: "crowdfunding", label: "Fundraising", Icon: Globe2 },
+              { id: "social", label: "Social", Icon: Share2 },
+              { id: "app", label: "Tools", Icon: AppWindow },
+            ].map(({ id, label, Icon }) => (
+              <button type="button" key={id} onClick={() => setPlatformCategory(id)}
+                aria-pressed={platformCategory === id}
+                className={platformCategory === id ? "ifund-platform-filter is-active" : "ifund-platform-filter"}>
+                <Icon className="w-4 h-4 shrink-0" />{label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 min-[450px]:grid-cols-2 gap-3">
+            {availablePlatforms.length ? availablePlatforms.map((p) => (
+              <button type="button" key={p.id} onClick={() => choosePlatform(p)}
+                className="ifund-platform-choice rounded-2xl border px-3 py-3 text-left flex items-center gap-3 min-w-0 min-h-[78px]"
+                aria-label={"Set up " + p.name}>
+                <PlatformLogo platform={p} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-950 dark:text-white truncate">{p.name}</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                    {p.setupKind === "link" ? "Link an existing page" : p.setupKind === "oauth" ? "Check sign-in options" : "Guided setup"}
+                  </span>
+                </span>
+              </button>
+            )) : (
+              <p className="col-span-full text-center text-sm text-slate-600 dark:text-slate-300 p-8">
+                No matching platforms to add. Check your connected accounts above or change the filter.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
       {dialog && (
         <ConnectDialog
