@@ -71,8 +71,9 @@ await probe(www, "www.interplanetaryfund.com");
 
 // A matching Worker health result alone does not prove website release
 // parity. The Base44 source of record and the public host must identify the
-// same approved web build. Native APK publication is owned by Base44 and is
-// intentionally outside GitHub deployment and validation gates.
+// same approved web build. Native APK compilation and signing can run by
+// explicit owner request through Base44 or the manual-only GitHub workflow;
+// neither path is an automatic web-deployment prerequisite.
 const releaseSources = [
   ["Cloudflare Worker", directWorker],
   ["IFund apex", production],
