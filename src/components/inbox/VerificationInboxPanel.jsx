@@ -32,7 +32,7 @@ export default function VerificationInboxPanel({ platform }) {
       if (!data?.ok) throw new Error(data?.error || "Could not reserve address.");
       await refresh();
       setNotice("Private verification address prepared. Wait until email delivery is activated before using it.");
-    } catch (e) {setError(e.message || "Could not prepare address.");}
+    } catch {setError("Could not prepare address. Try again.");}
     finally {setBusy(false);}
   };
   const open = async (id) => {
@@ -42,7 +42,7 @@ export default function VerificationInboxPanel({ platform }) {
       const { data } = await base44.functions.invoke("manageVerificationMailbox", { mode: "open", mail_id: id });
       if (!data?.ok) throw new Error(data?.error || "Message unavailable.");
       setRevealed(data.mail);
-    } catch (e) {setError(e.message || "Message unavailable.");}
+    } catch {setError("Message unavailable. Try again.");}
     finally {setBusy(false);}
   };
   const current = platform ? aliases.filter(a => a.platform === platform) : aliases;

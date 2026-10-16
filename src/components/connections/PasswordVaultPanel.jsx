@@ -7,6 +7,18 @@ import { Eye, EyeOff, LockKeyhole, Smartphone } from "lucide-react";
 import { lockVaultEntry, unlockVaultEntry } from "@/lib/credentialVault";
 import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 
+const VAULT_SAVE_HELP = new Set([
+  "Enter a password to save.",
+  "Vault passphrases do not match.",
+  "Encrypted storage requires HTTPS.",
+  "Use a vault passphrase of at least 12 characters.",
+]);
+const VAULT_UNLOCK_HELP = new Set([
+  "Encrypted storage requires HTTPS.",
+  "Unsupported vault version.",
+  "Wrong passphrase or damaged entry. No password was revealed.",
+]);
+
 export default function PasswordVaultPanel({ platform }) {
   const [saved, setSaved] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +56,7 @@ export default function PasswordVaultPanel({ platform }) {
       setSaved(row); setPassword(""); setPassphrase(""); setConfirmPassphrase("");
       setUnlocked(false); setVisible(false);
       setNotice("Encrypted entry saved. This does not connect or authorize the provider.");
-    } catch (e) { setError(e.message || "Could not save encrypted entry."); }
+    } catch (e) { setError(VAULT_SAVE_HELP.has(e?.message) ? e.message : "Could not save encrypted entry."); }
     finally { setBusy(false); }
   };
   const unlock = async () => {
@@ -54,7 +66,7 @@ export default function PasswordVaultPanel({ platform }) {
       setUsername(result.username); setPassword(result.password);
       setUnlocked(true); setVisible(false); setPassphrase("");
       setNotice("Unlocked on this device. Lock it again when finished.");
-    } catch (e) { setError(e.message || "Unlock failed."); }
+    } catch (e) { setError(VAULT_UNLOCK_HELP.has(e?.message) ? e.message : "Unlock failed."); }
     finally { setBusy(false); }
   };
   const lock = () => { setUsername(""); setPassword(""); setPassphrase(""); setConfirmPassphrase(""); setUnlocked(false); setVisible(false); };

@@ -222,7 +222,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       setHelpDetails(nextValue
         ? "AI is on for this account within the approved scope and provider permissions."
         : "AI is off for this account. The provider connection stays in place.");
-    } catch(e) { setError(e?.message || "Could not change AI access."); }
+    } catch { setError("Could not change AI access. Try again."); }
     finally { setPermissionBusy(false); }
   };
 
@@ -252,8 +252,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
       onOpenChange(false);
     } catch (e) {
-      console.error("ConnectDialog connection save failed:", e);
-      setError(e?.response?.data?.error || "Couldn't save this connection. Please try again. If the problem continues, contact support.");
+      console.error("ConnectDialog connection save failed:", e?.name || "ConnectionSaveError");
+      setError("Couldn't save this connection. Please try again. If the problem continues, contact support.");
     } finally {
       setSaving(false);
     }

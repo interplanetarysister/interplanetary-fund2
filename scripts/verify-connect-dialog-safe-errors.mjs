@@ -42,9 +42,10 @@ const adminSources = [
 ].join("\n");
 
 assert.match(source, /setError\("Couldn't save this connection\. Please try again\. If the problem continues, contact support\."\)/);
-assert.match(source, /console\.error\("ConnectDialog connection save failed:", e\)/);
+assert.match(source, /console\.error\("ConnectDialog connection save failed:", e\?\.name \|\| "ConnectionSaveError"\)/);
 assert.doesNotMatch(source, /setError\(e\.message/);
 assert.doesNotMatch(source, /setError\(.*error\.message/);
+assert.doesNotMatch(source, /console\.error\("ConnectDialog connection save failed:", e\)/, "do not log raw connection exceptions");
 assert.match(source, /base44\.functions\.invoke\(\s*["']saveConnectionCredentials["']\s*,/);
 assert.doesNotMatch(source, /PlatformConnection\s*\.\s*(?:update|create)\s*\(/);
 assert.match(source, /external_currency/);
@@ -185,7 +186,7 @@ assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
 assert.match(adminSources, /Provider state changes only after a provider-backed webhook, API operation, or synchronization workflow succeeds\./i);
 
-const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e)');
+const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e?.name || "ConnectionSaveError")');
 const safeMessageIndex = source.indexOf('setError("Couldn\'t save this connection. Please try again. If the problem continues, contact support.")');
 assert.ok(diagnosticIndex >= 0 && safeMessageIndex > diagnosticIndex, "controlled diagnostics must precede the safe client message");
 

@@ -53,6 +53,12 @@ zone_name = "interplanetaryfund.com"
 pattern = "www.interplanetaryfund.com/.well-known/openid-configuration*"
 zone_name = "interplanetaryfund.com"
 
+# Non-production Git branches use Cloudflare Workers Previews. Preview builds
+# require an explicit block but must never inherit production secrets, DNS
+# routes, or financial bindings. Provision separate preview bindings only when
+# needed; the existing production [vars]/[assets]/routes remain unchanged.
+[previews]
+
 [vars]
 IFUND_BASE44_ORIGIN = "https://interplanetaryfund.base44.app"
 # Exact known IFund browser origins only; no wildcards or reflected Origin.
