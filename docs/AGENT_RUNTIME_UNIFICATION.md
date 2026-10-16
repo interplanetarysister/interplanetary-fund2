@@ -68,6 +68,14 @@ Credentials are operational secrets, not conversational memory. When a provider 
 
 Raw secret values must not be copied into agent memory, prompts, delegation records, logs, analytics, or ordinary frontend responses. Agent reasoning should normally receive only whether a credential is configured, connection/verification state, granted capabilities, expiry or reauthorization status when applicable, and the result of the requested provider operation.
 
+## Agent roster and official account evidence
+
+The user-facing agent choices are defined in `src/pages/Agents.jsx`; the Base44 chat agent definitions and actual tool permissions are in `base44/agents/*.jsonc`. The `Agent` entity is administrative roster metadata. A roster row or a historical agent alias does not provision a chat agent, grant a tool, or prove that a provider operation succeeded. Check the deployed agent configuration and a real function/provider result before reporting capability or completion.
+
+IFund-owned external account metadata belongs in the admin-restricted `PlatformOwnedAccount` entity. It may hold an opaque `credential_reference`; `AdminCredentialReference` holds only the matching Browserbase-managed secret identifiers and explicit allowed-agent names. The deprecated `AdminCredentialVault` is reference-only. None of these entities is a plaintext password store. An account record marked `setup_in_progress` or `active` is not provider verification by itself; connection and publishing eligibility require provider-backed evidence and the applicable authorization checks. User-owned platform connections remain separate.
+
+The 2026-10-15 dated master-records snapshot was removed from the current tree because it exposed operational account-recovery details and conflated registry claims with deployed permissions, provider verification, and financial policy. Its Git history remains public; operators should review the exposure in their protected admin process and use current application records instead of that snapshot.
+
 This preserves automated platform functionality without requiring users to repeatedly handle credentials and without turning the agent memory system into a credential store.
 
 ## Safety
