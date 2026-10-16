@@ -77,6 +77,18 @@
       ],
       "default": "unknown",
       "description": "Verified way to reply. Unknown must not enable a Send button; external_link opens the provider only."
+    },
+    "recipient_address": {
+      "type": "string",
+      "description": "Original mailbox address under interplanetaryfund.com for received email."
+    },
+    "mailbox_priority": {
+      "type": "string",
+      "enum": [
+        "priority",
+        "normal"
+      ],
+      "description": "Routing priority: the nine official inbox aliases are priority."
     }
   },
   "required": [
