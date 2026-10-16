@@ -77,7 +77,10 @@ assert.match(saveCredentials,/const accountAiConsent = unifiedObo && accountCons
 assert.match(saveCredentials,/opted_out: !accountAiConsent/);
 assert.doesNotMatch(campaignUpdate,/agent_access\?\.automation_enabled === true/);
 assert.match(finalizeOauth,/automation_enabled: false/);
-assert.match(finalizeOauth,/granted_capabilities: unifiedObo \? confirmed : \[\]/);
+// OAuth permission must be limited to the explicit requested scope AND the
+// capabilities actually returned by the provider, never all provider scopes.
+assert.match(finalizeOauth,/granted_capabilities: unifiedObo \? restrictedAgentScope\(selectedCapabilities, confirmed\) : \[\]/);
+assert.match(finalizeOauth,/requested_capabilities: selectedCapabilities/);
 assert.doesNotMatch(prepare,/hasUnifiedOboConsent/);
 assert.match(prepare,/cap\?\.capability_status === 'verified'/);
 assert.match(payoutAccount,/payouts_enabled/);
