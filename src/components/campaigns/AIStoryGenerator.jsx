@@ -18,12 +18,13 @@ export default function AIStoryGenerator({ form, aiProfile, versions = [], onApp
   const available = useFeatureEnabled("ai_campaign_assistant");
   // Reuse the voice already picked in campaign setup. Do not ask the same question twice.
   const selectedTone = String(aiProfile?.tone || "").toLowerCase();
-  const style = STORY_STYLES.some((option) => option.value === aiProfile?.priority)
-    ? aiProfile.priority
-    : selectedTone.includes("urgent") ? "urgent"
+  const style = selectedTone.includes("urgent") ? "urgent"
     : selectedTone.includes("fact") ? "factual"
     : selectedTone.includes("profession") ? "professional"
-    : selectedTone.includes("community") ? "community" : "emotional";
+    : selectedTone.includes("community") ? "community"
+    : selectedTone.includes("emotional") || selectedTone.includes("warm") || selectedTone.includes("hopeful") ? "emotional"
+    : STORY_STYLES.some((option) => option.value === aiProfile?.priority) ? aiProfile.priority
+    : "emotional";
   const audience = "auto";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
