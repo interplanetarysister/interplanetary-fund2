@@ -16,7 +16,8 @@ if(cmd==='secrets' && subcmd==='list') {
   process.exit(0);
 }
 if(cmd==='secrets' && subcmd==='set') {
-  const data=fs.readFileSync('/dev/stdin','utf8').trim();
+  let data='';
+  try {data=fs.readFileSync('/dev/stdin','utf8').trim();} catch(e) {fs.writeFileSync(marker+'.debug',e.code || e.name);process.exit(9);}
   const firstEqual=data.indexOf('=');
   const entry=[data.slice(0,firstEqual),data.slice(firstEqual+1)];
   const decodedSize=Buffer.from(entry[1],'base64').length;
