@@ -75,7 +75,7 @@ assert.match(save, /verification_status: 'unverified'/);
 // is otherwise preserved, so provider-verified evidence is not silently
 // reclassified by an unrelated configuration save.
 assert.doesNotMatch(save, /external_data_source:\s*'provider_verified'/);
-assert.match(save, /balanceReconciliation\.reset[\s\S]{0,120}balanceReconciliation\.externalDataSource/);
+assert.match(save, /external_data_source:\s*balanceReconciliation\.identityChanged[\s\S]{0,100}'owner_reported'/);
 assert.match(save, /balanceEvidenceChanged\s*\?\s*'owner_reported'/);
 assert.match(save, /\|\|\s*'owner_reported'/);
 assert.doesNotMatch(save, /status: 'connected'/);
