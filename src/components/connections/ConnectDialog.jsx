@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import CredentialFields from "./CredentialFields";
+import PasswordVaultPanel from "./PasswordVaultPanel";
 import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 import { providerAuthorizationDestination } from "@/lib/providerAuthorizationDestination";
 
@@ -286,6 +287,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </div>
             </div>
           )}
+          <PasswordVaultPanel platform={platform} />
           {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>
             <p className="text-xs text-muted-foreground mt-1 break-words">{aiAuthorized ? "AI authorization includes OBO access for every platform you connect. Provider sign-in and supported capabilities still determine what can be performed." : "Turn on AI help on the Connections page if you want Interplanetary Fund to act on your behalf through connected platforms."}</p>
