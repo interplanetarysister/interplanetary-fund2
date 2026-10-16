@@ -53,6 +53,8 @@ assert.doesNotMatch(source, /existing\?\.external_currency \|\| "USD"/);
 assert.match(source, /balance_reaffirmed: externalIdentityChanged && balanceReaffirmed/);
 assert.match(source, /I confirm this displayed amount, currency, and donor count belong to the changed provider connection\./);
 assert.match(source, /balanceReaffirmationRequired/);
+assert.match(source, /\(platform\.kind \|\| 'crowdfunding'\) !== \(existing\.kind \|\| 'crowdfunding'\)/,
+  'connection kind comparison must match backend defaulting for legacy records');
 assert.match(source, /\["external_url", "external_currency", "external_total", "external_donor_count"\]\.includes\(k\)/,
   "editing any displayed balance field after confirmation must clear reaffirmation");
 
