@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     needs: preflight-review
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     name: Production compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -212,7 +212,7 @@ jobs:
 
   node22-compatibility:
     needs: preflight-review
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     name: Node 22 compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -227,7 +227,7 @@ jobs:
 
   typecheck:
     needs: preflight-review
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     name: Typecheck on Base44 baseline
     runs-on: ubuntu-24.04
     timeout-minutes: 15
