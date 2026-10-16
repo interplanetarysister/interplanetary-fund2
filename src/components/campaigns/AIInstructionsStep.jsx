@@ -10,13 +10,6 @@ import { Sparkles, Lightbulb, SlidersHorizontal } from "lucide-react";
 // feature (story generator, outreach agent, recommendations) to represent
 // the campaign consistently and truthfully.
 const TONES = ["Warm", "Emotional", "Hopeful", "Professional", "Urgent", "Factual", "Conversational"];
-const PRIORITIES = [
-  { value: "emotional", label: "Emotional storytelling" },
-  { value: "factual", label: "Factual presentation" },
-  { value: "urgent", label: "Urgency" },
-  { value: "professional", label: "Professionalism" },
-  { value: "community", label: "Community involvement" },
-];
 const PLATFORMS = ["Facebook", "Instagram", "TikTok", "LinkedIn", "Twitter/X", "Email", "Other"];
 
 export const emptyAiProfile = {
@@ -63,14 +56,7 @@ export default function AIInstructionsStep({ value, onChange }) {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="What should stand out?">
-          <Select value={v.priority} onValueChange={(val) => set("priority", val)}>
-            <SelectTrigger className="quest-input"><SelectValue placeholder="Let AI choose" /></SelectTrigger>
-            <SelectContent>
-              {PRIORITIES.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </Field>
+
       </div>
 
       <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 space-y-3">
