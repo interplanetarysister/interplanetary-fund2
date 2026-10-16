@@ -317,9 +317,33 @@ export async function beginExternalSyncRequest(sr, options) {
       description: attempt > 1 ? 'Retrying a stale authenticated explicit request.' : 'Authenticated explicit request is in progress.',
     };
     await renewAndVerifyExternalSyncMutex(sr, mutex);
-    const run = existing
-      ? await sr.entities.SyncRun.update(existing.id, runData)
-      : await sr.entities.SyncRun.create(runData);
+    let run;
+    if (existing) {
+      // A stale-at-read retry may race a live worker heartbeat. Replace the
+      // attempt only if the exact state observed above is still current.
+      const takeoverFilter = {
+        id: existing.id,
+        active_claim_key: existing.active_claim_key,
+        overall_status: existing.overall_status,
+        started_at: existing.started_at,
+        ...(existing.claim_checked_at !== undefined
+          ? { claim_checked_at: existing.claim_checked_at }
+          : {}),
+      };
+      const takeover = await sr.entities.SyncRun.updateMany(
+        takeoverFilter,
+        { $set: runData },
+      );
+      if (Number(takeover?.updated || 0) !== 1) {
+        throw new ExternalSyncRequestError('claim_lost', 'Synchronization retry lost its takeover race.', 409);
+      }
+      run = await sr.entities.SyncRun.get(existing.id);
+      if (!run || run.active_claim_key !== claimKey || run.overall_status !== 'in_progress') {
+        throw new ExternalSyncRequestError('claim_lost', 'Synchronization retry could not be verified.', 409);
+      }
+    } else {
+      run = await sr.entities.SyncRun.create(runData);
+    }
     return { disposition: 'acquired', run, requestKey, claimKey };
   } catch (error) {
     if (error instanceof ExternalSyncRequestError) throw error;
@@ -345,6 +369,29 @@ export async function finishExternalSyncRequest(sr, run, claimKey, patch) {
       current.overall_status !== patch.overall_status ||
       current.completed_at !== completedAt) {
     throw new ExternalSyncRequestError('claim_lost', 'Synchronization completion could not be verified.', 409);
+  }
+  return current;
+}
+
+// Revalidate the exact attempt immediately before provider I/O or a durable
+// side effect. A plain read can be stale while a TTL retry replaces the claim.
+export async function assertExternalSyncClaimActive(sr, run, claimKey) {
+  const checkedAt = new Date().toISOString();
+  const result = await sr.entities.SyncRun.updateMany(
+    { id: run.id, active_claim_key: claimKey, overall_status: 'in_progress' },
+    // started_at is the liveness heartbeat used by stale-takeover detection.
+    // Renewing it in the same CAS prevents a retry from replacing an active
+    // worker based on an obsolete start time.
+    { $set: { claim_checked_at: checkedAt, started_at: checkedAt } },
+  );
+  if (Number(result?.updated || 0) !== 1) {
+    throw new ExternalSyncRequestError('claim_lost', 'Synchronization claim is no longer active.', 409);
+  }
+  const current = await sr.entities.SyncRun.get(run.id);
+  if (!current || current.active_claim_key !== claimKey ||
+      current.overall_status !== 'in_progress' || current.claim_checked_at !== checkedAt ||
+      current.started_at !== checkedAt) {
+    throw new ExternalSyncRequestError('claim_lost', 'Synchronization claim could not be fenced.', 409);
   }
   return current;
 }

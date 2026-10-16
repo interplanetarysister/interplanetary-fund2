@@ -3,6 +3,7 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { ensureCanonicalCampaign, recordCanonicalExternalObservation } from '../../shared/base44Financial.ts';
 import {
+  assertExternalSyncClaimActive,
   beginExternalSyncRequest,
   authorizeExternalSyncScope,
   crowdfundingConnectionEligibility,
@@ -156,13 +157,22 @@ export default async function (req) {
           const eligibility = crowdfundingConnectionEligibility(conn, campaign.created_by_id);
           if (!eligibility.ok) continue;
 
+          // Fence the exact attempt immediately before provider work. A stale
+          // worker must stop before it can perform provider I/O.
+          await assertExternalSyncClaimActive(sr, run, activeClaimKey);
           const result = await adapterFor(conn);
+          // Provider work may outlive the request TTL; fence again before any
+          // canonical or connection write.
+          await assertExternalSyncClaimActive(sr, run, activeClaimKey);
           let imported = 0;
           const txIds = [];
           let lastObservation = null;
           let observedCurrency = String(conn.external_currency || '').trim().toUpperCase();
 
-          if ((result.transactions || []).length) await ensureCanonicalCampaign(sr, campaign);
+          if ((result.transactions || []).length) {
+            await assertExternalSyncClaimActive(sr, run, activeClaimKey);
+            await ensureCanonicalCampaign(sr, campaign);
+          }
 
           for (const tx of result.transactions || []) {
             const txId = String(tx.id || tx.transaction_id || '').trim();
@@ -176,6 +186,7 @@ export default async function (req) {
             }
             observedCurrency = currency;
 
+            await assertExternalSyncClaimActive(sr, run, activeClaimKey);
             const observation = await recordCanonicalExternalObservation(sr, {
               operationKey: `external:${conn.platform}:${conn.id}:${txId}`,
               provider: String(conn.platform),
@@ -200,6 +211,7 @@ export default async function (req) {
             const observationKey = `external:${conn.platform}:${conn.id}:${txId}`;
             const mirrored = await sr.entities.ExternalFundObservation.filter({ operation_key: observationKey });
             if (!mirrored?.length) {
+              await assertExternalSyncClaimActive(sr, run, activeClaimKey);
               await sr.entities.ExternalFundObservation.create({
                 operation_key: observationKey,
                 provider: String(conn.platform),
@@ -229,6 +241,7 @@ export default async function (req) {
             update.external_donor_count = Number(lastObservation.observedCount || 0);
             update.external_currency = observedCurrency;
           }
+          await assertExternalSyncClaimActive(sr, run, activeClaimKey);
           await sr.entities.PlatformConnection.update(conn.id, update);
 
           const amountDiscovered = num(result.amount_discovered);
@@ -249,8 +262,10 @@ export default async function (req) {
             note: result.note,
           });
         } catch (err) {
+          if (err?.code === 'claim_lost') throw err;
           console.error('syncExternalFunds provider sync failed:', err?.name || 'UnknownError');
           const safeError = 'This external connection could not be synchronized safely.';
+          await assertExternalSyncClaimActive(sr, run, activeClaimKey);
           await sr.entities.PlatformConnection.update(conn.id, { last_error: safeError }).catch(() => {});
           providerResults.push({
             provider: conn.platform,
@@ -322,14 +337,16 @@ export default async function (req) {
     return Response.json(publicRun(run));
   } catch (error) {
     console.error('syncExternalFunds error:', error?.name || 'UnknownError');
-    if (sr && activeRun?.id) {
-      await failExternalSyncRequest(sr, activeRun, activeClaimKey, 'The authenticated explicit request failed before completion.').catch(() => {});
-      if (base44 && actor?.id) await logAudit(base44, {
+    const claimLost = error?.code === 'claim_lost';
+    let failureFinalized = !activeRun;
+    if (!claimLost && sr && activeRun?.id) {
+      failureFinalized = Boolean(await failExternalSyncRequest(sr, activeRun, activeClaimKey, 'The authenticated explicit request failed before completion.').catch(() => null));
+      if (failureFinalized && base44 && actor?.id) await logAudit(base44, {
         action: 'external_funds_sync', actor_user_id: actor.id, target_type: 'SyncRun', target_id: activeRun.id,
         detail: `request_id=${activeRun.request_id || 'unknown'} failed before completion`, status: 'failure',
         metadata: { request_id: activeRun.request_id || null, request_origin: 'explicit_authenticated_action' },
       }).catch(() => {});
     }
-    return Response.json({ error: 'Synchronization could not complete.' }, { status: 500 });
+    return Response.json({ error: claimLost ? 'Synchronization attempt was superseded safely.' : 'Synchronization could not complete.' }, { status: error?.status || 500 });
   }
 }

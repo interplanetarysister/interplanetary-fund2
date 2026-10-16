@@ -26,7 +26,7 @@ export default async function(req) {
     const ownerGoal = Number(incoming.goal_amount);
     if (!(Number.isFinite(ownerGoal) && ownerGoal > 0)) return Response.json({ error: 'Enter a campaign goal before importing this fundraiser.' }, { status: 400 });
     const fingerprint = JSON.stringify({ connection_id: connection.id, goal_amount: ownerGoal });
-    const targetKey = externalCampaignImportTargetKey(user.id, connection.id);
+    const targetKey = await externalCampaignImportTargetKey(user.id, connection.id);
     const request = await beginExternalSyncRequest(sr, {
       jobType: 'campaign_import',
       actorUserId: user.id,
@@ -39,12 +39,14 @@ export default async function(req) {
     if (request.disposition === 'in_progress') return Response.json({ ok: false, request_id: requestId, status: 'in_progress', deduplicated: true }, { status: 202 });
     run = request.run; claimKey = request.claimKey;
     const operation = await convergeExternalCampaignImport({
-      base44,
       sr,
       user,
       connection,
       incoming: { ...incoming, external_campaign_id: body.external_campaign_id },
       requestId,
+      requestFingerprint: fingerprint,
+      run,
+      claimKey,
       discover: discoverPublicCampaignSnapshot,
     });
     const { campaign, imported, result } = operation;
@@ -53,8 +55,10 @@ export default async function(req) {
     return Response.json(result);
   } catch (error) {
     console.error('importExternalCampaign failed:', error?.name || 'UnknownError');
-    if (sr && run && claimKey) await failExternalSyncRequest(sr, run, claimKey, 'Explicit external campaign import failed.').catch(() => {});
-    if (base44 && user?.id) await logAudit(base44, { action: 'external_campaign_import_failed', actor_user_id: user.id, target_type: 'SyncRun', target_id: run?.id || requestId, detail: 'Explicit external campaign import failed safely.', status: 'failure', metadata: { request_id: requestId || null, reason: error?.code || 'provider_error' } }).catch(() => {});
+    const claimLost = error?.code === 'claim_lost';
+    let failureFinalized = !run;
+    if (!claimLost && sr && run && claimKey) failureFinalized = Boolean(await failExternalSyncRequest(sr, run, claimKey, 'Explicit external campaign import failed.').catch(() => null));
+    if (!claimLost && failureFinalized && base44 && user?.id) await logAudit(base44, { action: 'external_campaign_import_failed', actor_user_id: user.id, target_type: 'SyncRun', target_id: run?.id || requestId, detail: 'Explicit external campaign import failed safely.', status: 'failure', metadata: { request_id: requestId || null, reason: error?.code || 'provider_error' } }).catch(() => {});
     return Response.json({ error: error?.message || 'External campaign could not be imported.' }, { status: error?.status || 500 });
   }
 }

@@ -52,7 +52,7 @@
     "test:delete-account": "node scripts/test-delete-account.mjs",
     "test:paypal-limit": "node scripts/test-paypal-order-limit.mjs",
     "test:account-guard": "node scripts/test-account-guard.mjs",
-    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-paypal-financial-recovery.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs && node scripts/verify-paypal-checkout-contract.mjs && node scripts/test-paypal-wallet-readiness.mjs && node scripts/verify-apple-pay-contract.mjs && node scripts/verify-fundraising-mode.mjs",
+    "test:payments": "node scripts/test-fee-calc.mjs && node scripts/test-stripe-idempotency.mjs && node scripts/test-financial-integrity.mjs && node scripts/test-paypal-financial-recovery.mjs && node scripts/test-delete-account.mjs && node scripts/test-paypal-order-limit.mjs && node scripts/test-account-guard.mjs && node scripts/verify-paypal-checkout-contract.mjs && node scripts/test-paypal-wallet-readiness.mjs && node scripts/verify-apple-pay-contract.mjs && node scripts/verify-fundraising-mode.mjs && node scripts/verify-donor-total-contract.mjs",
     "preview": "vite preview",
     "verify:node22-release-contract": "node scripts/verify-node22-release-contract.mjs",
     "test:node22-release-contract": "node scripts/test-node22-release-contract.mjs",
@@ -72,7 +72,7 @@
     "verify:connection-lifecycle": "node scripts/verify-connection-lifecycle-contract.mjs",
     "verify:host-portability": "node scripts/verify-host-portability-contract.mjs",
     "verify:admin-authorization": "node scripts/verify-admin-authorization-contract.mjs",
-    "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs && node scripts/verify-external-distribution-routing.mjs && node scripts/verify-request-triggered-external-sync.mjs && node --experimental-strip-types scripts/test-request-triggered-external-sync.mjs && node --experimental-strip-types scripts/test-external-campaign-import-convergence.mjs",
+    "verify:external-fund-network": "node scripts/verify-external-fund-network-contract.mjs && node scripts/verify-external-distribution-routing.mjs && node scripts/verify-request-triggered-external-sync.mjs && node --experimental-loader ./scripts/js-compatible-ts-loader.mjs scripts/test-request-triggered-external-sync.mjs && node --experimental-loader ./scripts/js-compatible-ts-loader.mjs scripts/test-external-campaign-import-convergence.mjs",
     "verify:managed-connections": "node scripts/verify-managed-connections-contract.mjs",
     "verify:route-code-splitting": "node scripts/verify-route-code-splitting.mjs",
     "verify:production-build-output": "node scripts/verify-production-build-output.mjs",
@@ -97,11 +97,12 @@
     "verify:studio-pages": "node scripts/verify-ifund-studio-pages.mjs",
     "verify:links-assets": "node scripts/verify-ifund-links-assets.mjs",
     "verify:studio-contracts": "node scripts/verify-ifund-links-assets.mjs && node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/verify-ifund-bundle-graph.mjs",
-    "verify:runtime-minimum": "node scripts/require-node22.mjs"
+    "verify:runtime-minimum": "node scripts/require-node22.mjs",
+    "verify:donor-total": "node scripts/verify-donor-total-contract.mjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.53",
-    "@base44/vite-plugin": "^1.0.45",
+    "@base44/sdk": "^0.8.54",
+    "@base44/vite-plugin": "^1.0.47",
     "@capacitor/android": "8.4.3",
     "@capacitor/core": "8.4.3",
     "@capacitor/push-notifications": "8.0.3",

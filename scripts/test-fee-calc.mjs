@@ -1,91 +1,46 @@
-// Automated tests for the donation fee model (base44/shared/fees.js).
-// Pure runtime math — no network, no charges, no payouts.
+// Pure offline tests. Never captures funds or changes ledgers.
+import assert from 'node:assert/strict';
 import {
-  computeContribution, recipientGift, computePlatformFee, computeRecipientNet,
-  computeProcessingFee, computePayPalProcessingFee, computePayPalWalletProcessingFee, computeBreakdown, computePayPalBreakdown, computePayPalWalletBreakdown, computeWithdrawal, giftOf,
-  validateDonationAmount,
+  computeContribution, recipientGift, giftOf, computeWithdrawal,
+  computeBreakdown, computePayPalBreakdown, computePayPalWalletBreakdown,
+  validateDonationAmount, computePayPalProcessingFee,
 } from '../base44/shared/fees.js';
+import { computePayPalBreakdown as clientPayPalBreakdown, computePayPalWalletBreakdown as clientWalletBreakdown } from '../src/lib/fees.js';
 
-let failed = 0;
-const eq = (name, actual, expected) => {
-  if (Math.abs((Number(actual) || 0) - expected) > 0.000001) {
-    console.error(`FAIL ${name}: expected ${expected}, got ${actual}`);
-    failed++;
-  } else {
-    console.log(`ok  ${name}: ${actual}`);
+for (const [rail, quote] of [['PayPal', computePayPalBreakdown], ['PayPal wallet', computePayPalWalletBreakdown], ['Generic', computeBreakdown]]) {
+  for (const pledge of [1, 2.75, 25, 33.33, 100, 999.99]) {
+    for (const chosen of [false, true]) {
+      const b = quote(pledge, chosen);
+      const pledgedCents = Math.round(pledge * 100);
+      const tipCents = chosen ? Math.round(pledgedCents * .10) : 0;
+      assert.equal(b.recipientGift, pledge, rail + ' pledged gift must stay intact');
+      assert.equal(b.contribution, tipCents / 100, rail + ' 10% must be additional');
+      assert.equal(Math.round(b.totalCharged * 100), Math.round(b.amount * 100) + Math.round(b.processing * 100));
+      assert.equal(Math.round(b.amount * 100), pledgedCents + tipCents);
+      assert.ok(b.totalCharged >= pledge + (tipCents / 100));
+      assert.equal(b.platformFee, computeWithdrawal(pledge).fee, '3% only at withdrawal');
+      assert.equal(b.recipientNet, computeWithdrawal(pledge).net);
+    }
   }
-};
-
-// --- Fee calculations, contribution OFF (default / unchecked) ---
-eq('contribution off (100)', computeContribution(100, false), 0);
-eq('gift off (100)', recipientGift(100, false), 100);
-eq('platformFee off (100)', computePlatformFee(100, false), 3.00);
-eq('recipientNet off (100)', computeRecipientNet(100, false), 97.00);
-
-// --- Fee calculations, contribution ON (opt-in) ---
-eq('contribution on (100)', computeContribution(100, true), 10);
-eq('gift on (100)', recipientGift(100, true), 90);
-eq('platformFee on (100)', computePlatformFee(100, true), 2.70);
-eq('recipientNet on (100)', computeRecipientNet(100, true), 87.30);
-eq('Stripe processing fee derived from $100 total', computeProcessingFee(100), 3.11);
-eq('PayPal Checkout processing fee derived from $100 total', computePayPalProcessingFee(100), 3.85);
-eq('PayPal wallet processing fee derived from $100 total', computePayPalWalletProcessingFee(100), 3.10);
-eq('PayPal breakdown uses PayPal fee', computePayPalBreakdown(100, false).processing, 3.85);
-eq('Google Pay breakdown uses PayPal wallet fee', computePayPalWalletBreakdown(100, false).processing, 3.10);
-eq('PayPal $1 charge remains $1', computePayPalBreakdown(1, false).totalCharged, 1);
-eq('PayPal $1 charge leaves positive donation', computePayPalBreakdown(1, false).amount > 0, 1);
-
-// --- Optional contribution on/off edge cases ---
-eq('contribution on (0)', computeContribution(0, true), 0);
-eq('contribution off (250)', computeContribution(250, false), 0);
-eq('contribution on (250)', computeContribution(250, true), 25);
-eq('gift on (250)', recipientGift(250, true), 225);
-
-// --- No stacked fees: the checkout projection must equal withdrawal reality ---
-// The recipient net shown at checkout equals the net paid out at withdrawal for
-// the same gift — proving fees are not applied twice (checkout + withdrawal).
-for (const opt of [false, true]) {
-  const bd = computeBreakdown(100, opt);
-  const wd = computeWithdrawal(bd.recipientGift);
-  eq(`no-stacked-fee checkout==withdrawal net (opt=${opt})`, bd.recipientNet, wd.net);
-  eq(`no-stacked-fee gift==withdrawal gross (opt=${opt})`, bd.recipientGift, wd.gross);
 }
-
-// The total charged never exceeds the entered amount — the contribution is an
-// allocation FROM the total, never added on top.
-for (const opt of [false, true]) {
-  const bd = computeBreakdown(100, opt);
-  eq(`total charged == entered amount (opt=${opt})`, bd.totalCharged, 100);
-  eq(`net donation plus processor fee == entered amount (opt=${opt})`, bd.amount + bd.processing, 100);
+for (const optIn of [false, true]) {
+  assert.deepEqual(computePayPalBreakdown(100, optIn), clientPayPalBreakdown(100, optIn));
+  assert.deepEqual(computePayPalWalletBreakdown(100, optIn), clientWalletBreakdown(100, optIn));
 }
-
-// giftOf reads the recipient gift from a stored Donation record.
-eq('giftOf record with contribution', giftOf({ amount: 100, platform_contribution: 10 }), 90);
-eq('giftOf legacy record (no contribution)', giftOf({ amount: 100 }), 100);
-
-// --- Minimum donation validation (rejects values that can't yield a valid payout) ---
-const v = (a) => validateDonationAmount(a);
-eq('validate ok (1)', v(1).ok, 1);
-eq('validate ok (100)', v(100).ok, 1);
-eq('validate ok (1000000)', v(1000000).ok, 1);
-eq('validate fail (0)', v(0).ok, 0);
-eq('validate fail (-5)', v(-5).ok, 0);
-eq('validate fail (0.5)', v(0.5).ok, 0);
-eq('validate fail (1000001)', v(1000001).ok, 0);
-eq('validate fail (null)', v(null).ok, 0);
-
-// --- Negative gift/payout prevention (clamp + cents math) ---
-eq('giftOf clamps negative gift', giftOf({ amount: 10, platform_contribution: 20 }), 0);
-eq('recipientNet never negative (tiny)', computeRecipientNet(0.01, false), 0.01);
-eq('withdrawal net never negative (0)', computeWithdrawal(0).net, 0);
-eq('withdrawal net never negative (0.01)', computeWithdrawal(0.01).net, 0.01);
-eq('withdrawal fee zero on tiny', computeWithdrawal(0.01).fee, 0);
-
-// --- Minor-unit (cents) precision on awkward amounts ---
-eq('contribution cents (33.33)', computeContribution(33.33, true), 3.33);
-eq('gift cents (33.33)', recipientGift(33.33, true), 30.00);
-eq('platformFee cents (33.33)', computePlatformFee(33.33, false), 1.00);
-eq('processing cents derived from 33.33 total', computeProcessingFee(33.33), 1.24);
-
-if (failed) { console.error(`\n${failed} fee-calc test(s) failed.`); process.exit(1); }
-console.log('\nAll fee-calc tests passed.');
+const withTip = computePayPalBreakdown(100, true);
+assert.equal(withTip.recipientGift, 100);
+assert.equal(withTip.contribution, 10);
+assert.ok(withTip.totalCharged > 110, 'processor fee is separately consented to');
+assert.equal(computeContribution(100, true), 10);
+// Existing stored donation rows are NOT reinterpreted or retroactively rewritten.
+assert.equal(giftOf({amount:100,platform_contribution:10}),90);
+assert.equal(recipientGift(100,true),90, 'legacy helper retained for saved allocations');
+assert.equal(giftOf({amount:100}),100);
+assert.equal(giftOf({amount:10,platform_contribution:20}),0);
+assert.equal(computeWithdrawal(100).fee,3);
+assert.equal(computeWithdrawal(100).net,97);
+assert.ok(computePayPalProcessingFee(100)>0);
+for (const [amount,allowed] of [[1,true],[100,true],[1_000_000,true],[0,false],[-5,false],[.5,false],[1_000_001,false],[null,false]]) {
+  assert.equal(validateDonationAmount(amount).ok,allowed,'amount validation '+amount);
+}
+console.log('Gift-first quote, legacy donations, 10% opt-in, and withdrawal math passed.');

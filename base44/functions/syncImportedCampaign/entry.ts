@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
-import { beginExternalSyncRequest, crowdfundingConnectionEligibility, failExternalSyncRequest, finishExternalSyncRequest, validExternalSyncRequestId } from '../../shared/externalSyncRequest.ts';
+import { assertExternalSyncClaimActive, beginExternalSyncRequest, crowdfundingConnectionEligibility, failExternalSyncRequest, finishExternalSyncRequest, validExternalSyncRequestId } from '../../shared/externalSyncRequest.ts';
 import { discoverPublicCampaignSnapshot } from './publicCampaignSnapshot.ts';
 
 const FIELDS=['title','summary','story','category','goal_amount','cover_image_url','end_date','location'];
@@ -32,7 +32,9 @@ export default async function(req){
     if(request.disposition==='completed') return Response.json({...request.run.result_payload,deduplicated:true});
     if(request.disposition==='in_progress') return Response.json({ok:false,request_id:requestId,status:'in_progress',deduplicated:true},{status:202});
     run=request.run; claimKey=request.claimKey;
+    await assertExternalSyncClaimActive(sr,run,claimKey);
     const discovered=await discoverPublicCampaignSnapshot(connection);
+    await assertExternalSyncClaimActive(sr,run,claimKey);
     const snapshot=discovered.campaign;
     const provenance={...(record.field_provenance||{})};
     const locked=new Set(record.locally_locked_fields||[]);
@@ -46,7 +48,11 @@ export default async function(req){
       patch[key]=snapshot[key];
       provenance[key]={source:key==='category'?'system_default':discovered.source,connection_id:connection.id,imported_at:now,source_value:snapshot[key]};
     }
-    if(Object.keys(patch).length) await sr.entities.Campaign.update(campaign.id,patch);
+    if(Object.keys(patch).length){
+      await assertExternalSyncClaimActive(sr,run,claimKey);
+      await sr.entities.Campaign.update(campaign.id,patch);
+    }
+    await assertExternalSyncClaimActive(sr,run,claimKey);
     await sr.entities.ExternalCampaignImport.update(record.id,{last_imported_at:now,source_updated_at:now,external_url:discovered.source_url,field_provenance:provenance,locally_locked_fields:[...locked],status:'imported'});
     const result={ok:true,request_id:requestId,campaign_id:campaign.id,updated_fields:Object.keys(patch),locally_locked_fields:[...locked]};
     await finishExternalSyncRequest(sr,run,claimKey,{overall_status:'success',campaign_id:campaign.id,result_payload:result,description:'Explicit imported campaign refresh completed.'});
@@ -54,8 +60,10 @@ export default async function(req){
     return Response.json(result);
   }catch(error){
     console.error('syncImportedCampaign failed:',error?.name||'UnknownError');
-    if(sr&&run&&claimKey) await failExternalSyncRequest(sr,run,claimKey,'Explicit imported campaign refresh failed.').catch(()=>{});
-    if(base44&&user?.id) await logAudit(base44,{action:'external_campaign_sync_failed',actor_user_id:user.id,target_type:'SyncRun',target_id:run?.id||requestId,detail:'Explicit imported campaign refresh failed safely.',status:'failure',metadata:{request_id:requestId||null,reason:error?.code||'provider_error'}}).catch(()=>{});
+    const claimLost=error?.code==='claim_lost';
+    let failureFinalized=!run;
+    if(!claimLost&&sr&&run&&claimKey) failureFinalized=Boolean(await failExternalSyncRequest(sr,run,claimKey,'Explicit imported campaign refresh failed.').catch(()=>null));
+    if(!claimLost&&failureFinalized&&base44&&user?.id) await logAudit(base44,{action:'external_campaign_sync_failed',actor_user_id:user.id,target_type:'SyncRun',target_id:run?.id||requestId,detail:'Explicit imported campaign refresh failed safely.',status:'failure',metadata:{request_id:requestId||null,reason:error?.code||'provider_error'}}).catch(()=>{});
     return Response.json({error:error?.message||'Imported campaign synchronization could not complete.'},{status:error?.status||500});
   }
 }

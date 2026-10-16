@@ -15,7 +15,10 @@ export function downloadReceipt(donation) {
     ["Date", format(new Date(donation.created_date), "MMMM d, yyyy")],
     ["Donor", donation.donor_name || "Anonymous"],
     ["Campaign", donation.campaign_title || donation.campaign_id],
-    ["Amount", `$${donation.amount.toLocaleString()}${donation.is_recurring ? " / month" : ""}`],
+    ["Gift to campaign", `${donation.amount.toLocaleString()}${donation.is_recurring ? " / month" : ""}`],
+    ...(Number(donation.platform_support_amount || 0) > 0 ? [["Optional IFund support", `${Number(donation.platform_support_amount).toFixed(2)}`]] : []),
+    ...(Number(donation.processing_fee || 0) > 0 ? [["Processor charge", `${Number(donation.processing_fee).toFixed(2)}`]] : []),
+    ...(Number.isFinite(Number(donation.total_charged)) ? [["Total charged", `${Number(donation.total_charged).toFixed(2)}`]] : []),
     ["Type", donation.is_recurring ? "Recurring (monthly)" : "One-time"],
   ];
   let y = 45;

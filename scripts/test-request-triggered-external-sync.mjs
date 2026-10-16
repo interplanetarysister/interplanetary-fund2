@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {
   EXTERNAL_SYNC_RUN_TTL_MS,
+  assertExternalSyncClaimActive,
   authorizeExternalSyncScope,
   beginExternalSyncRequest,
   crowdfundingConnectionEligibility,
+  failExternalSyncRequest,
   finishExternalSyncRequest,
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
@@ -217,6 +219,65 @@ await assert.rejects(
 assert.equal(stale.runs[0].active_claim_key,recovered.claimKey);
 assert.equal(stale.runs[0].overall_status,'in_progress');
 assert.equal(stale.runs[0].result_payload,undefined);
+
+let staleWorkerProviderCalls=0;
+let staleWorkerDurableWrites=0;
+await assert.rejects(
+  async()=>{
+    await assertExternalSyncClaimActive(stale.sr,staleRunBeforeRetry,staleClaimKey);
+    staleWorkerProviderCalls++;
+    staleWorkerDurableWrites++;
+  },
+  (error)=>error.code==='claim_lost'&&error.status===409,
+  'a stale worker is fenced before provider I/O or durable writes after takeover',
+);
+assert.equal(staleWorkerProviderCalls,0,'superseded worker performs no provider I/O');
+assert.equal(staleWorkerDurableWrites,0,'superseded worker performs no durable write');
+
+for (const handlerName of [
+  'syncExternalFunds',
+  'discoverExternalCampaignSnapshot',
+  'syncImportedCampaign',
+  'importExternalCampaign',
+]) {
+  const staleFailure=fakeService({runs:[{
+    id:`stale-failure-${handlerName}`,request_key:`external_funds:u1:${UUID}`,
+    request_id:UUID,request_fingerprint:'user-scope',job_type:'external_funds',
+    initiator_user_id:'u1',started_at:new Date(oldTime).toISOString(),
+    overall_status:'in_progress',attempt_number:1,
+    active_claim_key:`external_funds:u1:${UUID}:1`,
+  }],claims:[{
+    claim_key:`external_funds:u1:${UUID}:1`,request_key:`external_funds:u1:${UUID}`,
+    request_id:UUID,job_type:'external_funds',actor_user_id:'u1',
+    attempt_number:1,claimed_at:new Date(oldTime).toISOString(),
+  }]});
+  const staleFailureRun={...staleFailure.runs[0]};
+  const staleFailureClaim=staleFailureRun.active_claim_key;
+  const successor=await beginExternalSyncRequest(staleFailure.sr,args);
+  let staleFailureAudits=0;
+  const staleFinalized=await failExternalSyncRequest(
+    staleFailure.sr,staleFailureRun,staleFailureClaim,
+    `${handlerName} provider failure after takeover`,
+  );
+  if(staleFinalized) staleFailureAudits++;
+  assert.equal(staleFinalized,null,`${handlerName} cannot finalize a superseded provider failure`);
+  assert.equal(staleFailureAudits,0,`${handlerName} emits no stale failure audit after takeover`);
+  assert.equal(staleFailure.runs[0].active_claim_key,successor.claimKey);
+  assert.equal(staleFailure.runs[0].overall_status,'in_progress');
+
+  const currentFailure=fakeService();
+  const current=await beginExternalSyncRequest(currentFailure.sr,args);
+  let currentFailureAudits=0;
+  const currentFinalized=await failExternalSyncRequest(
+    currentFailure.sr,current.run,current.claimKey,
+    `${handlerName} current provider failure`,
+  );
+  if(currentFinalized) currentFailureAudits++;
+  assert.equal(currentFinalized?.overall_status,'failed',
+    `${handlerName} finalizes a current provider failure`);
+  assert.equal(currentFailureAudits,1,
+    `${handlerName} preserves audit eligibility for current provider failures`);
+}
 
 const claimOnlyConflict=fakeService({claims:[{
   claim_key:`external_funds:u1:${UUID}:1`,

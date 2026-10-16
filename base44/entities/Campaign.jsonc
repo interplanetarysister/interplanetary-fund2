@@ -74,23 +74,57 @@
       "type": "string",
       "description": "Optional owner-selected external fundraiser connection for campaign promotion. Empty uses IFund checkout; never transfers external funds."
     },
-    "external_import_operation_key": {
+    "external_import_private_marker": {
       "type": "string",
-      "description": "Server-derived recovery identity for one explicit connected-campaign import. Never supplied by clients."
+      "description": "Server-generated import correlation marker. Field-level security keeps it hidden and immutable to campaign owners and public readers; authority remains in the admin-only import operation.",
+      "rls": {
+        "create": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "delete": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
-    "external_import_connection_id": {
+    "external_import_recovery_token": {
       "type": "string",
-      "description": "Connected fundraiser used by the durable import operation."
-    },
-    "external_import_source_url": {
-      "type": "string"
-    },
-    "external_import_source_type": {
-      "type": "string"
-    },
-    "external_imported_at": {
-      "type": "string",
-      "format": "date-time"
+      "description": "Deprecated legacy field. It grants no recovery authority and is hidden and immutable outside service-role/admin access.",
+      "rls": {
+        "create": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "read": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        "delete": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
     },
     "accept_crypto_donations": {
       "type": "boolean",

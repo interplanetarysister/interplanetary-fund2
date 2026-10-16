@@ -25,10 +25,10 @@ jobs:
       - name: Checkout authoritative IFund source
         uses: actions/checkout@v4
 
-      - name: Set up Node 24.12 (required by current Firebase AI dependency)
+      - name: Set up current supported Node (Node 20+ policy)
         uses: actions/setup-node@v4
         with:
-          node-version: '24.12.0'
+          node-version: 'node'
           cache: npm
 
       - name: Set up Java 21
@@ -77,7 +77,7 @@ jobs:
           with zipfile.ZipFile(p) as archive:
               embedded = archive.read('assets/public/ifund-release.json')
               assert embedded == Path('dist/ifund-release.json').read_bytes()
-              assert json.loads(embedded)['release_id'] == 'ifund-20261013-legal-help-paypal-mobile-parity-v4'
+              assert json.loads(embedded)['release_id'] == 'ifund-20261015-gift-first-donations-platform-tip-v5'
               names = archive.namelist()
               assert 'assets/public/index.html' in names
               assert any(name.startswith('assets/public/assets/LegalFooter-') and name.endswith('.js') for name in names)
