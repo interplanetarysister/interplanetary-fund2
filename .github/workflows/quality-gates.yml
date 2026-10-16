@@ -197,6 +197,8 @@ jobs:
           test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
 
+  # A source-review attestation is required before costly jobs may start.
+  # Automated preflight checks are not a substitute for the review itself.
   # Preflight review first: dependency-free source and workflow checks.
   preflight-review:
     runs-on: ubuntu-24.04
