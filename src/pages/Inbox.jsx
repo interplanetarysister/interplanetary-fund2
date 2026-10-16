@@ -50,6 +50,7 @@ export default function Inbox() {
         ...inboxItems.map((i) => ({
           key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
           content: i.content, link: i.link, campaign_id: i.campaign_id,
+          recipient_address: i.recipient_address, mailbox_priority: i.mailbox_priority,
           campaign_title: i.campaign_title || myCampaigns.find((c) => c.id === i.campaign_id)?.title,
           status: i.status, date: i.created_date, ai_draft: i.ai_draft,
         })),
@@ -69,7 +70,11 @@ export default function Inbox() {
             /^\/campaign\/([a-zA-Z0-9_-]{1,128})(?:[?#]|$)/.exec(String(n.link || ""))?.[1]))?.title,
           notification_title: n.title, notification_body: n.body, notification_type: n.type,
         })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+      ].sort((a, b) => {
+        const aPriority = a.status === 'open' && a.platform === 'email' && a.mailbox_priority === 'priority' ? 1 : 0;
+        const bPriority = b.status === 'open' && b.platform === 'email' && b.mailbox_priority === 'priority' ? 1 : 0;
+        return bPriority - aPriority || new Date(b.date) - new Date(a.date);
+      });
 
       setItems(merged);
      } catch (e) {
