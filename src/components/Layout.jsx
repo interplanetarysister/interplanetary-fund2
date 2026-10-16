@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen, House, CircleHelp, Leaf } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
@@ -116,6 +116,7 @@ const bottomNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const drawerCloseRef = useRef(null);
   const [darkTheme, setDarkTheme] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
   const toggleTheme = () => {
     const next = !document.documentElement.classList.contains("dark");
@@ -152,12 +153,27 @@ export default function Layout() {
   useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    const previouslyFocused = document.activeElement;
+    const focusFrame = window.requestAnimationFrame(() => drawerCloseRef.current?.focus());
+    const onKey = (e) => {
+      if (e.key === "Escape") { setOpen(false); return; }
+      if (e.key !== "Tab") return;
+      const drawer = document.getElementById("mobile-menu");
+      const items = Array.from(drawer?.querySelectorAll('a[href],button:not([disabled])') || []);
+      if (!items.length) return;
+      if (e.shiftKey && document.activeElement === items[0]) { e.preventDefault(); items.at(-1)?.focus(); }
+      else if (!e.shiftKey && document.activeElement === items.at(-1)) { e.preventDefault(); items[0]?.focus(); }
+    };
     window.addEventListener("keydown", onKey);
-    // Prevent the page beneath the drawer from scrolling on touch.
-    const previous = document.body.style.overflow;
+    // Keep scrolling and keyboard focus inside the modal drawer.
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = previous; };
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
+    };
   }, [open]);
 
   const nav = (
@@ -248,7 +264,7 @@ export default function Layout() {
                className="ifund-sidebar md:hidden fixed inset-y-0 left-0 w-[min(85vw,350px)] z-[70] pt-safe shadow-2xl flex flex-col overflow-hidden">
             <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-current/10">
               <span className="font-display text-base font-bold">Explore IFund</span>
-              <button type="button" onClick={() => setOpen(false)} className="ifund-sidebar-theme rounded-xl p-3" aria-label="Close navigation"><X className="w-5 h-5" /></button>
+              <button type="button" ref={drawerCloseRef} onClick={() => setOpen(false)} className="ifund-sidebar-theme rounded-xl p-3" aria-label="Close navigation"><X className="w-5 h-5" /></button>
             </div>
             {nav}
           </div>
