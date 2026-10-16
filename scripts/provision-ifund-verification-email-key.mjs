@@ -13,7 +13,7 @@ function call(args, input) {
     input, encoding: 'utf8', maxBuffer: 250_000,
     timeout: 120_000, stdio: ['pipe', 'pipe', 'pipe']
   });
-  return { ok: !result.error && result.status === 0, stdout: result.stdout || '' };
+  return { ok: !result.error && result.status === 0, stdout: result.stdout || '', exitStatus: result.status, errorCode: result.error?.code, diagnosticLength: (result.stderr || '').length };
 }
 function present(text) {
   // Full CLI output is deliberately never displayed; only existence is checked.
@@ -36,6 +36,7 @@ key.fill(0);
 const saved = call(['secrets','set','--env-file','/dev/stdin',...flags], input);
 input.fill(0);
 if (!saved.ok) {
+  if (process.env.IFUND_BASE44_CLI) console.error('Mock CLI status',saved.exitStatus,saved.errorCode,saved.diagnosticLength);
   console.error('Base44 did not confirm the protected secret was saved. No value was printed. Check the Base44 dashboard.');
   process.exit(3);
 }
