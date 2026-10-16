@@ -38,7 +38,7 @@ export default function CampaignTranslation({ campaign, canManage, onChange }) {
       })
       .catch(() => { if (active) setLoadFailed(true); });
     return () => { active = false; };
-  }, [campaign.id, campaign.title, campaign.summary, campaign.story]);
+  }, [campaign.id, campaign.title, campaign.summary, campaign.story, canManage]);
 
   const openLanguage = async (code) => {
     setSelected(code);
