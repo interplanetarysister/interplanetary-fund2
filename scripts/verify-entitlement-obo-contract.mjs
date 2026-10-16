@@ -28,8 +28,8 @@ assert.match(finalize, /shared_with_agents: unifiedObo/);
 assert.match(finalize, /automation_enabled: false/);
 // A connection must still require consent when its owner did not grant
 // account-specific AI access; successful OAuth alone cannot grant delegation.
-assert.match(finalize, /ai_consent_required:\\s*!unifiedObo/);
-assert.match(finalize, /ai_authorized:\\s*unifiedObo/);
+assert.match(finalize, /ai_consent_required:\s*!unifiedObo/);
+assert.match(finalize, /ai_authorized:\s*unifiedObo/);
 assert.match(oauthComplete, /hasUnifiedOboConsent/);
 assert.match(oauthComplete, /deprecated_per_connection_prompt: true/);
 assert.doesNotMatch(oauthComplete, /typeof allowAi|granted: allowAi|shared_with_agents: allowAi/);
