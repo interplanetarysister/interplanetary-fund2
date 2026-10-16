@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 const CONSENT_VERSION = '2026-10-unified-obo-v1';
 
@@ -38,7 +39,7 @@ export default async function(req: Request) {
       return Response.json({ error: 'Finish provider sign-in before completing this connection.' }, { status: 409 });
     }
 
-    const unifiedObo = hasUnifiedOboConsent(user);
+    const unifiedObo = hasUnifiedOboConsent(user) && full.obo_consent?.granted === true && full.obo_consent?.opted_out !== true;
     const now = new Date().toISOString();
     const providerCapabilities = Array.isArray(full.obo_consent?.provider_capabilities)
       ? full.obo_consent.provider_capabilities : [];
@@ -48,7 +49,7 @@ export default async function(req: Request) {
         granted: unifiedObo,
         granted_at: unifiedObo ? (user.ai_obo_consent?.decided_at || now) : null,
         permission_version: CONSENT_VERSION,
-        granted_capabilities: unifiedObo ? providerCapabilities : [],
+        granted_capabilities: unifiedObo ? restrictedAgentScope(full.obo_consent?.requested_capabilities, providerCapabilities) : [],
       },
       automation_mode: unifiedObo ? 'auto' : 'manual',
       agent_access: {

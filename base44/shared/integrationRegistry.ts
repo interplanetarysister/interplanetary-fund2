@@ -185,10 +185,10 @@ export async function assertExternalAgentAction(sr, {
   if (requireAutomation && (connection.automation_mode || 'manual') !== 'auto') {
     return { ok: false, reason: 'automation is not enabled for this connection' };
   }
-  const known = new Set([
-    ...(connection.obo_consent?.provider_capabilities || []),
-    ...(connection.obo_consent?.granted_capabilities || []),
-  ]);
+  // Requested account scope cannot fabricate provider capabilities.
+  const selected = new Set(connection.obo_consent?.requested_capabilities || []);
+  const known = new Set((connection.obo_consent?.granted_capabilities || [])
+    .filter((value: string) => selected.has(value)));
   if (capability && !known.has(capability)) {
     return { ok: false, reason: `provider capability ${capability} is not granted` };
   }

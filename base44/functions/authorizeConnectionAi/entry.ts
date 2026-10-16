@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { IFUND_STANDARD_AI_SCOPE, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Explicit owner reactivation for previously declined/legacy connections.
 // This only grants IFund agent permission. It never posts, spends, connects,
@@ -32,8 +33,9 @@ export default async function(req: Request) {
     const now = new Date().toISOString();
     const version = String(user.ai_obo_consent?.permission_version || '');
     if (!version) return Response.json({ error: 'Review the current IFund AI permission.' }, { status: 403 });
-    const permitted = [...new Set((connection.obo_consent?.provider_capabilities || [])
-      .map((capability: unknown) => String(capability)).filter(Boolean))];
+    const permitted = restrictedAgentScope(
+      IFUND_STANDARD_AI_SCOPE, connection.obo_consent?.provider_capabilities || []
+    );
     const alreadyVerified = connection.status === 'connected' &&
       connection.verification_status === 'verified';
     const updated = await base44.asServiceRole.entities.PlatformConnection.update(connection.id, {
@@ -44,6 +46,8 @@ export default async function(req: Request) {
         revoked_at: null,
         granted_at: now,
         permission_version: version,
+        scope_version: AI_CONNECTION_SCOPE_VERSION,
+        requested_capabilities: [...IFUND_STANDARD_AI_SCOPE],
         granted_capabilities: permitted,
       },
       agent_access: {

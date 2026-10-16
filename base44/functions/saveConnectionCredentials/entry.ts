@@ -4,6 +4,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { externalBalanceEvidenceChanged } from '../../shared/externalBalanceEvidence.ts';
 import { encryptConnectionSecret } from '../../shared/connectionCrypto.ts';
+import { IFUND_STANDARD_AI_SCOPE, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -24,7 +25,7 @@ export default async function(req) {
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count,
-      balance_reaffirmed, credentials,
+      balance_reaffirmed, credentials, ai_account_authorized,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
@@ -58,7 +59,9 @@ export default async function(req) {
       return Response.json({ error: 'external_currency must be a three-letter ISO currency code' }, { status: 400 });
     }
 
-    const effectiveAutomationMode = automation_mode || existing?.automation_mode || 'manual';
+    const accountConsentRequested = ai_account_authorized === true;
+    const effectiveAutomationMode = accountConsentRequested
+      ? (automation_mode || existing?.automation_mode || 'manual') : 'manual';
     const consentOwner = existing && existing.created_by_id !== user.id
       ? await base44.asServiceRole.entities.User.get(existing.created_by_id).catch(() => null)
       : user;
@@ -155,16 +158,20 @@ export default async function(req) {
     // A newly linked account inherits the owner's one IFund permission.
     // Existing accounts retain explicit refusal; saving a connection must not
     // silently undo an earlier account-specific revocation.
-    const previouslyAllowed = currentConsent.granted === true || !!currentConsent.granted_at;
-    const accountAiConsent = unifiedObo && currentConsent.opted_out !== true &&
-      (existing ? previouslyAllowed : true);
+    // Account-specific affirmative checkbox is required on every new setup.
+    // No implicit delegation merely because global AI permission is active.
+    const accountAiConsent = unifiedObo && accountConsentRequested;
     data.obo_consent = {
       ...currentConsent,
       granted: accountAiConsent,
-      granted_at: accountAiConsent ? (currentConsent.granted_at || now) : currentConsent.granted_at || null,
+      opted_out: !accountAiConsent,
+      revoked_at: accountAiConsent ? null : (currentConsent.revoked_at || now),
+      granted_at: accountAiConsent ? now : null,
+      scope_version: AI_CONNECTION_SCOPE_VERSION,
+      requested_capabilities: accountAiConsent ? [...IFUND_STANDARD_AI_SCOPE] : [],
       permission_version: String(consentOwner.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
       granted_capabilities: accountAiConsent
-        ? (currentConsent.provider_capabilities || currentConsent.granted_capabilities || [])
+        ? restrictedAgentScope(IFUND_STANDARD_AI_SCOPE, currentConsent.provider_capabilities || [])
         : [],
     };
     data.agent_access = {
