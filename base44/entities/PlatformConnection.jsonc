@@ -233,6 +233,14 @@
         "mastodon_access_token": {
           "type": "string",
           "description": "Mastodon access token \u2014 enables direct publishing."
+        },
+        "account_identifier": {
+          "type": "string",
+          "description": "Non-secret account email or username for owner-facing management."
+        },
+        "buymeacoffee_api_token": {
+          "type": "string",
+          "description": "AES-GCM ciphertext of a Buy Me a Coffee read-only developer access token; never a website password."
         }
       }
     },

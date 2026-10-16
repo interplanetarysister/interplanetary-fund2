@@ -4,6 +4,7 @@ import { OAUTH_ENV, verifyManualConnection, verifyOAuthConnection, isLinkBasedPl
 import { redactCredentials } from '../../shared/integrationRegistry.ts';
 import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
 import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
+import { decryptConnectionSecret } from '../../shared/connectionCrypto.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
 const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
@@ -50,6 +51,25 @@ export default async function(req) {
         providerBacked = true;
       } else if (['bluesky', 'mastodon'].includes(connection.platform)) {
         await verifyManualConnection(connection);
+        connectionVerified = true;
+        providerBacked = true;
+      } else if (connection.platform === 'buymeacoffee') {
+        // A read-only token can verify permitted account data, not authorize
+        // web sign-in, posting, payouts, or other write capabilities.
+        const encrypted = connection.credentials?.buymeacoffee_api_token;
+        if (!encrypted) throw new Error('provider_probe_unavailable');
+        const token = await decryptConnectionSecret(encrypted);
+        const response = await fetch('https://developers.buymeacoffee.com/api/v1/supporters?page=1', {
+          method: 'GET',
+          headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
+          redirect: 'error',
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok || !(response.headers.get('content-type') || '').includes('json')) {
+          throw new Error('provider_probe_unavailable');
+        }
+        const result = await response.json();
+        if (!result || typeof result !== 'object') throw new Error('provider_probe_unavailable');
         connectionVerified = true;
         providerBacked = true;
       } else if (connection.platform === 'kofi') {
