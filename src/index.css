@@ -766,3 +766,68 @@
     color: hsl(var(--muted-foreground)) !important;
   }
 }
+
+
+/* Light theme must reach the campaign content, not only navigation chrome.
+   Keep dark-mode styling intact and leave hosted PayPal SDK frames untouched. */
+html:not(.dark) .ifund-experience .deep-space {
+  color: hsl(var(--foreground));
+  background-image: radial-gradient(70rem 30rem at 10% 0%, rgb(137 110 255 / .11), transparent 60%),
+    radial-gradient(55rem 30rem at 90% 22%, rgb(6 182 212 / .09), transparent 65%),
+    linear-gradient(155deg, #f7f8ff, #edf5ff);
+}
+html:not(.dark) .campaign-quest .glass-panel {
+  background: rgb(255 255 255 / .94);
+  border-color: hsl(var(--border));
+  box-shadow: 0 14px 42px rgb(32 52 87 / .10);
+}
+html:not(.dark) .campaign-quest .quest-label {
+  color: #23324e !important;
+  -webkit-text-fill-color: #23324e !important;
+}
+html:not(.dark) .campaign-quest .quest-input,
+html:not(.dark) .campaign-quest input.quest-input,
+html:not(.dark) .campaign-quest textarea.quest-input {
+  background: #fff !important;
+  color: #13223b !important;
+  -webkit-text-fill-color: #13223b !important;
+  caret-color: #225cba !important;
+  border-color: #b4c8e4 !important;
+  box-shadow: inset 0 1px 2px rgb(38 58 92 / .07);
+}
+html:not(.dark) .campaign-quest .quest-input::placeholder,
+html:not(.dark) .campaign-quest input.quest-input::placeholder,
+html:not(.dark) .campaign-quest textarea.quest-input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+html:not(.dark) .campaign-quest .quest-button {
+  color: #21446f !important;
+  background: #edf7ff !important;
+  border-color: #b4d5ef !important;
+}
+html:not(.dark) .campaign-quest .quest-button:hover { background: #dbf0ff !important; }
+html:not(.dark) .campaign-quest .quest-icon {
+  background: linear-gradient(135deg, #e3faff, #efeaff);
+  color: #225cba;
+  border-color: #b9d7f5;
+}
+html:not(.dark) .campaign-quest :where([class~="text-white"], [class~="text-cyan-50"], [class~="text-slate-100"], [class~="text-slate-200"], [class~="text-violet-100"]):not(button):not(a):not([role="button"]) {
+  color: #24344f !important;
+  -webkit-text-fill-color: #24344f !important;
+}
+html:not(.dark) .campaign-quest :where([class~="text-slate-300"], [class~="text-slate-400"], [class~="text-slate-500"]) {
+  color: #52647e !important;
+  -webkit-text-fill-color: #52647e !important;
+}
+html:not(.dark) .campaign-quest :where([class~="text-cyan-300"], [class~="text-cyan-200"], [class~="text-violet-300"]) {
+  color: #3658a3 !important;
+  -webkit-text-fill-color: #3658a3 !important;
+}
+html:not(.dark) .campaign-quest :where([class~="bg-slate-950/45"], [class~="bg-slate-950/55"], [class~="bg-slate-950/35"], [class~="bg-slate-950/70"]) {
+  background-color: #f1f6ff !important;
+  border-color: #c9d9ee !important;
+}
+html:not(.dark) .campaign-quest input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: none;
+}

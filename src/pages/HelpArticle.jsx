@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { displayHelpCategory } from "@/lib/helpCenter";
 import { connectionHelpGuide } from "@/lib/connectionHelpGuides";
+import { workflowHelpGuide } from "@/lib/workflowHelpGuides";
 
 export default function HelpArticle() {
   const { slug } = useParams();
@@ -17,7 +18,7 @@ export default function HelpArticle() {
     let active = true;
     setLoading(true);
     setError(false);
-    const builtin = connectionHelpGuide(slug);
+    const builtin = connectionHelpGuide(slug) || workflowHelpGuide(slug);
     if (builtin) {
       setArticle(builtin);
       setLoading(false);
