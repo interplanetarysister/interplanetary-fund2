@@ -6,16 +6,16 @@
       "workflow": "Connect outside app",
       "help_slug": "connect-another-platform",
       "tracked_files": {
-        "src/components/connections/ConnectDialog.jsx": "f9a54626b4ecd82fbd6bb0b9c4a89ad13e4a3bedf3c9f9e6ae5a68121b38f5ee",
-        "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "50c0153e3891b1c1fd29be272d45e0eed398d59e570b8d1fb4f8e45a1ea7400a",
-        "base44/functions/saveConnectionCredentials/entry.ts": "9cc49cddf897b340e0b7df826b53c734a1ab905b01618452c54e4c23314cd7bd"
+        "src/components/connections/ConnectDialog.jsx": "fe63aeee41079dbad0cad7fd5ddfe42f84d44662333c6d6d37af93ea5a74e8ca",
+        "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "349c320bfdc42af36ee5c81223425f9e58a93f3d2a3fd906ba950d66695ffc77",
+        "base44/functions/saveConnectionCredentials/entry.ts": "dc513cb45083f912a96beacf90d2032c7e88642ce89a00397e961e05c1b3cc04"
       }
     },
     {
       "workflow": "AI permissions",
       "help_slug": "ai-platform-permissions",
       "tracked_files": {
-        "src/components/connections/AccountAiScope.jsx": "464b828b424aa76bea8117b5725609b5e6a23f7f91683348176b4ea7f0daafda",
+        "src/components/connections/AccountAiScope.jsx": "67cb0b4f34fb0d84d7cdcc50e37fba69cd5e00c28bf2317f00e25eda9b770291",
         "src/components/connections/ConnectionCard.jsx": "660537ab3d970c82dc3732229ba8bb27d27ae1644c1b686b310d7dc25b68db1f",
         "base44/functions/setConnectionAiToggle/entry.ts": "d53165dcc3b7ed59719178c2f87b46eda315b2c99e4324607b9257128cbb9054",
         "base44/functions/setUnifiedOboConsent/entry.ts": "47249a13b3b3ac475d35fc178c8f7d27a02d063a7a961170cb3126b4847b4a31"

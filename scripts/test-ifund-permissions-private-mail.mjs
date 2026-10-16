@@ -17,7 +17,10 @@ assert.match(switchFn,/restrictedAgentScope\(requested,previous\.provider_capabi
 assert.doesNotMatch(switchFn,/IFUND_STANDARD_AI_SCOPE/);
 const save=read('base44/functions/saveConnectionCredentials/entry.ts');
 const finish=read('base44/functions/finalizeAppUserOAuthConnection/entry.ts');
+const legacyAuthorization=read('base44/functions/authorizeConnectionAi/entry.ts');
+assert.doesNotMatch(legacyAuthorization,/requested_capabilities: \[\.\.\.IFUND_STANDARD_AI_SCOPE\]/);
 assert.match(save,/Disconnect and reconnect to change AI scope/);
+assert.match(save,/existing \? \(existing\.obo_consent\?\.requested_capabilities \|\| \[\]\)/);
 assert.match(finish,/Disconnect and reconnect to change AI scope/);
 assert.match(read('src/components/connections/AccountAiScope.jsx'),/existing.*scopeChoice|scopeChoice.*existing/);
 const mail=read('base44/functions/receiveCloudflareEmail/entry.ts');
