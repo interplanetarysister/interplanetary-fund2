@@ -19,7 +19,7 @@ assert.match(picker, /Publish .* translation/);
 assert.match(help, /slug: "translate-a-campaign"/);
 assert.match(deleteFn, /CampaignTranslation\.deleteMany/);
 assert.equal(schema.properties.language_code.enum.length, 10);
-assert.equal((picker.match(/\["[a-z-]+",/g) || []).length, 10);
+assert.equal((picker.match(/\["[A-Za-z-]+",/g) || []).length, 10);
 assert.equal(schema.rls.read.user_condition.role, "admin");
 for (const operation of ["create", "update", "delete"]) {
   assert.equal(schema.rls[operation].user_condition.role, "admin");
