@@ -102,7 +102,8 @@
     "verify:donor-total": "node scripts/verify-donor-total-contract.mjs",
     "verify:help-process": "node scripts/verify-help-update-contract.mjs",
     "verify:ifund-private-credentials": "node scripts/test-ifund-permissions-private-mail.mjs",
-    "verify:verification-secret-provisioner": "node scripts/test-verification-key-provisioner.mjs"
+    "verify:verification-secret-provisioner": "node scripts/test-verification-key-provisioner.mjs",
+    "verify:campaign-translations": "node scripts/verify-campaign-translations.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.54",

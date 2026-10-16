@@ -20,6 +20,8 @@ export default async function(req) {
     await sr.entities.AgentDelegation.deleteMany({ owner_user_id: campaign.created_by_id, campaign_id });
     await sr.entities.AgentActivity.deleteMany({ campaign_id });
     await sr.entities.CampaignUpdate.deleteMany({ campaign_id });
+    // Remove all translated copies before archiving or deleting personal campaign text.
+    await sr.entities.CampaignTranslation.deleteMany({ campaign_id });
     await sr.entities.DistributedPost.deleteMany({ campaign_id });
 
     // Preserve financial records rather than silently deleting payment history.

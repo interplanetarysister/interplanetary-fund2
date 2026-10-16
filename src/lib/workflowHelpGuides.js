@@ -3,6 +3,25 @@
 const updated = "2026-10-16";
 const guides = [
   {
+    slug: "translate-a-campaign", category: "Campaigns",
+    question: "How do I translate a campaign into another language?",
+    description: "Read a campaign in another language, or publish a translation for your visitors.",
+    answer: [
+      "1. Open a campaign. Find Read campaign in, near the title.",
+      "2. Tap the box and pick a language that is ready. To go back, pick Original language.",
+      "3. If you made the campaign, you can see ten languages. Choose one and tap Generate translation.",
+      "4. Read the translated title, short description, and story. AI may make mistakes, so compare important facts with your original words.",
+      "5. Tap Publish translation if you want visitors to see it. Until you publish it, it is just your preview.",
+      "6. Visitors can only select languages you have published. Your donation totals, checkout, and original story do not change.",
+      "7. If you edit the original title, summary, or story, that translation becomes out of date. Generate and publish it again.",
+      "8. If the translation says it cannot load, your original campaign is still safe.",
+      "",
+      "An AI translation may use processing credits when you generate it. Only campaign owners and admins can generate or publish translations.",
+      "Updated: " + updated + "."
+    ].join("\n"),
+    keywords: ["translate", "translation", "languages", "spanish", "arabic", "chinese", "campaign"]
+  },
+  {
     slug: "choose-light-or-dark-mode", category: "Account & Security",
     question: "How do I make IFund light or dark?",
     description: "Change the whole screen, not just the menu.",
