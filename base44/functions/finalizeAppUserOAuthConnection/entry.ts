@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
-import { IFUND_STANDARD_AI_SCOPE, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
+import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 const COMMON_IF_CAPABILITIES = [
   'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
@@ -111,6 +111,13 @@ export default async function(req) {
     // delegation consent. Existing per-account revocations stay revoked unless
     // the owner explicitly checks the box again when reconnecting.
     const unifiedObo = hasUnifiedOboConsent(user) && body.ai_account_authorized === true;
+    const scopeChoice = existing?.obo_consent?.scope_choice || String(body.ai_scope_choice || 'full');
+    let selectedCapabilities;
+    try { selectedCapabilities = existing?.obo_consent?.requested_capabilities?.length
+      ? existing.obo_consent.requested_capabilities : requestedAgentScope(scopeChoice); }
+    catch {return Response.json({error:'Unsupported AI scope'},{status:400});}
+    if (existing && body.ai_scope_choice && body.ai_scope_choice !== scopeChoice)
+      return Response.json({error:'Disconnect and reconnect to change AI scope'},{status:409});
     const data = {
       platform: key,
       kind: cfg.kind,
@@ -121,14 +128,15 @@ export default async function(req) {
       obo_consent: {
         granted: unifiedObo,
         granted_at: unifiedObo ? now : null,
-        scope_version: AI_CONNECTION_SCOPE_VERSION,
+        scope_version: existing?.obo_consent?.scope_version || AI_CONNECTION_SCOPE_VERSION,
+        scope_choice: scopeChoice,
         permission_version: String(user.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
         opted_out: !unifiedObo,
         revoked_at: existing?.obo_consent?.revoked_at || undefined,
-        requested_capabilities: unifiedObo ? [...IFUND_STANDARD_AI_SCOPE] : [],
+        requested_capabilities: selectedCapabilities,
         // Provider-reported capabilities remain authoritative. Unified IFund
         // authorization permits use of those capabilities but never invents them.
-        granted_capabilities: unifiedObo ? restrictedAgentScope(IFUND_STANDARD_AI_SCOPE, confirmed) : [],
+        granted_capabilities: unifiedObo ? restrictedAgentScope(selectedCapabilities, confirmed) : [],
         provider_capabilities: confirmed,
       },
       agent_access: {

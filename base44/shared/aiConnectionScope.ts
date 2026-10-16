@@ -17,3 +17,16 @@ export function restrictedAgentScope(requested: unknown, provider: unknown): str
  const verified = Array.isArray(provider) ? provider.filter(v => typeof v === 'string') : [];
  return [...new Set(verified.filter(v => selected.has(v)))];
 }
+
+export type AccountScopeChoice = 'full' | 'posting' | 'read_only';
+export function requestedAgentScope(choice: string): string[] {
+  if (choice === 'full') return [...IFUND_STANDARD_AI_SCOPE];
+  if (choice === 'posting') return IFUND_STANDARD_AI_SCOPE.filter(item =>
+    !['read_donations','read_transactions','reconcile_external_funds','settlement_status',
+      'manage_auction','manage_groups','invite_group_members','manage_pages',
+      'read_messages','reply_message','livestream'].includes(item));
+  if (choice === 'read_only') return IFUND_STANDARD_AI_SCOPE.filter(item =>
+    ['read_account','read_resources','read_campaign','read_interactions','discover',
+      'read_analytics','read_donations','subscribe_events','settlement_status'].includes(item));
+  throw new Error('invalid_scope_choice');
+}

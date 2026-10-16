@@ -4,7 +4,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { externalBalanceEvidenceChanged } from '../../shared/externalBalanceEvidence.ts';
 import { encryptConnectionSecret } from '../../shared/connectionCrypto.ts';
-import { IFUND_STANDARD_AI_SCOPE, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
+import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -25,7 +25,7 @@ export default async function(req) {
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count,
-      balance_reaffirmed, credentials, ai_account_authorized,
+      balance_reaffirmed, credentials, ai_account_authorized, ai_scope_choice,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
@@ -59,7 +59,16 @@ export default async function(req) {
       return Response.json({ error: 'external_currency must be a three-letter ISO currency code' }, { status: 400 });
     }
 
-    const accountConsentRequested = ai_account_authorized === true;
+    const accountConsentRequested = existing
+      ? existing.obo_consent?.granted === true && existing.obo_consent?.opted_out !== true
+      : ai_account_authorized === true;
+    const selectedScope = existing?.obo_consent?.scope_choice || String(ai_scope_choice || 'full');
+    let requestedScope: string[];
+    try { requestedScope = existing?.obo_consent?.requested_capabilities?.length
+      ? existing.obo_consent.requested_capabilities : requestedAgentScope(selectedScope); }
+    catch { return Response.json({error:'Select a supported AI scope.'},{status:400}); }
+    if (existing && ai_scope_choice && ai_scope_choice !== selectedScope)
+      return Response.json({error:'Disconnect and reconnect to change AI scope.'},{status:409});
     const effectiveAutomationMode = accountConsentRequested
       ? (automation_mode || existing?.automation_mode || 'manual') : 'manual';
     const consentOwner = existing && existing.created_by_id !== user.id
@@ -166,12 +175,13 @@ export default async function(req) {
       granted: accountAiConsent,
       opted_out: !accountAiConsent,
       revoked_at: accountAiConsent ? null : (currentConsent.revoked_at || now),
-      granted_at: accountAiConsent ? now : null,
-      scope_version: AI_CONNECTION_SCOPE_VERSION,
-      requested_capabilities: accountAiConsent ? [...IFUND_STANDARD_AI_SCOPE] : [],
+      granted_at: accountAiConsent ? (currentConsent.granted_at || now) : null,
+      scope_version: existing?.obo_consent?.scope_version || AI_CONNECTION_SCOPE_VERSION,
+      scope_choice: selectedScope,
+      requested_capabilities: requestedScope,
       permission_version: String(consentOwner.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
       granted_capabilities: accountAiConsent
-        ? restrictedAgentScope(IFUND_STANDARD_AI_SCOPE, currentConsent.provider_capabilities || [])
+        ? restrictedAgentScope(requestedScope, currentConsent.provider_capabilities || [])
         : [],
     };
     data.agent_access = {

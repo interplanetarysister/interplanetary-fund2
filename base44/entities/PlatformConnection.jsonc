@@ -163,6 +163,10 @@
         "scope_version": {
           "type": "string"
         },
+        "scope_choice": {
+          "type": "string",
+          "enum": ["full", "posting", "read_only"]
+        },
         "requested_capabilities": {
           "type": "array",
           "items": {
