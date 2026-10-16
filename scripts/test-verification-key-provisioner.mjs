@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
+const requireDebugFile = p => { try {return readFileSync(p,'utf8');} catch {return 'no debug file';} };
 const folder = mkdtempSync(join(tmpdir(), 'ifund-provision-test-'));
 try {
   const mock = join(folder, 'mock-base44');
@@ -18,7 +19,9 @@ if(cmd==='secrets' && subcmd==='set') {
   const data=fs.readFileSync('/dev/stdin','utf8').trim();
   const firstEqual=data.indexOf('=');
   const entry=[data.slice(0,firstEqual),data.slice(firstEqual+1)];
-  if(entry.length!==2 || entry[0]!=='IFUND_VERIFICATION_EMAIL_KEY' || Buffer.from(entry[1],'base64').length!==32) process.exit(2);
+  const decodedSize=Buffer.from(entry[1],'base64').length;
+  fs.writeFileSync(marker+'.debug',JSON.stringify({nameOk:entry[0]==='IFUND_VERIFICATION_EMAIL_KEY',size:decodedSize,textLength:data.length}));
+  if(entry.length!==2 || entry[0]!=='IFUND_VERIFICATION_EMAIL_KEY' || decodedSize!==32) process.exit(2);
   fs.writeFileSync(marker,'configured');
   process.stdout.write('{"ok":true}');
   process.exit(0);
@@ -31,7 +34,7 @@ process.exit(4);
   const env = {...process.env,IFUND_BASE44_CLI:mock,MOCK_KEY_MARKER:marker};
   const run = () => spawnSync(process.execPath,['scripts/provision-ifund-verification-email-key.mjs'],{encoding:'utf8',env});
   const first=run();
-  assert.equal(first.status,0,first.stderr);
+  assert.equal(first.status,0,first.stderr + (requireDebugFile(marker+'.debug')));
   assert.equal(readFileSync(marker,'utf8'),'configured');
   assert.match(first.stdout,/Configured IFUND_VERIFICATION_EMAIL_KEY/);
   assert.doesNotMatch(first.stdout,/=[A-Za-z0-9+/]{30}/);
