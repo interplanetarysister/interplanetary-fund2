@@ -16,7 +16,8 @@ if(cmd==='secrets' && subcmd==='list') {
 }
 if(cmd==='secrets' && subcmd==='set') {
   const data=fs.readFileSync('/dev/stdin','utf8').trim();
-  const entry=data.split('=');
+  const firstEqual=data.indexOf('=');
+  const entry=[data.slice(0,firstEqual),data.slice(firstEqual+1)];
   if(entry.length!==2 || entry[0]!=='IFUND_VERIFICATION_EMAIL_KEY' || Buffer.from(entry[1],'base64').length!==32) process.exit(2);
   fs.writeFileSync(marker,'configured');
   process.stdout.write('{"ok":true}');
