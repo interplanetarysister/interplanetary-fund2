@@ -99,7 +99,7 @@ Return only the complete revised story.`;
 
       {error && <p className="text-sm text-rose-300">{error}</p>}
 
-      {showHistory && versions.length > 0 && <div className="space-y-2 max-h-64 overflow-y-auto">{[...versions].reverse().map((ver, i) => <div key={i} className="rounded-xl border border-white/10 bg-slate-950/55 p-3"><div className="flex items-center justify-between mb-1"><p className="text-xs text-slate-400">{styleLabel(ver.style)} · {ver.audience === "auto" ? "AI-chosen audience" : "AI-chosen audience"}</p><button type="button" onClick={() => restore(ver)} className="text-xs text-cyan-300 font-medium hover:text-cyan-100 flex items-center gap-1"><Undo2 className="w-3 h-3" /> Restore</button></div><p className="text-xs text-slate-300 line-clamp-3 whitespace-pre-wrap">{ver.text}</p></div>)}</div>}
+      {showHistory && versions.length > 0 && <div className="space-y-2 max-h-64 overflow-y-auto">{[...versions].reverse().map((ver, i) => <div key={i} className="rounded-xl border border-white/10 bg-slate-950/55 p-3"><div className="flex items-center justify-between mb-1"><p className="text-xs text-slate-400">{styleLabel(ver.style)} · {"AI-chosen audience"}</p><button type="button" onClick={() => restore(ver)} className="text-xs text-cyan-300 font-medium hover:text-cyan-100 flex items-center gap-1"><Undo2 className="w-3 h-3" /> Restore</button></div><p className="text-xs text-slate-300 line-clamp-3 whitespace-pre-wrap">{ver.text}</p></div>)}</div>}
       <p className="text-[11px] text-slate-400">Your campaign story below is the single source of truth. AI changes are versioned so you can restore an earlier take.</p>
     </div>
   );
