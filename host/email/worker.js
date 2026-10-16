@@ -1,8 +1,8 @@
 import PostalMime from "postal-mime";
 
 // Separate Cloudflare Email Worker. No public mailbox endpoints or frontend access.
-// Install IFUND_EMAIL_INGRESS_SECRET, IFUND_EMAIL_RECEIVER_URL and
-// IFUND_EMAIL_ALLOWED_RECIPIENTS as Worker secrets before enabling email routes.
+// Install IFUND_EMAIL_INGRESS_SECRET and IFUND_EMAIL_RECEIVER_URL as
+// Worker secrets. The approved address list comes from wrangler.toml [vars].
 const encoder = new TextEncoder();
 const hex = (data) => [...new Uint8Array(data)].map(v => v.toString(16).padStart(2, "0")).join("");
 const trim = (value, limit) => String(value || "").slice(0, limit);
