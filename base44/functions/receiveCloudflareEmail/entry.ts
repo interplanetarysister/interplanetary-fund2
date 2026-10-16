@@ -8,6 +8,7 @@ const encoder = new TextEncoder();
 const envValue = (name) => String(secrets.get(name) || '').trim();
 const hex = (bytes) => [...new Uint8Array(bytes)].map((x) => x.toString(16).padStart(2, '0')).join('');
 const clean = (value, max) => String(value || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u202e]/g, '').slice(0, max);
+const allowedRecipients = new Set(["contact@interplanetaryfund.com","support@interplanetaryfund.com","admin@interplanetaryfund.com","ifund@interplanetaryfund.com","campaigns@interplanetaryfund.com","help@interplanetaryfund.com","developer@interplanetaryfund.com","partner@interplanetaryfund.com","crowdfund@interplanetaryfund.com"]);
 
 async function authenticate(req, body, secret) {
   const stamp = req.headers.get('x-ifund-email-timestamp') || '';
@@ -33,7 +34,7 @@ export default async function (req) {
     let payload;
     try { payload = JSON.parse(raw); } catch { return Response.json({ error: 'Invalid JSON' }, { status: 400 }); }
     const to = clean(payload?.to, 256).toLowerCase();
-    if (!/^[a-z0-9._%+\-]{1,64}@interplanetaryfund\.com$/.test(to)) {
+    if (!allowedRecipients.has(to)) {
       return Response.json({ error: 'Unknown recipient domain' }, { status: 400 });
     }
     const from = clean(payload?.from, 254);
@@ -47,15 +48,16 @@ export default async function (req) {
     const owner = await sr.entities.User.get(ownerId).catch(() => null);
     if (!owner || owner.role !== 'admin') return Response.json({ error: 'Mailbox owner not configured' }, { status: 503 });
 
+    const providerMessageKey = (to + ':' + messageId).slice(0, 254);
     const previous = await sr.entities.InboxItem.filter({
-      user_id: ownerId, platform: 'email', external_message_id: messageId,
+      user_id: ownerId, platform: 'email', external_message_id: providerMessageKey,
     });
     if (previous?.length) return Response.json({ ok: true, duplicate: true });
 
     const row = await sr.entities.InboxItem.create({
       user_id: ownerId,
       platform: 'email',
-      external_message_id: messageId,
+      external_message_id: providerMessageKey,
       type: 'message',
       author: from,
       content: 'To: ' + to + '\nSubject: ' + (subject || '(no subject)') + '\n\n' + (text || '(No plain-text body)'),
