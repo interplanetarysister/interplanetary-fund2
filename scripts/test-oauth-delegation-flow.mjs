@@ -80,9 +80,10 @@ assert.match(connect, /onClick=\{requestManagedAccountSetup\} disabled=\{managed
 assert.doesNotMatch(connect, /OAUTH_ATTEMPT_BLOCKED_STATES[^\n]*unavailable/,
   'a transient readiness check failure must leave retry available');
 assert.doesNotMatch(connect, /data\?\.configured && data\?\.connector_id \? "ready"/);
-assert.match(page, /p\.setupKind === "oauth" \? "Check setup" : "Open setup"/,
+assert.match(page, /p\.setupKind === "oauth" \? "Check sign-in options" : "Guided setup"/,
   'the chooser must not promise an OAuth connection before readiness is checked');
-assert.match(page, /IFund will check its setup before offering provider sign-in/);
+assert.match(page, /Only verified connections show as working/,
+  'the redesigned chooser must distinguish available providers from verified connections');
 
 assert.match(readiness, /getCurrentAppUserConnection/);
 assert.match(readiness, /registration_reference_present: true/);
