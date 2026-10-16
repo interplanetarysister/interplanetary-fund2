@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MailOpen } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
+import CompanyMailCard from "@/components/inbox/CompanyMailCard";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
 import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
@@ -25,6 +26,7 @@ export default function Inbox() {
   const [campaignFilter, setCampaignFilter] = useState(requestedCampaign);
   const [search, setSearch] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [companyMailError, setCompanyMailError] = useState(false);
 
   useEffect(() => {
     setCampaignFilter(requestedCampaign);
@@ -35,18 +37,28 @@ export default function Inbox() {
     (async () => {
      try {
       const me = await base44.auth.me();
-      setIsAdmin(me.role === "admin");
-      const [inboxItems, notifications, myCampaigns] = await Promise.all([
+      const admin = me.role === "admin";
+      setIsAdmin(admin);
+      const [inboxItems, notifications, myCampaigns, companyMail] = await Promise.all([
         base44.entities.InboxItem.filter({ user_id: me.id }, "-created_date", 100),
         base44.entities.Notification.filter({ user_id: me.id }, "-created_date", 50),
         base44.entities.Campaign.filter({ created_by_id: me.id }),
+        admin ? base44.functions.invoke("ifundDomainMail", { action: "list", limit: 100 })
+          .then(({ data }) => data).catch(() => null) : Promise.resolve(null),
       ]);
+      setCompanyMailError(admin && !companyMail?.ok);
       const dResults = await Promise.all(
         myCampaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
       );
       const donationLists = dResults.map((r) => (r.data && r.data.donations) || []);
 
       const merged = [
+        ...(admin ? companyMail?.messages || [] : []).map((m) => ({
+          key: `email-${m.id}`, mail_id: m.id, mail_recipient: m.recipient,
+          mail_subject: m.subject, platform: "email", type: "message", author: m.sender,
+          content: `${m.subject || "(No subject)"} — ${m.preview || ""}`,
+          status: m.is_read ? "done" : "open", date: m.received_at,
+        })),
         ...inboxItems.map((i) => ({
           key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
           content: i.content, link: i.link, campaign_id: i.campaign_id,
@@ -104,7 +116,8 @@ export default function Inbox() {
         </span>
         Universal Inbox
       </h1>
-      <p className="text-stone-500 mb-6">Every donation, comment, and alert from every connected platform — one communication center.</p>
+      <p className="text-stone-500 mb-6">Company email, donations, comments, and alerts from connected platforms — one communication center.</p>
+      {isAdmin && companyMailError && <p className="mb-4 text-xs text-amber-800" role="status">Company email is not connected yet or is temporarily unavailable. Your other inbox messages remain accessible.</p>}
       {isAdmin && <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
         <h2 className="font-display text-lg text-stone-900 mb-1">Admin action inbox</h2>
         <p className="text-sm text-stone-500 mb-4">Requests from agents and the platform that need a decision, account sign-in, more information, or investigation.</p>
@@ -123,7 +136,7 @@ export default function Inbox() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All platforms</SelectItem>
-            {platforms.map((p) => <SelectItem key={p} value={p}>{p === "interplanetary" ? "Interplanetary Fund" : platformName(p)}</SelectItem>)}
+            {platforms.map((p) => <SelectItem key={p} value={p}>{p === "interplanetary" ? "Interplanetary Fund" : p === "email" ? "Company email" : platformName(p)}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={campaignFilter} onValueChange={setCampaignFilter}>
@@ -137,11 +150,12 @@ export default function Inbox() {
       </div>
 
       {visible.length === 0 ? (
-        <p className="text-sm text-stone-400 text-center py-16">Nothing here — donations, comments, and alerts from your connected platforms will appear in this inbox.</p>
+        <p className="text-sm text-stone-400 text-center py-16">Nothing here — company email, donations, comments, and alerts will appear in this inbox.</p>
       ) : (
         <div className="space-y-3">
           {visible.map((i) => (
-            <InboxItemCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} />
+            {i.mail_id ? <CompanyMailCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} /> :
+              <InboxItemCard key={i.key} item={i} onChanged={(u) => setItems((prev) => prev.map((x) => (x.key === u.key ? u : x)))} />}
           ))}
         </div>
       )}
