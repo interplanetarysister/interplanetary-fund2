@@ -193,6 +193,9 @@ assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
 assert.match(adminSources, /Provider state changes only after a provider-backed webhook, API operation, or synchronization workflow succeeds\./i);
 
+assert.doesNotMatch(source, /credentialsDirty|setCredentialsDirty/, "credential identity changes must not use sticky dirty flags");
+assert.match(source, /Object\.entries\(credentials\)\.some/, "identity changes must compare effective submitted credentials");
+
 const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e)');
 const safeMessageIndex = source.indexOf('setError("Couldn\'t save this connection. Please try again. If the problem continues, contact support.")');
 assert.ok(diagnosticIndex >= 0 && safeMessageIndex > diagnosticIndex, "controlled diagnostics must precede the safe client message");
