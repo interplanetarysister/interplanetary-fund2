@@ -2,7 +2,8 @@ import PostalMime from "postal-mime";
 
 // Separate Cloudflare Email Worker. No public mailbox endpoints or frontend access.
 // Install IFUND_EMAIL_INGRESS_SECRET and IFUND_EMAIL_RECEIVER_URL as
-// Worker secrets. The approved address list comes from wrangler.toml [vars].
+// Worker secrets. Accept any valid local address at the IFund domain;
+// Base44 marks the nine named addresses as priority.
 const encoder = new TextEncoder();
 const hex = (data) => [...new Uint8Array(data)].map(v => v.toString(16).padStart(2, "0")).join("");
 const trim = (value, limit) => String(value || "").slice(0, limit);
@@ -18,15 +19,14 @@ export default {
   async email(message, env) {
     const secret = String(env.IFUND_EMAIL_INGRESS_SECRET || "");
     const endpoint = String(env.IFUND_EMAIL_RECEIVER_URL || "");
-    const allowed = String(env.IFUND_EMAIL_ALLOWED_RECIPIENTS || "")
-      .toLowerCase().split(",").map(value => value.trim()).filter(Boolean);
-    const destination = String(message.to || "").toLowerCase();
+    const destination = String(message.to || "").trim().toLowerCase();
+    const validMailbox = /^[^\s@<>\u0000-\u001f]{1,64}@interplanetaryfund\.com$/.test(destination);
     // Configuration errors fail closed; do not accept and silently discard mail.
-    if (secret.length < 32 || !endpoint.startsWith("https://") || allowed.length === 0) {
+    if (secret.length < 32 || !endpoint.startsWith("https://")) {
       message.setReject("Mailbox unavailable");
       return;
     }
-    if (!allowed.includes(destination) || !destination.endsWith("@interplanetaryfund.com")) {
+    if (!validMailbox) {
       message.setReject("Unknown mailbox");
       return;
     }
