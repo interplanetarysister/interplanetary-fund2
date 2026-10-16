@@ -16,7 +16,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { owningNavigationTab, navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
 import { helpPathForLocation } from "@/lib/helpCenter";
-import { LifeBuoy, ArrowUpRight } from "lucide-react";
+import { LifeBuoy, ArrowUpRight, Sun, Moon } from "lucide-react";
 
 const PAGE_TITLES = {
   "/dashboard": "Overview", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
@@ -116,6 +116,21 @@ const bottomNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [darkTheme, setDarkTheme] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
+  const toggleTheme = () => {
+    const next = !document.documentElement.classList.contains("dark");
+    try { localStorage.setItem("ifund-theme", next ? "dark" : "light"); } catch {}
+    document.documentElement.classList.toggle("dark", next);
+    document.documentElement.style.colorScheme = next ? "dark" : "light";
+    setDarkTheme(next);
+    window.dispatchEvent(new Event("ifund-theme-changed"));
+  };
+  useEffect(() => {
+    const sync = () => setDarkTheme(document.documentElement.classList.contains("dark"));
+    sync();
+    window.addEventListener("ifund-theme-changed", sync);
+    return () => window.removeEventListener("ifund-theme-changed", sync);
+  }, []);
   const { user: currentUser, isAuthenticated } = useAuth();
   const user = isAuthenticated ? currentUser : null;
   const isAdmin = user?.role === "admin";
@@ -139,7 +154,10 @@ export default function Layout() {
     if (!open) return;
     const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Prevent the page beneath the drawer from scrolling on touch.
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = previous; };
   }, [open]);
 
   const nav = (
@@ -150,7 +168,7 @@ export default function Layout() {
           <div className="flex flex-col gap-0.5">
             {publicNavItems.map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)} className={({ isActive }) => `ifund-nav-link flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? "bg-cyan-500/15 text-cyan-300" : "text-slate-400 hover:text-slate-100 hover:bg-white/5"}`}>
-                <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} /><span className="truncate">{label}</span>
+                <span className="ifund-nav-icon"><Icon className="w-5 h-5 shrink-0" strokeWidth={1.85} /></span><span className="truncate">{label}</span>
               </NavLink>
             ))}
           </div>
@@ -175,7 +193,7 @@ export default function Layout() {
                 }`
                 }
               >
-                <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+                <span className="ifund-nav-icon"><Icon className="w-5 h-5 shrink-0" strokeWidth={1.85} /></span>
                 <span className="truncate">{label}</span>
               </NavLink>
             ))}
@@ -187,13 +205,13 @@ export default function Layout() {
 
   return (
     <div className="ifund-shell h-dvh w-full min-w-0 overflow-hidden bg-background text-foreground flex flex-col">
-      <aside className="ifund-sidebar hidden md:flex fixed inset-y-0 left-0 w-60 flex-col deep-space py-6 z-40">
+      <aside className="ifund-sidebar hidden md:flex fixed inset-y-0 left-0 w-60 flex-col py-6 z-40">
         <div className="px-5 mb-8">
           <div className="flex items-start justify-between gap-2">
             <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
               <BrandLogo size="sm" nameClassName="text-slate-100 text-[15px] leading-tight" />
             </Link>
-            {user && <NotificationBell />}
+            <button type="button" onClick={toggleTheme} className="ifund-sidebar-theme rounded-xl p-2" aria-label={darkTheme ? "Switch to light theme" : "Switch to dark theme"} title={darkTheme ? "Light theme" : "Dark theme"}>{darkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button>
           </div>
           <p className="mt-3 font-display text-base brand-gradient-text">{SLOGAN}</p>
           <p className="mt-2 text-[10px] uppercase tracking-[.17em] text-slate-400">Fundraising, connected.</p>
@@ -202,21 +220,22 @@ export default function Layout() {
         <p className="mt-auto px-6 text-[11px] leading-relaxed text-slate-500">{SLOGAN_LONG}</p>
       </aside>
 
-      <header className="ifund-mobile-header md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 deep-space px-3 py-3 pt-safe">
+      <header className="ifund-mobile-header md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 px-3 py-3 pt-safe">
         <div className="flex items-center gap-1 min-w-0">
           {!isRoot && (
-            <button onClick={goBack} aria-label="Back" className="text-stone-300 p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center hover:text-white transition-colors">
+            <button onClick={goBack} aria-label="Back" className="ifund-header-action p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors">
               <ChevronLeft className="w-6 h-6" />
             </button>
           )}
           <Link to={user ? "/dashboard" : "/"} className="min-w-0 cursor-pointer" aria-label={user ? "Go to dashboard" : "Go home"}>
-            <BrandLogo size="sm" showName={isRoot} nameClassName="text-slate-100 text-[15px] truncate" />
+            <BrandLogo size="sm" showName={isRoot} nameClassName="ifund-brand-title text-[15px] truncate" />
           </Link>
-          {!isRoot && <span className="font-display text-slate-100 text-lg truncate">{pageTitle(pathname)}</span>}
+          {!isRoot && <span className="font-display ifund-mobile-title text-lg truncate">{pageTitle(pathname)}</span>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button type="button" onClick={toggleTheme} className="ifund-header-action min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label={darkTheme ? "Switch to light theme" : "Switch to dark theme"}>{darkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button>
           {user && <NotificationBell />}
-          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="text-stone-300 p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
+          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="ifund-header-action p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -224,8 +243,15 @@ export default function Layout() {
       <OfflineBanner />
       {open && (
         <>
-          <div className="md:hidden fixed inset-0 top-14 z-30 bg-black/40" onClick={() => setOpen(false)} aria-hidden="true" />
-          <div id="mobile-menu" className="ifund-sidebar md:hidden fixed inset-x-0 top-14 bottom-[calc(3.75rem+env(safe-area-inset-bottom))] z-40 deep-space pt-2 shadow-xl flex flex-col overflow-hidden">{nav}</div>
+          <div className="md:hidden fixed inset-0 z-[60] bg-slate-950/40 backdrop-blur-[3px]" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div id="mobile-menu" role="dialog" aria-modal="true" aria-label="IFund navigation"
+               className="ifund-sidebar md:hidden fixed inset-y-0 left-0 w-[min(85vw,350px)] z-[70] pt-safe shadow-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-current/10">
+              <span className="font-display text-base font-bold">Explore IFund</span>
+              <button type="button" onClick={() => setOpen(false)} className="ifund-sidebar-theme rounded-xl p-3" aria-label="Close navigation"><X className="w-5 h-5" /></button>
+            </div>
+            {nav}
+          </div>
         </>
       )}
 
