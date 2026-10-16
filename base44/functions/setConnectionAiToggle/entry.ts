@@ -31,13 +31,14 @@ export default async function(req: Request) {
     const effective=body.enabled ? restrictedAgentScope(requested,previous.provider_capabilities || []) : [];
     const version=String(user.ai_obo_consent?.permission_version || '');
     const updated=await api.asServiceRole.entities.PlatformConnection.update(full.id,{
+      automation_mode:body.enabled?'auto':'manual',
       obo_consent:{...previous,
         granted:body.enabled,opted_out:!body.enabled,revoked_at:body.enabled?null:now,
         granted_at:body.enabled?(previous.granted_at || now):null,
         permission_version:version,granted_capabilities:effective},
       agent_access:{...(full.agent_access || {}),
         shared_with_agents:body.enabled,automation_enabled:body.enabled && eligible &&
-          full.automation_mode==='auto' && effective.includes('create_post')},
+          effective.includes('create_post')},
       history:[...(full.history||[]),{at:now,event:body.enabled?'ai_permission_enabled':'ai_permission_revoked',
         detail:'Owner changed the AI access switch for this account.'}].slice(-30)
     });

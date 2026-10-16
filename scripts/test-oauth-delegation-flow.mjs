@@ -98,9 +98,9 @@ assert.match(finalize, /getCurrentAppUserConnection/);
 assert.match(finalize, /requestedCampaignId/);
 assert.match(finalize, /pairedCampaign\.created_by_id !== user\.id/);
 assert.match(finalize, /hasUnifiedOboConsent/);
-assert.match(finalize, /ai_consent_required: false/);
-assert.match(finalize, /granted_capabilities: unifiedObo \? confirmed : \[\]/);
-assert.match(finalize, /automation_mode: unifiedObo \? 'auto' : 'manual'/);
+assert.match(finalize, /ai_consent_required: !unifiedObo/);
+assert.match(finalize, /granted_capabilities: unifiedObo \? restrictedAgentScope\(selectedCapabilities, confirmed\) : \[\]/);
+assert.match(finalize, /automation_mode: unifiedObo \? \(existing\?\.automation_mode \|\| 'auto'\) : 'manual'/);
 
 assert.match(compatibility, /Compatibility endpoint/);
 assert.match(compatibility, /hasUnifiedOboConsent/);

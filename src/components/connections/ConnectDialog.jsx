@@ -45,7 +45,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       display_name: existing?.display_name || "",
       external_url: existing?.external_url || "",
       campaign_id: existing?.campaign_id || "",
-      automation_mode: existing?.automation_mode || "ask",
+      automation_mode: existing?.automation_mode || "auto",
       external_total: existing?.external_total ?? "",
       external_currency: existing ? (existing.external_currency || "") : "USD",
       external_donor_count: existing?.external_donor_count ?? "",

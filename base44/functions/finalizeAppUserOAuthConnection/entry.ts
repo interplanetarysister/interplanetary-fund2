@@ -124,7 +124,7 @@ export default async function(req) {
       display_name: requestedDisplayName || key,
       external_url: existing?.external_url || '',
       campaign_id: requestedCampaignId || undefined,
-      automation_mode: unifiedObo ? (existing?.automation_mode || 'ask') : 'manual',
+      automation_mode: unifiedObo ? (existing?.automation_mode || 'auto') : 'manual',
       obo_consent: {
         granted: unifiedObo,
         granted_at: unifiedObo ? now : null,
