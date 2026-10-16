@@ -26,8 +26,9 @@ async function authenticate(req, body, secret) {
 export default async function (req) {
   if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
   const secret = envValue('IFUND_EMAIL_INGRESS_SECRET');
-  const ownerId = envValue('IFUND_EMAIL_INBOX_OWNER_ID');
-  if (secret.length < 32 || !ownerId) return Response.json({ error: 'Email intake not configured' }, { status: 503 });
+  // Mailbox owner explicitly selected by IFund admin; never derived from untrusted mail.
+  const ownerId = '6a67a778342a8fe05ee79cbb';
+  if (secret.length < 32) return Response.json({ error: 'Email intake not configured' }, { status: 503 });
   try {
     const raw = await req.text();
     if (raw.length > 65536) return Response.json({ error: 'Payload too large' }, { status: 413 });
@@ -47,7 +48,9 @@ export default async function (req) {
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
     const owner = await sr.entities.User.get(ownerId).catch(() => null);
-    if (!owner || owner.role !== 'admin') return Response.json({ error: 'Mailbox owner not configured' }, { status: 503 });
+    if (!owner || owner.role !== 'admin' || String(owner.email || '').toLowerCase() !== 'cuddlemeplatonically@gmail.com') {
+      return Response.json({ error: 'Mailbox owner not configured' }, { status: 503 });
+    }
 
     const providerMessageKey = (to + ':' + messageId).slice(0, 254);
     const previous = await sr.entities.InboxItem.filter({
