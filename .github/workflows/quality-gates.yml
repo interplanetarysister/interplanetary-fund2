@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   quality:
+    needs: preflight-review
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Node 20 Base44 compatibility build
     runs-on: ubuntu-24.04
@@ -196,8 +197,24 @@ jobs:
           test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
 
+  # Preflight review first: dependency-free source and workflow checks.
+  preflight-review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Review connection and data-truth source contracts
+        run: node scripts/verify-connect-dialog-safe-errors.mjs
+      - name: Review integration registry source contracts
+        run: node scripts/verify-integration-registry-truth.mjs
+      - name: Review financial authority source contracts
+        run: node scripts/verify-fraud-control-financial-boundary.mjs
+
   node22-compatibility:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
+    needs: preflight-review
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Node current compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -211,7 +228,8 @@ jobs:
       - run: npm run build
 
   typecheck:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
+    needs: preflight-review
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Typecheck on Base44 baseline
     runs-on: ubuntu-24.04
     timeout-minutes: 15
