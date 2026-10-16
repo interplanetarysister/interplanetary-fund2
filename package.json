@@ -39,7 +39,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-minimum --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs",
+    "postbuild": "node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs && node scripts/verify-help-update-contract.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
@@ -99,7 +99,8 @@
     "verify:links-assets": "node scripts/verify-ifund-links-assets.mjs",
     "verify:studio-contracts": "node scripts/verify-ifund-links-assets.mjs && node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/verify-ifund-bundle-graph.mjs",
     "verify:runtime-minimum": "node scripts/require-node22.mjs",
-    "verify:donor-total": "node scripts/verify-donor-total-contract.mjs"
+    "verify:donor-total": "node scripts/verify-donor-total-contract.mjs",
+    "verify:help-process": "node scripts/verify-help-update-contract.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.54",
