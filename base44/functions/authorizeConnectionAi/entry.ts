@@ -18,7 +18,7 @@ export default async function(req: Request) {
     }
     const body = await req.json().catch(() => ({}));
     const connectionId = String(body.connection_id || '').trim().slice(0, 120);
-    if (!connectionId || body.granted !== true) {
+    if (!connectionId || body.granted !== true || body.scope_version !== AI_CONNECTION_SCOPE_VERSION) {
       return Response.json({ error: 'An explicit account permission choice is required.' }, { status: 400 });
     }
 
