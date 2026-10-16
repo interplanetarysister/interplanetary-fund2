@@ -21,7 +21,7 @@ jobs:
   quality:
     needs: preflight-review
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    name: Node 20 Base44 compatibility build
+    name: Production compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
@@ -215,7 +215,7 @@ jobs:
   node22-compatibility:
     needs: preflight-review
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
-    name: Node current compatibility build
+    name: Node 22 compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
