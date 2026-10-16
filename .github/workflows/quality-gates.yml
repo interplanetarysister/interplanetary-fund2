@@ -4,11 +4,9 @@ name: Production Quality Gates
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'recovery/**'
+  # Run once when the feature batch leaves draft, not on each commit.
   pull_request:
+    types: [ready_for_review]
     branches:
       - main
 
@@ -21,7 +19,7 @@ concurrency:
 
 jobs:
   quality:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Node 20 Base44 compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
