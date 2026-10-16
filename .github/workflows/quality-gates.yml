@@ -4,13 +4,7 @@ name: Production Quality Gates
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'recovery/**'
-  pull_request:
-    branches:
-      - main
+  # Builds require explicit authorization after iterative source review.
 
 permissions:
   contents: read
@@ -21,8 +15,9 @@ concurrency:
 
 jobs:
   quality:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node 20 Base44 compatibility build
+    needs: preflight-review
+    if: github.event_name == 'workflow_dispatch'
+    name: Production compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -32,7 +27,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
@@ -198,9 +193,27 @@ jobs:
           test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
 
+  # A source-review attestation is required before costly jobs may start.
+  # Automated preflight checks are not a substitute for the review itself.
+  # Preflight review first: dependency-free source and workflow checks.
+  preflight-review:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Review connection and data-truth source contracts
+        run: node scripts/verify-connect-dialog-safe-errors.mjs
+      - name: Review integration registry source contracts
+        run: node scripts/verify-integration-registry-truth.mjs
+      - name: Review financial authority source contracts
+        run: node scripts/verify-fraud-control-financial-boundary.mjs
+
   node22-compatibility:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node current compatibility build
+    needs: preflight-review
+    if: github.event_name == 'workflow_dispatch'
+    name: Node 22 compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -213,7 +226,8 @@ jobs:
       - run: npm run build
 
   typecheck:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
+    needs: preflight-review
+    if: github.event_name == 'workflow_dispatch'
     name: Typecheck on Base44 baseline
     runs-on: ubuntu-24.04
     timeout-minutes: 15
