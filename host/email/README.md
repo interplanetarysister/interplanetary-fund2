@@ -26,14 +26,31 @@ server-side, not taken from incoming email.
    - `IFUND_EMAIL_INGRESS_SECRET`: identical to the Base44 secret.
    - `IFUND_EMAIL_RECEIVER_URL`: verified HTTPS endpoint for the Base44
       `receiveCloudflareEmail` function.
-   - `IFUND_EMAIL_ALLOWED_RECIPIENTS`: a comma-separated *explicit*
-      list of intended `@interplanetaryfund.com` email addresses.
+   - The approved recipient list is **non-secret** and is set in
+     `wrangler.toml` under `[vars].IFUND_EMAIL_ALLOWED_RECIPIENTS`.
+     Only the nine addresses listed below are permitted.
 4. Verify the function returns 503 with unconfigured secrets and 401 with
    invalid signatures. Test HMAC-signed delivery against a test mailbox,
    private inbox isolation, retries and duplicate Message-IDs.
 5. Only after testing, configure Cloudflare Email Routing -> Send to Worker
    for the approved addresses. Confirm at least one real external email is
    visible to the intended admin on web and APK before updating Wix nameservers.
+
+## Approved receiving addresses
+
+- `contact@interplanetaryfund.com`
+- `support@interplanetaryfund.com`
+- `admin@interplanetaryfund.com`
+- `ifund@interplanetaryfund.com`
+- `campaigns@interplanetaryfund.com`
+- `help@interplanetaryfund.com`
+- `developer@interplanetaryfund.com`
+- `partner@interplanetaryfund.com`
+- `crowdfund@interplanetaryfund.com`
+
+All nine are planned aliases into the existing IFund private admin inbox,
+with the original recipient retained in the message text; not separate IMAP
+mailboxes. Routes are not activated or demonstrated as deliverable yet.
 
 ## No DNS changes from this stage
 
