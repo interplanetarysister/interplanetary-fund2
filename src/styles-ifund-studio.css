@@ -297,6 +297,12 @@ body {
 .dark .ifund-sidebar .text-slate-500 { color: #a9b8cd !important; }
 .ifund-sidebar .text-slate-100, .ifund-sidebar .ifund-brand-title { color: #172035 !important; }
 .dark .ifund-sidebar .text-slate-100, .dark .ifund-sidebar .ifund-brand-title { color: #f8fafc !important; }
+.ifund-page-icon {
+  display: inline-flex; flex-shrink: 0; width: 42px; height: 42px;
+  align-items: center; justify-content: center; border-radius: 14px;
+  background: #eee9ff; color: #6846c4; border: 1px solid #e2dcfa;
+}
+.dark .ifund-page-icon { background: #303760; color: #b7a6ff; border-color: #4a507b; }
 .ifund-nav-icon {
   display: inline-flex; width: 35px; height: 35px; flex-shrink: 0;
   align-items: center; justify-content: center; border-radius: 12px;
