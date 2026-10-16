@@ -1,0 +1,13 @@
+{
+  "name": "ifund-official-email",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test signature.test.mjs handler.test.mjs",
+    "check": "node --check signature.mjs && node --check handler.mjs && node --check worker.mjs"
+  },
+  "dependencies": {
+    "postal-mime": "4.0.5"
+  }
+}

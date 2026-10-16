@@ -66,10 +66,25 @@ export default function InboxItemCard({ item, onChanged }) {
             <Badge className={`${typeColors[item.type] || typeColors.system} border-0 capitalize`}>{item.type}</Badge>
             {item.campaign_title && <span className="text-xs text-stone-400 truncate">{item.campaign_title}</span>}
           </div>
-          <p className="text-sm text-stone-800 mt-2">
-            {item.author && <span className="font-semibold">{item.author}: </span>}
-            {item.content}
-          </p>
+          {item.platform === "email" ? (
+            <>
+              <p className="text-sm text-stone-800 mt-2 break-words">
+                {item.author && <span className="font-semibold">{item.author}: </span>}
+                {String(item.content || "").split("\n").find((line) => line.startsWith("Subject: ")) || "Email received"}
+              </p>
+              <details className="mt-2">
+                <summary className="text-sm font-medium text-blue-700 cursor-pointer">Read email</summary>
+                <p className="text-sm text-stone-800 mt-2 whitespace-pre-wrap break-words max-h-96 overflow-y-auto">
+                  {item.content}
+                </p>
+              </details>
+            </>
+          ) : (
+            <p className="text-sm text-stone-800 mt-2 break-words">
+              {item.author && <span className="font-semibold">{item.author}: </span>}
+              {item.content}
+            </p>
+          )}
           <p className="text-xs text-stone-400 mt-1">{item.date ? formatDistanceToNow(new Date(item.date), { addSuffix: true }) : ""}</p>
         </div>
       </div>

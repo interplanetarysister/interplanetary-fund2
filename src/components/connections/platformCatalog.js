@@ -424,7 +424,7 @@ export const APP_PLATFORMS = [
 ];
 
 export const ALL_PLATFORMS = [...CROWDFUNDING_PLATFORMS, ...SOCIAL_PLATFORMS, ...APP_PLATFORMS];
-export const platformName = (id) => ALL_PLATFORMS.find((p) => p.id === id)?.name || id;
+export const platformName = (id) => id === "email" ? "Official Email" : (ALL_PLATFORMS.find((p) => p.id === id)?.name || id);
 export const platformById = (id) => ALL_PLATFORMS.find((p) => p.id === id) || null;
 
 export const AUTOMATION_MODES = [
