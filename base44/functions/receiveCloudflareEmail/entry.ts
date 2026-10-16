@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 
 // Cloudflare Email Worker -> IFund private admin inbox. Public key is not secret;
 // Cloudflare stores the signing private key securely as a Worker secret.
-const publicKeySpkiBase64 = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkdbcCdsZu41QZ6b1hlbQZP97H8bsU6SCkLeWbFvAr5a8h6E10a0AV+qG0oOXloVgQBln6WhFegL9QVy4bP1okw==';
+const publicKeySpkiBase64 = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEULHIdTiu+6Z0jkuABd0Gj483NXCk5EfjdPk9vBKgCmyGzCTpipzOOfqPvCwh4dOYqa/tm+lipTjopYKBZyQEWg==';
 const ownerId = '6a67a778342a8fe05ee79cbb';
 const ownerEmail = 'cuddlemeplatonically@gmail.com';
 const encoder = new TextEncoder();
