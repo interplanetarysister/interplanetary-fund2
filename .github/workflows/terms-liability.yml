@@ -2,10 +2,7 @@ name: Terms Liability Verification
 
 on:
   workflow_dispatch:
-  # Avoid running on every intermediate commit or every main push.
-  pull_request:
-    types: [ready_for_review]
-    branches: [main]
+  # Manual batch verification only; no automatic PR or main push trigger.
 
 jobs:
   verify-terms-liability:
