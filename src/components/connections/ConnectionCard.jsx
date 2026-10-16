@@ -5,6 +5,7 @@ import { ExternalLink, Unplug, Globe2, Rocket, Download, Wrench } from "lucide-r
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 import { useNavigate } from "react-router-dom";
+import PlatformLogo from "@/components/connections/PlatformLogo";
 
 const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fundrazr","givesendgo","kofi","buymeacoffee","patreon","spotfund","eventbrite"]);
 
@@ -131,8 +132,9 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   const provenanceLabel = providerVerifiedFinancialData ? "Checked" : "Added by you";
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
+    <div className="ifund-connection-card bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
+        <PlatformLogo platform={platform || { id: connection.platform, name: connection.platform }} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
             <span className="shrink-0" title={failed ? "Needs attention" : verified ? "On and working" : "On"}>
