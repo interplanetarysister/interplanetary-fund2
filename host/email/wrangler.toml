@@ -3,6 +3,11 @@ main = "worker.js"
 compatibility_date = "2026-10-15"
 workers_dev = false
 
+# The approved recipient list is not a secret. Worker signing keys and
+# Base44 endpoint settings must be set separately as encrypted secrets.
+[vars]
+IFUND_EMAIL_ALLOWED_RECIPIENTS = "contact@interplanetaryfund.com,support@interplanetaryfund.com,admin@interplanetaryfund.com,ifund@interplanetaryfund.com,campaigns@interplanetaryfund.com,help@interplanetaryfund.com,developer@interplanetaryfund.com,partner@interplanetaryfund.com,crowdfund@interplanetaryfund.com"
+
 # Email Routing rules are managed on the Cloudflare domain AFTER
 # secure secrets and recipient permissions are verified.
 # Never place production secrets in this file.
