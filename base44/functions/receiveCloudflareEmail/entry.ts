@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { secrets } from 'base44:runtime';
 
 // Cloudflare Email Worker -> IFund private InboxItem bridge.
 // Fail closed unless the identical high-entropy shared secret is installed
 // in Base44 and Cloudflare, and an admin recipient is configured.
 const encoder = new TextEncoder();
-const envValue = (name) => String(Deno.env.get(name) || '').trim();
+const envValue = (name) => String(secrets.get(name) || '').trim();
 const hex = (bytes) => [...new Uint8Array(bytes)].map((x) => x.toString(16).padStart(2, '0')).join('');
 const clean = (value, max) => String(value || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u202e]/g, '').slice(0, max);
 
