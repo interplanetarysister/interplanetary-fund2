@@ -7,7 +7,7 @@ GitHub is an **independent optional Android build provider**, not the mandatory 
 After the manual workflow has been merged into the default branch:
 1. Open **GitHub → interplanetary-fund2 → Actions → IFund Android APK - manual build**.
 2. Select **Run workflow** and the branch/commit to build.
-3. Choose **debug** for a test APK, or **signed-release** for an APK intended to be signed with the existing owner's Android identity.
+3. Choose **debug** for a test APK on the selected branch, or **signed-release** on the reviewed **main** branch for an APK signed with the existing owner's Android identity.
 4. For signed-release, supply a new integer **version_code** that is greater than the APK already installed, and **version_name** such as `1.0.1`.
 5. Review the run's tests, signing verification, APK embedded release marker, and artifact SHA-256. Download the private Actions artifact if successful.
 
