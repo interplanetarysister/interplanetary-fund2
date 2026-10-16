@@ -11,6 +11,7 @@ import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { useToast } from "@/components/ui/use-toast";
 import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIInstructionsStep";
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
+import CampaignCopyChoices from "@/components/campaigns/CampaignCopyChoices";
 import MediaUpload from "@/components/media/MediaUpload";
 import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
@@ -217,7 +218,7 @@ export default function CreateCampaign() {
     }
   };
 
-  const canNext = step === 0 ? true : step === 1 ? form.title && parseFloat(form.goal_amount) > 0 : true;
+  const canNext = step === 0 ? true : step === 1 ? parseFloat(form.goal_amount) > 0 : step === 2 ? Boolean(form.title?.trim()) : true;
 
   if (loadingDraft) return <div className="campaign-quest deep-space max-w-3xl mx-auto my-6 min-h-64 rounded-[2rem] flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-cyan-300" /></div>;
 
@@ -236,17 +237,16 @@ export default function CreateCampaign() {
       </div>
 
       <h1 className="font-display text-3xl sm:text-4xl brand-gradient-text mb-2 break-words">
-        {step === 0 && "Tell us what matters"}{step === 1 && "Set the campaign basics"}{step === 2 && "Choose how your story is told"}{step === 3 && "Review & launch"}
+        {step === 0 && "Tell us what matters"}{step === 1 && "Set the campaign basics"}{step === 2 && "Choose your words and story"}{step === 3 && "Review & launch"}
       </h1>
-      <p className="text-sm text-slate-300 mb-6">{step === 0 ? "Give your campaign a spark. The AI can handle the complicated stuff." : step === 1 ? "Just the essentials. You can fine-tune the rest later." : step === 2 ? "Pick a vibe, create your story, then make it yours." : "One last look before your campaign enters orbit."}</p>
+      <p className="text-sm text-slate-300 mb-6">{step === 0 ? "Give your campaign a spark. The AI can handle the complicated stuff." : step === 1 ? "Just the essentials. You can fine-tune the rest later." : step === 2 ? "Pick a title, pick a description, then create your story—all on this page." : "One last look before your campaign enters orbit."}</p>
       {importConnectionId && !draftId && <Button type="button" onClick={importConnectedCampaign} disabled={importing} variant="outline" className="quest-button mb-4">{importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}Import from connected fundraiser</Button>}
 
       <div className="glass-panel rounded-[1.75rem] p-4 sm:p-6 shadow-[0_20px_70px_rgba(2,6,23,.45)] space-y-5 min-w-0">
         {step === 0 && <AIInstructionsStep value={form.ai_profile} onChange={(p) => set("ai_profile", p)} />}
 
         {step === 1 && (<div className="space-y-5">
-          <div className="flex items-center gap-3"><span className="quest-icon"><Rocket className="w-5 h-5" /></span><div><h2 className="text-xl font-bold text-white">Launch basics</h2><p className="text-sm text-slate-300">Three quick choices. No paperwork energy.</p></div></div>
-          <div className="space-y-2"><Label className="quest-label">What should we call your mission?</Label><Input className="quest-input" placeholder="Give your campaign a name…" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
+          <div className="flex items-center gap-3"><span className="quest-icon"><Rocket className="w-5 h-5" /></span><div><h2 className="text-xl font-bold text-white">Launch basics</h2><p className="text-sm text-slate-300">Choose your kind of campaign and your goal.</p></div></div>
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div className="space-y-2 min-w-0"><Label className="quest-label">What kind?</Label><Select value={form.category} onValueChange={(v) => set("category", v)}><SelectTrigger className="quest-input"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(categoryLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2 min-w-0"><Label className="quest-label flex items-center gap-1"><Coins className="w-3.5 h-3.5" /> Goal</Label><Input className="quest-input" type="number" min="1" placeholder="$5,000" value={form.goal_amount} onChange={(e) => set("goal_amount", e.target.value)} /></div>
@@ -256,7 +256,8 @@ export default function CreateCampaign() {
         </div>)}
 
         {step === 2 && (<>
-          <div className="rounded-2xl border border-violet-300/25 bg-violet-500/10 p-4 sm:p-5 space-y-2"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-violet-300">Your signal</p><Label className="quest-label text-base">Sum it up in one line</Label></div><Input className="quest-input" placeholder="What are you trying to make happen?" value={form.summary} onChange={(e) => set("summary", e.target.value)} /><p className="text-xs text-slate-400">Optional. Your words stay yours; if left blank, a short public summary is created from your final story when you launch.</p></div>
+          <CampaignCopyChoices form={form} onChange={set} />
+          <div className="rounded-2xl border border-violet-300/25 bg-violet-500/10 px-4 pt-4"><h3 className="text-lg font-bold text-white">3. Make your story</h3><p className="text-xs text-slate-300">Click to create or improve your story. Your final text stays editable below.</p></div>
           <AIStoryGenerator form={form} aiProfile={form.ai_profile} versions={form.story_versions} onApply={(text) => set("story", text)} onSaveVersion={(ver) => setForm((f) => ({ ...f, story_versions: [...(f.story_versions || []), ver].slice(-50) }))} onRestoreVersion={(ver) => set("story", ver.text)} />
           <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 sm:p-5 space-y-2"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">Final transmission</p><Label className="quest-label text-base">Your campaign story</Label></div><Textarea rows={10} className="quest-input min-h-56 resize-y whitespace-pre-wrap break-words" placeholder="Write it yourself or forge a draft above, then remix it here." value={form.story} onChange={(e) => set("story", e.target.value)} /><p className="text-xs text-slate-400">This is the one story that goes live. Story Forge edits this same field and keeps earlier versions available to restore.</p></div>
           <div className="space-y-2">
