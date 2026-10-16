@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 
 const nodeVersion = process.versions.node;
 const nodeMajor = Number(nodeVersion.split('.')[0]);
+const nodeMinor = Number(nodeVersion.split('.')[1]);
 
 let npmVersion = 'unknown';
 try {
@@ -13,13 +14,16 @@ try {
   // npm availability is reported for diagnostics; Node major is the hard gate.
 }
 
-// Accept all stable Node majors 20 and newer; test compatibility at build time.
-const MINIMUM_NODE_MAJOR = 20;
+// Firebase 13 requires Node >=24.12.0; test newer majors before release.
+const MINIMUM_NODE_MAJOR = 24;
+const MINIMUM_NODE_MINOR = 12;
+const supportedRuntime = nodeMajor > MINIMUM_NODE_MAJOR ||
+  (nodeMajor === MINIMUM_NODE_MAJOR && nodeMinor >= MINIMUM_NODE_MINOR);
 
-if (nodeMajor < MINIMUM_NODE_MAJOR) {
+if (!supportedRuntime) {
   console.error(
     `Node runtime preflight FAILED: executing Node ${nodeVersion} at ${process.execPath}. ` +
-    `Node ${MINIMUM_NODE_MAJOR} or newer is required.`,
+    `Node ${MINIMUM_NODE_MAJOR} .${MINIMUM_NODE_MINOR} or newer is required.`,
   );
   process.exit(1);
 }
