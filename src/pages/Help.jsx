@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { HELP_CATEGORIES, displayHelpCategory, helpArticlePath } from "@/lib/helpCenter";
 import { CONNECTION_HELP_GUIDES } from "@/lib/connectionHelpGuides";
+import { WORKFLOW_HELP_GUIDES } from "@/lib/workflowHelpGuides";
 
 const CATEGORY_ICONS = { Rocket, Megaphone, HeartHandshake, Link2, Wallet, ShieldCheck, CreditCard, Bot, Users };
 
@@ -40,7 +41,8 @@ export default function Help() {
   };
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return [...CONNECTION_HELP_GUIDES, ...articles.filter(article => !CONNECTION_HELP_GUIDES.some(guide => guide.slug === article.slug))].filter((article) => {
+    const builtins = [...CONNECTION_HELP_GUIDES, ...WORKFLOW_HELP_GUIDES];
+    return [...builtins, ...articles.filter(article => !builtins.some(guide => guide.slug === article.slug))].filter((article) => {
       if (category && displayHelpCategory(article.category) !== category) return false;
       if (!q) return true;
       return [article.question, article.answer, article.category, article.description, ...(article.keywords || [])]
