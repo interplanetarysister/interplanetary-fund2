@@ -10,6 +10,7 @@ import CredentialFields from "./CredentialFields";
 import PasswordVaultPanel from "./PasswordVaultPanel";
 import AccountAiScope from "./AccountAiScope";
 import VerificationInboxPanel from "@/components/inbox/VerificationInboxPanel";
+import { Link } from "react-router-dom";
 import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 import { providerAuthorizationDestination } from "@/lib/providerAuthorizationDestination";
 
@@ -276,6 +277,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             {oauthReadiness === "not_configured" && <p role="status" className="text-sm text-amber-700">IFund needs to finish this platform's user-login registration before this link can work. Nothing is wrong with your account.</p>}
           </div>
         )}
+        <p className="text-sm"><Link className="underline text-primary font-semibold" to="/help/connect-another-platform">Read easy steps to connect this app</Link></p>
         <div className="min-w-0 w-full space-y-4">
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{isCrowd ? "Campaign name on that platform" : "Account name / handle"}</Label>
