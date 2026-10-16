@@ -111,6 +111,9 @@ assert.equal((await request("read", "es", "unknown")).status, 404);
 campaigns.get("c1").story = "The goal is now 30 books.";
 assert.equal((await request("read")).status, 404, "Stale translations must not be shown");
 assert.deepEqual((await request("list")).data.languages, []);
+loggedIn = { id: "owner", role: "user" };
+assert.equal((await request("generate")).status, 502, "Changed numbers must fail translation validation");
+assert.equal(translations.length, 1, "Rejected translations must never be stored");
 loggedIn = { id: "other", role: "user" };
 assert.equal((await request("generate")).status, 403, "Another user cannot generate");
 
