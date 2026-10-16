@@ -17,3 +17,7 @@ When work identifies a file, workflow, branch artifact, duplicate, obsolete conf
 `✨🌟 DELETION READY: <exact item/path> — <brief verified reason it is safe to delete> 🌟✨`
 
 The star marker means verified deletion-ready; it must not be used merely for suspected cleanup. This rule applies to every GitHub task, not only agent workflows or consolidation work.
+
+## Mandatory iterative pre-build review — all IFund development agents
+
+Applies to Agent 1/2/3, Codex, Copilot, Base44/Wix builders, Chief of Staff when delegating development, specialist agents doing code work, reviewers, and automated workflows. For each completed feature batch: inspect every changed file and its imports, callers, schemas, auth/consent, payment boundaries, failure states, and affected deployment paths. Identify known or predictable defects; repair them; review the repairs and the ENTIRE cumulative batch diff again. Repeat review → repair → re-review until no known defects remain. Record review scope, findings, fixes, and remaining uncertainty in the PR. Do not mark the PR ready, request a production build, deploy, or run costly full validation during this cycle. First perform cheap static/source-contract checks; after the complete batch passes review, explicitly authorize a single batch build and final verification. A successful build never substitutes for code review; do not claim zero defects or approved review without evidence. If a gate cannot be enforced technically, disclose it and keep the PR draft.
