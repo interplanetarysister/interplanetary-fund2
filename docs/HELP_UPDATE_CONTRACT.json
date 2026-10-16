@@ -6,8 +6,8 @@
       "workflow": "Connect outside app",
       "help_slug": "connect-another-platform",
       "tracked_files": {
-        "src/components/connections/ConnectDialog.jsx": "62cbab2f09acf6bf3c2c5e7d26dd55a3f6b838cd90022796651ba24e8fdad081",
-        "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "b4272b4aa032becc5f41d35b754dc27dea6890be3d7cea3b913e131f68311374",
+        "src/components/connections/ConnectDialog.jsx": "f9a54626b4ecd82fbd6bb0b9c4a89ad13e4a3bedf3c9f9e6ae5a68121b38f5ee",
+        "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "50c0153e3891b1c1fd29be272d45e0eed398d59e570b8d1fb4f8e45a1ea7400a",
         "base44/functions/saveConnectionCredentials/entry.ts": "9cc49cddf897b340e0b7df826b53c734a1ab905b01618452c54e4c23314cd7bd"
       }
     },
@@ -17,7 +17,7 @@
       "tracked_files": {
         "src/components/connections/AccountAiScope.jsx": "464b828b424aa76bea8117b5725609b5e6a23f7f91683348176b4ea7f0daafda",
         "src/components/connections/ConnectionCard.jsx": "660537ab3d970c82dc3732229ba8bb27d27ae1644c1b686b310d7dc25b68db1f",
-        "base44/functions/setConnectionAiToggle/entry.ts": "3fc0a8e5bd1d59d5c59f45a682f07b7dec2eb32fddc31bf165ff0896b70c483e",
+        "base44/functions/setConnectionAiToggle/entry.ts": "d53165dcc3b7ed59719178c2f87b46eda315b2c99e4324607b9257128cbb9054",
         "base44/functions/setUnifiedOboConsent/entry.ts": "47249a13b3b3ac475d35fc178c8f7d27a02d063a7a961170cb3126b4847b4a31"
       }
     },
