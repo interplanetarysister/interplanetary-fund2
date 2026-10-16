@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, Loader2, Wand2, History, RotateCcw, Undo2 } from "lucide-react";
-import { COMPLIANCE_RULES, STORY_STYLES, AUDIENCES, buildCampaignContext, styleLabel, styleGuidance, audienceLabel } from "@/lib/campaignAI";
+import { COMPLIANCE_RULES, STORY_STYLES, buildCampaignContext, styleLabel, styleGuidance } from "@/lib/campaignAI";
 import { secureInvokeLLM } from "@/lib/secureLLM";
 import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 import { wrapUntrustedData } from "@/lib/promptSecurity";
@@ -17,8 +16,15 @@ const ACTIONS = [
 
 export default function AIStoryGenerator({ form, aiProfile, versions = [], onApply, onSaveVersion, onRestoreVersion }) {
   const available = useFeatureEnabled("ai_campaign_assistant");
-  const [style, setStyle] = useState("emotional");
-  const [audience, setAudience] = useState("auto");
+  // Reuse the voice already picked in campaign setup. Do not ask the same question twice.
+  const selectedTone = String(aiProfile?.tone || "").toLowerCase();
+  const style = STORY_STYLES.some((option) => option.value === aiProfile?.priority)
+    ? aiProfile.priority
+    : selectedTone.includes("urgent") ? "urgent"
+    : selectedTone.includes("fact") ? "factual"
+    : selectedTone.includes("profession") ? "professional"
+    : selectedTone.includes("community") ? "community" : "emotional";
+  const audience = "auto";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
@@ -52,7 +58,7 @@ ${wrapUntrustedData("campaign_context", context)}
 Task: ${actionInstruction}
 Writing style: ${styleLabel(style)}.
 Apply this style materially: ${styleGuidance(style)}
-Audience: ${audience === "auto" ? "Infer plausible supporters from campaign facts. Creator audience ideas are hypotheses, not constraints." : audienceLabel(audience)}.
+Audience: Infer plausible supporters from campaign facts. Creator audience ideas are hypotheses, not constraints.
 Use short paragraphs and plain language. Keep all known facts intact. Respect never_change and avoid_words. Never invent facts, names, amounts, dates, diagnoses, urgency, or outcomes.
 Return only the complete revised story.`;
 
@@ -83,14 +89,7 @@ Return only the complete revised story.`;
         {versions.length > 0 && <button type="button" onClick={() => setShowHistory((s) => !s)} className="flex items-center gap-1 text-xs text-cyan-300 font-medium hover:text-cyan-100"><History className="w-3.5 h-3.5" /> History ({versions.length})</button>}
       </div>
 
-      <div className="space-y-2">
-        <Label className="quest-label">Choose your story vibe</Label>
-        <div className="grid sm:grid-cols-2 gap-2">
-          {STORY_STYLES.map((s) => <button key={s.value} type="button" onClick={() => setStyle(s.value)} aria-pressed={style === s.value} className={`text-left rounded-2xl border p-3 transition-all ${style === s.value ? "border-cyan-300 bg-cyan-400/20 ring-1 ring-cyan-300/30 shadow-[0_0_20px_rgba(34,211,238,.12)]" : "border-white/10 bg-slate-950/45 hover:border-violet-300/40 hover:bg-violet-500/10"}`}><span className="block text-sm font-semibold text-cyan-50">{s.label}</span><span className="block text-xs text-slate-300 mt-0.5">{s.description}</span></button>)}
-        </div>
-      </div>
-
-      <details className="rounded-2xl border border-violet-400/20 bg-slate-950/35 overflow-hidden"><summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-violet-100">Want to steer the audience? <span className="text-slate-400 font-normal">Optional</span></summary><div className="p-4 pt-1"><Select value={audience} onValueChange={setAudience}><SelectTrigger className="quest-input"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="auto">Let AI find the crowd</SelectItem>{AUDIENCES.map((a) => <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>)}</SelectContent></Select></div></details>
+      <p className="text-xs text-slate-300">Story tone: <strong className="text-cyan-200">{aiProfile?.tone || styleLabel(style)}</strong>. Change it in “Your Details” if you want.</p>
 
       {!form.story?.trim() ? (
         <Button type="button" onClick={() => generate("new")} disabled={loading} className="rounded-2xl bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90 shadow-[0_0_24px_rgba(34,211,238,.2)]">{loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />} Forge my story</Button>
@@ -100,7 +99,7 @@ Return only the complete revised story.`;
 
       {error && <p className="text-sm text-rose-300">{error}</p>}
 
-      {showHistory && versions.length > 0 && <div className="space-y-2 max-h-64 overflow-y-auto">{[...versions].reverse().map((ver, i) => <div key={i} className="rounded-xl border border-white/10 bg-slate-950/55 p-3"><div className="flex items-center justify-between mb-1"><p className="text-xs text-slate-400">{styleLabel(ver.style)} · {ver.audience === "auto" ? "AI-chosen audience" : audienceLabel(ver.audience)}</p><button type="button" onClick={() => restore(ver)} className="text-xs text-cyan-300 font-medium hover:text-cyan-100 flex items-center gap-1"><Undo2 className="w-3 h-3" /> Restore</button></div><p className="text-xs text-slate-300 line-clamp-3 whitespace-pre-wrap">{ver.text}</p></div>)}</div>}
+      {showHistory && versions.length > 0 && <div className="space-y-2 max-h-64 overflow-y-auto">{[...versions].reverse().map((ver, i) => <div key={i} className="rounded-xl border border-white/10 bg-slate-950/55 p-3"><div className="flex items-center justify-between mb-1"><p className="text-xs text-slate-400">{styleLabel(ver.style)} · {ver.audience === "auto" ? "AI-chosen audience" : "AI-chosen audience"}</p><button type="button" onClick={() => restore(ver)} className="text-xs text-cyan-300 font-medium hover:text-cyan-100 flex items-center gap-1"><Undo2 className="w-3 h-3" /> Restore</button></div><p className="text-xs text-slate-300 line-clamp-3 whitespace-pre-wrap">{ver.text}</p></div>)}</div>}
       <p className="text-[11px] text-slate-400">Your campaign story below is the single source of truth. AI changes are versioned so you can restore an earlier take.</p>
     </div>
   );
