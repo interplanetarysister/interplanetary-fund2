@@ -222,6 +222,9 @@ export default function Layout() {
 
       <header className="ifund-mobile-header md:hidden sticky top-0 z-40 flex items-center justify-between gap-2 px-3 py-3 pt-safe">
         <div className="flex items-center gap-1 min-w-0">
+          <button onClick={() => setOpen(true)} aria-expanded={open} aria-controls="mobile-menu"
+                  className="ifund-header-action p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label="Open navigation"><Menu className="w-5 h-5" /></button>
           {!isRoot && (
             <button onClick={goBack} aria-label="Back" className="ifund-header-action p-2 -ml-1 min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors">
               <ChevronLeft className="w-6 h-6" />
@@ -235,9 +238,6 @@ export default function Layout() {
         <div className="flex items-center gap-1 shrink-0">
           <button type="button" onClick={toggleTheme} className="ifund-header-action min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label={darkTheme ? "Switch to light theme" : "Switch to dark theme"}>{darkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}</button>
           {user && <NotificationBell />}
-          <button onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="mobile-menu" className="ifund-header-action p-2 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Toggle menu">
-            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
         </div>
       </header>
       <OfflineBanner />
