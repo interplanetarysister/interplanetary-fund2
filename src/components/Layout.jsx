@@ -138,6 +138,13 @@ export default function Layout() {
   const hasAiAgents = hasPlanLevel(user, 1);
   const { pathname } = useLocation();
   const title = pageTitle(pathname);
+  // Keep each area recognizable beyond the sidebar, including nested pages.
+  const PageIcon = navItems.find((item) => item.to === pathname)?.icon
+    || publicNavItems.find((item) => item.to === pathname)?.icon
+    || (pathname.startsWith("/campaign/") ? HeartHandshake
+      : pathname.startsWith("/community/") ? Users
+      : pathname.startsWith("/blogs/") ? BookOpen
+      : pathname.startsWith("/help/") ? CircleHelp : Compass);
   const section = pathname.startsWith("/admin/") ? "Administration"
     : ["/discover", "/campaign", "/community", "/help"].some(v => pathname.startsWith(v)) ? "Explore"
     : "Your workspace";
@@ -275,9 +282,12 @@ export default function Layout() {
 
       <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 md:pl-60 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
         <div className="ifund-workspace-bar sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 sm:px-7">
-          <div className="min-w-0">
-            <p className="ifund-workspace-kicker">{section}</p>
-            <p className="ifund-workspace-title truncate">{title}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="ifund-page-icon" aria-hidden="true"><PageIcon className="w-5 h-5" strokeWidth={1.85} /></span>
+            <div className="min-w-0">
+              <p className="ifund-workspace-kicker">{section}</p>
+              <p className="ifund-workspace-title truncate">{title}</p>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Link to={helpPathForLocation(pathname)} className="ifund-workspace-utility inline-flex min-h-10 items-center gap-2 px-3 text-xs font-semibold" aria-label="Visit IFund Help Center">
