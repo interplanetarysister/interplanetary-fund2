@@ -2,10 +2,7 @@ name: Connection Authorization and Data Truth
 
 on:
   workflow_dispatch:
-  # A completed batch is submitted by marking its draft PR ready for review.
-  pull_request:
-    types: [ready_for_review]
-    branches: [main]
+  # Manual batch verification only; no PR commit or ready-for-review trigger.
 
 jobs:
   verify:
