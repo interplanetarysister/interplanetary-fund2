@@ -160,6 +160,9 @@
         "permission_version": {
           "type": "string"
         },
+        "scope_version": {
+          "type": "string"
+        },
         "requested_capabilities": {
           "type": "array",
           "items": {

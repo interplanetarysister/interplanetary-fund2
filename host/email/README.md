@@ -74,3 +74,6 @@ nine separate mailbox accounts.
   and filtering before marketing these addresses.
 - The platform's existing notification/social inbox must not be disabled
   and DNS changes must preserve the apex A and www CNAME website records.
+
+## Private verification aliases (staged)
+The UserVerificationMailbox and VerificationMail tables support per-user encrypted account-verification messages. Random verify- aliases cannot be delivered until activated following deployment and end-to-end testing. A verification email must never be forwarded to the organization admin mailbox or exposed to the general agent inbox. Set IFUND_VERIFICATION_EMAIL_KEY as a random base64 32-byte AES key in Base44 secrets. No DNS migration or activation is included in this code change.

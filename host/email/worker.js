@@ -4,12 +4,13 @@ import PostalMime from 'postal-mime';
 // A verified Gmail destination preserves message delivery while the
 // Base44 inbox mirror is authenticated and tested.
 const encoder=new TextEncoder();
+const fromB64=value=>Uint8Array.from(atob(value),ch=>ch.charCodeAt(0));
 const hex=bytes=>[...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');
 const trim=(value,length)=>String(value||'').slice(0,length);
 const validRecipient=to=>/^[^\s@<>\u0000-\u001f]{1,64}@interplanetaryfund\.com$/.test(to);
 async function sign(secret,stamp,body) {
-  const key=await crypto.subtle.importKey('raw',encoder.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
-  return hex(await crypto.subtle.sign('HMAC',key,encoder.encode(stamp+'.'+body)));
+  const key=await crypto.subtle.importKey('pkcs8',fromB64(secret),{name:'ECDSA',namedCurve:'P-256'},false,['sign']);
+  return hex(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,encoder.encode(stamp+'.'+body)));
 }
 export default {
   async email(message,env) {
@@ -44,8 +45,8 @@ export default {
       return;
     }
     const endpoint=String(env.IFUND_EMAIL_RECEIVER_URL||'');
-    const secret=String(env.IFUND_EMAIL_INGRESS_SECRET||'');
-    if(!endpoint.startsWith('https://')||secret.length<32) {console.error('Inbox mirror not configured');if(isVerification)message.setReject('Verification inbox unavailable');return;}
+    const secret=String(env.IFUND_EMAIL_SIGNING_PRIVATE_KEY||'');
+    if(!endpoint.startsWith('https://')||!secret) {console.error('Inbox mirror not configured');if(isVerification)message.setReject('Verification inbox unavailable');return;}
     try{
       const body=JSON.stringify(payload);
       const stamp=String(Math.floor(Date.now()/1000));

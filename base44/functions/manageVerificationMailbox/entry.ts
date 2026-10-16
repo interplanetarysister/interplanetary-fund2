@@ -39,7 +39,7 @@ export default async function(req: Request) {
        api.entities.VerificationMail.filter({user_id:userId},'-created_date',100)
      ]);
      const live = messages.filter((m:any)=> Date.parse(m.expires_at)>Date.now());
-     return Response.json({ok:true,mailboxes:aliases.map((m:any)=>({address:m.address,platform:m.platform,status:m.status})),
+     return Response.json({ok:true,mailboxes:aliases.map((m:any)=>({id:m.id,address:m.address,platform:m.platform,status:m.status})),
        messages:live.map((m:any)=>({id:m.id,sender:m.sender,received_at:m.received_at,expires_at:m.expires_at,alias_id:m.alias_id}))},
        {headers:{'Cache-Control':'no-store'}});
    }

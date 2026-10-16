@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
+import { sealMail } from '../../shared/verificationEmailCrypto.ts';
 
 // Cloudflare Email Worker -> IFund private admin inbox. Public key is not secret;
 // Cloudflare stores the signing private key securely as a Worker secret.
@@ -34,6 +35,27 @@ export default async function(req) {
     const messageId=clean(payload?.message_id,254).replace(/[<>]/g,'');
     if (!from || !messageId) return Response.json({error:'Missing message metadata'},{status:400});
     const base44=createClientFromRequest(req), sr=base44.asServiceRole;
+    if (to.startsWith('verify-')) {
+      if (!/^verify-[a-f0-9]{32}@interplanetaryfund\.com$/.test(to))
+        return Response.json({error:'Unknown verification alias'},{status:404});
+      const matches=await sr.entities.VerificationMailbox.filter({address:to});
+      const alias=(matches||[]).find(m=>m.status==='active');
+      if(!alias) return Response.json({error:'Mailbox inactive'},{status:404});
+      const recipient=await sr.entities.User.get(alias.user_id).catch(()=>null);
+      if(!recipient || recipient.account_deletion_pending || (recipient.account_status && recipient.account_status!=='active'))
+        return Response.json({error:'Mailbox unavailable'},{status:404});
+      const msgKey=(to+':'+messageId).slice(0,254);
+      const prior=await sr.entities.VerificationMail.filter({alias_id:alias.id,message_key:msgKey});
+      if(prior?.length) return Response.json({ok:true,duplicate:true});
+      let sealed;
+      try {sealed=await sealMail({subject,text});}
+      catch{return Response.json({error:'Mail encryption not configured'},{status:503});}
+      const now=Date.now();
+      await sr.entities.VerificationMail.create({user_id:alias.user_id,alias_id:alias.id,
+        message_key:msgKey,sender:from,...sealed,received_at:new Date(now).toISOString(),
+        expires_at:new Date(now+86400000).toISOString()});
+      return Response.json({ok:true,verification_mail:true});
+    }
     const owner=await sr.entities.User.get(ownerId).catch(()=>null);
     if (!owner || owner.role !== 'admin' || String(owner.email||'').toLowerCase() !== ownerEmail) return Response.json({error:'Mailbox owner unavailable'},{status:503});
     const key=(to+':'+messageId).slice(0,254);
