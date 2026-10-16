@@ -18,13 +18,15 @@ const OAUTH_ATTEMPT_BLOCKED_STATES = new Set(["checking", "not_configured", "uns
 // Connect (or edit) one destination. Crowdfunding connections link an external
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
-export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, onManagedConnect, open, onOpenChange, onSaved }) {
+export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, onManagedConnect, open, onOpenChange, onSaved, onAccountConsentChanged }) {
   const accountDetailsRef = useRef(null);
   const isCrowd = platform.kind === "crowdfunding";
   const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
   const [accountAiAllowed, setAccountAiAllowed] = useState(false);
+  const [scopeChoice, setScopeChoice] = useState("full");
+  const [permissionBusy, setPermissionBusy] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -48,6 +50,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
+    setScopeChoice(existing?.obo_consent?.scope_choice || "full");
     setAccountAiAllowed(existing?.obo_consent?.granted === true && existing?.obo_consent?.opted_out !== true);
     setHelpDetails("");
     base44.auth.me()
@@ -103,10 +106,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     setConnecting(true);
     setError("");
     try {
-      if (accountAiAllowed && !aiAuthorized) {
-        const enabled = await base44.functions.invoke("setUnifiedOboConsent", { granted: true });
-        if (enabled?.data?.ok !== true) throw new Error("Could not save IFund AI authorization.");
-      }
+      if (accountAiAllowed && !aiAuthorized) throw new Error("Turn on IFund-wide AI help first.");
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
         setError("This platform does not offer verified provider sign-in through IFund yet.");
@@ -124,7 +124,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       // an SDK may immediately navigate away. Never store codes or tokens here.
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
         platform: platform.id, userId: me.id, startedAt: Date.now(),
-        accountAiAllowed,
+        accountAiAllowed, aiScopeChoice: scopeChoice,
         step: "oauth_pending",
         campaignId: form.campaign_id || "",
         campaignTitle: selectedCampaign?.title || form.display_name || "",
@@ -204,14 +204,32 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     }
   };
 
+  const changeAccountAi = async (nextValue) => {
+    if (!aiAuthorized && nextValue) {
+      setError("Turn on IFund-wide AI help on the Connections page first.");
+      return;
+    }
+    if (!existing?.id) { setAccountAiAllowed(nextValue); return; }
+    setPermissionBusy(true); setError("");
+    try {
+      const { data } = await base44.functions.invoke("setConnectionAiToggle", {
+        connection_id: existing.id, enabled: nextValue,
+      });
+      if (!data?.ok) throw new Error(data?.error || "Could not change account permission.");
+      setAccountAiAllowed(nextValue);
+      onAccountConsentChanged?.(existing.id, nextValue);
+      setHelpDetails(nextValue
+        ? "AI is on for this account within the approved scope and provider permissions."
+        : "AI is off for this account. The provider connection stays in place.");
+    } catch(e) { setError(e?.message || "Could not change AI access."); }
+    finally { setPermissionBusy(false); }
+  };
+
   const save = async () => {
     setSaving(true);
     setError("");
     try {
-      if (accountAiAllowed && !aiAuthorized) {
-        const enabled = await base44.functions.invoke("setUnifiedOboConsent", { granted: true });
-        if (enabled?.data?.ok !== true) throw new Error("Could not save IFund AI authorization.");
-      }
+      if (accountAiAllowed && !aiAuthorized) throw new Error("Turn on IFund-wide AI help first.");
       // Route through the credential-merge function so secret values never
       // round-trip through the frontend and merges preserve unchanged secrets.
       const res = await base44.functions.invoke("saveConnectionCredentials", {
@@ -227,6 +245,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
         ai_account_authorized: accountAiAllowed,
+        ai_scope_choice: scopeChoice,
       });
       const saved = res.data.connection;
       onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
@@ -302,7 +321,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </div>
             </div>
           )}
-          <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={setAccountAiAllowed} existing={!!existing} />
+          <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />
           <PasswordVaultPanel platform={platform} />
           <VerificationInboxPanel platform={platform.id} />
           {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/30 p-3">

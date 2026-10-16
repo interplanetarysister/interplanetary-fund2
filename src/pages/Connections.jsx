@@ -189,6 +189,7 @@ export default function Connections() {
             campaign_id: pending.campaignId || undefined,
             display_name: pending.displayName || pending.campaignTitle || undefined,
             ai_account_authorized: pending.accountAiAllowed === true,
+            ai_scope_choice: pending.aiScopeChoice || "full",
           });
           if (data?.authorization_present && data?.connection?.id) {
             setDialog(null);
@@ -518,6 +519,10 @@ export default function Connections() {
           }}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}
+          onAccountConsentChanged={(id, enabled) => setConnections(prev => prev.map(c => c.id === id ? ({
+            ...c, obo_consent:{...(c.obo_consent || {}), granted:enabled,opted_out:!enabled},
+            agent_access:{...(c.agent_access || {}),shared_with_agents:enabled,automation_enabled:false}
+          }) : c))}
           onSaved={async (saved) => {
             setConnections((prev) => {
               const exists = prev.some((x) => x.id === saved.id);
