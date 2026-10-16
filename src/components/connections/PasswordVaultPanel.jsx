@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, LockKeyhole, Smartphone } from "lucide-react";
 import { lockVaultEntry, unlockVaultEntry } from "@/lib/credentialVault";
+import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 
 export default function PasswordVaultPanel({ platform }) {
   const [saved, setSaved] = useState(null);
@@ -69,6 +70,7 @@ export default function PasswordVaultPanel({ platform }) {
       <p className="font-semibold text-sm flex items-center gap-2"><Smartphone className="w-4 h-4" /> Google Password Manager or device autofill</p>
       <p className="text-sm text-muted-foreground">Choose Connect to sign in on the provider's secure page. Android or your browser may offer saved credentials. IFund cannot read the Google password vault, and autofill does not grant AI publishing permission.</p>
     </div>
+    {officialProviderSite(platform.id) && <a className="inline-flex items-center underline text-sm font-semibold text-primary break-words" href={officialProviderSite(platform.id)} target="_blank" rel="noopener noreferrer">Open the official {platform.name} site to sign in with device autofill</a>}
     <h4 className="font-semibold text-sm">Private IFund password vault</h4>
     <p className="text-sm text-muted-foreground">Optional, available for any platform. Credentials are encrypted on your device using your vault passphrase before saving. IFund staff and AI agents cannot read the stored password. A forgotten passphrase cannot be recovered.</p>
     {loading ? <p className="text-sm">Loading vault…</p> : <>

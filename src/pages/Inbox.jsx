@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MailOpen } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
+import VerificationInboxPanel from "@/components/inbox/VerificationInboxPanel";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
 import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
@@ -110,6 +111,7 @@ export default function Inbox() {
         Universal Inbox
       </h1>
       <p className="text-stone-500 mb-6">Every donation, comment, and alert from every connected platform — one communication center.</p>
+      <div className="mb-6"><VerificationInboxPanel /></div>
       {isAdmin && <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
         <h2 className="font-display text-lg text-stone-900 mb-1">Admin action inbox</h2>
         <p className="text-sm text-stone-500 mb-4">Requests from agents and the platform that need a decision, account sign-in, more information, or investigation.</p>
