@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import CredentialFields from "./CredentialFields";
 import PasswordVaultPanel from "./PasswordVaultPanel";
+import AccountAiScope from "./AccountAiScope";
 import { officialProviderSite } from "@/lib/providerOnboardingLinks";
 import { providerAuthorizationDestination } from "@/lib/providerAuthorizationDestination";
 
@@ -22,6 +23,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
+  const [accountAiAllowed, setAccountAiAllowed] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
@@ -45,6 +47,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
+    setAccountAiAllowed(existing?.obo_consent?.granted === true && existing?.obo_consent?.opted_out !== true);
     setHelpDetails("");
     base44.auth.me()
       .then((me) => base44.entities.Campaign.filter({ created_by_id: me.id }))
@@ -99,6 +102,10 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     setConnecting(true);
     setError("");
     try {
+      if (accountAiAllowed && !aiAuthorized) {
+        const enabled = await base44.functions.invoke("setUnifiedOboConsent", { granted: true });
+        if (enabled?.data?.ok !== true) throw new Error("Could not save IFund AI authorization.");
+      }
       const { data } = await base44.functions.invoke("getAppUserConnector", { platform: platform.id });
       if (!data?.supported) {
         setError("This platform does not offer verified provider sign-in through IFund yet.");
@@ -116,6 +123,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       // an SDK may immediately navigate away. Never store codes or tokens here.
       localStorage.setItem("ifund_pending_platform_connection", JSON.stringify({
         platform: platform.id, userId: me.id, startedAt: Date.now(),
+        accountAiAllowed,
         step: "oauth_pending",
         campaignId: form.campaign_id || "",
         campaignTitle: selectedCampaign?.title || form.display_name || "",
@@ -197,7 +205,12 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
 
   const save = async () => {
     setSaving(true);
+    setError("");
     try {
+      if (accountAiAllowed && !aiAuthorized) {
+        const enabled = await base44.functions.invoke("setUnifiedOboConsent", { granted: true });
+        if (enabled?.data?.ok !== true) throw new Error("Could not save IFund AI authorization.");
+      }
       // Route through the credential-merge function so secret values never
       // round-trip through the frontend and merges preserve unchanged secrets.
       const res = await base44.functions.invoke("saveConnectionCredentials", {
@@ -212,6 +225,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
+        ai_account_authorized: accountAiAllowed,
       });
       const saved = res.data.connection;
       onSaved(saved || { ...existing, display_name: form.display_name, external_url: form.external_url });
@@ -287,6 +301,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
               </div>
             </div>
           )}
+          <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={setAccountAiAllowed} existing={!!existing} />
           <PasswordVaultPanel platform={platform} />
           {!usesProviderOAuth && <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-sm font-medium text-foreground">AI help: {aiAuthorized ? "On" : "Off"}</p>

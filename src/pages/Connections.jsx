@@ -188,6 +188,7 @@ export default function Connections() {
             platform: pending.platform,
             campaign_id: pending.campaignId || undefined,
             display_name: pending.displayName || pending.campaignTitle || undefined,
+            ai_account_authorized: pending.accountAiAllowed === true,
           });
           if (data?.authorization_present && data?.connection?.id) {
             setDialog(null);
