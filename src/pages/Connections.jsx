@@ -461,7 +461,7 @@ export default function Connections() {
               onChange={(e) => setPlatformSearch(e.target.value)}
               placeholder="Search platforms"
               aria-label="Search available platforms"
-              className="pl-11 h-12 rounded-2xl bg-white dark:bg-slate-900 dark:text-white"
+              className="pl-11 h-12 rounded-2xl bg-white text-slate-900 dark:bg-slate-900"
             />
           </div>
           <div role="group" aria-label="Filter platforms" className="flex gap-2 overflow-x-auto pb-2 mb-3">
