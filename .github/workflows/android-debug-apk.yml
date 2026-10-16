@@ -25,10 +25,10 @@ jobs:
       - name: Checkout authoritative IFund source
         uses: actions/checkout@v4
 
-      - name: Set up current supported Node (Node 20+ policy)
+      - name: Set up supported Node 24 release baseline
         uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          node-version: '24'
           cache: npm
 
       - name: Set up Java 21

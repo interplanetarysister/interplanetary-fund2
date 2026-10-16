@@ -22,7 +22,7 @@ concurrency:
 jobs:
   quality:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node 20 Base44 compatibility build
+    name: Node 24 Base44 compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -32,13 +32,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          node-version: '24'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
-      - name: Verify Node 20+ runtime contract
+      - name: Verify Node 24.12+ runtime contract
         run: npm run verify:node22-release-contract
 
       - name: Test runtime contract failure cases
@@ -207,7 +207,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          node-version: '24'
           cache: npm
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: npm run build
@@ -224,7 +224,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 'node'
+          node-version: '24'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
