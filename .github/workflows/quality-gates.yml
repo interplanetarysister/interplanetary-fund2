@@ -4,11 +4,7 @@ name: Production Quality Gates
 
 on:
   workflow_dispatch:
-  # Run once when the feature batch leaves draft, not on each commit.
-  pull_request:
-    types: [ready_for_review]
-    branches:
-      - main
+  # Builds require explicit authorization after iterative source review.
 
 permissions:
   contents: read
