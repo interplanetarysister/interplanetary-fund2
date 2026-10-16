@@ -34,8 +34,8 @@ const node22Only = runFixture((fixture) => {
     fs.writeFileSync(p, fs.readFileSync(p, "utf8").replace(/node-version:\s*20(?:\.x)?/g, "node-version: 22"));
   }
 });
-assert.notEqual(node22Only.status, 0, "Node-22-only regression must fail");
-assert.match(node22Only.stderr, /current Node release|floating Node|pins a Node major/);
+assert.notEqual(node22Only.status, 0, "Node 22 selector regression must fail");
+assert.match(node22Only.stderr, /tested Node 24|Node 24/);
 
 const malformedMetadata = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, "package.json"), "{ malformed");
