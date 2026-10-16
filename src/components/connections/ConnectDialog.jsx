@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ const OAUTH_ATTEMPT_BLOCKED_STATES = new Set(["checking", "not_configured", "uns
 // campaign page and its totals; social connections link an account and set the
 // AI automation permission for that destination.
 export default function ConnectDialog({ platform, existing, aiAuthorized, managedAvailable = false, onManagedCreateAccount, onManagedConnect, open, onOpenChange, onSaved }) {
+  const accountDetailsRef = useRef(null);
   const isCrowd = platform.kind === "crowdfunding";
   const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
@@ -170,7 +171,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       } else if (platform.setupKind === "link") {
         setHelpDetails("Open the platform in your browser, sign in if needed, copy your real campaign/profile URL and paste it into the field above. IFund checks supported public data after saving.");
       } else {
-        setHelpDetails("If you’re already logged in on this device, open that platform’s account settings and generate its official app password/token. Enter it only in this secure IFund form; save to request verification.");
+        setHelpDetails("The account detail fields are highlighted above. Enter a platform-issued token only if available; do not enter your regular website password. Saving details does not mean provider verification succeeded.");
+        accountDetailsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        accountDetailsRef.current?.querySelector("input")?.focus({ preventScroll: true });
       }
     } catch (e) {
       console.error("Managed account connection start failed:", e?.name || "ManagedConnectionError");
@@ -214,7 +217,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       onOpenChange(false);
     } catch (e) {
       console.error("ConnectDialog connection save failed:", e);
-      setError("Couldn't save this connection. Please try again. If the problem continues, contact support.");
+      setError(e?.response?.data?.error || "Couldn't save this connection. Please try again. If the problem continues, contact support.");
     } finally {
       setSaving(false);
     }
@@ -247,7 +250,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
           </div>}
-          {!usesProviderOAuth && <CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} />}
+          {!usesProviderOAuth && <div ref={accountDetailsRef}><CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} /></div>}
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Optional campaign to promote"}</Label>
             <Select value={form.campaign_id} onValueChange={selectCampaign}>
@@ -297,8 +300,8 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <ol className="list-decimal pl-4 space-y-2 text-xs text-foreground">
               {usesProviderOAuth && <li>IFund opens the official {platform.name} authorization. An existing provider session may be reused on this device.</li>}
               {(platform.steps||[]).filter(step=>step.id!=="auto").map(step=><li key={step.id}>
-                <span className="font-medium">{step.label}</span>
-                {step.hint && <span className="block mt-0.5">{step.hint}</span>}
+                <span className="font-medium">{platform.id === "buymeacoffee" && step.id === "token" ? "Use a provider-issued developer access token, not your password" : step.label}</span>
+                {step.hint && <span className="block mt-0.5">{platform.id === "buymeacoffee" && step.id === "token" ? "Current integrations use signed webhooks in the Buy Me a Coffee Integrations dashboard; developer tokens may provide limited read-only data." : step.hint}</span>}
               </li>)}
               <li>Return to IFund for a provider verification check. If the account was not verified, the specific required step remains in your AI activity panel.</li>
             </ol>
@@ -307,7 +310,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <p className="font-semibold text-sm text-foreground">IFund connection helper</p>
             <p className="text-xs text-muted-foreground">Use this when you are already signed in on the device or need a fresh provider sign-in. IFund can open supported authorization, guide you to the right platform settings, and then verify the connection. Verification codes come from the platform itself.</p>
             <Button type="button" size="sm" variant="outline" className="min-h-11 w-full text-foreground bg-card whitespace-normal h-auto py-3" disabled={managedBusy || connecting || oauthAttemptBlocked} onClick={startGuidedConnection}>
-              {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : platform.setupKind === "link" ? "Help me link this fundraising page" : "Ask IFund to connect this account now"}
+              {managedBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : platform.setupKind === "link" ? "Help me link this fundraising page" : "Help me connect — show account details"}
             </Button>
             {helpDetails && <p role="status" className="text-xs text-foreground break-words">{helpDetails}</p>}
           </div>}
@@ -321,7 +324,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
           {!usesProviderOAuth && (
-            <Button onClick={save} disabled={saving || (platform.kind !== "app" && !selectedCampaign)} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
+            <Button onClick={save} disabled={saving} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : `Link to ${platform.name}`}
             </Button>
           )}

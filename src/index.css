@@ -739,3 +739,30 @@
     max-width: 100%;
   }
 }
+
+/* Minimum legible text sizes in the live mobile website and rebuilt Android app.
+   The older design uses text-xs (~12px) for instructions, errors and status. */
+@media (max-width: 767px) {
+  .ifund-experience [class~="text-xs"],
+  [role="dialog"] [class~="text-xs"] {
+    font-size: 0.9375rem !important;
+    line-height: 1.5 !important;
+  }
+  .ifund-experience [class~="text-sm"],
+  [role="dialog"] [class~="text-sm"] {
+    font-size: 1rem !important;
+    line-height: 1.55 !important;
+  }
+  .ifund-experience :where(p, li, label, input, textarea, select, button),
+  [role="dialog"] :where(p, li, label, input, textarea, select, button) {
+    letter-spacing: normal;
+  }
+  .ifund-experience :where(p, li, label),
+  [role="dialog"] :where(p, li, label) {
+    font-weight: 500;
+  }
+  .ifund-experience :where(p[class~="text-stone-400"], p[class~="text-slate-400"],
+    p[class~="text-gray-400"], span[class~="text-stone-400"], span[class~="text-slate-400"]) {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+}
