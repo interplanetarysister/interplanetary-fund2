@@ -14,7 +14,7 @@ const entries = [
 6. If the app does not have a sign-in button here, follow the steps in its connection window. You may need to paste your public page link or use a special app token.
 7. Come back to IFund. Tap Check connection. Only a verified connection says it is working.
 
-You can link a page without letting AI use the account. Saving a password does not mean an account is connected. If you are stuck, use IFund connection help.
+You can link a page without letting AI use the account. Saving a password does not mean an account is connected. If you are stuck, use IFund connection help. If saving fails, IFund shows a short error and asks you to try again. Your connection is not marked as working without proof.
 Updated: ${reviewed}.`,
     keywords: ["connect","platform","account","provider","sign in","oauth"]
   },
@@ -75,7 +75,7 @@ Updated: ${reviewed}.`,
 
 IFund encrypts this password before it is sent to storage. AI agents cannot open the vault and cannot see your passphrase. If you lose the passphrase, IFund cannot recover it.
 
-A vault entry is not a live account connection. Use the provider's sign-in or special app token to give IFund approved access.
+A vault entry is not a live account connection. Use the provider's sign-in or special app token to give IFund approved access. If the passphrase is too short or wrong, IFund tells you. If saving fails, try again without sharing your password.
 Updated: ${reviewed}.`,
     keywords: ["password","vault","google password manager","autofill"]
   },
@@ -92,7 +92,7 @@ Updated: ${reviewed}.`,
 8. Tap Reveal verification email to read your code or link.
 9. Use the code on the real app's sign-in page. Hide the message when done.
 
-The mail can be read only by your IFund account. IFund's AI agents cannot read verification messages. Codes do not go to the admin inbox. Email routing is not live until the service and DNS are tested.
+The mail can be read only by your IFund account. IFund's AI agents cannot read verification messages. Codes do not go to the admin inbox. Email routing is not live until the service and DNS are tested. If a message will not open or an address cannot be made, try again later. Do not share your code with anyone.
 Updated: ${reviewed}.`,
     keywords: ["verification","2fa","two factor","email","signup","sign-up"]
   }
