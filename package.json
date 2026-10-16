@@ -11,7 +11,7 @@
     "verify:fundraising-mode": "node scripts/verify-fundraising-mode.mjs",
     "verify:sustainability": "node scripts/verify-ifund-sustainability.mjs",
     "verify:campaign-creation": "node scripts/test-campaign-drafts-and-generated-media.mjs && node scripts/test-generate-campaign-cover.mjs",
-    "verify:design-ux": "node scripts/verify-ifund-design-and-connections.mjs",
+    "verify:design-ux": "node scripts/verify-ifund-design-and-connections.mjs && node scripts/verify-donation-dialog-browser.mjs && node scripts/verify-campaign-ai-choices-browser.mjs",
     "verify:feature-flags": "node --experimental-strip-types scripts/verify-feature-flag-connections.mjs && node scripts/test-core-flag-routes.mjs",
     "verify:platform-oauth": "node scripts/test-oauth-delegation-flow.mjs && node scripts/verify-managed-connections-contract.mjs && node scripts/verify-connection-lifecycle-contract.mjs",
     "preinstall": "npm run verify:runtime-minimum --silent",
