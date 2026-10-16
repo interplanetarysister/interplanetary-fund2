@@ -1,13 +1,8 @@
 name: Build IFund Android debug APK
 
 # Opt-in Android test package distribution; not a Google Play release.
-# A one-time push trigger on this workflow makes the first artifact available.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/android-debug-apk.yml'
 
 permissions:
   contents: read
