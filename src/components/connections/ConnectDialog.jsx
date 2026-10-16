@@ -82,7 +82,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const selectedCampaign = campaigns.find((campaign) => campaign.id === form.campaign_id) || null;
   const externalIdentityChanged = Boolean(existing && isCrowd && (
     platform.id !== existing.platform ||
-    platform.kind !== existing.kind ||
+    (platform.kind || 'crowdfunding') !== (existing.kind || 'crowdfunding') ||
     form.external_url.trim() !== String(existing.external_url || "").trim() ||
     form.external_currency.trim().toUpperCase() !== String(existing.external_currency || "").trim().toUpperCase() ||
     credentialsDirty
