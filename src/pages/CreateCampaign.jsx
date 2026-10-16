@@ -17,9 +17,14 @@ import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
-import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download, Wallet } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download, Wallet, UserRound, Target, BookOpen, Check } from "lucide-react";
 
-const steps = ["Your Details", "Basics", "Campaign Story", "Launch"];
+const steps = [
+  { label: "Your Details", icon: UserRound },
+  { label: "Basics", icon: Target },
+  { label: "Your Story", icon: BookOpen },
+  { label: "Launch", icon: Rocket },
+];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -218,15 +223,15 @@ export default function CreateCampaign() {
 
   return (
     <div className="campaign-quest deep-space max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12 overflow-x-hidden rounded-[2rem] sm:my-6">
-      <div className="flex items-center gap-2 sm:gap-3 mb-8 min-w-0" aria-label={`Campaign setup: step ${step + 1} of ${steps.length}`}>
-        {steps.map((s, i) => (
-          <React.Fragment key={s}>
-            <div className={`flex items-center gap-2 shrink-0 ${i <= step ? "text-cyan-100" : "text-slate-500"}`}> 
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border ${i < step ? "bg-cyan-400 text-slate-950 border-cyan-200 shadow-[0_0_18px_rgba(34,211,238,.45)]" : i === step ? "bg-violet-500 text-white border-violet-300 shadow-[0_0_18px_rgba(139,92,246,.55)]" : "bg-slate-900 text-slate-400 border-slate-700"}`}>{i + 1}</span>
-              <span className="text-sm font-medium hidden sm:block">{s}</span>
-            </div>
-            {i < steps.length - 1 && <div className="flex-1 min-w-2 h-px bg-gradient-to-r from-cyan-400/50 to-violet-500/40" />}
-          </React.Fragment>
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3 mb-8 min-w-0" role="list" aria-label={`Campaign setup: step ${step + 1} of ${steps.length}`}>
+        {steps.map(({ label, icon: StepIcon }, i) => (
+          <div key={label} role="listitem" aria-current={i === step ? "step" : undefined}
+               className={`flex flex-col items-center gap-2 text-center min-w-0 ${i <= step ? "text-cyan-100" : "text-slate-400"}`}>
+            <span className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center border ${i < step ? "bg-cyan-400 text-slate-950 border-cyan-200" : i === step ? "bg-violet-500 text-white border-violet-300 shadow-[0_0_18px_rgba(139,92,246,.4)]" : "bg-slate-900 text-slate-400 border-slate-700"}`}>
+              {i < step ? <Check className="w-6 h-6" strokeWidth={2.5} /> : <StepIcon className="w-6 h-6" strokeWidth={2} />}
+            </span>
+            <span className="text-[11px] leading-tight sm:text-sm font-semibold break-words">{label}</span>
+          </div>
         ))}
       </div>
 
