@@ -3,6 +3,7 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { externalBalanceEvidenceChanged } from '../../shared/externalBalanceEvidence.ts';
+import { encryptConnectionSecret } from '../../shared/connectionCrypto.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -75,7 +76,35 @@ export default async function(req) {
       }
     }
 
-    const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
+    // Only accept known integration fields. Never accept regular website passwords.
+    const allowedByPlatform: Record<string, string[]> = {
+      kofi: ['kofi_verification_token'],
+      buymeacoffee: ['buymeacoffee_api_token'],
+      bluesky: ['bluesky_handle', 'bluesky_app_password'],
+      mastodon: ['mastodon_instance', 'mastodon_access_token'],
+    };
+    const allowed = new Set(['account_identifier', ...(allowedByPlatform[platform] || [])]);
+    const incoming: Record<string, string> = {};
+    for (const [key, raw] of Object.entries(credentials || {})) {
+      if (!allowed.has(key) || typeof raw !== 'string') continue;
+      if (raw.length > 8192) return Response.json({ error: 'A credential is too long.' }, { status: 400 });
+      incoming[key] = raw;
+    }
+    if (existing && existing.platform !== platform) {
+      return Response.json({ error: 'Platform cannot be changed for this account.' }, { status: 400 });
+    }
+    if (incoming.account_identifier) incoming.account_identifier = incoming.account_identifier.trim().slice(0, 254);
+    if (incoming.buymeacoffee_api_token) {
+      try {
+        incoming.buymeacoffee_api_token = await encryptConnectionSecret(incoming.buymeacoffee_api_token.trim());
+      } catch {
+        // Fail closed rather than saving provider secrets as plaintext records.
+        return Response.json({
+          error: 'Secure token storage is not configured yet. Your token was not saved. IFund must enable its encrypted credential key first.',
+        }, { status: 503 });
+      }
+    }
+    const mergedCreds = existing ? mergeSecrets(existing.credentials, incoming) : incoming;
     const now = new Date().toISOString();
     // The dialog always submits its displayed totals. Re-saving a URL or
     // rotating a credential must not make stale/provider-verified balance
@@ -152,7 +181,7 @@ export default async function(req) {
     if (existing) saved = await base44.entities.PlatformConnection.update(existing.id, data);
     else saved = await base44.entities.PlatformConnection.create(data);
 
-    const rotated = SECRET_FIELDS.filter((f) => credentials && credentials[f]);
+    const rotated = SECRET_FIELDS.filter((f) => incoming[f]);
     await logAudit(base44, {
       action: existing ? 'connection_credentials_updated' : 'connection_created',
       actor_user_id: user.id,

@@ -68,6 +68,7 @@ export const SECRET_FIELDS = [
   "kofi_verification_token",
   "bluesky_app_password",
   "mastodon_access_token",
+  "buymeacoffee_api_token",
 ];
 
 // Strip secret values from a credentials object and report which secrets are
