@@ -39,7 +39,16 @@ try {
       assert.equal(response?.status(),200,'Route '+route+' HTTP error');
       const terms=page.getByRole('button',{name:/I Agree — Continue/});
       if(await terms.count()) await terms.click({timeout:12000});
-      await delay(650);
+      // Cold published bundles can need longer than a fixed delay to hydrate.
+      // Wait for actual page content, preserving a finite failure timeout.
+      await page.waitForFunction(() => {
+        const root = document.getElementById('root');
+        return !!root?.children.length && (document.body?.innerText || '').trim().length > 35;
+      }, null, { timeout: 15000 });
+      if(route==='/discover') {
+        await page.getByRole('heading',{name:'Discover campaigns'}).waitFor({timeout:15000});
+      }
+      await delay(150);
       const info=await page.evaluate(()=>({
         url:location.pathname,
         text:(document.body?.innerText||'').slice(0,550),
