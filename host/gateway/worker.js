@@ -10,6 +10,13 @@ function json(body, status = 200, origin = "") {
     headers["access-control-allow-methods"] = "POST, OPTIONS";
     headers["vary"] = "Origin";
   }
+  // 204/205/304 cannot carry response bodies. Browsers send OPTIONS
+  // preflight before authenticated cross-origin admin requests; constructing
+  // a 204 Response with JSON throws in the Workers runtime and Node fetch.
+  if (status === 204 || status === 205 || status === 304) {
+    delete headers["content-type"];
+    return new Response(null, { status, headers });
+  }
   return new Response(JSON.stringify(body), { status, headers });
 }
 function allowedOrigin(request, env) {

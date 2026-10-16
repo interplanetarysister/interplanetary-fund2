@@ -1,0 +1,8 @@
+name = "ifund-email-ingress"
+main = "worker.js"
+compatibility_date = "2026-10-15"
+workers_dev = false
+
+# Email Routing rules are managed on the Cloudflare domain AFTER
+# secure secrets and recipient permissions are verified.
+# Never place production secrets in this file.

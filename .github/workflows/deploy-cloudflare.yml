@@ -79,6 +79,15 @@ jobs:
           grep -qi '^x-ifund-mcp-proxy: base44' /tmp/ifund-custom-mcp.headers
           test "$CUSTOM_MCP_STATUS" != "404"
 
-          ADMIN_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 -o /tmp/ifund-admin-gateway.body -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' https://interplanetaryfund.com/v1/admin/agents/session)"
+          ADMIN_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 -o /tmp/ifund-admin-gateway.body -w '%{http_code}' -X POST -H 'Origin: https://interplanetaryfund.com' -H 'content-type: application/json' --data '{}' https://interplanetaryfund.com/v1/admin/agents/session)"
           test "$ADMIN_STATUS" = "403"
           grep -q 'Administrator authorization required' /tmp/ifund-admin-gateway.body
+
+      - name: Confirm entire public pathway, CORS allowlist and denied origins
+        env:
+          IFUND_WORKER_URL: ${{ steps.deploy.outputs.deployment_url }}
+        run: |
+          # A reachable workers.dev deployment is insufficient: Wix/Render
+          # DNS must route the public hostname through a Cloudflare proxied
+          # zone before claiming success for production.
+          node scripts/verify-live-cloudflare-pathway.mjs
