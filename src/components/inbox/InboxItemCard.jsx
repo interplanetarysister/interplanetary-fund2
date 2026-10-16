@@ -64,6 +64,8 @@ export default function InboxItemCard({ item, onChanged }) {
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{platformName(item.platform)}</Badge>
             <Badge className={`${typeColors[item.type] || typeColors.system} border-0 capitalize`}>{item.type}</Badge>
+            {item.platform === "email" && item.mailbox_priority === "priority" && <Badge className="bg-amber-100 text-amber-900 border-0">Priority</Badge>}
+            {item.platform === "email" && item.recipient_address && <span className="text-xs text-stone-600 break-all">To: {item.recipient_address}</span>}
             {item.campaign_title && <span className="text-xs text-stone-400 truncate">{item.campaign_title}</span>}
           </div>
           <p className="text-sm text-stone-800 mt-2">
