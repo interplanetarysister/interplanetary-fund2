@@ -92,9 +92,9 @@ export default function AdminDevelopmentChat({ user }) {
             {DEVELOPMENT_AGENTS.map(([id,label])=><Button type="button" key={id} size="sm"
               variant={agent===id?"default":"outline"} onClick={()=>setAgent(id)}>{label}</Button>)}
           </div>
-          <div className="max-h-[40dvh] min-h-12 overflow-y-auto overscroll-contain touch-pan-y space-y-2" aria-label="Internal agent messages">
+          <div className="min-h-[22dvh] max-h-[55dvh] overflow-y-auto overscroll-contain touch-pan-y space-y-2" aria-label="Internal agent messages">
             {messages.map((m,i)=><div key={i} className={m.role==="user"?"text-right":"text-left"}>
-              <span className="inline-block max-w-[90%] rounded-xl border border-border px-3 py-2 text-sm whitespace-pre-wrap break-words">{m.content}</span>
+              <span className="inline-block max-w-[90%] rounded-xl border border-border px-3 py-2 text-base leading-relaxed whitespace-pre-wrap break-words">{m.content}</span>
             </div>)}
           </div>
           <div className="flex gap-2 items-end">
