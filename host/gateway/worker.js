@@ -148,6 +148,28 @@ export default { async fetch(request, env) {
     catch{return json({error:"Interplanetary Fund MCP backend is unavailable.",degraded:true},502);}
   }
 
+  // Dedicated external-agent REST access, kept separate from admin tools.
+  // The Base44 backend verifies the revocable key hash and limits fields.
+  if(url.pathname==="/api/v1/agent/campaigns"){
+    if(request.method!=="GET") return json({error:"Method not allowed"},405);
+    const authorization=request.headers.get("authorization")||"";
+    if(!/^Bearer ifund_ag_[a-f0-9]{64}$/i.test(authorization))
+      return json({error:"Bearer API key required"},401);
+    if(!env.IFUND_AGENT_CAMPAIGNS_URL)
+      return json({error:"Agent campaign API is not configured",degraded:true},503);
+    try{
+      const upstream=new URL(env.IFUND_AGENT_CAMPAIGNS_URL);
+      if(upstream.protocol!=="https:") throw Error("HTTPS required");
+      const response=await fetch(upstream.toString(),{
+        method:"GET",headers:{authorization,accept:"application/json"},redirect:"manual"
+      });
+      const h=new Headers({"content-type":"application/json","cache-control":"no-store"});
+      return new Response(response.body,{status:response.status,headers:h});
+    }catch{
+      return json({error:"Agent campaign API unavailable",degraded:true},502);
+    }
+  }
+
   const origin=allowedOrigin(request,env);
   if(request.method==="OPTIONS") return origin?json({},204,origin):json({error:"Origin denied"},403);
   if(!origin) return json({error:"Origin denied"},403);
