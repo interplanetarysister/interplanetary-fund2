@@ -10,7 +10,29 @@
       "type": "string"
     },
     "key_hash": {
-      "type": "string"
+      "type": "string",
+      "rls": {
+        "read": {
+          "user_condition": {
+            "role": "none"
+          }
+        },
+        "create": {
+          "user_condition": {
+            "role": "none"
+          }
+        },
+        "update": {
+          "user_condition": {
+            "role": "none"
+          }
+        },
+        "delete": {
+          "user_condition": {
+            "role": "none"
+          }
+        }
+      }
     },
     "scope": {
       "type": "string",
