@@ -20,8 +20,9 @@ export default async function(req) {
       if(label.length<2||label.length>80) return Response.json({error:'Agent name must have 2–80 characters'},{status:400});
       const bytes=crypto.getRandomValues(new Uint8Array(32));
       const token='ifund_ag_'+toHex(bytes);
+      const scope=body.scope==='campaigns:read,content:write'?'campaigns:read,content:write':'campaigns:read';
       const now=new Date().toISOString();
-      const record=await db.create({label,key_prefix:token.slice(0,18),key_hash:await hash(token),scope:'campaigns:read',status:'active',created_at:now});
+      const record=await db.create({label,key_prefix:token.slice(0,18),key_hash:await hash(token),scope,status:'active',created_at:now});
       return Response.json({key:safe(record),secret:token,warning:'Copy now. This secret will not be shown again.'});
     }
     if(body.action==='revoke') {
