@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, MailOpen } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import InboxItemCard from "@/components/inbox/InboxItemCard";
+import VerificationInboxPanel from "@/components/inbox/VerificationInboxPanel";
 import { platformName } from "@/components/connections/platformCatalog";
 import PageError from "@/components/PageError";
 import AdminApprovalQueue from "@/components/admin/AdminApprovalQueue";
@@ -50,6 +51,7 @@ export default function Inbox() {
         ...inboxItems.map((i) => ({
           key: `i-${i.id}`, record_id: i.id, platform: i.platform, type: i.type, author: i.author,
           content: i.content, link: i.link, campaign_id: i.campaign_id,
+          recipient_address: i.recipient_address, mailbox_priority: i.mailbox_priority,
           campaign_title: i.campaign_title || myCampaigns.find((c) => c.id === i.campaign_id)?.title,
           status: i.status, date: i.created_date, ai_draft: i.ai_draft,
         })),
@@ -69,7 +71,11 @@ export default function Inbox() {
             /^\/campaign\/([a-zA-Z0-9_-]{1,128})(?:[?#]|$)/.exec(String(n.link || ""))?.[1]))?.title,
           notification_title: n.title, notification_body: n.body, notification_type: n.type,
         })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
+      ].sort((a, b) => {
+        const aPriority = a.status === 'open' && a.platform === 'email' && a.mailbox_priority === 'priority' ? 1 : 0;
+        const bPriority = b.status === 'open' && b.platform === 'email' && b.mailbox_priority === 'priority' ? 1 : 0;
+        return bPriority - aPriority || new Date(b.date) - new Date(a.date);
+      });
 
       setItems(merged);
      } catch (e) {
@@ -105,6 +111,7 @@ export default function Inbox() {
         Universal Inbox
       </h1>
       <p className="text-stone-500 mb-6">Every donation, comment, and alert from every connected platform — one communication center.</p>
+      <div className="mb-6"><VerificationInboxPanel /></div>
       {isAdmin && <div className="mb-6 rounded-2xl border border-violet-200 bg-violet-50/40 p-4">
         <h2 className="font-display text-lg text-stone-900 mb-1">Admin action inbox</h2>
         <p className="text-sm text-stone-500 mb-4">Requests from agents and the platform that need a decision, account sign-in, more information, or investigation.</p>

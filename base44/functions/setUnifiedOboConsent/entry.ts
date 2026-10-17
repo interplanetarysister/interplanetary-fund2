@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 const VERSION = '2026-10-unified-obo-v1';
 
@@ -44,7 +45,7 @@ export default async function(req) {
           granted_at: approvedForAccount ? (currentObo.granted_at || now) : currentObo.granted_at || null,
           permission_version: VERSION,
           granted_capabilities: approvedForAccount
-            ? (currentObo.provider_capabilities || currentObo.granted_capabilities || [])
+            ? restrictedAgentScope(currentObo.requested_capabilities, currentObo.provider_capabilities)
             : [],
         },
         agent_access: {

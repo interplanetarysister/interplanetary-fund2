@@ -3,6 +3,8 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity } from '../../shared/externalBalanceEvidence.ts';
+import { encryptConnectionSecret } from '../../shared/connectionCrypto.ts';
+import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
 // values (Ko-fi token, Bluesky app password, Mastodon access token) are only
@@ -23,7 +25,7 @@ export default async function(req) {
     const {
       connection_id, platform, kind, display_name, external_url,
       campaign_id, automation_mode, external_total, external_currency, external_donor_count,
-      balance_reaffirmed, credentials,
+      balance_reaffirmed, credentials, ai_account_authorized, ai_scope_choice,
     } = body;
     if (!platform) return Response.json({ error: 'platform is required' }, { status: 400 });
 
@@ -57,25 +59,18 @@ export default async function(req) {
       return Response.json({ error: 'external_currency must be a three-letter ISO currency code' }, { status: 400 });
     }
 
-    // Provider identity, public campaign URL, credentials, kind, and currency
-    // define what an external balance belongs to. Never carry a prior
-    // observation across one of those boundaries unless the owner explicitly
-    // reaffirms the displayed amount and donor count for the new identity.
-    const balanceReconciliation = reconcileExternalBalanceIdentity({
-      existing,
-      platform,
-      kind: effectiveKind,
-      externalUrl: external_url,
-      externalCurrency: effectiveCurrency,
-      externalTotal: reportedTotal,
-      externalDonorCount: reportedDonors,
-      credentialsChanged: SECRET_FIELDS.some((field) => credentials && credentials[field]),
-      reaffirmed: balance_reaffirmed,
-    });
-    reportedTotal = balanceReconciliation.externalTotal;
-    reportedDonors = balanceReconciliation.externalDonorCount;
-
-    const effectiveAutomationMode = automation_mode || existing?.automation_mode || 'manual';
+    const accountConsentRequested = existing
+      ? existing.obo_consent?.granted === true && existing.obo_consent?.opted_out !== true
+      : ai_account_authorized === true;
+    const selectedScope = existing ? (existing.obo_consent?.scope_choice || 'legacy') : String(ai_scope_choice || 'full');
+    let requestedScope: string[];
+    try { requestedScope = existing ? (existing.obo_consent?.requested_capabilities || [])
+      : requestedAgentScope(selectedScope); }
+    catch { return Response.json({error:'Select a supported AI scope.'},{status:400}); }
+    if (existing && existing.obo_consent?.scope_choice && ai_scope_choice && ai_scope_choice !== selectedScope)
+      return Response.json({error:'Disconnect and reconnect to change AI scope.'},{status:409});
+    const effectiveAutomationMode = accountConsentRequested
+      ? (automation_mode || existing?.automation_mode || 'manual') : 'manual';
     const consentOwner = existing && existing.created_by_id !== user.id
       ? await base44.asServiceRole.entities.User.get(existing.created_by_id).catch(() => null)
       : user;
@@ -93,8 +88,46 @@ export default async function(req) {
       }
     }
 
-    const mergedCreds = existing ? mergeSecrets(existing.credentials, credentials) : (credentials || {});
+    // Only accept known integration fields. Never accept regular website passwords.
+    const allowedByPlatform: Record<string, string[]> = {
+      kofi: ['kofi_verification_token'],
+      buymeacoffee: ['buymeacoffee_api_token'],
+      bluesky: ['bluesky_handle', 'bluesky_app_password'],
+      mastodon: ['mastodon_instance', 'mastodon_access_token'],
+    };
+    const allowed = new Set(['account_identifier', ...(allowedByPlatform[platform] || [])]);
+    const incoming: Record<string, string> = {};
+    for (const [key, raw] of Object.entries(credentials || {})) {
+      if (!allowed.has(key) || typeof raw !== 'string') continue;
+      if (raw.length > 8192) return Response.json({ error: 'A credential is too long.' }, { status: 400 });
+      incoming[key] = raw;
+    }
+    if (existing && existing.platform !== platform) {
+      return Response.json({ error: 'Platform cannot be changed for this account.' }, { status: 400 });
+    }
+    if (incoming.account_identifier) incoming.account_identifier = incoming.account_identifier.trim().slice(0, 254);
+    if (incoming.buymeacoffee_api_token) {
+      try {
+        incoming.buymeacoffee_api_token = await encryptConnectionSecret(incoming.buymeacoffee_api_token.trim());
+      } catch {
+        // Fail closed rather than saving provider secrets as plaintext records.
+        return Response.json({
+          error: 'Secure token storage is not configured yet. Your token was not saved. IFund must enable its encrypted credential key first.',
+        }, { status: 503 });
+      }
+    }
+    const mergedCreds = existing ? mergeSecrets(existing.credentials, incoming) : incoming;
     const now = new Date().toISOString();
+    const credentialsChanged = SECRET_FIELDS.some(field => Boolean(incoming[field])) ||
+      (incoming.account_identifier !== undefined &&
+       incoming.account_identifier !== String(existing?.credentials?.account_identifier || ''));
+    const balanceReconciliation = reconcileExternalBalanceIdentity({
+      existing, platform, kind: effectiveKind, externalUrl: external_url,
+      externalCurrency: effectiveCurrency, externalTotal: reportedTotal,
+      externalDonorCount: reportedDonors, credentialsChanged, reaffirmed: balance_reaffirmed,
+    });
+    reportedTotal = balanceReconciliation.externalTotal;
+    reportedDonors = balanceReconciliation.externalDonorCount;
     // The dialog always submits its displayed totals. Re-saving a URL or
     // rotating a credential must not make stale/provider-verified balance
     // evidence look newly owner-observed. Only a normalized value change or an
@@ -144,16 +177,21 @@ export default async function(req) {
     // A newly linked account inherits the owner's one IFund permission.
     // Existing accounts retain explicit refusal; saving a connection must not
     // silently undo an earlier account-specific revocation.
-    const previouslyAllowed = currentConsent.granted === true || !!currentConsent.granted_at;
-    const accountAiConsent = unifiedObo && currentConsent.opted_out !== true &&
-      (existing ? previouslyAllowed : true);
+    // Account-specific affirmative checkbox is required on every new setup.
+    // No implicit delegation merely because global AI permission is active.
+    const accountAiConsent = unifiedObo && accountConsentRequested;
     data.obo_consent = {
       ...currentConsent,
       granted: accountAiConsent,
-      granted_at: accountAiConsent ? (currentConsent.granted_at || now) : currentConsent.granted_at || null,
+      opted_out: !accountAiConsent,
+      revoked_at: accountAiConsent ? null : (currentConsent.revoked_at || now),
+      granted_at: accountAiConsent ? (currentConsent.granted_at || now) : null,
+      scope_version: existing?.obo_consent?.scope_version || AI_CONNECTION_SCOPE_VERSION,
+      scope_choice: existing ? existing?.obo_consent?.scope_choice : selectedScope,
+      requested_capabilities: requestedScope,
       permission_version: String(consentOwner.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
       granted_capabilities: accountAiConsent
-        ? (currentConsent.provider_capabilities || currentConsent.granted_capabilities || [])
+        ? restrictedAgentScope(requestedScope, currentConsent.provider_capabilities || [])
         : [],
     };
     data.agent_access = {
@@ -170,7 +208,7 @@ export default async function(req) {
     if (existing) saved = await base44.entities.PlatformConnection.update(existing.id, data);
     else saved = await base44.entities.PlatformConnection.create(data);
 
-    const rotated = SECRET_FIELDS.filter((f) => credentials && credentials[f]);
+    const rotated = SECRET_FIELDS.filter((f) => incoming[f]);
     await logAudit(base44, {
       action: existing ? 'connection_credentials_updated' : 'connection_created',
       actor_user_id: user.id,

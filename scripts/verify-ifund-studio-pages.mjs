@@ -39,7 +39,16 @@ try {
       assert.equal(response?.status(),200,'Route '+route+' HTTP error');
       const terms=page.getByRole('button',{name:/I Agree — Continue/});
       if(await terms.count()) await terms.click({timeout:12000});
-      await delay(650);
+      // Cold published bundles can need longer than a fixed delay to hydrate.
+      // Wait for actual page content, preserving a finite failure timeout.
+      await page.waitForFunction(() => {
+        const root = document.getElementById('root');
+        return !!root?.children.length && (document.body?.innerText || '').trim().length > 35;
+      }, null, { timeout: 15000 });
+      if(route==='/discover') {
+        await page.getByRole('heading',{name:'Discover campaigns'}).waitFor({timeout:15000});
+      }
+      await delay(150);
       const info=await page.evaluate(()=>({
         url:location.pathname,
         text:(document.body?.innerText||'').slice(0,550),
@@ -47,7 +56,7 @@ try {
         overflow:document.documentElement.scrollWidth - innerWidth,
         bodyFont:getComputedStyle(document.body).fontFamily,
         headingFont:getComputedStyle(document.querySelector('h1,h2')||document.body).fontFamily,
-        workspace:document.querySelectorAll('.ifund-workspace-bar').length,
+        workspace:[...document.querySelectorAll('.ifund-workspace-bar')].filter(el=>getComputedStyle(el).display!=='none').length,
         nav:document.querySelectorAll('nav[aria-label="Bottom navigation"]').length,
       }));
       assert.ok(info.root>0,'No React root rendered for '+route+' '+setting.name);
@@ -56,7 +65,8 @@ try {
       assert.deepEqual(exceptions,[],'Runtime exception '+route+' '+setting.name);
       assert.ok(info.overflow<=3,'Unexpected horizontal viewport overflow '+route+' '+setting.name+' '+info.overflow+'px');
       if(['/discover','/community','/help'].includes(route)){
-        assert.equal(info.workspace,1,'Missing cohesive shared workspace bar '+route);
+        assert.equal(info.workspace,setting.width<768?0:1,
+          'Mobile must have only one header; desktop keeps its page context '+route);
         assert.equal(info.nav,1,'Missing responsive navigation '+route);
       }
       if(['/about','/contact'].includes(route)){

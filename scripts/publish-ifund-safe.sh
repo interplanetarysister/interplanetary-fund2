@@ -22,6 +22,7 @@ node scripts/verify-ifund-browser-render.mjs
 node scripts/verify-mobile-ai-composer-viewport.mjs
 node scripts/verify-ifund-navigation.mjs
 node scripts/verify-ifund-studio-pages.mjs
+node scripts/verify-ifund-design-and-connections.mjs
 ./node_modules/.bin/tsc -p jsconfig.json --noEmit
 ./node_modules/.bin/eslint . --quiet
 if [ "${IFUND_VALIDATE_ONLY:-0}" = "1" ]; then

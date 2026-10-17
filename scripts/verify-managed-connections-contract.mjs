@@ -129,9 +129,9 @@ assert.doesNotMatch(finalizeOauth, /shared_agent_consent/);
 // while provider-reported capabilities remain authoritative.
 assert.doesNotMatch(finalizeOauth, /sharedAgentConsent/);
 assert.match(finalizeOauth, /hasUnifiedOboConsent/);
-assert.match(finalizeOauth, /ai_consent_required: false/);
-assert.match(finalizeOauth, /automation_mode: unifiedObo \? 'auto' : 'manual'/);
-assert.match(finalizeOauth, /granted_capabilities: unifiedObo \? confirmed : \[\]/);
+assert.match(finalizeOauth, /ai_consent_required: !unifiedObo/);
+assert.match(finalizeOauth, /automation_mode: unifiedObo \? \(existing\?\.automation_mode \|\| 'auto'\) : 'manual'/);
+assert.match(finalizeOauth, /granted_capabilities: unifiedObo \? restrictedAgentScope\(selectedCapabilities, confirmed\) : \[\]/);
 assert.doesNotMatch(connectionsPage, /OAuthPermissionStep|completeOAuthConnection|pendingOAuthConsent/);
 // Owner-triggered and scheduled verification share the same guarded
 // completion rule. Login verification must never complete account creation.

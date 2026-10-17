@@ -1,8 +1,9 @@
+import { reconcileOAuthExternalBalance } from '../../shared/externalBalanceEvidence.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { OAUTH_ENV } from '../../shared/connectionVerification.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
-import { reconcileOAuthExternalBalance } from '../../shared/externalBalanceEvidence.ts';
+import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 const COMMON_IF_CAPABILITIES = [
   'read_account', 'read_resources', 'read_campaign', 'manage_campaign',
@@ -108,28 +109,36 @@ export default async function(req) {
     const now = new Date().toISOString();
     const confirmed = providerCapabilities(oauth);
     const oauthBalanceEvidence = reconcileOAuthExternalBalance({ existing, kind: cfg.kind });
-    const unifiedObo = hasUnifiedOboConsent(user) &&
-      existing?.obo_consent?.opted_out !== true &&
-      // Legacy per-connection refusals remain refusals; a new OAuth account
-      // inherits the one explicit IFund permission by default.
-      (!existing || existing.obo_consent?.granted === true || !!existing.obo_consent?.granted_at);
+    // A popup checkbox, not global setting or provider login, is the account
+    // delegation consent. Existing per-account revocations stay revoked unless
+    // the owner explicitly checks the box again when reconnecting.
+    const unifiedObo = hasUnifiedOboConsent(user) && body.ai_account_authorized === true;
+    const scopeChoice = existing ? (existing?.obo_consent?.scope_choice || 'legacy') : String(body.ai_scope_choice || 'full');
+    let selectedCapabilities;
+    try { selectedCapabilities = existing ? (existing?.obo_consent?.requested_capabilities || [])
+      : requestedAgentScope(scopeChoice); }
+    catch {return Response.json({error:'Unsupported AI scope'},{status:400});}
+    if (existing && existing.obo_consent?.scope_choice && body.ai_scope_choice && body.ai_scope_choice !== scopeChoice)
+      return Response.json({error:'Disconnect and reconnect to change AI scope'},{status:409});
     const data = {
       platform: key,
       kind: cfg.kind,
       display_name: requestedDisplayName || key,
       external_url: existing?.external_url || '',
       campaign_id: requestedCampaignId || undefined,
-      automation_mode: unifiedObo ? 'auto' : 'manual',
+      automation_mode: unifiedObo ? (existing?.automation_mode || 'auto') : 'manual',
       obo_consent: {
         granted: unifiedObo,
-        granted_at: unifiedObo ? (user.ai_obo_consent?.decided_at || now) : null,
+        granted_at: unifiedObo ? now : null,
+        scope_version: existing?.obo_consent?.scope_version || AI_CONNECTION_SCOPE_VERSION,
+        scope_choice: existing ? existing.obo_consent?.scope_choice : scopeChoice,
         permission_version: String(user.ai_obo_consent?.permission_version || '2026-10-unified-obo-v1'),
-        opted_out: existing?.obo_consent?.opted_out === true,
+        opted_out: !unifiedObo,
         revoked_at: existing?.obo_consent?.revoked_at || undefined,
-        requested_capabilities: cfg.requestedCapabilities,
+        requested_capabilities: selectedCapabilities,
         // Provider-reported capabilities remain authoritative. Unified IFund
         // authorization permits use of those capabilities but never invents them.
-        granted_capabilities: unifiedObo ? confirmed : [],
+        granted_capabilities: unifiedObo ? restrictedAgentScope(selectedCapabilities, confirmed) : [],
         provider_capabilities: confirmed,
       },
       agent_access: {
@@ -157,7 +166,7 @@ export default async function(req) {
     return Response.json({
       configured: true, authorization_present: true, connected: false,
       provider_verified: false, verification_required: true,
-      ai_consent_required: false,
+      ai_consent_required: !unifiedObo,
       ai_authorized: unifiedObo,
       // No credentials are returned to the client.
       connection: { id: saved.id, platform: saved.platform, status: saved.status, campaign_id: saved.campaign_id || '', display_name: saved.display_name || '' },

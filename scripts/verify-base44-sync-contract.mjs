@@ -11,10 +11,10 @@ const nodeVersion = read('.node-version').trim();
 const nvmrc = read('.nvmrc').trim();
 const quality = read('.github/workflows/quality-gates.yml');
 
-assert.equal(nodeVersion, 'node', '.node-version must follow current Node releases');
-assert.equal(nvmrc, 'node', '.nvmrc must follow current Node releases');
-assert.equal(pkg.engines?.node, '>=20', 'package engine must accept Node 20 and newer while CI retains tested compatibility lanes');
-assert.match(quality, /node-version:\s*['"]node['"]/, 'quality gates must track current Node releases');
+assert.equal(nodeVersion, '24', '.node-version must use tested Node 24');
+assert.equal(nvmrc, '24', '.nvmrc must use tested Node 24');
+assert.equal(pkg.engines?.node, '>=24.12.0', 'package engine must satisfy Firebase 13 Node minimum');
+assert.match(quality, /node-version:\s*['\"]24['\"]/, 'quality gates must use tested Node 24');
 
 
 function stripJsonComments(source) {

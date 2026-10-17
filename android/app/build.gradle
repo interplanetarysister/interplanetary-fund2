@@ -7,8 +7,9 @@ android {
         applicationId "com.base6a67a778342a8fe05ee79cba.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // GitHub manual release builds may set -PifundVersionCode; Base44 uses the existing default.
+        versionCode (project.hasProperty('ifundVersionCode') ? project.property('ifundVersionCode').toString().toInteger() : 1)
+        versionName (project.hasProperty('ifundVersionName') ? project.property('ifundVersionName').toString() : "1.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

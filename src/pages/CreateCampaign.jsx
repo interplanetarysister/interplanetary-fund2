@@ -11,15 +11,21 @@ import { categoryLabels } from "@/components/campaigns/CampaignCard";
 import { useToast } from "@/components/ui/use-toast";
 import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIInstructionsStep";
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
+import CampaignCopyChoices from "@/components/campaigns/CampaignCopyChoices";
 import MediaUpload from "@/components/media/MediaUpload";
 import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 import { FALLBACK_IMAGE } from "@/components/brand/brand";
-import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download, Wallet } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, ArrowRight, MapPin, Rocket, Coins, Wand2, Download, Wallet, UserRound, Target, BookOpen, Check } from "lucide-react";
 
-const steps = ["Your Details", "Basics", "Campaign Story", "Launch"];
+const steps = [
+  { label: "Your Details", icon: UserRound },
+  { label: "Basics", icon: Target },
+  { label: "Your Story", icon: BookOpen },
+  { label: "Launch", icon: Rocket },
+];
 
 export default function CreateCampaign() {
   const navigate = useNavigate();
@@ -212,36 +218,35 @@ export default function CreateCampaign() {
     }
   };
 
-  const canNext = step === 0 ? true : step === 1 ? form.title && parseFloat(form.goal_amount) > 0 : true;
+  const canNext = step === 0 ? true : step === 1 ? parseFloat(form.goal_amount) > 0 : step === 2 ? Boolean(form.title?.trim()) : true;
 
   if (loadingDraft) return <div className="campaign-quest deep-space max-w-3xl mx-auto my-6 min-h-64 rounded-[2rem] flex items-center justify-center"><Loader2 className="w-7 h-7 animate-spin text-cyan-300" /></div>;
 
   return (
     <div className="campaign-quest deep-space max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12 overflow-x-hidden rounded-[2rem] sm:my-6">
-      <div className="flex items-center gap-2 sm:gap-3 mb-8 min-w-0" aria-label={`Campaign setup: step ${step + 1} of ${steps.length}`}>
-        {steps.map((s, i) => (
-          <React.Fragment key={s}>
-            <div className={`flex items-center gap-2 shrink-0 ${i <= step ? "text-cyan-100" : "text-slate-500"}`}> 
-              <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border ${i < step ? "bg-cyan-400 text-slate-950 border-cyan-200 shadow-[0_0_18px_rgba(34,211,238,.45)]" : i === step ? "bg-violet-500 text-white border-violet-300 shadow-[0_0_18px_rgba(139,92,246,.55)]" : "bg-slate-900 text-slate-400 border-slate-700"}`}>{i + 1}</span>
-              <span className="text-sm font-medium hidden sm:block">{s}</span>
-            </div>
-            {i < steps.length - 1 && <div className="flex-1 min-w-2 h-px bg-gradient-to-r from-cyan-400/50 to-violet-500/40" />}
-          </React.Fragment>
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3 mb-8 min-w-0" role="list" aria-label={`Campaign setup: step ${step + 1} of ${steps.length}`}>
+        {steps.map(({ label, icon: StepIcon }, i) => (
+          <div key={label} role="listitem" aria-current={i === step ? "step" : undefined}
+               className={`flex flex-col items-center gap-2 text-center min-w-0 ${i <= step ? "text-cyan-100" : "text-slate-400"}`}>
+            <span className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center border ${i < step ? "bg-cyan-400 text-slate-950 border-cyan-200" : i === step ? "bg-violet-500 text-white border-violet-300 shadow-[0_0_18px_rgba(139,92,246,.4)]" : "bg-slate-900 text-slate-400 border-slate-700"}`}>
+              {i < step ? <Check className="w-6 h-6" strokeWidth={2.5} /> : <StepIcon className="w-6 h-6" strokeWidth={2} />}
+            </span>
+            <span className="text-[11px] leading-tight sm:text-sm font-semibold break-words">{label}</span>
+          </div>
         ))}
       </div>
 
       <h1 className="font-display text-3xl sm:text-4xl brand-gradient-text mb-2 break-words">
-        {step === 0 && "Tell us what matters"}{step === 1 && "Set the campaign basics"}{step === 2 && "Choose how your story is told"}{step === 3 && "Review & launch"}
+        {step === 0 && "Tell us what matters"}{step === 1 && "Set the campaign basics"}{step === 2 && "Choose your words and story"}{step === 3 && "Review & launch"}
       </h1>
-      <p className="text-sm text-slate-300 mb-6">{step === 0 ? "Give your campaign a spark. The AI can handle the complicated stuff." : step === 1 ? "Just the essentials. You can fine-tune the rest later." : step === 2 ? "Pick a vibe, create your story, then make it yours." : "One last look before your campaign enters orbit."}</p>
+      <p className="text-sm text-slate-300 mb-6">{step === 0 ? "Give your campaign a spark. The AI can handle the complicated stuff." : step === 1 ? "Just the essentials. You can fine-tune the rest later." : step === 2 ? "Pick a title, pick a description, then create your story—all on this page." : "One last look before your campaign enters orbit."}</p>
       {importConnectionId && !draftId && <Button type="button" onClick={importConnectedCampaign} disabled={importing} variant="outline" className="quest-button mb-4">{importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}Import from connected fundraiser</Button>}
 
       <div className="glass-panel rounded-[1.75rem] p-4 sm:p-6 shadow-[0_20px_70px_rgba(2,6,23,.45)] space-y-5 min-w-0">
         {step === 0 && <AIInstructionsStep value={form.ai_profile} onChange={(p) => set("ai_profile", p)} />}
 
         {step === 1 && (<div className="space-y-5">
-          <div className="flex items-center gap-3"><span className="quest-icon"><Rocket className="w-5 h-5" /></span><div><h2 className="text-xl font-bold text-white">Launch basics</h2><p className="text-sm text-slate-300">Three quick choices. No paperwork energy.</p></div></div>
-          <div className="space-y-2"><Label className="quest-label">What should we call your mission?</Label><Input className="quest-input" placeholder="Give your campaign a name…" value={form.title} onChange={(e) => set("title", e.target.value)} /></div>
+          <div className="flex items-center gap-3"><span className="quest-icon"><Rocket className="w-5 h-5" /></span><div><h2 className="text-xl font-bold text-white">Launch basics</h2><p className="text-sm text-slate-300">Choose your kind of campaign and your goal.</p></div></div>
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div className="space-y-2 min-w-0"><Label className="quest-label">What kind?</Label><Select value={form.category} onValueChange={(v) => set("category", v)}><SelectTrigger className="quest-input"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(categoryLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2 min-w-0"><Label className="quest-label flex items-center gap-1"><Coins className="w-3.5 h-3.5" /> Goal</Label><Input className="quest-input" type="number" min="1" placeholder="$5,000" value={form.goal_amount} onChange={(e) => set("goal_amount", e.target.value)} /></div>
@@ -251,8 +256,9 @@ export default function CreateCampaign() {
         </div>)}
 
         {step === 2 && (<>
-          <div className="rounded-2xl border border-violet-300/25 bg-violet-500/10 p-4 sm:p-5 space-y-2"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-violet-300">Your signal</p><Label className="quest-label text-base">Sum it up in one line</Label></div><Input className="quest-input" placeholder="What are you trying to make happen?" value={form.summary} onChange={(e) => set("summary", e.target.value)} /><p className="text-xs text-slate-400">Optional. Your words stay yours; if left blank, a short public summary is created from your final story when you launch.</p></div>
-          <AIStoryGenerator form={form} aiProfile={form.ai_profile} versions={form.story_versions} onApply={(text) => set("story", text)} onSaveVersion={(ver) => setForm((f) => ({ ...f, story_versions: [...(f.story_versions || []), ver].slice(-50) }))} onRestoreVersion={(ver) => set("story", ver.text)} />
+          <CampaignCopyChoices form={form} onChange={set} />
+          <div className="rounded-2xl border border-violet-300/25 bg-violet-500/10 px-4 pt-4"><h3 className="text-lg font-bold text-white">3. Make your story</h3><p className="text-xs text-slate-300">Click to create or improve your story. Your final text stays editable below.</p></div>
+          <AIStoryGenerator form={form} aiProfile={form.ai_profile} versions={form.story_versions} onApply={(text) => set("story", text)} onSaveVersion={(ver) => setForm((f) => ({ ...f, story_versions: [...(f.story_versions || []).filter((v) => v.text?.trim() !== ver.text?.trim()), ver].slice(-50) }))} onRestoreVersion={(ver) => set("story", ver.text)} />
           <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/10 p-4 sm:p-5 space-y-2"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">Final transmission</p><Label className="quest-label text-base">Your campaign story</Label></div><Textarea rows={10} className="quest-input min-h-56 resize-y whitespace-pre-wrap break-words" placeholder="Write it yourself or forge a draft above, then remix it here." value={form.story} onChange={(e) => set("story", e.target.value)} /><p className="text-xs text-slate-400">This is the one story that goes live. Story Forge edits this same field and keeps earlier versions available to restore.</p></div>
           <div className="space-y-2">
             <Label className="quest-label">Campaign art</Label>

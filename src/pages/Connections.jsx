@@ -3,8 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Link2, RefreshCw, Search, ChevronDown, History } from "lucide-react";
+import { Loader2, Link2, RefreshCw, Search, History, PlugZap, CircleCheck, Globe2, Share2, AppWindow } from "lucide-react";
 import { ALL_PLATFORMS } from "@/components/connections/platformCatalog";
+import PlatformLogo from "@/components/connections/PlatformLogo";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import ConnectionCard from "@/components/connections/ConnectionCard";
@@ -30,7 +31,7 @@ export default function Connections() {
   const [syncResult, setSyncResult] = useState(null);
   const [connectionNotice, setConnectionNotice] = useState(null);
   const [platformSearch, setPlatformSearch] = useState("");
-  const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
+  const [platformCategory, setPlatformCategory] = useState("all");
   const [sharedIntegrations, setSharedIntegrations] = useState(null);
   const [historyKey, setHistoryKey] = useState(0);
   const [wixSyncing, setWixSyncing] = useState(false);
@@ -187,6 +188,8 @@ export default function Connections() {
             platform: pending.platform,
             campaign_id: pending.campaignId || undefined,
             display_name: pending.displayName || pending.campaignTitle || undefined,
+            ai_account_authorized: pending.accountAiAllowed === true,
+            ai_scope_choice: pending.aiScopeChoice || "full",
           });
           if (data?.authorization_present && data?.connection?.id) {
             setDialog(null);
@@ -263,13 +266,13 @@ export default function Connections() {
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
     (p.id === "custom" || !connectedIds.includes(p.id)) &&
+    (platformCategory === "all" || p.kind === platformCategory) &&
     (`${p.name} ${p.kind || ""}`.toLowerCase().includes(platformSearch.trim().toLowerCase()))
   );
 
   const choosePlatform = (platform) => {
     setDialog({ platform });
     setPlatformSearch("");
-    setPlatformMenuOpen(false);
   };
 
   const requestManagedAction = async ({ platform, action, connection = null, campaign_id }) => {
@@ -304,16 +307,17 @@ export default function Connections() {
 
   return (
     <div className="connections-hub max-w-4xl mx-auto min-w-0 px-4 sm:px-6 pt-6 sm:pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-10">
-      <div className="rounded-[2rem] border border-cyan-300/15 bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-5 sm:p-7 shadow-xl mb-7">
-      <h1 className="flex items-center gap-2.5 font-display text-3xl text-cyan-50 mb-1">
+      <div className="ifund-connections-hero rounded-[2rem] border p-5 sm:p-7 shadow-sm mb-7">
+      <h1 className="flex items-center gap-2.5 font-display text-3xl text-slate-950 dark:text-white mb-1">
         <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
           <Link2 className="w-5 h-5 text-white" />
         </span>
         Connections
       </h1>
-      <p className="text-slate-300 mb-5">Explore the platforms you already use. IFund checks sign-in availability after you choose one; Connected means a provider-backed check succeeded.</p>
-      <div className="flex flex-wrap gap-2 text-xs text-cyan-100/80">
-        <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5">{workingCount} connected</span>
+      <p className="text-slate-600 dark:text-slate-200 mb-5">All the platforms you use, in one place. Choose a service to set it up. Only verified connections show as working.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="ifund-connection-stat rounded-2xl border p-4"><div className="flex items-center gap-2 text-sm"><CircleCheck className="w-4 h-4 text-emerald-500" /> Working</div><p className="text-3xl font-bold mt-1">{workingCount}</p></div>
+        <div className="ifund-connection-stat rounded-2xl border p-4"><div className="flex items-center gap-2 text-sm"><PlugZap className="w-4 h-4 text-violet-500" /> Available platforms</div><p className="text-3xl font-bold mt-1">{ALL_PLATFORMS.length}</p></div>
       </div>
       </div>
 
@@ -377,8 +381,7 @@ export default function Connections() {
             : "You can still use guided sign-in. Automatic connection management requires an eligible paid tier and IFund AI permission."}
         </p>
         <Button type="button" variant="outline" className="mt-3 bg-white text-slate-900"
-          onClick={() => { setPlatformMenuOpen(true);
-            document.getElementById("connection-chooser")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+          onClick={() => { document.getElementById("connection-chooser")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
           Choose a platform to connect
         </Button>
       </div>
@@ -444,62 +447,60 @@ export default function Connections() {
         </div>
       )}
 
-      <div className="mb-8" id="connection-chooser">
-        <h2 className="font-display text-xl text-stone-900 mb-1">Add a platform</h2>
-        <p className="text-sm text-stone-500 mb-3">Choose a platform you already use. IFund will check its setup before offering provider sign-in.</p>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setPlatformMenuOpen((open) => !open)}
-            className="w-full min-h-14 rounded-2xl border border-cyan-300/20 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 px-4 py-3 text-left shadow-lg flex items-center justify-between gap-3 focus:outline-none focus:ring-2 focus:ring-cyan-400/50"
-            aria-expanded={platformMenuOpen}
-          >
-            <span className="flex items-center gap-3 min-w-0">
-              <span className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-300/20 flex items-center justify-center shrink-0"><Search className="w-4 h-4 text-cyan-200" /></span>
-              <span>
-                <span className="block font-semibold text-cyan-50">Choose a platform</span>
-                <span className="block text-xs text-slate-400">Select one you use</span>
-              </span>
-            </span>
-            <ChevronDown className={`w-5 h-5 text-cyan-200 transition-transform ${platformMenuOpen ? "rotate-180" : ""}`} />
-          </button>
-
-          {platformMenuOpen && (
-            <div className="mt-2 rounded-2xl border border-cyan-300/20 bg-slate-950 shadow-2xl overflow-hidden">
-              <div className="p-3 border-b border-white/10">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                  <Input
-                    autoFocus
-                    value={platformSearch}
-                    onChange={(e) => setPlatformSearch(e.target.value)}
-                    placeholder="Search platforms…"
-                    className="pl-9 h-11 rounded-xl border-cyan-300/20 bg-slate-900 text-cyan-50 placeholder:text-slate-500 focus-visible:ring-cyan-400/50"
-                  />
-                </div>
-              </div>
-              <div className="max-h-72 overflow-y-auto p-2">
-                {availablePlatforms.length ? availablePlatforms.map((p) => (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => choosePlatform(p)}
-                    className="w-full rounded-xl px-3 py-3 flex items-center gap-3 text-left hover:bg-cyan-400/10 focus:bg-cyan-400/10 focus:outline-none transition-colors"
-                  >
-                    <span className="text-xl w-8 text-center shrink-0" aria-hidden="true">{p.icon || "✦"}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold text-slate-100 truncate">{p.name}</span>
-                    </span>
-                    <span className="text-xs font-semibold text-cyan-200">{p.setupKind === "oauth" ? "Check setup" : "Open setup"}</span>
-                  </button>
-                )) : (
-                  <p className="px-3 py-6 text-center text-sm text-slate-400">No matching platforms.</p>
-                )}
-              </div>
-            </div>
-          )}
+      <section className="mb-8" id="connection-chooser">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="font-display text-xl text-stone-900 mb-1">Explore connections</h2>
+            <p className="text-sm text-stone-500">Select a platform to connect or link your account.</p>
+          </div>
+          <Globe2 className="w-6 h-6 text-violet-500 shrink-0" aria-hidden="true" />
         </div>
-      </div>
+        <div className="ifund-connection-browser rounded-[1.7rem] p-3 sm:p-5">
+          <div className="relative mb-4">
+            <Search className="absolute top-1/2 -translate-y-1/2 left-3 h-5 w-5 text-slate-500 pointer-events-none" />
+            <Input
+              value={platformSearch}
+              onChange={(e) => setPlatformSearch(e.target.value)}
+              placeholder="Search platforms"
+              aria-label="Search available platforms"
+              className="pl-11 h-12 rounded-2xl bg-white text-slate-900 dark:bg-slate-900"
+            />
+          </div>
+          <div role="group" aria-label="Filter platforms" className="flex gap-2 overflow-x-auto pb-2 mb-3">
+            {[
+              { id: "all", label: "All", Icon: PlugZap },
+              { id: "crowdfunding", label: "Fundraising", Icon: Globe2 },
+              { id: "social", label: "Social", Icon: Share2 },
+              { id: "app", label: "Tools", Icon: AppWindow },
+            ].map(({ id, label, Icon }) => (
+              <button type="button" key={id} onClick={() => setPlatformCategory(id)}
+                aria-pressed={platformCategory === id}
+                className={platformCategory === id ? "ifund-platform-filter is-active" : "ifund-platform-filter"}>
+                <Icon className="w-4 h-4 shrink-0" />{label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 min-[450px]:grid-cols-2 gap-3">
+            {availablePlatforms.length ? availablePlatforms.map((p) => (
+              <button type="button" key={p.id} onClick={() => choosePlatform(p)}
+                className="ifund-platform-choice rounded-2xl border px-3 py-3 text-left flex items-center gap-3 min-w-0 min-h-[78px]"
+                aria-label={"Set up " + p.name}>
+                <PlatformLogo platform={p} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-950 dark:text-white truncate">{p.name}</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+                    {p.setupKind === "link" ? "Link an existing page" : p.setupKind === "oauth" ? "Check sign-in options" : "Guided setup"}
+                  </span>
+                </span>
+              </button>
+            )) : (
+              <p className="col-span-full text-center text-sm text-slate-600 dark:text-slate-300 p-8">
+                No matching platforms to add. Check your connected accounts above or change the filter.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
       {dialog && (
         <ConnectDialog
@@ -518,6 +519,10 @@ export default function Connections() {
           }}
           open={!!dialog}
           onOpenChange={(o) => !o && setDialog(null)}
+          onAccountConsentChanged={(id, enabled) => setConnections(prev => prev.map(c => c.id === id ? ({
+            ...c, obo_consent:{...(c.obo_consent || {}), granted:enabled,opted_out:!enabled},
+            agent_access:{...(c.agent_access || {}),shared_with_agents:enabled,automation_enabled:false}
+          }) : c))}
           onSaved={async (saved) => {
             setConnections((prev) => {
               const exists = prev.some((x) => x.id === saved.id);

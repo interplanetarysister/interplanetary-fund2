@@ -34,7 +34,7 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
         if (cancelled || !window.paypal?.Buttons) throw new Error("PayPal buttons unavailable");
         node.replaceChildren();
         const buttons = window.paypal.Buttons({
-          style: { layout: "vertical", shape: "rect", label: "paypal" },
+          style: { layout: "vertical", shape: "rect", label: "paypal", height: 44, tagline: false },
           createOrder: async () => {
             const { data } = await base44.functions.invoke("createPayPalOrder", {
               campaign_id: campaign.id,
@@ -78,5 +78,5 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
     };
   }, [campaign?.id, amount, platformContribution]);
 
-  return <div className="space-y-2"><div ref={containerRef} aria-label="PayPal checkout" />{error && <p role="status" className="text-xs text-red-600">{error}</p>}</div>;
+  return <div className="w-full min-w-0 space-y-2"><div ref={containerRef} className="w-full min-w-0 overflow-visible [&_iframe]:max-w-full" aria-label="PayPal checkout" />{error && <p role="status" className="text-xs text-red-600">{error}</p>}</div>;
 }

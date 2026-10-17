@@ -9,6 +9,7 @@ import { resolveCapabilityForPlatform } from '../../shared/providerCapabilities.
 import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
 import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
+import { restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -230,18 +231,19 @@ export default async function(req) {
         const verifiedCaps = c.platform === 'bluesky'
           ? verifiedConnectionCapabilities(c)
           : (c.obo_consent?.provider_capabilities || []);
+        const agentCaps = delegated ? restrictedAgentScope(c.obo_consent?.requested_capabilities, verifiedCaps) : [];
         const checked = await sr.entities.PlatformConnection.update(c.id, {
           status: 'connected', verification_status: 'verified', last_synced: now.toISOString(), last_error: '',
           obo_consent: {
             ...(c.obo_consent || {}),
             provider_capabilities: verifiedCaps,
-            granted_capabilities: delegated ? verifiedCaps : [],
+            granted_capabilities: agentCaps,
           },
           agent_access: {
             ...(c.agent_access || {}),
             shared_with_agents: delegated,
             automation_enabled: delegated && c.automation_mode === 'auto' &&
-              verifiedCaps.includes('create_post'),
+              agentCaps.includes('create_post'),
           },
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Scheduled provider verification succeeded' }].slice(-30),
         });

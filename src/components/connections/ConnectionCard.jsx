@@ -5,6 +5,7 @@ import { ExternalLink, Unplug, Globe2, Rocket, Download, Wrench } from "lucide-r
 import { formatDistanceToNow } from "date-fns";
 import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 import { useNavigate } from "react-router-dom";
+import PlatformLogo from "@/components/connections/PlatformLogo";
 
 const IMPORTABLE_FUNDRAISING = new Set(["gofundme","kickstarter","indiegogo","fundrazr","givesendgo","kofi","buymeacoffee","patreon","spotfund","eventbrite"]);
 
@@ -54,45 +55,21 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
     }
   };
 
-  const revokeAi = async () => {
-    setRevokeBusy(true);
-    setPermissionError("");
+  const toggleAi = async (enabled) => {
+    if (revokeBusy || (enabled && !aiAuthorized)) return;
+    setRevokeBusy(true);setPermissionError("");
     try {
-      const { data } = await base44.functions.invoke("revokeConnectionAiConsent", {
-        connection_id: connection.id,
+      const { data }=await base44.functions.invoke("setConnectionAiToggle",{
+        connection_id:connection.id,enabled
       });
-      if (data?.ok !== true) throw new Error("Revocation was not saved");
-      onUpdated?.({
-        ...connection,
-        obo_consent: { ...(connection.obo_consent || {}), granted: false, opted_out: true, granted_capabilities: [] },
-        agent_access: { ...(connection.agent_access || {}), shared_with_agents: false, automation_enabled: false },
-        automation_mode: "manual",
+      if(data?.ok!==true) throw new Error(data?.error || "Could not save.");
+      onUpdated?.({...connection,
+        obo_consent:{...(connection.obo_consent || {}),granted:enabled,opted_out:!enabled},
+        agent_access:{...(connection.agent_access || {}),shared_with_agents:enabled,
+          automation_enabled:data.automation_enabled===true}
       });
-    } catch {
-      setPermissionError("Could not turn off AI for this account. Try again.");
-    } finally { setRevokeBusy(false); }
-  };
-
-  const authorizeAi = async () => {
-    if (revokeBusy || !aiAuthorized) return;
-    setRevokeBusy(true);
-    setPermissionError("");
-    try {
-      const { data } = await base44.functions.invoke("authorizeConnectionAi", {
-        connection_id: connection.id, granted: true,
-      });
-      if (data?.ok !== true) throw new Error("Permission not saved");
-      onUpdated?.({
-        ...connection,
-        obo_consent: { ...(connection.obo_consent || {}), granted: true, opted_out: false },
-        agent_access: {
-          ...(connection.agent_access || {}), shared_with_agents: true,
-          automation_enabled: data.automation_enabled === true,
-        },
-      });
-    } catch {
-      setPermissionError("Could not turn on AI for this account. Try again.");
-    } finally { setRevokeBusy(false); }
+    } catch(e) {setPermissionError(e.message || "Could not save AI setting.");}
+    finally{setRevokeBusy(false);}
   };
 
   const managedRepair = async () => {
@@ -131,8 +108,9 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   const provenanceLabel = providerVerifiedFinancialData ? "Checked" : "Added by you";
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
+    <div className="ifund-connection-card bg-white rounded-2xl border border-stone-200/70 shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
+        <PlatformLogo platform={platform || { id: connection.platform, name: connection.platform }} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-stone-900 flex items-center gap-2 min-w-0">
             <span className="shrink-0" title={failed ? "Needs attention" : verified ? "On and working" : "On"}>
@@ -176,23 +154,21 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         </p>
       )}
 
-      {connection.obo_consent?.granted === true && (
-        <div className="mt-3 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs text-cyan-950">AI account access authorized (provider capabilities still apply)</span>
-          <Button type="button" size="sm" variant="outline" onClick={revokeAi} disabled={revokeBusy}>
-            {revokeBusy ? "Saving…" : "Turn off AI for this account"}
-          </Button>
+      <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">AI for {platform?.name || connection.platform}</p>
+          <p className="text-sm text-muted-foreground">{connection.obo_consent?.granted === true ? "On — saved permission scope applies" : "Off — your account stays linked"}</p>
         </div>
-      )}
-
-      {aiAuthorized && connection.obo_consent?.granted !== true && (
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs text-amber-950">This older connection has no active AI account permission.</span>
-          <Button type="button" size="sm" variant="outline" onClick={authorizeAi} disabled={revokeBusy}>
-            {revokeBusy ? "Saving…" : "Allow IFund AI for this account"}
-          </Button>
-        </div>
-      )}
+        <button type="button" role="switch" aria-checked={connection.obo_consent?.granted === true}
+          aria-label={"AI access for " + (platform?.name || connection.platform)}
+          disabled={revokeBusy || (!aiAuthorized && connection.obo_consent?.granted !== true)}
+          onClick={() => toggleAi(connection.obo_consent?.granted !== true)}
+          className={"min-h-11 rounded-full px-4 text-sm font-bold border " +
+          (connection.obo_consent?.granted === true ? "bg-emerald-600 text-white border-emerald-600" : "bg-card text-foreground border-border")}>
+          {revokeBusy ? "Saving…" : connection.obo_consent?.granted === true ? "On · turn off" : "Off · turn on"}
+        </button>
+        <p className="w-full text-sm text-muted-foreground">To change what AI may do, disconnect, then reconnect and choose a new scope.</p>
+      </div>
       {permissionError && <p className="mt-2 text-xs text-red-700" role="alert">{permissionError}</p>}
       {checkMessage && <p className="mt-2 text-xs text-stone-700" role="status">{checkMessage}</p>}
 

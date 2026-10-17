@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { HELP_CATEGORIES, displayHelpCategory, helpArticlePath } from "@/lib/helpCenter";
+import { CONNECTION_HELP_GUIDES } from "@/lib/connectionHelpGuides";
+import { WORKFLOW_HELP_GUIDES } from "@/lib/workflowHelpGuides";
 
 const CATEGORY_ICONS = { Rocket, Megaphone, HeartHandshake, Link2, Wallet, ShieldCheck, CreditCard, Bot, Users };
 
@@ -39,7 +41,8 @@ export default function Help() {
   };
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return articles.filter((article) => {
+    const builtins = [...CONNECTION_HELP_GUIDES, ...WORKFLOW_HELP_GUIDES];
+    return [...builtins, ...articles.filter(article => !builtins.some(guide => guide.slug === article.slug))].filter((article) => {
       if (category && displayHelpCategory(article.category) !== category) return false;
       if (!q) return true;
       return [article.question, article.answer, article.category, article.description, ...(article.keywords || [])]
@@ -120,11 +123,21 @@ export default function Help() {
         </ul>
       </section>
 
+      <section aria-labelledby="help-connections-heading" className="rounded-2xl border border-border bg-card p-5 space-y-3">
+        <h2 id="help-connections-heading" className="font-semibold text-xl">Using connections and AI</h2>
+        <p className="text-sm text-muted-foreground">Simple, current steps for connecting apps, saving passwords, choosing permissions, and using your private verification inbox.</p>
+        <div className="space-y-2">
+          {CONNECTION_HELP_GUIDES.map(guide => <Link key={guide.slug} to={helpArticlePath(guide.slug)}
+            className="block rounded-xl border border-border px-4 py-3 font-semibold hover:border-cyan-400">
+            {guide.question} <ArrowRight className="inline w-4 h-4 text-cyan-600 ml-1" />
+          </Link>)}
+        </div>
+      </section>
       <section aria-labelledby="help-articles-heading">
         <h2 id="help-articles-heading" className="font-display text-xl sm:text-2xl text-foreground mb-4">{query || category ? "Matching articles" : "Help articles"}</h2>
         {loading && <p className="text-muted-foreground" role="status">Loading help articles…</p>}
         {loadError && <div role="alert" className="rounded-xl border border-amber-400/60 p-4 text-foreground">We couldn't load the help articles. Try refreshing this page or contact support.</div>}
-        {!loading && !loadError && filtered.length > 0 && <ul className="space-y-3">
+        {filtered.length > 0 && <ul className="space-y-3">
           {filtered.map((article) => <li key={article.id}>
             <Link to={helpArticlePath(article.slug || article.id)} className="flex gap-4 items-center justify-between rounded-xl border border-border bg-card px-5 py-4 hover:border-cyan-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500">
               <span className="min-w-0">

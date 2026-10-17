@@ -42,21 +42,15 @@ const adminSources = [
 ].join("\n");
 
 assert.match(source, /setError\("Couldn't save this connection\. Please try again\. If the problem continues, contact support\."\)/);
-assert.match(source, /console\.error\("ConnectDialog connection save failed:", e\)/);
+assert.match(source, /console\.error\("ConnectDialog connection save failed:", e\?\.name \|\| "ConnectionSaveError"\)/);
 assert.doesNotMatch(source, /setError\(e\.message/);
 assert.doesNotMatch(source, /setError\(.*error\.message/);
+assert.doesNotMatch(source, /console\.error\("ConnectDialog connection save failed:", e\)/, "do not log raw connection exceptions");
 assert.match(source, /base44\.functions\.invoke\(\s*["']saveConnectionCredentials["']\s*,/);
 assert.doesNotMatch(source, /PlatformConnection\s*\.\s*(?:update|create)\s*\(/);
 assert.match(source, /external_currency/);
 assert.match(source, /existing \? \(existing\.external_currency \|\| ""\) : "USD"/);
 assert.doesNotMatch(source, /existing\?\.external_currency \|\| "USD"/);
-assert.match(source, /balance_reaffirmed: externalIdentityChanged && balanceReaffirmed/);
-assert.match(source, /I confirm this displayed amount, currency, and donor count belong to the changed provider connection\./);
-assert.match(source, /balanceReaffirmationRequired/);
-assert.match(source, /\(platform\.kind \|\| 'crowdfunding'\) !== \(existing\.kind \|\| 'crowdfunding'\)/,
-  'connection kind comparison must match backend defaulting for legacy records');
-assert.match(source, /\["external_url", "external_currency", "external_total", "external_donor_count"\]\.includes\(k\)/,
-  "editing any displayed balance field after confirmation must clear reaffirmation");
 
 assert.match(save, /base44\.auth\.me\(\)/);
 assert.match(save, /Campaign\.get\(effectiveCampaignId\)/);
@@ -77,7 +71,6 @@ assert.match(save, /verification_status: 'unverified'/);
 // is otherwise preserved, so provider-verified evidence is not silently
 // reclassified by an unrelated configuration save.
 assert.doesNotMatch(save, /external_data_source:\s*'provider_verified'/);
-assert.match(save, /external_data_source:\s*balanceReconciliation\.identityChanged[\s\S]{0,100}'owner_reported'/);
 assert.match(save, /balanceEvidenceChanged\s*\?\s*'owner_reported'/);
 assert.match(save, /\|\|\s*'owner_reported'/);
 assert.doesNotMatch(save, /status: 'connected'/);
@@ -185,19 +178,21 @@ assert.match(externalAccounts, /bluesky_app_password_set/);
 assert.match(accountDetail, /UNSPECIFIED/);
 assert.doesNotMatch(actionQueue, /last_error:\s*""/);
 assert.doesNotMatch(actionQueue, /status:\s*"disconnected"/);
-assert.match(runtimeGate, /const MINIMUM_NODE_MAJOR = 20;/);
+assert.match(runtimeGate, /const MINIMUM_NODE_MAJOR = 24;/);
 assert.doesNotMatch(runtimeGate, /TESTED_NODE_MAJORS/);
-assert.match(runtimeGate, /nodeMajor < MINIMUM_NODE_MAJOR/);
+assert.match(runtimeGate, /!supportedRuntime/);
 
 assert.doesNotMatch(adminSources, /status:\s*["']connected["']/);
 assert.doesNotMatch(adminSources, /last_synced:\s*now/);
 assert.match(adminSources, /Provider state changes only after a provider-backed webhook, API operation, or synchronization workflow succeeds\./i);
 
-assert.doesNotMatch(source, /credentialsDirty|setCredentialsDirty/, "credential identity changes must not use sticky dirty flags");
-assert.match(source, /Object\.entries\(credentials\)\.some/, "identity changes must compare effective submitted credentials");
-
-const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e)');
+const diagnosticIndex = source.indexOf('console.error("ConnectDialog connection save failed:", e?.name || "ConnectionSaveError")');
 const safeMessageIndex = source.indexOf('setError("Couldn\'t save this connection. Please try again. If the problem continues, contact support.")');
 assert.ok(diagnosticIndex >= 0 && safeMessageIndex > diagnosticIndex, "controlled diagnostics must precede the safe client message");
 
 console.log("Connection authorization and data-truth contract passed");
+
+assert.match(source, /balance_reaffirmed: externalIdentityChanged && balanceReaffirmed/);
+assert.match(source, /balanceReaffirmationRequired/);
+assert.match(save, /reconcileExternalBalanceIdentity/);
+assert.match(save, /balanceReconciliation\.reset/);

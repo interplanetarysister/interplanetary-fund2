@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { displayHelpCategory } from "@/lib/helpCenter";
+import { connectionHelpGuide } from "@/lib/connectionHelpGuides";
+import { workflowHelpGuide } from "@/lib/workflowHelpGuides";
 
 export default function HelpArticle() {
   const { slug } = useParams();
@@ -16,6 +18,12 @@ export default function HelpArticle() {
     let active = true;
     setLoading(true);
     setError(false);
+    const builtin = connectionHelpGuide(slug) || workflowHelpGuide(slug);
+    if (builtin) {
+      setArticle(builtin);
+      setLoading(false);
+      return () => { active = false; };
+    }
     base44.entities.HelpArticle.filter({ slug }, "-created_date", 1)
       .then((rows) => { if (active) setArticle(Array.isArray(rows) ? rows[0] || null : null); })
       .catch(() => { if (active) setError(true); })
@@ -23,7 +31,7 @@ export default function HelpArticle() {
     return () => { active = false; };
   }, [slug]);
   useEffect(() => {
-    if (!article?.id) return;
+    if (!article?.id || String(article.id).startsWith("built-in-")) return;
     let active = true;
     base44.auth.me().then(async (me) => {
       if (!active || !me?.id) return;
@@ -57,7 +65,7 @@ export default function HelpArticle() {
       {article.description && <p className="text-muted-foreground mt-3">{article.description}</p>}
       <div className="border-t border-border my-7" />
       <div className="whitespace-pre-wrap leading-8 break-words">{article.answer}</div>
-      <section aria-labelledby="help-feedback-label" className="mt-10 border-t border-border pt-6">
+      {!String(article.id).startsWith("built-in-") && <section aria-labelledby="help-feedback-label" className="mt-10 border-t border-border pt-6">
         <h2 id="help-feedback-label" className="font-semibold">Was this article helpful?</h2>
         {user ? <div className="flex flex-wrap gap-3 mt-3">
           {[true, false].map((choice) => <button key={String(choice)} type="button" disabled={savingFeedback}
@@ -69,7 +77,7 @@ export default function HelpArticle() {
           {feedback && <p role="status" className="w-full text-sm text-muted-foreground">Thanks for your feedback.</p>}
         </div> : <p className="text-sm mt-2 text-muted-foreground">Sign in to rate articles, or contact us for more help.</p>}
         {feedbackError && <p className="text-sm text-red-700 mt-2" role="alert">{feedbackError}</p>}
-      </section>
+      </section>}
       <div className="mt-8 rounded-xl border border-border p-5">
         <h2 className="font-semibold">Still need help?</h2>
         <Link to="/help" className="inline-block mt-3 font-semibold text-cyan-700 underline">Get support</Link>

@@ -54,8 +54,7 @@ assert.doesNotMatch(prepare,/observedAt = connection\.last_synced/);
 assert.match(externalSync,/external_balance_observed_at = now/);
 assert.match(kofiWebhook,/external_balance_observed_at: now/);
 assert.match(saveCredentials,/reconcileExternalBalanceIdentity/);
-assert.match(saveCredentials,/external_balance_observed_at:\s*balanceReconciliation\.reset/);
-assert.match(saveCredentials,/\? null\s*:\s*\(balanceEvidenceChanged \? now/);
+assert.match(saveCredentials,/external_balance_observed_at: balanceReconciliation.reset/);
 assert.match(saveCredentials,/externalBalanceEvidenceChanged/);
 const mixedCurrencyBranch = kofiWebhook.slice(
   kofiWebhook.indexOf('if (priorCurrency && priorCurrency !== currency)'),
@@ -72,12 +71,17 @@ assert.doesNotMatch(connectionSync,/external_balance_observed_at\s*:/,
 // Existing per-connection opt-outs remain binding after global permission.
 assert.match(saveCredentials,/granted: accountAiConsent/);
 assert.match(saveCredentials,/shared_with_agents: accountAiConsent/);
-assert.match(saveCredentials,/currentConsent\.opted_out !== true/);
+// Existing grants must remain conditional on affirmative consent and must
+// not be silently re-enabled after a per-connection revocation.
+assert.match(saveCredentials,/existing\.obo_consent\?\.granted === true && existing\.obo_consent\?\.opted_out !== true/);
+assert.match(saveCredentials,/const accountAiConsent = unifiedObo && accountConsentRequested/);
+assert.match(saveCredentials,/opted_out: !accountAiConsent/);
 assert.doesNotMatch(campaignUpdate,/agent_access\?\.automation_enabled === true/);
 assert.match(finalizeOauth,/automation_enabled: false/);
-assert.match(finalizeOauth,/reconcileOAuthExternalBalance/);
-assert.match(finalizeOauth,/\.\.\.oauthBalanceEvidence/);
-assert.match(finalizeOauth,/granted_capabilities: unifiedObo \? confirmed : \[\]/);
+// OAuth permission must be limited to the explicit requested scope AND the
+// capabilities actually returned by the provider, never all provider scopes.
+assert.match(finalizeOauth,/granted_capabilities: unifiedObo \? restrictedAgentScope\(selectedCapabilities, confirmed\) : \[\]/);
+assert.match(finalizeOauth,/requested_capabilities: selectedCapabilities/);
 assert.doesNotMatch(prepare,/hasUnifiedOboConsent/);
 assert.match(prepare,/cap\?\.capability_status === 'verified'/);
 assert.match(payoutAccount,/payouts_enabled/);
@@ -107,3 +111,6 @@ assert.doesNotMatch(importedRefresh,/discoverExternalCampaignSnapshot/);
 assert.match(importedRefresh,/syncImportedCampaign/);
 assert.match(campaignDetail,/ImportedCampaignSync/);
 console.log('External fundraising network foundation verified.');
+
+assert.match(finalizeOauth, /reconcileOAuthExternalBalance/);
+assert.match(finalizeOauth, /\.\.\.oauthBalanceEvidence/);

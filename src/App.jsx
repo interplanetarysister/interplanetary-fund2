@@ -113,7 +113,21 @@ const AuthenticatedApp = () => {
 };
 
 function App() {
-  useEffect(() => { const mq = window.matchMedia("(prefers-color-scheme: dark)"); const apply = (e) => document.documentElement.classList.toggle("dark", e.matches); apply(mq); mq.addEventListener("change", apply); return () => mq.removeEventListener("change", apply); }, []);
+  useEffect(() => {
+    // Follow the device until someone explicitly picks a theme. Never override
+    // a member's saved light/dark accessibility preference on system changes.
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      let preference = "system";
+      try { preference = localStorage.getItem("ifund-theme") || "system"; } catch {}
+      document.documentElement.classList.toggle("dark", preference === "dark" || (preference === "system" && mq.matches));
+      document.documentElement.style.colorScheme = document.documentElement.classList.contains("dark") ? "dark" : "light";
+    };
+    apply();
+    mq.addEventListener("change", apply);
+    window.addEventListener("ifund-theme-changed", apply);
+    return () => { mq.removeEventListener("change", apply); window.removeEventListener("ifund-theme-changed", apply); };
+  }, []);
   return <ErrorBoundary><AuthProvider><QueryClientProvider client={queryClientInstance}><Router><ScrollToTop /><TermsAcceptance><AuthenticatedApp /></TermsAcceptance><Toaster /></Router></QueryClientProvider></AuthProvider></ErrorBoundary>;
 }
 export default App;

@@ -3,6 +3,10 @@ main = "worker.js"
 compatibility_date = "2026-10-15"
 workers_dev = false
 
+# All valid addresses at @interplanetaryfund.com are eligible for intake.
+# Nine specific mailboxes are prioritized by the Base44 receiver.
+# Worker signing keys and endpoint settings remain encrypted secrets.
+
 # Email Routing rules are managed on the Cloudflare domain AFTER
 # secure secrets and recipient permissions are verified.
 # Never place production secrets in this file.

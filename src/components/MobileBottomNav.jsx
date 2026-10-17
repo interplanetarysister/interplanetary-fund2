@@ -14,7 +14,7 @@ export const IFUND_BOTTOM_TABS=[
 export default function MobileBottomNav({user,onNavigate}){
  const {pathname}=useLocation();
  const active=owningNavigationTab(pathname,!!user);
- return <nav aria-label="Bottom navigation" className="ifund-mobile-nav md:hidden fixed inset-x-0 bottom-0 z-40 deep-space border-t border-white/10 flex pb-safe">
+ return <nav aria-label="Bottom navigation" className="ifund-mobile-nav md:hidden fixed inset-x-0 bottom-0 z-40 border-t flex pb-safe">
   {IFUND_BOTTOM_TABS.map(({to,label,icon:Icon})=>{
    const destination=user||["/social","/community"].includes(to)
     ?to:`/login?returnTo=${encodeURIComponent(to)}`;

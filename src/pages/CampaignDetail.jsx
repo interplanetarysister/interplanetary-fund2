@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Image } from "@/components/ui/image";
 import { Badge } from "@/components/ui/badge";
 import DonateDialog from "@/components/campaigns/DonateDialog";
+import CampaignTranslation from "@/components/campaigns/CampaignTranslation";
 import CampaignFundingCard from "@/components/campaigns/CampaignFundingCard";
 import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
@@ -34,6 +35,7 @@ export default function CampaignDetail() {
   const { id } = useParams();
   const location = useLocation();
   const [campaign, setCampaign] = useState(null);
+  const [translation, setTranslation] = useState(null);
   const [updates, setUpdates] = useState([]);
   const [donations, setDonations] = useState([]);
   const [user, setUser] = useState(null);
@@ -88,6 +90,8 @@ export default function CampaignDetail() {
   if (notFound) return <div className="text-center py-24 text-stone-500">Campaign not found.</div>;
   if (!campaign) return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
+  const displayed = translation || campaign;
+  const textDirection = translation?.language_code === "ar" ? "rtl" : "auto";
   const isOwner = user && campaign.created_by_id === user.id;
   // Embed/share controls are a management capability — visible only to the
   // authenticated campaign owner or an admin (authorized manager). Never shown
@@ -109,7 +113,7 @@ export default function CampaignDetail() {
           {isVideo(campaign.cover_image_url) ? (
             <video src={campaign.cover_image_url} controls className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
           ) : (
-            <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={campaign.title} className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
+            <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={displayed.title} className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
           )}
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -117,21 +121,22 @@ export default function CampaignDetail() {
               {campaign.location && <Badge variant="outline" className="border-stone-200 text-stone-600"><MapPin className="w-3 h-3 mr-1" />{campaign.location}</Badge>}
               {campaign.status !== "active" && <Badge variant="outline" className="capitalize">{campaign.status}</Badge>}
             </div>
+            <div className="mb-4"><CampaignTranslation campaign={campaign} canManage={canManage} onChange={setTranslation} /></div>
             <div className="flex items-start justify-between gap-3">
-              <h1 className="font-display text-3xl sm:text-4xl font-black text-slate-950 leading-tight drop-shadow-[0_1px_0_rgba(255,255,255,.75)]">{campaign.title}</h1>
+              <h1 dir={textDirection} className="font-display text-3xl sm:text-4xl font-black text-slate-950 leading-tight drop-shadow-[0_1px_0_rgba(255,255,255,.75)]">{displayed.title}</h1>
               {!isOwner && <FollowButton campaign={campaign} />}
             </div>
-            {campaign.summary && <p className="text-slate-800 mt-2 text-lg font-medium leading-relaxed">{campaign.summary}</p>}
+            {displayed.summary && <p dir={textDirection} className="text-slate-800 mt-2 text-lg font-medium leading-relaxed whitespace-pre-wrap">{displayed.summary}</p>}
           </div>
           {/* Phones: funding progress + Donate Now sit directly under the title,
               so the primary action is visible without scrolling. */}
           <div id="campaign-funding-mobile" tabIndex={-1} className="scroll-mt-24 lg:hidden">
             <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
           </div>
-          {campaign.story && (
+          {displayed.story && (
             <div id="campaign-story" tabIndex={-1} className="scroll-mt-24 bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
-              <p className="text-stone-600 leading-relaxed whitespace-pre-wrap">{campaign.story}</p>
+              <p dir={textDirection} className="text-stone-600 leading-relaxed whitespace-pre-wrap">{displayed.story}</p>
             </div>
           )}
           <section id="campaign-updates" tabIndex={-1} className="scroll-mt-24">

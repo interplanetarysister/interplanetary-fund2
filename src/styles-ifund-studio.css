@@ -262,3 +262,147 @@ body {
 .ifund-public-hero h1, .ifund-public-hero .ifund-home-headline {
   font-family: var(--font-display);
 }
+
+/* Screenshot-inspired accessible navigation and connection surfaces (2026-10). */
+.ifund-sidebar {
+  background: radial-gradient(36rem 25rem at 0% 0%, #f1eaff, transparent 74%),
+              linear-gradient(158deg, #fafbff, #f0f5ff);
+  color: #1e293b;
+  border-right: 1px solid #dce3ef;
+}
+.dark .ifund-sidebar {
+  background: radial-gradient(34rem 25rem at 0% 5%, rgb(103 75 212 / .22), transparent 70%),
+              linear-gradient(167deg, #111c36 0%, #0e1529 60%, #101a31 100%);
+  color: #edf4ff;
+  border-right-color: rgb(178 205 255 / .10);
+}
+.ifund-sidebar .ifund-nav-link { color: #334155 !important; }
+.ifund-sidebar .ifund-nav-link:hover { background: rgb(111 84 205 / .08); color: #171e35 !important; }
+.ifund-sidebar .ifund-nav-link[aria-current="page"] {
+  background: #e9e7ff;
+  color: #5337b0 !important;
+  border-color: #d7ceff;
+  box-shadow: inset 3px 0 #7553d5;
+}
+.dark .ifund-sidebar .ifund-nav-link { color: #cbd5e1 !important; }
+.dark .ifund-sidebar .ifund-nav-link:hover { color: white !important; background: rgb(255 255 255 / .08); }
+.dark .ifund-sidebar .ifund-nav-link[aria-current="page"] {
+  color: #9decf9 !important;
+  background: linear-gradient(100deg, rgb(91 185 236 / .17), rgb(117 106 241 / .1));
+  border-color: rgb(126 202 254 / .18);
+}
+.ifund-sidebar .ifund-nav-section-title, .ifund-sidebar .text-slate-400,
+.ifund-sidebar .text-slate-500 { color: #64748b !important; }
+.dark .ifund-sidebar .ifund-nav-section-title, .dark .ifund-sidebar .text-slate-400,
+.dark .ifund-sidebar .text-slate-500 { color: #a9b8cd !important; }
+.ifund-sidebar .text-slate-100, .ifund-sidebar .ifund-brand-title { color: #172035 !important; }
+.dark .ifund-sidebar .text-slate-100, .dark .ifund-sidebar .ifund-brand-title { color: #f8fafc !important; }
+.ifund-page-icon {
+  display: inline-flex; flex-shrink: 0; width: 42px; height: 42px;
+  align-items: center; justify-content: center; border-radius: 14px;
+  background: #eee9ff; color: #6846c4; border: 1px solid #e2dcfa;
+}
+.dark .ifund-page-icon { background: #303760; color: #b7a6ff; border-color: #4a507b; }
+.ifund-nav-icon {
+  display: inline-flex; width: 35px; height: 35px; flex-shrink: 0;
+  align-items: center; justify-content: center; border-radius: 12px;
+  background: rgb(125 99 220 / .10); color: #7550c4;
+}
+.dark .ifund-nav-icon { background: rgb(125 203 255 / .11); color: #9adcf3; }
+.ifund-sidebar-theme, .ifund-header-action {
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid #e7e5f1; background: rgb(255 255 255 / .72);
+  color: #2a2b42; box-shadow: 0 3px 12px rgb(42 31 79 / .04);
+}
+.dark .ifund-sidebar-theme, .dark .ifund-header-action {
+  border-color: #394866; background: #253452; color: #f3f6ff;
+}
+.ifund-mobile-header, .ifund-mobile-nav {
+  background: rgb(249 249 255 / .94);
+  color: #1e293b;
+  border-color: #e7e6f4;
+  backdrop-filter: blur(18px);
+}
+.dark .ifund-mobile-header, .dark .ifund-mobile-nav {
+  background: linear-gradient(110deg, #101b34 0%, #10192d 100%);
+  color: #f8fafc;
+  border-color: #34415a;
+}
+.ifund-mobile-header .ifund-brand-title, .ifund-mobile-title { color: #1e293b !important; }
+.dark .ifund-mobile-header .ifund-brand-title, .dark .ifund-mobile-title { color: #f8fafc !important; }
+.ifund-mobile-nav a { color: #60677b !important; }
+.ifund-mobile-nav a[aria-current="page"] { color: #6844c4 !important; }
+.dark .ifund-mobile-nav a { color: #b5c1d2 !important; }
+.dark .ifund-mobile-nav a[aria-current="page"] { color: #72e0f3 !important; }
+.ifund-connections-hero {
+  background: radial-gradient(35rem 21rem at 15% 10%, #ece8ff, transparent 80%),
+              linear-gradient(145deg, #f5f6ff, #edf8ff);
+  border-color: #e0e2f7;
+  color: #22253a;
+}
+.dark .ifund-connections-hero {
+  background: linear-gradient(155deg, #1c2949, #152038);
+  border-color: #39476b;
+  color: #f8fafc;
+}
+.ifund-connection-stat { background: rgb(255 255 255 / .83); border-color: #e1e5f1; }
+.dark .ifund-connection-stat { background: rgb(10 20 43 / .60); border-color: #3b4765; }
+.ifund-connection-browser {
+  background: linear-gradient(145deg, #f4f1ff, #edf7ff);
+  border: 1px solid #e0dff1;
+}
+.dark .ifund-connection-browser { background: #162440; border-color: #344668; }
+.ifund-platform-filter {
+  display: inline-flex; align-items: center; gap: .4rem;
+  min-height: 42px; white-space: nowrap; border-radius: 999px;
+  background: rgb(255 255 255 / .70); color: #5c6375;
+  border: 1px solid transparent; padding: .5rem .85rem;
+  font-weight: 650; font-size: .83rem;
+}
+.ifund-platform-filter.is-active { background: #fff; border-color: #d5cafb; color: #583aba; box-shadow: 0 3px 9px rgb(44 37 108 / .06); }
+.dark .ifund-platform-filter { background: #233453; color: #cbd5e1; }
+.dark .ifund-platform-filter.is-active { background: #493980; color: #fff; border-color: #735cab; }
+.ifund-platform-choice, .ifund-connection-card {
+  background: #fff; border-color: #e6e7ef;
+  box-shadow: 0 4px 14px rgb(45 44 98 / .055);
+}
+.ifund-platform-choice:hover, .ifund-platform-choice:focus-visible {
+  border-color: #9675e7; box-shadow: 0 6px 18px rgb(83 56 167 / .11);
+}
+.dark .ifund-platform-choice, .dark .ifund-connection-card { background: #1d2b46; border-color: #3a4865; }
+.ifund-platform-logo { color: var(--brand-accent); background: #fff !important; }
+.dark .ifund-platform-logo { background: #fff !important; border-color: #e0e4ef; color: var(--brand-accent); }
+@media (max-width: 420px) {
+  .ifund-platform-choice { min-height: 70px; }
+  .ifund-sidebar .ifund-nav-link { min-height: 45px; }
+}
+
+
+/* One navigation frame on mobile; fit the sidebar to the longest visible link.
+   Desktop navigation participates in the flex layout: no fixed 240px gutter. */
+.ifund-desktop-sidebar,
+.ifund-drawer {
+  inline-size: max-content;
+  max-inline-size: calc(100vw - 1.5rem);
+}
+.ifund-sidebar-nav {
+  inline-size: max-content;
+  max-inline-size: 100%;
+  align-self: flex-start;
+}
+.ifund-sidebar-nav .ifund-nav-label {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ifund-desktop-sidebar {
+  height: 100%;
+}
+.ifund-drawer {
+  max-height: 100dvh;
+  background: rgb(248 249 255 / .88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.dark .ifund-drawer {
+  background: rgb(16 27 52 / .88);
+}

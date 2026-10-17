@@ -15,4 +15,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Runtime baseline reconciliation passed: all current and newer supported Node releases starting at Node 20.');
+console.log('Runtime baseline reconciliation passed: the tested Node 24 lane and minimum >=24.12.0.');
