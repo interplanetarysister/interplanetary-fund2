@@ -101,7 +101,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5"><div><Label htmlFor="contrib" className="text-sm flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Add 10% to support IFund (optional)</Label><p className="text-xs text-muted-foreground">Your campaign gift stays the same.</p></div><Switch id="contrib" checked={platformContribution} onCheckedChange={setPlatformContribution} /></div>
             {paypalApiAvailable && Number(amount) >= MIN_DONATION && (
-              <p className="text-xs text-muted-foreground" role="status">Campaign gift: ${paypalBd.recipientGift.toFixed(2)} · Estimated total with PayPal processing: ${paypalBd.totalCharged.toFixed(2)}. Confirm the final amount in PayPal.</p>
+              <p className="text-xs text-muted-foreground" role="status">Gift to this campaign: ${paypalBd.recipientGift.toFixed(2)} · Estimated total with PayPal processing: ${paypalBd.totalCharged.toFixed(2)}. Confirm the final amount in PayPal.</p>
             )}
 
             {!capabilities && !capabilityError && <div className="flex items-center justify-center py-4 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking available payment methods…</div>}
