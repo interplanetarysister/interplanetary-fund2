@@ -236,7 +236,7 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     </div>
 
     <Sheet open={open} onOpenChange={(next) => { setOpen(next); if (!next) void refresh(); }}>
-      <SheetContent side="right" className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden pb-[calc(1rem+env(safe-area-inset-bottom))] pt-16 sm:w-[min(100vw,42rem)] sm:max-w-2xl">
+      <SheetContent side="right" className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-12 sm:w-[min(95vw,48rem)] sm:max-w-[48rem]">
         {selectedAgent && <>
           <SheetHeader className="shrink-0 text-left">
             <SheetTitle className="flex items-center gap-3 text-lg"><AgentPlanet kind={states.find((s) => s.agent.name === selectedAgent.name)?.signal.kind || "idle"} />{selectedAgent.label}</SheetTitle>
@@ -246,7 +246,7 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
             <button type="button" aria-pressed={chatMode === "chat"} onClick={() => setChatMode("chat")} className={"min-h-11 rounded-lg border px-3 text-sm font-semibold " + (chatMode === "chat" ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}>Chat</button>
             <button type="button" aria-pressed={chatMode === "admin"} onClick={() => setChatMode("admin")} className={"min-h-11 rounded-lg border px-3 text-sm font-semibold " + (chatMode === "admin" ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}>Admin tools</button>
           </div>}
-          <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card p-3">
+          <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card p-2 sm:p-3">
             {canUseAdminTools && selectedAgent.name === "chief_of_staff" && chatMode === "admin"
               ? <div className="min-h-0 flex-1 overflow-y-auto"><AdminDevelopmentChat user={user} /></div>
               : <AgentChat key={selectedAgent.name} agentName={selectedAgent.name} agentLabel={selectedAgent.label} greeting={selectedAgent.greeting} overlayMode />}
