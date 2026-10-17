@@ -43,8 +43,8 @@ try {
         "window.paypal={Buttons:()=>({render:async node=>{const b=document.createElement('button');b.type='button';b.textContent='Mock PayPal checkout (no payment)';b.setAttribute('data-qa-paypal','');b.style.cssText='display:block;width:100%;height:44px;border:1px solid #777';node.appendChild(b)},close:()=>{}})};"
     }));
     await page.goto(origin+'/campaign/'+fixture.id,{waitUntil:'domcontentloaded'});
-    await page.getByRole('button',{name:'Donate',exact:true}).last().waitFor({timeout:18000});
-    await page.getByRole('button',{name:'Donate',exact:true}).last().click();
+    await page.getByRole('button',{name:'Donate with PayPal',exact:true}).last().waitFor({timeout:18000});
+    await page.getByRole('button',{name:'Donate with PayPal',exact:true}).last().click();
     const dialog=page.getByRole('dialog');
     await dialog.waitFor({state:'visible',timeout:8000});
     await dialog.getByPlaceholder('Custom amount ($)').fill('25');
