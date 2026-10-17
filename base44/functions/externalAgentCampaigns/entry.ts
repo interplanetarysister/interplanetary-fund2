@@ -12,7 +12,7 @@ export default async function(req){
     const key=matches[0];
     if(!key||key.scope!=='campaigns:read') return Response.json({error:'Unauthorized'},{status:401});
     // Only public, explicitly outreach-enabled campaigns. This endpoint never publishes posts.
-    const all=await client.asServiceRole.entities.Campaign.filter({status:'active',outreach_enabled:true,outreach_paused:false},'-created_date',50);
+    const all=await client.asServiceRole.entities.Campaign.filter({status:'active',outreach_enabled:true},'-created_date',50);
     const campaigns=all.filter(c=>c.status==='active'&&c.outreach_enabled===true&&c.outreach_paused!==true).map(c=>({
       id:c.id,title:c.title,summary:c.summary,story:c.story,cover_image_url:c.cover_image_url,
       url:'https://interplanetaryfund.com/campaign/'+encodeURIComponent(c.id)
