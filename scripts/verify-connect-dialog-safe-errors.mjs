@@ -191,3 +191,8 @@ const safeMessageIndex = source.indexOf('setError("Couldn\'t save this connectio
 assert.ok(diagnosticIndex >= 0 && safeMessageIndex > diagnosticIndex, "controlled diagnostics must precede the safe client message");
 
 console.log("Connection authorization and data-truth contract passed");
+
+assert.match(source, /balance_reaffirmed: externalIdentityChanged && balanceReaffirmed/);
+assert.match(source, /balanceReaffirmationRequired/);
+assert.match(save, /reconcileExternalBalanceIdentity/);
+assert.match(save, /balanceReconciliation\.reset/);

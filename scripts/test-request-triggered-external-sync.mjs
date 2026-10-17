@@ -9,7 +9,7 @@ import {
   finishExternalSyncRequest,
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
-import { externalBalanceEvidenceChanged } from '../base44/shared/externalBalanceEvidence.ts';
+import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity, reconcileOAuthExternalBalance } from '../base44/shared/externalBalanceEvidence.ts';
 
 const preservedEvidence = {
   external_total: 125.5,
@@ -30,6 +30,87 @@ assert.equal(externalBalanceEvidenceChanged({
   kind:'crowdfunding',existing:preservedEvidence,
   externalTotal:125.5,externalCurrency:'USD',externalDonorCount:7,reaffirmed:true,
 }),true,'explicit owner reaffirmation refreshes balance evidence');
+
+const priorIdentity = {
+  ...preservedEvidence,
+  platform: 'kofi',
+  kind: 'crowdfunding',
+  external_url: 'https://ko-fi.com/original',
+};
+for (const [label, change] of [
+  ['provider URL', { externalUrl:'https://ko-fi.com/replacement' }],
+  ['currency', { externalCurrency:'EUR' }],
+  ['credentials', { credentialsChanged:true }],
+  ['platform', { platform:'patreon' }],
+  ['kind', { kind:'social' }],
+]) {
+  const reconciled = reconcileExternalBalanceIdentity({
+    existing:priorIdentity,
+    platform:'kofi',
+    kind:'crowdfunding',
+    externalUrl:priorIdentity.external_url,
+    externalCurrency:'USD',
+    externalTotal:125.5,
+    externalDonorCount:7,
+    ...change,
+  });
+  assert.equal(reconciled.reset,true,`${label} change clears prior balance evidence`);
+  assert.equal(reconciled.externalTotal,0,`${label} change cannot carry a prior amount`);
+  assert.equal(reconciled.externalDonorCount,0,`${label} change cannot carry a prior donor count`);
+  assert.equal(reconciled.externalDataSource,'owner_reported',`${label} change invalidates provider provenance`);
+}
+const zeroProviderEvidence = reconcileExternalBalanceIdentity({
+  existing:{ ...priorIdentity, external_total:0, external_donor_count:0, external_data_source:'provider_verified' },
+  platform:'kofi',
+  kind:'crowdfunding',
+  externalUrl:priorIdentity.external_url,
+  externalCurrency:'EUR',
+  externalTotal:0,
+  externalDonorCount:0,
+});
+assert.equal(zeroProviderEvidence.reset,true,'identity change invalidates even zero-valued provider evidence');
+assert.equal(zeroProviderEvidence.externalDataSource,'owner_reported','zero-valued evidence cannot keep a provider-verified label');
+const reaffirmedIdentity = reconcileExternalBalanceIdentity({
+  existing:priorIdentity,
+  platform:'kofi',
+  kind:'crowdfunding',
+  externalUrl:'https://ko-fi.com/replacement',
+  externalCurrency:'USD',
+  externalTotal:125.5,
+  externalDonorCount:7,
+  reaffirmed:true,
+});
+assert.equal(reaffirmedIdentity.reset,false,'explicit reaffirmation may bind owner-reported values to the new identity');
+assert.equal(reaffirmedIdentity.externalTotal,125.5);
+assert.equal(reaffirmedIdentity.externalDonorCount,7);
+const nonFundraisingReaffirmation = reconcileExternalBalanceIdentity({
+  existing:priorIdentity,
+  platform:'kofi',
+  kind:'social',
+  externalUrl:priorIdentity.external_url,
+  externalCurrency:'',
+  externalTotal:125.5,
+  externalDonorCount:7,
+  reaffirmed:true,
+});
+assert.equal(nonFundraisingReaffirmation.reset,true,'reaffirmation cannot carry fundraising evidence into a non-fundraising kind');
+assert.equal(nonFundraisingReaffirmation.externalTotal,0);
+assert.equal(nonFundraisingReaffirmation.externalDonorCount,0);
+assert.equal(nonFundraisingReaffirmation.externalDataSource,'owner_reported');
+
+const oauthReauthorization = reconcileOAuthExternalBalance({ existing:priorIdentity, kind:'crowdfunding' });
+assert.deepEqual(oauthReauthorization,{
+  external_data_source:'owner_reported',
+  external_total:0,
+  external_donor_count:0,
+  external_currency:'',
+  external_balance_observed_at:null,
+},'OAuth reauthorization cannot carry balance evidence from a potentially different provider account');
+assert.deepEqual(
+  reconcileOAuthExternalBalance({ existing:priorIdentity, kind:'social' }),
+  { external_data_source:'provider_verified' },
+  'non-fundraising OAuth reauthorization does not invent balance fields',
+);
 
 const UUID = '8c0b75c0-6b2d-4b14-8c0f-8c21f5df4781';
 const UUID2 = 'f95911e3-aaf2-48a9-bd43-2f38a265de1e';

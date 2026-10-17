@@ -25,6 +25,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
   const usesProviderOAuth = platform.setupKind === "oauth";
   const [form, setForm] = useState({ display_name: "", external_url: "", campaign_id: "", automation_mode: "manual", external_total: "", external_currency: "USD", external_donor_count: "" });
   const [credentials, setCredentials] = useState({});
+  const [balanceReaffirmed, setBalanceReaffirmed] = useState(false);
   const [accountAiAllowed, setAccountAiAllowed] = useState(false);
   const [scopeChoice, setScopeChoice] = useState("full");
   const [permissionBusy, setPermissionBusy] = useState(false);
@@ -51,6 +52,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
       external_donor_count: existing?.external_donor_count ?? "",
     });
     setCredentials(existing?.credentials || {});
+    setBalanceReaffirmed(false);
     setScopeChoice(existing?.obo_consent?.scope_choice || "full");
     setAccountAiAllowed(existing?.obo_consent?.granted === true && existing?.obo_consent?.opted_out !== true);
     setHelpDetails("");
@@ -81,7 +83,21 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
     return () => { current = false; };
   }, [open, platform.id, usesProviderOAuth]);
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    setForm(f => ({ ...f, [k]: v }));
+    if (["external_url", "external_currency", "external_total", "external_donor_count"].includes(k)) setBalanceReaffirmed(false);
+  };
+  const externalIdentityChanged = Boolean(existing && isCrowd && (
+    platform.id !== existing.platform ||
+    (platform.kind || 'crowdfunding') !== (existing.kind || 'crowdfunding') ||
+    form.external_url.trim() !== String(existing.external_url || "").trim() ||
+    form.external_currency.trim().toUpperCase() !== String(existing.external_currency || "").trim().toUpperCase() ||
+    Object.entries(credentials).some(([key, value]) =>
+      ["kofi_verification_token", "buymeacoffee_api_token", "bluesky_app_password", "mastodon_access_token", "account_identifier"].includes(key) &&
+      String(value ?? "").trim() !== "" && String(value).trim() !== String(existing?.credentials?.[key] ?? "").trim())
+  ));
+  const hasDisplayedBalance = Number(form.external_total || 0) > 0 || Number(form.external_donor_count || 0) > 0;
+  const balanceReaffirmationRequired = externalIdentityChanged && hasDisplayedBalance && !balanceReaffirmed;
   const selectedCampaign = campaigns.find((campaign) => campaign.id === form.campaign_id) || null;
   const selectCampaign = (campaignId) => {
     const selected = campaigns.find((campaign) => campaign.id === campaignId);
@@ -245,6 +261,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         external_currency: isCrowd ? form.external_currency.trim().toUpperCase() : undefined,
         external_donor_count: isCrowd ? Number(form.external_donor_count) || 0 : 0,
         credentials,
+        balance_reaffirmed: externalIdentityChanged && balanceReaffirmed,
         ai_account_authorized: accountAiAllowed,
         ai_scope_choice: scopeChoice,
       });
@@ -288,7 +305,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
           </div>}
-          {!usesProviderOAuth && <div ref={accountDetailsRef}><CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={setCredentials} /></div>}
+          {!usesProviderOAuth && <div ref={accountDetailsRef}><CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={(nextCredentials) => { setCredentials(nextCredentials); setBalanceReaffirmed(false); }} /></div>}
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Optional campaign to promote"}</Label>
             <Select value={form.campaign_id} onValueChange={selectCampaign}>
@@ -322,6 +339,16 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
                   <Input type="number" min="0" step="1" value={form.external_donor_count} onChange={(e) => set("external_donor_count", e.target.value)} placeholder="0" />
                 </div>
               </div>
+              {externalIdentityChanged && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+                  {hasDisplayedBalance ? (
+                    <label className="flex items-start gap-2">
+                      <input type="checkbox" checked={balanceReaffirmed} onChange={event => setBalanceReaffirmed(event.target.checked)} />
+                      <span>I confirm this displayed amount, currency, and donor count belong to the changed provider connection.</span>
+                    </label>
+                  ) : <p>The prior provider balance evidence will be cleared for this changed connection.</p>}
+                </div>
+              )}
             </div>
           )}
 
@@ -366,7 +393,7 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             </div>
           )}
           {!usesProviderOAuth && (
-            <Button onClick={save} disabled={saving} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
+            <Button onClick={save} disabled={saving || balanceReaffirmationRequired} className="w-full min-w-0 bg-primary hover:bg-primary/90 text-primary-foreground min-h-11 h-auto px-3 py-3 text-center whitespace-normal break-words leading-snug rounded-xl">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : existing ? "Save changes" : `Link to ${platform.name}`}
             </Button>
           )}

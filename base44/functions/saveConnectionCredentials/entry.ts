@@ -2,7 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
-import { externalBalanceEvidenceChanged } from '../../shared/externalBalanceEvidence.ts';
+import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity } from '../../shared/externalBalanceEvidence.ts';
 import { encryptConnectionSecret } from '../../shared/connectionCrypto.ts';
 import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
@@ -38,10 +38,10 @@ export default async function(req) {
       }
     }
 
-    const reportedTotal = external_total === undefined || external_total === null
+    let reportedTotal = external_total === undefined || external_total === null
       ? Number(existing?.external_total ?? 0)
       : Number(external_total);
-    const reportedDonors = external_donor_count === undefined || external_donor_count === null
+    let reportedDonors = external_donor_count === undefined || external_donor_count === null
       ? Number(existing?.external_donor_count ?? 0)
       : Number(external_donor_count);
     if (!Number.isFinite(reportedTotal) || reportedTotal < 0) {
@@ -118,6 +118,16 @@ export default async function(req) {
     }
     const mergedCreds = existing ? mergeSecrets(existing.credentials, incoming) : incoming;
     const now = new Date().toISOString();
+    const credentialsChanged = SECRET_FIELDS.some(field => Boolean(incoming[field])) ||
+      (incoming.account_identifier !== undefined &&
+       incoming.account_identifier !== String(existing?.credentials?.account_identifier || ''));
+    const balanceReconciliation = reconcileExternalBalanceIdentity({
+      existing, platform, kind: effectiveKind, externalUrl: external_url,
+      externalCurrency: effectiveCurrency, externalTotal: reportedTotal,
+      externalDonorCount: reportedDonors, credentialsChanged, reaffirmed: balance_reaffirmed,
+    });
+    reportedTotal = balanceReconciliation.externalTotal;
+    reportedDonors = balanceReconciliation.externalDonorCount;
     // The dialog always submits its displayed totals. Re-saving a URL or
     // rotating a credential must not make stale/provider-verified balance
     // evidence look newly owner-observed. Only a normalized value change or an
@@ -143,12 +153,12 @@ export default async function(req) {
       external_donor_count: reportedDonors,
       status: 'disconnected',
       verification_status: 'unverified',
-      external_data_source: balanceEvidenceChanged
+      external_data_source: balanceReconciliation.identityChanged
         ? 'owner_reported'
-        : (existing?.external_data_source || 'owner_reported'),
-      external_balance_observed_at: balanceEvidenceChanged
-        ? now
-        : (existing?.external_balance_observed_at || null),
+        : (balanceEvidenceChanged ? 'owner_reported' : (existing?.external_data_source || 'owner_reported')),
+      external_balance_observed_at: balanceReconciliation.reset
+        ? null
+        : (balanceEvidenceChanged ? now : (existing?.external_balance_observed_at || null)),
       last_error: '',
       history: [...(existing?.history || []), { at: now, event: existing ? 'configuration_updated' : 'configured', detail: existing ? 'Connection settings updated; provider verification required' : `Configured ${platform}; provider verification required` }].slice(-30),
     };

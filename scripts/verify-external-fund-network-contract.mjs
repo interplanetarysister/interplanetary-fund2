@@ -53,7 +53,8 @@ assert.match(prepare,/connection\.external_balance_observed_at \|\| null/);
 assert.doesNotMatch(prepare,/observedAt = connection\.last_synced/);
 assert.match(externalSync,/external_balance_observed_at = now/);
 assert.match(kofiWebhook,/external_balance_observed_at: now/);
-assert.match(saveCredentials,/external_balance_observed_at: balanceEvidenceChanged/);
+assert.match(saveCredentials,/reconcileExternalBalanceIdentity/);
+assert.match(saveCredentials,/external_balance_observed_at: balanceReconciliation.reset/);
 assert.match(saveCredentials,/externalBalanceEvidenceChanged/);
 const mixedCurrencyBranch = kofiWebhook.slice(
   kofiWebhook.indexOf('if (priorCurrency && priorCurrency !== currency)'),
@@ -110,3 +111,6 @@ assert.doesNotMatch(importedRefresh,/discoverExternalCampaignSnapshot/);
 assert.match(importedRefresh,/syncImportedCampaign/);
 assert.match(campaignDetail,/ImportedCampaignSync/);
 console.log('External fundraising network foundation verified.');
+
+assert.match(finalizeOauth, /reconcileOAuthExternalBalance/);
+assert.match(finalizeOauth, /\.\.\.oauthBalanceEvidence/);

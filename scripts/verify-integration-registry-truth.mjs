@@ -84,6 +84,8 @@ expect(!importedCampaignUi.includes('discoverExternalCampaignSnapshot'), 'client
 expect(saveConnectionCredentials.includes("Number(existing?.external_total ?? 0)"), 'connection edits must preserve an existing external total when omitted');
 expect(saveConnectionCredentials.includes("Number(existing?.external_donor_count ?? 0)"), 'connection edits must preserve an existing donor count when omitted');
 expect(!saveConnectionCredentials.includes("Number(external_total ?? 0)"), 'connection edits must not silently reset external totals to zero');
+expect(saveConnectionCredentials.includes('reconcileExternalBalanceIdentity'), 'connection edits must reconcile balance evidence across provider identity changes');
+expect(saveConnectionCredentials.includes('balanceReconciliation.reset'), 'identity changes must clear the prior balance observation timestamp');
 // Link-based connections reach green state only after provider-page
 // verification in the authoritative verification functions; fund sync then
 // consumes verified state only via the eligibility gate.
