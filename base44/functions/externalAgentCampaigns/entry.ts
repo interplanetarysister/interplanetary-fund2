@@ -10,7 +10,7 @@ export default async function(req){
     const hash=await digest(token);
     const matches=await client.asServiceRole.entities.ExternalAgentApiKey.filter({key_hash:hash,status:'active'});
     const key=matches[0];
-    if(!key||key.scope!=='campaigns:read') return Response.json({error:'Unauthorized'},{status:401});
+    if(!key||!['campaigns:read','campaigns:read,content:write'].includes(key.scope)) return Response.json({error:'Unauthorized'},{status:401});
     // Only public, explicitly outreach-enabled campaigns. This endpoint never publishes posts.
     const all=await client.asServiceRole.entities.Campaign.filter({status:'active',outreach_enabled:true},'-created_date',50);
     const campaigns=all.filter(c=>c.status==='active'&&c.outreach_enabled===true&&c.outreach_paused!==true).map(c=>({
