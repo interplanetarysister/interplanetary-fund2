@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import vm from 'node:vm';
 
 // Gateway source contract: malformed credentials, redirects, and HTML login
 // responses must never be treated as successful authenticated JSON APIs.
