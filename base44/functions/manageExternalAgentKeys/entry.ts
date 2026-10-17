@@ -26,7 +26,7 @@ export default async function(req) {
     }
     if(body.action==='revoke') {
       const id=String(body.id||'');
-      const records=await db.filter({id});
+      const records=await db.list('-created_date',100);
       const found=records.find(x=>x.id===id);
       if(!found) return Response.json({error:'Key not found'},{status:404});
       await db.update(id,{status:'revoked',revoked_at:new Date().toISOString()});
