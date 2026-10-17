@@ -148,6 +148,25 @@ export default { async fetch(request, env) {
     catch{return json({error:"Interplanetary Fund MCP backend is unavailable.",degraded:true},502);}
   }
 
+  // Creator-authorized campaign content writes from external AI agents.
+  if(url.pathname==="/api/v1/agent/content"){
+    if(request.method!=="POST") return json({error:"Method not allowed"},405);
+    const authorization=request.headers.get("authorization")||"";
+    if(!/^Bearer ifund_ag_[a-f0-9]{64}$/i.test(authorization)) return json({error:"Bearer API key required"},401);
+    if(!env.IFUND_AGENT_CONTENT_WRITE_URL) return json({error:"Agent write API is not configured",degraded:true},503);
+    try{
+      const upstream=new URL(env.IFUND_AGENT_CONTENT_WRITE_URL);
+      if(upstream.protocol!=="https:") throw Error("HTTPS required");
+      const body=await request.text();
+      if(body.length>12000) return json({error:"Request too large"},413);
+      const response=await fetch(upstream.toString(),{
+        method:"POST",headers:{authorization,accept:"application/json","content-type":"application/json"},
+        body,redirect:"manual"
+      });
+      return new Response(response.body,{status:response.status,headers:{"content-type":"application/json","cache-control":"no-store"}});
+    }catch{return json({error:"Agent content API unavailable",degraded:true},502);}
+  }
+
   // Dedicated external-agent REST access, kept separate from admin tools.
   // The Base44 backend verifies the revocable key hash and limits fields.
   if(url.pathname==="/api/v1/agent/campaigns"){
