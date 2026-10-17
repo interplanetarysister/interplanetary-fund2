@@ -12,7 +12,9 @@ const entries = [
 4. Choose what AI can do. Full supported access is the usual choice.
 5. Tap Connect to sign in on the app's own page. Your phone may offer a saved password. Some apps ask you to say Yes to sharing access.
 6. If the app does not have a sign-in button here, follow the steps in its connection window. You may need to paste your public page link or use a special app token.
-7. Come back to IFund. Tap Check connection. Only a verified connection says it is working.
+7. If you change an already-linked fundraiser's page address, currency, or connection details, IFund may need to clear the old amount and donor count.
+8. If the numbers shown still belong to the NEW connection, check the confirmation box before saving. If you cannot confirm them, do not keep the old numbers; IFund clears them until you enter or verify new amounts.
+9. Come back to IFund. Tap Check connection. Only a verified connection says it is working.
 
 You can link a page without letting AI use the account. Saving a password does not mean an account is connected. If you are stuck, use IFund connection help. If saving fails, IFund shows a short error and asks you to try again. Your connection is not marked as working without proof.
 Updated: ${reviewed}.`,

@@ -6,9 +6,9 @@
       "workflow": "Connect outside app",
       "help_slug": "connect-another-platform",
       "tracked_files": {
-        "src/components/connections/ConnectDialog.jsx": "91580a6106b7b66a991508830a001801f2b77454710ca725d57f258d646589de",
-        "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "349c320bfdc42af36ee5c81223425f9e58a93f3d2a3fd906ba950d66695ffc77",
-        "base44/functions/saveConnectionCredentials/entry.ts": "dc513cb45083f912a96beacf90d2032c7e88642ce89a00397e961e05c1b3cc04"
+        "src/components/connections/ConnectDialog.jsx": "54959f5f8be02711e7747e220e794c4b537f963bc1c1a93deb47b4f8ae394ea7",
+        "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "c20b8c58b9d8ba8c6baf674c069ee371716e1b3e7d2a7e260088bf97a013095c",
+        "base44/functions/saveConnectionCredentials/entry.ts": "f5b11950a8aa06286509e2801c2f2da91200ec1b82c5febbcf7b5bdc8bd31d50"
       }
     },
     {
