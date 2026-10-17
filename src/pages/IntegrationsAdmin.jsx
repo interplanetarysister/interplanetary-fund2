@@ -130,6 +130,7 @@ export default function IntegrationsAdmin() {
         className={`inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold ${aiView ? "bg-slate-900 text-white border-slate-900" : "bg-card text-foreground border-border hover:bg-muted"}`}>
         AI Connections
       </Link>
+      <Link to="/admin/agent-api" className="inline-flex min-h-11 items-center rounded-xl border px-4 py-2 text-sm font-semibold bg-card text-foreground border-border hover:bg-muted">External Agent API</Link>
     </nav>
   );
 
