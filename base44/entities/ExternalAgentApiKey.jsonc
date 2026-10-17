@@ -37,7 +37,8 @@
     "scope": {
       "type": "string",
       "enum": [
-        "campaigns:read"
+        "campaigns:read",
+        "campaigns:read,content:write"
       ]
     },
     "status": {
