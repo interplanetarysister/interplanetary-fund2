@@ -1,6 +1,6 @@
 // Built-in instructions for user-facing flows. Keep these in sync with UI changes.
 // Available offline from the bundle and visible even if HelpArticle API is unavailable.
-const updated = "2026-10-16";
+const updated = "2026-10-17";
 const guides = [
   {
     slug: "find-your-way-around-ifund", category: "Getting Started",
@@ -62,7 +62,7 @@ Updated: ${updated}.`,
 7. Add a picture, then tap Continue and read everything.
 8. Tap Launch campaign to publish, or Save draft to finish later.
 
-You never need to type the same answer twice. AI suggestions only work when AI help is available. You can always use your own words.
+Each set of five AI choices should sound different: some focus on people, some on hope, and some on what support can do. Tap Try five more for fresh ideas. AI must use only facts you provided, so check each suggestion before choosing it. You never need to type the same answer twice. AI suggestions only work when AI help is available. You can always use your own words.
 Updated: ${updated}.`,
     keywords: ["ai", "campaign", "title", "five options", "story", "summary"]
   },
