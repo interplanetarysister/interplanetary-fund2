@@ -163,6 +163,9 @@ export default { async fetch(request, env) {
         method:"POST",headers:{authorization,accept:"application/json","content-type":"application/json"},
         body,redirect:"manual"
       });
+      // Never pass a login redirect or an HTML error page to an API caller as JSON.
+      if(response.status>=300 && response.status<400 || !/\\bapplication\\/(?:[a-z0-9.+-]*\\+)?json\\b/i.test(response.headers.get("content-type")||""))
+        return json({error:"Agent content backend returned an invalid API response",degraded:true},502);
       return new Response(response.body,{status:response.status,headers:{"content-type":"application/json","cache-control":"no-store"}});
     }catch{return json({error:"Agent content API unavailable",degraded:true},502);}
   }
@@ -182,6 +185,8 @@ export default { async fetch(request, env) {
       const response=await fetch(upstream.toString(),{
         method:"GET",headers:{authorization,accept:"application/json"},redirect:"manual"
       });
+      if(response.status>=300 && response.status<400 || !/\\bapplication\\/(?:[a-z0-9.+-]*\\+)?json\\b/i.test(response.headers.get("content-type")||""))
+        return json({error:"Agent campaign backend returned an invalid API response",degraded:true},502);
       const h=new Headers({"content-type":"application/json","cache-control":"no-store"});
       return new Response(response.body,{status:response.status,headers:h});
     }catch{
