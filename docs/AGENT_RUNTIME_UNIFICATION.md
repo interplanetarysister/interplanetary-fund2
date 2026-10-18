@@ -9,13 +9,13 @@
 
 ## Agent memory configuration
 
-Every normal user-facing specialist agent must have:
+The nine selectable agents in `src/pages/Agents.jsx` are Chief of Staff, Strategy, Growth, Communications, Story, Finance, Outreach, Discovery, and Managed Connections. Managed Connections requires level 2. Their definitions in `base44/agents/*.jsonc` currently set:
 
 - `memory_config.enabled: true`
 - `memory_config.scope: "both"`
-- `memory_config.include_other_conversation_context: true`
+- `memory_config.include_other_conversation_context: true` for eight agents; Discovery sets it to `false`.
 
-This allows each specialist to retain its own useful context while also receiving relevant context from the user's other conversations. Chief of Staff uses the same capability for cross-agent coordination.
+The separate `admin_builder_agent` is not a selectable agent in this page and also sets cross-conversation context to `false`. These are source settings, not proof that deployed memory behaves as configured. Chief of Staff is configured for cross-agent coordination where the runtime supplies relevant context.
 
 Memory instructions must preserve these boundaries:
 
@@ -34,7 +34,7 @@ The chat UI may create a new conversation session when the selected specialist c
 
 ## Cross-agent continuity
 
-All seven user-facing agents have cross-conversation context enabled. Specialists may use relevant context from other agent conversations, but should remain focused on their own role. Chief of Staff has the broadest coordination responsibility and should use available cross-agent context to avoid making the user repeat known instructions or decisions.
+Eight of the nine selectable agents have cross-conversation context enabled in their definitions. Discovery does not; its memory instructions focus on verified provider capability findings. Specialists with cross-conversation context may use relevant context from other agent conversations while remaining focused on their own role. Chief of Staff has the broadest coordination responsibility and should use available context to avoid making the user repeat known instructions or decisions.
 
 Structured delegation/task tracking remains separate from conversational memory. `AgentDelegation` is the authoritative Base44 record for substantive cross-agent assignments, including source/destination agent, objective, campaign context, real status, result, and verification. Chief of Staff can create/read/update these records. Conversation memory preserves context; delegation records preserve operational state.
 
@@ -94,9 +94,9 @@ Remembered claims about external or financial actions must be checked against au
 
 Memory is considered correctly configured when:
 
-1. All seven user-facing agents have memory enabled.
-2. Cross-conversation context is enabled for all seven.
-3. Chief of Staff can use relevant context from specialist conversations.
+1. All nine selectable agents have memory enabled in the source definitions.
+2. Eight selectable agents have cross-conversation context enabled; Discovery has it disabled. The separate admin builder also has it disabled.
+3. A runtime check confirms Chief of Staff can use relevant context from specialist conversations when appropriate.
 4. Switching agents does not require a Convex/Vercel memory bridge.
 5. User-specific memory remains separate from generalized training.
 6. Current authoritative data and permissions override remembered information.
