@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { loadPayPalSdk } from "./paypalScripts";
 
-export default function PayPalCheckoutButton({ campaign, amount, donorName, message, platformContribution, onPaid }) {
+export default function PayPalCheckoutButton({ campaign, amount, donorName, message, platformContribution, onPaid, onCheckoutStart, onCheckoutEnd }) {
   const containerRef = useRef(null);
   const buttonsRef = useRef(null);
   const intentRef = useRef({ key: "", id: "" });
   const [error, setError] = useState("");
-  const latestRef = useRef({ donorName, message, onPaid });
-  useEffect(() => { latestRef.current = { donorName, message, onPaid }; });
+  const latestRef = useRef({ donorName, message, onPaid, onCheckoutStart, onCheckoutEnd });
+  useEffect(() => { latestRef.current = { donorName, message, onPaid, onCheckoutStart, onCheckoutEnd }; });
 
   useEffect(() => {
     let cancelled = false;
@@ -35,6 +35,9 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
         node.replaceChildren();
         const buttons = window.paypal.Buttons({
           style: { layout: "vertical", shape: "rect", label: "paypal", height: 44, tagline: false },
+          // PayPal opens outside Radix's dialog focus scope. Release the modal trap
+          // before authentication so its popup can accept keyboard and touch input.
+          onClick: () => latestRef.current.onCheckoutStart?.(), 
           createOrder: async () => {
             const { data } = await base44.functions.invoke("createPayPalOrder", {
               campaign_id: campaign.id,
@@ -47,6 +50,7 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
             return data.id;
           },
           onApprove: async (data) => {
+            latestRef.current.onCheckoutEnd?.();
             const orderId = data?.orderID;
             if (!orderId) throw new Error("Missing PayPal order");
             const { donorName: latestName, message: latestMessage, onPaid: latestOnPaid } = latestRef.current;
@@ -60,8 +64,8 @@ export default function PayPalCheckoutButton({ campaign, amount, donorName, mess
             if (result?.ok !== true || !result?.canonical_operation_id) throw new Error("Capture not confirmed");
             if (!cancelled) latestOnPaid?.(result);
           },
-          onError: () => { if (!cancelled) setError("PayPal could not complete the payment. Please try again."); },
-          onCancel: () => { if (!cancelled) setError(""); },
+          onError: () => { latestRef.current.onCheckoutEnd?.(); if (!cancelled) setError("PayPal could not complete the payment. Please try again."); },
+          onCancel: () => { latestRef.current.onCheckoutEnd?.(); if (!cancelled) setError(""); },
         });
         buttonsRef.current = buttons;
         await buttons.render(node);
