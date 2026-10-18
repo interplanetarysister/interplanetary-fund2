@@ -13,7 +13,6 @@ import AIInstructionsStep, { emptyAiProfile } from "@/components/campaigns/AIIns
 import AIStoryGenerator from "@/components/campaigns/AIStoryGenerator";
 import CampaignCopyChoices from "@/components/campaigns/CampaignCopyChoices";
 import MediaUpload from "@/components/media/MediaUpload";
-import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
@@ -109,10 +108,7 @@ export default function CreateCampaign() {
 
   const generateCover = async () => {
     setGeneratingImage(true);
-    // AI image production agent: every generated cover uses the Interplanetary
-    // Fund signature style (cyberpunk, steampunk, afropunk, interstellar, comic) grounded
-    // in the campaign's purpose. Falls back to the credit-free SVG if the AI
-    // image service is unavailable so creation never blocks.
+    // Generate actual AI art using the campaign context and IFund signature style.
     try {
       const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: form.story, regenCount });
       const res = await base44.functions.invoke("generateCampaignCover", { prompt });
@@ -125,25 +121,10 @@ export default function CreateCampaign() {
     } catch {
       // Never represent a placeholder as a successful generated image.
       // Preserve the old cover if the provider failed or the file does not load.
-      toast({ title: "Image could not be displayed", description: "The generated file did not load. Your previous image is unchanged. Try again, upload a picture, or choose the free cover.", variant: "destructive" });
+      toast({ title: "Image could not be displayed", description: "The generated file did not load. Your previous image is unchanged. Try again or upload your own photo.", variant: "destructive" });
     } finally {
       setGeneratingImage(false);
     }
-  };
-
-  const useFreeCover = async () => {
-    setGeneratingImage(true);
-    try {
-      const url = generateCampaignCoverDataUrl({
-        title: form.title || "My Campaign", category: form.category, regenCount,
-      });
-      const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
-      set("cover_image_url", brandedUrl);
-      setRegenCount(c => c + 1);
-      toast({ title: "Free cover ready", description: "Your logo-watermarked cover was saved. You can replace it anytime." });
-    } catch {
-      toast({ title: "Could not save free cover", description: "No unbranded image was substituted. Please retry.", variant: "destructive" });
-    } finally { setGeneratingImage(false); }
   };
 
   const saveDraft = async () => {
@@ -264,9 +245,8 @@ export default function CreateCampaign() {
             <Label className="quest-label">Campaign art</Label>
             <Image src={form.cover_image_url || FALLBACK_IMAGE} alt={form.cover_image_url ? "Campaign cover preview" : "Default campaign cover"} className="w-full max-h-[32rem] rounded-xl object-contain bg-slate-950" />
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 min-w-0">
-              <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}{form.cover_image_url ? "Regenerate cover" : "Generate cover"}</Button>
+              <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}Generate Image</Button>
               <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => set("cover_image_url", url)} label="Upload your own photo" previewClassName="hidden" /></div>
-              <Button type="button" variant="outline" onClick={useFreeCover} className="quest-button w-full sm:w-auto">Use free branded cover</Button>
             </div>
             <p className="text-xs text-slate-400 break-words">Bring your own image or let Interplanetary Fund generate a fresh comic-space cover.</p>
           </div>
