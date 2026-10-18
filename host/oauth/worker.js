@@ -53,7 +53,7 @@ async function handle(req,env){
   const q=u.searchParams,id=q.get("client_id"),redirect=q.get("redirect_uri"),state=q.get("state"),scope=q.get("scope")||"campaigns:read",challenge=q.get("code_challenge");
   const client=await env.OAUTH_DB.prepare("SELECT id,name,redirect_uri,enabled FROM oauth_clients WHERE id=?").bind(id).first();
   if(!client||!client.enabled||redirect!==client.redirect_uri)return err("invalid_client",400);
-  if(q.get("response_type")!=="code"||!state||state.length<16||state.length>512||!normalizeScope(scope)||q.get("code_challenge_method")!=="S256"||!challenge||!/^[a-zA-Z0-9_-]{43}$/.test(challenge))return err("invalid_request");
+  if(q.get("response_type")!=="code"||!state||state.length<16||state.length>512||!normalizeScope(scope)||((challenge||q.get("code_challenge_method"))&&(q.get("code_challenge_method")!=="S256"||!/^[a-zA-Z0-9_-]{43}$/.test(challenge||""))))return err("invalid_request");
   if(!env.IFUND_OAUTH_PORTAL_URL)return err("service_unavailable",503);
   const portal=new URL(env.IFUND_OAUTH_PORTAL_URL);
   if(portal.protocol!=="https:")return err("service_unavailable",503);
@@ -64,14 +64,14 @@ async function handle(req,env){
   if(!await admin(req,env))return err("unauthorized",401);
   const b=await req.json().catch(()=>null);
   const id=b?.client_id,client=await env.OAUTH_DB.prepare("SELECT id,name,redirect_uri,enabled FROM oauth_clients WHERE id=?").bind(id).first();
-  if(!client||!client.enabled||b.redirect_uri!==client.redirect_uri||b.response_type!=="code"||b.code_challenge_method!=="S256")return err("invalid_request");
-  if(typeof b.state!=="string"||b.state.length<16||b.state.length>512||typeof b.code_challenge!=="string"||!/^[A-Za-z0-9_-]{43}$/.test(b.code_challenge)||!normalizeScope(b.scope||"campaigns:read"))return err("invalid_request");
+  if(!client||!client.enabled||b.redirect_uri!==client.redirect_uri||b.response_type!=="code"||((b.code_challenge||b.code_challenge_method)&&(b.code_challenge_method!=="S256"||!/^[A-Za-z0-9_-]{43}$/.test(b.code_challenge||""))))return err("invalid_request");
+  if(typeof b.state!=="string"||b.state.length<16||b.state.length>512||!normalizeScope(b.scope||"campaigns:read"))return err("invalid_request");
   const redirect=new URL(client.redirect_uri);
   redirect.searchParams.set("state",b.state);
   if(b.decision!=="approve")redirect.searchParams.set("error","access_denied");
   else {
    const code=rnd(32);
-   await env.OAUTH_DB.prepare("INSERT INTO oauth_codes(code_hash,client_id,redirect_uri,scope,challenge,expires) VALUES(?,?,?,?,?,?)").bind(await sha(code),id,client.redirect_uri,b.scope||"campaigns:read",b.code_challenge,now+180).run();
+   await env.OAUTH_DB.prepare("INSERT INTO oauth_codes(code_hash,client_id,redirect_uri,scope,challenge,expires) VALUES(?,?,?,?,?,?)").bind(await sha(code),id,client.redirect_uri,b.scope||"campaigns:read",b.code_challenge||"",now+180).run();
    redirect.searchParams.set("code",code);
   }
   return resp({redirect_url:redirect.toString(),client_name:client.name});
@@ -97,10 +97,10 @@ async function handle(req,env){
   }
   if(f.get("grant_type")!=="authorization_code")return err("unsupported_grant_type");
   const code=f.get("code"),verifier=f.get("code_verifier");
-  if(typeof code!=="string"||typeof verifier!=="string"||!/^[a-zA-Z0-9._~-]{43,128}$/.test(verifier))return err("invalid_grant");
+  if(typeof code!=="string")return err("invalid_grant");
   const codeHash=await sha(code);
   const row=await env.OAUTH_DB.prepare("SELECT * FROM oauth_codes WHERE code_hash=? AND client_id=? AND redirect_uri=? AND expires>?").bind(codeHash,id,f.get("redirect_uri"),now).first();
-  if(!row||await pkce(verifier)!==row.challenge)return err("invalid_grant");
+  if(!row||(row.challenge&&(typeof verifier!=="string"||!/^[a-zA-Z0-9._~-]{43,128}$/.test(verifier)||await pkce(verifier)!==row.challenge)))return err("invalid_grant");
   const used=await env.OAUTH_DB.prepare("DELETE FROM oauth_codes WHERE code_hash=? AND expires>?").bind(codeHash,now).run();
   if(used.meta.changes!==1)return err("invalid_grant");
   const token="ifund_oat_"+rnd(32);
