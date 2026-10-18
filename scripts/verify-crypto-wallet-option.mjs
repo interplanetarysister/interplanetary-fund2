@@ -21,7 +21,8 @@ assert.match(update, /accept_crypto_donations/, "authorized campaign settings pe
 assert.match(detail, /CryptoCampaignSettings/, "existing campaign owners can change preference");
 assert.match(donate, /CryptoDonateOption campaign=\{campaign\}/, "campaign checkout respects opt-in");
 assert.match(donate, /CryptoDonateOption platformSupport/, "platform mode shows distinct crypto support");
-assert.match(home, /CryptoDonateOption platformSupport/, "homepage shows IFund-only support");
+assert.match(home, /Cryptocurrency donations — Coming soon/, "homepage must not promise unverified live crypto payments");
+assert.doesNotMatch(home, /CryptoDonateOption platformSupport/, "homepage must not expose a non-settling platform crypto checkout");
 assert.match(crypto, /optedIn = platformSupport \|\| campaign\?\.accept_crypto_donations === true/, "inactive campaigns are hidden");
 assert.match(readiness, /verified_checkout_live: false/, "no unverified live receipt route");
 assert.match(readiness, /settlement_ready: false/, "no unverified settlement");
