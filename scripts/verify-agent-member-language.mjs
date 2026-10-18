@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+const names = ["chief_of_staff","strategy_agent","growth_agent","communications_agent","story_agent","finance_agent","outreach_agent","connection_discovery_agent","managed_connection_agent"];
+for (const name of names) {
+  const agent = JSON.parse(fs.readFileSync(new URL("../base44/agents/"+name+".jsonc", import.meta.url), "utf8"));
+  assert.match(agent.instructions, /UNIVERSAL MEMBER CHAT PRESENTATION POLICY/, name+" must have member-safe rules");
+  assert.match(agent.instructions, /Never pretend an action succeeded/, name+" must require confirmed outcomes");
+  assert.match(agent.instructions, /Secret values must be protected before/, name+" must require upstream secrecy");
+}
+const chat=fs.readFileSync(new URL("../src/components/agents/AgentChat.jsx", import.meta.url),"utf8");
+assert.match(chat, /memberFacingReply\(m\.content\)/, "assistant transcript uses filtered text");
+assert.match(chat, /m\.role === "user" \? m\.content/, "user text must remain intact");
+console.log("Member-facing agent presentation contract passed for all nine agents");
