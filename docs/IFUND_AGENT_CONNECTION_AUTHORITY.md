@@ -59,3 +59,8 @@ No method implies universal posting, private inbox access, or unattended operati
 
 ## Coordination
 Chief of Staff sends connection setup and repairs to Managed Connections; it handles the operation within available tools and grants, while Outreach owns distribution and platform-owned outreach. Agents exchange context references and safe facts, never credentials. Use current records, not remembered URLs or guessed owner identities.
+
+## Verified Base44 project reference (2026-10-18)
+- **Authoritative Interplanetary Fund Base44 application ID:** `6a67a778342a8fe05ee79cba`.
+- Discovered via the connected Base44 `list_user_apps` tool under the exact application name `Interplanetary Fund`. Do not confuse it with `Interplanetary Fund (Copy)` or `iFund (Copy) 11:15pm 7/31`.
+- This identifier locates the application. It **does not** establish which live domain/deployment or Git branch is currently published; verify these separately before mutating or deploying.
