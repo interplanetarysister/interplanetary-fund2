@@ -56,17 +56,23 @@ jobs:
           test -n "$DEPLOYMENT_URL"
           test -n "$EXPECTED_SHA"
           test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          echo "::group::Verify Worker HTML and canonical metadata"
           curl --fail --silent --show-error --retry 4 --retry-delay 3 "$DEPLOYMENT_URL/" -o /tmp/ifund-cloudflare.html
-          grep -q 'id="root"' /tmp/ifund-cloudflare.html
-          grep -q 'https://interplanetaryfund.com/' /tmp/ifund-cloudflare.html
+          if ! grep -q 'id="root"' /tmp/ifund-cloudflare.html; then echo "::error::Worker returned no SPA root"; exit 1; fi
+          if ! grep -q 'https://interplanetaryfund.com/' /tmp/ifund-cloudflare.html; then echo "::error::Worker HTML missing canonical domain"; exit 1; fi
+          echo "::endgroup::"
+          echo "::group::Verify production custom-domain routing"
           curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/ -o /tmp/ifund-custom-domain.html
-          grep -q 'id="root"' /tmp/ifund-custom-domain.html
+          if ! grep -q 'id="root"' /tmp/ifund-custom-domain.html; then echo "::error::Public domain is not serving IFund's SPA; check authoritative DNS and hosting"; exit 1; fi
+          echo "::endgroup::"
+          echo "::group::Verify Worker health and proxy routes"
 
           curl --fail --silent --show-error --retry 4 --retry-delay 3 "$DEPLOYMENT_URL/api/health" -o /tmp/ifund-worker-health.json
           grep -q '"runtime":"cloudflare-worker"' /tmp/ifund-worker-health.json
           curl --fail --silent --show-error --retry 4 --retry-delay 3 https://interplanetaryfund.com/api/health -o /tmp/ifund-custom-health.json
           grep -q '"runtime":"cloudflare-worker"' /tmp/ifund-custom-health.json
 
+          echo "::group::Verify MCP proxy and admin authorization"
           MCP_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors -D /tmp/ifund-mcp.headers -o /tmp/ifund-mcp.body -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"jsonrpc":"2.0","id":"ifund-health","method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ifund-deploy-check","version":"1.0.0"}}}' "$DEPLOYMENT_URL/api/mcp")"
           grep -qi '^x-ifund-mcp-proxy: base44' /tmp/ifund-mcp.headers
           test "$MCP_STATUS" != "404"
@@ -82,6 +88,7 @@ jobs:
           ADMIN_STATUS="$(curl --silent --show-error --retry 4 --retry-delay 3 -o /tmp/ifund-admin-gateway.body -w '%{http_code}' -X POST -H 'Origin: https://interplanetaryfund.com' -H 'content-type: application/json' --data '{}' https://interplanetaryfund.com/v1/admin/agents/session)"
           test "$ADMIN_STATUS" = "403"
           grep -q 'Administrator authorization required' /tmp/ifund-admin-gateway.body
+          echo "::endgroup::"
 
       - name: Confirm entire public pathway, CORS allowlist and denied origins
         env:
