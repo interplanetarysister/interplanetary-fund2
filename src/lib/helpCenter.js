@@ -36,6 +36,7 @@ export function helpTopicForPath(pathname = "") {
   if (/subscriptions/.test(pathname)) return "Subscriptions";
   if (/agents|\/mission/.test(pathname)) return "AI Assistance";
   if (/\/community|\/social|\/blogs/.test(pathname)) return "Community";
+  if (/founding-members/.test(pathname)) return "Getting Started";
   if (/profile|\/devices/.test(pathname)) return "Account & Security";
   return "";
 }
