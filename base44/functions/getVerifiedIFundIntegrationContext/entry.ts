@@ -23,7 +23,14 @@ export default async function(req: Request) {
     if (subject === 'platform_owner' && !isOwner)
       return Response.json({ error: 'Platform-owner access is restricted.' }, { status: 403 });
 
-    const recipe = staticRecipe(platform, 'connect') || staticRecipe(platform, 'read_metrics');
+    const sr = base44.asServiceRole;
+    const stored = await sr.entities.PlatformConnectionRecipe.filter({ platform, operation: 'connect' }).catch(() => null);
+    const storedRead = await sr.entities.PlatformConnectionRecipe.filter({ platform, operation: 'read_metrics' }).catch(() => null);
+    const selected = Array.isArray(stored) && stored.length ? stored[0]
+      : Array.isArray(storedRead) && storedRead.length ? storedRead[0] : null;
+    const disabled = selected?.status === 'disabled';
+    const recipe = disabled ? null : selected ||
+      staticRecipe(platform, 'connect') || staticRecipe(platform, 'read_metrics');
     const transports = recipe ? orderedTransports(recipe).filter((t: string) => t !== 'manual') : [];
     const envKey = OAUTH_ENV[platform];
     const registrationReferencePresent = !!(envKey && Deno.env.get(envKey));
@@ -43,6 +50,8 @@ export default async function(req: Request) {
         oauth_authorization_verified: false,
       },
       connection_method: {
+        route_disabled: disabled,
+        persisted_recipe_available: !!selected,
         candidates: transports,
         rediscovery_required: requiresRouteRediscovery(recipe, transports),
         provider_policy_verified: false,
