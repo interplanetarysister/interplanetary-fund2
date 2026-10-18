@@ -11,4 +11,8 @@ const chat=fs.readFileSync(new URL("../src/components/agents/AgentChat.jsx", imp
 assert.match(chat, /memberFacingReply\(m\.content\)/, "assistant transcript uses filtered text");
 assert.match(chat, /m\.role === "user" \? memberFacingPrompt\(m\.content\)/, "user transcript must omit agent-only appended context");
 assert.match(chat, /function memberFacingPrompt/, "private tool context must not appear in member transcript");
+assert.match(chat, /PRIVATE KEY/, "member replies must block private keys");
+assert.match(chat, /github_pat_/, "member replies must block token-shaped credentials");
+assert.match(chat, /webhook\[_ -\]\?secret/, "member replies must account for webhook secrets");
+assert.match(chat, /function memberFacingPrompt/, "member-only prompts must hide appended context");
 console.log("Member-facing agent presentation contract passed for all nine agents");
