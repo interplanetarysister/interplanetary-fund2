@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import { Loader2, Sparkles, UploadCloud, X } from "lucide-react";
 import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
+import { uploadUserImage, userMaySkipImageWatermark } from "@/lib/ifundImageBranding";
 
 // Uploads pictures or video to the platform and reports the URL back. For
 // photos, users can keep the original or render the same photo in the
@@ -23,13 +24,15 @@ export default function MediaUpload({
   const [originalUrl, setOriginalUrl] = useState("");
   const [ifundUrl, setIfundUrl] = useState("");
   const [error, setError] = useState("");
+  const [allowClean, setAllowClean] = useState(false);
 
   const handleFile = async (file) => {
     if (!file) return;
     setUploading(true);
     setError("");
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const file_url = await uploadUserImage(base44, file);
+      setAllowClean(await userMaySkipImageWatermark(base44));
       if (!file_url) throw new Error("Upload did not return an asset URL");
       setOriginalUrl(file_url);
       setIfundUrl("");
@@ -93,7 +96,7 @@ export default function MediaUpload({
         <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3">
           <p className="text-xs font-semibold text-violet-100 mb-2">Choose your photo look</p>
           <div className="flex flex-wrap gap-2">
-            {originalAvailable && <Button
+            {allowClean && originalAvailable && <Button
               type="button"
               variant="outline"
               size="sm"
@@ -130,7 +133,7 @@ export default function MediaUpload({
             )}
           </div>
           <p className="mt-2 text-[11px] text-slate-300">
-            Applies the IFund cyberpunk, interstellar, space-comic and restrained steampunk look to this actual photo. The original person and scene stay intact. Your upload remains available.
+            Free accounts receive an IFund watermark automatically. Active paid subscribers receive images without the watermark. The IFund-style improvement keeps the original scene intact.
           </p>
         </div>
       )}
