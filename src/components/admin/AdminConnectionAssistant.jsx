@@ -19,7 +19,7 @@ export default function AdminConnectionAssistant(){
     const r=await call('save',{provider,kind:analysis.kind,endpoint_url:endpoint,auth_type:authType,notes});setRecord(r);setTest(null);
    }
    if(action==='test'){setTest(await call('test',{id:record.id}));}
-  }catch(e){setError(e?.message||'Connection assistance unavailable')}
+  }catch{setError('Connection assistance is temporarily unavailable. Please check the details and try again.')}
   finally{setBusy(false)}
  };
  return <section className="rounded-xl border border-border bg-card p-4 space-y-3" aria-label="AI assisted connection intake">
