@@ -48,7 +48,7 @@ assert.ok(plain.some(x=>x.type==='campaign'&&x.id===id));
 assert.ok(splitCampaignContent(embedSnippet(id)).some(x=>x.type==='campaign'&&x.id===id));
 assert.deepEqual(extractCampaignIds('https://interplanetaryfund.com/campaign/'+id),[id]);
 const bottom=read('src/components/MobileBottomNav.jsx');
-for(const item of ['AI Team','Profile','IFund Social','Forums'])assert.match(bottom,new RegExp('label:"'+item+'"'));
+for(const item of ['AI Chat','Profile','IFund Social','Forums'])assert.match(bottom,new RegExp('label:"'+item+'"'));
 assert.equal((bottom.match(/label:"/g)||[]).length,4);
 const float=read('src/components/QuickActions.jsx');
 for(const item of ['Create a campaign','Saved / followed campaigns','My campaigns and drafts','Campaign command center','Log out','Log in'])assert.ok(float.includes(item));
