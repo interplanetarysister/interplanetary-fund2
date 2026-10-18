@@ -3,8 +3,9 @@ import { base44 } from "@/api/base44Client";
 import AgentChat from "@/components/agents/AgentChat";
 import AgentContentReview from "@/components/agents/AgentContentReview";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
+import BrandLogo from "@/components/brand/BrandLogo";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { ArrowRight, Bell, CheckCircle2, Clock3, MessageCircle, RefreshCw } from "lucide-react";
+import { MessageCircle, RefreshCw, Search, ChevronRight } from "lucide-react";
 
 // Status comes from owner-scoped server records. Roster membership is never
 // evidence that an agent is executing work for a member.
@@ -30,13 +31,10 @@ function readSeen(userId, names) {
 }
 
 function AgentPlanet({ kind }) {
-  const halo = kind === "working" ? "ring-2 ring-cyan-400 shadow-[0_0_15px_rgba(34,211,238,.8)] animate-pulse" :
-    kind === "new" ? "ring-2 ring-amber-400 shadow-[0_0_14px_rgba(251,191,36,.8)]" :
-    "grayscale opacity-65 ring-1 ring-slate-300";
-  const label = kind === "working" ? "Working now" : kind === "new" ? "New activity" : kind === "unknown" ? "Status unavailable" : "No new activity";
-  return <span className={"inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full " + halo}
-    title={label} aria-label={label}>
-    <img src="/interplanetary-planet.svg" alt="" aria-hidden="true" className="h-9 w-9 object-cover" />
+  const halo = kind === "working" ? "ring-2 ring-cyan-500" :
+    kind === "new" ? "ring-2 ring-amber-500" : "ring-1 ring-border";
+  return <span className={"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl " + halo}>
+    <BrandLogo size="sm" showName={false} />
   </span>;
 }
 
@@ -92,6 +90,8 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
   const [loading, setLoading] = useState(true);
   const [statusLoaded, setStatusLoaded] = useState(false);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [query, setQuery] = useState("");
 
   const refresh = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -168,72 +168,76 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
   const activeCount = states.filter((row) => row.signal.kind === "working").length;
   const attentionCount = states.filter((row) => row.signal.kind === "new").length;
 
-  return <div className="mx-auto max-w-6xl px-4 pb-10 pt-5 sm:px-6 sm:pt-8">
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-foreground sm:text-3xl">Your AI team</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">See which agents are helping, find new updates, or tap an agent to talk about your campaigns.</p>
+  const visibleStates = states.filter(({ agent, signal }) =>
+    (filter === "all" || (filter === "updates" && signal.kind === "new") || (filter === "working" && signal.kind === "working")) &&
+    agent.label.toLowerCase().includes(query.trim().toLowerCase())
+  );
+
+  return <div className="mx-auto max-w-5xl px-3 pb-24 pt-4 sm:px-6 sm:pt-7">
+    <header className="mb-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="font-display text-2xl font-bold text-foreground">Your AI Team</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Choose an agent to chat or review work.</p>
       </div>
-      <button type="button" onClick={refresh} disabled={loading}
-        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted">
-        <RefreshCw className={"h-4 w-4 " + (loading ? "animate-spin" : "")} />
-        Refresh
+      <button type="button" onClick={refresh} disabled={loading} aria-label="Refresh agent activity"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground" title="Refresh">
+        <RefreshCw className={"h-5 w-5 " + (loading ? "animate-spin" : "")} />
+      </button>
+    </header>
+    <div className="mb-3 grid grid-cols-2 gap-2" aria-live="polite">
+      <button type="button" onClick={() => setFilter(filter === "updates" ? "all" : "updates")}
+        aria-pressed={filter === "updates"} className={"rounded-xl border p-3 text-left " + (filter === "updates" ? "border-primary bg-primary/10" : "border-border bg-card")}>
+        <span className="block text-xl font-bold text-foreground">{attentionCount}</span>
+        <span className="text-sm text-muted-foreground">Need attention</span>
+      </button>
+      <button type="button" onClick={() => setFilter(filter === "working" ? "all" : "working")}
+        aria-pressed={filter === "working"} className={"rounded-xl border p-3 text-left " + (filter === "working" ? "border-primary bg-primary/10" : "border-border bg-card")}>
+        <span className="block text-xl font-bold text-foreground">{activeCount}</span>
+        <span className="text-sm text-muted-foreground">Working now</span>
       </button>
     </div>
-    <div className="mb-5 flex flex-wrap gap-3 text-xs text-muted-foreground" aria-live="polite">
-      <span className="inline-flex items-center gap-2"><AgentPlanet kind="working" /> {activeCount} working</span>
-      <span className="inline-flex items-center gap-2"><AgentPlanet kind="new" /> {attentionCount} with updates</span>
-      <span className="inline-flex items-center gap-2"><AgentPlanet kind="idle" /> Available to chat</span>
+    <label className="mb-3 flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-muted-foreground">
+      <Search className="h-4 w-4 shrink-0" />
+      <span className="sr-only">Search agents</span>
+      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+        placeholder="Find an agent" className="min-w-0 w-full bg-transparent py-2 text-base text-foreground outline-none placeholder:text-muted-foreground" />
+    </label>
+    <div className="mb-3 flex items-center justify-between gap-2">
+      <div role="group" aria-label="Filter agents" className="flex flex-wrap gap-2">
+        {[["all", "All"], ["updates", "Updates"], ["working", "Working"]].map(([value, title]) =>
+          <button key={value} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value}
+            className={"min-h-10 rounded-full px-4 text-sm font-semibold " + (filter === value ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground")}>{title}</button>)}
+      </div>
+      <span className="shrink-0 text-xs text-muted-foreground">{visibleStates.length} agents</span>
     </div>
-    {error && <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">{error}</p>}
-    {loading && !statusLoaded && <p role="status" className="mb-3 text-sm text-muted-foreground">Checking your agents' activity…</p>}
-    <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,.88fr)]">
-      <section aria-label="Monitored agents" className="space-y-2">
-        {states.map(({ agent, signal }) => {
-          const Icon = agent.icon;
-          return <button type="button" key={agent.name} onClick={() => openAgent(agent)}
-            className={"group flex w-full min-w-0 items-center gap-3 rounded-2xl border bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary sm:px-4 " +
-              (signal.kind === "working" ? "border-cyan-400" : signal.kind === "new" ? "border-amber-400" : "border-border")}
-            aria-label={"Talk to " + agent.label + ", " + signal.text}>
-            <AgentPlanet kind={signal.kind} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2 text-sm font-bold text-foreground sm:text-base">
-                <Icon className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">{agent.label}</span>
-              </span>
-              <span className="mt-1 block truncate text-xs text-muted-foreground">{signal.detail}</span>
+    {error && <p role="alert" className="mb-3 rounded-xl border border-amber-500/50 bg-card p-3 text-sm text-foreground">{error}</p>}
+    {loading && !statusLoaded && <p role="status" className="mb-3 text-sm text-muted-foreground">Checking agent activity…</p>}
+    <section aria-label="Monitored agents" className="space-y-2">
+      {visibleStates.length === 0 && <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">No agents match. Try All or clear your search.</div>}
+      {visibleStates.map(({ agent, signal }) => {
+        const Icon = agent.icon;
+        return <button type="button" key={agent.name} onClick={() => openAgent(agent)}
+          className="flex min-h-[76px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          aria-label={"Talk to " + agent.label + ", " + signal.text}>
+          <AgentPlanet kind={signal.kind} />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <Icon className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate">{agent.label}</span>
             </span>
-            <span className="flex max-w-[5.5rem] shrink-0 flex-col items-end gap-1">
-              <span className={"text-right text-[11px] font-semibold " +
-                (signal.kind === "working" ? "text-cyan-700 dark:text-cyan-300" :
-                  signal.kind === "new" ? "text-amber-800 dark:text-amber-300" : "text-muted-foreground")}>
-                {signal.text}
-              </span>
-              {signal.count > 0 && <span className="text-[11px] text-muted-foreground">{signal.count} new</span>}
-              <MessageCircle className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+            <span className="mt-1 block truncate text-sm text-muted-foreground">{signal.kind === "idle" && signal.text === "Available" ? "Tap to chat" : signal.detail}</span>
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="flex max-w-[80px] flex-col items-end text-right">
+              <span className={"text-xs font-semibold " + (signal.kind === "new" ? "text-amber-700 dark:text-amber-300" : signal.kind === "working" ? "text-cyan-700 dark:text-cyan-300" : "text-muted-foreground")}>{signal.text}</span>
+              {signal.count > 0 && <span className="text-xs text-muted-foreground">{signal.count} new</span>}
             </span>
-          </button>;
-        })}
-      </section>
-      <aside className="min-w-0 self-start space-y-4">
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 font-semibold text-foreground"><Bell className="h-5 w-5 text-primary" /> Activity at a glance</h2>
-          <p className="mt-2 text-sm text-muted-foreground">A glowing planet means an agent has recently confirmed work or something needs your attention. A quiet planet means no confirmed new work.</p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-muted p-3"><p className="text-xl font-bold text-foreground">{activeCount}</p><p className="text-xs text-muted-foreground">Working</p></div>
-            <div className="rounded-xl bg-muted p-3"><p className="text-xl font-bold text-foreground">{attentionCount}</p><p className="text-xs text-muted-foreground">Updates to check</p></div>
-          </div>
-          <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-            <Clock3 className="h-4 w-4" /> Status refreshes while this page is open.
-          </div>
-        </section>
-        <section className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 font-semibold text-foreground"><CheckCircle2 className="h-5 w-5 text-primary" /> You stay in control</h2>
-          <p className="mt-2 text-sm text-muted-foreground">Select an agent to give instructions or review its work. Opening a chat does not authorize spending, publishing, or changing your connected accounts.</p>
-          <div className="mt-3 flex items-center gap-1 text-sm font-semibold text-primary">Choose an agent <ArrowRight className="h-4 w-4" /></div>
-        </section>
-      </aside>
-    </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </span>
+        </button>;
+      })}
+    </section>
+    <p className="mt-4 text-xs text-muted-foreground">Agents only act with your permission. Review prepared work before it is published.</p>
 
     <Sheet open={open} onOpenChange={(next) => { setOpen(next); if (!next) void refresh(); }}>
       <SheetContent side="right" className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-12 sm:w-[min(95vw,48rem)] sm:max-w-[48rem]">
