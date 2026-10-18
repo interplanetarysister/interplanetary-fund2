@@ -33,7 +33,7 @@ assert.match(finalize,/pairedCampaign\.created_by_id !== user\.id/);
 assert.match(finalize,/display_name: requestedDisplayName/);
 assert.match(finalize,/campaign_id: requestedCampaignId/);
 assert.match(finalize,/hasUnifiedOboConsent/);
-assert.match(finalize,/automation_mode: unifiedObo \? 'auto' : 'manual'/);
+assert.match(finalize,/automation_mode: unifiedObo \? \(existing\?\.automation_mode \|\| 'auto'\) : 'manual'/);
 assert.match(finalize,/ai_consent_required: false/);
 
 assert.match(publish,/connection\.campaign_id/);

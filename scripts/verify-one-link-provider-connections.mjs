@@ -9,7 +9,7 @@ const finalize = read("base44/functions/finalizeAppUserOAuthConnection/entry.ts"
 
 assert.match(connections, /params\.get\("connect"\)/);
 assert.match(connections, /ALL_PLATFORMS\.find\(\(item\) => item\.id === requested\)/);
-assert.match(connections, /setSelectedPlatform\(platform\)/);
+assert.match(connections, /setDialog\(\{ platform, existing \}\)/);
 assert.match(connections, /useLocation\(\)/);
 assert.match(connections, /navigate\(\{ pathname: "\/connections"/);
 assert.match(connections, /!alreadyWorking/);
