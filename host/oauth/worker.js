@@ -53,7 +53,9 @@ async function handle(req,env){
   if(!client||!client.enabled||redirect!==client.redirect_uri)return err("invalid_client",400);
   if(q.get("response_type")!=="code"||!state||state.length<16||state.length>512||!normalizeScope(scope)||q.get("code_challenge_method")!=="S256"||!challenge||!/^[a-zA-Z0-9_-]{43}$/.test(challenge))return err("invalid_request");
   if(!await admin(req,env))return new Response("Sign in to IFund as super administrator on this domain, then revisit the authorization request.",{status:401,headers:noStore});
-  const fields=[...q.entries()].filter(([k])=>["client_id","redirect_uri","state","scope","code_challenge","code_challenge_method","response_type"].includes(k)).map(([k,v])=>'<input type="hidden" name="'+htmlEscape(k)+'" value="'+htmlEscape(v)+'">').join("");
+  const consentNonce=rnd(32);
+  await env.OAUTH_DB.prepare("INSERT INTO oauth_consent(nonce_hash,client_id,state,expires) VALUES(?,?,?,?)").bind(await sha(consentNonce),id,state,now+180).run();
+  const fields='<input type="hidden" name="consent_nonce" value="'+consentNonce+'">'+[...q.entries()].filter(([k])=>["client_id","redirect_uri","state","scope","code_challenge","code_challenge_method","response_type"].includes(k)).map(([k,v])=>'<input type="hidden" name="'+htmlEscape(k)+'" value="'+htmlEscape(v)+'">').join("");
   return new Response('<!doctype html><meta name="viewport" content="width=device-width"><title>Authorize IFund access</title><main style="font:16px system-ui;max-width:32rem;margin:3rem auto;padding:1rem"><h1>Allow '+htmlEscape(client.name)+' to use IFund?</h1><p>Requested permission: '+htmlEscape(scope)+'. This client can access only configured campaign API features, not payments or donor data.</p><form action="/oauth/approve" method="POST">'+fields+'<button name="decision" value="approve">Allow access</button> <button name="decision" value="deny">Deny</button></form></main>',{headers:{"content-type":"text/html; charset=utf-8",...noStore}});
  }
  if(p==="/oauth/approve"&&req.method==="POST"){
@@ -62,6 +64,9 @@ async function handle(req,env){
   if(!client||!client.enabled||form.get("redirect_uri")!==client.redirect_uri||form.get("response_type")!=="code"||form.get("code_challenge_method")!=="S256")return err("invalid_request");
   const state=form.get("state"),challenge=form.get("code_challenge"),scope=form.get("scope");
   if(typeof state!=="string"||state.length<16||state.length>512||typeof challenge!=="string"||!/^[a-zA-Z0-9_-]{43}$/.test(challenge)||!normalizeScope(scope))return err("invalid_request");
+  const nonce=form.get("consent_nonce");if(typeof nonce!=="string")return err("invalid_request");
+  const consumed=await env.OAUTH_DB.prepare("DELETE FROM oauth_consent WHERE nonce_hash=? AND client_id=? AND state=? AND expires>?").bind(await sha(nonce),id,state,now).run();
+  if(consumed.meta.changes!==1)return err("invalid_request");
   const redirect=new URL(client.redirect_uri);redirect.searchParams.set("state",state);
   if(form.get("decision")!=="approve")redirect.searchParams.set("error","access_denied");
   else {
