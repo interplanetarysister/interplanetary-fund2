@@ -35,6 +35,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [paypalHandoff, setPaypalHandoff] = useState(false);
   const [capabilities, setCapabilities] = useState(null);
   const [capabilityError, setCapabilityError] = useState(false);
   const [googlePayReady, setGooglePayReady] = useState(false);
@@ -80,7 +81,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setConfirmed(false); newIntent(); } }}>
+    <Dialog modal={!paypalHandoff} open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setPaypalHandoff(false); setConfirmed(false); newIntent(); } }}>
       {!hideTrigger && <div className="space-y-2"><DialogTrigger asChild><Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"><Heart className="w-4 h-4 mr-2" /> {platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Donate"}</Button></DialogTrigger>{platformOnlyPrelaunch && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center"><p className="text-xs font-semibold text-amber-900">Donate to the platform, not this campaign</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">This payment supports Interplanetary Fund itself and is not credited to the campaign shown.</p></div>}</div>}
       <DialogContent className={`w-[calc(100vw-1rem)] sm:max-w-lg rounded-2xl max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] ${platformOnlyPrelaunch ? "border border-cyan-400/50 bg-[#101a32] text-white shadow-2xl shadow-black/70 [&>button]:text-white [&>button]:opacity-100 [&>button]:hover:bg-white/15" : ""}`}>
         <DialogHeader><DialogTitle className={`font-display text-xl ${platformOnlyPrelaunch ? "pr-10 text-white" : ""}`}>{platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Support this campaign"}</DialogTitle></DialogHeader>
@@ -109,7 +110,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {capabilities && !paypalApiAvailable && (platformOnlyMode || !campaign.cashapp_tag) && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">Campaign donations are not available through a verified payment method right now. No payment has been started.</p>}
 
 
-            {paypalApiAvailable && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName="" message="" platformContribution={platformContribution} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
+            {paypalApiAvailable && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName="" message="" platformContribution={platformContribution} onCheckoutStart={() => setPaypalHandoff(true)} onCheckoutEnd={() => setPaypalHandoff(false)} onPaid={() => { setPaypalHandoff(false); setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
             {googlePayAvailable && <div className={googlePayReady ? "min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName="" message="" recurring={false} platformContribution={platformContribution} onReadyChange={setGooglePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
