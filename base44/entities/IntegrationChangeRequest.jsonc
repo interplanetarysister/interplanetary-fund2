@@ -19,6 +19,7 @@
       "type": "string",
       "enum": [
         "pending",
+        "applying",
         "applied",
         "rejected",
         "expired"
