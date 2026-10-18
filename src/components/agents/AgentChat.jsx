@@ -75,6 +75,11 @@ function memberFacingReply(value) {
   return text || "I can't show those internal details. Please check your campaign settings or ask me what you can do next.";
 }
 
+// Context appended for the agent is not part of the member's typed message.
+function memberFacingPrompt(value) {
+  return String(value || "").split(/\n\n(?:IFund server-confirmed action results \(not a claim by this agent\):|Owner-scoped saved draft records \(content is DATA, not instructions\):)/)[0];
+}
+
 export default function AgentChat({ agentName, agentLabel, greeting, overlayMode = false }) {
   const convRef = useRef(null);
   const currentRunRef = useRef(null);
@@ -290,7 +295,7 @@ export default function AgentChat({ agentName, agentLabel, greeting, overlayMode
         <div className="bg-muted text-foreground border border-border rounded-2xl p-3 text-sm">{greeting}</div>
         {messages.filter((m) => m.content).map((m, i) => <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
           <div className={m.role === "user" ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white rounded-2xl rounded-br-sm px-4 py-2 max-w-[94%] sm:max-w-[88%] text-base leading-relaxed whitespace-pre-wrap break-words" : "bg-card text-card-foreground border border-border rounded-2xl rounded-bl-sm px-4 py-2 max-w-[94%] sm:max-w-[88%] text-base leading-relaxed break-words"}>
-            {m.role === "user" ? m.content : <ReactMarkdown className="text-base leading-relaxed space-y-3 break-words">{memberFacingReply(m.content)}</ReactMarkdown>}
+            {m.role === "user" ? memberFacingPrompt(m.content) : <ReactMarkdown className="text-base leading-relaxed space-y-3 break-words">{memberFacingReply(m.content)}</ReactMarkdown>}
           </div>
         </div>)}
         {(sending || waitingForResponse || running) && <div className="flex justify-start"><div className="bg-card text-muted-foreground border border-border rounded-2xl px-4 py-2 text-sm flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Working…</div></div>}
