@@ -9,5 +9,6 @@ for (const name of names) {
 }
 const chat=fs.readFileSync(new URL("../src/components/agents/AgentChat.jsx", import.meta.url),"utf8");
 assert.match(chat, /memberFacingReply\(m\.content\)/, "assistant transcript uses filtered text");
-assert.match(chat, /m\.role === "user" \? m\.content/, "user text must remain intact");
+assert.match(chat, /m\.role === "user" \? memberFacingPrompt\(m\.content\)/, "user transcript must omit agent-only appended context");
+assert.match(chat, /function memberFacingPrompt/, "private tool context must not appear in member transcript");
 console.log("Member-facing agent presentation contract passed for all nine agents");
