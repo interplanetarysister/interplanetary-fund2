@@ -11,12 +11,10 @@ for(const [feature,body,needle] of [
  ['provider methods not verified',discovery,'connection_verified:false'],
  ['provider policy not verified',discovery,'provider_policy_verified:false'],
  ['browser runner not claimed',discovery,'not enabled by this endpoint'],
- ['owner approval',owner,'body.confirm !== true'],
- ['prepared owner match',owner,'pending.owner_user_id !== user.id'],
- ['request expiry',owner,'Date.parse(pending.expires_at) <= Date.now()'],
- ['version comparison',owner,'pending.expected_recipe_version'],
- ['route blocked checks',owner,'blocked_routes?.includes(transport)'],
- ['no external modification claim',owner,'external_provider_modified:false']
+ ['owner-only authentication',owner,'OWNER_EMAILS.has(clean(user.email))'],
+ ['request status owner isolation',owner,'pending.owner_user_id !== user.id'],
+ ['unsafe mutation disabled',owner,'Owner configuration changes require verified one-time approval locking.'],
+ ['provider route candidate checks',owner,'blocked_routes?.includes(transport)']
 ]) assert.ok(body.includes(needle),'Missing '+feature);
 for(const agent of [managed,chief])assert.ok(agent.tool_configs.some(x=>x.function_name==='discoverConnectionMethods'),'Discovery not exposed to agent');
 assert.ok(!discovery.includes('accessToken')&&!discovery.includes('cookies')&&!discovery.includes('secret_value'),'Sensitive values exposed by discovery');
