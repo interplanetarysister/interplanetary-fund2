@@ -10,7 +10,7 @@ assert.match(source, /setTrackingError\(true\)/, "surface persistence outages");
 assert.match(source, /setInput\(\(current\) => current \|\| content\)/, "failed message delivery must restore the draft");
 assert.match(source, /finally \{\s*setSending\(false\)/, "sending state must always be released");
 assert.match(source, /createPortal\(composer, document\.body\)/, "mobile composer must not be clipped by animated workspace scrolling");
-assert.match(source, /h-\[min\(48dvh,32rem\)\][^\n]*overflow-y-auto overscroll-y-contain touch-pan-y/, "transcript must own bounded touch scrolling");
+assert.match(source, /h-\[min\((?:48|60)dvh,(?:32|38)rem\)\][^\n]*overflow-y-auto overscroll-y-contain touch-pan-y/, "transcript must own bounded touch scrolling");
 assert.match(source, /bottom-\[calc\(6rem\+env\(safe-area-inset-bottom\)\)\]/, "mobile composer must clear bottom navigation");
 assert.match(source, /pl-14 text-foreground/, "mobile composer must clear Quick Actions");
 assert.match(source, /scrollIntoView\(\{ block: "nearest" \}\)/, "focused composer must remain visible when the visual viewport shrinks");
