@@ -6,7 +6,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
 import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
 import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
-import { generateCampaignCoverDataUrl } from "@/lib/creditFreeGenerators";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 
@@ -75,26 +74,18 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       const campaign = campaigns?.find(c => c.id === selectedCampaign);
       const title = campaign?.title || content.trim().slice(0, 90) || "Interplanetary Fund";
       const category = campaign?.category || "community";
-      let source = "";
-      try {
-        const prompt = buildCoverPrompt({
-          title, category, story: content, regenCount: imageGenerationCount,
-        });
-        const result = await base44.functions.invoke("generateCampaignCover", { prompt });
-        source = resolveGeneratedImageUrl(result?.data);
-      } catch { /* Credit-free signature image remains available. */ }
-      const usedCredits = !!source;
-      if (!source) source = generateCampaignCoverDataUrl({
-        title, category, regenCount: imageGenerationCount,
+      const prompt = buildCoverPrompt({
+        title, category, story: content, regenCount: imageGenerationCount,
       });
+      const result = await base44.functions.invoke("generateCampaignCover", { prompt });
+      const source = resolveGeneratedImageUrl(result?.data);
+      if (!source) throw new Error("Image generator did not return an image");
       const branded = await brandAndUploadGeneratedImage(base44, source);
       setMediaUrl(branded);
       setOriginalMediaUrl("");
       setImprovedMediaUrl(branded);
       setImageGenerationCount(c => c + 1);
-      toast({ title: "IFund image created",
-        description: usedCredits ? "The generated image is ready with the planet watermark." :
-          "A credit-free IFund-style image is ready with the planet watermark." });
+      toast({ title: "Image created", description: "Your AI-generated IFund-style image is ready." });
     } catch {
       toast({ title: "Image creation failed", description: "The image could not be saved. Please try again.", variant: "destructive" });
     } finally { setImageGenerating(false); }
@@ -297,7 +288,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
           disabled={imageGenerating || uploading || improvingImage}
           className="rounded-lg">
           {imageGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {imageGenerating ? "Generating…" : "Generate IFund image"}
+          {imageGenerating ? "Generating…" : "Generate Image"}
         </Button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
         <Button variant="ghost" size="icon" onClick={() => fileRef.current?.click()} disabled={uploading} className="text-slate-400 hover:text-cyan-300">
