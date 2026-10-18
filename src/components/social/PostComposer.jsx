@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
 import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
-import { brandAndUploadGeneratedImage } from "@/lib/ifundImageBranding";
+import { brandAndUploadGeneratedImage, uploadUserImage } from "@/lib/ifundImageBranding";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
 
@@ -56,7 +56,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
+      const file_url = await uploadUserImage(base44, file, { publicFile: true });
       setMediaUrl(file_url);
       setOriginalMediaUrl(file_url);
       setImprovedMediaUrl("");
