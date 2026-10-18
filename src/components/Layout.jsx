@@ -24,7 +24,7 @@ const PAGE_TITLES = {
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
-  "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
+  "/admin/founding-members": "Founding Members", "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
   "/social": "Social", "/blogs": "Stories & Blogs", "/my-blog": "My Blog Studio", "/donors": "Supporters", "/ledger": "Financial Ledger", "/connect": "AI Connections", "/admin/external-accounts": "Connections", "/admin/integrations": "Admin Integrations", "/admin/audit": "Audit Log", "/admin/sustainability": "Planet Impact",
 };
 function pageTitle(pathname) {
@@ -98,6 +98,7 @@ const navSections = [
       { to: "/admin/audit", label: "Audit Log", icon: Server },
       { to: "/admin/sustainability", label: "Planet Impact", icon: Leaf },
       { to: "/admin/help", label: "Help Center Editor", icon: BookOpen },
+      { to: "/admin/founding-members", label: "Founding Members", icon: Users },
     ],
   },
 ];
