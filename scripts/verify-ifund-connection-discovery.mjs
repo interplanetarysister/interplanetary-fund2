@@ -13,7 +13,8 @@ for(const [feature,body,needle] of [
  ['browser runner not claimed',discovery,'not enabled by this endpoint'],
  ['owner-only authentication',owner,'OWNER_EMAILS.has(clean(user.email))'],
  ['request status owner isolation',owner,'pending.owner_user_id !== user.id'],
- ['unsafe mutation disabled',owner,'Owner configuration changes require verified one-time approval locking.'],
+ ['one-time approval claim',owner,"status:'applying',approved_at:claimedAt"],
+ ['recipe conditional update',owner,'PlatformConnectionRecipe.updateMany({'],
  ['provider route candidate checks',owner,'blocked_routes?.includes(transport)']
 ]) assert.ok(body.includes(needle),'Missing '+feature);
 for(const agent of [managed,chief])assert.ok(agent.tool_configs.some(x=>x.function_name==='discoverConnectionMethods'),'Discovery not exposed to agent');
