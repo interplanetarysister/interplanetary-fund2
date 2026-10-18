@@ -6,7 +6,7 @@ const rnd=(n=32)=>{const b=crypto.getRandomValues(new Uint8Array(n));return Arra
 const sha=async(s)=>Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",encoder.encode(s))),x=>x.toString(16).padStart(2,"0")).join("");
 const pkce=async(s)=>btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256",encoder.encode(s))))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const err=(code,status=400)=>resp({error:code},status);
-const scopes=new Set(["campaigns:read","campaigns:read content:write"]);
+const scopes=new Set(["campaigns:read"]);
 const callback="https://www.integromat.com/oauth/cb/oauth2";
 const htmlEscape=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const noStore={"cache-control":"no-store","content-security-policy":"default-src 'none'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'","referrer-policy":"no-referrer","x-content-type-options":"nosniff"};
@@ -25,7 +25,7 @@ async function handle(req,env){
  const u=new URL(req.url),p=u.pathname,now=Math.floor(Date.now()/1000);
  if(env.OAUTH_ENABLED!=="true"||!env.OAUTH_DB)return err("service_unavailable",503);
  if(p==="/.well-known/oauth-authorization-server"){
-  return resp({issuer:u.origin,authorization_endpoint:u.origin+"/oauth/authorize",token_endpoint:u.origin+"/oauth/token",revocation_endpoint:u.origin+"/oauth/revoke",response_types_supported:["code"],grant_types_supported:["authorization_code"],token_endpoint_auth_methods_supported:["client_secret_post","client_secret_basic"],code_challenge_methods_supported:["S256"],scopes_supported:["campaigns:read","content:write"]});
+  return resp({issuer:u.origin,authorization_endpoint:u.origin+"/oauth/authorize",token_endpoint:u.origin+"/oauth/token",revocation_endpoint:u.origin+"/oauth/revoke",response_types_supported:["code"],grant_types_supported:["authorization_code","refresh_token"],token_endpoint_auth_methods_supported:["client_secret_post","client_secret_basic"],code_challenge_methods_supported:["S256"],scopes_supported:["campaigns:read"]});
  }
  if(p==="/oauth/admin/clients"&&req.method==="POST"){
   if(!await admin(req,env))return err("unauthorized",401);
@@ -45,6 +45,7 @@ async function handle(req,env){
   const b=await req.json().catch(()=>null);if(!b||typeof b.client_id!=="string")return err("invalid_request");
   await env.OAUTH_DB.prepare("UPDATE oauth_clients SET enabled=0 WHERE id=?").bind(b.client_id).run();
   await env.OAUTH_DB.prepare("UPDATE oauth_tokens SET revoked=1 WHERE client_id=?").bind(b.client_id).run();
+  await env.OAUTH_DB.prepare("UPDATE oauth_refresh SET revoked=1 WHERE client_id=?").bind(b.client_id).run();
   return resp({ok:true});
  }
  if(p==="/oauth/authorize"&&req.method==="GET"){
@@ -84,6 +85,17 @@ async function handle(req,env){
   if(typeof id!=="string"||typeof secret!=="string"||!secret)return err("invalid_client",401);
   const client=await env.OAUTH_DB.prepare("SELECT * FROM oauth_clients WHERE id=?").bind(id).first();
   if(!client||!client.enabled||await sha(secret)!==client.secret_hash)return err("invalid_client",401);
+  if(f.get("grant_type")==="refresh_token"){
+   const old=f.get("refresh_token");if(typeof old!=="string")return err("invalid_grant");
+   const oldHash=await sha(old);
+   const used=await env.OAUTH_DB.prepare("UPDATE oauth_refresh SET revoked=1 WHERE refresh_hash=? AND client_id=? AND expires>? AND revoked=0").bind(oldHash,id,now).run();
+   if(used.meta.changes!==1){await env.OAUTH_DB.prepare("UPDATE oauth_refresh SET revoked=1 WHERE client_id=?").bind(id).run();return err("invalid_grant");}
+   const previous=await env.OAUTH_DB.prepare("SELECT scope FROM oauth_refresh WHERE refresh_hash=?").bind(oldHash).first();
+   const nextAccess="ifund_oat_"+rnd(32),nextRefresh="ifund_ort_"+rnd(32);
+   await env.OAUTH_DB.prepare("INSERT INTO oauth_tokens(token_hash,client_id,scope,expires) VALUES(?,?,?,?)").bind(await sha(nextAccess),id,previous.scope,now+900).run();
+   await env.OAUTH_DB.prepare("INSERT INTO oauth_refresh(refresh_hash,client_id,scope,expires) VALUES(?,?,?,?)").bind(await sha(nextRefresh),id,previous.scope,now+2592000).run();
+   return resp({access_token:nextAccess,refresh_token:nextRefresh,token_type:"Bearer",expires_in:900,scope:previous.scope});
+  }
   if(f.get("grant_type")!=="authorization_code")return err("unsupported_grant_type");
   const code=f.get("code"),verifier=f.get("code_verifier");
   if(typeof code!=="string"||typeof verifier!=="string"||!/^[a-zA-Z0-9._~-]{43,128}$/.test(verifier))return err("invalid_grant");
@@ -94,14 +106,30 @@ async function handle(req,env){
   if(used.meta.changes!==1)return err("invalid_grant");
   const token="ifund_oat_"+rnd(32);
   await env.OAUTH_DB.prepare("INSERT INTO oauth_tokens(token_hash,client_id,scope,expires) VALUES(?,?,?,?)").bind(await sha(token),id,row.scope,now+900).run();
-  return resp({access_token:token,token_type:"Bearer",expires_in:900,scope:row.scope});
+  const refresh="ifund_ort_"+rnd(32);
+  await env.OAUTH_DB.prepare("INSERT INTO oauth_refresh(refresh_hash,client_id,scope,expires) VALUES(?,?,?,?)").bind(await sha(refresh),id,row.scope,now+2592000).run();
+  return resp({access_token:token,refresh_token:refresh,token_type:"Bearer",expires_in:900,scope:row.scope});
  }
  if(p==="/oauth/revoke"&&req.method==="POST"){
   const f=await readForm(req),id=f.get("client_id"),secret=f.get("client_secret");
   const c=await env.OAUTH_DB.prepare("SELECT secret_hash,enabled FROM oauth_clients WHERE id=?").bind(id).first();
   if(!c||!c.enabled||await sha(String(secret||""))!==c.secret_hash)return err("invalid_client",401);
-  if(typeof f.get("token")==="string")await env.OAUTH_DB.prepare("UPDATE oauth_tokens SET revoked=1 WHERE token_hash=? AND client_id=?").bind(await sha(f.get("token")),id).run();
+  if(typeof f.get("token")==="string"){
+   await env.OAUTH_DB.prepare("UPDATE oauth_tokens SET revoked=1 WHERE token_hash=? AND client_id=?").bind(await sha(f.get("token")),id).run();
+   await env.OAUTH_DB.prepare("UPDATE oauth_refresh SET revoked=1 WHERE refresh_hash=? AND client_id=?").bind(await sha(f.get("token")),id).run();
+  }
   return resp({});
+ }
+ if(p==="/api/v1/oauth/campaigns"&&req.method==="GET"){
+  const token=(req.headers.get("authorization")||"").replace(/^Bearer\\s+/i,"");
+  if(!token.startsWith("ifund_oat_"))return err("unauthorized",401);
+  const t=await env.OAUTH_DB.prepare("SELECT t.scope FROM oauth_tokens t JOIN oauth_clients c ON t.client_id=c.id WHERE t.token_hash=? AND t.revoked=0 AND t.expires>? AND c.enabled=1").bind(await sha(token),now).first();
+  if(!t||t.scope!=="campaigns:read")return err("forbidden",403);
+  if(!env.IFUND_AGENT_CAMPAIGNS_URL||!env.IFUND_OAUTH_AGENT_KEY)return err("service_unavailable",503);
+  const upstream=new URL(env.IFUND_AGENT_CAMPAIGNS_URL);
+  if(upstream.protocol!=="https:")return err("service_unavailable",503);
+  const response=await fetch(upstream.toString(),{headers:{"authorization":"Bearer "+env.IFUND_OAUTH_AGENT_KEY,"accept":"application/json"},redirect:"manual"});
+  return new Response(response.body,{status:response.status,headers:{"content-type":"application/json","cache-control":"no-store"}});
  }
  if(p==="/oauth/inspect"&&req.method==="POST"){
   // Only trusted internal services with a separate protected shared secret may introspect tokens.
