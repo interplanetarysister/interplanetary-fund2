@@ -58,47 +58,11 @@ export default async function(req: Request) {
         {headers:{'Cache-Control':'no-store'}});
     }
     if (mode === 'execute') {
-      // Base44 entity reads + updates are not documented here as atomic compare-and-swap.
-      // A simultaneous approval could otherwise run twice. Refuse mutation until the
-      // backend exposes a durable unique claim/transaction verified by concurrent tests.
-      return fail('Owner configuration changes are temporarily unavailable until one-time approval locking is verified.',503);
-      const id=String(body.request_id || '');
-      if (!/^[a-zA-Z0-9_-]{8,120}$/.test(id) || body.confirm !== true) return fail('Explicit owner confirmation and request ID required.');
-      const pending = await sr.entities.IntegrationChangeRequest.get(id).catch(()=>null);
-      if (!pending || pending.owner_user_id !== user.id) return fail('Request not found.',404);
-      if (pending.status !== 'pending') return fail('This request has already been processed.',409);
-      if (Date.parse(pending.expires_at) <= Date.now()) {
-        await sr.entities.IntegrationChangeRequest.update(id,{status:'expired'});
-        return fail('Request expired. Prepare a new change.',409);
-      }
-      const {platform,operation,transport}=pending;
-      if (!OPERATIONS.has(operation) || !TRANSPORTS.has(transport)) return fail('Invalid pending operation.',409);
-      const rows=await sr.entities.PlatformConnectionRecipe.filter({platform,operation});
-      const existing=rows[0] || null;
-      const fallback=staticRecipe(platform,operation);
-      if (!existing && !fallback) return fail('Recipe no longer exists.',409);
-      if (Number(existing?.recipe_version || 0) !== Number(pending.expected_recipe_version))
-        return fail('Provider route changed since preparation. Review again.',409);
-      if (existing?.status === 'disabled' || existing?.blocked_routes?.includes(transport))
-        return fail('Provider route is blocked.',409);
-      if (!orderedTransports(existing || fallback).includes(transport))
-        return fail('Selected method is no longer available.',409);
-      const update={preferred_transport:transport,
-        recipe_version:Number(existing?.recipe_version || 0)+1,
-        status:'probation',discovery_state:'probation'};
-      if (existing) await sr.entities.PlatformConnectionRecipe.update(existing.id,update);
-      else await sr.entities.PlatformConnectionRecipe.create({
-        platform,operation,...fallback,...update,
-      });
-      await sr.entities.IntegrationChangeRequest.update(id,{
-        status:'applied',approved_at:nowISO(),applied_at:nowISO(),
-        result_summary:'IFund internal route preference updated; provider connection remains unverified.',
-      });
-      return Response.json({ok:true,status:'applied',platform,operation,
-        verified_connection:false,external_provider_modified:false},
-        {headers:{'Cache-Control':'no-store'}});
+      // No atomic compare-and-swap/unique claim facility has been verified in the
+      // authoritative Base44 runtime; avoid duplicate concurrent owner mutations.
+      return fail('Owner configuration changes require verified one-time approval locking.',503);
     }
-    return fail('Supported modes: prepare, execute.');
+    return fail('Supported modes: prepare, status; execute is disabled pending atomic locking.');
   } catch(error) {
     console.error('manageOwnerConnectionConfiguration:',error instanceof Error?error.name:'UnknownError');
     return fail('Unable to process configuration change.',500);
