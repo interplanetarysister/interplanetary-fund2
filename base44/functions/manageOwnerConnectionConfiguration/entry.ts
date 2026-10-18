@@ -47,7 +47,21 @@ export default async function(req: Request) {
           proposed_transport:transport,effect:'Change internal candidate route preference only; does not create an external account, grant scopes, or verify a provider.'}},
         {headers:{'Cache-Control':'no-store'}});
     }
+    if (mode === 'status') {
+      const id = String(body.request_id || '');
+      if (!/^[a-zA-Z0-9_-]{8,120}$/.test(id)) return fail('Request ID required.');
+      const pending = await sr.entities.IntegrationChangeRequest.get(id).catch(() => null);
+      if (!pending || pending.owner_user_id !== user.id) return fail('Request not found.',404);
+      return Response.json({ok:true,request_id:id,status:pending.status,
+        platform:pending.platform,operation:pending.operation,transport:pending.transport,
+        expires_at:pending.expires_at,result_summary:pending.result_summary || null},
+        {headers:{'Cache-Control':'no-store'}});
+    }
     if (mode === 'execute') {
+      // Base44 entity reads + updates are not documented here as atomic compare-and-swap.
+      // A simultaneous approval could otherwise run twice. Refuse mutation until the
+      // backend exposes a durable unique claim/transaction verified by concurrent tests.
+      return fail('Owner configuration changes are temporarily unavailable until one-time approval locking is verified.',503);
       const id=String(body.request_id || '');
       if (!/^[a-zA-Z0-9_-]{8,120}$/.test(id) || body.confirm !== true) return fail('Explicit owner confirmation and request ID required.');
       const pending = await sr.entities.IntegrationChangeRequest.get(id).catch(()=>null);
