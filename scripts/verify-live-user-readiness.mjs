@@ -26,7 +26,7 @@ assert.match(app, /<Route path="\/platform" element=\{<Platform \/>\}/);
 assert.match(layout, /const adminOnly = \["\/analytics", "\/connect", "\/ops", "\/platform"\]/);
 assert.match(layout, /const publicNavItems = \[/);
 assert.match(layout, /to: "\/", label: "Home"/);
-assert.match(layout, /to: "\/help", label: "Help"/);
+assert.match(layout, /to: "\/help", label: "Help Center"/);
 assert.match(layout, /user \? "\/dashboard" : "\/"/);
 
 assert.match(create, /Save draft/);

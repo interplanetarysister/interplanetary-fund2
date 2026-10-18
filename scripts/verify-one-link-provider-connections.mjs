@@ -9,12 +9,12 @@ const finalize = read("base44/functions/finalizeAppUserOAuthConnection/entry.ts"
 
 assert.match(connections, /params\.get\("connect"\)/);
 assert.match(connections, /ALL_PLATFORMS\.find\(\(item\) => item\.id === requested\)/);
-assert.match(connections, /quickConnect: platform\.setupKind === "oauth"/);
+assert.match(connections, /setSelectedPlatform\(platform\)/);
 assert.match(connections, /useLocation\(\)/);
 assert.match(connections, /navigate\(\{ pathname: "\/connections"/);
 assert.match(connections, /!alreadyWorking/);
-assert.match(dialog, /quickConnect = false/);
-assert.match(dialog, /attemptedDeepLink\.current/);
+assert.match(dialog, /Deep links open this IFund window first/);
+assert.match(dialog, /The user chooses Connect before/);
 assert.match(dialog, /connectors\.connectAppUser\(data\.connector_id\)/);
 assert.match(dialog, /window\.location\.assign\(destination\.href\)/);
 assert.match(dialog, /destination\.protocol !== "https:"/);
