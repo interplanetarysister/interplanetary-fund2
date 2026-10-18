@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { campaignForResponse } from '../../shared/campaignResponse.ts';
+import { notifyMakeCampaignEvent } from '../../shared/makeCampaignEvents.ts';
 
 const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step','accept_crypto_donations']);
 const STATUSES = new Set(['draft','active','paused','completed']);
@@ -41,6 +42,9 @@ export default async function(req) {
       if (!existing) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (existing.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Not authorized' }, { status: 403 });
       await base44.asServiceRole.entities.Campaign.update(campaignId, safe);
+      // Opt-in only: Make failures cannot prevent saving a campaign.
+      try { await notifyMakeCampaignEvent({ ...existing, ...safe, id: campaignId }, 'campaign.updated'); }
+      catch (error) { console.error('Make campaign event delivery failed:', error?.name || 'Error'); }
       return Response.json({
         ok: true,
         campaign: campaignForResponse({ ...existing, ...safe, id: campaignId }),
@@ -49,6 +53,8 @@ export default async function(req) {
     }
 
     const created = await base44.entities.Campaign.create(safe);
+    try { await notifyMakeCampaignEvent(created, 'campaign.created'); }
+    catch (error) { console.error('Make campaign event delivery failed:', error?.name || 'Error'); }
     return Response.json({ ok: true, campaign: campaignForResponse(created), created: true });
   } catch (error) {
     console.error('saveCampaign failed:', error?.name || 'UnknownError');
