@@ -9,6 +9,7 @@ import PageError from "@/components/PageError";
 import { STATUS_BADGE, UNKNOWN_STATUS_BADGE, normalizeIntegrationStatus } from "@/lib/integrationRegistryUi";
 import Base44ReleaseStatus from "@/components/admin/Base44ReleaseStatus";
 import AdminOAuthProviderReadiness from "@/components/connections/AdminOAuthProviderReadiness";
+import OwnerConnectorRoutePanel from "@/components/admin/OwnerConnectorRoutePanel";
 import { Link, useLocation } from "react-router-dom";
 import AIConnections from "./Connect";
 
@@ -208,6 +209,7 @@ export default function IntegrationsAdmin() {
 
       <Base44ReleaseStatus />
       <div className="mt-5"><AdminOAuthProviderReadiness /></div>
+      <OwnerConnectorRoutePanel />
       <PayPalReceiptRecoveryPanel user={user} />
 
       <div className="mt-6">
