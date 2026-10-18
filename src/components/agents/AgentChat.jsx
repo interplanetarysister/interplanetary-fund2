@@ -65,13 +65,13 @@ const summarizeApproval = (r) => [
 function memberFacingReply(value) {
   let text = String(value || "");
   // Drop standalone diagnostic/code blocks and internal settings dumps.
-  text = text.replace(/```(?:json|js|javascript|typescript|ts|python|bash|sh)?\\n[\\s\\S]*?```/gi, "");
-  text = text.replace(/\\([^\\n)]*\\b(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|api_key|access_token|client_secret)\\b[^)]*\\)/gi, "");
-  text = text.replace(/^.*(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|client_secret|access_token|api_key)\\s*[:=].*$/gim, "");
-  text = text.replace(/\\b(?:outreach_paused|outreach_enabled)\\b/gi, "campaign outreach setting");
-  text = text.replace(/\\b(?:routeAgentTask|updateCampaignSettings|base44\\.functions\\.invoke|asServiceRole|AgentDelegation)\\b/gi, "IFund");
-  text = text.replace(/\\b(?:I don't have a tool that can directly toggle|I do not have a tool to toggle)\\b/gi, "I can't change");
-  text = text.replace(/\\n{3,}/g, "\\n\\n").trim();
+  text = text.replace(/```(?:json|js|javascript|typescript|ts|python|bash|sh)?\n[\s\S]*?```/gi, "");
+  text = text.replace(/\([^\n)]*\b(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|api_key|access_token|client_secret)\b[^)]*\)/gi, "");
+  text = text.replace(/^.*(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|client_secret|access_token|api_key)\s*[:=].*$/gim, "");
+  text = text.replace(/\b(?:outreach_paused|outreach_enabled)\b/gi, "campaign outreach setting");
+  text = text.replace(/\b(?:routeAgentTask|updateCampaignSettings|base44\.functions\.invoke|asServiceRole|AgentDelegation)\b/gi, "IFund");
+  text = text.replace(/\b(?:I don't have a tool that can directly toggle|I do not have a tool to toggle)\b/gi, "I can't change");
+  text = text.replace(/\n{3,}/g, "\n\n").trim();
   return text || "I can't show those internal details. Please check your campaign settings or ask me what you can do next.";
 }
 
