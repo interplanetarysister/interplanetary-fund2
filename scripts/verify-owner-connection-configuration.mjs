@@ -14,4 +14,7 @@ assert.ok(schema.properties.status.enum.includes('applied'));
 assert.ok(context.includes('config_mutation_authorized: false'));
 assert.ok(context.includes('registration_verified: false'));
 assert.ok(context.includes("'Cache-Control': 'no-store'"));
+assert.ok(context.includes("PlatformConnectionRecipe.filter({ platform, operation: 'connect' })"),'Context must read active persisted connection routes');
+assert.ok(context.includes("const disabled = selected?.status === 'disabled'"),'Disabled route must override built-in fallback');
+assert.ok(context.includes("persisted_recipe_available: !!selected"),'Context must expose nonsecret source provenance');
 console.log('IFund owner connection authority source checks passed');
