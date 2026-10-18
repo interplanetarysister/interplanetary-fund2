@@ -1,6 +1,7 @@
 import { PUBLIC_IFUND_ORIGIN } from "./campaignSharing";
 import { loadGeneratedImage, resolveGeneratedImageUrl } from "./generatedMedia";
 import { BRAND_MARK } from "@/components/brand/brand";
+import { effectiveSubscription } from "./subscriptionEntitlements";
 
 export const IFUND_WATERMARK_TEXT = "interplanetaryfund.com";
 export const IFUND_WATERMARK_LOGO = BRAND_MARK;
@@ -79,15 +80,57 @@ export async function prepareBrandedImageBlob(sourceUrl) {
   });
 }
 
+export async function userMaySkipImageWatermark(base44) {
+  // Never trust a client-provided subscription flag; use the signed-in account.
+  const user = await base44.auth.me();
+  const subscription = effectiveSubscription(user);
+  return subscription.adminGranted || (
+    user?.subscription_status === "active" &&
+    subscription.active &&
+    subscription.plan.level > 0
+  );
+}
+
 export async function brandAndUploadGeneratedImage(base44, sourceUrl) {
-  const blob = await prepareBrandedImageBlob(sourceUrl);
+  // Free accounts always receive a watermarked image; paid subscribers do not.
+  const clean = await userMaySkipImageWatermark(base44);
+  const blob = clean
+    ? await (async () => {
+        const image = await loadImage(sourceUrl);
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth; canvas.height = image.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Image conversion unavailable");
+        ctx.drawImage(image, 0, 0);
+        return new Promise((resolve, reject) => canvas.toBlob(
+          b => b ? resolve(b) : reject(new Error("Image conversion failed")), "image/png"));
+      })()
+    : await prepareBrandedImageBlob(sourceUrl);
   const file = new File([blob], `ifund-generated-${Date.now()}.png`, { type: "image/png" });
   const result = await base44.integrations.Core.UploadFile({ file });
   const url = resolveGeneratedImageUrl(result?.file_url
     ? { url: result.file_url } : result);
-  if (!url) throw new Error("Watermarked image was not saved");
+  if (!url) throw new Error("Image was not saved");
   await loadGeneratedImage(url);
   return url;
+}
+
+export async function uploadUserImage(base44, file, { publicFile = false } = {}) {
+  if (!file?.type?.startsWith("image/")) {
+    return (publicFile ? base44.integrations.Core.UploadPublicFile({ file }) : base44.integrations.Core.UploadFile({ file })).then(r => r.file_url);
+  }
+  const localUrl = URL.createObjectURL(file);
+  try {
+    // For user images, publish only the processed asset URL.
+    const clean = await userMaySkipImageWatermark(base44);
+    const blob = clean ? file : await prepareBrandedImageBlob(localUrl);
+    const safeFile = new File([blob], clean ? file.name : `ifund-${Date.now()}.png`, { type: clean ? file.type : "image/png" });
+    const result = await (publicFile ? base44.integrations.Core.UploadPublicFile({ file: safeFile }) : base44.integrations.Core.UploadFile({ file: safeFile }));
+    if (!result?.file_url) throw new Error("Image upload failed");
+    return result.file_url;
+  } finally {
+    URL.revokeObjectURL(localUrl);
+  }
 }
 
 export function ifundImageLink() { return PUBLIC_IFUND_ORIGIN; }
