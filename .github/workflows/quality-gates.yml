@@ -117,6 +117,12 @@ jobs:
       - name: Managed Connections authorization and delegation contract
         run: npm run verify:managed-connections
 
+      - name: Owner-delegated connection configuration contract
+        run: node scripts/verify-owner-connection-configuration.mjs
+
+      - name: Credential-free connection discovery contract
+        run: node scripts/verify-ifund-connection-discovery.mjs
+
       - name: Canonical PayPal Business account contract
         run: npm run verify:paypal-business
 
