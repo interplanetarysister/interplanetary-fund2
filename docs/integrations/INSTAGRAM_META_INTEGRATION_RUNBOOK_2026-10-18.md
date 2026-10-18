@@ -45,7 +45,40 @@ Use the API host and version appropriate to the authentication path, and consult
 5. Return to IFund, choose whether AI may help with that account, and run Check Connection.
 6. Only when IFund reports the connection and specific feature as working should you use automated publishing or replies. If it is not working, use reconnect or manual sharing.
 
+
+## Meta access-token handling — required for Facebook and Instagram connections
+
+The Meta access-token documentation is now part of the IFund Connections implementation contract. The existing Instagram Login integration and Facebook Login/Page integration are **different provider flows**; do not merge their credentials, token scopes or identities.
+
+| Credential | IFund use | Rules |
+| --- | --- | --- |
+| App access token | IFund Meta application configuration and permitted app-level server calls | Generate server-to-server using App ID and secret; never send to a browser, Android APK, logs or client-facing APIs. |
+| Client token | Public app identification in approved client SDK operations | Not a grant for Page, user, messaging or publishing data; app ID + client token is not an app secret. |
+| User access token | Member or IFund owner consents through Meta login | Validate state, app binding, scopes, expiry, subject and account ownership; a user token does not by itself mean Page access. |
+| Page access token | Facebook Page-specific reads/writes | Following authorization, discover eligible Pages using `/me/accounts` or the supported account endpoint, persist each Page identity separately, check tasks/scopes and verify a harmless Page read. |
+| System User access token | IFund-owned business assets for unattended authorized operations | Admin-controlled, business-asset-assigned, server-side only; never reuse for member-owned assets or treat it as universal Page access. |
+
+### Build requirements for the existing connections portal
+1. Add Meta configuration for **IFund-owned** apps/assets under admin connections and member-facing **Connect Facebook Page** using official Meta authorization. Keep credential roles and authorization/ownership isolated.
+2. Keep App ID and nonsecret client token distinguishable from encrypted App Secret, app token, Page/user/system-user tokens. Secrets belong in server-managed secret storage, not the `PlatformConnection.credentials` entity, response bodies, localStorage, source control or automation prompts.
+3. For Facebook Login, initiate provider OAuth from IFund's own redirect URI, use state/CSRF and PKCE when supported, validate provider callback and token server-side, check requested versus actually granted scopes, then discover Pages. The Make callback `https://www.integromat.com/oauth/cb/oauth2` is **not** IFund's Meta redirect unless Make itself acts as the OAuth client.
+4. Let users select a Page after discovery; store only an opaque secret-store token reference and nonsecret metadata per Page (provider app/account/Page identifiers, asset ownership, type, granted scopes/tasks/capabilities, expires_at, checked_at, reauthorization state). A user can own multiple Pages; never select the first Page silently.
+5. For supported web-login tokens, exchange short-lived for long-lived tokens **on the server**, track provider-reported expiry, and recheck before sensitive operations; expiry periods are not guarantees. Avoid assuming that all token classes can be refreshed or extended the same way. Support rotation, invalidation, disconnect and secret revocation as applicable.
+6. Implement `Check Connection` as an authenticated provider read **for the exact account/asset**, plus separate capability probes. Only verified scopes and Page tasks may enable publishing, comments, insights or inbox. A connection may be verified with only partial capabilities; denied permissions never become agent privileges.
+7. Gate each AI action using server-verified acting user, selected asset, latest Meta grants, IFund global/per-account OBO consent, connection status and allowed action. IFund-owned admin tokens cannot be substituted for a member's token.
+8. Build meaningful UI states: Sign in, Choose Pages, Connected (verified), Partial permissions, Reconnect, and Disconnected. Show last successful check and requested versus approved features without exposing secrets.
+9. Keep Instagram Login's `instagram_business_*` grants and Instagram-with-Facebook-Login Page-linked flow separate. Consumer Instagram accounts must not be represented as professional API-enabled accounts.
+10. Use HTTPS and confidential server-side token handling. Never expose or display raw tokens in an agent chat. Validate inbound webhook signatures independently of login tokens, dedupe events, respect Meta platform messaging rules and user consent.
+11. Test: wrong app/token type, forged/expired state, token expired/revoked, missing Page task, Page selected from another owner, cross-user token use, system user assigned to wrong asset, app secret disclosure, permissions denied, retry/rate limits and reconnect. Assert no false "Connected" status and no unauthorized AI publishing.
+12. Update the member Help page and admin Help page whenever the actual UI is implemented; use short, child-readable steps and explain when reconnection is necessary.
+
+### Completion gate
+This section is a **tracked specification**, not proof of a deployed Meta connection. Mark Facebook Pages, Instagram publishing and member-agent messaging live only after valid Meta app setup, required app review/permissions and successful production checks for IFund-owned and separately owned member test accounts. Do not claim token generation, a configured secret, successful publish or deployed functionality based solely on this runbook.
+
+Documentation: https://developers.facebook.com/documentation/facebook-login/guides/access-tokens
+
 ## Sources
+- https://developers.facebook.com/documentation/facebook-login/guides/access-tokens
 - https://developers.facebook.com/documentation/instagram-platform
 - https://www.postman.com/meta/instagram/folder/1z5vxzu/instagram-api-with-instagram-login
 - https://www.postman.com/meta/instagram/documentation/6yqw8pt/instagram-api
