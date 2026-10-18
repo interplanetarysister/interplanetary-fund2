@@ -8,12 +8,19 @@ for(const marker of [
   'assertActiveAccount', 'OWNER_EMAILS.has(clean(user.email))',
   "mode === 'prepare'", "mode === 'status'", "mode === 'execute'",
   'pending.owner_user_id !== user.id',
-  'No atomic compare-and-swap/unique claim facility',
-  "return fail('Owner configuration changes require verified one-time approval locking.',503)",
+  'IntegrationChangeRequest.updateMany({',
+  "status:'pending', expires_at:pending.expires_at",
+  "status:'applying',approved_at:claimedAt",
+  "Number(claimed?.updated) !== 1",
+  "PlatformConnectionRecipe.updateMany({",
+  "Number(applied?.updated) !== 1",
+  "This request was already claimed. Check its status.",
+  "Exactly one configured provider recipe is required",
   'orderedTransports(existing || recipe)',
 ]) assert.ok(fn.includes(marker), 'Missing owner authorization or safety guard: '+marker);
-assert.ok(!fn.includes('PlatformConnectionRecipe.update('),'Unsafe recipe mutation path must remain disabled');
-assert.ok(!fn.includes('PlatformConnectionRecipe.create('),'Unsafe recipe creation must remain disabled');
+assert.ok(!fn.includes('PlatformConnectionRecipe.create('),'Unverified concurrent recipe creation must remain disabled');
+assert.ok(!fn.includes('PlatformConnectionRecipe.update('),'Direct unconditional mutation must remain disabled');
+assert.ok(schema.properties.status.enum.includes('applying'),'Schema must permit claimed approval state');
 assert.ok(!fn.includes('Deno.env.get('),'Do not read raw credentials');
 assert.ok(!fn.includes('fetch('),'No arbitrary external requests');
 assert.ok(schema.properties.status.enum.includes('pending'));
