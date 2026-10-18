@@ -63,15 +63,19 @@ const summarizeApproval = (r) => [
 // Render only member-facing explanations. This is presentation protection, not
 // a substitute for server-side authorization and secret redaction.
 function memberFacingReply(value) {
-  let text = String(value || "");
-  // Drop standalone diagnostic/code blocks and internal settings dumps.
-  text = text.replace(/```(?:json|js|javascript|typescript|ts|python|bash|sh)?\n[\s\S]*?```/gi, "");
-  text = text.replace(/\([^\n)]*\b(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|api_key|access_token|client_secret)\b[^)]*\)/gi, "");
-  text = text.replace(/^.*(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|client_secret|access_token|api_key)\s*[:=].*$/gim, "");
-  text = text.replace(/\b(?:outreach_paused|outreach_enabled)\b/gi, "campaign outreach setting");
-  text = text.replace(/\b(?:routeAgentTask|updateCampaignSettings|base44\.functions\.invoke|asServiceRole|AgentDelegation)\b/gi, "IFund");
-  text = text.replace(/\b(?:I don't have a tool that can directly toggle|I do not have a tool to toggle)\b/gi, "I can't change");
-  text = text.replace(/\n{3,}/g, "\n\n").trim();
+  const original = String(value || "");
+  // Fail closed when a generated message contains a credential or diagnostics.
+  // Real secrecy still requires upstream access control and output minimization.
+  if (/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|(?:sk-proj-|ghp_|gho_|github_pat_|xox[baprs]-)[A-Za-z0-9_-]+/i.test(original)) {
+    return "I can't display private account information here. Please use your account settings or contact IFund support.";
+  }
+  let text = original.replace(/```[\s\S]*?```/g, "");
+  const sensitive = /\b(?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|client[_ -]?secret|password|authorization|bearer|webhook[_ -]?secret|private[_ -]?key)\b/i;
+  const internal = /\b(?:outreach_paused|outreach_enabled|created_by_id|owner_user_id|continuation_state|tool_calls|AgentDelegation|routeAgentTask|updateCampaignSettings|asServiceRole|base44\.functions\.invoke)\b/i;
+  text = text.split("\n").filter(line => !sensitive.test(line) && !/\b(?:https?:\/\/\S+\/api\/|[A-Za-z0-9_-]{3,}\s*[:=]\s*(?:true|false)\b)/i.test(line)).map(line =>
+    internal.test(line) ? line.replace(/outreach_paused/gi, "outreach status").replace(/outreach_enabled/gi, "outreach setting")
+      .replace(/\b(?:created_by_id|owner_user_id|continuation_state|tool_calls|AgentDelegation|routeAgentTask|updateCampaignSettings|asServiceRole|base44\.functions\.invoke)\b/gi, "IFund") : line
+  ).join("\n").replace(/\n{3,}/g, "\n\n").trim();
   return text || "I can't show those internal details. Please check your campaign settings or ask me what you can do next.";
 }
 
