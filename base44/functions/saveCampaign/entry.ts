@@ -36,12 +36,13 @@ export default async function(req) {
     // visible fields so saving early never discards another step's work.
     const safe = { ...input, title, goal_amount: goal, status };
     if ('accept_crypto_donations' in safe) safe.accept_crypto_donations = safe.accept_crypto_donations === true;
-    if (safe.cover_image_url) safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
     if (campaignId) {
       const rows = await base44.asServiceRole.entities.Campaign.filter({ id: campaignId });
       const existing = rows?.[0];
       if (!existing) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (existing.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Not authorized' }, { status: 403 });
+      if (safe.cover_image_url && safe.cover_image_url !== existing.cover_image_url)
+        safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
       await base44.asServiceRole.entities.Campaign.update(campaignId, safe);
       return Response.json({
         ok: true,
@@ -50,6 +51,7 @@ export default async function(req) {
       });
     }
 
+    if (safe.cover_image_url) safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
     const created = await base44.entities.Campaign.create(safe);
     return Response.json({ ok: true, campaign: campaignForResponse(created), created: true });
   } catch (error) {
