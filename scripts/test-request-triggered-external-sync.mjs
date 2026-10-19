@@ -450,6 +450,7 @@ assert.deepEqual(parseExternalSyncResult(completedSync), {
   discovered_totals: [{ currency: 'USD', amount: 25.5 }],
 });
 assert.deepEqual(parseExternalSyncResult({
+  ok: false,
   deduplicated: true,
   overall_status: 'in_progress',
 }), {
@@ -474,8 +475,12 @@ for (const [label, payload] of [
   ['invalid currency', { ...completedSync, discovered_totals: [{ currency: 'usd', amount: 25.5 }] }],
   ['negative currency total', { ...completedSync, discovered_totals: [{ currency: 'USD', amount: -1 }] }],
   ['duplicate currency', { ...completedSync, discovered_totals: [{ currency: 'USD', amount: 20 }, { currency: 'USD', amount: 5.5 }] }],
+  ['conflicting USD total', { ...completedSync, total_discovered: 24 }],
+  ['USD total missing from groups', { ...completedSync, discovered_totals: [] }],
   ['inconsistent success flag', { ...completedSync, ok: false }],
-  ['unproven in-progress state', { overall_status: 'in_progress', deduplicated: false }],
+  ['missing in-progress success flag', { overall_status: 'in_progress', deduplicated: true }],
+  ['contradictory in-progress success flag', { overall_status: 'in_progress', deduplicated: true, ok: true }],
+  ['unproven in-progress state', { overall_status: 'in_progress', deduplicated: false, ok: false }],
 ]) {
   assert.throws(() => parseExternalSyncResult(payload), /Malformed sync response/, label);
 }

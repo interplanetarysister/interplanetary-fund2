@@ -18,7 +18,7 @@ export function parseExternalSyncResult(data) {
   }
 
   if (data.overall_status === "in_progress") {
-    if (data.deduplicated !== true) throw new Error("Malformed sync response");
+    if (data.ok !== false || data.deduplicated !== true) throw new Error("Malformed sync response");
     return {
       overall_status: "in_progress",
       deduplicated: true,
@@ -52,6 +52,11 @@ export function parseExternalSyncResult(data) {
     currencies.add(row.currency);
     return { currency: row.currency, amount: row.amount };
   });
+
+  const usdTotal = discoveredTotals.find((row) => row.currency === "USD")?.amount ?? 0;
+  if (data.total_discovered !== usdTotal) {
+    throw new Error("Malformed sync response");
+  }
 
   return {
     overall_status: data.overall_status,
