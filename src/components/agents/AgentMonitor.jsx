@@ -5,7 +5,7 @@ import AgentContentReview from "@/components/agents/AgentContentReview";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { MessageCircle, RefreshCw, Search, ChevronRight } from "lucide-react";
+import { RefreshCw, Search, ChevronRight } from "lucide-react";
 
 // Status comes from owner-scoped server records. Roster membership is never
 // evidence that an agent is executing work for a member.
