@@ -29,8 +29,17 @@ if [ "${IFUND_VALIDATE_ONLY:-0}" = "1" ]; then
   printf '%s\n' "The local release gate passed. Publication skipped in validation-only mode."
   exit 0
 fi
-printf '%s\n' "The local release gate passed. Publishing only the Base44 website files."
-base44 --app-id "$APP_ID" site deploy --no-build --yes
+printf '%s\n' "The local release gate passed. Checking Base44 CLI authorization before publication."
+AUTH_LOG="$(mktemp)"
+if ! timeout 15s base44 --app-id "$APP_ID" whoami </dev/null >"$AUTH_LOG" 2>&1; then
+  printf '%s\n' "Deployment stopped: Base44 CLI session is not authenticated or authorization check timed out."
+  printf '%s\n' "Complete the Base44 device login in an authorized terminal/session, then retry."
+  rm -f "$AUTH_LOG"
+  exit 1
+fi
+rm -f "$AUTH_LOG"
+printf '%s\n' "Publishing only the Base44 website files."
+timeout 150s base44 --app-id "$APP_ID" site deploy --no-build --yes </dev/null
 printf '%s\n' "Checking deployed JavaScript against the exact compiled release..."
 node scripts/verify-live-release-parity.mjs
 printf '%s\n' "Checking production in Chromium..."
