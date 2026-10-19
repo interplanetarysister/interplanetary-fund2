@@ -64,7 +64,7 @@ Return ONLY JSON with an "options" array containing exactly five strings. No rep
         .map((s) => typeof s === "string" ? s.trim().replace(/^\d+[.)]\s*/, "").slice(0, limit) : "")
         .filter(Boolean))].slice(0, 5);
       // Reject superficial variants that start with identical wording.
-      const openings = choices.map((choice) => choice.toLocaleLowerCase().replace(/[^\\p{L}\\p{N} ]/gu, "").split(/\\s+/).slice(0, 3).join(" "));
+      const openings = choices.map((choice) => choice.toLocaleLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").split(/\\s+/).slice(0, 3).join(" "));
       if (choices.length !== 5 || new Set(openings).size !== 5) throw new Error("Need five substantively different choices");
       setSuggestions((prev) => ({ ...prev, [field]: choices }));
     } catch {
