@@ -31,6 +31,8 @@ if [ "${IFUND_VALIDATE_ONLY:-0}" = "1" ]; then
 fi
 printf '%s\n' "The local release gate passed. Publishing only the Base44 website files."
 base44 --app-id "$APP_ID" site deploy --no-build --yes
+printf '%s\n' "Checking deployed JavaScript against the exact compiled release..."
+node scripts/verify-live-release-parity.mjs
 printf '%s\n' "Checking production in Chromium..."
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-ifund-browser-render.mjs
 IFUND_SMOKE_URL=https://interplanetaryfund.com node scripts/verify-mobile-ai-composer-viewport.mjs
