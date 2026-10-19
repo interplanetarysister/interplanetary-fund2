@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { campaignForResponse } from '../../shared/campaignResponse.ts';
+import { enforceImagePolicy } from '../../shared/serverImagePolicy.ts';
 
 const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step','accept_crypto_donations']);
 const STATUSES = new Set(['draft','active','paused','completed']);
@@ -35,6 +36,7 @@ export default async function(req) {
     // visible fields so saving early never discards another step's work.
     const safe = { ...input, title, goal_amount: goal, status };
     if ('accept_crypto_donations' in safe) safe.accept_crypto_donations = safe.accept_crypto_donations === true;
+    if (safe.cover_image_url) safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
     if (campaignId) {
       const rows = await base44.asServiceRole.entities.Campaign.filter({ id: campaignId });
       const existing = rows?.[0];
