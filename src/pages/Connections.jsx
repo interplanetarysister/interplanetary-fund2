@@ -259,7 +259,8 @@ export default function Connections() {
   ).length;
   const discoveredTotals = Array.isArray(syncResult?.discovered_totals) ? syncResult.discovered_totals : [];
   const discoveredSummary = discoveredTotals
-    .map(({ currency, amount }) => `${currency} ${amount.toLocaleString()}`)
+    .filter(({ amount }) => amount > 0)
+    .map(({ currency, amount }) => `${currency === "UNSPECIFIED" ? "Unspecified currency" : currency} ${amount.toLocaleString()}`)
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
     (p.id === "custom" || !connectedIds.includes(p.id)) &&
