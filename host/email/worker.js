@@ -34,12 +34,40 @@ export default {
       }catch(e){console.error('Email parsing skipped',e?.name||'Error');}
     }
     const isVerification=to.startsWith('verify-');
+    // Explicit IFund-operated mailboxes only. Never forward customer mail to the owner.
+    const adminLocalParts=new Set(['contact','support','admin','ifund','campaigns','help','developer','partner','crowdfund']);
+    const localPart=to.slice(0,to.indexOf('@'));
+    const isAdmin=adminLocalParts.has(localPart);
+    const isMember=!isVerification&&!isAdmin;
     if(isVerification && !/^verify-[a-f0-9]{32}@interplanetaryfund\.com$/.test(to)) {
       message.setReject('Unknown verification mailbox'); return;
     }
     // NEVER forward another user's verification/security emails to the admin.
     // Ordinary organization mail retains its established Gmail forwarding route.
-    if (!isVerification) await message.forward('cuddlemeplatonically@gmail.com');
+    if(isAdmin) await message.forward('cuddlemeplatonically@gmail.com');
+    // For member addresses, an authenticated private member-ingress service
+    // MUST first verify the recipient has an active paid mailbox. No fallback
+    // to Gmail, Base44's admin InboxItem, or internal platform notifications.
+    if(isMember) {
+      if(!payload){message.setReject('Mailbox delivery unavailable');return;}
+      const memberEndpoint=String(env.IFUND_MEMBER_EMAIL_RECEIVER_URL||'');
+      const memberSigningKey=String(env.IFUND_EMAIL_SIGNING_PRIVATE_KEY||'');
+      if(!memberEndpoint.startsWith('https://')||!memberSigningKey) {
+        message.setReject('Member inbox not activated');return;
+      }
+      try {
+        const body=JSON.stringify(payload);
+        const stamp=String(Math.floor(Date.now()/1000));
+        const signature=await sign(memberSigningKey,stamp,body);
+        const response=await fetch(memberEndpoint,{
+          method:'POST',redirect:'error',
+          headers:{'content-type':'application/json','x-ifund-email-timestamp':stamp,'x-ifund-email-signature':signature},
+          body
+        });
+        if(!response.ok){message.setReject('Member mailbox unavailable');return;}
+        return;
+      }catch(err){console.error('Member email delivery failed',err?.name||'Error');message.setReject('Member mailbox unavailable');return;}
+    }
     if(!payload) {
       if(isVerification) message.setReject('Verification email cannot be received');
       return;
