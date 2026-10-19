@@ -15,6 +15,7 @@ import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
 import { connectionHealth } from "@/lib/connectionHealth";
 import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
+import { parseExternalSyncResult } from "@/lib/externalSyncResult";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
 // crowdfunding platform and social network Interplanetary Fund can reach,
@@ -40,6 +41,7 @@ export default function Connections() {
   // The local record heuristic is the fallback; the resolver is authoritative.
   const [lifecycleMap, setLifecycleMap] = useState({});
   const requestGeneration = useRef(0);
+  const syncInFlightRef = useRef(false);
   const mountedRef = useRef(true);
 
   // All in-app and agent connection links land on this canonical page, even
@@ -101,18 +103,13 @@ export default function Connections() {
   // This click is the authorization boundary for one bounded sync request.
   // Loading the page, signing in, agents, and background work never call it.
   const syncAll = async () => {
+    if (syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
     setSyncing(true);
     setSyncResult(null);
     try {
       const { data } = await base44.functions.invoke("syncExternalFunds", { scope: "user", initiator_type: "user", request_id: crypto.randomUUID() });
-      if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Malformed sync response");
-      const safeResult = {
-        overall_status: typeof data.overall_status === "string" ? data.overall_status : "partial",
-        campaigns_covered: Number.isFinite(Number(data.campaigns_covered)) ? Number(data.campaigns_covered) : 0,
-        total_discovered: Number.isFinite(Number(data.total_discovered)) ? Number(data.total_discovered) : 0,
-        total_imported: Number.isFinite(Number(data.total_imported)) ? Number(data.total_imported) : 0,
-        discovered_totals: Array.isArray(data.discovered_totals) ? data.discovered_totals.filter((row) => row && /^[A-Z]{3}$/.test(String(row.currency || "")) && Number.isFinite(Number(row.amount))).map((row) => ({ currency: String(row.currency), amount: Number(row.amount) })) : [],
-      };
+      const safeResult = parseExternalSyncResult(data);
       if (!mountedRef.current) return;
       setSyncResult(safeResult);
       const r = await base44.functions.invoke("listConnections", { scope: "mine" });
@@ -125,6 +122,7 @@ export default function Connections() {
     } catch {
       if (mountedRef.current) setSyncResult({ error: "We couldn’t update your connected platforms right now. Try again." });
     } finally {
+      syncInFlightRef.current = false;
       if (mountedRef.current) setSyncing(false);
     }
   };
@@ -259,10 +257,9 @@ export default function Connections() {
   const workingCount = connections.filter((c) =>
     lifecycleMap[c.id] ? lifecycleMap[c.id].lifecycle === "CONNECTED" : connectionHealth(c).usable
   ).length;
-  const discoveredTotals = syncResult?.discovered_totals ||
-    (syncResult ? [{ currency: "USD", amount: syncResult.total_discovered || 0 }] : []);
+  const discoveredTotals = Array.isArray(syncResult?.discovered_totals) ? syncResult.discovered_totals : [];
   const discoveredSummary = discoveredTotals
-    .map(({ currency, amount }) => `${currency} ${Number(amount || 0).toLocaleString()}`)
+    .map(({ currency, amount }) => `${currency} ${amount.toLocaleString()}`)
     .join(", ");
   const availablePlatforms = ALL_PLATFORMS.filter((p) =>
     (p.id === "custom" || !connectedIds.includes(p.id)) &&
@@ -350,7 +347,9 @@ export default function Connections() {
                 ? `${discoveredSummary ? `${discoveredSummary} found.` : "Your connected platforms were refreshed."}`
                 : syncResult.overall_status === "no_connections"
                   ? "Nothing is on yet. Turn on a platform below to get started."
-                  : "One or more connections need attention. Use Fix Connection below."}
+                  : syncResult.overall_status === "in_progress"
+                    ? "A refresh is already in progress. Recent refreshes will update when it finishes."
+                    : "One or more connections need attention. Use Fix Connection below."}
             </p>
           )}
         </div>

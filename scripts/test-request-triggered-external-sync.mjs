@@ -431,3 +431,49 @@ assert.equal(refreshed.disposition,'completed');
 assert.equal(refreshed.run.result_payload.campaign_id,'c1');
 
 console.log('Request-triggered external sync behavioral tests passed');
+
+
+import { parseExternalSyncResult } from '../src/lib/externalSyncResult.js';
+
+const completedSync = {
+  ok: true,
+  deduplicated: false,
+  overall_status: 'success',
+  campaigns_covered: 2,
+  total_discovered: 25.5,
+  total_imported: 1,
+  withdrawable_imported: 0,
+  discovered_totals: [{ currency: 'USD', amount: 25.5 }],
+};
+assert.deepEqual(parseExternalSyncResult(completedSync), {
+  overall_status: 'success',
+  campaigns_covered: 2,
+  total_discovered: 25.5,
+  total_imported: 1,
+  discovered_totals: [{ currency: 'USD', amount: 25.5 }],
+});
+assert.deepEqual(parseExternalSyncResult({
+  deduplicated: true,
+  overall_status: 'in_progress',
+}), {
+  overall_status: 'in_progress',
+  deduplicated: true,
+  discovered_totals: [],
+});
+
+for (const [label, payload] of [
+  ['missing status', { ...completedSync, overall_status: undefined }],
+  ['unknown status', { ...completedSync, overall_status: 'completed' }],
+  ['missing total', { ...completedSync, total_discovered: undefined }],
+  ['string total', { ...completedSync, total_discovered: '25.5' }],
+  ['negative total', { ...completedSync, total_discovered: -1 }],
+  ['non-integer import count', { ...completedSync, total_imported: 1.5 }],
+  ['invented custody', { ...completedSync, withdrawable_imported: 1 }],
+  ['invalid currency', { ...completedSync, discovered_totals: [{ currency: 'usd', amount: 25.5 }] }],
+  ['negative currency total', { ...completedSync, discovered_totals: [{ currency: 'USD', amount: -1 }] }],
+  ['duplicate currency', { ...completedSync, discovered_totals: [{ currency: 'USD', amount: 20 }, { currency: 'USD', amount: 5.5 }] }],
+  ['inconsistent success flag', { ...completedSync, ok: false }],
+  ['unproven in-progress state', { overall_status: 'in_progress', deduplicated: false }],
+]) {
+  assert.throws(() => parseExternalSyncResult(payload), /Malformed sync response/, label);
+}
