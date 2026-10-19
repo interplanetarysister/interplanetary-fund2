@@ -10,6 +10,7 @@ import {
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
 import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity, reconcileOAuthExternalBalance } from '../base44/shared/externalBalanceEvidence.ts';
+import { parseExternalSyncResult } from '../src/lib/externalSyncResult.js';
 
 const preservedEvidence = {
   external_total: 125.5,
@@ -430,10 +431,6 @@ const refreshed=await beginExternalSyncRequest(importedReplay.sr,{...args,jobTyp
 assert.equal(refreshed.disposition,'completed');
 assert.equal(refreshed.run.result_payload.campaign_id,'c1');
 
-console.log('Request-triggered external sync behavioral tests passed');
-
-
-import { parseExternalSyncResult } from '../src/lib/externalSyncResult.js';
 
 const completedSync = {
   ok: true,
@@ -482,3 +479,5 @@ for (const [label, payload] of [
 ]) {
   assert.throws(() => parseExternalSyncResult(payload), /Malformed sync response/, label);
 }
+
+console.log('Request-triggered external sync behavioral tests passed');
