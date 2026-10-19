@@ -460,6 +460,7 @@ assert.deepEqual(parseExternalSyncResult({
 });
 assert.deepEqual(parseExternalSyncResult({
   ...completedSync,
+  total_discovered: 0,
   discovered_totals: [{ currency: 'UNSPECIFIED', amount: 0 }],
 }).discovered_totals, [{ currency: 'UNSPECIFIED', amount: 0 }],
 'backend-defined unknown currency remains explicit instead of being dropped or converted');

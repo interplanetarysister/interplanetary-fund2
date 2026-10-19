@@ -50,7 +50,8 @@ const assertPublicRun = (run) => {
   const currencies = new Set();
   for (const row of run.discovered_totals) {
     if (!row || typeof row !== 'object' || Array.isArray(row) ||
-        !(validCurrency(row.currency) || row.currency === 'UNSPECIFIED') ||
+        typeof row.currency !== 'string' ||
+        !(/^[A-Z]{3}$/.test(row.currency) || row.currency === 'UNSPECIFIED') ||
         !nonNegativeFinite(row.amount) ||
         currencies.has(row.currency)) {
       throw new Error('Stored synchronization result is incomplete.');
