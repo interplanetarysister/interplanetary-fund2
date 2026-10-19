@@ -44,7 +44,7 @@ export function parseExternalSyncResult(data) {
   const currencies = new Set();
   const discoveredTotals = data.discovered_totals.map((row) => {
     if (!row || typeof row !== "object" || Array.isArray(row) ||
-        !/^[A-Z]{3}$/.test(row.currency) ||
+        !(/^[A-Z]{3}$/.test(row.currency) || row.currency === "UNSPECIFIED") ||
         !isNonNegativeFinite(row.amount) ||
         currencies.has(row.currency)) {
       throw new Error("Malformed sync response");

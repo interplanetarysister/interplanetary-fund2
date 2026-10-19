@@ -460,6 +460,11 @@ assert.deepEqual(parseExternalSyncResult({
   deduplicated: true,
   discovered_totals: [],
 });
+assert.deepEqual(parseExternalSyncResult({
+  ...completedSync,
+  discovered_totals: [{ currency: 'UNSPECIFIED', amount: 0 }],
+}).discovered_totals, [{ currency: 'UNSPECIFIED', amount: 0 }],
+'backend-defined unknown currency remains explicit instead of being dropped or converted');
 
 for (const [label, payload] of [
   ['missing status', { ...completedSync, overall_status: undefined }],
