@@ -5,10 +5,11 @@ import { readFileSync } from 'node:fs';
 function load(name, mock, enabled) {
   const raw = readFileSync(new URL('../base44/functions/'+name+'/entry.ts',import.meta.url),'utf8');
   const src = raw.replace(/^import .*?;\s*$/gm,'').replace('export default async function','return async function');
-  return new Function('createClientFromRequest','isFeatureEnabled','featureUnavailable',src)(
+  return new Function('createClientFromRequest','isFeatureEnabled','featureUnavailable','assertActiveAccount',src)(
     ()=>mock,
     async()=>enabled,
     label=>Response.json({error:label},{status:409}),
+    async client=>({ok:true,user:await client.auth.me()}),
   );
 }
 function fixture(failMembership=false) {
