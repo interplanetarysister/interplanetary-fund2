@@ -132,6 +132,10 @@ function App() {
     window.addEventListener("ifund-theme-changed", apply);
     return () => { mq.removeEventListener("change", apply); window.removeEventListener("ifund-theme-changed", apply); };
   }, []);
+  // Organizational mail remains usable when Base44 authentication is unavailable.
+  if (typeof window !== "undefined" && window.location.pathname === "/admin/organization-mail") {
+    return <ErrorBoundary><Suspense fallback={<div role="status" className="p-6">Loading secure mail…</div>}><main className="mx-auto max-w-2xl px-4 py-8"><IndependentAdminMail /></main></Suspense></ErrorBoundary>;
+  }
   return <ErrorBoundary><AuthProvider><QueryClientProvider client={queryClientInstance}><Router><ScrollToTop /><TermsAcceptance><AuthenticatedApp /></TermsAcceptance><Toaster /></Router></QueryClientProvider></AuthProvider></ErrorBoundary>;
 }
 export default App;
