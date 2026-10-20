@@ -140,6 +140,14 @@ async function validateEntry(sr, e) {
     checks.push({ check: 'dependencies_referenced', ok: true, detail: e.dependencies.join(', ') });
   }
 
+  // Absence of live verification is not evidence of an explicit disconnect.
+  if (e.status === 'REAUTH_REQUIRED' && status === 'DISCONNECTED' && !providerVerified) {
+    status = 'REAUTH_REQUIRED';
+    lastFailure ||= 'Reauthorization remains pending; live provider verification is unavailable.';
+    checks.push({ check: 'pending_reauthorization_preserved', ok: false,
+      detail: 'No provider-backed result was available to close the reauthorization request.' });
+  }
+
   const alertTitle = isUnhealthy(status) ? `[${p}] ${STATUS_LABEL[status] || status}` : '';
   const alertBody = lastFailure || `Integration "${p}" requires attention: ${status}.`;
   return { status, flags, checks, lastFailure, alertTitle, alertBody, providerVerified };
