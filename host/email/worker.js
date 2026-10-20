@@ -71,7 +71,8 @@ export default {
       if(isVerification) message.setReject('Verification email cannot be received');
       return;
     }
-    const endpoint=String(env.IFUND_EMAIL_RECEIVER_URL||'');
+    // Organization messages go to independent Supabase; verification stays on its isolated handler.
+    const endpoint=String((isAdmin?env.IFUND_ADMIN_EMAIL_RECEIVER_URL:env.IFUND_EMAIL_RECEIVER_URL)||'');
     const secret=String(env.IFUND_EMAIL_SIGNING_PRIVATE_KEY||'');
     if(!endpoint.startsWith('https://')||!secret) {console.error('Inbox mirror not configured');if(isVerification)message.setReject('Verification inbox unavailable');return;}
     try{
