@@ -11,6 +11,10 @@ assert.match(src, /if\(e\?\.status===401\|\|e\?\.status===403\)signOut\(\)/, 'ex
 assert.ok(src.includes('sessionGeneration.current+=1;setToken('), 'sign-out must invalidate pending responses');
 assert.match(src, /setReady\(false\);setItems\(\[\]\);try\{const r=await request/, 'refresh must hide previously loaded private mail');
 assert.match(src, /if\(generation!==sessionGeneration\.current\)return/, 'stale async responses must not repopulate private mail');
+assert.match(src, /Number\(s\.expires_in\)/, 'sign-in must validate server session lifetime');
+assert.match(src, /setExpiresAt\(Date\.now\(\)\+expiresIn\*1000\)/, 'session expiry must use server lifetime');
+assert.match(src, /setTimeout\(\(\)=>signOut\(\),Math\.max\(0,expiresAt-Date\.now\(\)\)\)/, 'expired session must automatically clear private messages');
+assert.match(src, /return \(\)=>clearTimeout\(timer\)/, 'expiry timer must be cleared on sign-out and unmount');
 const requestSource = src.slice(src.indexOf('const base='), src.indexOf('export default function'));
 async function checkResponse(status) {
   const context = { fetch: async () => ({ ok: status >= 200 && status < 300, status, json: async () => ({ messages: [] }) }) };
