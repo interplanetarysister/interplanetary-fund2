@@ -180,7 +180,7 @@ export default function Notifications() {
         </section>
       )}
 
-      <IndependentAdminMail />
+      {user?.role === "admin" && <IndependentAdminMail />}
 
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
