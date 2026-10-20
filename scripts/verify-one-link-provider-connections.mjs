@@ -9,14 +9,16 @@ const finalize = read("base44/functions/finalizeAppUserOAuthConnection/entry.ts"
 
 assert.match(connections, /params\.get\("connect"\)/);
 assert.match(connections, /ALL_PLATFORMS\.find\(\(item\) => item\.id === requested\)/);
-assert.match(connections, /quickConnect: platform\.setupKind === "oauth"/);
+// Deep links open the selected provider dialog, but OAuth must require a direct user action.
+assert.match(connections, /setDialog\(\{ platform, existing \}\)/);
+assert.doesNotMatch(connections, /quickConnect: platform\.setupKind === "oauth"/);
 assert.match(connections, /useLocation\(\)/);
 assert.match(connections, /navigate\(\{ pathname: "\/connections"/);
 assert.match(connections, /!alreadyWorking/);
-assert.match(dialog, /quickConnect = false/);
-assert.match(dialog, /attemptedDeepLink\.current/);
+assert.match(dialog, /oauthAttemptBlocked/);
+assert.match(dialog, /connectAppUser\(data\.connector_id\)/);
 assert.match(dialog, /connectors\.connectAppUser\(data\.connector_id\)/);
-assert.match(dialog, /window\.location\.assign\(destination\.href\)/);
+assert.match(dialog, /window\.location\.assign\(providerAuthorizationDestination\(/);
 assert.match(dialog, /destination\.protocol !== "https:"/);
 assert.match(dialog, /No post will be sent/);
 assert.doesNotMatch(dialog, /publishInitial:/);
