@@ -9,6 +9,7 @@ assert.doesNotMatch(src, /localStorage\.setItem|sessionStorage\.setItem/);
 assert.match(src, /error\.status=response\.status/, 'HTTP authorization failures must retain their status');
 assert.match(src, /if\(e\?\.status===401\|\|e\?\.status===403\)signOut\(\)/, 'expired/revoked sessions must sign out');
 assert.ok(src.includes('sessionGeneration.current+=1;setToken('), 'sign-out must invalidate pending responses');
+assert.match(src, /const signOut=\(\)=>\{[^}]*setEmail\(""\);setPassword\(""\);/, 'sign-out must erase the administrator email identifier and password from the shared-device form');
 assert.match(src, /setReady\(false\);setItems\(\[\]\);try\{const r=await request/, 'refresh must hide previously loaded private mail');
 assert.match(src, /if\(generation!==sessionGeneration\.current\)return/, 'stale async responses must not repopulate private mail');
 assert.match(src, /Number\(s\.expires_in\)/, 'sign-in must validate server session lifetime');
