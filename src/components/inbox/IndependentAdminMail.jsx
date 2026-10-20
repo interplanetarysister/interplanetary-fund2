@@ -6,7 +6,7 @@ const request=async(path,options={})=>{const response=await fetch(base+path,{...
 export default function IndependentAdminMail(){
  const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [token,setToken]=useState("");const [expiresAt,setExpiresAt]=useState(0);const [items,setItems]=useState([]);const [error,setError]=useState("");const [loading,setLoading]=useState(false);const [ready,setReady]=useState(false);
  const sessionGeneration=useRef(0);
- const signOut=()=>{sessionGeneration.current+=1;setToken("");setExpiresAt(0);setItems([]);setReady(false);setPassword("");setLoading(false);};
+ const signOut=()=>{sessionGeneration.current+=1;setToken("");setExpiresAt(0);setItems([]);setReady(false);setEmail("");setPassword("");setLoading(false);};
  const sessionExpired=(at=expiresAt)=>Boolean(at)&&Date.now()>=at;
  const handleRequestError=(e)=>{if(e?.status===401||e?.status===403)signOut();setReady(false);setError(e?.message||"The independent inbox is unavailable.");};
  const load=async(t=token,expiry=expiresAt)=>{if(sessionExpired(expiry)){signOut();return;}const generation=sessionGeneration.current;setLoading(true);setError("");setReady(false);setItems([]);try{const r=await request("/functions/v1/ifund-admin-mailbox",{headers:{authorization:"Bearer "+t}});if(generation!==sessionGeneration.current)return;setItems(Array.isArray(r.messages)?r.messages:[]);setReady(true);}catch(e){if(generation===sessionGeneration.current)handleRequestError(e);}finally{if(generation===sessionGeneration.current)setLoading(false);}};
