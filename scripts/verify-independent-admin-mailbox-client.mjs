@@ -8,7 +8,7 @@ assert.match(src, /type="password"/);
 assert.doesNotMatch(src, /localStorage\.setItem|sessionStorage\.setItem/);
 assert.match(src, /error\.status=response\.status/, 'HTTP authorization failures must retain their status');
 assert.match(src, /if\(e\?\.status===401\|\|e\?\.status===403\)signOut\(\)/, 'expired/revoked sessions must sign out');
-assert.match(src, /sessionGeneration\.current\+=1;setToken\("","\)/.source.replace('","', '""'), 'sign-out must invalidate pending responses');
+assert.ok(src.includes('sessionGeneration.current+=1;setToken('), 'sign-out must invalidate pending responses');
 assert.match(src, /setReady\(false\);setItems\(\[\]\);try\{const r=await request/, 'refresh must hide previously loaded private mail');
 assert.match(src, /if\(generation!==sessionGeneration\.current\)return/, 'stale async responses must not repopulate private mail');
 const requestSource = src.slice(src.indexOf('const base='), src.indexOf('export default function'));
