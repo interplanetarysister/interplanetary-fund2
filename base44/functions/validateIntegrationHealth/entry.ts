@@ -46,6 +46,14 @@ async function validateEntry(sr, e) {
   let lastFailure = '';
   const p = String(e.platform || '').toLowerCase();
 
+  // An explicit revocation is authoritative. Validation must never revive it,
+  // including when a stale provider token still happens to work.
+  if (e.status === 'REVOKED') {
+    return { status: 'REVOKED', flags, checks: [{ check: 'explicit_revocation', ok: true,
+      detail: 'Administrator revocation is preserved.' }], lastFailure: '',
+      alertTitle: '', alertBody: '', providerVerified: false };
+  }
+
   if (PLATFORM_SECRETS[p]) {
     const { names, missing } = checkSecrets(p);
     checks.push({
