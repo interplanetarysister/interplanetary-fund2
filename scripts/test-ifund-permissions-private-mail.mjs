@@ -42,4 +42,11 @@ for(const entity of ['UserCredentialVault','VerificationMail','VerificationMailb
  const data=JSON.parse(read('base44/entities/'+entity+'.jsonc'));
  assert.equal(data.rls.read['data.user_id'],'{{user.id}}');
 }
-console.log('PASS: encrypted vault roundtrip and rejection, scope lock, account ownership, private 2FA mail separation.');
+const independentMail=read('src/components/inbox/IndependentAdminMail.jsx');
+const appRoutes=read('src/App.jsx');
+assert.match(appRoutes,/path="\/admin\/organization-mail"/);
+assert.match(independentMail,/type="password"/);
+assert.match(independentMail,/setToken\(""\)/);
+assert.doesNotMatch(independentMail,/localStorage\.setItem|sessionStorage\.setItem/);
+assert.doesNotMatch(independentMail,/service_role|SUPABASE_SERVICE_ROLE_KEY/);
+console.log('PASS: encrypted vault roundtrip, consent scope, private 2FA mail, independent admin route and in-memory session.');
