@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Bell, Loader2, CheckCheck, ChevronRight } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
+import IndependentAdminMail from "@/components/inbox/IndependentAdminMail";
 import { Button } from "@/components/ui/button";
 import { contextualNotificationDestination } from "@/lib/actionDestinations";
 import { isAndroidApp, getCrashReporting, setCrashReporting, hasLocalPushRegistration, enableAndroidPush, disableAndroidPush } from "@/lib/androidFirebaseFeatures";
@@ -178,6 +179,8 @@ export default function Notifications() {
           <p className="mt-2 text-xs text-slate-600">This browser-only choice can be changed at any time. It does not enable advertising personalization or collect custom donation details.</p>
         </section>
       )}
+
+      <IndependentAdminMail />
 
       {items.length === 0 ? (
         <div className="bg-white rounded-2xl border border-dashed border-stone-300 p-10 text-center">
