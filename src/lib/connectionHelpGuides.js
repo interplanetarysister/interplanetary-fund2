@@ -94,7 +94,7 @@ Updated: ${reviewed}.`,
 8. Tap Reveal verification email to read your code or link.
 9. Use the code on the real app's sign-in page. Hide the message when done.
 
-The mail can be read only by your IFund account. IFund's AI agents cannot read verification messages. Codes do not go to the admin inbox. IFund organization addresses ending in @interplanetaryfund.com are separate from eligible member mailboxes ending in @mail.interplanetaryfund.com. Verification codes stay isolated from both. Email routing is not live until the service and DNS are tested. If a message will not open or an address cannot be made, try again later. Do not share your code with anyone.
+The mail can be read only by your IFund account. IFund's AI agents cannot read verification messages. Codes do not go to the admin inbox. Administrators may open the independent organization mailbox from IFund Notifications or /admin/organization-mail and sign in with their verified Supabase administrator credentials. IFund organization addresses ending in @interplanetaryfund.com are separate from eligible member mailboxes ending in @mail.interplanetaryfund.com. Verification codes stay isolated from both. Email routing is not live until the service and DNS are tested. If a message will not open or an address cannot be made, try again later. Do not share your code with anyone.
 Updated: ${reviewed}.`,
     keywords: ["verification","2fa","two factor","email","signup","sign-up"]
   }
