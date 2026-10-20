@@ -7,7 +7,11 @@ const expected = [
   "https://interplanetaryfund.base44.app",
   "https://interplanetary-fund2.interplanetary-fund.workers.dev",
 ];
-const forbidden = "https://untrusted.invalid";
+const forbidden = [
+  "https://untrusted.invalid",
+  "https://crowdfund.base44.app",
+  "https://ifund2.base44.app",
+];
 const strict = process.env.IFUND_EXPECT_MAILBOX_CORS_LIVE === "1";
 
 async function preflight(origin) {
@@ -28,9 +32,14 @@ for (const origin of expected) {
   console.log(`${origin}: HTTP ${result.status}, allow-origin=${result.allowOrigin || "(none)"}`);
 }
 
-const denied = await preflight(forbidden);
-assert.equal(denied.status, 403, "Untrusted origin must be denied");
-assert.notEqual(denied.allowOrigin, forbidden, "Never grant untrusted origin");
+for (const origin of forbidden) {
+  const denied = await preflight(origin);
+  if (origin === "https://untrusted.invalid" || strict) {
+    assert.equal(denied.status, 403, `Origin must be denied: ${origin}`);
+    assert.notEqual(denied.allowOrigin, origin, `Never grant origin: ${origin}`);
+  }
+  console.log(`${origin}: HTTP ${denied.status}, allow-origin=${denied.allowOrigin || "(none)"}${!strict && denied.status !== 403 ? " (legacy origin still allowed)" : ""}`);
+}
 
 const unauthenticated = await fetch(endpoint, {
   headers: { Origin: expected[0] },
@@ -39,4 +48,4 @@ const unauthenticated = await fetch(endpoint, {
 assert.equal(unauthenticated.status, 401, "Mailbox must require authentication");
 assert.equal(unauthenticated.headers.get("cache-control"), "no-store", "Mailbox must not cache private responses");
 console.log("PASS: untrusted origins denied; unauthenticated mailbox denied; private response not cached.");
-if (!strict) console.log("Live CORS acceptance is observational until IFUND_EXPECT_MAILBOX_CORS_LIVE=1.");
+if (!strict) console.log("Live exact-origin CORS acceptance and legacy-origin rejection are observational until IFUND_EXPECT_MAILBOX_CORS_LIVE=1.");
