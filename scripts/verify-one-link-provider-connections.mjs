@@ -25,7 +25,7 @@ assert.doesNotMatch(connections, /functions\.invoke\("publishLinkedCampaignToCon
 assert.match(connections, /verifyPlatformConnection/);
 assert.match(provider, /registration_reference_present/);
 assert.match(provider, /readiness: 'not_configured'/);
-assert.match(finalize, /requested_capabilities: cfg\.requestedCapabilities/);
+assert.match(finalize, /requested_capabilities: selectedCapabilities/);
 assert.match(finalize, /provider_capabilities: confirmed/);
 assert.match(finalize, /status: 'disconnected'/);
 for (const name of ["chief_of_staff", "managed_connection_agent", "connection_discovery_agent"]) {
