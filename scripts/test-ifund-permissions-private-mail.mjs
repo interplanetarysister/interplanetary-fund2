@@ -34,6 +34,7 @@ assert.match(worker,/if\(isAdmin\) await message\.forward/);
 assert.match(worker,/const isAdmin=to\.endsWith\('@interplanetaryfund\.com'\) && !isVerification/);
 assert.match(worker,/const isMember=to\.endsWith\('@mail\.interplanetaryfund\.com'\)/);
 assert.match(worker,/IFUND_EMAIL_SIGNING_PRIVATE_KEY/);
+assert.match(worker,/isAdmin\?env\.IFUND_ADMIN_EMAIL_RECEIVER_URL:env\.IFUND_EMAIL_RECEIVER_URL/);
 assert.match(worker,/name:'ECDSA'/);
 assert.doesNotMatch(read('base44/functions/getAgentMailContext/entry.ts'),/VerificationMail/);
 assert.doesNotMatch(read('base44/functions/getUnifiedInbox/entry.ts'),/VerificationMail/);
