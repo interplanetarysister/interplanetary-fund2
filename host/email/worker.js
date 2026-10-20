@@ -35,10 +35,9 @@ export default {
     }
     const isVerification=to.endsWith('@interplanetaryfund.com') && to.startsWith('verify-');
     // Explicit IFund-operated mailboxes only. Never forward customer mail to the owner.
-    const adminLocalParts=new Set(['contact','support','admin','ifund','campaigns','help','developer','partner','crowdfund']);
-    const localPart=to.slice(0,to.indexOf('@'));
-    const isAdmin=to.endsWith('@interplanetaryfund.com') && adminLocalParts.has(localPart);
-    const isMember=!isVerification&&!isAdmin;
+    // Root-domain mail belongs to IFund; paid member mail uses its own subdomain.
+    const isAdmin=to.endsWith('@interplanetaryfund.com') && !isVerification;
+    const isMember=to.endsWith('@mail.interplanetaryfund.com');
     if(isVerification && !/^verify-[a-f0-9]{32}@interplanetaryfund\.com$/.test(to)) {
       message.setReject('Unknown verification mailbox'); return;
     }
