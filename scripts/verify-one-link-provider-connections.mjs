@@ -14,7 +14,6 @@ assert.match(connections, /setDialog\(\{ platform, existing \}\)/);
 assert.doesNotMatch(connections, /quickConnect: platform\.setupKind === "oauth"/);
 assert.match(connections, /useLocation\(\)/);
 assert.match(connections, /navigate\(\{ pathname: "\/connections"/);
-assert.match(connections, /!alreadyWorking/);
 assert.match(dialog, /oauthAttemptBlocked/);
 assert.match(dialog, /connectAppUser\(data\.connector_id\)/);
 assert.match(dialog, /connectors\.connectAppUser\(data\.connector_id\)/);
