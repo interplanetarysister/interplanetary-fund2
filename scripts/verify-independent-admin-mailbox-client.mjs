@@ -13,6 +13,7 @@ assert.match(src, /setReady\(false\);setItems\(\[\]\);try\{const r=await request
 assert.match(src, /if\(generation!==sessionGeneration\.current\)return/, 'stale async responses must not repopulate private mail');
 assert.match(src, /Number\(s\.expires_in\)/, 'sign-in must validate server session lifetime');
 assert.match(src, /setExpiresAt\(Date\.now\(\)\+expiresIn\*1000\)/, 'session expiry must use server lifetime');
+assert.match(src, /finally\{if\(generation===sessionGeneration\.current\)\{setPassword\(""\);setLoading\(false\);\}\}\};\s*const markRead=/, 'password must be cleared after failed and successful login attempts');
 assert.match(src, /setTimeout\(\(\)=>signOut\(\),Math\.max\(0,expiresAt-Date\.now\(\)\)\)/, 'expired session must automatically clear private messages');
 assert.match(src, /return \(\)=>clearTimeout\(timer\)/, 'expiry timer must be cleared on sign-out and unmount');
 assert.match(src, /sessionExpired=\(\)=>Boolean\(expiresAt\)&&Date\.now\(\)>=expiresAt/, 'client must reject expired session actions');
