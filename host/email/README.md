@@ -9,14 +9,16 @@ remote Base44 function is an earlier deployed revision.
 Cloudflare catch-all for all valid `*@interplanetaryfund.com` recipients
 → `ifund-email-ingress` dedicated Email Worker
 → verified owner forwarding destination `cuddlemeplatonically@gmail.com`
-→ optional ECDSA P-256 signed HTTPS mirror into Base44
-`receiveCloudflareEmail` → private owner-scoped `InboxItem`
-→ IFund Universal Inbox, web and APK.
+→ ECDSA P-256 signed HTTPS mirror to independent Supabase
+`ifund-admin-mail-ingest` → private `admin_inbound_email` storage
+→ Supabase-authenticated organizational mailbox in IFund Notifications.
+Verification aliases retain a separate receiver. Paid member addresses use
+`@mail.interplanetaryfund.com` and a separately signed member ingress.
 
 Gmail forwarding is a fail-safe; the Worker attempts IFund mirroring even when
 the forwarded email already succeeded. The signed mirror uses a **private key
 stored only in Cloudflare Worker secrets** and a **public key** pinned in the
-Base44 receiver's source code. No Base44 secret-management access is needed.
+Supabase receiver's source code. No Base44 secret-management access is needed.
 
 ## Priority mailbox categories
 
@@ -30,8 +32,10 @@ nine separate mailbox accounts.
 
 ## Verified preparation
 - Dedicated `ifund-email-ingress` Worker exists in Cloudflare.
-- Cloudflare has encrypted `IFUND_EMAIL_SIGNING_PRIVATE_KEY` and
-  `IFUND_EMAIL_RECEIVER_URL` bindings.
+- Cloudflare has encrypted `IFUND_EMAIL_SIGNING_PRIVATE_KEY`,
+  `IFUND_EMAIL_RECEIVER_URL`, and `IFUND_MEMBER_EMAIL_RECEIVER_URL` bindings.
+- `IFUND_ADMIN_EMAIL_RECEIVER_URL` is a public HTTPS binding for the independent
+  organization receiver. The original secret URL remains for verification.
 - Recipient destination `cuddlemeplatonically@gmail.com` is verified
   in Cloudflare Email Routing.
 - Local compiled Worker in-memory signed-delivery and forwarding simulation
