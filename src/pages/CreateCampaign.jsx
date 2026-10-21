@@ -54,8 +54,8 @@ export default function CreateCampaign() {
     let cancelled = false;
     (async () => {
       try {
-        const rows = await base44.entities.Campaign.filter({ id: draftId });
-        const draft = rows?.[0];
+        const { data } = await base44.functions.invoke("getCampaignDraft", { campaign_id: draftId });
+        const draft = data?.ok === true ? data.campaign : null;
         if (!draft || draft.status !== "draft") throw new Error("Draft unavailable");
         if (!cancelled) setForm({
           title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount > 0 ? draft.goal_amount : "", end_date: draft.end_date || "",
