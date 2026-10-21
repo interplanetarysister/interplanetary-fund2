@@ -135,7 +135,7 @@ export default { async fetch(request, env) {
   // Independent cutover must not be declared ready while MCP and core
   // account/campaign authority still depend on Base44. This is intentionally
   // separate from process liveness (/api/health), which remains healthy.
-  if(url.pathname==="/api/health/readiness" || url.pathname==="/api/health/readiness/"){
+  if(/^\/api\/health\/readiness\/*$/.test(url.pathname)){
     if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
     return json({
       ready:false,
@@ -145,7 +145,7 @@ export default { async fetch(request, env) {
     },503);
   }
 
-  if(url.pathname==="/api/health" || url.pathname.startsWith("/api/health/")){
+  if(url.pathname==="/api/health" || url.pathname==="/api/health/"){
     if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
     return json({
       ok:true,

@@ -21,7 +21,7 @@ assert.deepEqual(body.blockers, [
 assert.ok(!JSON.stringify(body).includes(env.IFUND_SESSION_SECRET));
 assert.ok(!JSON.stringify(body).includes(env.IFUND_SERVICE_TOKEN));
 
-for (const path of ["/api/health/readiness/", "/api/health/readiness?probe=1", "/api/health/readiness/?probe=1"]) {
+for (const path of ["/api/health/readiness/", "/api/health/readiness//", "/api/health/readiness?probe=1", "/api/health/readiness/?probe=1"]) {
   const response = await gateway.fetch(new Request(base + path), env);
   assert.equal(response.status, 503, `${path} must fail closed`);
   assert.equal(response.headers.get("cache-control"), "no-store");
@@ -35,6 +35,14 @@ for (const path of ["/api/health/readiness", "/api/health/readiness/"]) {
   const response = await gateway.fetch(new Request(base + path, { method: "POST" }), env);
   assert.equal(response.status, 405);
 }
+
+// Unknown health subroutes must not masquerade as process liveness or cutover readiness.
+for (const path of ["/api/health/anything", "/api/health/readiness/anything", "/api/healthz"]) {
+  const response = await gateway.fetch(new Request(base + path), env);
+  assert.notEqual(response.status, 200, `${path} must not report healthy`);
+}
+const livenessSlash = await gateway.fetch(new Request(base + "/api/health/"), env);
+assert.equal(livenessSlash.status, 200, "Canonical liveness slash remains supported");
 
 const invalidMethod = await gateway.fetch(
   new Request(base + "/api/health/readiness", { method: "POST" }), env
