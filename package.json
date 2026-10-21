@@ -39,7 +39,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-minimum --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/stamp-ifund-build.mjs && node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs && node scripts/verify-help-update-contract.mjs && node scripts/test-ifund-permissions-private-mail.mjs && node scripts/verify-independent-admin-mailbox-client.mjs",
+    "postbuild": "node scripts/stamp-ifund-build.mjs && node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs && node scripts/verify-help-update-contract.mjs && node scripts/test-ifund-permissions-private-mail.mjs && node scripts/verify-independent-admin-mailbox-client.mjs && node scripts/test-ifund-cutover-readiness.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
