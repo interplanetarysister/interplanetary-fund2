@@ -127,6 +127,15 @@ export default function CreateCampaign() {
     }
   };
 
+  const saveError = (error, fallback) => {
+    const detail = error?.response?.data?.error || error?.data?.error || error?.message;
+    const message = typeof detail === "string" ? detail.trim() : "";
+    if (/sign in|unauthorized|401|authentication/i.test(message)) return "Your session expired. Sign in again, then retry.";
+    if (/not authorized|403|permission/i.test(message)) return "This account cannot change that campaign.";
+    if (/network|fetch|timeout|cors/i.test(message)) return "Unable to reach the campaign server. Check your connection and try again.";
+    return message && !/internal server error|stack|trace/i.test(message) ? message.slice(0, 220) : fallback;
+  };
+
   const saveDraft = async () => {
     if (savingRef.current) return;
     savingRef.current = true;
@@ -150,9 +159,10 @@ export default function CreateCampaign() {
       if (!draftId) navigate(`/create?draft=${encodeURIComponent(data.campaign.id)}`, { replace: true });
       setDraftNotice("Draft saved. Your progress is private and you can continue later.");
       toast({ title: "Draft saved", description: "All your current work is saved." });
-    } catch {
-      setDraftNotice("Couldn't save. Your changes are still on this page; try again.");
-      toast({ title: "Draft not saved", description: "Please retry before leaving this page.", variant: "destructive" });
+    } catch (error) {
+      const reason = saveError(error, "The campaign service could not save this draft. Try again.");
+      setDraftNotice(`Draft not saved: ${reason}`);
+      toast({ title: "Draft not saved", description: reason, variant: "destructive" });
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -173,6 +183,8 @@ export default function CreateCampaign() {
         return;
       }
     }
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       const payload = {
@@ -193,8 +205,10 @@ export default function CreateCampaign() {
       const campaign = data.campaign;
       if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
-    } catch {
-      toast({ title: "Couldn't launch campaign", description: "Please try again. If the problem continues, contact support.", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Couldn't launch campaign", description: saveError(error, "Please try again. If the problem continues, contact support."), variant: "destructive" });
+    } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
