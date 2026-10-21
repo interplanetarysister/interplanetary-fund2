@@ -21,7 +21,7 @@ import { LifeBuoy, ArrowUpRight, Sun, Moon } from "lucide-react";
 const PAGE_TITLES = {
   "/dashboard": "Overview", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Team",
-  "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ops": "Ops Center",
+  "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ai-images": "AI Image Studio", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
   "/admin/founding-members": "Founding Members", "/platform": "Platform", "/create": "New Campaign", "/profile": "Profile", "/notifications": "Notifications",
@@ -77,6 +77,7 @@ const navSections = [
     items: [
       { to: "/agents", label: "AI Team", icon: Bot },
       { to: "/mission", label: "Mission Control", icon: Sparkles },
+      { to: "/ai-images", label: "AI Image Studio", icon: Sparkles },
     ],
   },
   {

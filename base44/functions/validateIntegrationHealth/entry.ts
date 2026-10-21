@@ -46,6 +46,14 @@ async function validateEntry(sr, e) {
   let lastFailure = '';
   const p = String(e.platform || '').toLowerCase();
 
+  // An explicit revocation is authoritative. Validation must never revive it,
+  // including when a stale provider token still happens to work.
+  if (e.status === 'REVOKED') {
+    return { status: 'REVOKED', flags, checks: [{ check: 'explicit_revocation', ok: true,
+      detail: 'Administrator revocation is preserved.' }], lastFailure: '',
+      alertTitle: '', alertBody: '', providerVerified: false };
+  }
+
   if (PLATFORM_SECRETS[p]) {
     const { names, missing } = checkSecrets(p);
     checks.push({
@@ -138,6 +146,14 @@ async function validateEntry(sr, e) {
 
   if (e.dependencies && e.dependencies.length) {
     checks.push({ check: 'dependencies_referenced', ok: true, detail: e.dependencies.join(', ') });
+  }
+
+  // Absence of live verification is not evidence of an explicit disconnect.
+  if (e.status === 'REAUTH_REQUIRED' && status === 'DISCONNECTED' && !providerVerified) {
+    status = 'REAUTH_REQUIRED';
+    lastFailure ||= 'Reauthorization remains pending; live provider verification is unavailable.';
+    checks.push({ check: 'pending_reauthorization_preserved', ok: false,
+      detail: 'No provider-backed result was available to close the reauthorization request.' });
   }
 
   const alertTitle = isUnhealthy(status) ? `[${p}] ${STATUS_LABEL[status] || status}` : '';

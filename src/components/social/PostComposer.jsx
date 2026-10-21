@@ -15,10 +15,10 @@ const PLATFORM_LABELS = {
   linkedin: "LinkedIn", threads: "Threads", reddit: "Reddit", pinterest: "Pinterest",
 };
 
-export default function PostComposer({ user, connections, campaigns, providerCapabilities = [], onPosted }) {
+export default function PostComposer({ user, connections, campaigns, providerCapabilities = [], onPosted, initialShare = null }) {
   const { toast } = useToast();
-  const [content, setContent] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
+  const [content, setContent] = useState(() => initialShare?.content || "");
+  const [mediaUrl, setMediaUrl] = useState(() => initialShare?.mediaUrl || "");
   const [originalMediaUrl, setOriginalMediaUrl] = useState("");
   const [improvedMediaUrl, setImprovedMediaUrl] = useState("");
   const [improvingImage, setImprovingImage] = useState(false);
@@ -147,6 +147,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
           try {
             const { data: distributed } = await base44.functions.invoke("createDistributedPost", {
               campaign_id: campaign.id, connection_id: conn.id, content: content.trim(),
+              media_url: mediaUrl || undefined,
             });
             if (distributed?.ok !== true || !distributed?.post?.id) {
               failedCount += 1;

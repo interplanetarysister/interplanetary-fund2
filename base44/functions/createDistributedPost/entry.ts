@@ -6,6 +6,8 @@ export default async function(req){
  try{
   const base44=createClientFromRequest(req); const activeAccount = await assertActiveAccount(base44); if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });const user=await base44.auth.me();if(!user)return Response.json({error:'Authentication required'},{status:401});
   const b=await req.json().catch(()=>({}));const campaignId=String(b?.campaign_id||'').trim(),connectionId=String(b?.connection_id||'').trim(),content=String(b?.content||'').trim();
+  const mediaUrl=String(b?.media_url||'').trim();
+  if(mediaUrl){try{const url=new URL(mediaUrl);if(url.protocol!=='https:'||url.username||url.password||mediaUrl.length>2048)throw new Error('invalid');}catch{return Response.json({error:'Invalid image URL'},{status:400});}}
   if(!campaignId||!connectionId||!content||content.length>10000)return Response.json({error:'Invalid post request'},{status:400});
   const [campaigns,connections]=await Promise.all([base44.asServiceRole.entities.Campaign.filter({id:campaignId}),base44.asServiceRole.entities.PlatformConnection.filter({id:connectionId})]);
   const campaign=campaigns?.[0],connection=connections?.[0];if(!campaign||!connection)return Response.json({error:'Campaign or connection not found'},{status:404});
@@ -26,7 +28,7 @@ export default async function(req){
     ? content.split(ifundLink + '?donate=true').join(destination.url).split(ifundLink).join(destination.url)
     : content;
   const finalContent = corrected.includes(destination.url) ? corrected : `${corrected}\n\nSupport this campaign: ${destination.url}`;
-  const post=await base44.entities.DistributedPost.create({campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,platform:connection.platform,content:finalContent,donation_destination_url:destination.url,donation_destination_platform:destination.platform,status:'pending_approval'});
+  const post=await base44.entities.DistributedPost.create({campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,platform:connection.platform,content:finalContent,media_url:mediaUrl,donation_destination_url:destination.url,donation_destination_platform:destination.platform,status:'pending_approval'});
   return Response.json({ok:true,post});
  }catch(error){console.error('createDistributedPost failed:',error?.name||'UnknownError');return Response.json({error:'Distributed post could not be created safely.'},{status:500});}
 }

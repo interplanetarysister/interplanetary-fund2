@@ -46,6 +46,12 @@ export default async function(req) {
     }
 
     const text = [post.content, ...(post.hashtags || [])].join(' ').trim();
+    // Text-only provider adapters must never silently discard the user-selected image.
+    if (post.media_url) {
+      const updated = await base44.entities.DistributedPost.update(post_id, { status: 'approved' });
+      await logAudit(base44, { action: 'post_approved_manual', target_type: 'distributed_post', target_id: post_id, detail: `Image requires verified media publishing for ${connection.platform}`, status: 'success' });
+      return Response.json({ manual: true, media_url: post.media_url, post: updated, profile_url: connection.external_url || '', reason: 'This destination does not yet have a verified image-upload adapter. Share the selected image and caption manually.' });
+    }
 
     const consentOwner = user;
     // A deliberate human Publish click authorizes this exact post/destination.

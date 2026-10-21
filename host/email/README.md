@@ -9,14 +9,16 @@ remote Base44 function is an earlier deployed revision.
 Cloudflare catch-all for all valid `*@interplanetaryfund.com` recipients
 → `ifund-email-ingress` dedicated Email Worker
 → verified owner forwarding destination `cuddlemeplatonically@gmail.com`
-→ optional ECDSA P-256 signed HTTPS mirror into Base44
-`receiveCloudflareEmail` → private owner-scoped `InboxItem`
-→ IFund Universal Inbox, web and APK.
+→ ECDSA P-256 signed HTTPS mirror to independent Supabase
+`ifund-admin-mail-ingest` → private `admin_inbound_email` storage
+→ Supabase-authenticated organizational mailbox in IFund Notifications.
+Verification aliases retain a separate receiver. Paid member addresses use
+`@mail.interplanetaryfund.com` and a separately signed member ingress.
 
 Gmail forwarding is a fail-safe; the Worker attempts IFund mirroring even when
 the forwarded email already succeeded. The signed mirror uses a **private key
 stored only in Cloudflare Worker secrets** and a **public key** pinned in the
-Base44 receiver's source code. No Base44 secret-management access is needed.
+Supabase receiver's source code. No Base44 secret-management access is needed.
 
 ## Priority mailbox categories
 
@@ -30,8 +32,10 @@ nine separate mailbox accounts.
 
 ## Verified preparation
 - Dedicated `ifund-email-ingress` Worker exists in Cloudflare.
-- Cloudflare has encrypted `IFUND_EMAIL_SIGNING_PRIVATE_KEY` and
-  `IFUND_EMAIL_RECEIVER_URL` bindings.
+- Cloudflare has encrypted `IFUND_EMAIL_SIGNING_PRIVATE_KEY`,
+  `IFUND_EMAIL_RECEIVER_URL`, and `IFUND_MEMBER_EMAIL_RECEIVER_URL` bindings.
+- `IFUND_ADMIN_EMAIL_RECEIVER_URL` is a public HTTPS binding for the independent
+  organization receiver. The original secret URL remains for verification.
 - Recipient destination `cuddlemeplatonically@gmail.com` is verified
   in Cloudflare Email Routing.
 - Local compiled Worker in-memory signed-delivery and forwarding simulation
@@ -48,21 +52,34 @@ nine separate mailbox accounts.
 
 ## Required activation
 
-1. Authorize the Base44 CLI as the appropriate IFund admin using the device
-   login flow, then deploy only `receiveCloudflareEmail` and verify the
-   unauthorized request returns 401. Avoid a full site redeploy until the
-   user's current release batch is complete.
-2. Send one signed test request and verify that exactly one IFund `InboxItem`
-   appears for `cuddlemeplatonically@gmail.com`; invalid signatures must
-   return 401; repeat submissions must deduplicate; validate tenant isolation.
-3. Change Wix **registrar nameservers** (not ordinary NS DNS resource records)
-   to `angelina.ns.cloudflare.com` and `ed.ns.cloudflare.com`.
-   The Wix DNS-zone REST endpoint is not a registrar delegation endpoint.
-4. Wait for Cloudflare to show Active. Enable Cloudflare Email Routing and
-   the catch-all Worker rule. Then send a test email from an unrelated account
-   to `support@interplanetaryfund.com` and to a non-priority alias.
-5. Verify Gmail forwarding and IFund private inbox mirroring, mobile and web;
-   only then declare the mail system operational.
+1. Confirm `ifund-email-ingress` deploy contains the root-domain organization
+   classifier, separate member subdomain and isolated verification rule.
+   Check `IFUND_ADMIN_EMAIL_RECEIVER_URL` points at the Supabase
+   `ifund-admin-mail-ingest` endpoint while existing signing and
+   verification secrets remain bound. Never inspect or print secret values.
+2. Verify the Supabase administrator account by Auth user ID, then confirm its
+   `ifund_admin_mail_access` allowlist membership and mail tables' RLS.
+   Test the standalone `/admin/organization-mail` route with a real authenticated
+   administrator, including list, read/unread, audit, sign-out and denied users.
+3. Test bad signatures and expired timestamps on both signed ingestion paths:
+   both must reject with 401. Test an authorized signed synthetic message,
+   persistence and deduplication without sending real email to users.
+   Verification aliases must not enter organization or paid-member storage.
+4. Independently publish and verify the website build at
+   `interplanetaryfund.com` and its Cloudflare preview; verify Capacitor web
+   assets and Android authentication/CORS parity. Keep Base44 operational.
+5. Only after signed delivery, tenant isolation and web/APK checks pass, inventory
+   existing DNS and mail records. Change Wix **registrar nameservers** (not
+   DNS NS records) to `angelina.ns.cloudflare.com` and `ed.ns.cloudflare.com`;
+   confirm rollback and MX/SPF/DKIM before changing delegation.
+6. Wait for Cloudflare zone Active; only then enable Email Routing and the
+   Worker catch-all. Send separate external messages to a priority root alias,
+   an arbitrary root alias, a verification alias and an authorized member
+   subdomain mailbox; verify destinations, signed persistence, privacy, Gmail
+   forwarding and audit. Roll back Email Routing immediately on any failure.
+7. Do not cancel Base44 or replace the final Android package until independent
+   website, authentication, database, server functions and agent functions pass
+   migration parity and a separate full release gate.
 
 ## Known limitations
 

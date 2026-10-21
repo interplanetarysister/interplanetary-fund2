@@ -1,7 +1,7 @@
 // Reviewed alongside the actual connection, vault, and verification-mail
 // workflows. These guides are bundled so they appear even before an admin
 // creates a database HelpArticle. Keep language simple and steps concrete.
-const reviewed = "2026-10-19";
+const reviewed = "2026-10-16";
 const entries = [
   {
     slug: "connect-another-platform", category: "Connections & Publishing",
@@ -94,9 +94,7 @@ Updated: ${reviewed}.`,
 8. Tap Reveal verification email to read your code or link.
 9. Use the code on the real app's sign-in page. Hide the message when done.
 
-The mail can be read only by your IFund account. IFund's AI agents cannot read verification messages. Codes do not go to the admin inbox. Email routing is not live until the service and DNS are tested.
-
-This temporary verification address is separate from a paid member email address. Member mail is never forwarded to the IFund admin. Until the private member receiver is configured and verifies an active paid mailbox, delivery fails closed instead of pretending the mailbox is available. If a message will not open or an address cannot be made, try again later. Do not share your code with anyone.
+The mail can be read only by your IFund account. IFund's AI agents cannot read verification messages. Codes do not go to the admin inbox. Administrators may open the independent organization mailbox from IFund Notifications or /admin/organization-mail and sign in with their verified Supabase administrator credentials. IFund organization addresses ending in @interplanetaryfund.com are separate from eligible member mailboxes ending in @mail.interplanetaryfund.com. Verification codes stay isolated from both. Email routing is not live until the service and DNS are tested. If a message will not open or an address cannot be made, try again later. Do not share your code with anyone.
 Updated: ${reviewed}.`,
     keywords: ["verification","2fa","two factor","email","signup","sign-up"]
   }

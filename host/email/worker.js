@@ -7,7 +7,7 @@ const encoder=new TextEncoder();
 const fromB64=value=>Uint8Array.from(atob(value),ch=>ch.charCodeAt(0));
 const hex=bytes=>[...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');
 const trim=(value,length)=>String(value||'').slice(0,length);
-const validRecipient=to=>/^[^\s@<>\u0000-\u001f]{1,64}@interplanetaryfund\.com$/.test(to);
+const validRecipient=to=>/^[^\s@<>\u0000-\u001f]{1,64}@(mail\.)?interplanetaryfund\.com$/.test(to);
 async function sign(secret,stamp,body) {
   const key=await crypto.subtle.importKey('pkcs8',fromB64(secret),{name:'ECDSA',namedCurve:'P-256'},false,['sign']);
   return hex(await crypto.subtle.sign({name:'ECDSA',hash:'SHA-256'},key,encoder.encode(stamp+'.'+body)));
@@ -33,12 +33,11 @@ export default {
         }
       }catch(e){console.error('Email parsing skipped',e?.name||'Error');}
     }
-    const isVerification=to.startsWith('verify-');
+    const isVerification=to.endsWith('@interplanetaryfund.com') && to.startsWith('verify-');
     // Explicit IFund-operated mailboxes only. Never forward customer mail to the owner.
-    const adminLocalParts=new Set(['contact','support','admin','ifund','campaigns','help','developer','partner','crowdfund']);
-    const localPart=to.slice(0,to.indexOf('@'));
-    const isAdmin=adminLocalParts.has(localPart);
-    const isMember=!isVerification&&!isAdmin;
+    // Root-domain mail belongs to IFund; paid member mail uses its own subdomain.
+    const isAdmin=to.endsWith('@interplanetaryfund.com') && !isVerification;
+    const isMember=to.endsWith('@mail.interplanetaryfund.com');
     if(isVerification && !/^verify-[a-f0-9]{32}@interplanetaryfund\.com$/.test(to)) {
       message.setReject('Unknown verification mailbox'); return;
     }
@@ -72,7 +71,8 @@ export default {
       if(isVerification) message.setReject('Verification email cannot be received');
       return;
     }
-    const endpoint=String(env.IFUND_EMAIL_RECEIVER_URL||'');
+    // Organization messages go to independent Supabase; verification stays on its isolated handler.
+    const endpoint=String((isAdmin?env.IFUND_ADMIN_EMAIL_RECEIVER_URL:env.IFUND_EMAIL_RECEIVER_URL)||'');
     const secret=String(env.IFUND_EMAIL_SIGNING_PRIVATE_KEY||'');
     if(!endpoint.startsWith('https://')||!secret) {console.error('Inbox mirror not configured');if(isVerification)message.setReject('Verification inbox unavailable');return;}
     try{

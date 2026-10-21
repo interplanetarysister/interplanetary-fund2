@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Radio, Loader2, Link2, RefreshCw, Users, Newspaper } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,8 @@ import PageError from "@/components/PageError";
 import { isUsableConnection } from "@/lib/connectionHealth";
 
 export default function Social() {
+  const location = useLocation();
+  const imageStudioShare = location.state?.ifundImageStudio;
   const [user, setUser] = useState(null);
   const [connections, setConnections] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -128,6 +130,7 @@ export default function Social() {
               <>
                 {user && (
                   <PostComposer
+                    initialShare={imageStudioShare}
                     user={user}
                     connections={userConnections}
                     campaigns={campaigns}

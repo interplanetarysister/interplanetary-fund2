@@ -1,5 +1,5 @@
 {
-  "reviewed_at": "2026-10-19",
+  "reviewed_at": "2026-10-16",
   "notice": "When any workflow code changes, update its built-in Help article and refresh the recorded hashes after reviewing the actual new steps.",
   "workflows": [
     {
@@ -44,7 +44,7 @@
         "src/components/inbox/VerificationInboxPanel.jsx": "53dba3197d87902931236e1f7e4d8460686006572e4aea106f9bb62df1291b62",
         "base44/functions/manageVerificationMailbox/entry.ts": "d0cfc729165dc9a6fcebaebaf7150268c9592ad8f325322b55d2ea88340d0353",
         "base44/functions/receiveCloudflareEmail/entry.ts": "a792ffe8d262e64e9e8f6dc074ac8c47f991543b8b9e36d6f6cbf61f8e2db04d",
-        "host/email/worker.js": "8cae956fc36d17b021ca6d070c6a3f1694db0ec45939590382b7b134726cdad5"
+        "host/email/worker.js": "6f2c62fe0cefe992b7b252786f8260dfeebfae8e54e94d678083abf2b9418401"
       }
     }
   ]

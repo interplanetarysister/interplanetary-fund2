@@ -129,10 +129,72 @@ async function callAgentRuntime(env, request, payload) {
   return { response:r, result };
 }
 
+// Preview-only independent identity verification. This never authorizes access
+// to migrated campaigns, financial records, agent actions, or Base44 accounts.
+// It verifies a Supabase session against Supabase Auth, not a decoded JWT claim.
+async function verifyIndependentSession(request, env) {
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+  if (env.IFUND_INDEPENDENT_AUTH_PREVIEW !== "enabled") {
+    return json({ error: "Independent authentication preview disabled", cutover_ready: false }, 503);
+  }
+  const authorization = request.headers.get("authorization") || "";
+  if (!/^Bearer [^\s]{20,4096}$/.test(authorization)) {
+    return json({ error: "Bearer token required" }, 401);
+  }
+  const projectRef = String(env.IFUND_SUPABASE_PROJECT_REF || "").trim();
+  const publishableKey = String(env.IFUND_SUPABASE_PUBLISHABLE_KEY || "").trim();
+  // The URL is constructed from a validated project reference. Never send
+  // bearer credentials to an arbitrary configurable verification URL.
+  if (!/^[a-z0-9]{20}$/.test(projectRef) || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
+    return json({ error: "Independent authentication is not configured" }, 503);
+  }
+  try {
+    const endpoint = `https://${projectRef}.supabase.co/auth/v1/user`;
+    const response = await fetch(endpoint, {
+      method: "GET",
+      headers: { authorization, apikey: publishableKey, accept: "application/json" },
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (response.status === 401 || response.status === 403) {
+      return json({ authenticated: false }, 401);
+    }
+    if (!response.ok) return json({ error: "Identity provider unavailable" }, 503);
+    const user = await response.json().catch(() => null);
+    if (!user || typeof user.id !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id)) {
+      return json({ error: "Invalid identity response" }, 502);
+    }
+    return json({
+      authenticated: true,
+      provider: "supabase",
+      migration_authorization: "not_verified",
+      campaign_access_granted: false,
+      cutover_ready: false,
+    });
+  } catch {
+    return json({ error: "Identity provider unavailable" }, 503);
+  }
+}
+
 export default { async fetch(request, env) {
   const url=new URL(request.url);
 
-  if(url.pathname==="/api/health" || url.pathname.startsWith("/api/health/")){
+  // Independent cutover must not be declared ready while MCP and core
+  // account/campaign authority still depend on Base44. This is intentionally
+  // separate from process liveness (/api/health), which remains healthy.
+  if(/^\/api\/health\/readiness\/*$/.test(url.pathname)){
+    if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
+    return json({
+      ready:false,
+      status:"migration_in_progress",
+      independent_backend:false,
+      blockers:["base44_mcp_proxy","base44_auth_authority","base44_campaign_authority"]
+    },503);
+  }
+
+  if(url.pathname==="/api/health" || url.pathname==="/api/health/"){
     if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
     return json({
       ok:true,
@@ -141,6 +203,10 @@ export default { async fetch(request, env) {
       mcp_proxy:"base44",
       status:"healthy"
     });
+  }
+
+  if(url.pathname==="/api/v1/migration/auth/session"){
+    return verifyIndependentSession(request, env);
   }
 
   if(isMcpProxyPath(url.pathname)){
