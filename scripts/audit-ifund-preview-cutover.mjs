@@ -2,9 +2,14 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const origin = (process.env.IFUND_PREVIEW_URL || 'https://interplanetary-fund2.interplanetary-fund.workers.dev').replace(/\/$/, '');
 const local = JSON.parse(fs.readFileSync('dist/ifund-build.json', 'utf8'));
+// The dist manifest may be from a previous build. Compare deployed code to
+// current source, not to whichever release happens to remain in dist/.
+const sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const localBuildMatchesSource = local.source_commit === sourceCommit;
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const isManifest = m => !!m && m.schema_version === 1 && /^[0-9a-f]{40}$/.test(m.source_commit || '') &&
   /^\/assets\/index-[\w-]+\.js$/.test(m.entry_asset || '') && /^[0-9a-f]{64}$/.test(m.entry_sha256 || '');
@@ -17,12 +22,14 @@ const safeGet = async path => {
 const parseJson = bytes => { try { return JSON.parse(bytes.toString('utf8')); } catch { return null; } };
 const inspect = (manifest, assetHash, health, readiness, slash) => {
   const provenance = isManifest(manifest) && assetHash === manifest.entry_sha256;
-  const sourceParity = provenance && manifest.source_commit === local.source_commit;
+  const sourceParity = provenance && manifest.source_commit === sourceCommit;
   const liveness = health?.status === 200 && health?.body?.ok === true && health?.body?.runtime === 'cloudflare-worker';
   const failClosed = response => response?.status === 503 && response?.body?.ready === false && response?.body?.independent_backend === false;
   return {
     preview_source_commit: isManifest(manifest) ? manifest.source_commit : null,
-    expected_source_commit: local.source_commit,
+    expected_source_commit: sourceCommit,
+    local_build_source_commit: local.source_commit,
+    local_build_matches_source: localBuildMatchesSource,
     manifest_and_asset_verified: Boolean(provenance),
     source_parity: Boolean(sourceParity),
     worker_liveness_verified: liveness,
@@ -30,7 +37,7 @@ const inspect = (manifest, assetHash, health, readiness, slash) => {
     trailing_slash_fail_closed: failClosed(slash),
     independent_cutover_ready: false,
     // A 503 fail-closed is REQUIRED while Base44 owns auth, campaigns and MCP.
-    preview_audit_pass: Boolean(sourceParity && liveness && failClosed(readiness) && failClosed(slash)),
+    preview_audit_pass: Boolean(localBuildMatchesSource && sourceParity && liveness && failClosed(readiness) && failClosed(slash)),
   };
 };
 if (process.env.IFUND_AUDIT_SELFTEST === '1') {
