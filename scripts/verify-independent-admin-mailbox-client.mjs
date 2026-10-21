@@ -10,7 +10,7 @@ assert.match(src, /error\.status=response\.status/, 'HTTP authorization failures
 assert.match(src, /if\(e\?\.status===401\|\|e\?\.status===403\)signOut\(\)/, 'expired/revoked sessions must sign out');
 assert.ok(src.includes('sessionGeneration.current+=1;abortPendingRequests();setToken('), 'sign-out must invalidate pending responses and cancel in-flight requests');
 assert.match(src, /const signOut=\(\)=>\{[^}]*setEmail\(""\);setPassword\(""\);/, 'sign-out must erase the administrator email identifier and password from the shared-device form');
-assert.match(src, /setReady\(false\);setItems\(\[\]\);try\{const r=await request/, 'refresh must hide previously loaded private mail');
+assert.match(src, /setReady\(false\);setItems\(\[\]\);try\{const r=await cancellableRequest/, 'refresh must hide previously loaded private mail');
 assert.match(src, /if\(generation!==sessionGeneration\.current\)return/, 'stale async responses must not repopulate private mail');
 assert.match(src, /Number\(s\.expires_in\)/, 'sign-in must validate server session lifetime');
 assert.match(src, /const newExpiresAt=Date\.now\(\)\+expiresIn\*1000;setToken\(s\.access_token\);setExpiresAt\(newExpiresAt\);await load\(s\.access_token,newExpiresAt\)/, 'fresh sign-in must use newly issued expiry when loading mail');
