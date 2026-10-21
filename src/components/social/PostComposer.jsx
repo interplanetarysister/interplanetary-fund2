@@ -147,6 +147,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
           try {
             const { data: distributed } = await base44.functions.invoke("createDistributedPost", {
               campaign_id: campaign.id, connection_id: conn.id, content: content.trim(),
+              media_url: mediaUrl || undefined,
             });
             if (distributed?.ok !== true || !distributed?.post?.id) {
               failedCount += 1;
