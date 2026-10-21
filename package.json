@@ -107,7 +107,7 @@
     "verify:agent-member-language": "node scripts/verify-agent-member-language.mjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.55",
+    "@base44/sdk": "^0.8.56",
     "@base44/vite-plugin": "^1.0.47",
     "@capacitor/android": "8.4.3",
     "@capacitor/core": "8.4.3",
