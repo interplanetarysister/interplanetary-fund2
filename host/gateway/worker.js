@@ -132,6 +132,19 @@ async function callAgentRuntime(env, request, payload) {
 export default { async fetch(request, env) {
   const url=new URL(request.url);
 
+  // Independent cutover must not be declared ready while MCP and core
+  // account/campaign authority still depend on Base44. This is intentionally
+  // separate from process liveness (/api/health), which remains healthy.
+  if(url.pathname==="/api/health/readiness"){
+    if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
+    return json({
+      ready:false,
+      status:"migration_in_progress",
+      independent_backend:false,
+      blockers:["base44_mcp_proxy","base44_auth_authority","base44_campaign_authority"]
+    },503);
+  }
+
   if(url.pathname==="/api/health" || url.pathname.startsWith("/api/health/")){
     if(request.method!=="GET" && request.method!=="HEAD") return json({error:"Method not allowed"},405);
     return json({
