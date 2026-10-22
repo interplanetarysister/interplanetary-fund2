@@ -183,7 +183,9 @@ async function verifyIndependentSession(request, env) {
   const publishableKey = String(env.IFUND_SUPABASE_PUBLISHABLE_KEY || "").trim();
   // The URL is constructed from a validated project reference. Never send
   // bearer credentials to an arbitrary configurable verification URL.
-  if (!/^[a-z0-9]{20}$/.test(projectRef) || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
+  // Pin this preview to IFund's designated destination project. A mistaken
+  // environment value must not authenticate identities from another tenant.
+  if (projectRef !== "tzehxfikoslihnclhxuz" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
     return json({ error: "Independent authentication is not configured" }, 503);
   }
   try {
@@ -245,8 +247,9 @@ export default { async fetch(request, env) {
 
   if(url.pathname==="/api/v1/migration/auth/session"){
     const origin=request.headers.get("origin")||"";
-    const allowed=new Set(["https://interplanetaryfund.com","https://www.interplanetaryfund.com","https://interplanetaryfund.base44.app","https://interplanetary-fund2.interplanetary-fund.workers.dev"]);
-    if(origin && !allowed.has(origin)) return json({error:"Origin not allowed"},403);
+    // Reuse the same deploy-time origin allowlist as the other protected
+    // endpoints; a separate hardcoded list could silently drift.
+    if(origin && !allowedOrigin(request,env)) return json({error:"Origin not allowed"},403);
     const headers={"cache-control":"no-store","vary":"Origin"};
     if(origin) headers["access-control-allow-origin"]=origin;
     if(request.method==="OPTIONS"){
