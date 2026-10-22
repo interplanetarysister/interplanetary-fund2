@@ -120,13 +120,30 @@ async function callAgentRuntime(env, request, payload) {
   if(!Object.keys(auth).length) {
     return { response: json({error:"Administrator authorization required."},401), result:null };
   }
-  const r=await fetch(env.IFUND_AGENT_EXECUTE_URL,{
-    method:"POST",
-    headers:{"content-type":"application/json",...auth},
-    body:JSON.stringify(payload),
-  });
-  const result=await r.json().catch(()=>({}));
-  return { response:r, result };
+  // Admin credentials must never be sent to a non-HTTPS runtime or
+  // automatically forwarded to a redirect target.
+  let endpoint;
+  try {
+    endpoint=new URL(env.IFUND_AGENT_EXECUTE_URL);
+    if(endpoint.protocol!=="https:" || endpoint.username || endpoint.password) throw Error("Invalid agent runtime URL");
+  }catch{
+    return { response:json({error:"Development agent runtime URL is invalid.",degraded:true},503), result:null };
+  }
+  try {
+    const r=await fetch(endpoint.toString(),{
+      method:"POST",
+      headers:{"content-type":"application/json",...auth},
+      body:JSON.stringify(payload),
+      redirect:"manual",
+    });
+    if(r.status>=300 && r.status<400) {
+      return { response:json({error:"Development agent runtime redirect rejected.",degraded:true},502), result:null };
+    }
+    const result=await r.json().catch(()=>({}));
+    return { response:r, result };
+  }catch{
+    return { response:json({error:"Development agent runtime unavailable.",degraded:true},502), result:null };
+  }
 }
 
 // Preview-only independent identity verification. This never authorizes access
