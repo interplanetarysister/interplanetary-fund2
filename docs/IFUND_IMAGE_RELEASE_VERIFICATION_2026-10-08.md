@@ -36,3 +36,14 @@ After publishing main:
 7. Revoke/omit image-editing API credentials and verify the credit-free fallback still works.
 
 A real third-party image-edit request may incur provider charges; test only with authorized budget and billing controls.
+
+
+## Automatic watermark UX repair — 2026-10-22
+
+Owner clarification: uploads and generated media must apply watermark policy automatically; no separate Use IFund version step. Removed the restyle/version chooser from MediaUpload and PostComposer. Generate Image continues creating and selecting the processed result through brandAndUploadGeneratedImage; uploads continue through uploadUserImage. Free photo uploads/generation receive burned-in branding automatically; current active-paid/admin entitlement skips branding. Prevent social publishing while upload/generation is pending. Updated built-in campaign help.
+
+Reuse decision: retained existing browser Canvas branding and server sharp pipeline (https://github.com/lovell/sharp; Apache-2.0 LICENSE inspected), without adding dependencies, provider services, generation calls, or metered builds. No new library was needed for removing the redundant controls.
+
+Verification: targeted ESLint passed for both changed components and workflowHelpGuides. Deterministic Vite build emitted /tmp/ifund-watermark-build/index.html but command exceeded its 20-second transport timeout; final build exit unverified. Confirmed removed chooser symbols no longer occur in either component. No real AI generation or upload request was executed.
+
+Remaining: live publishing and authenticated browser interaction have not been verified. Video/non-image upload bypass remains; no claim of universal media watermarking. Automatic replacement of previously burned-in watermarks after an account upgrades is not implemented: clean originals and server-verified asset lifecycle are needed. The campaign launch 500 remains unconfirmed; image-policy errors are a suspect, not an established root cause. Rollback: restore the preceding Base44 checkpoint/source revision for these component/help changes.
