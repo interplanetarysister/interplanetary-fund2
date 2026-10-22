@@ -2,6 +2,7 @@ import { PUBLIC_IFUND_ORIGIN } from "./campaignSharing";
 import { loadGeneratedImage, resolveGeneratedImageUrl } from "./generatedMedia";
 import { BRAND_MARK } from "@/components/brand/brand";
 import { effectiveSubscription } from "./subscriptionEntitlements";
+import { createIfundPhotoTreatment } from "./ifundPhotoTreatment";
 
 export const IFUND_WATERMARK_TEXT = "interplanetaryfund.com";
 export const IFUND_WATERMARK_LOGO = BRAND_MARK;
@@ -120,16 +121,22 @@ export async function uploadUserImage(base44, file, { publicFile = false } = {})
     return (publicFile ? base44.integrations.Core.UploadPublicFile({ file }) : base44.integrations.Core.UploadFile({ file })).then(r => r.file_url);
   }
   const localUrl = URL.createObjectURL(file);
+  let styledUrl;
   try {
     // For user images, publish only the processed asset URL.
     const clean = await userMaySkipImageWatermark(base44);
-    const blob = clean ? file : await prepareBrandedImageBlob(localUrl);
-    const safeFile = new File([blob], clean ? file.name : `ifund-${Date.now()}.png`, { type: clean ? file.type : "image/png" });
+    // Styling and watermark policy are one automatic pipeline. Paid status
+    // removes only IFund's watermark, never the IFund photo treatment.
+    const styled = await createIfundPhotoTreatment(localUrl);
+    styledUrl = URL.createObjectURL(styled);
+    const blob = clean ? styled : await prepareBrandedImageBlob(styledUrl);
+    const safeFile = new File([blob], `ifund-${Date.now()}.png`, { type: "image/png" });
     const result = await (publicFile ? base44.integrations.Core.UploadPublicFile({ file: safeFile }) : base44.integrations.Core.UploadFile({ file: safeFile }));
     if (!result?.file_url) throw new Error("Image upload failed");
     return result.file_url;
   } finally {
     URL.revokeObjectURL(localUrl);
+    if (styledUrl) URL.revokeObjectURL(styledUrl);
   }
 }
 

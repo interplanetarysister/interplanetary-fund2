@@ -31,7 +31,7 @@ const variation=Math.abs(Number(regenCount)||0);const safeTitle=escapePromptData
 return `Create a genuinely original campaign cover image for Interplanetary Fund.
 
 SIGNATURE, NOT A TEMPLATE:
-Interplanetary Fund's visual identity combines cyberpunk, steampunk, interstellar science fiction, space-comic/graphic-novel art, and occasional afropunk/afrofuturist influence. Preserve that recognizable family while deliberately changing visual grammar between generations. Do not make every cover a neon portrait. Creativity and campaign relevance are core requirements.
+Interplanetary Fund's visual identity combines cyberpunk, steampunk, interstellar science fiction, space-comic/graphic-novel art, occasional afropunk/afrofuturist influence, and futuristic-mystical-nature elements. Preserve that recognizable family while deliberately changing visual grammar between generations. Do not make every cover a neon portrait. Creativity and campaign relevance are core requirements.
 
 THIS GENERATION'S ART DIRECTION:
 - Art language: ${pick(ART_DIRECTIONS,variation,3)}.
@@ -40,6 +40,9 @@ THIS GENERATION'S ART DIRECTION:
 - Human representation: ${pick(HUMAN_VARIATION,variation,3)}
 - Grounded campaign motif: ${SCENES[safeCategory]}.
 - Generation variation index: ${variation+1}. Treat regeneration as a request for a meaningfully different concept, not a minor pose/color change.
+
+FUTURISTIC-MYSTICAL-NATURE:
+Extend the IFund signature with organic futuristic architecture, bioluminescent botanical details, aurora-like mystical atmosphere, celestial gardens, and nature integrated with hopeful technology. Use these as restrained artistic accents suited to this campaign, never as evidence of real events, supernatural outcomes, or a changed beneficiary or setting.
 
 CREATIVE RANGE:
 Vary camera distance, perspective, setting, sci-fi design era, materials, fashion, technology, celestial phenomena, panel composition, texture, lighting, density, and whether people appear. Cyberpunk can be quiet, bright, rural, intimate, industrial, elegant, gritty, or surreal. Steampunk can contribute brass/copper machinery, analog instruments, gears, pipes, airship/orbital engineering, Victorian-futurist craft, and tactile mechanical detail without overwhelming the subject. Interstellar language can come from scale, orbital design, strange light, planetary geography, spacecraft, astronomy, or cosmic abstraction. Space-comic language can use inks, halftones, panel energy, graphic shadows, painted sequential art, retro pulp, manga-influenced dynamism, or modern graphic-novel realism. Afropunk/afrofuturist influence can appear through fashion, hair, pattern, music-poster energy, craft, jewelry, color, rebellious DIY technology, cultural futurism, and design motifs without forcing the race of every depicted person.
