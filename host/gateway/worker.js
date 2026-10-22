@@ -81,9 +81,30 @@ function forwardedAdminAuth(request) {
 async function verifyPlatformAdmin(request, env) {
   const auth = forwardedAdminAuth(request);
   if (!Object.keys(auth).length || !env.IFUND_ADMIN_VERIFY_URL) return null;
-  const r=await fetch(env.IFUND_ADMIN_VERIFY_URL,{headers:{...auth,accept:"application/json"}});
-  if(!r.ok) return null;
-  const user=await r.json(); return user?.role==="admin" && user?.super_admin===true ? user : null;
+  // Never forward administrator bearer credentials or cookies to HTTP,
+  // embedded-credential URLs, or an automatic redirect destination.
+  let endpoint;
+  try {
+    endpoint = new URL(env.IFUND_ADMIN_VERIFY_URL);
+    if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: { ...auth, accept: "application/json" },
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok || (response.status >= 300 && response.status < 400)) return null;
+    const user = await response.json().catch(() => null);
+    return user?.role === "admin" && user?.super_admin === true &&
+      typeof user.id === "string" && user.id.length > 0 ? user : null;
+  } catch {
+    return null;
+  }
 }
 function b64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 async function sessionSignature(payload,env){
