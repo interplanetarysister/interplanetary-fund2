@@ -22,6 +22,7 @@ try{
    const url=route.request().url();const body=data=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
    if(url.includes('public-settings/by-id/'))return body({id:'6a67a778342a8fe05ee79cba',public_settings:'public_without_login'});
    if(url.includes('/User/me'))return body({id:'voice-user',role:'admin',username:'VoiceTester',subscription_tier:'enterprise'});
+   if(url.includes('recordLegalAcceptance'))return body({accepted:true,terms_version:'2026-10-13-v3'});
    if(url.includes('/Notification'))return body([]);
    if(url.includes('getFeatureAvailability'))return body({available:{ai_campaign_assistant:true}});
    if(url.includes('getFundraisingMode'))return body({public_campaign_fundraising:true});
