@@ -24,7 +24,7 @@ export default function ShareCampaignKit({ campaign }) {
     campaign.title || "Support this campaign",
     campaign.summary || "",
     embed.url,
-  ].filter(Boolean).join("\\n\\n");
+  ].filter(Boolean).join("\n\n");
 
   const copy = async (which, text, ref) => {
     const success = await copyText(text, ref?.current);
