@@ -76,7 +76,7 @@ function classify(agent, work, drafts, suggestions, seenAt, statusLoaded) {
   if (newest?.status === "responding" || newest?.status === "in_progress") {
     return { kind: "idle", text: "Update overdue", detail: "Previous work status has not been refreshed recently.", count: 0 };
   }
-  return { kind: "idle", text: "Available", detail: "Select to chat or assign a request.", count: 0 };
+  return { kind: "idle", text: "Available", detail: "Available for assignments through Chief of Staff.", count: 0 };
 }
 
 export default function AgentMonitor({ user, agents, canUseAdminTools }) {
@@ -154,7 +154,10 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     agent, signal: classify(agent, work, drafts, suggestions, seen[agent.name] || 0, statusLoaded),
   })), [agents, work, drafts, suggestions, seen, statusLoaded]);
 
+  const canChatWithAgent = (agent) => agent.name === "chief_of_staff" || agent.name === "support" || agent.name === "support_agent";
+
   const openAgent = (agent) => {
+    if (!canChatWithAgent(agent)) return;
     const now = Date.now();
     try { window.localStorage.setItem(readKey(user.id, agent.name), String(now)); }
     catch { /* A private browser may not persist read indicators. */ }
@@ -177,7 +180,7 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     <header className="mb-4 flex items-center justify-between gap-3">
       <div className="min-w-0">
         <h1 className="font-display text-2xl font-bold text-foreground">Your AI Team</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Choose an agent to chat or review work.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Chat with the Chief of Staff or Support. Follow specialist progress below.</p>
       </div>
       <button type="button" onClick={refresh} disabled={loading} aria-label="Refresh agent activity"
         className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground" title="Refresh">
@@ -218,21 +221,21 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
         const Icon = agent.icon;
         return <button type="button" key={agent.name} onClick={() => openAgent(agent)}
           className="flex min-h-[76px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
-          aria-label={"Talk to " + agent.label + ", " + signal.text}>
+          aria-label={(canChatWithAgent(agent) ? "Talk to " : "Specialist status: ") + agent.label + ", " + signal.text}>
           <AgentPlanet kind={signal.kind} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2 text-base font-semibold text-foreground">
               <Icon className="h-4 w-4 shrink-0 text-primary" />
               <span className="truncate">{agent.label}</span>
             </span>
-            <span className="mt-1 block truncate text-sm text-muted-foreground">{signal.kind === "idle" && signal.text === "Available" ? "Tap to chat" : signal.detail}</span>
+            <span className="mt-1 block truncate text-sm text-muted-foreground">{signal.kind === "idle" && signal.text === "Available" ? (canChatWithAgent(agent) ? "Tap to chat" : "Works through Chief of Staff") : signal.detail}</span>
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <span className="flex max-w-[80px] flex-col items-end text-right">
               <span className={"text-xs font-semibold " + (signal.kind === "new" ? "text-amber-700 dark:text-amber-300" : signal.kind === "working" ? "text-cyan-700 dark:text-cyan-300" : "text-muted-foreground")}>{signal.text}</span>
               {signal.count > 0 && <span className="text-xs text-muted-foreground">{signal.count} new</span>}
             </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            {canChatWithAgent(agent) && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
           </span>
         </button>;
       })}
