@@ -6,7 +6,7 @@ export function campaignVoiceCommand(value) {
   if (/^(stop|cancel|stop speaking|be quiet)$/.test(lower)) return { action: 'stop' };
   if (/^(help|what can i say)$/.test(lower)) return { action: 'help' };
   if (/^(read|read back|read my campaign|review|review campaign)$/.test(lower)) return { action: 'review' };
-  if (/^(save|save draft|save (it|this|my campaign) as a draft|save my draft)$/.test(lower)) return { action: 'save' };
+  if (/^(save|save draft|save as a draft|save (it|this|my campaign) as a draft|save my draft)$/.test(lower)) return { action: 'save' };
   if (/^(generate|create|make)( me)? (an? |the )?(image|picture|photo|cover)( for (it|my campaign))?$/.test(lower)) return { action: 'image' };
   if (/^(generate|create|make|write)( me)? (a |the |my )?story$/.test(lower)) return { action: 'story' };
   if (/^(generate|create|make|show)( me)? (five |5 |some )?(titles|title ideas|title choices)$/.test(lower)) return { action: 'titles' };

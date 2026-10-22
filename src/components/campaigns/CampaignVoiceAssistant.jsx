@@ -20,7 +20,8 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
   const [history,setHistory]=useState([{role:'assistant',text:'Welcome to the simulated Alexa+ campaign experience. Tell me what you want to raise funds for.'}]);
   const [notice,setNotice]=useState('');
   const [receipt,setReceipt]=useState('');
-  const lock=useRef(false), recognition=useRef(null), mounted=useRef(true), voiceReply=useRef(''), generation=useRef(0);
+  const lock=useRef(false), recognition=useRef(null), mounted=useRef(true), generation=useRef(0), latestForm=useRef(form);
+  latestForm.current=form;
   const speechSupported=typeof window!=='undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
   const synthesisSupported=typeof window!=='undefined' && Boolean(window.speechSynthesis);
   const lastReply=history.filter(item=>item.role==='assistant').at(-1)?.text || '';
@@ -29,7 +30,6 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
     return ()=>{mounted.current=false;generation.current++;recognition.current?.abort();window.speechSynthesis?.cancel();};
   },[]);
   const speak=(text)=>{
-    voiceReply.current=text;
     if(!audio || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance=new SpeechSynthesisUtterance(text.slice(0,3500));
@@ -44,6 +44,7 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
   const run=async(raw)=>{
     if(lock.current || saving)return;
     const text=String(raw || '').trim().slice(0,4000);if(!text)return;
+    setReceipt('');
     recognition.current?.abort();window.speechSynthesis?.cancel();setListening(false);
     setInput('');setNotice('');setHistory(items=>[...items.slice(-39),{role:'user',text}]);
     const command=campaignVoiceCommand(text);
@@ -95,6 +96,7 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
         const titles=[...new Set((result?.options || []).filter(x=>typeof x==='string' && x.trim()).map(x=>x.trim().slice(0,100)))];
         if(titles.length!==5)throw Error('titles');setOptions(titles);reply('Here are five title choices. '+titles.map((title,index)=>`${index+1}. ${title}`).join(' ')+'. Say choose the second title, or tap your choice.');
       }else{
+        if (latestForm.current.story !== form.story || latestForm.current.title !== form.title) { reply('Your campaign changed while I was writing. I kept your latest edits. Ask me to write again when ready.'); return; }
         const story=String(result?.story || '').trim();if(!story || story.length>18000)throw Error('story');
         onPatch({story,summary:typeof result.summary==='string'?result.summary.slice(0,180):story.replace(/\s+/g,' ').slice(0,180)});setReceipt('');reply('Your story is ready in the campaign form. Say read my campaign, create a picture, or save as a draft.');
       }
