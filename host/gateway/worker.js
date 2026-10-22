@@ -218,6 +218,68 @@ async function verifyIndependentSession(request, env) {
   }
 }
 
+// Read-only destination campaign preview. The RPC is security-definer but
+// explicitly joins a verified destination UID to its source owner, and returns
+// no finance ledger fields. The Worker independently verifies each returned
+// owner UID and never falls back to Base44 when the destination is unavailable.
+async function readIndependentCampaigns(request, env) {
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+  if (env.IFUND_INDEPENDENT_AUTH_PREVIEW !== "enabled")
+    return json({ error: "Independent campaign preview disabled", cutover_ready: false }, 503);
+  const authorization = request.headers.get("authorization") || "";
+  if (!/^Bearer [^\s]{20,4096}$/.test(authorization))
+    return json({ error: "Bearer token required" }, 401);
+  const projectRef = String(env.IFUND_SUPABASE_PROJECT_REF || "").trim();
+  const publishableKey = String(env.IFUND_SUPABASE_PUBLISHABLE_KEY || "").trim();
+  if (projectRef !== "tzehxfikoslihnclhxuz" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey))
+    return json({ error: "Independent campaign backend is not configured" }, 503);
+  const host = `https://${projectRef}.supabase.co`;
+  const headers = { authorization, apikey: publishableKey, accept: "application/json" };
+  try {
+    const verified = await fetch(host + "/auth/v1/user", {
+      method: "GET", headers, redirect: "manual", cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (verified.status === 401 || verified.status === 403)
+      return json({ error: "Independent authentication required" }, 401);
+    if (!verified.ok) return json({ error: "Identity provider unavailable" }, 503);
+    const user = await verified.json().catch(() => null);
+    if (!user || typeof user.id !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id))
+      return json({ error: "Invalid identity response" }, 502);
+
+    const result = await fetch(host + "/rest/v1/rpc/ifund_migration_my_campaigns", {
+      method: "POST", headers: { ...headers, "content-type": "application/json" },
+      body: "{}", redirect: "manual", cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (result.status === 401 || result.status === 403)
+      return json({ error: "Independent campaign access denied" }, 403);
+    if (!result.ok) return json({ error: "Independent campaign backend unavailable" }, 503);
+    const raw = await result.text();
+    if (raw.length > 200000) return json({ error: "Invalid campaign response" }, 502);
+    let rows;
+    try { rows = JSON.parse(raw); } catch { return json({ error: "Invalid campaign response" }, 502); }
+    if (!Array.isArray(rows) || rows.length > 50)
+      return json({ error: "Invalid campaign response" }, 502);
+    const fields = ["source_id", "title", "summary", "story", "status", "category",
+      "goal_amount", "cover_image_url", "end_date", "location", "source_updated_at"];
+    const campaigns = [];
+    for (const row of rows) {
+      if (!row || row.owner_auth_uid !== user.id ||
+          typeof row.source_id !== "string" || typeof row.title !== "string")
+        return json({ error: "Campaign ownership verification failed" }, 502);
+      const safe = {};
+      for (const field of fields) safe[field] = row[field] ?? null;
+      campaigns.push(safe);
+    }
+    return json({ campaigns, source: "independent_shadow", read_only: true,
+      financial_authoritative: false, cutover_ready: false });
+  } catch {
+    return json({ error: "Independent campaign backend unavailable" }, 503);
+  }
+}
+
 export default { async fetch(request, env) {
   const url=new URL(request.url);
 
@@ -258,6 +320,22 @@ export default { async fetch(request, env) {
       return new Response(null,{status:204,headers});
     }
     const result=await verifyIndependentSession(request,env);
+    const out=new Headers(result.headers);
+    for(const [key,value] of Object.entries(headers)) out.set(key,value);
+    return new Response(result.body,{status:result.status,headers:out});
+  }
+
+  if(url.pathname==="/api/v1/migration/campaigns"){
+    const origin=request.headers.get("origin")||"";
+    if(origin && !allowedOrigin(request,env)) return json({error:"Origin not allowed"},403);
+    const headers={"cache-control":"no-store","vary":"Origin"};
+    if(origin) headers["access-control-allow-origin"]=origin;
+    if(request.method==="OPTIONS"){
+      headers["access-control-allow-methods"]="GET, OPTIONS";
+      headers["access-control-allow-headers"]="Authorization, Content-Type";
+      return new Response(null,{status:204,headers});
+    }
+    const result=await readIndependentCampaigns(request,env);
     const out=new Headers(result.headers);
     for(const [key,value] of Object.entries(headers)) out.set(key,value);
     return new Response(result.body,{status:result.status,headers:out});
