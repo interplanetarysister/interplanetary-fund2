@@ -70,3 +70,10 @@ Target: Interplanetary Fund Base44 project source
 6. Test the free branded graphic without image-generation credits.
 7. Verify a fully completed campaign can publish, while blank drafts remain
    private and are not exposed in public search.
+
+
+## Campaign supporter input simplification — 2026-10-22
+
+One optional supporter question replaces donor-discovery notes, ideal donors, and interested organizations inputs in AIInstructionsStep. Legacy distinct answers combine into one visible editable value; any edit normalizes them into donor_discovery_notes and clears the superseded fields, including when the user clears the answer. Beneficiary and campaign purpose questions remain distinct. Outreach reads canonical notes with legacy fallback and researches beyond optional creator guesses. Campaign protocol no longer requires optional AI profile answers or generates reminders for them. Built-in help updated.
+
+Reused existing React controls and profile/schema instead of adding a form library or provider; no dependency changes or paid generation calls. Targeted ESLint passed. Deterministic behavior checks passed for preservation, deduplication, clearing, and unrelated profile edits. No production workflow, AI request, or live publishing invoked. Published UI and live backend behavior remain unverified. Restore preceding checkpoint to roll back.
