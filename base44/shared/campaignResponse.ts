@@ -4,7 +4,7 @@
 const CAMPAIGN_RESPONSE_FIELDS = [
   'id', 'created_by_id', 'created_date', 'updated_date',
   'title', 'summary', 'story', 'category', 'goal_amount', 'raised_amount',
-  'donor_count', 'status', 'cover_image_url', 'end_date', 'location',
+  'donor_count', 'status', 'cover_image_url', 'cover_image_is_ai', 'end_date', 'location',
   'location_lat', 'location_lng', 'cashapp_tag',
   'distribution_donation_connection_id', 'accept_crypto_donations',
   'ai_profile', 'story_versions', 'outreach_enabled', 'outreach_paused',

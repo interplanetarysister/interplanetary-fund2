@@ -50,6 +50,11 @@
       ],
       "default": "active"
     },
+    "cover_image_is_ai": {
+      "type": "boolean",
+      "default": false,
+      "description": "Creator-disclosed AI-generated cover illustration; depicted people may be representative."
+    },
     "cover_image_url": {
       "type": "string"
     },

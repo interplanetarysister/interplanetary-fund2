@@ -97,6 +97,7 @@ run_worker_first = [
   "/v1/admin/agents/*",
   "/api/health",
   "/api/health/*",
+  "/api/v1/campaign-assistant",
   "/api/v1/migration/auth/session",
   "/api/v1/migration/campaigns",
   "/api/v1/agent/*",
@@ -107,3 +108,7 @@ run_worker_first = [
   "/.well-known/oauth-*",
   "/.well-known/openid-configuration"
 ]
+
+# Campaign assistance is dormant until an explicit, budget-verified activation.
+# Provision AI and CAMPAIGN_AI_LIMITER bindings only after free-tier eligibility
+# and quota approval. Never enable paid fallbacks. See host/gateway/README.md.

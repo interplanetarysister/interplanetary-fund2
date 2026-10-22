@@ -42,7 +42,7 @@ export default function CreateCampaign() {
   const [regenCount, setRegenCount] = useState(0);
   const [form, setForm] = useState({
     title: "", category: "other", goal_amount: "", end_date: "",
-    summary: "", story: "", cover_image_url: "",
+    summary: "", story: "", cover_image_url: "", cover_image_is_ai: false,
     location: "", location_lat: null, location_lng: null,
     ai_profile: emptyAiProfile, story_versions: [], accept_crypto_donations: false,
   });
@@ -61,7 +61,7 @@ export default function CreateCampaign() {
         if (!draft || draft.status !== "draft") throw new Error("Draft unavailable");
         if (!cancelled) setForm({
           title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount > 0 ? draft.goal_amount : "", end_date: draft.end_date || "",
-          summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "",
+          summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "", cover_image_is_ai: draft.cover_image_is_ai === true,
           location: draft.location || "", location_lat: draft.location_lat ?? null, location_lng: draft.location_lng ?? null,
           ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [],
           accept_crypto_donations: draft.accept_crypto_donations === true,
@@ -119,7 +119,7 @@ export default function CreateCampaign() {
       const url = resolveGeneratedImageUrl(res?.data);
       if (!url) throw new Error("Generator returned no image URL");
       const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
-      set("cover_image_url", brandedUrl);
+      setForm((current) => ({ ...current, cover_image_url: brandedUrl, cover_image_is_ai: true }));
       setRegenCount((c) => c + 1);
       toast({ title: "Cover created", description: "Your AI-generated illustration is ready and visible below." });
     } catch {
@@ -262,9 +262,10 @@ export default function CreateCampaign() {
           <div className="space-y-2">
             <Label className="quest-label">Campaign art</Label>
             <Image src={form.cover_image_url || FALLBACK_IMAGE} alt={form.cover_image_url ? "Campaign cover preview" : "Default campaign cover"} className="w-full max-h-[32rem] rounded-xl object-contain bg-slate-950" />
+            {form.cover_image_is_ai && <p className="text-xs text-slate-300">AI-generated illustration · People shown may represent the campaign subjects.</p>}
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 min-w-0">
               <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}Generate Image</Button>
-              <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => set("cover_image_url", url)} label="Upload your own photo" previewClassName="hidden" /></div>
+              <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => setForm((current) => ({ ...current, cover_image_url: url, cover_image_is_ai: false }))} label="Upload your own photo" previewClassName="hidden" /></div>
             </div>
             <p className="text-xs text-slate-400 break-words">Bring your own image or let Interplanetary Fund generate a fresh comic-space cover.</p>
           </div>
