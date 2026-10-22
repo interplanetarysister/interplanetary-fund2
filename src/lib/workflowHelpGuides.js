@@ -3,6 +3,22 @@
 const updated = "2026-10-22";
 const guides = [
   {
+    slug: "create-campaign-by-voice", category: "Campaigns",
+    question: "How do I make a campaign by voice?",
+    description: "Speak or type to guide your campaign from an idea to a saved draft.",
+    answer: `1. Sign in, choose New Campaign, then Create by voice. You can also open /create?voice=1.
+2. Tap the microphone and say what you want to raise money for. Tap it again for each turn.
+3. Tell IFund who the campaign helps when asked. Existing campaign answers are reused.
+4. Say Show five titles, then Choose the second title, or tap your choice.
+5. Say Write my story, then Create a picture. Review the text and artwork on screen.
+6. Say Read my campaign to hear it. Edit any details in the normal campaign form.
+7. Say Save as a draft. Wait for the saved confirmation. This saves privately and does not publish or take payment.
+8. If speech is unavailable, type the same commands. If microphone access is denied, change your browser permission or keep typing.
+
+This is a simulated Alexa+ experience using browser voice tools and IFund AI, not a connection to Amazon Alexa. Browser recognition may send audio to its speech provider. IFund does not save microphone recordings. AI generation requires the feature/provider to be available.`,
+    keywords: ["voice", "alexa", "simulation", "microphone", "campaign", "speech"]
+  },
+  {
     slug: "find-your-way-around-ifund", category: "Getting Started",
     question: "How do I find pages in IFund?",
     description: "Open the small side menu to find what you want.",

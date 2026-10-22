@@ -15,9 +15,9 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
   const [listening,setListening]=useState(false);
   const [audio,setAudio]=useState(true);
   const [busy,setBusy]=useState(false);
-  const [stage,setStage]=useState('purpose');
+  const [stage,setStage]=useState(form.ai_profile?.who_helping ? 'ready' : form.ai_profile?.primary_goal ? 'beneficiary' : 'purpose');
   const [options,setOptions]=useState([]);
-  const [history,setHistory]=useState([{role:'assistant',text:'Welcome to the simulated Alexa+ campaign experience. Tell me what you want to raise funds for.'}]);
+  const [history,setHistory]=useState([{role:'assistant',text:form.ai_profile?.primary_goal ? 'Your campaign details are already here. Say show five titles, write my story, create a picture, or save as a draft.' : 'Welcome to the simulated Alexa+ campaign experience. Tell me what you want to raise funds for.'}]);
   const [notice,setNotice]=useState('');
   const [receipt,setReceipt]=useState('');
   const lock=useRef(false), recognition=useRef(null), mounted=useRef(true), generation=useRef(0), latestForm=useRef(form);
@@ -130,6 +130,7 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
     {(busy || saving) && <p role="status" className="flex gap-2 items-center"><Loader2 className="animate-spin h-4 w-4"/>Working on your request…</p>}
     {notice && <p role="alert" className="text-amber-200">{notice}</p>}
     {receipt && <p role="status" className="text-emerald-300">Private draft saved and confirmed by the campaign server.</p>}
+    <article aria-label="Current campaign preview" className="rounded-xl border border-white/15 p-4 space-y-2"><h3 className="text-lg font-semibold">{form.title || 'Your campaign title will appear here'}</h3><p className="text-sm text-cyan-200">Goal: ${Number(form.goal_amount || 0).toLocaleString()}</p>{form.summary && <p className="text-sm">{form.summary}</p>}{form.story && <p className="text-sm whitespace-pre-wrap">{form.story}</p>}</article>
     {form.cover_image_url && <div><Image src={form.cover_image_url} alt="Current campaign artwork" className="w-full max-h-72 object-contain rounded-xl"/>{form.cover_image_is_ai && <p className="text-xs text-slate-300">AI-generated illustration. People may represent the campaign’s subjects.</p>}</div>}
   </section>;
 }
