@@ -47,3 +47,12 @@ Reuse decision: retained existing browser Canvas branding and server sharp pipel
 Verification: targeted ESLint passed for both changed components and workflowHelpGuides. Deterministic Vite build emitted /tmp/ifund-watermark-build/index.html but command exceeded its 20-second transport timeout; final build exit unverified. Confirmed removed chooser symbols no longer occur in either component. No real AI generation or upload request was executed.
 
 Remaining: live publishing and authenticated browser interaction have not been verified. Video/non-image upload bypass remains; no claim of universal media watermarking. Automatic replacement of previously burned-in watermarks after an account upgrades is not implemented: clean originals and server-verified asset lifecycle are needed. The campaign launch 500 remains unconfirmed; image-policy errors are a suspect, not an established root cause. Rollback: restore the preceding Base44 checkpoint/source revision for these component/help changes.
+
+
+## Automatic styling correction and extended art criteria — 2026-10-22
+
+Restored source-preserving IFund photo treatment directly inside uploadUserImage before entitlement-based watermark compositing. Both free and paid users retain the style treatment; only the watermark is skipped for current paid/admin entitlement. No separate restyle or version button is required. Added futuristic-mystical-nature descriptors to buildCoverPrompt and canonical IFUND_SIGNATURE_STYLE / IFUND_PHOTO_EDIT_STYLE, plus subtle botanical/aurora border accents to the local treatment. Original identities and factual composition remain preserved.
+
+Confirmed runtime source boundary: campaign image generation invokes Base44 Core.GenerateImage in generateCampaignCover; text suggestions use Core.InvokeLLM through secureLLM.js. These campaign generation flows are NOT externalized from Base44. renderInterplanetaryPhoto contains a conditional direct OpenAI edit call, hosted inside a Base44 function; configured-key presence and real provider operation were not inspected or tested. It is not part of the automatic credit-free upload treatment. No metered AI calls were made.
+
+Validation: changed JavaScript ESLint and existing source-photo canvas test passed. Cover prompt variation assertions confirm the extended descriptor and original signature are present across 12 variations. Actual generated output and published deployment remain unverified. Previously burned-in watermark removal on upgrade and video processing remain unresolved.
