@@ -35,3 +35,23 @@ The frontend gets only the deployed gateway URL as `VITE_ADMIN_AGENT_API_URL`. F
 Agent execution is asynchronous. `POST /v1/admin/agents/message` starts the approved Base44 agent conversation and returns an activity ID; `POST /v1/admin/agents/status` resolves that activity to the agent conversation and reports `processing`, `waiting_for_user_input`, `completed`, or `failed`. The corresponding `AgentActivity` record remains the durable audit trail.
 
 A provider/billing outage is reported as degraded. It does not make source builds fail, and the gateway must never report an unexecuted request as completed.
+
+
+## Campaign creation inference migration
+
+The existing gateway now owns the dormant `POST /api/v1/campaign-assistant` route in `campaign-assistant.js`. It supports structured title/summary choices, story generation/revision, and campaign-derived images. The client switch is `VITE_CAMPAIGN_ASSISTANT_URL` (HTTPS only). Without it, existing Base44 inference remains authoritative. Once configured, external errors never fall back to Base44 generation or silently consume Base44 credits.
+
+Image requests include campaign title, summary, story, category, funding goal and AI profile via the existing context builder. IFund's existing art prompt includes cyberpunk/steampunk/interstellar/space-comic and futuristic-mystical-nature motifs. Fictional representative beneficiaries/supporters are encouraged when relevant, without presenting them as actual identified people. `cover_image_is_ai` persists an AI-generated illustration caption through drafts and public campaign detail. Browser finishing and existing server image policy continue handling watermark entitlements.
+
+Activation requirements (not performed):
+1. Confirm account/model eligibility and owner-approved daily quota allocation. Free inference is limited usage, not unlimited. Never enable paid overflow automatically.
+2. Bind Workers AI as `AI`; bind a rate limiter as `CAMPAIGN_AI_LIMITER` (suggested initial per-user limit: 3 requests per 60 seconds). Deploy with `IFUND_CAMPAIGN_AI_ENABLED=disabled` first.
+3. Add the route for both production hostnames if using the custom domain; `run_worker_first` already lists it. Verify existing live settings before deployment so unrelated bindings, secrets, routes, and assets are preserved.
+4. Verify model terms: current candidates are `@cf/google/gemma-4-26b-a4b-it` and `@cf/black-forest-labs/flux-1-schnell`. Source documentation checked 2026-10-22. Gemma model terms and FLUX model/commercial terms need final review before activation; do not treat public model availability as automatic licensing approval.
+5. Run the deterministic gateway test, then an owner-approved bounded live text/image trial. Only after quality and auth/limits pass should the external endpoint/client switch be enabled for members.
+
+Remaining Base44 dependencies are explicit: user/session and feature verification, campaign persistence, uploads and watermark-entitlement account reads. This is inference migration, not independent hosting/auth/storage. Rollback: clear the client endpoint to return to the prior provider, and disable `IFUND_CAMPAIGN_AI_ENABLED` to stop Workers AI use. No schema deletion is needed.
+
+Verification: `node scripts/test-campaign-assistant-gateway.mjs`, existing `test-cloudflare-mcp-proxy.mjs`, and `test-generate-campaign-cover.mjs` passed with mocked inference. Changed client JS/JSX lint passed. No provider inference, paid action, new infrastructure, or live deployment executed. Live end-to-end quality remains unverified.
+
+Reuse discovery: retained existing gateway and pure prompt/context helpers; no new provider SDK dependencies. Evaluated Cloudflare Workers SDK source/license at https://github.com/cloudflare/workers-sdk/blob/main/LICENSE-APACHE; using native AI binding avoids importing that SDK. New campaign module is scoped to member generation and kept separate from administrator authentication/action code.

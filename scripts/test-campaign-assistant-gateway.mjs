@@ -38,6 +38,6 @@ try {
  assert.equal(result.status,200);assert.match((await result.json()).url,/^data:image\/jpeg;base64,/);
  for(const detail of ['Restore a kitchen.','Feed neighbors','Local families','$750','futuristic-mystical-nature','Representative people']) assert.ok(prompt.includes(detail),detail);
  assert.equal((await campaignAssistant(req({kind:'image',campaign:{title:'No purpose'}}),env)).status,400);
- assert.equal((await campaignAssistant(req({kind:'text',output:'options',prompt:'x'.repeat(33000)}),env)).status,502);
+ assert.equal((await campaignAssistant(req({kind:'text',output:'options',prompt:'x'.repeat(33000)}),env)).status,413);
  console.log('PASS: disabled/auth/origin/feature/rate gates, structured text, malformed output, full image context, representative people, and request size; mocked inference only.');
 } finally {globalThis.fetch=nativeFetch;}

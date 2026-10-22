@@ -101,7 +101,8 @@ export async function campaignAssistant(request, env) {
     }
     if (typeof parsed?.story !== 'string' || !parsed.story.trim() || parsed.story.length > 18000) throw Error('story');
     return respond({ story: parsed.story });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'large') return respond({ error: 'Request too large.' }, 413);
     // No campaign text, tokens, or provider internals in logs or errors.
     return respond({ error: 'Campaign assistance could not finish. Your work is unchanged.' }, 502);
   }
