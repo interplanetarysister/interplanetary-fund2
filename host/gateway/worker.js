@@ -224,7 +224,7 @@ export default { async fetch(request, env) {
 
   if(url.pathname==="/api/v1/migration/auth/session"){
     const origin=request.headers.get("origin")||"";
-    const allowed=new Set(["https://interplanetaryfund.com","https://interplanetaryfund.base44.app","https://interplanetary-fund2.interplanetary-fund.workers.dev"]);
+    const allowed=new Set(["https://interplanetaryfund.com","https://www.interplanetaryfund.com","https://interplanetaryfund.base44.app","https://interplanetary-fund2.interplanetary-fund.workers.dev"]);
     if(origin && !allowed.has(origin)) return json({error:"Origin not allowed"},403);
     const headers={"cache-control":"no-store","vary":"Origin"};
     if(origin) headers["access-control-allow-origin"]=origin;
