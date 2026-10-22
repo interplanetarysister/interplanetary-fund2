@@ -165,8 +165,22 @@ Return JSON only.`;
     }
 
     const created = [];
-    for (const post of (res.posts || [])) {
-      const conn = targets.find((c) => c.id === post.connection_id) || targets.find((c) => c.platform === post.platform && !created.some((draft) => draft.connection_id === c.id));
+    const generatedPosts = Array.isArray(res.posts) ? res.posts : [];
+    const matchedIds = new Set();
+    const drafts = [];
+    for (const post of generatedPosts) {
+      const match = targets.find((c) => c.id === post.connection_id && !matchedIds.has(c.id)) || targets.find((c) => c.platform === post.platform && !matchedIds.has(c.id));
+      if (!match || typeof post.content !== 'string' || !post.content.trim()) continue;
+      matchedIds.add(match.id);
+      drafts.push({ ...post, connection_id: match.id });
+    }
+    const missing = targets.filter((c) => !matchedIds.has(c.id));
+    if (missing.length) {
+      usedTemplate = true;
+      drafts.push(...templatePosts(campaign, missing));
+    }
+    for (const post of drafts) {
+      const conn = targets.find((c) => c.id === post.connection_id);
       if (!conn || !post.content) continue;
       // Never trust an LLM-generated URL for checkout. Crowdfunding updates
       // are copyable text for the existing fundraiser; social appeals receive
