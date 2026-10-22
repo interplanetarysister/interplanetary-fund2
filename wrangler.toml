@@ -81,6 +81,7 @@ run_worker_first = [
   "/v1/admin/agents/*",
   "/api/health",
   "/api/health/*",
+  "/api/v1/migration/auth/session",
   "/api/v1/agent/*",
   "/api/mcp",
   "/api/mcp/*",

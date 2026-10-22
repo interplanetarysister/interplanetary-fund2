@@ -223,7 +223,20 @@ export default { async fetch(request, env) {
   }
 
   if(url.pathname==="/api/v1/migration/auth/session"){
-    return verifyIndependentSession(request, env);
+    const origin=request.headers.get("origin")||"";
+    const allowed=new Set(["https://interplanetaryfund.com","https://interplanetaryfund.base44.app","https://interplanetary-fund2.interplanetary-fund.workers.dev"]);
+    if(origin && !allowed.has(origin)) return json({error:"Origin not allowed"},403);
+    const headers={"cache-control":"no-store","vary":"Origin"};
+    if(origin) headers["access-control-allow-origin"]=origin;
+    if(request.method==="OPTIONS"){
+      headers["access-control-allow-methods"]="GET, OPTIONS";
+      headers["access-control-allow-headers"]="Authorization, Content-Type";
+      return new Response(null,{status:204,headers});
+    }
+    const result=await verifyIndependentSession(request,env);
+    const out=new Headers(result.headers);
+    for(const [key,value] of Object.entries(headers)) out.set(key,value);
+    return new Response(result.body,{status:result.status,headers:out});
   }
 
   if(isMcpProxyPath(url.pathname)){
