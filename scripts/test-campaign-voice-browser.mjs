@@ -53,6 +53,7 @@ try{
  await panel.getByRole('button',{name:'Write my story',exact:true}).click();await transcript.getByText(/Your story is ready/).waitFor();
  await panel.getByRole('button',{name:'Create a picture',exact:true}).click();await transcript.getByText(/Your campaign illustration is ready below/).waitFor({timeout:20000});
  await panel.getByRole('button',{name:'Save as a draft',exact:true}).click();await transcript.getByText(/Your private draft was saved successfully/).waitFor();
+ await panel.getByRole('article',{name:'Current campaign preview'}).getByText(/Help local families restore/).waitFor();
  assert.equal(saves,1);assert.equal(saved.status,'draft');assert.equal(saved.title,'Restore Our Garden');assert.equal(saved.goal_amount,2000);assert.equal(saved.cover_image_is_ai,true);assert.equal(saved.ai_profile.who_helping,'Local families');
  assert.ok(await page.evaluate(()=>window.__spoken.length>4));
  failSave=true;await panel.getByRole('button',{name:'Save as a draft',exact:true}).click();await transcript.getByText(/draft was not confirmed saved/).waitFor();

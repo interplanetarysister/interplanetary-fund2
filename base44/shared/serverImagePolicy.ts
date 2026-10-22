@@ -1,4 +1,3 @@
-import sharp from 'npm:sharp@0.33.5';
 
 const APP_ID = '6a67a778342a8fe05ee79cba';
 const MAX_BYTES = 15 * 1024 * 1024;
@@ -37,6 +36,10 @@ export async function enforceImagePolicy(base44: any, user: any, submittedUrl: u
   if (declaredSize > MAX_BYTES) throw new Error('Image exceeds size limit');
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength > MAX_BYTES) throw new Error('Image exceeds size limit');
+  // Load native processing only for accounts that need a watermark.
+  // An optional image processor must not prevent admin/paid saves or blank
+  // private drafts from even reaching authentication and validation.
+  const { default: sharp } = await import('npm:sharp@0.33.5');
   const img = sharp(bytes, { limitInputPixels: 24000000 }).rotate();
   const meta = await img.metadata();
   if (!meta.width || !meta.height || !['jpeg','png','webp','avif','gif','tiff'].includes(meta.format || '')) throw new Error('Unsupported image');
