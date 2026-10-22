@@ -19,6 +19,10 @@ pattern = "interplanetaryfund.com/api/v1/migration/auth/session"
 zone_name = "interplanetaryfund.com"
 
 [[routes]]
+pattern = "interplanetaryfund.com/api/v1/migration/campaigns"
+zone_name = "interplanetaryfund.com"
+
+[[routes]]
 pattern = "interplanetaryfund.com/api/v1/agent/*"
 zone_name = "interplanetaryfund.com"
 
@@ -47,6 +51,10 @@ zone_name = "interplanetaryfund.com"
 
 [[routes]]
 pattern = "www.interplanetaryfund.com/api/v1/migration/auth/session"
+zone_name = "interplanetaryfund.com"
+
+[[routes]]
+pattern = "www.interplanetaryfund.com/api/v1/migration/campaigns"
 zone_name = "interplanetaryfund.com"
 
 [[routes]]
@@ -90,6 +98,7 @@ run_worker_first = [
   "/api/health",
   "/api/health/*",
   "/api/v1/migration/auth/session",
+  "/api/v1/migration/campaigns",
   "/api/v1/agent/*",
   "/api/mcp",
   "/api/mcp/*",
