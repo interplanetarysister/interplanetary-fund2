@@ -1,6 +1,6 @@
 // Built-in instructions for user-facing flows. Keep these in sync with UI changes.
 // Available offline from the bundle and visible even if HelpArticle API is unavailable.
-const updated = "2026-10-17";
+const updated = "2026-10-22";
 const guides = [
   {
     slug: "find-your-way-around-ifund", category: "Getting Started",
@@ -59,7 +59,7 @@ Updated: ${updated}.`,
 4. Tap Continue. Type a title, OR tap Show five AI options. Tap the one you like.
 5. Type one line about your campaign, OR tap Show five AI options. Tap the one you like.
 6. Tap Forge my story. The story appears in the box below. You can edit it yourself.
-7. Add a picture, then tap Continue and read everything.
+7. Upload a picture or tap Generate Image. The image is selected automatically. Free accounts get an IFund watermark; active paid subscribers and admins receive a clean image automatically. There is no Use IFund version step. Then tap Continue and read everything.
 8. Tap Launch campaign to publish, or Save draft to finish later.
 
 Each set of five AI choices should sound different: some focus on people, some on hope, and some on what support can do. Tap Try five more for fresh ideas. AI must use only facts you provided, so check each suggestion before choosing it. You never need to type the same answer twice. AI suggestions only work when AI help is available. You can always use your own words.

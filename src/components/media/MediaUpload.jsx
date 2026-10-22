@@ -2,13 +2,11 @@ import React, { useRef, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
-import { Loader2, Sparkles, UploadCloud, X } from "lucide-react";
-import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
-import { uploadUserImage, userMaySkipImageWatermark } from "@/lib/ifundImageBranding";
+import { Loader2, UploadCloud, X } from "lucide-react";
+import { uploadUserImage } from "@/lib/ifundImageBranding";
 
-// Uploads pictures or video to the platform and reports the URL back. For
-// photos, users can keep the original or render the same photo in the
-// Interplanetary Fund signature style.
+// Image uploads apply the account watermark policy before returning the URL.
+// There is no separate branding or version-selection step.
 const isVideo = (url = "") => /\.(mp4|webm|ogg|mov|m4v)(\?|$)/i.test(url);
 
 export default function MediaUpload({
@@ -20,11 +18,7 @@ export default function MediaUpload({
 }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [rendering, setRendering] = useState(false);
-  const [originalUrl, setOriginalUrl] = useState("");
-  const [ifundUrl, setIfundUrl] = useState("");
   const [error, setError] = useState("");
-  const [allowClean, setAllowClean] = useState(false);
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -32,10 +26,7 @@ export default function MediaUpload({
     setError("");
     try {
       const file_url = await uploadUserImage(base44, file);
-      setAllowClean(await userMaySkipImageWatermark(base44));
       if (!file_url) throw new Error("Upload did not return an asset URL");
-      setOriginalUrl(file_url);
-      setIfundUrl("");
       onChange(file_url);
     } catch {
       setError("Couldn't upload that file. Please try again.");
@@ -45,32 +36,10 @@ export default function MediaUpload({
     }
   };
 
-  const renderIfundVersion = async () => {
-    const source = originalUrl || (!isVideo(value) ? value : "");
-    if (!source) return;
-    setRendering(true);
-    setError("");
-    try {
-      const result = await improveUploadedPhoto(base44, source);
-      if (!originalUrl) setOriginalUrl(source);
-      setIfundUrl(result.url);
-      onChange(result.url);
-    } catch {
-      setError("Couldn't improve the photo right now. Your original photo is unchanged; retry when ready.");
-    } finally {
-      setRendering(false);
-    }
-  };
-
   const clearMedia = () => {
-    setOriginalUrl("");
-    setIfundUrl("");
     setError("");
     onChange("");
   };
-
-  const originalAvailable = originalUrl && !isVideo(originalUrl);
-  const photoSelected = value && !isVideo(value);
 
   return (
     <div className="space-y-2">
@@ -92,52 +61,6 @@ export default function MediaUpload({
         </div>
       )}
 
-      {photoSelected && (
-        <div className="rounded-xl border border-violet-300/25 bg-violet-500/10 p-3">
-          <p className="text-xs font-semibold text-violet-100 mb-2">Choose your photo look</p>
-          <div className="flex flex-wrap gap-2">
-            {allowClean && originalAvailable && <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onChange(originalUrl)}
-              disabled={uploading || rendering || value === originalUrl}
-              className="rounded-xl"
-            >
-              Use original
-            </Button>}
-            {ifundUrl ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onChange(ifundUrl)}
-                disabled={uploading || rendering || value === ifundUrl}
-                className="rounded-xl"
-              >
-                <Sparkles className="w-4 h-4 mr-1.5" />
-                Use IFund version
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={renderIfundVersion}
-                disabled={uploading || rendering}
-                className="rounded-xl"
-              >
-                {rendering ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
-                {rendering ? "Improving photo…" : "Generate IFund-style improvement"}
-              </Button>
-            )}
-          </div>
-          <p className="mt-2 text-[11px] text-slate-300">
-            Free accounts receive an IFund watermark automatically. Active paid subscribers receive images without the watermark. The IFund-style improvement keeps the original scene intact.
-          </p>
-        </div>
-      )}
-
       {error && <p className="text-xs text-rose-300" role="alert">{error}</p>}
 
       <input
@@ -151,7 +74,7 @@ export default function MediaUpload({
         type="button"
         variant="outline"
         onClick={() => inputRef.current?.click()}
-        disabled={uploading || rendering}
+        disabled={uploading}
         className="rounded-xl border-2 border-cyan-500 bg-white text-slate-950 font-semibold shadow-sm hover:bg-cyan-50 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-cyan-400"
       >
         {uploading ? (
