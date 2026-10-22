@@ -10,6 +10,8 @@ export const IFUND_SIGNATURE_STYLE = [
   'These are artistic motifs, never claims of supernatural outcomes or real events.',
   'Express hope, dignity and human agency.',
   'Vary techniques and compositions: not every image needs all motifs.',
+  'Encourage fictional representative people when relevant to campaign beneficiaries,',
+  'supporters, or subjects. Do not imply these are actual named beneficiaries.',
   'Never fabricate facts about a real campaign or person.',
   'Do not render any lettering, trademarks or watermarks in the AI image:',
   'IFund adds its exact official planet logo and domain watermark afterward.',

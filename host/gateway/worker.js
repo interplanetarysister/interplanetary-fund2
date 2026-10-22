@@ -1,3 +1,4 @@
+import { campaignAssistant } from './campaign-assistant.js';
 const enc = new TextEncoder();
 const DEFAULT_BASE44_ORIGIN = "https://interplanetaryfund.base44.app";
 
@@ -306,6 +307,8 @@ export default { async fetch(request, env) {
       status:"healthy"
     });
   }
+
+  if(url.pathname === '/api/v1/campaign-assistant') return campaignAssistant(request, env);
 
   if(url.pathname==="/api/v1/migration/auth/session"){
     const origin=request.headers.get("origin")||"";

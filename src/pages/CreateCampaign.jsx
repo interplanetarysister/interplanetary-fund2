@@ -1,3 +1,5 @@
+import { externalCampaignAssistantEnabled, invokeCampaignAssistant } from '@/lib/campaignAssistantProvider';
+import { buildCampaignContext } from '@/lib/campaignAI';
 import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -110,14 +112,16 @@ export default function CreateCampaign() {
     setGeneratingImage(true);
     // Generate actual AI art using the campaign context and IFund signature style.
     try {
-      const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: form.story, regenCount });
-      const res = await base44.functions.invoke("generateCampaignCover", { prompt });
+      const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: buildCampaignContext(form, form.ai_profile), regenCount });
+      const res = externalCampaignAssistantEnabled
+        ? { data: await invokeCampaignAssistant({ kind: 'image', campaign: form, regenCount }) }
+        : await base44.functions.invoke("generateCampaignCover", { prompt });
       const url = resolveGeneratedImageUrl(res?.data);
       if (!url) throw new Error("Generator returned no image URL");
       const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
       set("cover_image_url", brandedUrl);
       setRegenCount((c) => c + 1);
-      toast({ title: "Cover created", description: "Your generated image is ready and visible below." });
+      toast({ title: "Cover created", description: "Your AI-generated illustration is ready and visible below." });
     } catch {
       // Never represent a placeholder as a successful generated image.
       // Preserve the old cover if the provider failed or the file does not load.
