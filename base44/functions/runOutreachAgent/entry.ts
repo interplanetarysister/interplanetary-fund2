@@ -37,8 +37,11 @@ function buildContext(campaign, donationsCount, updatesCount) {
   if (p.always_emphasize) lines.push(`Always emphasize: ${p.always_emphasize}`);
   if (p.never_change) lines.push(`Never change: ${p.never_change}`);
   if (p.avoid_words) lines.push(`Avoid: ${p.avoid_words}`);
-  if (p.ideal_donors) lines.push(`Ideal donors: ${p.ideal_donors}`);
-  if (p.interested_orgs) lines.push(`Interested orgs/communities: ${p.interested_orgs}`);
+  const supporterNotes = [...new Set([
+    p.donor_discovery_notes, p.ideal_donors, p.interested_orgs,
+  ].map((text) => String(text || '').trim()).filter(Boolean))].join('\n');
+  if (supporterNotes) lines.push(`Optional creator supporter ideas and boundaries: ${supporterNotes}`);
+  lines.push('Research likely supporters from the campaign facts. Creator ideas are optional context, not a fixed audience restriction.');
   if (p.platforms && p.platforms.length) lines.push(`Sharing platforms: ${p.platforms.join(', ')}`);
   return lines.join('\n') || 'No campaign context available.';
 }

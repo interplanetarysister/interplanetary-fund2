@@ -30,7 +30,17 @@ export const emptyAiProfile = {
 
 export default function AIInstructionsStep({ value, onChange }) {
   const v = { ...emptyAiProfile, ...(value || {}) };
-  const set = (k, val) => onChange({ ...v, [k]: val });
+  // Fold older separate audience answers into one editable answer without loss.
+  const supporterNotes = [...new Set([
+    v.donor_discovery_notes, v.ideal_donors, v.interested_orgs,
+  ].map((text) => String(text || "").trim()).filter(Boolean))].join("\n");
+  const set = (k, val) => onChange({
+    ...v,
+    donor_discovery_notes: supporterNotes,
+    ideal_donors: "",
+    interested_orgs: "",
+    [k]: val,
+  });
   const togglePlatform = (p) =>
     set("platforms", v.platforms.includes(p) ? v.platforms.filter((x) => x !== p) : [...v.platforms, p]);
 
@@ -67,12 +77,12 @@ export default function AIInstructionsStep({ value, onChange }) {
             <p className="text-xs text-slate-300 mt-1">You do not need to guess who might care. The agents can explore likely supporters from the campaign itself.</p>
           </div>
         </div>
-        <Field label="Anything the AI should know while researching supporters?">
-          <Textarea className="quest-input" rows={2} value={v.donor_discovery_notes} onChange={(e) => set("donor_discovery_notes", e.target.value)} placeholder="Optional hint or boundary…" />
+        <Field label="Who might want to support this campaign? (optional)">
+          <Textarea className="quest-input" rows={2} value={supporterNotes} onChange={(e) => set("donor_discovery_notes", e.target.value)} placeholder="People, groups, organizations, or ideas — or leave this to AI" />
         </Field>
       </div>
 
-      <details className="rounded-2xl border border-violet-400/25 bg-violet-500/10 overflow-hidden group"><summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-sm font-semibold text-violet-100"><span className="flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-cyan-300" /> More AI controls <span className="font-normal text-slate-400">(optional)</span></span><span className="text-cyan-300 group-open:rotate-45 transition-transform">+</span></summary><div className="p-4 space-y-4 border-t border-white/10"><Field label="Any donor ideas already in your head?"><Input className="quest-input" value={v.ideal_donors} onChange={(e) => set("ideal_donors", e.target.value)} placeholder="Optional — AI will explore beyond this" /></Field><Field label="Groups worth exploring?"><Input className="quest-input" value={v.interested_orgs} onChange={(e) => set("interested_orgs", e.target.value)} placeholder="Optional communities or organizations" /></Field><Field label="What facts must stay exact?">
+      <details className="rounded-2xl border border-violet-400/25 bg-violet-500/10 overflow-hidden group"><summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between text-sm font-semibold text-violet-100"><span className="flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-cyan-300" /> More AI controls <span className="font-normal text-slate-400">(optional)</span></span><span className="text-cyan-300 group-open:rotate-45 transition-transform">+</span></summary><div className="p-4 space-y-4 border-t border-white/10"><Field label="What facts must stay exact?">
         <Textarea className="quest-input" rows={2} value={v.never_change} onChange={(e) => set("never_change", e.target.value)} placeholder="Facts the AI must keep exactly as stated" />
       </Field>
       <Field label="What information should always be emphasized?">

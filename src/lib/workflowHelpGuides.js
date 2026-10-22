@@ -54,7 +54,7 @@ Updated: ${updated}.`,
     question: "How do I make a campaign with AI help?",
     description: "Pick from five titles, then five descriptions, then create your story.",
     answer: `1. Tap New Campaign.
-2. Tell IFund what you want to do and who it helps. You can skip the extra questions.
+2. Tell IFund what you want to do and who it helps. If you have supporter ideas, enter people, groups, or organizations once in the optional supporter box. AI reuses that answer and can research other likely supporters. You can leave it blank.
 3. Tap Continue. Choose a kind of campaign and the amount you want to raise.
 4. Tap Continue. Type a title, OR tap Show five AI options. Tap the one you like.
 5. Type one line about your campaign, OR tap Show five AI options. Tap the one you like.

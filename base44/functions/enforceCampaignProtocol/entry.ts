@@ -5,12 +5,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 //   1. forces outreach_enabled = true (Michelle's directive: all campaigns),
 //   2. reverts any campaign launched as "active" that is missing required
 //      fields back to "draft" so incomplete campaigns can never go live,
-//   3. validates ai_profile completeness (tone, ideal_donors, interested_orgs,
-//      platforms),
+//   3. leaves optional AI preferences and supporter ideas optional,
 //   4. opens a single follow-up Recommendation for any incomplete campaign.
 // Idempotent + deduped so the entity trigger can't loop.
 const ACTIVE_REQUIRED = ['title', 'category', 'cover_image_url'];
-const AI_PROFILE_REQUIRED = ['tone', 'ideal_donors', 'interested_orgs', 'platforms'];
 const FLAG_TITLE = 'Campaign Protocol — action needed';
 
 export default async function (req) {
@@ -50,14 +48,8 @@ export default async function (req) {
       }
     }
 
-    // 3. ai_profile completeness
-    const p = c.ai_profile || {};
-    const aiMissing = AI_PROFILE_REQUIRED.filter((f) => {
-      if (f === 'platforms') return !Array.isArray(p.platforms) || p.platforms.length === 0;
-      const v = p[f];
-      return v == null || (typeof v === 'string' && v.trim() === '');
-    });
-    if (aiMissing.length) issues.push(`AI profile incomplete: ${aiMissing.join(', ')}.`);
+    // 3. AI profile questions are optional. Do not ask creators to repeat
+    // supporter guesses or require them to provide research for the agents.
 
     if (Object.keys(updates).length) {
       await sr.entities.Campaign.update(campaign_id, updates);
@@ -77,7 +69,7 @@ export default async function (req) {
           owner_user_id: c.created_by_id,
           title: FLAG_TITLE,
           description: issues.join('\n'),
-          reasoning: "Michelle's Campaign Protocol requires every campaign to be complete and AI-profiled before going live.",
+          reasoning: "Campaigns need a title, category, picture, goal, and story before going live. AI preferences and supporter ideas are optional.",
           agent: 'strategy',
           status: 'open',
           confidence: 'high',
