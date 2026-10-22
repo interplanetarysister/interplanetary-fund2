@@ -104,7 +104,8 @@
     "verify:ifund-private-credentials": "node scripts/test-ifund-permissions-private-mail.mjs && node scripts/verify-independent-admin-mailbox-client.mjs",
     "verify:verification-secret-provisioner": "node scripts/test-verification-key-provisioner.mjs",
     "verify:campaign-translations": "node scripts/verify-campaign-translations.mjs",
-    "verify:agent-member-language": "node scripts/verify-agent-member-language.mjs"
+    "verify:agent-member-language": "node scripts/verify-agent-member-language.mjs",
+    "verify:campaign-voice": "node scripts/test-campaign-voice-commands.mjs && node scripts/test-campaign-assistant-gateway.mjs"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.57",
