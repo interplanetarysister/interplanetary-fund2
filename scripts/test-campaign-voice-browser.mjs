@@ -40,7 +40,7 @@ try{
  });
  await page.route('https://media.base44.com/**',route=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from(png,'base64')}));
  await page.goto(origin+'/create?voice=1',{waitUntil:'domcontentloaded'});
- const panel=page.getByRole('region',{name:'Voice campaign assistant'});await panel.waitFor({timeout:20000});
+ const panel=page.getByRole('region',{name:'Voice campaign assistant'});await panel.waitFor({timeout:12000}).catch(async error=>{console.log('PAGE',page.url(),(await page.locator('body').innerText()).slice(0,2500),'ERRORS',errors);throw error;});
  const transcript=panel.getByRole('log');
  const send=async text=>{await panel.getByRole('textbox',{name:'Type a voice command'}).fill(text);await panel.getByRole('button',{name:'Send',exact:true}).click();};
  await send('Alexa, help me raise $2,000 to repair our community garden');await transcript.getByText(/Who or what will this help/).waitFor();
