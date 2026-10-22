@@ -29,7 +29,7 @@ export default function ShareCampaignKit({ campaign }) {
   const copy = async (which, text, ref) => {
     const success = await copyText(text, ref?.current);
     setCopied(success ? which : "");
-    setWarning(success ? "" : "Clipboard access is unavailable. Tap the code field, select its text and use Copy.");
+    setWarning(success ? "" : "Clipboard access is unavailable. Select the text above and use Copy.");
     if (success) setTimeout(() => setCopied(""), 2200);
   };
   const share = async () => {
@@ -71,10 +71,21 @@ export default function ShareCampaignKit({ campaign }) {
         }
       } else if (action === "share" && navigator.share && window.File) {
         const file = new File([blob], "ifund-campaign.png", { type: "image/png" });
-        if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: campaign.title || "IFund campaign", text: shareCaption });
-        else await downloadShareImage(blob);
+        if (navigator.canShare?.({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: campaign.title || "IFund campaign", text: shareCaption }); }
+          catch (error) {
+            if (error?.name !== "AbortError") {
+              await downloadShareImage(blob);
+              setWarning("Image sharing is unavailable here, so the PNG was downloaded instead.");
+            }
+          }
+        } else {
+          await downloadShareImage(blob);
+          setWarning("Image sharing is unavailable here, so the PNG was downloaded instead.");
+        }
       } else {
         await downloadShareImage(blob);
+        if (action === "share") setWarning("This device cannot share image files directly, so the PNG was downloaded.");
       }
     } catch {
       setWarning("Could not create the campaign image. Try again or use the campaign link and HTML below.");
