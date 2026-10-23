@@ -42,8 +42,16 @@ export default async function(req) {
       const existing = rows?.[0];
       if (!existing) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (existing.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Not authorized' }, { status: 403 });
-      if (safe.cover_image_url && safe.cover_image_url !== existing.cover_image_url)
-        safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
+      if (safe.cover_image_url && safe.cover_image_url !== existing.cover_image_url) {
+        try {
+          safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
+        } catch {
+          return Response.json({
+            error: 'The cover image could not be verified. Remove it or choose a different image and retry.',
+            code: 'COVER_IMAGE_REJECTED',
+          }, { status: 422 });
+        }
+      }
       await base44.asServiceRole.entities.Campaign.update(campaignId, safe);
       return Response.json({
         ok: true,
@@ -52,7 +60,16 @@ export default async function(req) {
       });
     }
 
-    if (safe.cover_image_url) safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
+    if (safe.cover_image_url) {
+      try {
+        safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
+      } catch {
+        return Response.json({
+          error: 'The cover image could not be verified. Remove it or choose a different image and retry.',
+          code: 'COVER_IMAGE_REJECTED',
+        }, { status: 422 });
+      }
+    }
     const created = await base44.entities.Campaign.create(safe);
     return Response.json({ ok: true, campaign: campaignForResponse(created), created: true });
   } catch (error) {
