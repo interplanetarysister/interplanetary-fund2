@@ -1,4 +1,6 @@
 import { campaignAssistant } from './campaign-assistant.js';
+import { handleOwnerConsent } from '../migration/owner-consent-route.mjs';
+import { dispatchOwnerLink, OWNER_LINK_PATH } from '../migration/owner-consent-dispatch.mjs';
 const enc = new TextEncoder();
 const DEFAULT_BASE44_ORIGIN = "https://interplanetaryfund.base44.app";
 
@@ -283,6 +285,8 @@ async function readIndependentCampaigns(request, env) {
 
 export default { async fetch(request, env) {
   const url=new URL(request.url);
+  // Source-only migration route: disabled by default; never falls through to admin gateway.
+  if (url.pathname === OWNER_LINK_PATH) return dispatchOwnerLink(request, env, handleOwnerConsent);
   // Migration hold: block Cloudflare gateway agent execution while preserving
   // status/health and unrelated campaign/payment routes.
   if(env.IFUND_AGENT_ACTIONS_PAUSED === 'true' &&
