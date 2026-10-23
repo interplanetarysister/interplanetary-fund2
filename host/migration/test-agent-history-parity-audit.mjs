@@ -63,3 +63,9 @@ test('empty or malformed collections fail closed', () => {
   assert.equal(result.activityCount, 0);
   assert.equal(result.delegationCount, 0);
 });
+
+test('unrecognized status cannot leak private text into aggregate output', () => {
+  const result = audit([{ ...activity, status: 'private-email@example.org' }], []);
+  assert.equal(result.activityStatuses.unknown, 1);
+  assert.equal(JSON.stringify(result).includes('private-email@example.org'), false);
+});
