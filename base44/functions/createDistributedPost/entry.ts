@@ -28,7 +28,26 @@ export default async function(req){
     ? content.split(ifundLink + '?donate=true').join(destination.url).split(ifundLink).join(destination.url)
     : content;
   const finalContent = corrected.includes(destination.url) ? corrected : `${corrected}\n\nSupport this campaign: ${destination.url}`;
-  const post=await base44.entities.DistributedPost.create({campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,platform:connection.platform,content:finalContent,media_url:mediaUrl,donation_destination_url:destination.url,donation_destination_platform:destination.platform,status:'pending_approval'});
-  return Response.json({ok:true,post});
+  // Stable per-batch identity prevents a timeout or repeated submit from
+  // silently generating a second DistributedPost for the same destination.
+  // It is not a provider-auth token and grants no additional permissions.
+  const batchId = String(b?.bulk_batch_id || '').trim();
+  if (batchId && (!/^[a-zA-Z0-9_-]{8,100}$/.test(batchId) || batchId.length > 100))
+    return Response.json({error:'Invalid bulk batch reference.'},{status:400});
+  const sourceUpdateId = batchId ? ['bulk',user.id,batchId,campaign.id,connection.id].join(':') : '';
+  if (sourceUpdateId) {
+    const prior = await base44.asServiceRole.entities.DistributedPost.filter({
+      created_by_id:user.id,campaign_id:campaignId,connection_id:connectionId,source_update_id:sourceUpdateId,
+    },'-created_date',1);
+    if (prior?.[0]) return Response.json({ok:true,duplicate:true,post:prior[0]});
+  }
+  const post=await base44.entities.DistributedPost.create({
+    campaign_id:campaignId,campaign_title:campaign.title,connection_id:connectionId,
+    platform:connection.platform,content:finalContent,media_url:mediaUrl,
+    donation_destination_url:destination.url,donation_destination_platform:destination.platform,
+    ...(sourceUpdateId?{source_update_id:sourceUpdateId}:{}),
+    status:'pending_approval',
+  });
+  return Response.json({ok:true,duplicate:false,post});
  }catch(error){console.error('createDistributedPost failed:',error?.name||'UnknownError');return Response.json({error:'Distributed post could not be created safely.'},{status:500});}
 }
