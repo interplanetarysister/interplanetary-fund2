@@ -185,7 +185,7 @@ export default function CreateCampaign() {
       const missing = [];
       if (!form.title?.trim()) missing.push("title");
       if (!form.story?.trim() && !form.summary?.trim()) missing.push("campaign story");
-      if (!form.cover_image_url) missing.push("cover image");
+      // A custom cover is optional. IFund has a safe default image.
       // End date is optional during creation; campaigns can launch without one.
       if (!(parseFloat(form.goal_amount) > 0)) missing.push("goal amount");
       if (missing.length) {
@@ -196,6 +196,7 @@ export default function CreateCampaign() {
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
+    setDraftNotice("");
     try {
       const payload = {
         ...form,
@@ -216,7 +217,9 @@ export default function CreateCampaign() {
       if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch (error) {
-      toast({ title: "Couldn't launch campaign", description: saveError(error, "Please try again. If the problem continues, contact support."), variant: "destructive" });
+      const reason = saveError(error, "Please try again. If the problem continues, contact support.");
+      setDraftNotice(`Campaign not published: ${reason}`);
+      toast({ title: "Couldn't launch campaign", description: reason, variant: "destructive" });
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -275,7 +278,7 @@ export default function CreateCampaign() {
               <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}Generate Image</Button>
               <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => setForm((current) => ({ ...current, cover_image_url: url, cover_image_is_ai: false }))} label="Upload your own photo" previewClassName="hidden" /></div>
             </div>
-            <p className="text-xs text-slate-400 break-words">Bring your own image or let Interplanetary Fund generate a fresh comic-space cover.</p>
+            <p className="text-xs text-slate-400 break-words">Cover image is optional. Upload a photo, generate artwork, or launch with IFund's default cover.</p>
           </div>
         </>)}
 
