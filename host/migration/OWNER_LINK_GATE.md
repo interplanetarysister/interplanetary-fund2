@@ -1,0 +1,11 @@
+# IFund independent owner proof gate (dormant source)
+
+This is a **source-only**, reversible migration component. It does not run on Base44, Cloudflare, or Supabase until separately integrated, deployed and tested. It grants no rights on its own.
+
+It requires two independently authenticated, active server-side sessions: the exact source Base44 owner and the destination Supabase user with a confirmed email. It ignores `candidate_auth_uid` as evidence, requires source-owner record consistency, and demands an atomic compare-and-set to set `destination_auth_uid` and `verification_state='verified'`. The implementation deliberately cannot verify JWTs by decoding their payloads and cannot perform the database update itself.
+
+The future source verifier must authenticate a live Base44 session server-side and return `{verified:true,active:true,id,email}` only after source account checks. The destination verifier must authenticate the Supabase bearer token against Supabase Auth and return `{verified:true,id,email,email_confirmed_at}`. Both verifiers must pin trusted HTTPS provider endpoints, reject redirects, bound request size/time, and never log or persist tokens. The private `loadSourceOwner` and `commitVerifiedLink` adapters must use a trusted service identity, never a browser-exposed service key. Commit must enforce source ID/email, expected state, NULL destination UID and target UID uniqueness atomically. Failed CAS must not be retried automatically. Test under two different tenant identities before activation.
+
+Do not expose the new proof route until these adapters exist, the production privacy review passes, the old Base44 session is still available, and an authorized owner completes the dual-login step. Do not deploy `docs/migration/independent-owner-campaigns-rpc.sql` until independently verified destination owner links exist, as its source header explicitly requires. No payment or workflow authority is transferred by an identity link.
+
+Run offline: `node --test host/migration/test-owner-link-gate.mjs`. Rollback: remove this source-only branch or revert its commit. This component is not cutover-ready and is not a replacement for end-to-end auth/campaign/agent/finance parity.
