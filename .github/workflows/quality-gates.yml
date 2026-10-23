@@ -66,6 +66,9 @@ jobs:
       - name: Verify brand and planet favicon
         run: node scripts/verify-brand-propagation.mjs
 
+      - name: Campaign draft, launch and generated media safety
+        run: npm run verify:campaign-creation
+
       - name: Lint
         run: npm run lint
 
