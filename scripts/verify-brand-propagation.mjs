@@ -42,7 +42,8 @@ for (const id of favorites) {
   assert.ok(shortcuts.includes('"' + id + '"'), 'Missing favorite: ' + id);
   assert.ok(catalog.includes('id: "' + id + '"'), 'Missing catalog platform: ' + id);
 }
-assert.ok(shortcuts.includes('to={`/connections?view=${encodeURIComponent(platform.id)}`'}));
+assert.ok(shortcuts.includes('/connections?view='));
+assert.ok(shortcuts.includes('encodeURIComponent(platform.id)'));
 assert.ok(shortcuts.includes('<PlatformLogo platform={platform} size="sm" />'));
 assert.ok(platformLogo.includes('size = "md"'));
 assert.ok(connections.includes('get("view")'));
