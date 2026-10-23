@@ -16,10 +16,26 @@ export function validIfundMediaUrl(value: unknown): string {
   try {
     const u = new URL(value);
     if (u.protocol !== 'https:' || u.username || u.password) return '';
-    if (u.hostname === 'media.base44.com' && u.pathname.startsWith(`/images/public/${APP_ID}/`)) return u.href;
+    if (u.hostname === 'media.base44.com' && (u.pathname.startsWith(`/images/public/${APP_ID}/`) || u.pathname.startsWith(`/files/public/${APP_ID}/`))) return u.href;
     if (u.hostname === 'base44.app' && u.pathname.startsWith(`/api/apps/${APP_ID}/files/mp/public/`)) return u.href;
     return '';
   } catch { return ''; }
+}
+
+// Base44's own image URLs redirect to its media CDN. Follow only a small number
+// of redirects, each confined to this app's verified media paths. Using
+// redirect:'error' caused free-member campaign saves to fail on valid uploads.
+async function fetchTrustedMedia(source: string): Promise<Response> {
+  let url = source;
+  for (let hop = 0; hop < 3; hop++) {
+    const response = await fetch(url, { signal: AbortSignal.timeout(12000), redirect: 'manual' });
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const location = response.headers.get('location');
+    const next = location ? validIfundMediaUrl(new URL(location, url).href) : '';
+    if (!next) throw new Error('Image redirected outside IFund media');
+    url = next;
+  }
+  throw new Error('Too many image redirects');
 }
 
 // Process media when it is attached to a campaign or post, even if the caller
@@ -30,7 +46,7 @@ export async function enforceImagePolicy(base44: any, user: any, submittedUrl: u
   if (!source) throw new Error('Unverified image source');
   if (!requiresImageWatermark(user)) return source;
 
-  const response = await fetch(source, { signal: AbortSignal.timeout(12000), redirect: 'error' });
+  const response = await fetchTrustedMedia(source);
   if (!response.ok) throw new Error('Image unavailable');
   const declaredSize = Number(response.headers.get('content-length') || 0);
   if (declaredSize > MAX_BYTES) throw new Error('Image exceeds size limit');
