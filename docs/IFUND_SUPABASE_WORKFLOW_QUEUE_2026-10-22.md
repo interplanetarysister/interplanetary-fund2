@@ -30,3 +30,14 @@ idempotency keys and reconcile provider results before retrying.
 
 The old unfenced completion signature was removed. Both new function signatures
 were independently verified in live Supabase metadata.
+
+## Guarded enqueue deployed
+
+Migration `ifund_workflow_guarded_enqueue` installs a privileged, invoker-rights
+`ifund_ops.enqueue_workflow_job(workflow_key,source_event_id,payload,run_after)`
+function. It rejects unknown workflows and malformed/oversized payloads;
+repeated source event IDs resolve to the same job ID using the unique constraint.
+Unverified workflows enqueue as `paused` and cannot execute. The function is
+not executable by authenticated browser users. Verified live via pg_proc and
+`has_function_privilege`. This is infrastructure only: there are no active
+workflow registrations, and no Cloudflare execution worker yet.
