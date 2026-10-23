@@ -12,7 +12,7 @@ function handler(path,base44) {
   // saveCampaign now sanitizes responses through this separate audited helper.
   // Keep this handler-focused mock narrow; response allowlisting has its own tests.
   if(name==='../../shared/campaignResponse.ts')return{campaignForResponse:(row)=>row};
-  if(name==='../../shared/serverImagePolicy.ts')return{enforceImagePolicy:async(_client,_user,url)=>url};
+  if(name==='../../shared/serverImagePolicy.ts')return{enforceImagePolicy:async(_client,_user,url)=>url,validIfundMediaUrl:(url)=>url.startsWith('https://media.base44.com/')?url:''};
   if(name==='../../shared/accountGuard.ts')return{assertActiveAccount:async(client)=>{
     const user=await client.auth.me();
     return user?{ok:true,user}:{ok:false,status:401,error:'Authentication required'};
@@ -28,6 +28,7 @@ function fixture({missingUser=false, foreignOwner=false}={}) {
  const mock={auth:{me:async()=>missingUser?null:{id:'user',role:'user'}},
   entities:{Campaign:{create:async row=>{calls.push({op:'create',row});return{id:'created123',...row};}}},
   asServiceRole:{entities:{Campaign:{
+    create:async row=>{calls.push({op:'create',row});return{id:'created123',...row};},
     filter:async()=>[draft],
     update:async(id,row)=>{calls.push({op:'update',id,row});return{id,...row};}
   }}}};
@@ -100,6 +101,6 @@ assert.match(image,/main image MUST participate in layout/i);
 assert.match(image,/"block w-full h-auto"/);
 assert.match(image,/setUseOriginal\(true\)/);
 assert.match(read('src/pages/CreateCampaign.jsx'),/brandAndUploadGeneratedImage\(base44, url\)/);
-assert.match(read('src/components/media/MediaUpload.jsx'),/improveUploadedPhoto\(base44, source\)/);
+assert.match(read('src/components/media/MediaUpload.jsx'),/uploadUserImage\(base44, file\)/);
 assert.match(read('base44/functions/generateSocialContent/entry.ts'),/if \(typeof mediaUrl !== 'string'/);
 console.log('PASS: 5 draft handler cases; schema, resume, generated media URL/load/error, intrinsic image sizing and raw fallback.');
