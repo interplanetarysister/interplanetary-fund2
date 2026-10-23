@@ -6,8 +6,10 @@
  * authorization are verified, regardless of their source execution status.
  */
 const asArray = value => Array.isArray(value) ? value : [];
-const tally = (rows, key) => rows.reduce((counts, row) => {
-  const value = typeof row?.[key] === 'string' && row[key] ? row[key] : 'unset';
+const ACTIVITY_STATUSES = new Set(['pending', 'approved', 'rejected', 'applied', 'superseded']);
+const DELEGATION_STATUSES = new Set(['requested', 'assigned', 'in_progress', 'waiting_user', 'waiting_external', 'needs_review', 'completed', 'failed', 'cancelled', 'superseded']);
+const tally = (rows, key, allowed) => rows.reduce((counts, row) => {
+  const value = allowed.has(row?.[key]) ? row[key] : 'unknown';
   counts[value] = (counts[value] || 0) + 1;
   return counts;
 }, Object.create(null));
@@ -45,8 +47,8 @@ export function auditAgentHistory({ campaigns, activities, delegations } = {}) {
     campaignCount: cs.length,
     activityCount: as.length,
     delegationCount: ds.length,
-    activityStatuses: tally(as, 'status'),
-    delegationStatuses: tally(ds, 'status'),
+    activityStatuses: tally(as, 'status', ACTIVITY_STATUSES),
+    delegationStatuses: tally(ds, 'status', DELEGATION_STATUSES),
     scopedReferences: scoped,
     missingCampaignReferences,
     ownerMismatches,
