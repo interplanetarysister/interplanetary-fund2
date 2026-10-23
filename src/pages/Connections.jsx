@@ -335,7 +335,7 @@ export default function Connections() {
               </h2>
               <p className="text-sm text-muted-foreground">
                 Current saved status: <strong className="text-foreground">
-                  {viewedHealth ? viewedHealth.label : "Not connected"}
+                  {viewedHealth?.key === "disconnected" ? "Not connected" : viewedHealth ? viewedHealth.label : "Not connected"}
                 </strong>
               </p>
               {viewedConnections.length > 1 && (
