@@ -13,7 +13,7 @@ import ConnectDialog from "@/components/connections/ConnectDialog";
 import PublishFromConnections from "@/components/connections/PublishFromConnections";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
 import PageError from "@/components/PageError";
-import { connectionHealth } from "@/lib/connectionHealth";
+import { connectionHealth, lifecycleHealth } from "@/lib/connectionHealth";
 import { hasManagedConnections } from "@/lib/subscriptionEntitlements";
 
 // The Universal Connections Center — connect once, fund everywhere. Every
@@ -251,6 +251,22 @@ export default function Connections() {
     return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading connections</span></div>;
   }
 
+  // The dashboard uses ?view=<catalog-id> rather than launching a connection
+  // dialog. This keeps a truthful status and its setup controls together.
+  // Only recognized catalog IDs are considered; no URL-based provider actions.
+  const viewId = new URLSearchParams(location.search).get("view");
+  const viewedPlatform = ALL_PLATFORMS.find((platform) => platform.id === viewId);
+  const viewedConnections = viewedPlatform
+    ? connections.filter((connection) => connection.platform === viewedPlatform.id)
+    : [];
+  const viewedConnection = viewedConnections.find((connection) =>
+    (lifecycleHealth(lifecycleMap[connection.id]) || connectionHealth(connection)).usable
+  ) || viewedConnections.find((connection) => connection.status !== "disconnected")
+    || viewedConnections[0] || null;
+  const viewedHealth = viewedConnection
+    ? lifecycleHealth(lifecycleMap[viewedConnection.id]) || connectionHealth(viewedConnection)
+    : null;
+
   const aiAuthorized = user?.ai_obo_consent?.granted === true;
   const managedAvailable = aiAuthorized && hasManagedConnections(user);
   const connectedIds = connections.map((c) => c.platform);
@@ -307,6 +323,55 @@ export default function Connections() {
 
   return (
     <div className="connections-hub max-w-4xl mx-auto min-w-0 px-4 sm:px-6 pt-6 sm:pt-10 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-10">
+      {viewedPlatform && (
+        <section id="selected-platform-status"
+          className="mb-6 scroll-mt-20 rounded-2xl border border-primary/25 bg-card p-4 sm:p-5"
+          aria-labelledby="selected-platform-heading">
+          <div className="flex flex-wrap items-start gap-3">
+            <PlatformLogo platform={viewedPlatform} />
+            <div className="min-w-0 flex-1">
+              <h2 id="selected-platform-heading" className="font-display text-xl font-semibold text-foreground">
+                {viewedPlatform.name} connection
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Current saved status: <strong className="text-foreground">
+                  {viewedHealth ? viewedHealth.label : "Not connected"}
+                </strong>
+              </p>
+              {viewedConnections.length > 1 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {viewedConnections.length} saved accounts on this platform. This shows a working account when available.
+                </p>
+              )}
+              {viewedHealth?.reason && (
+                <p className="mt-2 text-xs text-amber-700">{viewedHealth.reason}</p>
+              )}
+              {viewedPlatform.setupKind === "link" && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Linking a public page does not grant account sign-in or publishing permissions.
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button type="button" className="min-h-11 rounded-xl" onClick={() =>
+              setDialog({ platform: viewedPlatform, existing: viewedConnection })
+            }>
+              {viewedConnection ? viewedHealth?.usable ? "Manage connection" : "Reconnect or manage" : `Connect ${viewedPlatform.name}`}
+            </Button>
+            {viewedConnection && (
+              <Button type="button" variant="outline" className="min-h-11 rounded-xl"
+                onClick={() => setDialog({ platform: viewedPlatform, existing: null })}>
+                Connect another account
+              </Button>
+            )}
+            <Button type="button" variant="ghost" className="min-h-11 rounded-xl"
+              onClick={() => navigate("/connections")}>
+              All connections
+            </Button>
+          </div>
+        </section>
+      )}
       <div className="ifund-connections-hero rounded-[2rem] border p-5 sm:p-7 shadow-sm mb-7">
       <h1 className="flex items-center gap-2.5 font-display text-3xl text-slate-950 dark:text-white mb-1">
         <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
