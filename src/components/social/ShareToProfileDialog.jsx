@@ -24,6 +24,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
   const [posting, setPosting] = useState(false);
   const [crossPost, setCrossPost] = useState([]);
   const [sharingDevice, setSharingDevice] = useState(false);
+  const MAX_BULK_DESTINATIONS = 5;
 
   useEffect(() => {
     if (!open || !sourceType || !sourceId) return;
@@ -138,19 +139,25 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
                 <p className="text-sm text-slate-200 mb-2 flex items-center gap-1">
                   <Link2 className="w-3 h-3" /> Publish to:
                 </p>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <button type="button" onClick={() => setCrossPost(connectedSocial.slice(0, MAX_BULK_DESTINATIONS).map(c => c.id))}
+                    className="px-2.5 py-1 rounded-full border border-cyan-400/50 text-xs text-cyan-100">Select up to {MAX_BULK_DESTINATIONS}</button>
+                  <button type="button" onClick={() => setCrossPost([])}
+                    className="px-2.5 py-1 rounded-full border border-white/30 text-xs text-slate-100">Clear</button>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {connectedSocial.map((c) => (
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setCrossPost((prev) => prev.includes(c.id) ? prev.filter((p) => p !== c.id) : [...prev, c.id])}
+                      onClick={() => setCrossPost((prev) => prev.includes(c.id) ? prev.filter((p) => p !== c.id) : prev.length < MAX_BULK_DESTINATIONS ? [...prev, c.id] : prev)}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                         crossPost.includes(c.id)
                           ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-200"
                           : "bg-white/10 border-white/30 text-slate-100"
                       }`}
                     >
-                      {crossPost.includes(c.platform) && <Check className="w-3 h-3 inline mr-1" />}
+                      {crossPost.includes(c.id) && <Check className="w-3 h-3 inline mr-1" />}
                       {PLATFORM_LABELS[c.platform] || c.platform}{c.display_name ? ` · ${c.display_name}` : ""}
                     </button>
                   ))}
@@ -165,7 +172,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
             )}
 
             {crossPost.length > 0 && (
-              <p className="text-xs text-slate-200 mt-2">Direct publishing works only on verified connections. You can also share through apps signed in on your device.</p>
+              <p className="text-xs text-slate-200 mt-2">{crossPost.length} of {MAX_BULK_DESTINATIONS} destinations selected. Direct publishing works only on verified connections. You can also share through apps signed in on your device.</p>
             )}
 
             <DialogFooter className="mt-4">
