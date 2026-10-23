@@ -14,7 +14,7 @@ assert.doesNotMatch(logo, /FALLBACK_IMAGE/);
 assert.match(app, /<BrandLogo size="lg" showName=\{false\}/);
 assert.ok(manifest.icons.some((icon) => icon.src === '/icon-192.jpg' && icon.sizes === '192x192'));
 assert.ok(manifest.icons.some((icon) => icon.src === '/icon-512.jpg' && icon.sizes === '512x512'));
-assert.match(index, /rel="icon" type="image\\/svg\\+xml" href="\\/interplanetary-planet\\.svg\\?v=2"/);
+assert.ok(index.includes('rel="icon" type="image/svg+xml" href="/interplanetary-planet.svg?v=2"'));
 assert.equal(fs.existsSync('public/interplanetary-planet.svg'), true);
 
 console.log('brand mark propagation contract: PASS');
