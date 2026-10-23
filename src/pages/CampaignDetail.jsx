@@ -113,7 +113,7 @@ export default function CampaignDetail() {
           {isVideo(campaign.cover_image_url) ? (
             <video src={campaign.cover_image_url} controls className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
           ) : (
-            <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={displayed.title} className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" />
+<>             <Image src={campaign.cover_image_url || FALLBACK_IMAGE} alt={displayed.title} className="w-full max-h-[36rem] rounded-2xl object-contain bg-slate-950" /> {campaign.cover_image_is_ai && <p className="text-xs text-muted-foreground mt-2">AI-generated illustration · People shown may represent the campaign subjects.</p>}</>
           )}
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">

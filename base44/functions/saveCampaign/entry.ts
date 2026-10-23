@@ -3,7 +3,7 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { campaignForResponse } from '../../shared/campaignResponse.ts';
 import { enforceImagePolicy } from '../../shared/serverImagePolicy.ts';
 
-const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step','accept_crypto_donations']);
+const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','cover_image_is_ai','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step','accept_crypto_donations']);
 const STATUSES = new Set(['draft','active','paused','completed']);
 
 export default async function(req) {
@@ -35,6 +35,7 @@ export default async function(req) {
     // Persist AI instructions/story versions and wizard position along with the
     // visible fields so saving early never discards another step's work.
     const safe = { ...input, title, goal_amount: goal, status };
+    if ('cover_image_is_ai' in safe) safe.cover_image_is_ai = safe.cover_image_is_ai === true;
     if ('accept_crypto_donations' in safe) safe.accept_crypto_donations = safe.accept_crypto_donations === true;
     if (campaignId) {
       const rows = await base44.asServiceRole.entities.Campaign.filter({ id: campaignId });

@@ -44,6 +44,10 @@ for (const agent of ["chief_of_staff", "connection_discovery_agent", "managed_co
   assert.ok(fs.existsSync(new URL(`../base44/agents/${agent}.jsonc`, import.meta.url)), `Admin chooser must only offer a defined ${agent}`);
 }
 assert.match(worker, /IFUND_AGENT_EXECUTE_URL/);
+const agentRuntime = worker.split("async function callAgentRuntime(")[1]?.split("// Preview-only independent identity verification")[0] || "";
+assert.match(agentRuntime, /endpoint\.protocol!=="https:"/, "Admin credentials must only be forwarded to HTTPS agent runtimes");
+assert.match(agentRuntime, /redirect:"manual"/, "Admin credentials must never follow agent-runtime redirects");
+assert.match(agentRuntime, /r\.status>=300 && r\.status<400/, "Agent-runtime redirects must fail closed");
 assert.match(worker, /degraded.*true/);
 assert.match(worker, /IFUND_SESSION_SECRET/);
 assert.match(worker, /!env\.IFUND_ADMIN_AGENT_KEY\s*\|\|\s*!env\.IFUND_SESSION_SECRET/, "Missing gateway secrets must fail closed");

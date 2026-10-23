@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Share2, Copy, Check, Code2, QrCode, Download } from "lucide-react";
+import { Share2, Copy, Check, Code2, QrCode, Download, Image as ImageIcon } from "lucide-react";
+import html2canvas from "html2canvas";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 import { buildCampaignEmbed } from "@/lib/campaignSharing";
 import { copyText } from "@/lib/copyText";
@@ -12,16 +13,23 @@ export default function ShareCampaignKit({ campaign }) {
   const platformOnlyMode = !usePublicCampaignFundraising();
   const [copied, setCopied] = useState("");
   const [warning, setWarning] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
   const cardRef = useRef(null);
+  const imageCardRef = useRef(null);
   const buttonRef = useRef(null);
   const linkRef = useRef(null);
   const embed = buildCampaignEmbed(campaign, platformOnlyMode);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=${encodeURIComponent(embed.url)}`;
+  const shareCaption = [
+    campaign.title || "Support this campaign",
+    campaign.summary || "",
+    embed.url,
+  ].filter(Boolean).join("\n\n");
 
   const copy = async (which, text, ref) => {
     const success = await copyText(text, ref?.current);
     setCopied(success ? which : "");
-    setWarning(success ? "" : "Clipboard access is unavailable. Tap the code field, select its text and use Copy.");
+    setWarning(success ? "" : "Clipboard access is unavailable. Select the text above and use Copy.");
     if (success) setTimeout(() => setCopied(""), 2200);
   };
   const share = async () => {
@@ -30,6 +38,60 @@ export default function ShareCampaignKit({ campaign }) {
       catch { /* user canceled or native share unavailable */ }
     }
     await copy("link", embed.url, linkRef);
+  };
+  const renderShareImage = async () => {
+    if (!imageCardRef.current) throw new Error("Campaign card is not ready");
+    const canvas = await html2canvas(imageCardRef.current, {
+      backgroundColor: "#ffffff", scale: 3, useCORS: true, allowTaint: false,
+      imageTimeout: 12000, logging: false,
+    });
+    return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("PNG export failed")), "image/png"));
+  };
+  const downloadShareImage = async (blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = `${(campaign.title || "ifund-campaign").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "ifund-campaign"}.png`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  };
+  const exportImage = async (action) => {
+    setImageBusy(true);
+    setWarning("");
+    try {
+      const blob = await renderShareImage();
+      if (action === "copy") {
+        if (navigator.clipboard?.write && window.ClipboardItem) {
+          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+          setCopied("image");
+          setTimeout(() => setCopied(""), 2200);
+        } else {
+          await downloadShareImage(blob);
+          setWarning("This browser cannot copy images directly, so the PNG was downloaded. Attach it to email or upload it to your post.");
+        }
+      } else if (action === "share" && navigator.share && window.File) {
+        const file = new File([blob], "ifund-campaign.png", { type: "image/png" });
+        if (navigator.canShare?.({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: campaign.title || "IFund campaign", text: shareCaption }); }
+          catch (error) {
+            if (error?.name !== "AbortError") {
+              await downloadShareImage(blob);
+              setWarning("Image sharing is unavailable here, so the PNG was downloaded instead.");
+            }
+          }
+        } else {
+          await downloadShareImage(blob);
+          setWarning("Image sharing is unavailable here, so the PNG was downloaded instead.");
+        }
+      } else {
+        await downloadShareImage(blob);
+        if (action === "share") setWarning("This device cannot share image files directly, so the PNG was downloaded.");
+      }
+    } catch {
+      setWarning("Could not create the campaign image. Try again or use the campaign link and HTML below.");
+    } finally {
+      setImageBusy(false);
+    }
   };
 
   return (
@@ -63,7 +125,7 @@ export default function ShareCampaignKit({ campaign }) {
       </Button>
 
       <div className="rounded-xl bg-slate-50 border border-stone-200 p-3 mt-4 flex justify-center">
-        <a href={embed.url} target="_blank" rel="noopener noreferrer"
+        <a ref={imageCardRef} href={embed.url} target="_blank" rel="noopener noreferrer"
           aria-label={`Open the campaign: ${campaign.title || "Campaign"}`}
           className="block w-full max-w-[320px] rounded-2xl overflow-hidden bg-white border border-stone-200 shadow-lg text-stone-900 hover:shadow-xl">
           <img src={embed.previewImage} alt={campaign.title || "Campaign image"}
@@ -78,9 +140,31 @@ export default function ShareCampaignKit({ campaign }) {
           </div>
         </a>
       </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-3">
+        <Button type="button" variant="outline" size="sm" disabled={imageBusy} onClick={() => exportImage("copy")}>
+          {copied === "image" ? <Check /> : <Copy />} {copied === "image" ? "Image copied" : "Copy image"}
+        </Button>
+        <Button type="button" variant="outline" size="sm" disabled={imageBusy} onClick={() => exportImage("download")}>
+          <Download /> Download PNG
+        </Button>
+        <Button type="button" variant="outline" size="sm" disabled={imageBusy} onClick={() => exportImage("share")}>
+          <ImageIcon /> Share image
+        </Button>
+      </div>
+      {imageBusy && <p role="status" className="text-xs text-stone-500 mt-2">Preparing campaign image…</p>}
       <p className="text-[11px] text-stone-500 mt-2">
-        Copy the HTML for websites that allow custom HTML. This card works without iframes or scripts.
-        It shows a snapshot of progress; clicking it opens current details and payment options on IFund.
+        Copy the image where supported, or download the PNG to attach to email or upload to social platforms. The caption below includes the clickable campaign link.
+      </p>
+      <label htmlFor="ifund-campaign-caption" className="block text-xs font-semibold text-stone-700 mt-4 mb-1">Email and social caption</label>
+      <textarea id="ifund-campaign-caption" readOnly rows={4} value={shareCaption}
+        onFocus={e => e.target.select()}
+        className="w-full rounded-lg border border-stone-300 bg-slate-50 p-3 text-sm text-slate-900 resize-y" />
+      <Button type="button" variant="outline" size="sm" className="w-full mt-2"
+        onClick={() => copy("caption", shareCaption, null)}>
+        {copied === "caption" ? <Check /> : <Copy />} {copied === "caption" ? "Caption copied" : "Copy caption + link"}
+      </Button>
+      <p className="text-[11px] text-stone-500 mt-2">
+        The website embed works on platforms that allow custom HTML. It shows a progress snapshot; clicking opens current details on IFund.
       </p>
 
       <label htmlFor="ifund-campaign-button-code" className="block text-xs font-semibold text-stone-700 mt-4 mb-1">Embed a smaller campaign button</label>

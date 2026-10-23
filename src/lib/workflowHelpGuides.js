@@ -1,7 +1,23 @@
 // Built-in instructions for user-facing flows. Keep these in sync with UI changes.
 // Available offline from the bundle and visible even if HelpArticle API is unavailable.
-const updated = "2026-10-17";
+const updated = "2026-10-22";
 const guides = [
+  {
+    slug: "create-campaign-by-voice", category: "Campaigns",
+    question: "How do I make a campaign by voice?",
+    description: "Speak or type to guide your campaign from an idea to a saved draft.",
+    answer: `1. Sign in, choose New Campaign, then Create by voice. You can also open /create?voice=1.
+2. Tap the microphone and say what you want to raise money for. Tap it again for each turn.
+3. Tell IFund who the campaign helps when asked. Existing campaign answers are reused.
+4. Say Show five titles, then Choose the second title, or tap your choice.
+5. Say Write my story, then Create a picture. Review the text and artwork on screen.
+6. Say Read my campaign to hear it. Edit any details in the normal campaign form.
+7. Say Save as a draft. Wait for the saved confirmation. This saves privately and does not publish or take payment.
+8. If speech is unavailable, type the same commands. If microphone access is denied, change your browser permission or keep typing.
+
+This is a simulated Alexa+ experience using browser voice tools and IFund AI, not a connection to Amazon Alexa. Browser recognition may send audio to its speech provider. IFund does not save microphone recordings. AI generation requires the feature/provider to be available.`,
+    keywords: ["voice", "alexa", "simulation", "microphone", "campaign", "speech"]
+  },
   {
     slug: "find-your-way-around-ifund", category: "Getting Started",
     question: "How do I find pages in IFund?",
@@ -54,12 +70,12 @@ Updated: ${updated}.`,
     question: "How do I make a campaign with AI help?",
     description: "Pick from five titles, then five descriptions, then create your story.",
     answer: `1. Tap New Campaign.
-2. Tell IFund what you want to do and who it helps. You can skip the extra questions.
+2. Tell IFund what you want to do and who it helps. If you have supporter ideas, enter people, groups, or organizations once in the optional supporter box. AI reuses that answer and can research other likely supporters. You can leave it blank.
 3. Tap Continue. Choose a kind of campaign and the amount you want to raise.
 4. Tap Continue. Type a title, OR tap Show five AI options. Tap the one you like.
 5. Type one line about your campaign, OR tap Show five AI options. Tap the one you like.
 6. Tap Forge my story. The story appears in the box below. You can edit it yourself.
-7. Add a picture, then tap Continue and read everything.
+7. Upload a picture or tap Generate Image. The image is selected automatically. Generated pictures follow your campaign story and may use representative people; they are labeled AI-generated illustrations. Free accounts get an IFund watermark; active paid subscribers and admins receive a clean image automatically. There is no Use IFund version step. Then tap Continue and read everything.
 8. Tap Launch campaign to publish, or Save draft to finish later.
 
 Each set of five AI choices should sound different: some focus on people, some on hope, and some on what support can do. Tap Try five more for fresh ideas. AI must use only facts you provided, so check each suggestion before choosing it. You never need to type the same answer twice. AI suggestions only work when AI help is available. You can always use your own words.

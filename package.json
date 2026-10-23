@@ -39,7 +39,7 @@
     "preverify:auth-pages-safe-diagnostics": "npm run verify:runtime-minimum --silent",
     "dev": "vite",
     "build": "vite build",
-    "postbuild": "node scripts/stamp-ifund-build.mjs && node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs && node scripts/verify-help-update-contract.mjs && node scripts/test-ifund-permissions-private-mail.mjs && node scripts/verify-independent-admin-mailbox-client.mjs && node scripts/test-ifund-cutover-readiness.mjs",
+    "postbuild": "node scripts/stamp-ifund-build.mjs && node scripts/verify-production-build-output.mjs && node scripts/verify-ifund-bundle-graph.mjs && node scripts/verify-ifund-links-assets.mjs && node scripts/verify-mobile-connections-and-billing-ux.mjs && node scripts/verify-admin-provider-readiness.mjs && node scripts/verify-ifund-sustainability.mjs && node scripts/verify-help-update-contract.mjs && node scripts/test-ifund-permissions-private-mail.mjs && node scripts/verify-independent-admin-mailbox-client.mjs && node scripts/test-ifund-cutover-readiness.mjs && node scripts/test-ifund-admin-verification-transport.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
@@ -104,10 +104,11 @@
     "verify:ifund-private-credentials": "node scripts/test-ifund-permissions-private-mail.mjs && node scripts/verify-independent-admin-mailbox-client.mjs",
     "verify:verification-secret-provisioner": "node scripts/test-verification-key-provisioner.mjs",
     "verify:campaign-translations": "node scripts/verify-campaign-translations.mjs",
-    "verify:agent-member-language": "node scripts/verify-agent-member-language.mjs"
+    "verify:agent-member-language": "node scripts/verify-agent-member-language.mjs",
+    "verify:campaign-voice": "node scripts/test-campaign-voice-commands.mjs && node scripts/test-campaign-assistant-gateway.mjs"
   },
   "dependencies": {
-    "@base44/sdk": "^0.8.56",
+    "@base44/sdk": "^0.8.57",
     "@base44/vite-plugin": "^1.0.47",
     "@capacitor/android": "8.4.3",
     "@capacitor/core": "8.4.3",

@@ -37,6 +37,30 @@ const PLATFORM_RULES = {
   custom: 'Custom site update: general campaign update, gratitude and progress, 2-3 paragraphs.',
 };
 
+// Keep draft preparation available when an AI provider is unavailable or out of credits.
+// This is clearly identified as a template, never represented as AI output.
+function templatePosts(campaign, targets) {
+  const title = String(campaign.title || 'this campaign').trim();
+  const summary = String(campaign.summary || campaign.story || '').replace(/\\s+/g, ' ').trim().slice(0, 360);
+  const description = summary || 'Learn about the campaign and why it matters to its creator.';
+  const short = description.length > 125 ? description.slice(0, 122).trimEnd() + '…' : description;
+  return targets.map((connection) => {
+    const platform = String(connection.platform || '').toLowerCase();
+    const content = ({
+      x: `${title}: ${short}`,
+      bluesky: `${title} — ${short}`,
+      threads: `Have you heard about ${title}? ${description}`,
+      linkedin: `Sharing a fundraising campaign: ${title}.\\n\\n${description}\\n\\nRead the campaign details and consider supporting or sharing.`,
+      instagram: `${title}\\n\\n${description}\\n\\nLearn more and share if this speaks to you.`,
+      tiktok: `${title} — ${short}`,
+      reddit: `Sharing the campaign ${title}. ${description} Please review the details before deciding whether to support.`,
+      gofundme: `Update about ${title}: ${description} Thank you for taking the time to learn about this campaign.`,
+      kickstarter: `Campaign update — ${title}\\n\\n${description}`,
+    })[platform] || `Please take a look at ${title}. ${description} You can read the details and decide whether to share or support.`;
+    return { platform: connection.platform, connection_id: connection.id, content, hashtags: [] };
+  });
+}
+
 // A creator may explicitly choose either IFund checkout or their own linked
 // external fundraiser. External payments stay with the external provider.
 function generateDonationBlock(url) {
@@ -108,7 +132,10 @@ ${p.tone ? `Tone: ${p.tone}` : ''} ${p.always_emphasize ? `Always emphasize: ${p
 
 Return JSON only.`;
 
-    const res = await base44.integrations.Core.InvokeLLM({
+    let res;
+    let usedTemplate = false;
+    try {
+      res = await base44.integrations.Core.InvokeLLM({
       prompt,
       response_json_schema: {
         type: 'object',
@@ -127,10 +154,33 @@ Return JSON only.`;
         },
       },
     });
+    } catch (error) {
+      console.warn('AI distribution unavailable; preparing editable templates:', error?.message || 'unknown');
+      usedTemplate = true;
+      res = { posts: templatePosts(campaign, targets) };
+    }
+    if (!Array.isArray(res?.posts) || !res.posts.length) {
+      usedTemplate = true;
+      res = { posts: templatePosts(campaign, targets) };
+    }
 
     const created = [];
-    for (const post of (res.posts || [])) {
-      const conn = targets.find((c) => c.platform === post.platform);
+    const generatedPosts = Array.isArray(res.posts) ? res.posts : [];
+    const matchedIds = new Set();
+    const drafts = [];
+    for (const post of generatedPosts) {
+      const match = targets.find((c) => c.id === post.connection_id && !matchedIds.has(c.id)) || targets.find((c) => c.platform === post.platform && !matchedIds.has(c.id));
+      if (!match || typeof post.content !== 'string' || !post.content.trim()) continue;
+      matchedIds.add(match.id);
+      drafts.push({ ...post, connection_id: match.id });
+    }
+    const missing = targets.filter((c) => !matchedIds.has(c.id));
+    if (missing.length) {
+      usedTemplate = true;
+      drafts.push(...templatePosts(campaign, missing));
+    }
+    for (const post of drafts) {
+      const conn = targets.find((c) => c.id === post.connection_id);
       if (!conn || !post.content) continue;
       // Never trust an LLM-generated URL for checkout. Crowdfunding updates
       // are copyable text for the existing fundraiser; social appeals receive
@@ -152,7 +202,7 @@ Return JSON only.`;
       });
       created.push(record);
     }
-    return Response.json({ posts: created });
+    return Response.json({ posts: created, used_template: usedTemplate });
   } catch (error) {
     console.error('generateDistributionContent error:', error.message);
     return Response.json({ error: 'Unable to generate distribution content. Please try again.' }, { status: 500 });

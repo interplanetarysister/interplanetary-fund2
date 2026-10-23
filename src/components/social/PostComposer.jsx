@@ -4,7 +4,6 @@ import { Sparkles, ImagePlus, Send, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { useToast } from "@/components/ui/use-toast";
 import { isUsableConnection } from "@/lib/connectionHealth";
-import { improveUploadedPhoto } from "@/lib/ifundPhotoService";
 import { brandAndUploadGeneratedImage, uploadUserImage } from "@/lib/ifundImageBranding";
 import { resolveGeneratedImageUrl } from "@/lib/generatedMedia";
 import { buildCoverPrompt } from "@/lib/coverPrompt";
@@ -19,9 +18,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
   const { toast } = useToast();
   const [content, setContent] = useState(() => initialShare?.content || "");
   const [mediaUrl, setMediaUrl] = useState(() => initialShare?.mediaUrl || "");
-  const [originalMediaUrl, setOriginalMediaUrl] = useState("");
   const [improvedMediaUrl, setImprovedMediaUrl] = useState("");
-  const [improvingImage, setImprovingImage] = useState(false);
   const [imageGenerating, setImageGenerating] = useState(false);
   const [imageGenerationCount, setImageGenerationCount] = useState(0);
   const [aiGenerated, setAiGenerated] = useState(false);
@@ -58,7 +55,6 @@ export default function PostComposer({ user, connections, campaigns, providerCap
     try {
       const file_url = await uploadUserImage(base44, file, { publicFile: true });
       setMediaUrl(file_url);
-      setOriginalMediaUrl(file_url);
       setImprovedMediaUrl("");
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
@@ -82,27 +78,12 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       if (!source) throw new Error("Image generator did not return an image");
       const branded = await brandAndUploadGeneratedImage(base44, source);
       setMediaUrl(branded);
-      setOriginalMediaUrl("");
       setImprovedMediaUrl(branded);
       setImageGenerationCount(c => c + 1);
       toast({ title: "Image created", description: "Your AI-generated IFund-style image is ready." });
     } catch {
       toast({ title: "Image creation failed", description: "The image could not be saved. Please try again.", variant: "destructive" });
     } finally { setImageGenerating(false); }
-  };
-
-  const improvePostPhoto = async () => {
-    const source = originalMediaUrl || mediaUrl;
-    if (!source || improvingImage) return;
-    setImprovingImage(true);
-    try {
-      const { url } = await improveUploadedPhoto(base44, source);
-      setImprovedMediaUrl(url);
-      setMediaUrl(url);
-      toast({ title: "Photo improved", description: "An IFund-styled version of your original photo is ready. You can still use the original." });
-    } catch {
-      toast({ title: "Couldn't improve photo", description: "Your original photo is unchanged. Try again later.", variant: "destructive" });
-    } finally { setImprovingImage(false); }
   };
 
   const toggleCrossPost = (platform) => {
@@ -183,7 +164,6 @@ export default function PostComposer({ user, connections, campaigns, providerCap
 
       setContent("");
       setMediaUrl("");
-      setOriginalMediaUrl("");
       setImprovedMediaUrl("");
       setImageGenerationCount(0);
       setAiGenerated(false);
@@ -220,30 +200,9 @@ export default function PostComposer({ user, connections, campaigns, providerCap
       {mediaUrl && (
         <div className="relative mb-3 rounded-xl overflow-hidden border border-white/10">
           <img src={mediaUrl} alt="upload" className="w-full max-h-64 object-cover" />
-          <button onClick={() => { setMediaUrl(""); setOriginalMediaUrl(""); setImprovedMediaUrl(""); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white">
+          <button onClick={() => { setMediaUrl(""); setImprovedMediaUrl(""); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 flex items-center justify-center text-white">
             <X className="w-4 h-4" />
           </button>
-        </div>
-      )}
-
-      {mediaUrl && (
-        <div className="mb-3 flex items-center gap-2 flex-wrap">
-          <Button type="button" variant="outline" size="sm"
-            disabled={improvingImage || uploading || imageGenerating || !originalMediaUrl}
-            onClick={improvePostPhoto} className="rounded-lg">
-            {improvingImage ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            {improvingImage ? "Improving photo…" : "Generate IFund-style improvement"}
-          </Button>
-          {originalMediaUrl && improvedMediaUrl && mediaUrl !== originalMediaUrl && (
-            <Button type="button" variant="outline" size="sm" onClick={() => setMediaUrl(originalMediaUrl)}>
-              Use original photo
-            </Button>
-          )}
-          {improvedMediaUrl && mediaUrl !== improvedMediaUrl && (
-            <Button type="button" variant="outline" size="sm" onClick={() => setMediaUrl(improvedMediaUrl)}>
-              Use IFund version
-            </Button>
-          )}
         </div>
       )}
 
@@ -286,7 +245,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
 
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={generatePostImage}
-          disabled={imageGenerating || uploading || improvingImage}
+          disabled={imageGenerating || uploading}
           className="rounded-lg">
           {imageGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {imageGenerating ? "Generating…" : "Generate Image"}
@@ -298,7 +257,7 @@ export default function PostComposer({ user, connections, campaigns, providerCap
         <Button variant="ghost" size="icon" onClick={handleAI} disabled={aiLoading} className="text-slate-400 hover:text-violet-300">
           {aiLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
         </Button>
-        <Button onClick={handlePost} disabled={loading || !content.trim()} className="ml-auto bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
+        <Button onClick={handlePost} disabled={loading || uploading || imageGenerating || !content.trim()} className="ml-auto bg-gradient-to-r from-cyan-400 to-violet-500 text-white border-none">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           <span className="text-sm font-medium">Publish</span>
         </Button>

@@ -39,7 +39,7 @@ export async function createIfundPhotoTreatment(sourceUrl, aiEditUrl = null) {
   const edge = Math.max(4, Math.min(width, height) * .008);
   const aurora = ctx.createLinearGradient(0, 0, width, height);
   aurora.addColorStop(0, 'rgba(34,211,238,.24)');
-  aurora.addColorStop(.5, 'rgba(59,130,246,.09)');
+  aurora.addColorStop(.5, 'rgba(45,212,191,.16)');
   aurora.addColorStop(1, 'rgba(147,51,234,.21)');
   ctx.strokeStyle = aurora;
   ctx.lineWidth = edge;
@@ -58,6 +58,23 @@ export async function createIfundPhotoTreatment(sourceUrl, aiEditUrl = null) {
       ctx.stroke();
     }
   }
+
+  // Futuristic-mystical-nature: small leaf-like luminous linework stays in
+  // the border, preserving identities and the factual scene.
+  ctx.strokeStyle = 'rgba(94,234,212,.30)';
+  ctx.lineWidth = Math.max(1, edge * .22);
+  const stemX = margin;
+  const stemY = height * .5;
+  ctx.beginPath();
+  ctx.moveTo(stemX, stemY + corner);
+  ctx.lineTo(stemX, stemY - corner);
+  ctx.moveTo(stemX, stemY);
+  ctx.lineTo(stemX + corner * .45, stemY - corner * .35);
+  ctx.lineTo(stemX, stemY - corner * .7);
+  ctx.moveTo(stemX, stemY + corner * .55);
+  ctx.lineTo(stemX + corner * .45, stemY + corner * .2);
+  ctx.lineTo(stemX, stemY - corner * .15);
+  ctx.stroke();
 
   // Steampunk-influenced tactile detail stays in the border, not over faces.
   // Overlay is purely decorative. Source pixels are still the principal image.

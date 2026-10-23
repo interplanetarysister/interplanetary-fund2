@@ -70,3 +70,34 @@ Target: Interplanetary Fund Base44 project source
 6. Test the free branded graphic without image-generation credits.
 7. Verify a fully completed campaign can publish, while blank drafts remain
    private and are not exposed in public search.
+
+
+## Campaign supporter input simplification — 2026-10-22
+
+One optional supporter question replaces donor-discovery notes, ideal donors, and interested organizations inputs in AIInstructionsStep. Legacy distinct answers combine into one visible editable value; any edit normalizes them into donor_discovery_notes and clears the superseded fields, including when the user clears the answer. Beneficiary and campaign purpose questions remain distinct. Outreach reads canonical notes with legacy fallback and researches beyond optional creator guesses. Campaign protocol no longer requires optional AI profile answers or generates reminders for them. Built-in help updated.
+
+Reused existing React controls and profile/schema instead of adding a form library or provider; no dependency changes or paid generation calls. Targeted ESLint passed. Deterministic behavior checks passed for preservation, deduplication, clearing, and unrelated profile edits. No production workflow, AI request, or live publishing invoked. Published UI and live backend behavior remain unverified. Restore preceding checkpoint to roll back.
+
+
+## Voice-guided Alexa+ simulation implementation — 2026-10-22
+
+Owner request: complete a production-ready voice campaign simulation and define remaining demo blockers. Implemented in the existing CreateCampaign route, entered with /create?voice=1 or the Create by voice button; no duplicate campaign page or data store. New CampaignVoiceAssistant component and pure campaignVoiceCommands parser maintain the shared wizard form.
+
+Behavior: deliberate tap-to-talk (never background wake-word listening), browser speech synthesis, visible bounded transcript, typed-command fallback, mute/stop/read controls, microphone-denial guidance, purpose and beneficiary capture, numeric goal capture, five generated title choices, title selection, factual story generation, campaign-context image generation with existing style/watermark policy, live visible campaign preview, and explicit private-draft save only. Successful saves require a returned canonical campaign ID. Save failure removes the prior saved badge and reports that no success was confirmed. No publish/payment/withdrawal commands. Existing draft answers are reused. Voice mode persists when the first save adds the draft ID. Concurrent voice commands are locked, and stale story results do not overwrite intervening title/story edits. Closing the assistant aborts listening and cancels speech.
+
+Truth/privacy: prominently labeled Simulated Alexa+ experience; not an Amazon connection or Alexa voice. Browser recognition may send audio to its service; no IFund microphone recording storage. Transcript is component memory, not a persistent log. Real AI providers and canonical saving are used by production code; mocked tests never appear in production.
+
+Verification completed: changed JS/JSX lint; pure command tests; existing seven campaign-cover endpoint cases; external gateway mock tests; production Vite build; headless Chromium at 390x844 exercised purpose, simulated recognition event, beneficiary, title choices/selection, story/art rendering, complete draft payload, correct returned-ID confirmation, failed-save honesty, speech-synthesis invocation, denied microphone, no JS errors and no horizontal overflow. Tests used mocked backend/provider/speech and do not prove actual microphone audio, audible voice quality, live AI, or live storage. Test command: node scripts/test-campaign-voice-browser.mjs (build artifact expected at /tmp/ifund-voice-build; build with node_modules/.bin/vite build --outDir /tmp/ifund-voice-build).
+
+Image-save hardening: deferred native sharp import until watermark-required processing rather than loading it at function startup. Admin/paid saves and blank private drafts no longer need to load the optional processor. The reported live 500 has NOT been reproduced or confirmed resolved. Free-account native watermark operation still needs real-runtime verification.
+
+Reuse discovery: evaluated https://github.com/JamesBrill/react-speech-recognition (MIT, React hook/API reference) and MDN SpeechRecognition/SpeechSynthesis documentation. Native browser APIs fit the small push-to-talk state machine without adding dependencies or paid speech providers. Recognition support varies by browser and may require network access. No library source copied and no new npm dependency added.
+
+Production/demo blockers (not production-ready yet):
+1. Publishing credentials: npx --no-install base44 whoami reported not logged in; no website deploy occurred. Reauthenticate the publishing CLI through the normal owner device-login flow, then publish the validated frontend. The temporary login probe timed out; do not reuse its old code. Connected editor access still saves/checkpoints source.
+2. Cloudflare inference is prepared but not activated/deployed: existing live worker has no AI/rate-limit bindings; free allowance/billing-plan inspection is unavailable to the current OAuth connection (Billing Read 403). Verify free allowance and activate the documented AI route/limits and client endpoint, preserving current assets/bindings. No actual Cloudflare inference or paid generation was invoked here.
+3. In a signed-in account, run actual titles -> story -> image -> private save -> reopen. Confirm server image processing and resolve any persistent 500 before recording.
+4. Use a supported phone/desktop browser with mic permission; verify audible replies and recording captures both mic and app audio. Installed Android WebView recognition is not guaranteed; no new APK was built.
+5. Demo script: help me raise $2,000 to repair our community garden -> local families -> show five titles -> choose the second title -> write my story -> create a picture -> read my campaign -> save as a draft -> reopen saved draft. Record an under-three-minute video showing actual responses/actions and the simulation disclosure.
+
+Submission rules checked at https://amazonappdev2026.devpost.com/rules (Alexa+ alternate simulated-experience path) and https://paypalaihackathon.devpost.com/rules. This simulation alone does not fulfill PayPal sandbox requirements; separately verify central sandbox payments. Keep actual tools disclosed in required Amazon product feedback. Rollback: restore the checkpoint preceding voice work; existing standard wizard and canonical records remain intact.

@@ -1,3 +1,4 @@
+import { campaignAssistant } from './campaign-assistant.js';
 const enc = new TextEncoder();
 const DEFAULT_BASE44_ORIGIN = "https://interplanetaryfund.base44.app";
 
@@ -81,9 +82,30 @@ function forwardedAdminAuth(request) {
 async function verifyPlatformAdmin(request, env) {
   const auth = forwardedAdminAuth(request);
   if (!Object.keys(auth).length || !env.IFUND_ADMIN_VERIFY_URL) return null;
-  const r=await fetch(env.IFUND_ADMIN_VERIFY_URL,{headers:{...auth,accept:"application/json"}});
-  if(!r.ok) return null;
-  const user=await r.json(); return user?.role==="admin" && user?.super_admin===true ? user : null;
+  // Never forward administrator bearer credentials or cookies to HTTP,
+  // embedded-credential URLs, or an automatic redirect destination.
+  let endpoint;
+  try {
+    endpoint = new URL(env.IFUND_ADMIN_VERIFY_URL);
+    if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password) return null;
+  } catch {
+    return null;
+  }
+  try {
+    const response = await fetch(endpoint.toString(), {
+      method: "GET",
+      headers: { ...auth, accept: "application/json" },
+      redirect: "manual",
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok || (response.status >= 300 && response.status < 400)) return null;
+    const user = await response.json().catch(() => null);
+    return user?.role === "admin" && user?.super_admin === true &&
+      typeof user.id === "string" && user.id.length > 0 ? user : null;
+  } catch {
+    return null;
+  }
 }
 function b64url(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");}
 async function sessionSignature(payload,env){
@@ -120,13 +142,30 @@ async function callAgentRuntime(env, request, payload) {
   if(!Object.keys(auth).length) {
     return { response: json({error:"Administrator authorization required."},401), result:null };
   }
-  const r=await fetch(env.IFUND_AGENT_EXECUTE_URL,{
-    method:"POST",
-    headers:{"content-type":"application/json",...auth},
-    body:JSON.stringify(payload),
-  });
-  const result=await r.json().catch(()=>({}));
-  return { response:r, result };
+  // Admin credentials must never be sent to a non-HTTPS runtime or
+  // automatically forwarded to a redirect target.
+  let endpoint;
+  try {
+    endpoint=new URL(env.IFUND_AGENT_EXECUTE_URL);
+    if(endpoint.protocol!=="https:" || endpoint.username || endpoint.password) throw Error("Invalid agent runtime URL");
+  }catch{
+    return { response:json({error:"Development agent runtime URL is invalid.",degraded:true},503), result:null };
+  }
+  try {
+    const r=await fetch(endpoint.toString(),{
+      method:"POST",
+      headers:{"content-type":"application/json",...auth},
+      body:JSON.stringify(payload),
+      redirect:"manual",
+    });
+    if(r.status>=300 && r.status<400) {
+      return { response:json({error:"Development agent runtime redirect rejected.",degraded:true},502), result:null };
+    }
+    const result=await r.json().catch(()=>({}));
+    return { response:r, result };
+  }catch{
+    return { response:json({error:"Development agent runtime unavailable.",degraded:true},502), result:null };
+  }
 }
 
 // Preview-only independent identity verification. This never authorizes access
@@ -145,7 +184,9 @@ async function verifyIndependentSession(request, env) {
   const publishableKey = String(env.IFUND_SUPABASE_PUBLISHABLE_KEY || "").trim();
   // The URL is constructed from a validated project reference. Never send
   // bearer credentials to an arbitrary configurable verification URL.
-  if (!/^[a-z0-9]{20}$/.test(projectRef) || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
+  // Pin this preview to IFund's designated destination project. A mistaken
+  // environment value must not authenticate identities from another tenant.
+  if (projectRef !== "tzehxfikoslihnclhxuz" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
     return json({ error: "Independent authentication is not configured" }, 503);
   }
   try {
@@ -178,8 +219,77 @@ async function verifyIndependentSession(request, env) {
   }
 }
 
+// Read-only destination campaign preview. The RPC is security-definer but
+// explicitly joins a verified destination UID to its source owner, and returns
+// no finance ledger fields. The Worker independently verifies each returned
+// owner UID and never falls back to Base44 when the destination is unavailable.
+async function readIndependentCampaigns(request, env) {
+  if (request.method !== "GET") return json({ error: "Method not allowed" }, 405);
+  if (env.IFUND_INDEPENDENT_AUTH_PREVIEW !== "enabled")
+    return json({ error: "Independent campaign preview disabled", cutover_ready: false }, 503);
+  const authorization = request.headers.get("authorization") || "";
+  if (!/^Bearer [^\s]{20,4096}$/.test(authorization))
+    return json({ error: "Bearer token required" }, 401);
+  const projectRef = String(env.IFUND_SUPABASE_PROJECT_REF || "").trim();
+  const publishableKey = String(env.IFUND_SUPABASE_PUBLISHABLE_KEY || "").trim();
+  if (projectRef !== "tzehxfikoslihnclhxuz" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey))
+    return json({ error: "Independent campaign backend is not configured" }, 503);
+  const host = `https://${projectRef}.supabase.co`;
+  const headers = { authorization, apikey: publishableKey, accept: "application/json" };
+  try {
+    const verified = await fetch(host + "/auth/v1/user", {
+      method: "GET", headers, redirect: "manual", cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (verified.status === 401 || verified.status === 403)
+      return json({ error: "Independent authentication required" }, 401);
+    if (!verified.ok) return json({ error: "Identity provider unavailable" }, 503);
+    const user = await verified.json().catch(() => null);
+    if (!user || typeof user.id !== "string" ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(user.id))
+      return json({ error: "Invalid identity response" }, 502);
+
+    const result = await fetch(host + "/rest/v1/rpc/ifund_migration_my_campaigns", {
+      method: "POST", headers: { ...headers, "content-type": "application/json" },
+      body: "{}", redirect: "manual", cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (result.status === 401 || result.status === 403)
+      return json({ error: "Independent campaign access denied" }, 403);
+    if (!result.ok) return json({ error: "Independent campaign backend unavailable" }, 503);
+    const raw = await result.text();
+    if (raw.length > 200000) return json({ error: "Invalid campaign response" }, 502);
+    let rows;
+    try { rows = JSON.parse(raw); } catch { return json({ error: "Invalid campaign response" }, 502); }
+    if (!Array.isArray(rows) || rows.length > 50)
+      return json({ error: "Invalid campaign response" }, 502);
+    const fields = ["source_id", "title", "summary", "story", "status", "category",
+      "goal_amount", "cover_image_url", "end_date", "location", "source_updated_at"];
+    const campaigns = [];
+    for (const row of rows) {
+      if (!row || row.owner_auth_uid !== user.id ||
+          typeof row.source_id !== "string" || typeof row.title !== "string")
+        return json({ error: "Campaign ownership verification failed" }, 502);
+      const safe = {};
+      for (const field of fields) safe[field] = row[field] ?? null;
+      campaigns.push(safe);
+    }
+    return json({ campaigns, source: "independent_shadow", read_only: true,
+      financial_authoritative: false, cutover_ready: false });
+  } catch {
+    return json({ error: "Independent campaign backend unavailable" }, 503);
+  }
+}
+
 export default { async fetch(request, env) {
   const url=new URL(request.url);
+  // Migration hold: block Cloudflare gateway agent execution while preserving
+  // status/health and unrelated campaign/payment routes.
+  if(env.IFUND_AGENT_ACTIONS_PAUSED === 'true' &&
+    (url.pathname === '/v1/admin/agents/message' ||
+     url.pathname === '/api/v1/agent/content' && request.method !== 'GET')) {
+    return json({error:'Agent actions temporarily paused for Cloudflare migration',code:'agent_actions_paused',retryable:true},503);
+  }
 
   // Independent cutover must not be declared ready while MCP and core
   // account/campaign authority still depend on Base44. This is intentionally
@@ -205,8 +315,40 @@ export default { async fetch(request, env) {
     });
   }
 
+  if(url.pathname === '/api/v1/campaign-assistant') return campaignAssistant(request, env);
+
   if(url.pathname==="/api/v1/migration/auth/session"){
-    return verifyIndependentSession(request, env);
+    const origin=request.headers.get("origin")||"";
+    // Reuse the same deploy-time origin allowlist as the other protected
+    // endpoints; a separate hardcoded list could silently drift.
+    if(origin && !allowedOrigin(request,env)) return json({error:"Origin not allowed"},403);
+    const headers={"cache-control":"no-store","vary":"Origin"};
+    if(origin) headers["access-control-allow-origin"]=origin;
+    if(request.method==="OPTIONS"){
+      headers["access-control-allow-methods"]="GET, OPTIONS";
+      headers["access-control-allow-headers"]="Authorization, Content-Type";
+      return new Response(null,{status:204,headers});
+    }
+    const result=await verifyIndependentSession(request,env);
+    const out=new Headers(result.headers);
+    for(const [key,value] of Object.entries(headers)) out.set(key,value);
+    return new Response(result.body,{status:result.status,headers:out});
+  }
+
+  if(url.pathname==="/api/v1/migration/campaigns"){
+    const origin=request.headers.get("origin")||"";
+    if(origin && !allowedOrigin(request,env)) return json({error:"Origin not allowed"},403);
+    const headers={"cache-control":"no-store","vary":"Origin"};
+    if(origin) headers["access-control-allow-origin"]=origin;
+    if(request.method==="OPTIONS"){
+      headers["access-control-allow-methods"]="GET, OPTIONS";
+      headers["access-control-allow-headers"]="Authorization, Content-Type";
+      return new Response(null,{status:204,headers});
+    }
+    const result=await readIndependentCampaigns(request,env);
+    const out=new Headers(result.headers);
+    for(const [key,value] of Object.entries(headers)) out.set(key,value);
+    return new Response(result.body,{status:result.status,headers:out});
   }
 
   if(isMcpProxyPath(url.pathname)){

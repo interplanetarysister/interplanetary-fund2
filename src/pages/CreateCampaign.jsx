@@ -1,3 +1,6 @@
+import CampaignVoiceAssistant from '@/components/campaigns/CampaignVoiceAssistant';
+import { externalCampaignAssistantEnabled, invokeCampaignAssistant } from '@/lib/campaignAssistantProvider';
+import { buildCampaignContext } from '@/lib/campaignAI';
 import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -31,6 +34,7 @@ export default function CreateCampaign() {
   const [searchParams] = useSearchParams();
   const draftId = searchParams.get("draft");
   const importConnectionId = searchParams.get("import_connection");
+  const voiceMode = searchParams.get("voice") === "1";
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -40,7 +44,7 @@ export default function CreateCampaign() {
   const [regenCount, setRegenCount] = useState(0);
   const [form, setForm] = useState({
     title: "", category: "other", goal_amount: "", end_date: "",
-    summary: "", story: "", cover_image_url: "",
+    summary: "", story: "", cover_image_url: "", cover_image_is_ai: false,
     location: "", location_lat: null, location_lng: null,
     ai_profile: emptyAiProfile, story_versions: [], accept_crypto_donations: false,
   });
@@ -59,7 +63,7 @@ export default function CreateCampaign() {
         if (!draft || draft.status !== "draft") throw new Error("Draft unavailable");
         if (!cancelled) setForm({
           title: draft.title || "", category: draft.category || "other", goal_amount: draft.goal_amount > 0 ? draft.goal_amount : "", end_date: draft.end_date || "",
-          summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "",
+          summary: draft.summary || "", story: draft.story || "", cover_image_url: draft.cover_image_url || "", cover_image_is_ai: draft.cover_image_is_ai === true,
           location: draft.location || "", location_lat: draft.location_lat ?? null, location_lng: draft.location_lng ?? null,
           ai_profile: { ...emptyAiProfile, ...(draft.ai_profile || {}) }, story_versions: draft.story_versions || [],
           accept_crypto_donations: draft.accept_crypto_donations === true,
@@ -110,18 +114,22 @@ export default function CreateCampaign() {
     setGeneratingImage(true);
     // Generate actual AI art using the campaign context and IFund signature style.
     try {
-      const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: form.story, regenCount });
-      const res = await base44.functions.invoke("generateCampaignCover", { prompt });
+      const prompt = buildCoverPrompt({ title: form.title, category: form.category, story: buildCampaignContext(form, form.ai_profile), regenCount });
+      const res = externalCampaignAssistantEnabled
+        ? { data: await invokeCampaignAssistant({ kind: 'image', campaign: form, regenCount }) }
+        : await base44.functions.invoke("generateCampaignCover", { prompt });
       const url = resolveGeneratedImageUrl(res?.data);
       if (!url) throw new Error("Generator returned no image URL");
       const brandedUrl = await brandAndUploadGeneratedImage(base44, url);
-      set("cover_image_url", brandedUrl);
+      setForm((current) => ({ ...current, cover_image_url: brandedUrl, cover_image_is_ai: true }));
       setRegenCount((c) => c + 1);
-      toast({ title: "Cover created", description: "Your generated image is ready and visible below." });
+      toast({ title: "Cover created", description: "Your AI-generated illustration is ready and visible below." });
+      return true;
     } catch {
       // Never represent a placeholder as a successful generated image.
       // Preserve the old cover if the provider failed or the file does not load.
       toast({ title: "Image could not be displayed", description: "The generated file did not load. Your previous image is unchanged. Try again or upload your own photo.", variant: "destructive" });
+      return false;
     } finally {
       setGeneratingImage(false);
     }
@@ -156,13 +164,15 @@ export default function CreateCampaign() {
       });
       if (data?.ok !== true || !data?.campaign?.id) throw new Error("Draft save rejected");
       // Keep the creator on the same step, with the same fields visible.
-      if (!draftId) navigate(`/create?draft=${encodeURIComponent(data.campaign.id)}`, { replace: true });
+      if (!draftId) navigate(`/create?draft=${encodeURIComponent(data.campaign.id)}${voiceMode ? "&voice=1" : ""}`, { replace: true });
       setDraftNotice("Draft saved. Your progress is private and you can continue later.");
       toast({ title: "Draft saved", description: "All your current work is saved." });
+      return data.campaign.id;
     } catch (error) {
       const reason = saveError(error, "The campaign service could not save this draft. Try again.");
       setDraftNotice(`Draft not saved: ${reason}`);
       toast({ title: "Draft not saved", description: reason, variant: "destructive" });
+      return null;
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -219,6 +229,8 @@ export default function CreateCampaign() {
 
   return (
     <div className="campaign-quest deep-space max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12 overflow-x-hidden rounded-[2rem] sm:my-6">
+      <div className="mb-5"><Button type="button" variant="outline" onClick={() => { const next = new URLSearchParams(searchParams); if (voiceMode) next.delete('voice'); else next.set('voice','1'); navigate(`/create?${next.toString()}`, {replace:true}); }}>{voiceMode ? 'Close voice assistant' : 'Create by voice · Alexa+ simulation'}</Button></div>
+      {voiceMode && <div className="mb-6"><CampaignVoiceAssistant form={form} onPatch={(patch) => setForm((current) => ({...current,...patch}))} onGenerateImage={generateCover} onSave={saveDraft} saving={saving} /></div>}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-3 mb-8 min-w-0" role="list" aria-label={`Campaign setup: step ${step + 1} of ${steps.length}`}>
         {steps.map(({ label, icon: StepIcon }, i) => (
           <div key={label} role="listitem" aria-current={i === step ? "step" : undefined}
@@ -258,9 +270,10 @@ export default function CreateCampaign() {
           <div className="space-y-2">
             <Label className="quest-label">Campaign art</Label>
             <Image src={form.cover_image_url || FALLBACK_IMAGE} alt={form.cover_image_url ? "Campaign cover preview" : "Default campaign cover"} className="w-full max-h-[32rem] rounded-xl object-contain bg-slate-950" />
+            {form.cover_image_is_ai && <p className="text-xs text-slate-300">AI-generated illustration · People shown may represent the campaign subjects.</p>}
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 min-w-0">
               <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}Generate Image</Button>
-              <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => set("cover_image_url", url)} label="Upload your own photo" previewClassName="hidden" /></div>
+              <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => setForm((current) => ({ ...current, cover_image_url: url, cover_image_is_ai: false }))} label="Upload your own photo" previewClassName="hidden" /></div>
             </div>
             <p className="text-xs text-slate-400 break-words">Bring your own image or let Interplanetary Fund generate a fresh comic-space cover.</p>
           </div>
