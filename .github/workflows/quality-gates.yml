@@ -67,7 +67,7 @@ jobs:
         run: node scripts/verify-brand-propagation.mjs
 
       - name: Campaign draft, launch and generated media safety
-        run: npm run verify:campaign-creation
+        run: npm run verify:campaign-creation && node scripts/test-campaign-save-publish.mjs
 
       - name: Lint
         run: npm run lint
