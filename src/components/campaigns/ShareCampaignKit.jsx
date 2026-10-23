@@ -113,6 +113,12 @@ export default function ShareCampaignKit({ campaign }) {
           {copied === "link" ? <Check /> : <Copy />} {copied === "link" ? "Link copied" : "Copy link"}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={share}><Share2 /> Share</Button>
+        <Button type="button" variant="outline" size="sm" onClick={() => {
+          window.location.assign("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(embed.url));
+        }}>Share on Facebook</Button>
+        <Button type="button" variant="outline" size="sm" disabled={imageBusy} onClick={() => exportImage("share")}>
+          <ImageIcon /> Share image to Instagram
+        </Button>
       </div>
 
       <label htmlFor="ifund-campaign-card-code" className="block text-xs font-semibold text-stone-700 mb-1">Embed campaign card — copy all HTML</label>
