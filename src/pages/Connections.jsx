@@ -343,8 +343,10 @@ export default function Connections() {
                   {viewedConnections.length} saved accounts on this platform. This shows a working account when available.
                 </p>
               )}
-              {viewedHealth?.reason && (
-                <p className="mt-2 text-xs text-amber-700">{viewedHealth.reason}</p>
+              {viewedHealth?.needsAttention && (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                  This connection needs attention. Open its settings to see the next step.
+                </p>
               )}
               {viewedPlatform.setupKind === "link" && (
                 <p className="mt-2 text-xs text-muted-foreground">
