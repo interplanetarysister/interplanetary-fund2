@@ -137,6 +137,8 @@ export default function CreateCampaign() {
   };
 
   const saveError = (error, fallback) => {
+    const code = error?.code || error?.response?.data?.code || error?.data?.code;
+    if (code === "COVER_IMAGE_REJECTED") return "The cover image could not be verified. Remove the image or upload a different one, then try again.";
     const detail = error?.response?.data?.error || error?.data?.error || error?.message;
     const message = typeof detail === "string" ? detail.trim() : "";
     if (/sign in|unauthorized|401|authentication/i.test(message)) return "Your session expired. Sign in again, then retry.";
@@ -167,7 +169,11 @@ export default function CreateCampaign() {
           location_lng: form.location_lng ?? undefined,
         },
       });
-      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Draft save rejected");
+      if (data?.ok !== true || !data?.campaign?.id) {
+        const problem = new Error("Draft save rejected");
+        problem.code = data?.code;
+        throw problem;
+      }
       // Keep the creator on the same step, with the same fields visible.
       if (!draftId) navigate(`/create?draft=${encodeURIComponent(data.campaign.id)}${voiceMode ? "&voice=1" : ""}`, { replace: true });
       setDraftNotice("Draft saved. Your progress is private and you can continue later.");
@@ -220,7 +226,11 @@ export default function CreateCampaign() {
         draft_step: step,
       };
       const { data } = await base44.functions.invoke("saveCampaign", { campaign_id: draftId || undefined, campaign: payload });
-      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Campaign save rejected");
+      if (data?.ok !== true || !data?.campaign?.id) {
+        const problem = new Error("Campaign save rejected");
+        problem.code = data?.code;
+        throw problem;
+      }
       const campaign = data.campaign;
       if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
