@@ -29,4 +29,28 @@ assert.ok(download.includes('beforeinstallprompt'));
 assert.ok(download.includes('Add to Home Screen'));
 assert.ok(!download.includes('/releases/download/'));
 
+// Signed-in dashboard shortcuts reuse the catalog and the same branded logos.
+const dashboard = read('src/pages/Dashboard.jsx');
+const shortcuts = read('src/components/dashboard/QuickConnectPlatforms.jsx');
+const catalog = read('src/components/connections/platformCatalog.js');
+const platformLogo = read('src/components/connections/PlatformLogo.jsx');
+const connections = read('src/pages/Connections.jsx');
+assert.ok(dashboard.includes('import QuickConnectPlatforms'));
+assert.ok(dashboard.indexOf('<QuickConnectPlatforms />') < dashboard.indexOf('Your campaigns'));
+const favorites = ['facebook', 'instagram', 'tiktok', 'youtube', 'x', 'linkedin', 'pinterest', 'gofundme', 'kofi', 'patreon'];
+for (const id of favorites) {
+  assert.ok(shortcuts.includes('"' + id + '"'), 'Missing favorite: ' + id);
+  assert.ok(catalog.includes('id: "' + id + '"'), 'Missing catalog platform: ' + id);
+}
+assert.ok(shortcuts.includes('to={`/connections?view=${encodeURIComponent(platform.id)}`'}));
+assert.ok(shortcuts.includes('<PlatformLogo platform={platform} size="sm" />'));
+assert.ok(platformLogo.includes('size = "md"'));
+assert.ok(connections.includes('get("view")'));
+assert.ok(connections.includes('id="selected-platform-status"'));
+assert.ok(connections.includes('lifecycleHealth(lifecycleMap[viewedConnection.id])'));
+assert.ok(connections.includes('Connect another account'));
+assert.ok(connections.includes('Connect ${viewedPlatform.name}'));
+assert.ok(!shortcuts.includes('verifyPlatformConnection'), 'Dashboard shortcut must not auto-probe providers');
+assert.ok(!shortcuts.includes('connectAppUser'), 'Dashboard shortcut must not auto-authorize OAuth');
+
 console.log('brand and install-navigation contract: PASS');
