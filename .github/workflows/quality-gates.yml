@@ -2,15 +2,10 @@ name: Production Quality Gates
 
 # Batch verification marker: 2026-09-30 repair batch
 
+# GitHub Actions minutes are limited. Run intentionally only; a successful
+# manually started main-branch gate still permits the existing release workflow.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'recovery/**'
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
