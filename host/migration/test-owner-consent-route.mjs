@@ -32,12 +32,12 @@ const challenge = async (env = base) => {
  const data = await response.json();
  return { csrf: data.csrf, cookie: response.headers.get('set-cookie').split(';')[0] };
 };
-const post = async (ch, body = '{"consent":true}', headers = {}, env = base) => handleOwnerConsent(
+const post = async (ch, body = '{"consent":true}', headers = {}, env = base, fetcher = mockFetch) => handleOwnerConsent(
  req('POST', {
   cookie: ch.cookie, 'x-ifund-csrf': ch.csrf, 'content-type': 'application/json',
   authorization: 'Bearer supabase-valid-test-token-123456',
   'x-ifund-base44-token': 'base44-valid-test-token-123456', ...headers,
- }, body), env, { fetcher: mockFetch },
+ }, body), env, { fetcher },
 );
 
 test('GET mints 5-minute signed same-origin challenge with secure HttpOnly cookie', async () => {
@@ -119,4 +119,54 @@ test('no preflight CORS grants; unsupported method returns 405', async () => {
  const r = await handleOwnerConsent(req('OPTIONS'), base);
  assert.equal(r.status, 405);
  assert.equal(r.headers.get('access-control-allow-origin'), null);
+});
+
+test('cross-tenant destination email mismatch blocks owner lookup and commit', async () => {
+ const ch = await challenge();
+ const called = [];
+ const fetcher = async (url, opts) => {
+  called.push(url);
+  if (url.endsWith('/auth/v1/user')) return new Response(JSON.stringify({ id: DEST, email: 'other@example.org', email_confirmed_at: '2026-10-23T00:00:00Z' }), { headers: { 'content-type': 'application/json' } });
+  return mockFetch(url, opts);
+ };
+ const r = await post(ch, '{"consent":true}', {}, base, fetcher);
+ assert.equal(r.status, 403);
+ assert.equal(called.filter(x => x.includes('/rpc/')).length, 0);
+});
+test('source mapping mismatch blocks atomic commit', async () => {
+ const ch = await challenge();
+ let commits = 0;
+ const fetcher = async (url, opts) => {
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'other@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  return mockFetch(url, opts);
+ };
+ assert.equal((await post(ch, '{"consent":true}', {}, base, fetcher)).status, 403);
+ assert.equal(commits, 0);
+});
+test('already verified same-owner replay is idempotent without second commit', async () => {
+ const ch = await challenge();
+ let commits = 0;
+ const fetcher = async (url, opts) => {
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: DEST }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  return mockFetch(url, opts);
+ };
+ const r = await post(ch, '{"consent":true}', {}, base, fetcher);
+ assert.equal(r.status, 200);
+ assert.equal((await r.json()).already_linked, true);
+ assert.equal(commits, 0);
+});
+test('provider exception is sanitized, no secret disclosure', async () => {
+ const ch = await challenge();
+ const r = await post(ch, '{"consent":true}', {}, base, async () => { throw Error('secret-token-should-not-appear'); });
+ assert.equal(r.status, 503);
+ assert.doesNotMatch(await r.text(), /secret-token-should-not-appear/);
+});
+test('POST durable rate limiter rejects before any identity lookup', async () => {
+ const ch = await challenge();
+ let network = 0;
+ const env = { ...base, IFUND_OWNER_LINK_LIMITER: { limit: async () => ({ success: false }) } };
+ assert.equal((await post(ch, '{"consent":true}', {}, env, async () => { network++; throw Error('should not call'); })).status, 429);
+ assert.equal(network, 0);
 });
