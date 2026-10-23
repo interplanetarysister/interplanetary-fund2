@@ -17,7 +17,7 @@ export function validIfundMediaUrl(value: unknown): string {
     const u = new URL(value);
     if (u.protocol !== 'https:' || u.username || u.password) return '';
     if (u.hostname === 'media.base44.com' && (u.pathname.startsWith(`/images/public/${APP_ID}/`) || u.pathname.startsWith(`/files/public/${APP_ID}/`))) return u.href;
-    if (u.hostname === 'base44.app' && u.pathname.startsWith(`/api/apps/${APP_ID}/files/mp/public/`)) return u.href;
+    if (u.hostname === 'base44.app' && u.pathname.startsWith(`/api/apps/${APP_ID}/files/mp/public/${APP_ID}/`)) return u.href;
     return '';
   } catch { return ''; }
 }
