@@ -22,11 +22,11 @@ assert.equal(fs.existsSync('public/interplanetary-planet.svg'), true);
 
 // Prevent install links from becoming hidden, inaccessible or misleading while
 // there is no verified public signed-APK release.
-assert.match(app, /path="\\/download" element=\\{<DownloadApp \\/>\\}/);
+assert.ok(app.includes('<Route path="/download" element={<DownloadApp />} />'));
 assert.ok(layout.includes('{ to: "/download", label: "Download IFund"'));
 assert.ok(home.includes('to="/download"'));
 assert.ok(download.includes('beforeinstallprompt'));
 assert.ok(download.includes('Add to Home Screen'));
-assert.doesNotMatch(download, /releases\\/download\\//);
+assert.ok(!download.includes('/releases/download/'));
 
 console.log('brand and install-navigation contract: PASS');
