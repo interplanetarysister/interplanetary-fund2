@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { resolveGeneratedImageUrl, loadGeneratedImage } from '../src/lib/generatedMedia.js';
 
 const read = path => fs.readFileSync(new URL('../'+path,import.meta.url),'utf8');
-function handler(path,base44) {
+function handler(path,base44,{rejectImage=false}={}) {
  const js=ts.transpileModule(read(path),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
  const exports={};
  const require=(name)=>{
@@ -12,7 +12,7 @@ function handler(path,base44) {
   // saveCampaign now sanitizes responses through this separate audited helper.
   // Keep this handler-focused mock narrow; response allowlisting has its own tests.
   if(name==='../../shared/campaignResponse.ts')return{campaignForResponse:(row)=>row};
-  if(name==='../../shared/serverImagePolicy.ts')return{enforceImagePolicy:async(_client,_user,url)=>url};
+  if(name==='../../shared/serverImagePolicy.ts')return{enforceImagePolicy:async(_client,_user,url)=>{if(rejectImage)throw new Error('Media could not be verified');return url;}};
   if(name==='../../shared/accountGuard.ts')return{assertActiveAccount:async(client)=>{
     const user=await client.auth.me();
     return user?{ok:true,user}:{ok:false,status:401,error:'Authentication required'};
@@ -70,6 +70,33 @@ const request=body=>({json:async()=>body});
  const r=await fn(request({campaign:{title:'No session',goal_amount:0,status:'draft'}}));
  assert.equal(r.status,401);
 }
+// Cover art is genuinely optional for a valid public campaign. A failing
+// cover verification must reject the attempted write with safe, actionable
+// metadata rather than a generic 500 or an unwatermarked upload.
+{
+ const x=fixture(),fn=handler('base44/functions/saveCampaign/entry.ts',x.mock);
+ const r=await fn(request({campaign:{
+  title:'Community Garden',summary:'Help our neighborhood plant a garden',
+  goal_amount:500,status:'active',cover_image_url:''
+ }}));
+ assert.equal(r.status,200);
+ assert.equal(x.calls[0].op,'create');
+}
+{
+ const x=fixture(),fn=handler('base44/functions/saveCampaign/entry.ts',x.mock,{rejectImage:true});
+ const r=await fn(request({campaign:{
+  title:'Community Garden',story:'Our neighbors want a garden',
+  goal_amount:500,status:'active',cover_image_url:'https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/example.png'
+ }}));
+ assert.equal(r.status,422);
+ assert.equal((await r.json()).code,'COVER_IMAGE_REJECTED');
+ assert.equal(x.calls.length,0);
+}
+const createPage=read('src/pages/CreateCampaign.jsx');
+assert.doesNotMatch(createPage,/missing\.push\("cover image"\)/);
+assert.match(createPage,/If you skip this, IFund uses its planet artwork/);
+assert.match(createPage,/setLaunchNotice\(`Campaign not published:/);
+
 const entity=JSON.parse(read('base44/entities/Campaign.jsonc'));
 assert.deepEqual(entity.required,[]);
 assert.equal(entity.properties.goal_amount.minimum,0);
@@ -102,4 +129,4 @@ assert.match(image,/setUseOriginal\(true\)/);
 assert.match(read('src/pages/CreateCampaign.jsx'),/brandAndUploadGeneratedImage\(base44, url\)/);
 assert.match(read('src/components/media/MediaUpload.jsx'),/improveUploadedPhoto\(base44, source\)/);
 assert.match(read('base44/functions/generateSocialContent/entry.ts'),/if \(typeof mediaUrl !== 'string'/);
-console.log('PASS: 5 draft handler cases; schema, resume, generated media URL/load/error, intrinsic image sizing and raw fallback.');
+console.log('PASS: 7 campaign handler cases; schema, resume, generated media URL/load/error, intrinsic image sizing and raw fallback.');
