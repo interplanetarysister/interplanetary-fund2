@@ -103,11 +103,14 @@ export default function PublishFromConnections() {
           bulk_batch_id: batchId,
         });
         if (prepared?.ok !== true || !prepared.post?.id) throw new Error("The post could not be prepared.");
+        // The server resolves the actual donation destination and corrects the
+        // fundraising link. Never let manual sharing copy stale client text.
+        const preparedCopy = String(prepared.post.content || content);
         // An earlier attempt may already have reached the provider. Reuse
         // the server's batch record, but NEVER replay its external write.
         if (prepared.duplicate === true && prepared.post.status !== "published") {
           completed.push({ id: campaign.id + ":" + conn.id, name, destination,
-            status: "Previously prepared; review before retrying", content,
+            status: "Previously prepared; review before retrying", content: preparedCopy,
             url: safeExternalUrl(conn.external_url) });
           setResults([...completed]);
           continue;
@@ -118,7 +121,7 @@ export default function PublishFromConnections() {
         let status = "Unconfirmed";
         if (outcome?.manual === false && outcome.post?.status === "published") status = "Published";
         else if (outcome?.manual === true) status = "Manual share required";
-        completed.push({ id: campaign.id + ":" + conn.id, name, destination, status, content, url: safeExternalUrl(conn.external_url) });
+        completed.push({ id: campaign.id + ":" + conn.id, name, destination, status, content: preparedCopy, url: safeExternalUrl(conn.external_url) });
       } catch {
         // A timed-out provider request may already have posted. Do not
         // automatically replay it. Keep the same batch ID on later clicks.
