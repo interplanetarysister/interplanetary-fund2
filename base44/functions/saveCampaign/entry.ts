@@ -1,10 +1,25 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { campaignForResponse } from '../../shared/campaignResponse.ts';
-import { enforceImagePolicy } from '../../shared/serverImagePolicy.ts';
+import { enforceImagePolicy, validIfundMediaUrl } from '../../shared/serverImagePolicy.ts';
 
 const ALLOWED = new Set(['title','summary','story','category','goal_amount','status','cover_image_url','cover_image_is_ai','end_date','location','location_lat','location_lng','ai_profile','story_versions','draft_step','accept_crypto_donations']);
 const STATUSES = new Set(['draft','active','paused','completed']);
+
+class CampaignCoverError extends Error {}
+async function prepareCampaignCover(base44, user, url, status) {
+  if (!url) return '';
+  const safeUrl = validIfundMediaUrl(url);
+  if (!safeUrl) throw new CampaignCoverError('Please upload a cover image through IFund, or remove the image and retry.');
+  // Private drafts must remain saveable even if image processing is temporarily
+  // unavailable. Public campaigns receive the verified server-side watermark.
+  if (status === 'draft') return safeUrl;
+  try {
+    return await enforceImagePolicy(base44, user, safeUrl);
+  } catch {
+    throw new CampaignCoverError('The cover image could not be processed. Try uploading it again, or remove it and launch without a cover.');
+  }
+}
 
 export default async function(req) {
   try {
@@ -43,7 +58,7 @@ export default async function(req) {
       if (!existing) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (existing.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Not authorized' }, { status: 403 });
       if (safe.cover_image_url && safe.cover_image_url !== existing.cover_image_url)
-        safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
+        safe.cover_image_url = await prepareCampaignCover(base44, user, safe.cover_image_url, status);
       await base44.asServiceRole.entities.Campaign.update(campaignId, safe);
       return Response.json({
         ok: true,
@@ -52,11 +67,14 @@ export default async function(req) {
       });
     }
 
-    if (safe.cover_image_url) safe.cover_image_url = await enforceImagePolicy(base44, user, safe.cover_image_url);
-    const created = await base44.entities.Campaign.create(safe);
+    if (safe.cover_image_url) safe.cover_image_url = await prepareCampaignCover(base44, user, safe.cover_image_url, status);
+    // The server has independently checked the account; ensure its identity
+    // becomes the authoritative owner even for newly registered members.
+    const created = await base44.asServiceRole.entities.Campaign.create({ ...safe, created_by_id: user.id });
     return Response.json({ ok: true, campaign: campaignForResponse(created), created: true });
   } catch (error) {
     console.error('saveCampaign failed:', error?.name || 'UnknownError');
+    if (error instanceof CampaignCoverError) return Response.json({ error: error.message }, { status: 422 });
     return Response.json({ error: 'Campaign could not be saved safely.' }, { status: 500 });
   }
 }
