@@ -57,7 +57,7 @@ export default async function(req) {
       const existing = rows?.[0];
       if (!existing) return Response.json({ error: 'Campaign not found' }, { status: 404 });
       if (existing.created_by_id !== user.id && user.role !== 'admin') return Response.json({ error: 'Not authorized' }, { status: 403 });
-      if (safe.cover_image_url && safe.cover_image_url !== existing.cover_image_url)
+      if (safe.cover_image_url && (safe.cover_image_url !== existing.cover_image_url || (existing.status === 'draft' && status !== 'draft')))
         safe.cover_image_url = await prepareCampaignCover(base44, user, safe.cover_image_url, status);
       await base44.asServiceRole.entities.Campaign.update(campaignId, safe);
       return Response.json({
