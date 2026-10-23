@@ -1,5 +1,6 @@
 import React from "react";
 import { Image } from "@/components/ui/image";
+import { BRAND_MARK } from "./brand";
 
 // The Interplanetary Fund brand mark — the official logo, used everywhere the
 // brand appears so it stays consistent across navigation, auth, and marketing.
@@ -12,7 +13,7 @@ export default function BrandLogo({ size = "md", showName = true, className = ""
 
   return (
     <span className={`flex items-center gap-2.5 ${className}`}>
-      <Image src="https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/6d085cfd8_1000004152.webp"
+      <Image src={BRAND_MARK}
 
       alt="Interplanetary Fund logo"
       className={`${dims.box} shrink-0 object-cover shadow-lg shadow-blue-500/25`} />
