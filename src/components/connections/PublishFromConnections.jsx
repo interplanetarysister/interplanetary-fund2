@@ -103,6 +103,15 @@ export default function PublishFromConnections() {
           bulk_batch_id: batchId,
         });
         if (prepared?.ok !== true || !prepared.post?.id) throw new Error("The post could not be prepared.");
+        // An earlier attempt may already have reached the provider. Reuse
+        // the server's batch record, but NEVER replay its external write.
+        if (prepared.duplicate === true && prepared.post.status !== "published") {
+          completed.push({ id: campaign.id + ":" + conn.id, name, destination,
+            status: "Previously prepared; review before retrying", content,
+            url: safeExternalUrl(conn.external_url) });
+          setResults([...completed]);
+          continue;
+        }
         const { data: outcome } = await base44.functions.invoke("publishPost", {
           post_id: prepared.post.id, user_publish_authorized: true,
         });
