@@ -6,9 +6,9 @@
  */
 import { linkVerifiedOwnerSessions } from './owner-link-gate.mjs';
 import { makeOwnerProofAdapters } from './owner-proof-adapters.mjs';
+import { ownerConsentOriginAllowed } from './owner-consent-origin.mjs';
 
 const ROUTE = '/api/v1/migration/owner-link';
-const ORIGINS = new Set(['https://interplanetaryfund.com', 'https://www.interplanetaryfund.com']);
 const encoder = new TextEncoder();
 const text = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), {
   status, headers: {
@@ -73,8 +73,7 @@ const tokenOK = v => typeof v === 'string' && v.length >= 16 && v.length <= 8192
 export async function handleOwnerConsent(request, env, { fetcher = globalThis.fetch, now = () => Date.now() } = {}) {
   let url;
   try { url = new URL(request.url); } catch { return deny(); }
-  if (url.pathname !== ROUTE || url.search || url.protocol !== 'https:' ||
-      !ORIGINS.has(url.origin) || request.headers.get('origin') !== url.origin) return deny();
+  if (url.pathname !== ROUTE || url.search || !ownerConsentOriginAllowed(request, url)) return deny();
   if (!['GET', 'POST'].includes(request.method)) return text({ error: 'method_not_allowed' }, 405, { allow: 'GET, POST' });
   const secret = env?.IFUND_OWNER_LINK_CSRF_SECRET;
   const limiter = env?.IFUND_OWNER_LINK_LIMITER;
