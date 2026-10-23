@@ -283,6 +283,13 @@ async function readIndependentCampaigns(request, env) {
 
 export default { async fetch(request, env) {
   const url=new URL(request.url);
+  // Migration hold: block Cloudflare gateway agent execution while preserving
+  // status/health and unrelated campaign/payment routes.
+  if(env.IFUND_AGENT_ACTIONS_PAUSED === 'true' &&
+    (url.pathname === '/v1/admin/agents/message' ||
+     url.pathname === '/api/v1/agent/content' && request.method !== 'GET')) {
+    return json({error:'Agent actions temporarily paused for Cloudflare migration',code:'agent_actions_paused',retryable:true},503);
+  }
 
   // Independent cutover must not be declared ready while MCP and core
   // account/campaign authority still depend on Base44. This is intentionally
