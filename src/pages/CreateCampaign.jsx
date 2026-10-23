@@ -39,7 +39,6 @@ export default function CreateCampaign() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [draftNotice, setDraftNotice] = useState("");
-  const [launchNotice, setLaunchNotice] = useState("");
   const savingRef = useRef(false);
   const [generatingImage, setGeneratingImage] = useState(false);
   const [regenCount, setRegenCount] = useState(0);
@@ -137,18 +136,12 @@ export default function CreateCampaign() {
   };
 
   const saveError = (error, fallback) => {
-    const code = error?.code || error?.response?.data?.code || error?.data?.code;
-    if (code === "COVER_IMAGE_REJECTED") return "The cover image could not be verified. Remove the image or upload a different one, then try again.";
     const detail = error?.response?.data?.error || error?.data?.error || error?.message;
     const message = typeof detail === "string" ? detail.trim() : "";
     if (/sign in|unauthorized|401|authentication/i.test(message)) return "Your session expired. Sign in again, then retry.";
     if (/not authorized|403|permission/i.test(message)) return "This account cannot change that campaign.";
     if (/network|fetch|timeout|cors/i.test(message)) return "Unable to reach the campaign server. Check your connection and try again.";
-    // Backend responses may include provider details; never surface arbitrary
-    // exception text or account information to a member.
-    if (/Campaign not found|Draft not found/i.test(message)) return "This draft was not found. Open your campaigns and start a new draft.";
-    if (/campaign title|funding goal|story before publishing/i.test(message)) return "Add a title, funding goal, and story or short description before publishing.";
-    return fallback;
+    return message && !/internal server error|stack|trace/i.test(message) ? message.slice(0, 220) : fallback;
   };
 
   const saveDraft = async () => {
@@ -169,11 +162,7 @@ export default function CreateCampaign() {
           location_lng: form.location_lng ?? undefined,
         },
       });
-      if (data?.ok !== true || !data?.campaign?.id) {
-        const problem = new Error("Draft save rejected");
-        problem.code = data?.code;
-        throw problem;
-      }
+      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Draft save rejected");
       // Keep the creator on the same step, with the same fields visible.
       if (!draftId) navigate(`/create?draft=${encodeURIComponent(data.campaign.id)}${voiceMode ? "&voice=1" : ""}`, { replace: true });
       setDraftNotice("Draft saved. Your progress is private and you can continue later.");
@@ -193,24 +182,21 @@ export default function CreateCampaign() {
   const launch = async (status) => {
     if (status === "draft") return saveDraft();
     if (status === "active") {
-      setLaunchNotice("");
       const missing = [];
       if (!form.title?.trim()) missing.push("title");
       if (!form.story?.trim() && !form.summary?.trim()) missing.push("campaign story");
+      // A custom cover is optional. IFund has a safe default image.
       // End date is optional during creation; campaigns can launch without one.
       if (!(parseFloat(form.goal_amount) > 0)) missing.push("goal amount");
       if (missing.length) {
-        const message = `Please add: ${missing.join(", ")}.`;
-        setLaunchNotice(message);
-        // Take the creator directly to the missing step, without losing work.
-        setStep(missing.includes("goal amount") ? 1 : 2);
-        toast({ title: "Campaign isn't ready to launch", description: message, variant: "destructive" });
+        toast({ title: "Campaign isn't ready to launch", description: `Please add: ${missing.join(", ")}.`, variant: "destructive" });
         return;
       }
     }
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
+    setDraftNotice("");
     try {
       const payload = {
         ...form,
@@ -226,17 +212,13 @@ export default function CreateCampaign() {
         draft_step: step,
       };
       const { data } = await base44.functions.invoke("saveCampaign", { campaign_id: draftId || undefined, campaign: payload });
-      if (data?.ok !== true || !data?.campaign?.id) {
-        const problem = new Error("Campaign save rejected");
-        problem.code = data?.code;
-        throw problem;
-      }
+      if (data?.ok !== true || !data?.campaign?.id) throw new Error("Campaign save rejected");
       const campaign = data.campaign;
       if (data.created === true) base44.functions.invoke("recordCampaignCreated", { campaign_id: campaign.id }).catch(() => {});
       navigate(`/campaign/${campaign.id}`);
     } catch (error) {
       const reason = saveError(error, "Please try again. If the problem continues, contact support.");
-      setLaunchNotice(`Campaign not published: ${reason}`);
+      setDraftNotice(`Campaign not published: ${reason}`);
       toast({ title: "Couldn't launch campaign", description: reason, variant: "destructive" });
     } finally {
       savingRef.current = false;
@@ -296,7 +278,7 @@ export default function CreateCampaign() {
               <Button type="button" variant="outline" onClick={generateCover} disabled={generatingImage || !form.title} className="quest-button w-full sm:w-auto">{generatingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-primary" />}Generate Image</Button>
               <div className="flex-1 min-w-0 sm:min-w-[12rem]"><MediaUpload value={form.cover_image_url} onChange={(url) => setForm((current) => ({ ...current, cover_image_url: url, cover_image_is_ai: false }))} label="Upload your own photo" previewClassName="hidden" /></div>
             </div>
-            <p className="text-xs text-slate-400 break-words">Optional: bring your own image or generate a comic-space cover. If you skip this, IFund uses its planet artwork.</p>
+            <p className="text-xs text-slate-400 break-words">Cover image is optional. Upload a photo, generate artwork, or launch with IFund's default cover.</p>
           </div>
         </>)}
 
@@ -310,7 +292,6 @@ export default function CreateCampaign() {
         </Button>
         <span role="status" className="text-xs text-slate-300">{draftNotice || "Save at any step. Your draft stays private until you publish it."}</span>
       </div>
-      {launchNotice && <p role="alert" className="mt-4 rounded-xl border border-rose-400/30 bg-rose-950/30 p-3 text-sm text-rose-100">{launchNotice}</p>}
       <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-6 min-w-0">
         <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="quest-button"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
         {step < 3 ? <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={!canNext} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button> : <div className="flex flex-col sm:flex-row gap-2 min-w-0"><Button type="button" onClick={() => launch("active")} disabled={saving} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}</Button></div>}
