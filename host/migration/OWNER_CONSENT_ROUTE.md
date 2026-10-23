@@ -1,6 +1,6 @@
 # IFund owner-consent endpoint — source-only, not activated
 
-2026-10-23 UTC. The `owner-consent-route.mjs` module is an intentionally **unrouted** server-side handler for a future `GET/POST /api/v1/migration/owner-link` endpoint. It imports the existing `owner-link-gate.mjs` and `owner-proof-adapters.mjs` from the same migration branch. Neither GitHub main nor Cloudflare production/preview imports or serves it. No account has been linked as a result of this work.
+2026-10-23 UTC. The `owner-consent-route.mjs` module is an intentionally **default-disabled** server-side handler for a future `GET/POST /api/v1/migration/owner-link` endpoint. It imports the existing `owner-link-gate.mjs` and `owner-proof-adapters.mjs` from the same migration branch. The migration branch now imports the handler in `host/gateway/worker.js` through `owner-consent-dispatch.mjs`, but requires the exact `IFUND_OWNER_LINK_ENABLED=enabled` flag. GitHub main and Cloudflare production/preview have not received these changes, and Cloudflare has no dedicated owner-link route. No account has been linked as a result of this work.
 
 ## Security contract
 
@@ -13,8 +13,12 @@
 
 ## Verification and activation blockers
 
-Run `node --test host/migration/test-owner-consent-route.mjs` with Node 22+; 19 local tests cover same-origin CSRF, expiration/tampering, explicit consent, request-size bounds, fail-closed rate limiting, server secrets, mocked provider verification and RPCs, and sanitized responses. These are **local mocked integration tests**, not positive live provider authentication or proof of Cloudflare binding behavior.
+Run `node --test host/migration/test-owner-consent-route.mjs host/migration/test-owner-consent-dispatch.mjs` with Node 22+; 19 pre-existing handler tests and 5 new dispatcher tests cover same-origin CSRF, expiration/tampering, explicit consent, request-size bounds, fail-closed rate limiting, server secrets, mocked provider verification and RPCs, and sanitized responses. These are **local mocked integration tests**, not positive live provider authentication or proof of Cloudflare binding behavior.
 
-Before activation: verify actual Base44 `User/me` response with an authorized owner; verify confirmed Supabase `/auth/v1/user` session; test real service-role RPC and anon/authenticated denials through PostgREST; configure and test a non-paid durable rate-limiting binding and server-only secrets; add explicit Worker routing, secure same-origin UI, integration tests, live tenant isolation/replay tests and rollback. Do not deploy without all of these. Do not enable independent campaign/agent access until verified owner links exist. Do not shut down Base44 before full financial, agent, login, and campaign parity.
+Before activation: verify actual Base44 `User/me` response with an authorized owner; verify confirmed Supabase `/auth/v1/user` session; test real service-role RPC and anon/authenticated denials through PostgREST; configure and test a non-paid durable rate-limiting binding and server-only secrets; add dedicated Cloudflare route and safe Worker bindings, secure same-origin UI, full integration tests, live tenant isolation/replay tests and rollback. Do not deploy without all of these. Do not enable independent campaign/agent access until verified owner links exist. Do not shut down Base44 before full financial, agent, login, and campaign parity.
 
-Rollback for this source-only change: delete the three files introduced in this branch; there is no live traffic, database schema, or permission change to reverse.
+Rollback for this source-only integration: revert the branch-only `host/gateway/worker.js` import and route, and delete `owner-consent-dispatch.mjs` and its test. No live traffic, database schema, or permission change occurred in this run. Preserve the earlier owner-proof SQL and adapter work for independent review.
+
+## Branch-only Worker integration (2026-10-23)
+
+The gateway now dispatches the **exact** `/api/v1/migration/owner-link` path before the generic admin fallback. With the flag absent, it returns sanitized HTTP 503 and never invokes provider verification or reads credentials. When enabled, it delegates to the existing strict same-origin, rate-limited consent handler. The existing handler's own configuration checks still fail closed if secrets or limiter are missing. The branch has no Cloudflare route registration or deployment. The 5 new dispatcher tests were run locally with a mocked handler (not positive live authentication); the original 19 handler tests were not rerun during this integration run. A full production bundle build was not run because the full repository was unavailable in the local runtime.
