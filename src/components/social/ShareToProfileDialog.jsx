@@ -44,7 +44,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
   const connectedSocial = (connections || []).filter((c) => {
     if (!isUsableConnection(c) || c.kind !== "social") return false;
     const cap = capabilityFor(c.platform);
-    return (cap?.direct_publish_verified === true && cap?.test_status === "passing" && cap?.implementation_status === "implemented") || cap?.manual_share_verified === true;
+    return cap?.direct_publish_verified === true && cap?.test_status === "passing" && cap?.implementation_status === "implemented";
   });
   const campaignId = sourceType === "campaign" ? sourceId : undefined;
 
@@ -77,21 +77,28 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
       const newScore = data.social_score;
       const newTier = data.banner_tier;
 
-      // Cross-post to linked external platforms
-      if (crossPost.length > 0) {
-        for (const platform of crossPost) {
-          const conn = connectedSocial.find((c) => c.platform === platform);
-          if (!conn || !campaignId) continue;
-          try {
-            const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });
-            if (distributed?.ok !== true || !distributed?.post?.id) continue;
-            const dp = distributed.post;
-            await base44.functions.invoke("publishPost", { post_id: dp.id, user_publish_authorized: true });
-          } catch { /* best-effort */ }
+      // Keep IFund's own publication separate from external provider outcomes.
+      // Every selected ID identifies one specific connection/asset, not the
+      // first account found for a provider with several Pages/profiles.
+      const externallyPublished = [];
+      const requiresManual = [];
+      for (const connectionId of crossPost) {
+        const conn = connectedSocial.find((c) => c.id === connectionId);
+        if (!conn || !campaignId) continue;
+        try {
+          const { data: distributed } = await base44.functions.invoke("createDistributedPost", { campaign_id: campaignId, connection_id: conn.id, content: draft.trim() });
+          if (distributed?.ok !== true || !distributed?.post?.id) throw new Error("Post not queued");
+          const { data: result } = await base44.functions.invoke("publishPost", { post_id: distributed.post.id, user_publish_authorized: true });
+          if (result?.manual === false && result?.post?.status === "published") externallyPublished.push(conn.display_name || conn.platform);
+          else requiresManual.push(conn.display_name || conn.platform);
+        } catch {
+          requiresManual.push(conn.display_name || conn.platform);
         }
       }
-
-      toast({ title: "Shared to your profile!", description: newTier !== (user?.banner_tier || "none") ? `You reached ${newTier} tier!` : "+10 social points" });
+      const providerSummary = externallyPublished.length || requiresManual.length
+        ? ` External: ${externallyPublished.length} confirmed published, ${requiresManual.length} needs manual attention.`
+        : " External publishing was not requested.";
+      toast({ title: "Shared to your IFund profile", description: (newTier !== (user?.banner_tier || "none") ? `You reached ${newTier} tier.` : "+10 social points.") + providerSummary });
       onShared?.(post, newScore, newTier);
       onClose();
     } catch {
@@ -126,7 +133,7 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
               placeholder="Your AI-drafted post will appear here…"
             />
 
-            {connectedSocial.length > 0 && (
+            {campaignId && connectedSocial.length > 0 && (
               <div className="mt-3">
                 <p className="text-sm text-slate-200 mb-2 flex items-center gap-1">
                   <Link2 className="w-3 h-3" /> Publish to:
@@ -136,24 +143,24 @@ export default function ShareToProfileDialog({ open, onClose, sourceType, source
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setCrossPost((prev) => prev.includes(c.platform) ? prev.filter((p) => p !== c.platform) : [...prev, c.platform])}
+                      onClick={() => setCrossPost((prev) => prev.includes(c.id) ? prev.filter((p) => p !== c.id) : [...prev, c.id])}
                       className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                        crossPost.includes(c.platform)
+                        crossPost.includes(c.id)
                           ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-200"
                           : "bg-white/10 border-white/30 text-slate-100"
                       }`}
                     >
                       {crossPost.includes(c.platform) && <Check className="w-3 h-3 inline mr-1" />}
-                      {PLATFORM_LABELS[c.platform] || c.platform}
+                      {PLATFORM_LABELS[c.platform] || c.platform}{c.display_name ? ` · ${c.display_name}` : ""}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {connectedSocial.length === 0 && (
+            {(connectedSocial.length === 0 || !campaignId) && (
               <p className="text-sm text-slate-200 mt-2">
-                No connected platforms have a verified sharing path yet. <a href="/connections" className="text-cyan-400 hover:underline">Manage connections</a>
+                External direct publishing is available only for verified campaign connections. You can still share manually from your device. <a href="/connections" className="text-cyan-400 hover:underline">Manage connections</a>
               </p>
             )}
 
