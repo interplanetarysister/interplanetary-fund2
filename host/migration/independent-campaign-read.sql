@@ -1,6 +1,8 @@
 -- IFund independent owner campaign READ preview. SOURCE ONLY: DO NOT APPLY
--- until owner identities are provider-verified and the owner-link route passes
--- real positive tests. No anonymous or service-role read access is granted.
+-- until durable two-provider owner-session consent, positive owner HTTP and
+-- negative cross-owner HTTP access tests are independently verified.
+-- Current email-only owner mappings are NOT proof of live source authentication.
+-- No authenticated EXECUTE grant is permitted in this dormant source file.
 -- Requires existing private ifund_migration.campaign_shadow and
 -- ifund_migration.owner_identity_map. No donations, payouts, or ledger fields.
 -- Rollback after eventual activation:
@@ -43,5 +45,9 @@ AS $rpc$
   LIMIT 50
 $rpc$;
 
-REVOKE ALL ON FUNCTION public.ifund_migration_my_campaigns() FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.ifund_migration_my_campaigns() TO authenticated;
+REVOKE ALL ON FUNCTION public.ifund_migration_my_campaigns() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ifund_migration_my_campaigns() TO service_role;
+-- Deliberate future release ONLY after owner proof and cross-owner HTTP tests:
+-- GRANT EXECUTE ON FUNCTION public.ifund_migration_my_campaigns() TO authenticated;
+-- Emergency permission rollback after release:
+-- REVOKE EXECUTE ON FUNCTION public.ifund_migration_my_campaigns() FROM authenticated;
