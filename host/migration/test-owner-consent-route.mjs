@@ -19,7 +19,7 @@ const mockFetch = async (url, opts) => {
  const json = body => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
  if (url.endsWith('/entities/User/me')) return json({ id: SOURCE, email: 'owner@example.org' });
  if (url.endsWith('/auth/v1/user')) return json({ id: DEST, email: 'owner@example.org', email_confirmed_at: '2026-10-23T00:00:00Z' });
- if (url.endsWith('/rpc/ifund_migration_owner_lookup')) return json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null }]);
+ if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }]);
  if (url.endsWith('/rpc/ifund_migration_owner_commit')) return json([{ linked: true, source_owner_id: SOURCE, destination_auth_uid: DEST, verification_state: 'verified' }]);
  throw Error('unexpected upstream');
 };
@@ -137,7 +137,7 @@ test('source mapping mismatch blocks atomic commit', async () => {
  const ch = await challenge();
  let commits = 0;
  const fetcher = async (url, opts) => {
-  if (url.endsWith('/rpc/ifund_migration_owner_lookup')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'other@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'other@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }]), { headers: { 'content-type': 'application/json' } });
   if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
   return mockFetch(url, opts);
  };
@@ -148,7 +148,7 @@ test('already verified same-owner replay is idempotent without second commit', a
  const ch = await challenge();
  let commits = 0;
  const fetcher = async (url, opts) => {
-  if (url.endsWith('/rpc/ifund_migration_owner_lookup')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: DEST }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: DEST, candidate_match_method: null }]), { headers: { 'content-type': 'application/json' } });
   if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
   return mockFetch(url, opts);
  };
@@ -169,4 +169,37 @@ test('POST durable rate limiter rejects before any identity lookup', async () =>
  const env = { ...base, IFUND_OWNER_LINK_LIMITER: { limit: async () => ({ success: false }) } };
  assert.equal((await post(ch, '{"consent":true}', {}, env, async () => { network++; throw Error('should not call'); })).status, 429);
  assert.equal(network, 0);
+});
+
+test('historical confirmed-email mapping cannot be silently upgraded by the consent route', async () => {
+ const ch = await challenge();
+ let commits = 0;
+ const fetcher = async (url, opts) => {
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{
+   source_owner_id: SOURCE, source_email: 'owner@example.org',
+   verification_state: 'verified', destination_auth_uid: DEST,
+   candidate_match_method: 'confirmed_exact_email',
+  }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  return mockFetch(url, opts);
+ };
+ const r = await post(ch, '{"consent":true}', {}, base, fetcher);
+ assert.equal(r.status, 403);
+ assert.equal(commits, 0);
+});
+
+test('legacy lookup missing candidate provenance fails closed at the consent route', async () => {
+ const ch = await challenge();
+ let commits = 0;
+ const fetcher = async (url, opts) => {
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{
+   source_owner_id: SOURCE, source_email: 'owner@example.org',
+   verification_state: 'verified', destination_auth_uid: DEST,
+  }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  return mockFetch(url, opts);
+ };
+ const r = await post(ch, '{"consent":true}', {}, base, fetcher);
+ assert.equal(r.status, 503);
+ assert.equal(commits, 0);
 });
