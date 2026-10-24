@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('./owner-proof-rpcs.sql', import.meta.url), 'utf8');
-test('three legacy functions and audited upgrade are definer-only, pinned search_path, and service role gated', () => {
-  assert.equal((sql.match(/SECURITY DEFINER/g) || []).length, 4);
-  assert.equal((sql.match(/SET search_path = pg_catalog/g) || []).length, 4);
-  assert.equal((sql.match(/request\.jwt\.claim\.role/g) || []).length, 4);
+test('three legacy functions and two audited RPCs are definer-only, pinned search_path, and service role gated', () => {
+  assert.equal((sql.match(/SECURITY DEFINER/g) || []).length, 5);
+  assert.equal((sql.match(/SET search_path = pg_catalog/g) || []).length, 5);
+  assert.equal((sql.match(/request\.jwt\.claim\.role/g) || []).length, 5);
   assert.equal((sql.match(/= 'service_role'/g) || []).length, 3);
 });
-test('three legacy functions and audited upgrade revoke public, anon and authenticated, grant service_role', () => {
-  assert.equal((sql.match(/REVOKE ALL ON FUNCTION .* FROM PUBLIC, anon, authenticated/g) || []).length, 4);
-  assert.equal((sql.match(/GRANT EXECUTE ON FUNCTION .* TO service_role/g) || []).length, 4);
+test('three legacy functions and two audited RPCs revoke public, anon and authenticated, grant service_role', () => {
+  assert.equal((sql.match(/REVOKE ALL ON FUNCTION .* FROM PUBLIC, anon, authenticated/g) || []).length, 5);
+  assert.equal((sql.match(/GRANT EXECUTE ON FUNCTION .* TO service_role/g) || []).length, 5);
 });
 test('commit is single atomic UPDATE, requires null link and expected state', () => {
   assert.match(sql, /UPDATE ifund_migration\.owner_identity_map/);
@@ -74,4 +74,24 @@ test('audited upgrade signature and receipt constraints fail closed', () => {
   assert.match(sql, /p_source_session_checked_at < now\(\) - interval '60 seconds'/);
   assert.match(sql, /p_destination_session_checked_at < now\(\) - interval '60 seconds'/);
   assert.match(sql, /consent_version = 'ifund-owner-link-v1'/);
+});
+
+
+test('new owner link requires atomic audited receipt and service-only execution', () => {
+  const body = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_commit_audited(')[1]
+    ?.split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit_audited')[0];
+  assert.ok(body, 'audited new-link RPC is required');
+  assert.match(body, /request\.jwt\.claim\.role', true\) IS DISTINCT FROM 'service_role'/);
+  assert.match(body, /m\.verification_state = 'awaiting_destination_login'/);
+  assert.match(body, /m\.destination_auth_uid IS NULL/);
+  assert.match(body, /m\.candidate_match_method IS NULL/);
+  assert.match(body, /s\.user_id = p_destination_auth_uid/);
+  assert.match(body, /p_consent_nonce_sha256 IS NULL/);
+  assert.match(body, /p_source_session_checked_at < now\(\) - interval '60 seconds'/);
+  assert.match(body, /p_destination_session_checked_at < now\(\) - interval '60 seconds'/);
+  assert.match(body, /IF NOT FOUND THEN RETURN; END IF;\s+INSERT INTO ifund_migration\.owner_link_consent_audit/);
+  assert.match(body, /'ifund-owner-link-v1', 'new_link'/);
+  assert.doesNotMatch(body, /SET\s+candidate_auth_uid\s*=/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.ifund_migration_owner_commit_audited\(text,uuid,text,text,text,timestamptz,timestamptz\) FROM PUBLIC, anon, authenticated/);
+  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.ifund_migration_owner_commit_audited\(text,uuid,text,text,text,timestamptz,timestamptz\) TO service_role/);
 });
