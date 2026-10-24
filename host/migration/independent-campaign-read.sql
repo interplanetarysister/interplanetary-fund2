@@ -33,6 +33,7 @@ AS $rpc$
   JOIN ifund_migration.owner_identity_map AS m
     ON m.destination_auth_uid = u.id
    AND m.verification_state = 'verified'
+   AND m.candidate_match_method IS NULL
    AND lower(btrim(m.source_email)) = lower(btrim(u.email))
   JOIN ifund_migration.campaign_shadow AS c
     ON c.source_owner_id = m.source_owner_id
@@ -45,6 +46,12 @@ AS $rpc$
   LIMIT 50
 $rpc$;
 
+-- Only the server's dual-provider consent bridge can establish a verified
+-- owner link without an email-only candidate match method. This predicate
+-- excludes ALL pre-linked confirmed_exact_email candidates, even if someone
+-- mistakenly grants authenticated EXECUTE before durable proof is available.
+-- A null candidate method is NOT itself proof of consent; the separate
+-- owner-session, durable consent and cross-owner HTTP gates remain mandatory.
 REVOKE ALL ON FUNCTION public.ifund_migration_my_campaigns() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ifund_migration_my_campaigns() TO service_role;
 -- Deliberate future release ONLY after owner proof and cross-owner HTTP tests:
