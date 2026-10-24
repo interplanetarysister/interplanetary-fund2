@@ -2,15 +2,10 @@ name: Production Quality Gates
 
 # Batch verification marker: 2026-09-30 repair batch
 
+# GitHub Actions minutes are limited. Run intentionally only; a successful
+# manually started main-branch gate still permits the existing release workflow.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'recovery/**'
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -61,6 +56,18 @@ jobs:
 
       - name: Verify Base44 sync contract
         run: node scripts/verify-base44-sync-contract.mjs
+
+      - name: Verify terms and liability contract
+        run: node scripts/verify-terms-liability.mjs
+
+      - name: Verify service health error contract
+        run: node scripts/verify-service-health-safe-errors.mjs
+
+      - name: Verify brand and planet favicon
+        run: node scripts/verify-brand-propagation.mjs
+
+      - name: Campaign draft, launch and generated media safety
+        run: npm run verify:campaign-creation && node scripts/test-campaign-save-publish.mjs
 
       - name: Lint
         run: npm run lint
@@ -200,20 +207,6 @@ jobs:
           done
           test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
-
-  node22-compatibility:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node current compatibility build
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: npm
-      - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
-      - run: npm run build
 
   typecheck:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')

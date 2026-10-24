@@ -16,7 +16,7 @@ const LOCAL_LOGOS = {
 };
 const UNAVAILABLE_LOGOS = new Set(["custom", "google_contacts", "one_drive"]);
 
-export default function PlatformLogo({ platform, className = "" }) {
+export default function PlatformLogo({ platform, className = "", size = "md" }) {
   const [failed, setFailed] = useState(false);
   const name = String(platform?.name || platform?.id || "Platform");
   const id = String(platform?.id || "").toLowerCase();
@@ -25,12 +25,13 @@ export default function PlatformLogo({ platform, className = "" }) {
     ? `/platform-logos/${id}.${LOCAL_LOGOS[id]}`
     : UNAVAILABLE_LOGOS.has(id) ? null : `https://api.iconify.design/simple-icons/${slug}.svg`;
   const initials = name.replace(/[^a-zA-Z0-9 ]/g, "").split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]).join("").toUpperCase() || name.slice(0, 2).toUpperCase();
+  const small = size === "sm";
   return (
-    <span className={`ifund-platform-logo inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200/70 bg-white text-sm font-extrabold text-slate-700 shadow-sm ${className}`}
+    <span className={`ifund-platform-logo inline-flex shrink-0 items-center justify-center border border-slate-200/70 bg-white font-extrabold text-slate-700 shadow-sm ${small ? "h-9 w-9 rounded-xl text-xs" : "h-11 w-11 rounded-2xl text-sm"} ${className}`}
           style={{ "--brand-accent": platform?.color || "#7059d7" }} aria-hidden="true">
       {imageSrc && !failed
         ? <img src={imageSrc} alt="" loading="lazy" referrerPolicy="no-referrer"
-               onError={() => setFailed(true)} className="h-7 w-7 object-contain" />
+               onError={() => setFailed(true)} className={small ? "h-6 w-6 object-contain" : "h-7 w-7 object-contain"} />
         : <span>{initials}</span>}
     </span>
   );

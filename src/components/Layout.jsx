@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Outlet, NavLink, Link, useLocation, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen, House, CircleHelp, Leaf } from "lucide-react";
+import { LayoutDashboard, Compass, PlusCircle, HeartHandshake, MessageSquare, Sparkles, Users, Building2, BarChart3, Server, Menu, X, User, CreditCard, Wallet, Link2, MailOpen, Heart, ChevronLeft, Globe2, Bot, Satellite, Plug, Radio, BookOpen, House, CircleHelp, Leaf, Download } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { SLOGAN } from "@/components/brand/brand";
@@ -19,7 +19,7 @@ import { helpPathForLocation } from "@/lib/helpCenter";
 import { LifeBuoy, ArrowUpRight, Sun, Moon } from "lucide-react";
 
 const PAGE_TITLES = {
-  "/dashboard": "Overview", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
+  "/dashboard": "Overview", "/download": "Download IFund", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
   "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Team",
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ai-images": "AI Image Studio", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
@@ -86,6 +86,7 @@ const navSections = [
       { to: "/profile", label: "Profile", icon: User },
       { to: "/connections", label: "Connections", icon: Link2 },
       { to: "/subscriptions", label: "Plans", icon: CreditCard },
+      { to: "/download", label: "Download IFund", icon: Download },
       { to: "/help", label: "Help Center", icon: CircleHelp },
     ],
   },
@@ -114,7 +115,8 @@ const publicNavItems = [
   { to: "/social", label: "IFund Social", icon: Radio },
   { to: "/globe", label: "Global Globe", icon: Globe2 },
   { to: "/blogs", label: "Stories & Blogs", icon: BookOpen },
-  { to: "/help", label: "Help Center", icon: CircleHelp },
+  { to: "/download", label: "Download IFund", icon: Download },
+      { to: "/help", label: "Help Center", icon: CircleHelp },
 ];
 
 
