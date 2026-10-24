@@ -4,13 +4,13 @@ export const STAGED_CONTENT = Object.freeze({
   HelpArticle: 6, FeatureFlag: 24, PublicProfile: 2,
   DiscussionPost: 2, Community: 2, FoundingWaitlist: 2,
   SupportTicket: 1, AgentConversationRun: 13, Notification: 94,
-  SocialPost: 10, Agent: 10,
+  SocialPost: 10, Agent: 10, Recommendation: 100,
 });
 export const SOURCE_COUNTS = Object.freeze({
   HelpArticle: 6, FeatureFlag: 24, PublicProfile: 2,
   DiscussionPost: 2, Community: 2, FoundingWaitlist: 2,
   SupportTicket: 1, AgentConversationRun: 13, Notification: 94,
-  SocialPost: 15, Agent: 18, CommunityMember: 2, Message: 1,
+  SocialPost: 15, Agent: 18, Recommendation: 836, CommunityMember: 2, Message: 1,
   Campaign: 27, CampaignUpdate: 10, PlatformConnection: 32,
   User: 10, LegalAcceptance: 5, AuthorizationGrant: 2,
   PayPalBillingWebhook: 1, Donation: 0, Withdrawal: 0,
