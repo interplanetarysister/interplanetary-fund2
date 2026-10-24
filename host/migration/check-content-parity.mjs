@@ -1,20 +1,26 @@
-// Read-only, no-network migration parity checker.
+// Read-only parity checker for recorded migration snapshots.
 // Run: node host/migration/check-content-parity.mjs
-// This does not execute a workflow, access credentials, or change a database.
+// Source counts and staging counts are snapshots, not live queries.
+// An untracked entity type is never assumed complete.
 import { STAGED_CONTENT, SOURCE_COUNTS, ACTIVATION_BLOCKERS } from './content-parity-manifest.mjs';
 
-const checked = Object.entries(SOURCE_COUNTS)
-  .filter(([entity]) => Object.hasOwn(STAGED_CONTENT, entity))
-  .map(([entity, source]) => {
-    const staged = STAGED_CONTENT[entity];
-    return { entity, source, staged, missing: Math.max(0, source - staged), complete: source === staged };
-  });
+const checked = Object.entries(SOURCE_COUNTS).map(([entity, source]) => {
+  const tracked = Object.hasOwn(STAGED_CONTENT, entity);
+  const staged = tracked ? STAGED_CONTENT[entity] : null;
+  return { entity, source, staged, tracked,
+    missing: tracked ? Math.max(0, source - staged) : null,
+    complete: tracked && source === staged };
+});
 const incomplete = checked.filter(x => !x.complete);
-console.log(JSON.stringify({
-  checkedEntityTypes: checked.length,
+const untracked = incomplete.filter(x => !x.tracked);
+const mismatched = incomplete.filter(x => x.tracked);
+const report = {
+  sourceEntityTypes: checked.length,
+  checkedEntityTypes: checked.length - untracked.length,
   countParity: incomplete.length === 0,
-  incomplete,
+  untracked, mismatched,
   activationBlockers: ACTIVATION_BLOCKERS,
   safeToUnpublishBase44: false,
-}, null, 2));
-if (incomplete.length) process.exitCode = 1;
+};
+console.log(JSON.stringify(report, null, 2));
+if (incomplete.length || ACTIVATION_BLOCKERS.length) process.exitCode = 1;
