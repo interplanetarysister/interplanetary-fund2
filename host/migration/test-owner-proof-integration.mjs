@@ -8,13 +8,13 @@ const destId = 'bba16ddd-8531-4ed2-84ca-5de48fc8a8c1';
 const otherDestId = '11111111-1111-1111-1111-111111111111';
 const json = x => new Response(JSON.stringify(x), { headers: { 'content-type': 'application/json' } });
 function harness({ source = { id: sourceId, email: 'owner@example.org' }, destination = { id: destId, email: 'owner@example.org', email_confirmed_at: '2026-10-23T00:00:00Z' }, mappings } = {}) {
-  const records = mappings || new Map([[sourceId, { source_owner_id: sourceId, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null }]]);
+  const records = mappings || new Map([[sourceId, { source_owner_id: sourceId, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }]]);
   let commits = 0;
   const fetcher = async (url, opts) => {
     if (url.endsWith('/entities/User/me')) return json(source);
     if (url.endsWith('/auth/v1/user')) return json(destination);
     const body = JSON.parse(opts.body);
-    if (url.endsWith('/ifund_migration_owner_lookup')) return json(records.has(body.p_source_owner_id) ? [records.get(body.p_source_owner_id)] : []);
+    if (url.endsWith('/ifund_migration_owner_lookup_v2')) return json(records.has(body.p_source_owner_id) ? [records.get(body.p_source_owner_id)] : []);
     if (url.endsWith('/ifund_migration_owner_commit')) {
       commits++;
       const row = records.get(body.p_source_owner_id);
@@ -53,11 +53,17 @@ test('cross-tenant source cannot claim a mapping owned by another source', async
 });
 test('conflicting previously linked destination cannot link another owner', async () => {
   const records = new Map([
-    [sourceId, { source_owner_id: sourceId, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null }],
+    [sourceId, { source_owner_id: sourceId, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }],
     [otherSourceId, { source_owner_id: otherSourceId, source_email: 'other@example.org', verification_state: 'verified', destination_auth_uid: destId }],
   ]);
   const h = harness({ mappings: records });
   assert.equal((await linkVerifiedOwnerSessions(h.adapters)).reason, 'link_conflict');
   assert.equal(h.commits(), 1);
   assert.equal(records.get(sourceId).destination_auth_uid, null);
+});
+test('historical email-only verified mapping does not return already-linked success', async () => {
+  const records = new Map([[sourceId, { source_owner_id: sourceId, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: destId, candidate_match_method: 'confirmed_exact_email' }]]);
+  const h = harness({ mappings: records });
+  assert.deepEqual(await linkVerifiedOwnerSessions(h.adapters), {ok:false, linked:false, reason:'owner_proof_upgrade_required'});
+  assert.equal(h.commits(), 0);
 });
