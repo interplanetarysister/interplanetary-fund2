@@ -50,3 +50,10 @@ test('confirmed-email candidate owners are excluded even if EXECUTE were mistake
   assert.doesNotMatch(executable, /candidate_match_method\s*(?:<>|!=)\s*'confirmed_exact_email'/);
   assert.match(sql, /null candidate method is NOT itself proof of consent/);
 });
+test('destination JWT must match an existing non-expired Supabase auth session', () => {
+  const executable = sql.replace(/^--.*$/gm, '');
+  assert.match(executable, /EXISTS\s*\(\s*SELECT 1 FROM auth\.sessions AS s/);
+  assert.match(executable, /s\.user_id = u\.id/);
+  assert.match(executable, /s\.id::text = auth\.jwt\(\)->>'session_id'/);
+  assert.match(executable, /s\.not_after IS NULL OR s\.not_after > now\(\)/);
+});
