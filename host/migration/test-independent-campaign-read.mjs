@@ -44,3 +44,9 @@ test('never activate this RPC before verified owner-link identities', () => {
   assert.match(sql, /SOURCE ONLY: DO NOT APPLY/);
   assert.match(sql, /DROP FUNCTION IF EXISTS public\.ifund_migration_my_campaigns\(\)/);
 });
+test('confirmed-email candidate owners are excluded even if EXECUTE were mistakenly regranted', () => {
+  const executable = sql.replace(/^--.*$/gm, '');
+  assert.match(executable, /AND m\.candidate_match_method IS NULL/);
+  assert.doesNotMatch(executable, /candidate_match_method\s*(?:<>|!=)\s*'confirmed_exact_email'/);
+  assert.match(sql, /null candidate method is NOT itself proof of consent/);
+});
