@@ -60,6 +60,22 @@ export function planCampaignShadowReconciliation(sourceRows, shadowRows, ownerRo
   const source = rowsToMap(sourceRows, 'id', 'source campaign');
   const shadow = rowsToMap(shadowRows, 'source_id', 'shadow campaign');
   const owners = rowsToMap(ownerRows, 'source_owner_id', 'owner map');
+  // Fail closed on ambiguous destination identities, including case-only UUID
+  // duplicates. A candidate identity is never a verified destination link.
+  const destinationOwners = new Map();
+  for (const owner of owners.values()) {
+    const uid = owner.destination_auth_uid;
+    if (owner.verification_state === 'verified') {
+      if (typeof uid !== 'string' || !UUID.test(uid))
+        throw new TypeError('Verified owner mapping lacks valid destination identity');
+      const normalized = uid.toLowerCase();
+      if (destinationOwners.has(normalized) && destinationOwners.get(normalized) !== owner.source_owner_id)
+        throw new TypeError('Conflicting verified destination owner mapping');
+      destinationOwners.set(normalized, owner.source_owner_id);
+    } else if (uid != null) {
+      throw new TypeError('Unverified owner mapping contains destination identity');
+    }
+  }
   // Fail closed for every shadow, including unmatched/orphaned shadows.
   for (const row of shadow.values()) {
     if (row.financial_authoritative !== false)
