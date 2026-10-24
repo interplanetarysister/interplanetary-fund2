@@ -94,6 +94,10 @@ export function planCampaignShadowReconciliation(sourceRows, shadowRows, ownerRo
     if (!owner || owner.verification_state !== 'verified' ||
         typeof owner.destination_auth_uid !== 'string' || !UUID.test(owner.destination_auth_uid))
       blockers.push('owner_auth_not_verified');
+    // A confirmed email match is a candidate hint, not proof that both owners
+    // authenticated in one consent transaction. Keep it explicitly blocked.
+    if (owner?.candidate_match_method === 'confirmed_exact_email')
+      blockers.push('email_match_is_not_live_session_proof');
     if (src.status !== dst.status) blockers.push('status_mismatch');
     if (typeof dst.source_sha256 !== 'string' || !SHA256.test(dst.source_sha256))
       blockers.push('missing_or_invalid_staged_hash');
@@ -119,6 +123,7 @@ export function planCampaignShadowReconciliation(sourceRows, shadowRows, ownerRo
     optionalGapCount: records.filter(x => x.optionalFields.length > 0).length,
     operationalDriftCount: records.filter(x => x.operationalFields.length > 0).length,
     pendingOwnerCount: records.filter(x => x.blockers.includes('owner_auth_not_verified')).length,
+    emailOnlyEvidenceCount: records.filter(x => x.blockers.includes('email_match_is_not_live_session_proof')).length,
     records,
     financialAuthorityVerified: false,
     liveOwnerJwtVerified: false,
