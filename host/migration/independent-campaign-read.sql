@@ -42,6 +42,12 @@ AS $rpc$
     AND auth.uid() IS NOT NULL
     AND u.id = auth.uid()
     AND u.email_confirmed_at IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM auth.sessions AS s
+      WHERE s.user_id = u.id
+        AND s.id::text = auth.jwt()->>'session_id'
+        AND (s.not_after IS NULL OR s.not_after > now())
+    )
   ORDER BY c.synced_at DESC, c.source_id ASC
   LIMIT 50
 $rpc$;
@@ -52,6 +58,8 @@ $rpc$;
 -- mistakenly grants authenticated EXECUTE before durable proof is available.
 -- A null candidate method is NOT itself proof of consent; the separate
 -- owner-session, durable consent and cross-owner HTTP gates remain mandatory.
+-- Require a destination JWT tied to a currently recorded, non-expired
+-- Supabase auth.sessions row; email confirmation alone cannot satisfy this.
 REVOKE ALL ON FUNCTION public.ifund_migration_my_campaigns() FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ifund_migration_my_campaigns() TO service_role;
 -- Deliberate future release ONLY after owner proof and cross-owner HTTP tests:
