@@ -81,9 +81,15 @@ export function makeOwnerProofAdapters({
     loadSourceOwner: async (sourceOwnerId) => {
       requireConfigured();
       if (!/^[0-9a-f]{24}$/i.test(String(sourceOwnerId))) throw new Error('invalid_owner');
-      const rows = await rpc('ifund_migration_owner_lookup', { p_source_owner_id: sourceOwnerId });
+      // V2 exposes candidate_match_method; legacy email-only links are not
+      // proof of two live provider sessions and cannot be treated as linked.
+      const rows = await rpc('ifund_migration_owner_lookup_v2', { p_source_owner_id: sourceOwnerId });
       if (!Array.isArray(rows) || rows.length > 1) throw new Error('invalid_lookup');
-      return rows[0] || null;
+      const row = rows[0] || null;
+      if (row && (!Object.prototype.hasOwnProperty.call(row, 'candidate_match_method') ||
+          (row.candidate_match_method !== null && typeof row.candidate_match_method !== 'string')))
+        throw new Error('invalid_lookup_provenance');
+      return row;
     },
     commitVerifiedLink: async ({ sourceOwnerId, destinationAuthUid, expectedEmail, expectedState }) => {
       requireConfigured();
