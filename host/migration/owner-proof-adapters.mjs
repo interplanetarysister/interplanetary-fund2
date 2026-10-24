@@ -91,6 +91,39 @@ export function makeOwnerProofAdapters({
         throw new Error('invalid_lookup_provenance');
       return row;
     },
+    // STAGED ONLY: a separate, receipt-creating RPC. The public route still
+    // uses the legacy adapter until the entire trusted gate is upgraded.
+    // Never silently fall back to the unaudited RPC on any error.
+    commitAuditedLink: async ({
+      sourceOwnerId, destinationAuthUid, expectedEmail, expectedState,
+      consentNonceSha256, consentOrigin, sourceSessionCheckedAt, destinationSessionCheckedAt,
+    }) => {
+      requireConfigured();
+      const recent = (value) => {
+        if (typeof value !== 'string') return false;
+        const time = Date.parse(value);
+        return Number.isFinite(time) && time <= Date.now() && time >= Date.now() - 60_000;
+      };
+      if (expectedState !== 'awaiting_destination_login' ||
+          !/^[0-9a-f]{24}$/i.test(String(sourceOwnerId)) ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(destinationAuthUid)) ||
+          typeof expectedEmail !== 'string' || expectedEmail.length > 254 ||
+          !/^[0-9a-f]{64}$/.test(String(consentNonceSha256)) ||
+          !['https://interplanetaryfund.com', 'https://www.interplanetaryfund.com'].includes(consentOrigin) ||
+          !recent(sourceSessionCheckedAt) || !recent(destinationSessionCheckedAt))
+        throw new Error('invalid_audited_link');
+      const rows = await rpc('ifund_migration_owner_commit_audited', {
+        p_source_owner_id: sourceOwnerId,
+        p_destination_auth_uid: destinationAuthUid,
+        p_expected_email: expectedEmail,
+        p_consent_nonce_sha256: consentNonceSha256,
+        p_consent_origin: consentOrigin,
+        p_source_session_checked_at: sourceSessionCheckedAt,
+        p_destination_session_checked_at: destinationSessionCheckedAt,
+      });
+      if (!Array.isArray(rows) || rows.length > 1) throw new Error('invalid_audited_commit');
+      return rows[0] || { linked: false };
+    },
     commitVerifiedLink: async ({ sourceOwnerId, destinationAuthUid, expectedEmail, expectedState }) => {
       requireConfigured();
       if (expectedState !== 'awaiting_destination_login' ||
