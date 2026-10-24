@@ -174,5 +174,5 @@ BEGIN
 END;
 $rpc$;
 REVOKE ALL ON FUNCTION public.ifund_migration_owner_upgrade_historical(text,uuid,text,text,text,timestamptz,timestamptz) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.ifund_migration_owner_upgrade_historical(text,uuid,text,text,timestamptz,timestamptz) TO service_role;
+GRANT EXECUTE ON FUNCTION public.ifund_migration_owner_upgrade_historical(text,uuid,text,text,text,timestamptz,timestamptz) TO service_role;
 -- END STAGED OWNER CONSENT AUDIT V1
