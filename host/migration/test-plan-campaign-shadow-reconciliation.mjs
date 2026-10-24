@@ -70,3 +70,20 @@ test('unverified owner cannot carry a destination auth UID',()=>{
 test('verified owner must carry a valid destination auth UID',()=>{
  assert.throws(()=>run([source()],[shadow()],[{...owner(),destination_auth_uid:'invalid'}]),/Verified owner mapping lacks valid destination identity/);
 });
+
+
+test('confirmed email candidate is explicitly insufficient for live owner authorization',()=>{
+ const candidate={...owner(),candidate_match_method:'confirmed_exact_email',candidate_auth_uid:uid};
+ const result=run([source()],[shadow()],[candidate]);
+ assert.equal(result.emailOnlyEvidenceCount,1);
+ assert.ok(result.records[0].blockers.includes('email_match_is_not_live_session_proof'));
+ assert.equal(result.records[0].applyAllowed,false);
+ assert.equal(result.liveOwnerJwtVerified,false);
+ assert.doesNotMatch(JSON.stringify(result),/confirmed_exact_email|123e4567/);
+});
+test('missing candidate metadata does not falsely claim live JWT proof',()=>{
+ const result=run();
+ assert.equal(result.emailOnlyEvidenceCount,0);
+ assert.equal(result.liveOwnerJwtVerified,false);
+ assert.ok(result.records[0].blockers.includes('fresh_owner_session_hash_and_rollback_evidence_required'));
+});
