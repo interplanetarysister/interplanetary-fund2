@@ -54,15 +54,26 @@ export async function linkVerifiedOwnerSessions({
   if (!mapping || mapping.source_owner_id !== source.id ||
       normalizeEmail(mapping.source_email) !== sourceEmail)
     return denied('source_owner_not_found');
+  // A legacy four-column lookup cannot establish the provenance of a link.
+  if (!Object.prototype.hasOwnProperty.call(mapping, 'candidate_match_method'))
+    return denied('owner_provenance_unavailable');
 
   if (mapping.verification_state === 'verified') {
-    return mapping.destination_auth_uid === destination.id
-      ? { ok: true, linked: true, alreadyLinked: true }
-      : denied('link_conflict');
+    if (mapping.destination_auth_uid !== destination.id) return denied('link_conflict');
+    // A historical confirmed-email match is NOT a completed owner-link proof.
+    // Missing provenance is equally untrusted. The service-only lookup must
+    // return candidate_match_method explicitly; older 4-column RPCs fail closed.
+    // Upgrading such a mapping requires a separate, audited atomic consent
+    // transition; never silently convert it into a session-proven link here.
+    if (mapping.candidate_match_method !== null)
+      return denied('owner_proof_upgrade_required');
+    return { ok: true, linked: true, alreadyLinked: true };
   }
   if (mapping.verification_state !== 'awaiting_destination_login' ||
       mapping.destination_auth_uid != null)
     return denied('link_conflict');
+  if (mapping.candidate_match_method !== null)
+    return denied('owner_proof_upgrade_required');
 
   // commitVerifiedLink MUST be an atomic database compare-and-set, checking
   // expected state, source ID/email, empty destination UID, and unique target UID.
