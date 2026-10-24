@@ -21,6 +21,10 @@ test('commit is single atomic UPDATE, requires null link and expected state', ()
   assert.match(sql, /lower\(btrim\(m\.source_email\)\) = lower\(btrim\(p_expected_email\)\)/);
   assert.match(sql, /lower\(btrim\(u\.email\)\) = lower\(btrim\(p_expected_email\)\)/);
   assert.doesNotMatch(sql, /candidate_auth_uid\s*=/);
+  assert.match(sql, /AND m\.candidate_match_method IS NULL/);
+  assert.match(sql, /FROM auth\.sessions AS s/);
+  assert.match(sql, /s\.user_id = p_destination_auth_uid/);
+  assert.match(sql, /s\.not_after IS NULL OR s\.not_after > now\(\)/);
 });
 test('additive V2 owner lookup exposes candidate provenance without changing old return type', () => {
   assert.match(sql, /FUNCTION public\.ifund_migration_owner_lookup_v2\(p_source_owner_id text\)/);
@@ -29,4 +33,13 @@ test('additive V2 owner lookup exposes candidate provenance without changing old
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.ifund_migration_owner_lookup_v2\(text\) FROM PUBLIC, anon, authenticated/);
   assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.ifund_migration_owner_lookup_v2\(text\) TO service_role/);
   assert.match(sql, /DROP FUNCTION public\.ifund_migration_owner_lookup_v2\(text\)/);
+});
+
+test('SQL commit rejects email-only candidate and missing live session independently of the JS gate', () => {
+  const body = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_commit(')[1].split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit')[0];
+  assert.match(body, /m\.candidate_match_method IS NULL/);
+  assert.match(body, /EXISTS \(\s*SELECT 1 FROM auth\.sessions AS s/);
+  assert.match(body, /s\.user_id = p_destination_auth_uid/);
+  assert.match(body, /s\.not_after IS NULL OR s\.not_after > now\(\)/);
+  assert.doesNotMatch(body, /OR m\.candidate_match_method/);
 });
