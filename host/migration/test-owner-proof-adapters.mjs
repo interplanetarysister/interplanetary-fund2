@@ -84,3 +84,66 @@ test('network and provider error never echo secrets', async () => {
   const a = make(async () => { throw Error('secret ' + config.supabaseServiceKey); });
   await assert.rejects(a.loadSourceOwner(SOURCE));
 });
+
+test('audited owner-link adapter requires signed consent evidence and never calls legacy RPC', async () => {
+  const checkedAt = new Date().toISOString();
+  let requests = 0;
+  const a = make(async (url, opts) => {
+    requests++;
+    assert.equal(url, 'https://tzehxfikoslihnclhxuz.supabase.co/rest/v1/rpc/ifund_migration_owner_commit_audited');
+    const body = JSON.parse(opts.body);
+    assert.equal(body.p_source_owner_id, SOURCE);
+    assert.equal(body.p_destination_auth_uid, DEST);
+    assert.equal(body.p_consent_nonce_sha256, 'a'.repeat(64));
+    assert.equal(body.p_consent_origin, 'https://interplanetaryfund.com');
+    assert.equal(body.p_source_session_checked_at, checkedAt);
+    assert.equal(body.p_destination_session_checked_at, checkedAt);
+    assert.equal(opts.headers.authorization, 'Bearer ' + config.supabaseServiceKey);
+    return json([{ linked: true, source_owner_id: SOURCE, destination_auth_uid: DEST, verification_state: 'verified' }]);
+  });
+  const row = await a.commitAuditedLink({
+    sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner@example.org',
+    expectedState: 'awaiting_destination_login', consentNonceSha256: 'a'.repeat(64),
+    consentOrigin: 'https://interplanetaryfund.com',
+    sourceSessionCheckedAt: checkedAt, destinationSessionCheckedAt: checkedAt,
+  });
+  assert.equal(row.linked, true);
+  assert.equal(requests, 1);
+});
+test('audited adapter rejects missing, stale, or untrusted consent without network', async () => {
+  let network = 0;
+  const a = make(async () => { network++; throw Error('must not call provider'); });
+  const valid = {
+    sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner@example.org',
+    expectedState: 'awaiting_destination_login', consentNonceSha256: 'b'.repeat(64),
+    consentOrigin: 'https://interplanetaryfund.com',
+    sourceSessionCheckedAt: new Date().toISOString(),
+    destinationSessionCheckedAt: new Date().toISOString(),
+  };
+  for (const invalid of [
+    { consentNonceSha256: undefined }, { consentNonceSha256: 'invalid' },
+    { consentOrigin: 'https://evil.example' },
+    { sourceSessionCheckedAt: new Date(Date.now() - 61_000).toISOString() },
+    { destinationSessionCheckedAt: new Date(Date.now() + 60_000).toISOString() },
+    { expectedState: 'verified' },
+  ]) {
+    await assert.rejects(a.commitAuditedLink({ ...valid, ...invalid }), /invalid_audited_link/);
+  }
+  assert.equal(network, 0);
+});
+test('audited adapter never downgrades to unaudited commit when provider errors', async () => {
+  const checkedAt = new Date().toISOString();
+  let calls = 0;
+  const a = make(async (url) => {
+    calls++;
+    assert.match(url, /ifund_migration_owner_commit_audited$/);
+    return json({ error: 'unavailable' }, 503);
+  });
+  await assert.rejects(a.commitAuditedLink({
+    sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner@example.org',
+    expectedState: 'awaiting_destination_login', consentNonceSha256: 'c'.repeat(64),
+    consentOrigin: 'https://interplanetaryfund.com',
+    sourceSessionCheckedAt: checkedAt, destinationSessionCheckedAt: checkedAt,
+  }), /provider_unavailable/);
+  assert.equal(calls, 1);
+});
