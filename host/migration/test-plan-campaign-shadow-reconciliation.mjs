@@ -59,3 +59,14 @@ test('no payment, ledger, source values or credentials appear in output',()=>{
  const a=source();a.raised_amount=12345;a.story='TOP SECRET STORY';a.access_token='TOP SECRET TOKEN';
  const r=run([a]);assert.doesNotMatch(JSON.stringify(r),/TOP SECRET|12345|SECRET/);
 });
+
+test('two source owners cannot share a verified destination identity',()=>{
+ const a=owner(), b={...owner(),source_owner_id:'owner0002',destination_auth_uid:uid.toUpperCase()};
+ assert.throws(()=>run([source()],[shadow()],[a,b]),/Conflicting verified destination owner mapping/);
+});
+test('unverified owner cannot carry a destination auth UID',()=>{
+ assert.throws(()=>run([source()],[shadow()],[{...owner(),verification_state:'awaiting_destination_login'}]),/Unverified owner mapping contains destination identity/);
+});
+test('verified owner must carry a valid destination auth UID',()=>{
+ assert.throws(()=>run([source()],[shadow()],[{...owner(),destination_auth_uid:'invalid'}]),/Verified owner mapping lacks valid destination identity/);
+});
