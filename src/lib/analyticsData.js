@@ -11,6 +11,8 @@ export const isDonationList = (value) => Array.isArray(value) && value.every((it
   && typeof item.amount === "number"
   && Number.isFinite(item.amount)
   && item.amount > 0
+  && isNonEmptyString(item.created_date)
+  && Number.isFinite(Date.parse(item.created_date))
 ));
 
 export async function collectCursorPages(readPage, { pageSize = DEFAULT_PAGE_SIZE, maxRecords = DEFAULT_MAX_RECORDS } = {}) {
@@ -84,12 +86,9 @@ export async function loadAnalyticsData(base44, userId) {
     return response.data.donations;
   });
 
-  const signupLists = await mapWithConcurrency(volunteerOpps, (opportunity) => (
-    filterAll(base44.entities.VolunteerSignup, { opportunity_id: opportunity.id })
-  ));
+  const signups = await filterAll(base44.entities.VolunteerSignup, { user_id: userId });
 
   const donations = donationLists.flat();
-  const signups = signupLists.flat();
   if (!isDonationList(donations) || !isEntityList(signups)) throw new Error("Malformed analytics response");
 
   return { campaigns, communities, institutions, volunteerOpps, applications, opportunities, donations, signups };
