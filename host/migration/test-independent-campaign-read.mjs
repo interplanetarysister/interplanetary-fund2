@@ -21,9 +21,17 @@ test('requires verified matching source and destination ownership', () => {
   assert.match(sql, /u\.email_confirmed_at IS NOT NULL/);
   assert.match(sql, /request\.jwt\.claim\.role', true\) = 'authenticated'/);
 });
-test('no public, anonymous or service-role execute permission', () => {
-  assert.match(sql, /REVOKE ALL ON FUNCTION public\.ifund_migration_my_campaigns\(\) FROM PUBLIC, anon, authenticated, service_role;/);
-  assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.ifund_migration_my_campaigns\(\) TO authenticated;/);
+test('anonymous and authenticated access remain revoked until owner proof', () => {
+  const executable = sql.replace(/^--.*$/gm, '');
+  assert.match(executable, /REVOKE ALL ON FUNCTION public\.ifund_migration_my_campaigns\(\) FROM PUBLIC, anon, authenticated;/);
+  assert.match(executable, /GRANT EXECUTE ON FUNCTION public\.ifund_migration_my_campaigns\(\) TO service_role;/);
+  assert.doesNotMatch(executable, /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.ifund_migration_my_campaigns\(\)\s+TO\s+authenticated/i);
+});
+test('release requires real two-provider proof and has an explicit permission rollback', () => {
+  assert.match(sql, /durable two-provider owner-session consent/);
+  assert.match(sql, /negative cross-owner HTTP/);
+  assert.match(sql, /email-only owner mappings are NOT proof/);
+  assert.match(sql, /Emergency permission rollback after release/);
 });
 test('only explicit campaign preview fields; never financial snapshots or private metadata', () => {
   const table = sql.match(/RETURNS TABLE \(([\s\S]*?)\)\s*LANGUAGE/)[1];
