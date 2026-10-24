@@ -48,6 +48,43 @@ async function hash(value) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value))),
     b => b.toString(16).padStart(2, '0')).join('');
 }
+/**
+ * Keep the migration's existing dual-provider identity gate, but replace its
+ * commit callback with the audited RPC only. A historical or already-verified
+ * row is not a fresh link: it requires separate audit-proof readback or an
+ * explicitly audited historical-upgrade transition, neither available here.
+ */
+export function makeAuditedOwnerGateAdapters(adapters, { consentNonceSha256, consentOrigin, now = () => Date.now() }) {
+  const checked = {};
+  return {
+    verifySourceSession: async () => {
+      const source = await adapters.verifySourceSession();
+      checked.source = new Date(now()).toISOString();
+      return source;
+    },
+    verifyDestinationSession: async () => {
+      const destination = await adapters.verifyDestinationSession();
+      checked.destination = new Date(now()).toISOString();
+      return destination;
+    },
+    loadSourceOwner: async (id) => {
+      const owner = await adapters.loadSourceOwner(id);
+      // No 'already linked' success until a service-only consent receipt is
+      // independently checked. Historical email-only candidates also fail.
+      if (owner?.verification_state === 'verified') return null;
+      return owner;
+    },
+    commitVerifiedLink: async (identity) => {
+      if (!checked.source || !checked.destination) throw Error('missing_provider_proof');
+      return adapters.commitAuditedLink({
+        ...identity, consentNonceSha256, consentOrigin,
+        sourceSessionCheckedAt: checked.source,
+        destinationSessionCheckedAt: checked.destination,
+      });
+    },
+  };
+}
+
 async function boundedBody(request) {
   const declared = request.headers.get('content-length');
   if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) > 256)) throw Error('size');
@@ -117,7 +154,17 @@ export async function handleOwnerConsent(request, env, { fetcher = globalThis.fe
     supabasePublishableKey: env.IFUND_SUPABASE_PUBLISHABLE_KEY,
     supabaseServiceKey: env.IFUND_SUPABASE_SERVICE_ROLE_KEY, fetcher,
   });
-  const result = await linkVerifiedOwnerSessions(adapters);
+  // The digest is derived server-side from the HMAC-verified challenge nonce,
+  // never from a browser-supplied owner ID or claimed consent receipt.
+  let consentNonceSha256;
+  try {
+    const signedPayload = JSON.parse(new TextDecoder('utf-8', { fatal: true })
+      .decode(fromB64url(csrf.split('.')[0])));
+    consentNonceSha256 = await hash(signedPayload.nonce);
+  } catch { return deny(); }
+  const result = await linkVerifiedOwnerSessions(makeAuditedOwnerGateAdapters(adapters, {
+    consentNonceSha256, consentOrigin: url.origin, now,
+  }));
   if (!result.ok) return deny(result.reason === 'identity_provider_unavailable' || result.reason === 'storage_unavailable' ? 503 : 403);
   return text({ ok: true, linked: true, already_linked: result.alreadyLinked === true }, 200, {
     'set-cookie': `ifund_owner_csrf=; Path=${ROUTE}; Max-Age=0; Secure; HttpOnly; SameSite=Strict`,
