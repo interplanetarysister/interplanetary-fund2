@@ -57,6 +57,9 @@ AS $rpc$
   WHERE m.source_owner_id = p_source_owner_id
     AND m.verification_state = 'awaiting_destination_login'
     AND m.destination_auth_uid IS NULL
+    -- Defense in depth: the service-only commit must not convert any
+    -- candidate/email-only mapping even if a caller bypasses the JS gate.
+    AND m.candidate_match_method IS NULL
     AND current_setting('request.jwt.claim.role', true) = 'service_role'
     AND lower(btrim(m.source_email)) = lower(btrim(p_expected_email))
     AND EXISTS (
@@ -64,6 +67,14 @@ AS $rpc$
       WHERE u.id = p_destination_auth_uid
         AND u.email_confirmed_at IS NOT NULL
         AND lower(btrim(u.email)) = lower(btrim(p_expected_email))
+    )
+    -- A confirmed email or an auth.users row alone is not an active login.
+    -- The trusted route must ALSO verify the exact destination bearer and
+    -- the live Base44 bearer before invoking this service-only RPC.
+    AND EXISTS (
+      SELECT 1 FROM auth.sessions AS s
+      WHERE s.user_id = p_destination_auth_uid
+        AND (s.not_after IS NULL OR s.not_after > now())
     )
   RETURNING true, m.source_owner_id, m.destination_auth_uid, m.verification_state
 $rpc$;
