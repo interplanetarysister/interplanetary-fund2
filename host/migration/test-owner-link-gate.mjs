@@ -3,7 +3,7 @@ import test from 'node:test';
 import { linkVerifiedOwnerSessions } from './owner-link-gate.mjs';
 const source = { verified: true, active: true, id: '6a67a778342a8fe05ee79cbb', email: 'Owner@Example.org' };
 const destination = { verified: true, id: 'bba16ddd-8531-4ed2-84ca-5de48fc8a8c1', email: 'owner@example.org', email_confirmed_at: '2026-10-23T00:00:00Z' };
-const mapping = { source_owner_id: source.id, source_email: source.email, verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_auth_uid: destination.id };
+const mapping = { source_owner_id: source.id, source_email: source.email, verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_auth_uid: destination.id, candidate_match_method: null };
 const factory = (overrides = {}) => ({
   verifySourceSession: async () => source,
   verifyDestinationSession: async () => destination,
@@ -34,9 +34,27 @@ test('existing different owner link fails', async () => {
   const result = await linkVerifiedOwnerSessions(factory({loadSourceOwner:async()=>({...mapping,verification_state:'verified',destination_auth_uid:'11111111-1111-1111-1111-111111111111'})}));
   assert.equal(result.reason,'link_conflict');
 });
-test('same verified link is idempotent', async () => {
-  const result = await linkVerifiedOwnerSessions(factory({loadSourceOwner:async()=>({...mapping,verification_state:'verified',destination_auth_uid:destination.id})}));
+test('same verified link with explicit non-candidate provenance is idempotent', async () => {
+  const result = await linkVerifiedOwnerSessions(factory({loadSourceOwner:async()=>({...mapping,verification_state:'verified',destination_auth_uid:destination.id,candidate_match_method:null})}));
   assert.deepEqual(result,{ok:true,linked:true,alreadyLinked:true});
+});
+test('email-only prelinks are never reported as owner-session verified', async () => {
+  let commits = 0;
+  const result = await linkVerifiedOwnerSessions(factory({
+    loadSourceOwner:async()=>({...mapping,verification_state:'verified',destination_auth_uid:destination.id,candidate_match_method:'confirmed_exact_email'}),
+    commitVerifiedLink:async()=>{commits++;throw Error('must not be called');},
+  }));
+  assert.deepEqual(result,{ok:false,linked:false,reason:'owner_proof_upgrade_required'});
+  assert.equal(commits,0);
+});
+test('old lookup RPC omitting candidate method fails closed', async () => {
+  const { candidate_match_method: _omitted, ...legacyMapping } = mapping;
+  const result = await linkVerifiedOwnerSessions(factory({loadSourceOwner:async()=>({...legacyMapping,verification_state:'verified',destination_auth_uid:destination.id})}));
+  assert.deepEqual(result,{ok:false,linked:false,reason:'owner_provenance_unavailable'});
+});
+test('pending mapping with an email-only candidate cannot silently become session-proven', async () => {
+  const result = await linkVerifiedOwnerSessions(factory({loadSourceOwner:async()=>({...mapping,candidate_match_method:'confirmed_exact_email'})}));
+  assert.deepEqual(result,{ok:false,linked:false,reason:'owner_proof_upgrade_required'});
 });
 test('atomic compare-and-set failure does not claim success', async () => {
   const result = await linkVerifiedOwnerSessions(factory({commitVerifiedLink:async()=>({linked:false})}));
