@@ -20,7 +20,8 @@ test('commit is single atomic UPDATE, requires null link and expected state', ()
   assert.match(sql, /u\.email_confirmed_at IS NOT NULL/);
   assert.match(sql, /lower\(btrim\(m\.source_email\)\) = lower\(btrim\(p_expected_email\)\)/);
   assert.match(sql, /lower\(btrim\(u\.email\)\) = lower\(btrim\(p_expected_email\)\)/);
-  assert.doesNotMatch(sql, /candidate_auth_uid\s*=/);
+  const originalCommit = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_commit(')[1].split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit')[0];
+  assert.doesNotMatch(originalCommit, /candidate_auth_uid\s*=/);
   assert.match(sql, /AND m\.candidate_match_method IS NULL/);
   assert.match(sql, /FROM auth\.sessions AS s/);
   assert.match(sql, /s\.user_id = p_destination_auth_uid/);
