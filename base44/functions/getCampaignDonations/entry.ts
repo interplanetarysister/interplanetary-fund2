@@ -5,6 +5,7 @@ const ANALYTICS_MAX_RECORDS = 100000;
 
 async function collectDonationPages(entity, campaignId) {
   const records = [];
+  const seenCursors = new Set();
   let cursor = null;
   do {
     const page = await entity.filter(
@@ -19,9 +20,12 @@ async function collectDonationPages(entity, campaignId) {
     }
     records.push(...page.items);
     if (!page.has_more) return records;
+    if (page.items.length === 0) throw new Error('Donation cursor made no progress');
     if (typeof page.next_cursor !== 'string' || page.next_cursor.length === 0) {
       throw new Error('Malformed donation cursor');
     }
+    if (seenCursors.has(page.next_cursor)) throw new Error('Donation cursor repeated');
+    seenCursors.add(page.next_cursor);
     cursor = page.next_cursor;
   } while (true);
 }

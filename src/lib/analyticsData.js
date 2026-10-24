@@ -5,10 +5,17 @@ const DEFAULT_CONCURRENCY = 6;
 export const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 export const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
 export const isEntityList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id));
-export const isDonationList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id) && Number.isFinite(Number(item.amount)));
+export const isDonationList = (value) => Array.isArray(value) && value.every((item) => (
+  isRecord(item)
+  && isNonEmptyString(item.id)
+  && typeof item.amount === "number"
+  && Number.isFinite(item.amount)
+  && item.amount > 0
+));
 
 export async function collectCursorPages(readPage, { pageSize = DEFAULT_PAGE_SIZE, maxRecords = DEFAULT_MAX_RECORDS } = {}) {
   const records = [];
+  const seenCursors = new Set();
   let cursor = null;
   do {
     const page = await readPage(cursor, pageSize);
@@ -20,7 +27,10 @@ export async function collectCursorPages(readPage, { pageSize = DEFAULT_PAGE_SIZ
     }
     records.push(...page.items);
     if (!page.has_more) return records;
+    if (page.items.length === 0) throw new Error("Analytics cursor made no progress");
     if (!isNonEmptyString(page.next_cursor)) throw new Error("Malformed analytics cursor");
+    if (seenCursors.has(page.next_cursor)) throw new Error("Analytics cursor repeated");
+    seenCursors.add(page.next_cursor);
     cursor = page.next_cursor;
   } while (true);
 }

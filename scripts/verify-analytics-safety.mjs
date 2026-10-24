@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { collectCursorPages, mapWithConcurrency } from '../src/lib/analyticsData.js';
+import { collectCursorPages, isDonationList, mapWithConcurrency } from '../src/lib/analyticsData.js';
 
 const pageSource = fs.readFileSync('src/pages/Analytics.jsx', 'utf8');
 const dataSource = fs.readFileSync('src/lib/analyticsData.js', 'utf8');
@@ -39,6 +39,18 @@ await assert.rejects(
   /cursor/,
 );
 await assert.rejects(
+  collectCursorPages(async () => ({ items: [], has_more: true, next_cursor: 'same' })),
+  /no progress/,
+);
+let repeatedCursorCall = 0;
+await assert.rejects(
+  collectCursorPages(async () => {
+    repeatedCursorCall += 1;
+    return { items: [{ id: `item-${repeatedCursorCall}` }], has_more: true, next_cursor: 'same' };
+  }),
+  /repeated/,
+);
+await assert.rejects(
   collectCursorPages(async () => ({ items: [{ id: 'a' }, { id: 'b' }], has_more: false, next_cursor: null }), { maxRecords: 1 }),
   /safe limit/,
 );
@@ -54,5 +66,10 @@ const ordered = await mapWithConcurrency([0, 1, 2, 3, 4], async (value) => {
 }, 2);
 assert.deepEqual(ordered, [0, 2, 4, 6, 8]);
 assert.ok(peak <= 2);
+
+assert.equal(isDonationList([{ id: 'good', amount: 10 }]), true);
+for (const amount of [null, '', true, '10', Number.NaN, Number.POSITIVE_INFINITY, 0, -1]) {
+  assert.equal(isDonationList([{ id: 'bad', amount }]), false);
+}
 
 console.log('Analytics safety contract passed.');
