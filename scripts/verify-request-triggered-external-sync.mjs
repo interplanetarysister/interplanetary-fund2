@@ -67,6 +67,18 @@ assert.match(syncEntity, /"in_progress"/);
 for (const source of [connections, count, migration, importedUi]) {
   assert.match(source, /request_id:\s*crypto\.randomUUID\(\)/);
 }
+assert.match(connections, /parseExternalSyncResult\(data\)/,
+  'Connections must fail closed through the external sync response contract');
+assert.match(connections, /syncInFlightRef\.current/,
+  'Connections must synchronously fence duplicate refresh actions');
+assert.doesNotMatch(connections, /overall_status:\s*typeof data\.overall_status/,
+  'Connections must not invent a fallback provider status');
+assert.doesNotMatch(connections, /Number\.isFinite\(Number\(data\.(?:campaigns_covered|total_discovered|total_imported)\)\)\s*\?[^:]+:\s*0/,
+  'Connections must not replace malformed provider totals with zero');
+assert.doesNotMatch(sync, /(?:campaigns_covered|total_discovered|total_imported):\s*num\(run\./,
+  'public completed-run responses must not coerce malformed stored totals to zero');
+assert.match(sync, /assertPublicRun/,
+  'completed and deduplicated sync responses must pass a server-side truth contract');
 assert.match(imported, /validExternalSyncRequestId/);
 for (const source of [sync, imported, discovery, importFn]) {
   assert.match(source, /claimLost/,

@@ -33,19 +33,53 @@ import {
 const num = (v) => (typeof v === 'number' ? v : Number(v) || 0);
 const validCurrency = (v) => /^[A-Z]{3}$/.test(String(v || '').trim().toUpperCase());
 
-const publicRun = (run, deduplicated = false) => ({
-  ok: ['success', 'partial'].includes(run.overall_status),
-  deduplicated,
-  run_id: run.id,
-  request_id: run.request_id,
-  overall_status: run.overall_status,
-  campaigns_covered: num(run.campaigns_covered),
-  total_discovered: num(run.total_discovered),
-  discovered_totals: Array.isArray(run.discovered_totals) ? run.discovered_totals : [],
-  total_imported: num(run.total_imported),
-  withdrawable_imported: 0,
-  provider_results: Array.isArray(run.provider_results) ? run.provider_results : [],
-});
+const publicStatuses = new Set(['success', 'partial', 'failed', 'unavailable', 'no_connections']);
+const nonNegativeFinite = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const nonNegativeInteger = (value) => nonNegativeFinite(value) && Number.isInteger(value);
+
+const assertPublicRun = (run) => {
+  if (!run || typeof run !== 'object' || !publicStatuses.has(run.overall_status) ||
+      !nonNegativeInteger(run.campaigns_covered) ||
+      !nonNegativeFinite(run.total_discovered) ||
+      !nonNegativeInteger(run.total_imported) ||
+      !Array.isArray(run.discovered_totals) ||
+      !Array.isArray(run.provider_results)) {
+    throw new Error('Stored synchronization result is incomplete.');
+  }
+
+  const currencies = new Set();
+  for (const row of run.discovered_totals) {
+    if (!row || typeof row !== 'object' || Array.isArray(row) ||
+        typeof row.currency !== 'string' ||
+        !(/^[A-Z]{3}$/.test(row.currency) || row.currency === 'UNSPECIFIED') ||
+        !nonNegativeFinite(row.amount) ||
+        currencies.has(row.currency)) {
+      throw new Error('Stored synchronization result is incomplete.');
+    }
+    currencies.add(row.currency);
+  }
+  const usdTotal = run.discovered_totals.find((row) => row.currency === 'USD')?.amount ?? 0;
+  if (run.total_discovered !== usdTotal) {
+    throw new Error('Stored synchronization result is inconsistent.');
+  }
+};
+
+const publicRun = (run, deduplicated = false) => {
+  assertPublicRun(run);
+  return {
+    ok: ['success', 'partial'].includes(run.overall_status),
+    deduplicated,
+    run_id: run.id,
+    request_id: run.request_id,
+    overall_status: run.overall_status,
+    campaigns_covered: run.campaigns_covered,
+    total_discovered: run.total_discovered,
+    discovered_totals: run.discovered_totals.map(({ currency, amount }) => ({ currency, amount })),
+    total_imported: run.total_imported,
+    withdrawable_imported: 0,
+    provider_results: run.provider_results,
+  };
+};
 
 // Per-platform adapter. Returns { status, amount_discovered, transactions, note }.
 // A transaction intended for import MUST include stable id, amount, and currency.

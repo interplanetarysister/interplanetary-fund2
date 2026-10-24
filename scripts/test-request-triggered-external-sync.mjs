@@ -10,6 +10,7 @@ import {
   validExternalSyncRequestId,
 } from '../base44/shared/externalSyncRequest.ts';
 import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity, reconcileOAuthExternalBalance } from '../base44/shared/externalBalanceEvidence.ts';
+import { parseExternalSyncResult } from '../src/lib/externalSyncResult.js';
 
 const preservedEvidence = {
   external_total: 125.5,
@@ -429,5 +430,60 @@ const importedReplay=fakeService({runs:[{id:'imported',request_key:`imported_cam
 const refreshed=await beginExternalSyncRequest(importedReplay.sr,{...args,jobType:'imported_campaign_refresh',fingerprint:'import-1'});
 assert.equal(refreshed.disposition,'completed');
 assert.equal(refreshed.run.result_payload.campaign_id,'c1');
+
+
+const completedSync = {
+  ok: true,
+  deduplicated: false,
+  overall_status: 'success',
+  campaigns_covered: 2,
+  total_discovered: 25.5,
+  total_imported: 1,
+  withdrawable_imported: 0,
+  discovered_totals: [{ currency: 'USD', amount: 25.5 }],
+};
+assert.deepEqual(parseExternalSyncResult(completedSync), {
+  overall_status: 'success',
+  campaigns_covered: 2,
+  total_discovered: 25.5,
+  total_imported: 1,
+  discovered_totals: [{ currency: 'USD', amount: 25.5 }],
+});
+assert.deepEqual(parseExternalSyncResult({
+  ok: false,
+  deduplicated: true,
+  overall_status: 'in_progress',
+}), {
+  overall_status: 'in_progress',
+  deduplicated: true,
+  discovered_totals: [],
+});
+assert.deepEqual(parseExternalSyncResult({
+  ...completedSync,
+  total_discovered: 0,
+  discovered_totals: [{ currency: 'UNSPECIFIED', amount: 0 }],
+}).discovered_totals, [{ currency: 'UNSPECIFIED', amount: 0 }],
+'backend-defined unknown currency remains explicit instead of being dropped or converted');
+
+for (const [label, payload] of [
+  ['missing status', { ...completedSync, overall_status: undefined }],
+  ['unknown status', { ...completedSync, overall_status: 'completed' }],
+  ['missing total', { ...completedSync, total_discovered: undefined }],
+  ['string total', { ...completedSync, total_discovered: '25.5' }],
+  ['negative total', { ...completedSync, total_discovered: -1 }],
+  ['non-integer import count', { ...completedSync, total_imported: 1.5 }],
+  ['invented custody', { ...completedSync, withdrawable_imported: 1 }],
+  ['invalid currency', { ...completedSync, discovered_totals: [{ currency: 'usd', amount: 25.5 }] }],
+  ['negative currency total', { ...completedSync, discovered_totals: [{ currency: 'USD', amount: -1 }] }],
+  ['duplicate currency', { ...completedSync, discovered_totals: [{ currency: 'USD', amount: 20 }, { currency: 'USD', amount: 5.5 }] }],
+  ['conflicting USD total', { ...completedSync, total_discovered: 24 }],
+  ['USD total missing from groups', { ...completedSync, discovered_totals: [] }],
+  ['inconsistent success flag', { ...completedSync, ok: false }],
+  ['missing in-progress success flag', { overall_status: 'in_progress', deduplicated: true }],
+  ['contradictory in-progress success flag', { overall_status: 'in_progress', deduplicated: true, ok: true }],
+  ['unproven in-progress state', { overall_status: 'in_progress', deduplicated: false, ok: false }],
+]) {
+  assert.throws(() => parseExternalSyncResult(payload), /Malformed sync response/, label);
+}
 
 console.log('Request-triggered external sync behavioral tests passed');
