@@ -31,12 +31,16 @@ test('destination verifier calls pinned Supabase auth endpoint, not decoded JWT'
 });
 test('source mapping lookup uses service-only RPC with scoped owner ID', async () => {
   const a = make(async (url, opts) => {
-    assert.equal(url, 'https://tzehxfikoslihnclhxuz.supabase.co/rest/v1/rpc/ifund_migration_owner_lookup');
+    assert.equal(url, 'https://tzehxfikoslihnclhxuz.supabase.co/rest/v1/rpc/ifund_migration_owner_lookup_v2');
     assert.equal(opts.headers.authorization, 'Bearer ' + config.supabaseServiceKey);
     assert.equal(JSON.parse(opts.body).p_source_owner_id, SOURCE);
-    return json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null }]);
+    return json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }]);
   });
   assert.equal((await a.loadSourceOwner(SOURCE)).source_owner_id, SOURCE);
+});
+test('legacy lookup response without candidate provenance is rejected', async () => {
+  const a = make(async () => json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: DEST }]));
+  await assert.rejects(a.loadSourceOwner(SOURCE), /invalid_lookup_provenance/);
 });
 test('commit only calls atomic service RPC with expected state', async () => {
   const a = make(async (url, opts) => {
