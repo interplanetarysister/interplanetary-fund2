@@ -9,21 +9,10 @@ import ReportsPanel from "@/components/analytics/ReportsPanel";
 import { Loader2 } from "lucide-react";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
 import PageError from "@/components/PageError";
+import { isRecord, isNonEmptyString, loadAnalyticsData } from "@/lib/analyticsData";
 
-const SAFE_ANALYTICS_ERROR = "We couldn't load your analytics. Please try again.";
-
-const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
-const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
-const isEntityList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id));
-const isDonationList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id) && Number.isFinite(Number(item.amount)));
-const isFunctionDonationResponse = (value) => isRecord(value) && isDonationList(value.data?.donations);
-
-function normalizeAnalyticsPayload({ campaigns, communities, institutions, volunteerOpps, applications, opportunities, donations, signups }) {
-  if (!isEntityList(campaigns) || !isEntityList(communities) || !isEntityList(institutions) || !isEntityList(volunteerOpps) || !isEntityList(applications) || !isEntityList(opportunities) || !isDonationList(donations) || !isEntityList(signups)) {
-    throw new Error("Malformed analytics response");
-  }
-  return { campaigns, communities, institutions, volunteerOpps, applications, opportunities, donations, signups };
-}
+const SAFE_ANALYTICS_ERROR = "We couldn't load your analytics right now. Please try again.";
+const SAFE_ANALYTICS_REFRESH_ERROR = "We couldn't refresh your analytics. Your last complete view is preserved; please try again.";
 
 export default function Analytics() {
   const [data, setData] = useState(null);
@@ -42,43 +31,7 @@ export default function Analytics() {
       try {
         const me = await base44.auth.me();
         if (!isRecord(me) || !isNonEmptyString(me.id)) throw new Error("Malformed auth response");
-        if (!mounted || requestId !== requestGeneration.current) return;
-
-        const [campaigns, communities, institutions, volunteerOpps, applications, opportunities] = await Promise.all([
-          base44.entities.Campaign.filter({ created_by_id: me.id }),
-          base44.entities.Community.list("-created_date", 200),
-          base44.entities.Institution.list("-created_date", 200),
-          base44.entities.VolunteerOpportunity.list("-created_date", 200),
-          base44.entities.GrantApplication.filter({ applicant_user_id: me.id }),
-          base44.entities.InstitutionOpportunity.list("-created_date", 200),
-        ]);
-
-        if (!isEntityList(campaigns) || !isEntityList(communities) || !isEntityList(institutions) || !isEntityList(volunteerOpps) || !isEntityList(applications) || !isEntityList(opportunities)) {
-          throw new Error("Malformed analytics entity response");
-        }
-
-        const dResults = await Promise.all(
-          campaigns.map((c) => base44.functions.invoke("getCampaignDonations", { campaign_id: c.id }))
-        );
-        if (!dResults.every(isFunctionDonationResponse)) throw new Error("Malformed donation response");
-        const donationLists = dResults.map((r) => r.data.donations);
-
-        const signupLists = await Promise.all(
-          volunteerOpps.map((o) => base44.entities.VolunteerSignup.filter({ opportunity_id: o.id }))
-        );
-        if (!signupLists.every(isEntityList)) throw new Error("Malformed signup response");
-
-        const nextData = normalizeAnalyticsPayload({
-          campaigns,
-          communities,
-          institutions,
-          volunteerOpps,
-          applications,
-          opportunities,
-          donations: donationLists.flat(),
-          signups: signupLists.flat(),
-        });
-
+        const nextData = await loadAnalyticsData(base44, me.id);
         if (mounted && requestId === requestGeneration.current) {
           setData(nextData);
           setError(null);
@@ -99,7 +52,7 @@ export default function Analytics() {
     return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={SAFE_ANALYTICS_ERROR} onRetry={() => setRefreshKey((k) => k + 1)} /></div>;
   }
   if (!data && loading) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" aria-label="Loading analytics" /></div>;
+    return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" aria-hidden="true" /><span className="sr-only">Loading analytics</span></div>;
   }
   if (!data) {
     return <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={SAFE_ANALYTICS_ERROR} onRetry={() => setRefreshKey((k) => k + 1)} /></div>;
@@ -111,7 +64,8 @@ export default function Analytics() {
       <p className="text-stone-500 mt-1 mb-6">
         What happened, why, what's likely next, and what to do about it.
       </p>
-      {error && <div role="alert" className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{SAFE_ANALYTICS_ERROR} <button type="button" className="underline" onClick={() => setRefreshKey((k) => k + 1)}>Retry</button></div>}
+      {loading && <p role="status" aria-live="polite" className="mb-3 text-xs text-stone-500">Refreshing analytics…</p>}
+      {error && <div role="alert" className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{SAFE_ANALYTICS_REFRESH_ERROR} <button type="button" className="underline" onClick={() => setRefreshKey((k) => k + 1)}>Retry</button></div>}
 
       <Tabs defaultValue="overview">
         <TabsList className="mb-6">
