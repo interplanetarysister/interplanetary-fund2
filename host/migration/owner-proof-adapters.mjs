@@ -124,6 +124,40 @@ export function makeOwnerProofAdapters({
       if (!Array.isArray(rows) || rows.length > 1) throw new Error('invalid_audited_commit');
       return rows[0] || { linked: false };
     },
+    // Separate atomic upgrade for a historical confirmed-email candidate.
+    // Never call the legacy unaudited commit or silently change its target UID.
+    upgradeHistoricalLink: async ({
+      sourceOwnerId, destinationAuthUid, expectedEmail, expectedState,
+      expectedCandidateMethod, consentNonceSha256, consentOrigin,
+      sourceSessionCheckedAt, destinationSessionCheckedAt,
+    }) => {
+      requireConfigured();
+      const recent = value => {
+        const t = typeof value === 'string' ? Date.parse(value) : NaN;
+        return Number.isFinite(t) && t <= Date.now() && t > Date.now() - 60_000;
+      };
+      if (expectedState !== 'verified' ||
+          expectedCandidateMethod !== 'confirmed_exact_email' ||
+          !/^[a-f0-9]{24}$/i.test(String(sourceOwnerId)) ||
+          !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(String(destinationAuthUid)) ||
+          typeof expectedEmail !== 'string' || expectedEmail.length > 254 ||
+          !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(expectedEmail) ||
+          !/^[a-f0-9]{64}$/.test(String(consentNonceSha256)) ||
+          !['https://interplanetaryfund.com', 'https://www.interplanetaryfund.com'].includes(consentOrigin) ||
+          !recent(sourceSessionCheckedAt) || !recent(destinationSessionCheckedAt))
+        throw new Error('invalid_historical_upgrade');
+      const rows = await rpc('ifund_migration_owner_upgrade_historical', {
+        p_source_owner_id: sourceOwnerId,
+        p_destination_auth_uid: destinationAuthUid,
+        p_expected_email: expectedEmail,
+        p_consent_nonce_sha256: consentNonceSha256,
+        p_consent_origin: consentOrigin,
+        p_source_session_checked_at: sourceSessionCheckedAt,
+        p_destination_session_checked_at: destinationSessionCheckedAt,
+      });
+      if (!Array.isArray(rows) || rows.length > 1) throw new Error('invalid_historical_upgrade_result');
+      return rows[0] || { upgraded: false };
+    },
     commitVerifiedLink: async ({ sourceOwnerId, destinationAuthUid, expectedEmail, expectedState }) => {
       requireConfigured();
       if (expectedState !== 'awaiting_destination_login' ||
