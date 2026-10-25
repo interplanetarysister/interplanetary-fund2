@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('./owner-proof-rpcs.sql', import.meta.url), 'utf8');
 test('three legacy functions and two audited RPCs are definer-only, pinned search_path, and service role gated', () => {
   assert.equal((sql.match(/SECURITY DEFINER/g) || []).length, 5);
-  assert.equal((sql.match(/SET search_path = pg_catalog/g) || []).length, 5);
+  assert.equal((sql.match(/SET search_path = pg_catalog/g) || []).length, 6);
   assert.equal((sql.match(/request\.jwt\.claim\.role/g) || []).length, 5);
   assert.equal((sql.match(/= 'service_role'/g) || []).length, 3);
 });
@@ -105,4 +105,17 @@ test('legacy unaudited owner commit loses service-role EXECUTE after all grants'
   assert.ok(executable.includes(revoke), 'legacy grant must be revoked');
   assert.ok(executable.lastIndexOf(revoke) > executable.lastIndexOf(grant), 'final privilege state must deny legacy commit');
   assert.equal(executable.slice(executable.lastIndexOf(revoke) + revoke.length).includes(grant), false);
+});
+
+test('owner consent audit receipts cannot be updated or deleted after insertion', () => {
+  const body = sql.split('CREATE OR REPLACE FUNCTION ifund_migration.reject_owner_link_consent_audit_mutation()')[1]
+    ?.split('DROP TRIGGER IF EXISTS owner_link_consent_audit_append_only')[0];
+  assert.ok(body, 'append-only trigger function must exist');
+  assert.match(body, /SECURITY INVOKER/);
+  assert.match(body, /RAISE EXCEPTION 'owner consent audit is append-only'/);
+  assert.match(body, /ERRCODE = '42501'/);
+  assert.match(sql, /CREATE TRIGGER owner_link_consent_audit_append_only\\s+BEFORE UPDATE OR DELETE ON ifund_migration\\.owner_link_consent_audit/);
+  assert.match(sql, /FOR EACH ROW EXECUTE FUNCTION ifund_migration\\.reject_owner_link_consent_audit_mutation\\(\\)/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION ifund_migration\\.reject_owner_link_consent_audit_mutation\\(\\)\\s+FROM PUBLIC, anon, authenticated/);
+  assert.match(sql, /DROP TRIGGER owner_link_consent_audit_append_only ON ifund_migration\\.owner_link_consent_audit/);
 });
