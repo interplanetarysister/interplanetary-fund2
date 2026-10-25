@@ -48,8 +48,8 @@ test('SQL commit rejects email-only candidate and missing live session independe
 test('private consent audit persists replay-resistant receipts with tenant references and RLS', () => {
   assert.match(sql, /CREATE TABLE IF NOT EXISTS ifund_migration\.owner_link_consent_audit/);
   assert.match(sql, /consent_nonce_sha256 text PRIMARY KEY CHECK/);
-  assert.match(sql, /REFERENCES ifund_migration\.owner_identity_map\(source_owner_id\) ON DELETE CASCADE/);
-  assert.match(sql, /REFERENCES auth\.users\(id\) ON DELETE CASCADE/);
+  assert.match(sql, /REFERENCES ifund_migration\.owner_identity_map\(source_owner_id\) ON DELETE RESTRICT/);
+  assert.match(sql, /REFERENCES auth\.users\(id\) ON DELETE RESTRICT/);
   assert.match(sql, /ALTER TABLE ifund_migration\.owner_link_consent_audit ENABLE ROW LEVEL SECURITY/);
   assert.match(sql, /REVOKE ALL ON TABLE ifund_migration\.owner_link_consent_audit FROM PUBLIC, anon, authenticated/);
 });
