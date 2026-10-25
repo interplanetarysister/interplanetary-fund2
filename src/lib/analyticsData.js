@@ -5,14 +5,29 @@ const DEFAULT_CONCURRENCY = 6;
 export const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 export const isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
 export const isEntityList = (value) => Array.isArray(value) && value.every((item) => isRecord(item) && isNonEmptyString(item.id));
+const ISO_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+
+export const isValidIsoDateTime = (value) => {
+  if (!isNonEmptyString(value)) return false;
+  const match = ISO_DATE_TIME.exec(value);
+  if (!match || !Number.isFinite(Date.parse(value))) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(year, month - 1, day);
+  return calendar.getUTCFullYear() === year
+    && calendar.getUTCMonth() === month - 1
+    && calendar.getUTCDate() === day;
+};
+
 export const isDonationList = (value) => Array.isArray(value) && value.every((item) => (
   isRecord(item)
   && isNonEmptyString(item.id)
   && typeof item.amount === "number"
   && Number.isFinite(item.amount)
   && item.amount > 0
-  && isNonEmptyString(item.created_date)
-  && Number.isFinite(Date.parse(item.created_date))
+  && isValidIsoDateTime(item.created_date)
 ));
 
 export async function collectCursorPages(readPage, { pageSize = DEFAULT_PAGE_SIZE, maxRecords = DEFAULT_MAX_RECORDS } = {}) {
