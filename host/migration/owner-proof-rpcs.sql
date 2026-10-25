@@ -91,8 +91,8 @@ GRANT EXECUTE ON FUNCTION public.ifund_migration_owner_commit(text,uuid,text) TO
 -- Never store bearer tokens, provider session secrets or full CSRF challenges.
 CREATE TABLE IF NOT EXISTS ifund_migration.owner_link_consent_audit (
   consent_nonce_sha256 text PRIMARY KEY CHECK (consent_nonce_sha256 ~ '^[0-9a-f]{64}$'),
-  source_owner_id text NOT NULL REFERENCES ifund_migration.owner_identity_map(source_owner_id) ON DELETE CASCADE,
-  destination_auth_uid uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  source_owner_id text NOT NULL REFERENCES ifund_migration.owner_identity_map(source_owner_id) ON DELETE RESTRICT,
+  destination_auth_uid uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
   consent_origin text NOT NULL CHECK (consent_origin IN (
     'https://interplanetaryfund.com', 'https://www.interplanetaryfund.com')),
   consent_version text NOT NULL CHECK (consent_version = 'ifund-owner-link-v1'),
