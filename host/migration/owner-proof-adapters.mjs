@@ -141,7 +141,7 @@ export function makeOwnerProofAdapters({
           !/^[a-f0-9]{24}$/i.test(String(sourceOwnerId)) ||
           !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(String(destinationAuthUid)) ||
           typeof expectedEmail !== 'string' || expectedEmail.length > 254 ||
-          !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(expectedEmail) ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(expectedEmail) ||
           !/^[a-f0-9]{64}$/.test(String(consentNonceSha256)) ||
           !['https://interplanetaryfund.com', 'https://www.interplanetaryfund.com'].includes(consentOrigin) ||
           !recent(sourceSessionCheckedAt) || !recent(destinationSessionCheckedAt))
