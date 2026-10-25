@@ -144,7 +144,7 @@ test('source mapping mismatch blocks atomic commit', async () => {
  assert.equal((await post(ch, '{"consent":true}', {}, base, fetcher)).status, 403);
  assert.equal(commits, 0);
 });
-test('already verified same-owner replay is idempotent without second commit', async () => {
+test('already verified mapping without consent receipt cannot claim success', async () => {
  const ch = await challenge();
  let commits = 0;
  const fetcher = async (url, opts) => {
@@ -153,8 +153,7 @@ test('already verified same-owner replay is idempotent without second commit', a
   return mockFetch(url, opts);
  };
  const r = await post(ch, '{"consent":true}', {}, base, fetcher);
- assert.equal(r.status, 200);
- assert.equal((await r.json()).already_linked, true);
+ assert.equal(r.status, 403);
  assert.equal(commits, 0);
 });
 test('provider exception is sanitized, no secret disclosure', async () => {
