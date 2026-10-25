@@ -74,6 +74,10 @@ for (const amount of [null, '', true, '10', Number.NaN, Number.POSITIVE_INFINITY
   assert.equal(isDonationList([{ id: 'bad', amount, created_date: '2026-10-24T12:00:00Z' }]), false);
 }
 assert.equal(isDonationList([{ id: 'bad-date', amount: 10, created_date: 'not-a-date' }]), false);
+for (const created_date of ['Oct 5', '2026-02-30T12:00:00Z', '2026-10-24T24:00:00Z', '2026-10-24T12:00:00']) {
+  assert.equal(isDonationList([{ id: 'invalid-date', amount: 10, created_date }]), false);
+}
+assert.equal(isDonationList([{ id: 'offset-date', amount: 10, created_date: '2026-10-24T12:00:00.123-07:00' }]), true);
 
 const entity = (items) => ({
   list: async () => ({ items, has_more: false, next_cursor: null }),
