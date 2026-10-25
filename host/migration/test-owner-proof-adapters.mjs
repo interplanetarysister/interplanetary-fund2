@@ -147,3 +147,48 @@ test('audited adapter never downgrades to unaudited commit when provider errors'
   }), /provider_unavailable/);
   assert.equal(calls, 1);
 });
+
+test('historical adapter calls only audited upgrade RPC with fresh consent and exact UID', async () => {
+ const now = new Date().toISOString();
+ let count = 0;
+ const a = make(async (url, opts) => {
+  count++;
+  assert.equal(url, 'https://tzehxfikoslihnclhxuz.supabase.co/rest/v1/rpc/ifund_migration_owner_upgrade_historical');
+  const p = JSON.parse(opts.body);
+  assert.equal(p.p_source_owner_id, SOURCE);
+  assert.equal(p.p_destination_auth_uid, DEST);
+  assert.equal(p.p_consent_nonce_sha256, 'd'.repeat(64));
+  assert.equal(opts.headers.authorization, 'Bearer ' + config.supabaseServiceKey);
+  return json([{ upgraded: true, source_owner_id: SOURCE,
+   destination_auth_uid: DEST, verification_state: 'verified' }]);
+ });
+ const r = await a.upgradeHistoricalLink({
+  sourceOwnerId: SOURCE, destinationAuthUid: DEST,
+  expectedEmail: 'owner@example.org', expectedState: 'verified',
+  expectedCandidateMethod: 'confirmed_exact_email',
+  consentNonceSha256: 'd'.repeat(64), consentOrigin: 'https://interplanetaryfund.com',
+  sourceSessionCheckedAt: now, destinationSessionCheckedAt: now,
+ });
+ assert.equal(r.upgraded, true);
+ assert.equal(count, 1);
+});
+test('historical adapter rejects stale or invalid proof before any RPC', async () => {
+ let calls = 0;
+ const a = make(async () => { calls++; throw Error('unexpected network'); });
+ const valid = {
+  sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner@example.org',
+  expectedState: 'verified', expectedCandidateMethod: 'confirmed_exact_email',
+  consentNonceSha256: 'e'.repeat(64), consentOrigin: 'https://interplanetaryfund.com',
+  sourceSessionCheckedAt: new Date().toISOString(),
+  destinationSessionCheckedAt: new Date().toISOString(),
+ };
+ for (const change of [
+  { expectedCandidateMethod: null }, { expectedState: 'awaiting_destination_login' },
+  { destinationAuthUid: 'wrong' }, { consentOrigin: 'https://evil.example' },
+  { consentNonceSha256: 'bad' },
+  { sourceSessionCheckedAt: new Date(Date.now() - 61_000).toISOString() },
+ ]) {
+  await assert.rejects(a.upgradeHistoricalLink({ ...valid, ...change }), /invalid_historical_upgrade/);
+ }
+ assert.equal(calls, 0);
+});
