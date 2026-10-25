@@ -244,3 +244,52 @@ test('legacy lookup missing candidate provenance fails closed at the consent rou
  assert.equal(r.status, 503);
  assert.equal(commits, 0);
 });
+
+test('historical owner email containing the letter s reaches only the audited upgrade RPC', async () => {
+ const { makeOwnerProofAdapters } = await import('./owner-proof-adapters.mjs');
+ let calls = 0;
+ const adapters = makeOwnerProofAdapters({
+  sourceBearer: 'source-token-test-1234567890',
+  destinationBearer: 'destination-token-test-1234567890',
+  supabasePublishableKey: base.IFUND_SUPABASE_PUBLISHABLE_KEY,
+  supabaseServiceKey: base.IFUND_SUPABASE_SERVICE_ROLE_KEY,
+  fetcher: async (url, opts) => {
+   calls++;
+   assert.match(url, /\/rpc\/ifund_migration_owner_upgrade_historical$/);
+   assert.equal(JSON.parse(opts.body).p_expected_email, 'susan@example.org');
+   return new Response(JSON.stringify([{ upgraded: true, source_owner_id: SOURCE,
+    destination_auth_uid: DEST, verification_state: 'verified' }]), {
+    headers: { 'content-type': 'application/json' },
+   });
+  },
+ });
+ const time = new Date().toISOString();
+ const result = await adapters.upgradeHistoricalLink({
+  sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'susan@example.org',
+  expectedState: 'verified', expectedCandidateMethod: 'confirmed_exact_email',
+  consentNonceSha256: 'a'.repeat(64), consentOrigin: ORIGIN,
+  sourceSessionCheckedAt: time, destinationSessionCheckedAt: time,
+ });
+ assert.equal(result.upgraded, true);
+ assert.equal(calls, 1);
+});
+
+test('historical owner email with whitespace is denied before any RPC', async () => {
+ const { makeOwnerProofAdapters } = await import('./owner-proof-adapters.mjs');
+ let calls = 0;
+ const adapters = makeOwnerProofAdapters({
+  sourceBearer: 'source-token-test-1234567890',
+  destinationBearer: 'destination-token-test-1234567890',
+  supabasePublishableKey: base.IFUND_SUPABASE_PUBLISHABLE_KEY,
+  supabaseServiceKey: base.IFUND_SUPABASE_SERVICE_ROLE_KEY,
+  fetcher: async () => { calls++; throw Error('must not call provider'); },
+ });
+ const time = new Date().toISOString();
+ await assert.rejects(adapters.upgradeHistoricalLink({
+  sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner name@example.org',
+  expectedState: 'verified', expectedCandidateMethod: 'confirmed_exact_email',
+  consentNonceSha256: 'a'.repeat(64), consentOrigin: ORIGIN,
+  sourceSessionCheckedAt: time, destinationSessionCheckedAt: time,
+ }), /invalid_historical_upgrade/);
+ assert.equal(calls, 0);
+});
