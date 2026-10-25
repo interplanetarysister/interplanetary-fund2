@@ -100,7 +100,7 @@ test('legacy unaudited owner commit loses service-role EXECUTE after all grants'
   const signature = 'public.ifund_migration_owner_commit(text,uuid,text)';
   const grant = 'GRANT EXECUTE ON FUNCTION ' + signature + ' TO service_role;';
   const revoke = 'REVOKE ALL ON FUNCTION ' + signature + ' FROM service_role;';
-  const executable = sql.split('\\n').filter(line => !/^\\s*--/.test(line)).join('\\n');
+  const executable = sql.split('\n').filter(line => !/^\s*--/.test(line)).join('\n');
   assert.ok(executable.includes(grant), 'existing legacy grant is recognized');
   assert.ok(executable.includes(revoke), 'legacy grant must be revoked');
   assert.ok(executable.lastIndexOf(revoke) > executable.lastIndexOf(grant), 'final privilege state must deny legacy commit');
