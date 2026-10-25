@@ -4,7 +4,9 @@
 -- Current email-only owner mappings are NOT proof of live source authentication.
 -- No authenticated EXECUTE grant is permitted in this dormant source file.
 -- Requires existing private ifund_migration.campaign_shadow and
--- ifund_migration.owner_identity_map. No donations, payouts, or ledger fields.
+-- ifund_migration.owner_identity_map and the audited owner_link_consent_audit
+-- table. This SQL must fail closed if consent-audit storage is not deployed.
+-- No donations, payouts, or ledger fields.
 -- Rollback after eventual activation:
 -- DROP FUNCTION IF EXISTS public.ifund_migration_my_campaigns();
 
@@ -35,6 +37,13 @@ AS $rpc$
    AND m.verification_state = 'verified'
    AND m.candidate_match_method IS NULL
    AND lower(btrim(m.source_email)) = lower(btrim(u.email))
+   AND EXISTS (
+     SELECT 1 FROM ifund_migration.owner_link_consent_audit AS proof
+     WHERE proof.source_owner_id = m.source_owner_id
+       AND proof.destination_auth_uid = m.destination_auth_uid
+       AND proof.consent_version = 'ifund-owner-link-v1'
+       AND proof.transition IN ('new_link', 'historical_upgrade')
+   )
   JOIN ifund_migration.campaign_shadow AS c
     ON c.source_owner_id = m.source_owner_id
    AND c.financial_authoritative = false
@@ -56,8 +65,9 @@ $rpc$;
 -- owner link without an email-only candidate match method. This predicate
 -- excludes ALL pre-linked confirmed_exact_email candidates, even if someone
 -- mistakenly grants authenticated EXECUTE before durable proof is available.
--- A null candidate method is NOT itself proof of consent; the separate
--- owner-session, durable consent and cross-owner HTTP gates remain mandatory.
+-- A null candidate method is NOT itself proof of consent. An atomic, durable
+-- receipt for this exact source/destination pair is also required. The separate
+-- owner-session, revocation, and cross-owner HTTP gates remain mandatory.
 -- Require a destination JWT tied to a currently recorded, non-expired
 -- Supabase auth.sessions row; email confirmation alone cannot satisfy this.
 REVOKE ALL ON FUNCTION public.ifund_migration_my_campaigns() FROM PUBLIC, anon, authenticated;
