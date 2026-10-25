@@ -247,3 +247,11 @@ END;
 $rpc$;
 REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit_audited(text,uuid,text,text,text,timestamptz,timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.ifund_migration_owner_commit_audited(text,uuid,text,text,text,timestamptz,timestamptz) TO service_role;
+
+-- DECOMMISSION LEGACY WRITE ENTRY POINT (SOURCE ONLY; NOT APPLIED TO PRODUCTION).
+-- The legacy commit has no durable consent receipt. Even the service role must
+-- use the atomic, receipt-creating commit_audited / upgrade_historical RPCs.
+-- Place this REVOKE AFTER all legacy CREATE/GRANT statements. No route should
+-- call the old function. Rollback only after an audited replacement is removed:
+--   GRANT EXECUTE ON FUNCTION public.ifund_migration_owner_commit(text,uuid,text) TO service_role;
+REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit(text,uuid,text) FROM service_role;
