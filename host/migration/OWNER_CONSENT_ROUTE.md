@@ -22,3 +22,29 @@ Rollback for this source-only integration: revert the branch-only `host/gateway/
 ## Branch-only Worker integration (2026-10-23)
 
 The gateway now dispatches the **exact** `/api/v1/migration/owner-link` path before the generic admin fallback. With the flag absent, it returns sanitized HTTP 503 and never invokes provider verification or reads credentials. When enabled, it delegates to the existing strict same-origin, rate-limited consent handler. The existing handler's own configuration checks still fail closed if secrets or limiter are missing. The branch has no Cloudflare route registration or deployment. The 5 new dispatcher tests were run locally with a mocked handler (not positive live authentication); the original 19 handler tests were not rerun during this integration run. A full production bundle build was not run because the full repository was unavailable in the local runtime.
+
+## 2026-10-24: historical candidate upgrade wired in source only
+
+The dormant handler now routes `confirmed_exact_email` candidates to
+`upgradeHistoricalOwnerSessions` only after the existing new-link gate
+rejects the candidate. The separate adapter calls
+`ifund_migration_owner_upgrade_historical` with fresh Base44 and Supabase
+provider verifications and the signed explicit-consent nonce digest. The
+versioned service-only lookup now returns `candidate_auth_uid` in addition
+to candidate provenance, so the gate can compare the exact historical
+destination UID before the atomic SQL transition. Already verified mappings
+without a candidate remain denied by this route unless an independently
+audited consent receipt can be verified (not implemented here).
+
+**Deployment warning:** the six-column `owner_lookup_v2` definition is
+source-only and was not applied to Supabase. The owner upgrade RPC and audit
+table are also source-only. Production Cloudflare lacks the required owner
+route, CSRF secret, service-role secret and durable limiter; leave
+`IFUND_OWNER_LINK_ENABLED` disabled. The Node22 offline contract smoke
+tests (8/8) check the intended matching/denial invariants, but the full
+repository tests and live provider positive/cross-owner HTTP proofs have
+not been run in this update. No owner map or campaign was changed.
+
+Rollback: revert branch-only edits to
+`owner-consent-route.mjs`, `owner-proof-adapters.mjs`, and
+`owner-proof-rpcs.sql`; there is no deployed state to reverse.
