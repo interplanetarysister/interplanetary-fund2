@@ -5,6 +5,7 @@
  * Never attach to public routing without integration and positive auth tests.
  */
 import { linkVerifiedOwnerSessions } from './owner-link-gate.mjs';
+import { upgradeHistoricalOwnerSessions } from './owner-historical-upgrade-gate.mjs';
 import { makeOwnerProofAdapters } from './owner-proof-adapters.mjs';
 import { ownerConsentOriginAllowed } from './owner-consent-origin.mjs';
 
@@ -165,6 +166,22 @@ export async function handleOwnerConsent(request, env, { fetcher = globalThis.fe
   const result = await linkVerifiedOwnerSessions(makeAuditedOwnerGateAdapters(adapters, {
     consentNonceSha256, consentOrigin: url.origin, now,
   }));
+  // A historical email candidate is never silently treated as an existing
+  // link. Require a second live dual-provider verification and the distinct
+  // atomic, receipt-creating historical-upgrade RPC. Never fall back to legacy.
+  if (!result.ok && result.reason === 'owner_proof_upgrade_required') {
+    const upgraded = await upgradeHistoricalOwnerSessions({
+      ...adapters, consentNonceSha256, consentOrigin: url.origin,
+      consentExplicit: body.consent === true, now,
+    });
+    if (!upgraded.ok) return deny(
+      upgraded.reason === 'identity_provider_unavailable' ||
+      upgraded.reason === 'storage_unavailable' ? 503 : 403
+    );
+    return text({ ok: true, linked: true, upgraded: true, already_linked: false }, 200, {
+      'set-cookie': `ifund_owner_csrf=; Path=${ROUTE}; Max-Age=0; Secure; HttpOnly; SameSite=Strict`,
+    });
+  }
   if (!result.ok) return deny(result.reason === 'identity_provider_unavailable' || result.reason === 'storage_unavailable' ? 503 : 403);
   return text({ ok: true, linked: true, already_linked: result.alreadyLinked === true }, 200, {
     'set-cookie': `ifund_owner_csrf=; Path=${ROUTE}; Max-Age=0; Secure; HttpOnly; SameSite=Strict`,
