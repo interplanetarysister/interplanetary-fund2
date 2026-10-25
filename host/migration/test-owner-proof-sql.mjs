@@ -114,8 +114,8 @@ test('owner consent audit receipts cannot be updated or deleted after insertion'
   assert.match(body, /SECURITY INVOKER/);
   assert.match(body, /RAISE EXCEPTION 'owner consent audit is append-only'/);
   assert.match(body, /ERRCODE = '42501'/);
-  assert.match(sql, /CREATE TRIGGER owner_link_consent_audit_append_only\\s+BEFORE UPDATE OR DELETE ON ifund_migration\\.owner_link_consent_audit/);
-  assert.match(sql, /FOR EACH ROW EXECUTE FUNCTION ifund_migration\\.reject_owner_link_consent_audit_mutation\\(\\)/);
-  assert.match(sql, /REVOKE ALL ON FUNCTION ifund_migration\\.reject_owner_link_consent_audit_mutation\\(\\)\\s+FROM PUBLIC, anon, authenticated/);
-  assert.match(sql, /DROP TRIGGER owner_link_consent_audit_append_only ON ifund_migration\\.owner_link_consent_audit/);
+  assert.match(sql, /CREATE TRIGGER owner_link_consent_audit_append_only\s+BEFORE UPDATE OR DELETE ON ifund_migration\.owner_link_consent_audit/);
+  assert.match(sql, /FOR EACH ROW EXECUTE FUNCTION ifund_migration\.reject_owner_link_consent_audit_mutation\(\)/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION ifund_migration\.reject_owner_link_consent_audit_mutation\(\)\s+FROM PUBLIC, anon, authenticated/);
+  assert.match(sql, /DROP TRIGGER owner_link_consent_audit_append_only ON ifund_migration\.owner_link_consent_audit/);
 });
