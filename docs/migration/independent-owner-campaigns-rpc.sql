@@ -2,7 +2,7 @@
 -- This creates a narrowly scoped owner-only read RPC; it does not grant table
 -- or schema access to anon/authenticated, and it never returns donation totals,
 -- payment references, owner email, private AI profiles, or financial ledgers.
--- Requires ifund_migration.campaign_shadow and owner_identity_map to exist.
+-- Requires campaign_shadow, owner_identity_map, and the audited owner_link_consent_audit\n-- table and its service-role-only atomic owner transitions to exist first.\n-- Never deploy this RPC alone or use historical verified/email-only rows as proof.
 -- Must be reviewed and deployed as a separate reversible migration.
 BEGIN;
 
@@ -33,6 +33,17 @@ AS $$
   WHERE auth.uid() IS NOT NULL
     AND m.destination_auth_uid = auth.uid()
     AND m.verification_state = 'verified'
+    -- Historical confirmed-email matches are NOT proof of owner consent.
+    -- The audited transition clears candidate provenance only after both
+    -- live provider sessions and the explicit owner challenge are verified.
+    AND m.candidate_match_method IS NULL
+    AND EXISTS (
+      SELECT 1 FROM ifund_migration.owner_link_consent_audit AS proof
+      WHERE proof.source_owner_id = m.source_owner_id
+        AND proof.destination_auth_uid = m.destination_auth_uid
+        AND proof.consent_version = 'ifund-owner-link-v1'
+        AND proof.transition IN ('new_link', 'historical_upgrade')
+    )
   ORDER BY c.source_id
   LIMIT 50
 $$;
