@@ -47,3 +47,15 @@ test('worker source contains early exact-path routing before generic admin fallb
   const fallback = source.indexOf('const origin=allowedOrigin(request,env);');
   assert.ok(route > 0 && fallback > route, 'owner link must precede admin fallback');
 });
+
+test('owner-only campaign RPC requires audited proof and excludes historical email candidates', () => {
+  const sql = readFileSync(new URL('../../docs/migration/independent-owner-campaigns-rpc.sql', import.meta.url), 'utf8');
+  assert.match(sql, /m\.destination_auth_uid\s*=\s*auth\.uid\(\)/);
+  assert.match(sql, /m\.verification_state\s*=\s*'verified'/);
+  assert.match(sql, /m\.candidate_match_method\s+IS\s+NULL/i);
+  assert.match(sql, /EXISTS\s*\(\s*SELECT\s+1\s+FROM\s+ifund_migration\.owner_link_consent_audit/i);
+  assert.match(sql, /proof\.source_owner_id\s*=\s*m\.source_owner_id/);
+  assert.match(sql, /proof\.destination_auth_uid\s*=\s*m\.destination_auth_uid/);
+  assert.match(sql, /proof\.consent_version\s*=\s*'ifund-owner-link-v1'/);
+  assert.match(sql, /REVOKE ALL ON FUNCTION public\.ifund_migration_my_campaigns\(\) FROM PUBLIC, anon/);
+});
