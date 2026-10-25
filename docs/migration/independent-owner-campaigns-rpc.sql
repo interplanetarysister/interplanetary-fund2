@@ -2,7 +2,9 @@
 -- This creates a narrowly scoped owner-only read RPC; it does not grant table
 -- or schema access to anon/authenticated, and it never returns donation totals,
 -- payment references, owner email, private AI profiles, or financial ledgers.
--- Requires campaign_shadow, owner_identity_map, and the audited owner_link_consent_audit\n-- table and its service-role-only atomic owner transitions to exist first.\n-- Never deploy this RPC alone or use historical verified/email-only rows as proof.
+-- Requires campaign_shadow, owner_identity_map, and the audited owner_link_consent_audit
+-- table and its service-role-only atomic owner transitions to exist first.
+-- Never deploy this RPC alone or use historical verified/email-only rows as proof.
 -- Must be reviewed and deployed as a separate reversible migration.
 BEGIN;
 
