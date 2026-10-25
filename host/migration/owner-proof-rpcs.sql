@@ -104,6 +104,31 @@ CREATE TABLE IF NOT EXISTS ifund_migration.owner_link_consent_audit (
 ALTER TABLE ifund_migration.owner_link_consent_audit ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE ifund_migration.owner_link_consent_audit FROM PUBLIC, anon, authenticated;
 
+-- SOURCE ONLY: preserve owner-consent evidence against accidental UPDATE/DELETE.
+-- A separately audited privacy-retention/erasure policy is required before deployment.
+-- This is a SECURITY INVOKER trigger; it grants no tenant or client access.
+CREATE OR REPLACE FUNCTION ifund_migration.reject_owner_link_consent_audit_mutation()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER
+SET search_path = pg_catalog
+AS $owner_audit_guard$
+BEGIN
+  RAISE EXCEPTION 'owner consent audit is append-only'
+    USING ERRCODE = '42501';
+  RETURN NULL;
+END;
+$owner_audit_guard$;
+DROP TRIGGER IF EXISTS owner_link_consent_audit_append_only
+  ON ifund_migration.owner_link_consent_audit;
+CREATE TRIGGER owner_link_consent_audit_append_only
+BEFORE UPDATE OR DELETE ON ifund_migration.owner_link_consent_audit
+FOR EACH ROW EXECUTE FUNCTION ifund_migration.reject_owner_link_consent_audit_mutation();
+REVOKE ALL ON FUNCTION ifund_migration.reject_owner_link_consent_audit_mutation()
+  FROM PUBLIC, anon, authenticated;
+-- Rollback only with owner-approved retention review:
+-- DROP TRIGGER owner_link_consent_audit_append_only ON ifund_migration.owner_link_consent_audit;
+-- DROP FUNCTION ifund_migration.reject_owner_link_consent_audit_mutation();
+
 -- This is a separate, audited, atomic upgrade for exactly the historical
 -- email-candidate rows. It cannot claim a new owner or change a destination UID.
 -- No live owner session is available yet: keep dormant until the trusted route
