@@ -293,3 +293,23 @@ test('historical owner email with whitespace is denied before any RPC', async ()
  }), /invalid_historical_upgrade/);
  assert.equal(calls, 0);
 });
+
+test('historical owner email with a backslash is denied before any RPC', async () => {
+ const { makeOwnerProofAdapters } = await import('./owner-proof-adapters.mjs');
+ let calls = 0;
+ const adapters = makeOwnerProofAdapters({
+  sourceBearer: 'source-token-test-1234567890',
+  destinationBearer: 'destination-token-test-1234567890',
+  supabasePublishableKey: base.IFUND_SUPABASE_PUBLISHABLE_KEY,
+  supabaseServiceKey: base.IFUND_SUPABASE_SERVICE_ROLE_KEY,
+  fetcher: async () => { calls++; throw Error('must not call provider'); },
+ });
+ const time = new Date().toISOString();
+ await assert.rejects(adapters.upgradeHistoricalLink({
+  sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner\\\\x@example.org',
+  expectedState: 'verified', expectedCandidateMethod: 'confirmed_exact_email',
+  consentNonceSha256: 'a'.repeat(64), consentOrigin: ORIGIN,
+  sourceSessionCheckedAt: time, destinationSessionCheckedAt: time,
+ }), /invalid_historical_upgrade/);
+ assert.equal(calls, 0);
+});
