@@ -27,12 +27,12 @@ GRANT EXECUTE ON FUNCTION public.ifund_migration_owner_lookup(text) TO service_r
 -- Source only; do not deploy the route until durable dual-provider consent.
 CREATE OR REPLACE FUNCTION public.ifund_migration_owner_lookup_v2(p_source_owner_id text)
 RETURNS TABLE(source_owner_id text, source_email text, verification_state text,
-              destination_auth_uid uuid, candidate_match_method text)
+              destination_auth_uid uuid, candidate_match_method text, candidate_auth_uid uuid)
 LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path = pg_catalog
 AS $rpc$
   SELECT m.source_owner_id, m.source_email, m.verification_state,
-         m.destination_auth_uid, m.candidate_match_method
+         m.destination_auth_uid, m.candidate_match_method, m.candidate_auth_uid
   FROM ifund_migration.owner_identity_map AS m
   WHERE m.source_owner_id = p_source_owner_id
     AND current_setting('request.jwt.claim.role', true) = 'service_role'
