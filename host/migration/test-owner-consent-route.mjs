@@ -20,7 +20,7 @@ const mockFetch = async (url, opts) => {
  if (url.endsWith('/entities/User/me')) return json({ id: SOURCE, email: 'owner@example.org' });
  if (url.endsWith('/auth/v1/user')) return json({ id: DEST, email: 'owner@example.org', email_confirmed_at: '2026-10-23T00:00:00Z' });
  if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }]);
- if (url.endsWith('/rpc/ifund_migration_owner_commit')) return json([{ linked: true, source_owner_id: SOURCE, destination_auth_uid: DEST, verification_state: 'verified' }]);
+ if (url.endsWith('/rpc/ifund_migration_owner_commit_audited')) return json([{ linked: true, source_owner_id: SOURCE, destination_auth_uid: DEST, verification_state: 'verified' }]);
  throw Error('unexpected upstream');
 };
 const req = (method, headers = {}, body, url = URL) => new Request(url, {
@@ -171,21 +171,63 @@ test('POST durable rate limiter rejects before any identity lookup', async () =>
  assert.equal(network, 0);
 });
 
-test('historical confirmed-email mapping cannot be silently upgraded by the consent route', async () => {
+test('historical email candidate upgrades only through audited atomic RPC with fresh dual provider sessions', async () => {
  const ch = await challenge();
- let commits = 0;
+ let legacy = 0, historical = 0, verified = 0;
  const fetcher = async (url, opts) => {
+  if (url.endsWith('/entities/User/me') || url.endsWith('/auth/v1/user')) verified++;
   if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{
    source_owner_id: SOURCE, source_email: 'owner@example.org',
-   verification_state: 'verified', destination_auth_uid: DEST,
+   verification_state: 'verified', destination_auth_uid: DEST, candidate_auth_uid: DEST,
    candidate_match_method: 'confirmed_exact_email',
   }]), { headers: { 'content-type': 'application/json' } });
-  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  if (url.endsWith('/rpc/ifund_migration_owner_commit') ||
+      url.endsWith('/rpc/ifund_migration_owner_commit_audited')) legacy++;
+  if (url.endsWith('/rpc/ifund_migration_owner_upgrade_historical')) {
+   historical++;
+   const payload = JSON.parse(opts.body);
+   assert.equal(payload.p_source_owner_id, SOURCE);
+   assert.equal(payload.p_destination_auth_uid, DEST);
+   assert.match(payload.p_consent_nonce_sha256, /^[a-f0-9]{64}$/);
+   return new Response(JSON.stringify([{ upgraded: true, source_owner_id: SOURCE,
+     destination_auth_uid: DEST, verification_state: 'verified' }]), {
+     headers: { 'content-type': 'application/json' },
+   });
+  }
   return mockFetch(url, opts);
  };
  const r = await post(ch, '{"consent":true}', {}, base, fetcher);
- assert.equal(r.status, 403);
- assert.equal(commits, 0);
+ assert.equal(r.status, 200);
+ assert.deepEqual(await r.json(), { ok: true, linked: true, upgraded: true, already_linked: false });
+ assert.equal(historical, 1);
+ assert.equal(legacy, 0);
+ assert.equal(verified, 4);
+});
+
+test('historical upgrade fails closed if audited RPC fails, never calls unaudited commit', async () => {
+ const ch = await challenge();
+ let legacy = 0, historical = 0;
+ const fetcher = async (url, opts) => {
+  if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{
+   source_owner_id: SOURCE, source_email: 'owner@example.org',
+   verification_state: 'verified', destination_auth_uid: DEST, candidate_auth_uid: DEST,
+   candidate_match_method: 'confirmed_exact_email',
+  }]), { headers: { 'content-type': 'application/json' } });
+  if (url.endsWith('/rpc/ifund_migration_owner_commit') ||
+      url.endsWith('/rpc/ifund_migration_owner_commit_audited')) legacy++;
+  if (url.endsWith('/rpc/ifund_migration_owner_upgrade_historical')) {
+   historical++;
+   return new Response(JSON.stringify({ error: 'unavailable' }), {
+     status: 503, headers: { 'content-type': 'application/json' },
+   });
+  }
+  return mockFetch(url, opts);
+ };
+ const r = await post(ch, '{"consent":true}', {}, base, fetcher);
+ assert.equal(r.status, 503);
+ assert.equal(legacy, 0);
+ assert.equal(historical, 1);
+ assert.doesNotMatch(await r.text(), /service-role-test-long-key/);
 });
 
 test('legacy lookup missing candidate provenance fails closed at the consent route', async () => {
