@@ -70,9 +70,11 @@ export function makeAuditedOwnerGateAdapters(adapters, { consentNonceSha256, con
     },
     loadSourceOwner: async (id) => {
       const owner = await adapters.loadSourceOwner(id);
-      // No 'already linked' success until a service-only consent receipt is
-      // independently checked. Historical email-only candidates also fail.
-      if (owner?.verification_state === 'verified') return null;
+      // Historical email candidates must reach the distinct audited-upgrade
+      // gate; already verified rows with no candidate provenance must not
+      // claim a new consent receipt or an unverified idempotent success.
+      if (owner?.verification_state === 'verified' &&
+          owner.candidate_match_method === null) return null;
       return owner;
     },
     commitVerifiedLink: async (identity) => {
