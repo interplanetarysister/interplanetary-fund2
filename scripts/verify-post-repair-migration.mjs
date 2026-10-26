@@ -25,7 +25,7 @@ const paymentTests = read('package.json');
 assert.match(connections, /requestGeneration = useRef/);
 assert.match(connections, /mountedRef = useRef/);
 assert.match(connections, /Malformed connections response/);
-assert.match(connections, /Malformed sync response/);
+assert.match(connections, /parseExternalSyncResult\(data\)/);
 assert.match(connections, /aria-live="polite"/);
 assert.doesNotMatch(connections, /setSyncResult\(data\)/);
 
@@ -34,10 +34,16 @@ assert.match(analytics, /Malformed donation response/);
 assert.match(analytics, /SAFE_ANALYTICS_ERROR/);
 
 assert.match(ops, /requestGeneration = useRef/);
+assert.match(ops, /syncGeneration = useRef/);
+assert.match(ops, /syncLock = useRef/);
 assert.match(ops, /providerState/);
 assert.match(ops, /No synthetic agent data is shown/);
 assert.doesNotMatch(ops, /IN_APP_AGENTS/);
 assert.match(ops, /const ok = await load\(\)/);
+assert.match(ops, /if \(syncLock\.current\) return;/);
+assert.match(ops, /if \(ok === false && mountedRef\.current && generation === syncGeneration\.current\)/);
+assert.match(ops, /generation !== requestGeneration\.current\) return null;/);
+assert.doesNotMatch(ops, /if \(!ok && mountedRef\.current\)/);
 
 assert.match(globe, /touchAction = "pan-y"/);
 assert.match(globe, /setPointerCapture/);
