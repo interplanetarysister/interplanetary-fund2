@@ -1,9 +1,11 @@
 export const OPS_LOAD_ERROR = "We couldn't load Ops Center data.";
 
-export function opsLoadFailureState({ preserveData }) {
+export function opsLoadFailureState({ preserveData, adminVerified }) {
+  const preservedData = preserveData === true && adminVerified === true;
   return {
-    pageError: preserveData ? null : OPS_LOAD_ERROR,
+    pageError: preservedData ? null : OPS_LOAD_ERROR,
     providerState: "unavailable",
+    preservedData,
   };
 }
 
