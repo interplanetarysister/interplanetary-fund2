@@ -40,19 +40,27 @@ assert.match(ops, /syncLock = useRef/);
 assert.match(ops, /providerState/);
 assert.match(ops, /No synthetic agent data is shown/);
 assert.doesNotMatch(ops, /IN_APP_AGENTS/);
-assert.match(ops, /const ok = await load\(\{ preserveData \}\)/);
+assert.match(ops, /const result = await load\(\{ preserveData \}\)/);
 assert.match(ops, /if \(syncLock\.current\) return;/);
-assert.match(ops, /if \(ok === false && mountedRef\.current && generation === syncGeneration\.current\)/);
+assert.match(ops, /if \(result\?\.ok === false && mountedRef\.current && generation === syncGeneration\.current\)/);
 assert.match(ops, /generation !== requestGeneration\.current\) return null;/);
 assert.doesNotMatch(ops, /if \(!ok && mountedRef\.current\)/);
 
-assert.deepEqual(opsLoadFailureState({ preserveData: true }), {
+assert.deepEqual(opsLoadFailureState({ preserveData: true, adminVerified: true }), {
   pageError: null,
   providerState: 'unavailable',
+  preservedData: true,
 });
 assert.match(opsRefreshFailureMessage({ preserveData: true }), /last loaded data/);
-assert.equal(typeof opsLoadFailureState({ preserveData: false }).pageError, 'string');
+assert.equal(typeof opsLoadFailureState({ preserveData: false, adminVerified: true }).pageError, 'string');
 assert.doesNotMatch(opsRefreshFailureMessage({ preserveData: false }), /last loaded data/);
+assert.deepEqual(opsLoadFailureState({ preserveData: true, adminVerified: false }), {
+  pageError: "We couldn't load Ops Center data.",
+  providerState: 'unavailable',
+  preservedData: false,
+});
+assert.match(ops, /let adminVerified = false;/);
+assert.ok(ops.indexOf('adminVerified = true;') > ops.indexOf('me?.role !== "admin"'));
 assert.ok(
   ops.indexOf('if (error)') < ops.indexOf('if (!user || user.role !== "admin")'),
   'authentication/load errors must render before an authorization-denial decision',
