@@ -111,6 +111,10 @@ export default function OpsCenter() {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>;
   }
 
+  if (error) {
+    return <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />;
+  }
+
   if (!user || user.role !== "admin") {
     return (
       <div className="max-w-md mx-auto text-center py-24 px-6">
@@ -143,9 +147,7 @@ export default function OpsCenter() {
         </div>
         {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>}
 
-        {error ? (
-          <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
-        ) : loading ? (
+        {loading ? (
           <div className="flex justify-center py-20" role="status" aria-live="polite"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /><span className="sr-only">Loading Ops Center</span></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">
