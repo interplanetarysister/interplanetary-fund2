@@ -33,6 +33,7 @@ export default function OpsCenter() {
 
   const load = useCallback(async ({ preserveData = false } = {}) => {
     const generation = ++requestGeneration.current;
+    let adminVerified = false;
     try {
       const me = await base44.auth.me();
       if (!mountedRef.current || generation !== requestGeneration.current) return null;
@@ -41,8 +42,9 @@ export default function OpsCenter() {
       if (me?.role !== "admin") {
         setLoading(false);
         setProviderState("unavailable");
-        return true;
+        return { ok: true };
       }
+      adminVerified = true;
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
         base44.entities.MonitoredCampaign.list("-raised_amount", 50),
@@ -58,14 +60,14 @@ export default function OpsCenter() {
       setProviderState("available");
       setError(null);
       hasSuccessfulLoad.current = true;
-      return true;
+      return { ok: true };
     } catch (e) {
       if (!mountedRef.current || generation !== requestGeneration.current) return null;
-      const failureState = opsLoadFailureState({ preserveData });
+      const failureState = opsLoadFailureState({ preserveData, adminVerified });
       setAuthReady(true);
       setProviderState(failureState.providerState);
       setError(failureState.pageError);
-      return false;
+      return { ok: false, preservedData: failureState.preservedData };
     } finally {
       if (mountedRef.current && generation === requestGeneration.current) setLoading(false);
     }
@@ -90,9 +92,9 @@ export default function OpsCenter() {
     setSyncing(true);
     setSyncError("");
     try {
-      const ok = await load({ preserveData });
-      if (ok === false && mountedRef.current && generation === syncGeneration.current) {
-        setSyncError(opsRefreshFailureMessage({ preserveData }));
+      const result = await load({ preserveData });
+      if (result?.ok === false && mountedRef.current && generation === syncGeneration.current) {
+        setSyncError(opsRefreshFailureMessage({ preserveData: result.preservedData }));
       }
     } catch (e) {
       console.error("Ops Center refresh failed:", e?.name || "UnknownError");
