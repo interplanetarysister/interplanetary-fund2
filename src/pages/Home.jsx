@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/brand/BrandLogo";
 import LegalFooter from "@/components/LegalFooter";
-import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, Compass, ArrowRight, ChevronDown, ChevronUp, Download } from "lucide-react";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
@@ -70,6 +70,7 @@ export default function Home() {
                 <Link to="/discover"><Button size="lg" variant="outline" className="rounded-xl border-white/20 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"><Compass className="w-4 h-4 mr-2" /> Explore causes</Button></Link>
               </>
             )}
+            <Link to="/download"><Button size="lg" variant="outline" className="rounded-xl border-cyan-300/40 bg-white/5 text-slate-100 hover:bg-white/10 hover:text-white"><Download className="w-4 h-4 mr-2" /> Download app</Button></Link>
           </div>
           <div className="mt-7 mx-auto max-w-md rounded-2xl border border-cyan-400/30 bg-slate-950/65 px-5 py-5 text-center">
             <p className="text-lg font-semibold text-white">Be here from the beginning.</p>
