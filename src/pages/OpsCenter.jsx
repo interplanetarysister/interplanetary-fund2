@@ -25,13 +25,15 @@ export default function OpsCenter() {
   const [authReady, setAuthReady] = useState(false);
   const [providerState, setProviderState] = useState("unknown");
   const requestGeneration = useRef(0);
+  const syncGeneration = useRef(0);
+  const syncLock = useRef(false);
   const mountedRef = useRef(true);
 
   const load = useCallback(async () => {
     const generation = ++requestGeneration.current;
     try {
       const me = await base44.auth.me();
-      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      if (!mountedRef.current || generation !== requestGeneration.current) return null;
       setUser(me || null);
       setAuthReady(true);
       if (me?.role !== "admin") {
@@ -46,7 +48,7 @@ export default function OpsCenter() {
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
       if (![a, c, t, r].every(Array.isArray)) throw new Error("Malformed Ops Center response");
-      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      if (!mountedRef.current || generation !== requestGeneration.current) return null;
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
@@ -55,7 +57,7 @@ export default function OpsCenter() {
       setError(null);
       return true;
     } catch (e) {
-      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      if (!mountedRef.current || generation !== requestGeneration.current) return null;
       setAuthReady(true);
       setProviderState("unavailable");
       setError("We couldn't load Ops Center data.");
@@ -71,20 +73,32 @@ export default function OpsCenter() {
     return () => {
       mountedRef.current = false;
       requestGeneration.current += 1;
+      syncGeneration.current += 1;
+      syncLock.current = false;
     };
   }, [load]);
 
   const syncNow = async () => {
+    if (syncLock.current) return;
+    syncLock.current = true;
+    const generation = ++syncGeneration.current;
     setSyncing(true);
     setSyncError("");
     try {
       const ok = await load();
-      if (!ok && mountedRef.current) setSyncError("Refresh failed — showing the last loaded data.");
+      if (ok === false && mountedRef.current && generation === syncGeneration.current) {
+        setSyncError("Refresh failed — showing the last loaded data.");
+      }
     } catch (e) {
       console.error("Ops Center refresh failed:", e?.name || "UnknownError");
-      if (mountedRef.current) setSyncError("Refresh failed — showing the last loaded data.");
+      if (mountedRef.current && generation === syncGeneration.current) {
+        setSyncError("Refresh failed — showing the last loaded data.");
+      }
     } finally {
-      if (mountedRef.current) setSyncing(false);
+      if (generation === syncGeneration.current) {
+        syncLock.current = false;
+        if (mountedRef.current) setSyncing(false);
+      }
     }
   };
 
