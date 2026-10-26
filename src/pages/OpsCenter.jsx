@@ -9,6 +9,7 @@ import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 import PendingDonationReview from "@/components/ops/PendingDonationReview";
 import PageError from "@/components/PageError";
+import { opsLoadFailureState, opsRefreshFailureMessage } from "@/lib/opsCenterState";
 
 // Ops Center — Base44-native operational view. Data is read directly from
 // Base44 entities; refresh reloads the current authoritative platform state.
@@ -27,9 +28,10 @@ export default function OpsCenter() {
   const requestGeneration = useRef(0);
   const syncGeneration = useRef(0);
   const syncLock = useRef(false);
+  const hasSuccessfulLoad = useRef(false);
   const mountedRef = useRef(true);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ preserveData = false } = {}) => {
     const generation = ++requestGeneration.current;
     try {
       const me = await base44.auth.me();
@@ -55,12 +57,14 @@ export default function OpsCenter() {
       setReports(r);
       setProviderState("available");
       setError(null);
+      hasSuccessfulLoad.current = true;
       return true;
     } catch (e) {
       if (!mountedRef.current || generation !== requestGeneration.current) return null;
+      const failureState = opsLoadFailureState({ preserveData });
       setAuthReady(true);
-      setProviderState("unavailable");
-      setError("We couldn't load Ops Center data.");
+      setProviderState(failureState.providerState);
+      setError(failureState.pageError);
       return false;
     } finally {
       if (mountedRef.current && generation === requestGeneration.current) setLoading(false);
@@ -82,17 +86,18 @@ export default function OpsCenter() {
     if (syncLock.current) return;
     syncLock.current = true;
     const generation = ++syncGeneration.current;
+    const preserveData = hasSuccessfulLoad.current;
     setSyncing(true);
     setSyncError("");
     try {
-      const ok = await load();
+      const ok = await load({ preserveData });
       if (ok === false && mountedRef.current && generation === syncGeneration.current) {
-        setSyncError("Refresh failed — showing the last loaded data.");
+        setSyncError(opsRefreshFailureMessage({ preserveData }));
       }
     } catch (e) {
       console.error("Ops Center refresh failed:", e?.name || "UnknownError");
       if (mountedRef.current && generation === syncGeneration.current) {
-        setSyncError("Refresh failed — showing the last loaded data.");
+        setSyncError(opsRefreshFailureMessage({ preserveData }));
       }
     } finally {
       if (generation === syncGeneration.current) {
