@@ -53,6 +53,11 @@ assert.deepEqual(opsLoadFailureState({ preserveData: true }), {
 assert.match(opsRefreshFailureMessage({ preserveData: true }), /last loaded data/);
 assert.equal(typeof opsLoadFailureState({ preserveData: false }).pageError, 'string');
 assert.doesNotMatch(opsRefreshFailureMessage({ preserveData: false }), /last loaded data/);
+assert.ok(
+  ops.indexOf('if (error)') < ops.indexOf('if (!user || user.role !== "admin")'),
+  'authentication/load errors must render before an authorization-denial decision',
+);
+assert.doesNotMatch(ops, /\{error \? \(/);
 
 assert.match(globe, /touchAction = "pan-y"/);
 assert.match(globe, /setPointerCapture/);
