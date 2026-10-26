@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { opsLoadFailureState, opsRefreshFailureMessage } from '../src/lib/opsCenterState.js';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 
@@ -39,11 +40,19 @@ assert.match(ops, /syncLock = useRef/);
 assert.match(ops, /providerState/);
 assert.match(ops, /No synthetic agent data is shown/);
 assert.doesNotMatch(ops, /IN_APP_AGENTS/);
-assert.match(ops, /const ok = await load\(\)/);
+assert.match(ops, /const ok = await load\(\{ preserveData \}\)/);
 assert.match(ops, /if \(syncLock\.current\) return;/);
 assert.match(ops, /if \(ok === false && mountedRef\.current && generation === syncGeneration\.current\)/);
 assert.match(ops, /generation !== requestGeneration\.current\) return null;/);
 assert.doesNotMatch(ops, /if \(!ok && mountedRef\.current\)/);
+
+assert.deepEqual(opsLoadFailureState({ preserveData: true }), {
+  pageError: null,
+  providerState: 'unavailable',
+});
+assert.match(opsRefreshFailureMessage({ preserveData: true }), /last loaded data/);
+assert.equal(typeof opsLoadFailureState({ preserveData: false }).pageError, 'string');
+assert.doesNotMatch(opsRefreshFailureMessage({ preserveData: false }), /last loaded data/);
 
 assert.match(globe, /touchAction = "pan-y"/);
 assert.match(globe, /setPointerCapture/);
