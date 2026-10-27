@@ -114,7 +114,7 @@ export default function OpsCenter() {
   }
 
   if (error) {
-    return <PageError message={error} onRetry={() => { setError(null); setSyncError(""); setLoading(true); load(); }} />;
+    return <PageError message={error} onRetry={() => { setAuthReady(false); setError(null); setSyncError(""); setLoading(true); load(); }} />;
   }
 
   if (!user || user.role !== "admin") {
