@@ -91,7 +91,10 @@ jobs:
         run: npm run build
 
       - name: Sync Android from this exact frontend
-        run: npx cap sync android
+        # Capacitor 8 CLI requires Node 22+. Keep it out of the web dependency
+        # graph so supported Node 20 web builds remain installable, and pin it
+        # only inside this explicit Node 24 native-build workflow.
+        run: npm exec --yes --package=@capacitor/cli@8.4.3 -- cap sync android
 
       - name: Verify native configuration and frontend asset parity
         run: node scripts/verify-android-firebase.mjs

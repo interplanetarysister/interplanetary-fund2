@@ -24,6 +24,7 @@ const appGradle = read('android/app/build.gradle');
 const rootGradle = read('android/build.gradle');
 const androidManifest = read('android/app/src/main/AndroidManifest.xml');
 const packageJson = json('package.json');
+const androidWorkflow = read('.github/workflows/android-debug-apk.yml');
 const nativeActivity = read('android/app/src/main/java/com/base6a67a778342a8fe05ee79cba/app/MainActivity.java');
 
 assert.ok(appGradle.includes('applicationId "' + expectedPackage + '"'), 'Incorrect Android applicationId');
@@ -52,7 +53,10 @@ assert.ok(read('base44/entities/PushDevice.jsonc').includes('"role": "admin"'), 
 assert.ok(!appGradle.includes("firebase-auth'"), 'Firebase must not replace existing Base44 authentication');
 assert.equal(packageJson.dependencies['@capacitor/core'], '8.4.3');
 assert.equal(packageJson.dependencies['@capacitor/android'], '8.4.3');
-assert.equal(packageJson.devDependencies['@capacitor/cli'], '8.4.3');
+assert.equal(packageJson.devDependencies['@capacitor/cli'], undefined,
+  'Capacitor 8 CLI must not make Node 20 web installs fail');
+assert.match(androidWorkflow, /npm exec --yes --package=@capacitor\/cli@8\.4\.3 -- cap sync android/,
+  'Manual Node 24 Android workflow must pin the Capacitor 8 CLI');
 
 assert.ok(read('src/pages/Login.jsx').includes('base44.auth.setToken'), 'Base44 authentication changed');
 assert.ok(read('src/pages/Register.jsx').includes('base44.auth.register'), 'Base44 registration changed');

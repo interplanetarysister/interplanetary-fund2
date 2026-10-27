@@ -31,7 +31,7 @@ Use GitHub encrypted secrets, not committed files, chat messages, or logs. The w
 ## Existing Android setup
 
 - The `android/` Gradle wrapper and configuration, Firebase, Capacitor, native code, and security tests remain available to GitHub and Base44.
-- The workflow builds shared web assets, executes `npx cap sync android`, checks Android/website asset parity, and uses Gradle only in **explicit manual runs**.
+- The workflow builds shared web assets, executes `npm exec --yes --package=@capacitor/cli@8.4.3 -- cap sync android`, checks Android/website asset parity, and uses Gradle only in **explicit manual runs**. Capacitor 8 CLI is intentionally isolated to this Node 24 native-build workflow so ordinary Node 20 web installs remain supported.
 - Both debug and release artifacts are checked with `apksigner` and the embedded `ifund-release.json` is compared with the just-built web output.
 - This workflow generates APK files, not an AAB or Play Store upload. An AAB/Play release can be added later through a separate deliberate owner-approved process.
 - GitHub's optional CodeQL Java/Kotlin default analysis is **not** the same as this manual build. If CodeQL automatically runs Gradle, configure its analysis independently to avoid unnecessary automatic native builds while retaining JavaScript/TypeScript and Actions scanning.

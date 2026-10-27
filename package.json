@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": ">=24.12.0"
+    "node": ">=20"
   },
   "scripts": {
     "verify:android-firebase": "node scripts/verify-android-firebase.mjs",
@@ -157,7 +157,7 @@
     "embla-carousel-react": "^8.5.2",
     "ethers": "^6.17.0",
     "fflate": "^0.8.3",
-    "firebase": "13.0.0",
+    "firebase": "12.19.0",
     "framer-motion": "^11.16.4",
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
@@ -183,7 +183,6 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.4.3",
     "@eslint/js": "^9.19.0",
     "@humanfs/node": "^0.16.8",
     "@types/node": "^22",
@@ -208,5 +207,8 @@
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.8.2",
     "vite": "^6.1.0"
+  },
+  "overrides": {
+    "@solana/wallet-standard-chains": "1.1.1"
   }
 }

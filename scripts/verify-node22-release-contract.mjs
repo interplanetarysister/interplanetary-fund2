@@ -8,13 +8,15 @@ export function verifyReleaseContract(root=process.cwd()) {
   const read=(p)=>{ try{return readFileSync(join(root,p),'utf8')}catch{errors.push('missing:'+p);return ''} };
   const json=(p)=>{try{return JSON.parse(read(p))}catch{errors.push('malformed:'+p);return null}};
   const pkg=json('package.json');
-  if(pkg?.engines?.node!=='>=24.12.0')errors.push('Node engine must allow Node 24.12.0 or newer');
-  if(read('.node-version').trim()!=='24')errors.push('.node-version must select tested Node 24');
-  if(read('.nvmrc').trim()!=='24')errors.push('.nvmrc must select tested Node 24');
-  const [major,minor]=process.versions.node.split('.').map(Number);
-  if(major<24 || (major===24 && minor<12))errors.push('Node 24.12.0 or newer required');
+  if(pkg?.engines?.node!=='>=20')errors.push('Node engine must allow Node 20 or newer without an upper bound');
+  const nodeVersionMajor=Number(read('.node-version').trim().split('.')[0]);
+  if(!Number.isFinite(nodeVersionMajor)||nodeVersionMajor<20)errors.push('.node-version must select Node 20 or newer');
+  const nvmMajor=Number(read('.nvmrc').trim().split('.')[0]);
+  if(!Number.isFinite(nvmMajor)||nvmMajor<20)errors.push('.nvmrc must select Node 20 or newer');
+  const major=Number(process.versions.node.split('.')[0]);
+  if(major<20)errors.push('Node 20 or newer required');
   const lock=json('package-lock.json');
-  if(lock?.packages?.['']?.engines?.node!=='>=24.12.0')errors.push('Lockfile must declare Node >=24.12.0');
+  if(lock?.packages?.['']?.engines?.node!=='>=20')errors.push('Lockfile must declare Node >=20');
   let files=[];
   try{files=readdirSync(join(root,'.github/workflows')).filter(p=>/\.ya?ml$/.test(p))}
   catch{errors.push('missing:.github/workflows')}
@@ -28,7 +30,8 @@ export function verifyReleaseContract(root=process.cwd()) {
         if(!/^actions\/setup-node@/i.test(step?.uses||''))continue;
         found++;
         const version=String(step.with?.['node-version']||'').trim();
-        if(version!=='24')errors.push(p+' must use tested Node 24 for setup-node');
+        const setupMajor=Number(version.split('.')[0]);
+        if(!Number.isFinite(setupMajor)||setupMajor<20)errors.push(p+' must use Node 20 or newer for setup-node');
       }
     }
   }
@@ -38,5 +41,5 @@ export function verifyReleaseContract(root=process.cwd()) {
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  const errors=verifyReleaseContract();
  if(errors.length){for(const error of errors)console.error(error);process.exitCode=1}
- else console.log('PASS: Node >=24.12.0 with tested Node 24 build selectors');
+ else console.log('PASS: Node >=20 with supported Node 20+ build selectors');
 }
