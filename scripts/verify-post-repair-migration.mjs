@@ -66,7 +66,7 @@ assert.ok(
   'authentication/load errors must render before an authorization-denial decision',
 );
 assert.doesNotMatch(ops, /\{error \? \(/);
-assert.match(ops, /onRetry=\{\(\) => \{ setError\(null\); setSyncError\(""\); setLoading\(true\); load\(\); \}\}/);
+assert.match(ops, /onRetry=\{\(\) => \{ setAuthReady\(false\); setError\(null\); setSyncError\(""\); setLoading\(true\); load\(\); \}\}/);
 
 assert.match(globe, /touchAction = "pan-y"/);
 assert.match(globe, /setPointerCapture/);
