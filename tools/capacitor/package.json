@@ -1,0 +1,11 @@
+{
+  "name": "ifund-capacitor-build-tooling",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.4.3"
+  }
+}

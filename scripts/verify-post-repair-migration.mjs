@@ -67,6 +67,7 @@ assert.ok(
 );
 assert.doesNotMatch(ops, /\{error \? \(/);
 assert.match(ops, /onRetry=\{\(\) => \{ setAuthReady\(false\); setError\(null\); setSyncError\(""\); setLoading\(true\); load\(\); \}\}/);
+assert.match(ops, /disabled=\{loading \|\| syncing\}/);
 
 assert.match(globe, /touchAction = "pan-y"/);
 assert.match(globe, /setPointerCapture/);

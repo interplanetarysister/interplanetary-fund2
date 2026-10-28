@@ -16,8 +16,8 @@ IFund's existing `src/pages/Login.jsx` logs in by making a **same-origin** reque
 Native Google/Apple/social sign-in, session persistence, redirects and PayPal flows require separate on-device verification. Do not claim Android login works until tested. All existing web accounts remain on Base44; no user migration planned.
 
 ## How to complete and test
-1. On a workstation with Node 22 or newer, Android Studio, JDK/Android SDK installed: `npm ci`, `npm run build`, `npm exec --yes --package=@capacitor/cli@8.4.3 -- cap sync android`, `npm run verify:android-firebase`.
-2. Open with `npm exec --yes --package=@capacitor/cli@8.4.3 -- cap open android`. Sync Gradle and build a **debug** APK first. Verify the Google Services Gradle plugin produces resource values from the matching JSON.
+1. On a workstation with Node 22 or newer, Android Studio, JDK/Android SDK installed: `npm ci`, `npm ci --prefix tools/capacitor --ignore-scripts`, `npm run build`, `./tools/capacitor/node_modules/.bin/cap sync android`, `npm run verify:android-firebase`.
+2. Open with `./tools/capacitor/node_modules/.bin/cap open android`. Sync Gradle and build a **debug** APK first. Verify the Google Services Gradle plugin produces resource values from the matching JSON.
 3. Validate secure native-to-Base44 authentication (including no CORS/cookie leakage), login, registration, logout, password reset, and existing accounts. Do not ship if account persistence fails.
 4. Exercise navigation, scrolling, uploaded photos, external publishing consent, payments, links and mobile notifications as relevant. Confirm no double processing of donations.
 5. After a real device test, handle branding icons, accessibility, permissions, app signing and Play Console. For Google/other OAuth add app signing SHA-1/SHA-256 and configure only legitimate redirect and intent routes.

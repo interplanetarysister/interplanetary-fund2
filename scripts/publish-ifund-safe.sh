@@ -9,7 +9,7 @@ node scripts/verify-ifund-bundle-graph.mjs
 node scripts/verify-ifund-links-assets.mjs
 node scripts/test-base44-release.mjs
 node scripts/verify-text-contrast-contract.mjs
-node --experimental-strip-types scripts/verify-feature-flag-connections.mjs
+node --experimental-loader ./scripts/js-compatible-ts-loader.mjs scripts/verify-feature-flag-connections.mjs
 node scripts/verify-agent-chat-resilience.mjs
 node scripts/verify-agent-reasoning-coherence.mjs
 node scripts/verify-builder-agent-boundary.mjs

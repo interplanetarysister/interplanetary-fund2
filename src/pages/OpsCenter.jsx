@@ -140,7 +140,7 @@ export default function OpsCenter() {
           </div>
           <button
             onClick={syncNow}
-            disabled={syncing}
+            disabled={loading || syncing}
             className="flex items-center gap-2 rounded-xl bg-cyan-400/10 border border-cyan-400/30 text-cyan-300 px-4 min-h-[44px] text-sm font-semibold disabled:opacity-60"
           >
             {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}

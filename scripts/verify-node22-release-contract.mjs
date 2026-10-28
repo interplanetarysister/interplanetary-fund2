@@ -9,6 +9,11 @@ export function verifyReleaseContract(root=process.cwd()) {
   const json=(p)=>{try{return JSON.parse(read(p))}catch{errors.push('malformed:'+p);return null}};
   const pkg=json('package.json');
   if(pkg?.engines?.node!=='>=20')errors.push('Node engine must allow Node 20 or newer without an upper bound');
+  for(const scriptName of ['verify:feature-flags','verify:studio-contracts']){
+    const script=pkg?.scripts?.[scriptName]||'';
+    if(/experimental-strip-types/.test(script))errors.push(scriptName+' must not require Node 22 type stripping');
+    if(!/js-compatible-ts-loader\.mjs/.test(script))errors.push(scriptName+' must use the Node 20-compatible TypeScript loader');
+  }
   const nodeVersionMajor=Number(read('.node-version').trim().split('.')[0]);
   if(!Number.isFinite(nodeVersionMajor)||nodeVersionMajor<20)errors.push('.node-version must select Node 20 or newer');
   const nvmMajor=Number(read('.nvmrc').trim().split('.')[0]);
