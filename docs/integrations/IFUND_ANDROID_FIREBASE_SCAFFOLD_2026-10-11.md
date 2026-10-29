@@ -6,7 +6,7 @@
 - Exact provided Firebase project is `interplanetary-fund`. Root `google-services.json` is copied to `android/app/google-services.json`; the Firebase Android client package matches the native `applicationId`.
 - Google Services Gradle plugin `4.5.0`, Firebase BoM `35.0.0`, `firebase-common` only. **No Firebase Auth, Firestore, Analytics, Crashlytics or FCM functionality enabled.** These need separately approved features, policies and tests.
 - Android backups disabled to avoid accidentally backing up IFund WebView tokens.
-- Capacitor packages pinned at `8.4.3`. Setup and web build run on Node `22.23.2`; Node 24 is not an approved IFund build runtime.
+- Capacitor runtime packages remain pinned at `8.4.3`. The Capacitor 8 CLI requires Node 22+, so it is installed at exact version only by intentional native-build commands and is not part of the ordinary Node 20+ web dependency graph. Node 20 remains supported for web install/build; the manual GitHub Android workflow uses its declared Node 24 lane.
 - Hosting, DNS, Cloudflare routing, Base44 user IDs, Base44 authentication, donation ledger and primary data model remain unchanged. No Android or web release was published.
 - `scripts/verify-android-firebase.mjs` validates package/project matches and boundaries.
 
@@ -16,8 +16,8 @@ IFund's existing `src/pages/Login.jsx` logs in by making a **same-origin** reque
 Native Google/Apple/social sign-in, session persistence, redirects and PayPal flows require separate on-device verification. Do not claim Android login works until tested. All existing web accounts remain on Base44; no user migration planned.
 
 ## How to complete and test
-1. On a workstation with Node 22, Android Studio, JDK/Android SDK installed: `npm ci`, `npm run build`, `npx cap sync android`, `npm run verify:android-firebase`.
-2. Open with `npx cap open android`. Sync Gradle and build a **debug** APK first. Verify the Google Services Gradle plugin produces resource values from the matching JSON.
+1. On a workstation with Node 22 or newer, Android Studio, JDK/Android SDK installed: `npm ci`, `npm ci --prefix tools/capacitor --ignore-scripts`, `npm run build`, `./tools/capacitor/node_modules/.bin/cap sync android`, `npm run verify:android-firebase`.
+2. Open with `./tools/capacitor/node_modules/.bin/cap open android`. Sync Gradle and build a **debug** APK first. Verify the Google Services Gradle plugin produces resource values from the matching JSON.
 3. Validate secure native-to-Base44 authentication (including no CORS/cookie leakage), login, registration, logout, password reset, and existing accounts. Do not ship if account persistence fails.
 4. Exercise navigation, scrolling, uploaded photos, external publishing consent, payments, links and mobile notifications as relevant. Confirm no double processing of donations.
 5. After a real device test, handle branding icons, accessibility, permissions, app signing and Play Console. For Google/other OAuth add app signing SHA-1/SHA-256 and configure only legitimate redirect and intent routes.

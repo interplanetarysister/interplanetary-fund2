@@ -79,6 +79,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --legacy-peer-deps --no-audit --no-fund
 
+      - name: Install locked Android build tooling
+        run: npm ci --prefix tools/capacitor --ignore-scripts --no-audit --no-fund
+
       - name: Verify payments and legal contracts
         run: |
           node scripts/verify-public-legal-help-and-platform-support.mjs
@@ -91,7 +94,9 @@ jobs:
         run: npm run build
 
       - name: Sync Android from this exact frontend
-        run: npx cap sync android
+        # Capacitor 8 CLI requires Node 22+. Its isolated, committed lock keeps
+        # native tooling reproducible without raising the web dependency floor.
+        run: ./tools/capacitor/node_modules/.bin/cap sync android
 
       - name: Verify native configuration and frontend asset parity
         run: node scripts/verify-android-firebase.mjs

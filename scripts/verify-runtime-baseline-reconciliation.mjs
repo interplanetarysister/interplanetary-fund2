@@ -15,4 +15,4 @@ if (errors.length) {
   process.exit(1);
 }
 
-console.log('Runtime baseline reconciliation passed: the tested Node 24 lane and minimum >=24.12.0.');
+console.log('Runtime baseline reconciliation passed: the tested Node 24 lane and minimum >=20.');

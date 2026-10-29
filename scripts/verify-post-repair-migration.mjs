@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { opsLoadFailureState, opsRefreshFailureMessage } from '../src/lib/opsCenterState.js';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 
@@ -25,7 +26,7 @@ const paymentTests = read('package.json');
 assert.match(connections, /requestGeneration = useRef/);
 assert.match(connections, /mountedRef = useRef/);
 assert.match(connections, /Malformed connections response/);
-assert.match(connections, /Malformed sync response/);
+assert.match(connections, /parseExternalSyncResult\(data\)/);
 assert.match(connections, /aria-live="polite"/);
 assert.doesNotMatch(connections, /setSyncResult\(data\)/);
 
@@ -34,10 +35,39 @@ assert.match(analytics, /Malformed donation response/);
 assert.match(analytics, /SAFE_ANALYTICS_ERROR/);
 
 assert.match(ops, /requestGeneration = useRef/);
+assert.match(ops, /syncGeneration = useRef/);
+assert.match(ops, /syncLock = useRef/);
 assert.match(ops, /providerState/);
 assert.match(ops, /No synthetic agent data is shown/);
 assert.doesNotMatch(ops, /IN_APP_AGENTS/);
-assert.match(ops, /const ok = await load\(\)/);
+assert.match(ops, /const result = await load\(\{ preserveData \}\)/);
+assert.match(ops, /if \(syncLock\.current\) return;/);
+assert.match(ops, /if \(result\?\.ok === false && mountedRef\.current && generation === syncGeneration\.current\)/);
+assert.match(ops, /generation !== requestGeneration\.current\) return null;/);
+assert.doesNotMatch(ops, /if \(!ok && mountedRef\.current\)/);
+
+assert.deepEqual(opsLoadFailureState({ preserveData: true, adminVerified: true }), {
+  pageError: null,
+  providerState: 'unavailable',
+  preservedData: true,
+});
+assert.match(opsRefreshFailureMessage({ preserveData: true }), /last loaded data/);
+assert.equal(typeof opsLoadFailureState({ preserveData: false, adminVerified: true }).pageError, 'string');
+assert.doesNotMatch(opsRefreshFailureMessage({ preserveData: false }), /last loaded data/);
+assert.deepEqual(opsLoadFailureState({ preserveData: true, adminVerified: false }), {
+  pageError: "We couldn't load Ops Center data.",
+  providerState: 'unavailable',
+  preservedData: false,
+});
+assert.match(ops, /let adminVerified = false;/);
+assert.ok(ops.indexOf('adminVerified = true;') > ops.indexOf('me?.role !== "admin"'));
+assert.ok(
+  ops.indexOf('if (error)') < ops.indexOf('if (!user || user.role !== "admin")'),
+  'authentication/load errors must render before an authorization-denial decision',
+);
+assert.doesNotMatch(ops, /\{error \? \(/);
+assert.match(ops, /onRetry=\{\(\) => \{ setAuthReady\(false\); setError\(null\); setSyncError\(""\); setLoading\(true\); load\(\); \}\}/);
+assert.match(ops, /disabled=\{loading \|\| syncing\}/);
 
 assert.match(globe, /touchAction = "pan-y"/);
 assert.match(globe, /setPointerCapture/);

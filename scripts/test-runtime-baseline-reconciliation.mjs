@@ -25,17 +25,17 @@ const conflictingEngines = runFixture((fixture) => {
 });
 assert.notEqual(conflictingEngines.status, 0, "conflicting package engine range must fail");
 
-const node22Only = runFixture((fixture) => {
-  fs.writeFileSync(path.join(fixture, ".nvmrc"), "22\n");
-  fs.writeFileSync(path.join(fixture, ".node-version"), "22\n");
+const node18Only = runFixture((fixture) => {
+  fs.writeFileSync(path.join(fixture, ".nvmrc"), "18\n");
+  fs.writeFileSync(path.join(fixture, ".node-version"), "18\n");
   for (const name of fs.readdirSync(path.join(fixture, ".github", "workflows"))) {
     if (!/\.ya?ml$/.test(name)) continue;
     const p = path.join(fixture, ".github", "workflows", name);
-    fs.writeFileSync(p, fs.readFileSync(p, "utf8").replace(/node-version:\s*20(?:\.x)?/g, "node-version: 22"));
+    fs.writeFileSync(p, fs.readFileSync(p, "utf8").replace(/node-version:\s*['\"]?20(?:\.x)?['\"]?/g, "node-version: 18"));
   }
 });
-assert.notEqual(node22Only.status, 0, "Node 22 selector regression must fail");
-assert.match(node22Only.stderr, /tested Node 24|Node 24/);
+assert.notEqual(node18Only.status, 0, "Node 18 selector regression must fail");
+assert.match(node18Only.stderr, /Node 20 or newer/);
 
 const malformedMetadata = runFixture((fixture) => {
   fs.writeFileSync(path.join(fixture, "package.json"), "{ malformed");

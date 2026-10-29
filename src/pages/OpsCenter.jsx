@@ -9,6 +9,7 @@ import OpsReports from "@/components/ops/OpsReports";
 import FundMigrationDashboard from "@/components/ops/FundMigrationDashboard";
 import PendingDonationReview from "@/components/ops/PendingDonationReview";
 import PageError from "@/components/PageError";
+import { opsLoadFailureState, opsRefreshFailureMessage } from "@/lib/opsCenterState";
 
 // Ops Center — Base44-native operational view. Data is read directly from
 // Base44 entities; refresh reloads the current authoritative platform state.
@@ -25,20 +26,25 @@ export default function OpsCenter() {
   const [authReady, setAuthReady] = useState(false);
   const [providerState, setProviderState] = useState("unknown");
   const requestGeneration = useRef(0);
+  const syncGeneration = useRef(0);
+  const syncLock = useRef(false);
+  const hasSuccessfulLoad = useRef(false);
   const mountedRef = useRef(true);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ preserveData = false } = {}) => {
     const generation = ++requestGeneration.current;
+    let adminVerified = false;
     try {
       const me = await base44.auth.me();
-      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      if (!mountedRef.current || generation !== requestGeneration.current) return null;
       setUser(me || null);
       setAuthReady(true);
       if (me?.role !== "admin") {
         setLoading(false);
         setProviderState("unavailable");
-        return true;
+        return { ok: true };
       }
+      adminVerified = true;
       const [a, c, t, r] = await Promise.all([
         base44.entities.Agent.list("-trust_score", 50),
         base44.entities.MonitoredCampaign.list("-raised_amount", 50),
@@ -46,20 +52,22 @@ export default function OpsCenter() {
         base44.entities.ProtocolReport.list("-generated_at", 20),
       ]);
       if (![a, c, t, r].every(Array.isArray)) throw new Error("Malformed Ops Center response");
-      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      if (!mountedRef.current || generation !== requestGeneration.current) return null;
       setAgents(a);
       setCampaigns(c);
       setTreasury(t[0] || null);
       setReports(r);
       setProviderState("available");
       setError(null);
-      return true;
+      hasSuccessfulLoad.current = true;
+      return { ok: true };
     } catch (e) {
-      if (!mountedRef.current || generation !== requestGeneration.current) return false;
+      if (!mountedRef.current || generation !== requestGeneration.current) return null;
+      const failureState = opsLoadFailureState({ preserveData, adminVerified });
       setAuthReady(true);
-      setProviderState("unavailable");
-      setError("We couldn't load Ops Center data.");
-      return false;
+      setProviderState(failureState.providerState);
+      setError(failureState.pageError);
+      return { ok: false, preservedData: failureState.preservedData };
     } finally {
       if (mountedRef.current && generation === requestGeneration.current) setLoading(false);
     }
@@ -71,25 +79,42 @@ export default function OpsCenter() {
     return () => {
       mountedRef.current = false;
       requestGeneration.current += 1;
+      syncGeneration.current += 1;
+      syncLock.current = false;
     };
   }, [load]);
 
   const syncNow = async () => {
+    if (syncLock.current) return;
+    syncLock.current = true;
+    const generation = ++syncGeneration.current;
+    const preserveData = hasSuccessfulLoad.current;
     setSyncing(true);
     setSyncError("");
     try {
-      const ok = await load();
-      if (!ok && mountedRef.current) setSyncError("Refresh failed — showing the last loaded data.");
+      const result = await load({ preserveData });
+      if (result?.ok === false && mountedRef.current && generation === syncGeneration.current) {
+        setSyncError(opsRefreshFailureMessage({ preserveData: result.preservedData }));
+      }
     } catch (e) {
       console.error("Ops Center refresh failed:", e?.name || "UnknownError");
-      if (mountedRef.current) setSyncError("Refresh failed — showing the last loaded data.");
+      if (mountedRef.current && generation === syncGeneration.current) {
+        setSyncError(opsRefreshFailureMessage({ preserveData }));
+      }
     } finally {
-      if (mountedRef.current) setSyncing(false);
+      if (generation === syncGeneration.current) {
+        syncLock.current = false;
+        if (mountedRef.current) setSyncing(false);
+      }
     }
   };
 
   if (!authReady) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /></div>;
+  }
+
+  if (error) {
+    return <PageError message={error} onRetry={() => { setAuthReady(false); setError(null); setSyncError(""); setLoading(true); load(); }} />;
   }
 
   if (!user || user.role !== "admin") {
@@ -115,7 +140,7 @@ export default function OpsCenter() {
           </div>
           <button
             onClick={syncNow}
-            disabled={syncing}
+            disabled={loading || syncing}
             className="flex items-center gap-2 rounded-xl bg-cyan-400/10 border border-cyan-400/30 text-cyan-300 px-4 min-h-[44px] text-sm font-semibold disabled:opacity-60"
           >
             {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
@@ -124,9 +149,7 @@ export default function OpsCenter() {
         </div>
         {syncError && <p className="mt-2 text-xs text-rose-400" role="alert">{syncError}</p>}
 
-        {error ? (
-          <PageError message={error} onRetry={() => { setError(null); setLoading(true); load(); }} />
-        ) : loading ? (
+        {loading ? (
           <div className="flex justify-center py-20" role="status" aria-live="polite"><Loader2 className="w-6 h-6 text-cyan-400 animate-spin" /><span className="sr-only">Loading Ops Center</span></div>
         ) : (
           <Tabs defaultValue="agents" className="mt-4">

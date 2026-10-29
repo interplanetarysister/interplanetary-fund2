@@ -13,7 +13,7 @@ const quality = read('.github/workflows/quality-gates.yml');
 
 assert.equal(nodeVersion, '24', '.node-version must use tested Node 24');
 assert.equal(nvmrc, '24', '.nvmrc must use tested Node 24');
-assert.equal(pkg.engines?.node, '>=24.12.0', 'package engine must satisfy Firebase 13 Node minimum');
+assert.equal(pkg.engines?.node, '>=20', 'package engine must preserve the supported Node 20+ baseline');
 assert.match(quality, /node-version:\s*['\"]24['\"]/, 'quality gates must use tested Node 24');
 
 
