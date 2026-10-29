@@ -65,7 +65,7 @@ Return ONLY JSON with an "options" array containing exactly five strings. No rep
         .map((s) => typeof s === "string" ? s.trim().replace(/^\d+[.)]\s*/, "").slice(0, limit) : "")
         .filter(Boolean))].slice(0, expectedCount);
       // Reject superficial variants that start with identical wording.
-      const openings = choices.map((choice) => choice.toLocaleLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").split(/\\s+/).slice(0, 3).join(" "));
+      const openings = choices.map((choice) => choice.toLocaleLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).slice(0, 3).join(" "));
       if (choices.length !== expectedCount || new Set(openings).size !== expectedCount) throw new Error(`Need five substantively different choices`);
       setSuggestions((prev) => ({ ...prev, [field]: choices }));
     } catch {
@@ -92,7 +92,7 @@ Return ONLY JSON with an "options" array containing exactly five strings. No rep
           <Button type="button" variant="outline" className="quest-button w-full sm:w-auto"
             disabled={!available || disabled || Boolean(busy)} onClick={() => generate(field)}>
             {busy === field ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-            {suggestions[field].length ? `Try ${"five"} more` : `Show ${field === "title" ? "five" : "two"} AI options`}
+            {suggestions[field].length ? `Try ${"five"} more` : `Show five AI options`}
           </Button>
           {!available && <p className="text-xs text-slate-300">AI suggestions are unavailable; you can still type your own.</p>}
           {available && disabled && <p className="text-xs text-slate-300">{field === "title" ? "Tell us what your campaign is for on the first step, or type a starting title." : "Choose or type a title first."}</p>}
