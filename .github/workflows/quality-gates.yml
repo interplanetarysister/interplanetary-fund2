@@ -22,7 +22,7 @@ concurrency:
 jobs:
   quality:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node 24 Base44 compatibility build
+    name: Node 22 Base44 production build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
@@ -180,6 +180,15 @@ jobs:
       - name: Verify external fundraising network contract
         run: npm run verify:external-fund-network
 
+      - name: Campaign creation draft and generated-media tests
+        run: npm run verify:campaign-creation
+
+      - name: Campaign copy and image-style tests
+        run: npm run verify:campaign-copy && npm run verify:ifund-images
+
+      - name: Campaign voice assistant tests
+        run: npm run verify:campaign-voice
+
       - name: Production build
         run: npm run build
 
@@ -203,7 +212,7 @@ jobs:
 
   node20-compatibility:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node current compatibility build
+    name: Node 20 compatibility build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
