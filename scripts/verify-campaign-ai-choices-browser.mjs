@@ -24,7 +24,7 @@ try {
     if(url.includes('getFeatureAvailability'))return body({available:{ai_campaign_assistant:true}});
     if(url.includes('getFundraisingMode'))return body({public_campaign_fundraising:true});
     if(url.includes('InvokeLLM')){aiRequests.push(url);
-      const values=aiRequests.length===1?['Project Sunrise','Community Builders','Hope in Action','Give Tomorrow','Make It Happen']:['Support this community','Help people build their project'];
+      const values=aiRequests.length===1?['Project Sunrise','Community Builders','Hope in Action','Give Tomorrow','Make It Happen']:['Support this community','Help people build their project','Make useful work possible','Support a verifiable goal','Help finish a local project'];
       return body({options:values});
     }
     if(url.includes('recordLegalAcceptance'))return body({accepted:true,terms_version:'2026-10-13-v3'});
@@ -53,12 +53,12 @@ try {
   await group.getByRole('button').nth(2).click();
   assert.equal(await page.locator('#campaign-title').inputValue(),'Hope in Action');
   await controls.last().click();
-  const summary=page.getByRole('group',{name:'Two summary options'});
+  const summary=page.getByRole('group',{name:'Five summary options'});
   await summary.getByRole('button').first().waitFor({timeout:14000});
-  assert.equal(await summary.getByRole('button').count(),2,'two summaries');
+  assert.equal(await summary.getByRole('button').count(),5,'five summaries');
   await summary.getByRole('button').first().click();
   assert.equal(await page.locator('#campaign-summary').inputValue(),'Support this community');
   assert.deepEqual(errors,[]);
-  console.log('PASS five title choices, two summary choices, one editable value for each');
+  console.log('PASS five title choices, five summary choices, one editable value for each');
   await context.close();
 }finally{await browser?.close();server.kill();await sleep(200)}
