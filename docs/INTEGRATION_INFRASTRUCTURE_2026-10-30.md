@@ -14,7 +14,7 @@ Updated: 2026-10-30
 - Supabase organization is interplanetary fund.
 - The current InterplanetaryFund app project is ssibsfmtodgximseeqsv (ACTIVE_HEALTHY; US West).
 - A second project, tzehxfikoslihnclhxuz (Ifund), exists and is older. Do not silently switch or delete it.
-- The active production Worker configuration still points at the older Supabase project tzehxfikoslihnclhxuz and contains legacy Base44 origin/function URLs. This is a material cutover mismatch; changing those production bindings requires a separately tested deployment and migration verification.
+- The active production Worker configuration points at the older Supabase project tzehxfikoslihnclhxuz and contains legacy Base44 origin/function URLs. Its checked-in gateway source explicitly pins independent-auth preview and migration-campaign requests to that project, so this is not safe to relabel as an accidental mismatch. The newer InterplanetaryFund project ssibsfmtodgximseeqsv contains the current app schema. Confirm which project is intended for production auth and campaign APIs before changing the Worker bindings or its hard-coded project guard.
 - The OAuth Worker ifund-oauth is currently disabled (OAUTH_ENABLED=false), has no Worker secret bindings, and its current code is an IFund admin OAuth service rather than a completed social-provider OAuth broker. Do not enable it until its admin verification endpoint and required secrets are configured and its flow is tested.
 - The production Worker interplanetary-fund2 has no Worker secret bindings. Its current settings include only plain-text configuration and a publishable Supabase key. No third-party provider client secrets were found in either Worker.
 
