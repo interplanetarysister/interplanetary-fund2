@@ -36,6 +36,29 @@ For each provider, implement distinct capability flags and tests rather than a s
 
 Do not silently mirror every external post in both directions. Require per-account and per-content consent, prevent loops with provider IDs and idempotency keys, preserve canonical links/attribution, and let owners choose which campaigns and content types may cross-post.
 
+## Existing social catalog: practical interoperability boundaries
+
+| Catalog platform | Provider-supported sharing routes | IFund source-audit status / required gate |
+| --- | --- | --- |
+| Bluesky | Publish posts; read public feeds/records; replies and embeds are separate record operations. | Direct text publishing adapter exists. Media, import, and replies still require their own tests and scopes. |
+| Mastodon | Create/read statuses, media, notifications and account data on the user's chosen instance. | Direct publishing is deliberately disabled until arbitrary instance egress is DNS-pinned and redirect-safe. |
+| Facebook Pages | Page posts/media and Page content reads; comments/engagement require additional permissions. | Page OAuth verification checks Page tasks and required permissions; no general personal-profile posting. App review and live Page publish tests are still required. |
+| Instagram | Publishing and comment management for eligible Professional (Business/Creator) accounts; consumer personal accounts are not covered by the professional publishing API. | The catalog exists, but live publishing is not implemented. Verify account type, linked Page where required, scopes, media constraints, and Meta app review. |
+| Threads | Authorized profile publishing and reading through Threads API; scopes and product review apply. | Current catalog is profile-link only; no API publishing adapter. |
+| X | Authorized post creation and read endpoints; automation requires explicit user consent, anti-spam controls, and API access. | Current catalog is profile-link only; no API publishing adapter. Do not send unsolicited automated replies or duplicate cross-posts. |
+| LinkedIn | Member/organization posts depending on product access and scopes; read access is distinct from posting. | Member publishing adapter exists via the owner's OAuth connector. Organization posting is not implied. |
+| TikTok | Content Posting API supports Direct Post and upload-as-draft. | No adapter exists. Direct Post requires creator-specific UX, express upload consent, status polling, and client audit for public visibility. Unreviewed clients are limited to private-only posts and 5 posting users per 24 hours. Do not build an app that merely copies arbitrary content from other platforms; content must be creator-authored/original and user-editable. |
+| Pinterest | Create/manage image and video Pins and boards using approved API scopes. | Current catalog is profile-link only; no API publishing adapter. App connection approval and pins/boards scopes are required. |
+| Reddit | Read/write posts and comments under the approved Data API or Devvit model. | Current catalog is profile-link only. An external IFund service needs Reddit API access approval and must follow its Responsible Builder Policy; Devvit is not a substitute for external SaaS credentials. |
+| YouTube | Upload videos and manage video metadata with authorized YouTube Data API scopes. | Current catalog is channel-link only; no upload adapter. API quota and project verification/audit requirements must be handled before public uploads. |
+| Discord | A bot/application can send messages to channels where installed and permitted; this is not equivalent to posting as the user's personal Discord account. | Current catalog OAuth connection alone does not implement a bot, guild installation, or channel send permission. |
+| Tumblr | OAuth-authorized post creation, drafts/queue, and reblogs through the official API. | New connector slot and identity probe exist; developer app registration and publish adapter remain outstanding. |
+| WordPress.com | OAuth-scoped post/page/media/comment operations on authorized sites. | Existing connector and identity probe exist; no direct publishing adapter. |
+| WordPress.org (self-hosted) | REST API can create/read posts, pages, media, and comments using a dedicated Application Password over HTTPS. | New credential setup only. Provider verification and publishing remain disabled pending SSRF-safe transport and live tests. |
+| Ghost | Content API reads published posts/pages; Admin API manages content with a privileged integration key. | New credential setup only. Admin API signing, verification, and publishing remain disabled pending SSRF-safe transport and live tests. |
+
+The distinction between account identity and publish permission is especially important for Meta and TikTok. TikTok's official guidelines require a user-editable posting flow and expressly prohibit a client that merely copies arbitrary content from other platforms. X requires clear disclosure and express consent for automated actions and prohibits spammy or substantially similar duplicate posts across accounts. Reddit requires approved access for external Data API integrations.
+
 ## Security and compliance gates
 
 - Store user tokens and API keys only in encrypted server-side credential storage; never expose them in browser state, logs, public entities, or analytics.
