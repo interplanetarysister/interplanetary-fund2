@@ -5,10 +5,12 @@ const isSuperAdminOwner=(user)=>user?.role==='admin'&&SUPER_ADMIN_OWNER_EMAILS.h
 export default async function(req) {
   try {
     const base44=createClientFromRequest(req); const activeAccount = await assertActiveAccount(base44); if (!activeAccount.ok) return Response.json({ error: activeAccount.error }, { status: activeAccount.status });
-    const user=await base44.auth.me().catch(()=>null);
+    const user=activeAccount.user;
     if(!user) return Response.json({error:'Unauthorized'},{status:401});
     if(!isSuperAdminOwner(user)) return Response.json({error:'Forbidden — super admin only.'},{status:403});
-    return Response.json({id:user.id,role:'admin',super_admin:true});
+    return Response.json({id:user.id,role:'admin',super_admin:true,
+      account_status:user.account_status||'active',
+      account_deletion_pending:user.account_deletion_pending===true});
   } catch(error) {
     console.error('verifyAdminGateway error',error?.message||error);
     return Response.json({error:'Unable to verify administrator.'},{status:500});
