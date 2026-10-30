@@ -219,6 +219,9 @@ export async function verifyOAuthConnection(platform: string, oauth: any) {
   if (key === 'wordpress_com') return providerProbe('https://public-api.wordpress.com/rest/v1.1/me', token, {
     validate: (data: any) => !!data?.ID,
   });
+  if (key === 'tumblr') return providerProbe('https://api.tumblr.com/v2/user/info', token, {
+    validate: (data: any) => !!data?.response?.user?.name,
+  });
 
   throw new Error('Live provider verification is not implemented for this connector.');
 }
