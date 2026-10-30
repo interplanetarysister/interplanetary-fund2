@@ -43,6 +43,11 @@ const roa = readFileSync('base44/functions/runOutreachAgent/entry.ts', 'utf8');
 ok('runOutreachAgent skips revoked owners', roa.includes('account_deletion_pending') && roa.includes('owner account unavailable'));
 
 // stripeWebhook is unauthenticated (Stripe webhook) — must NOT require the guard.
+const adminGateway = readFileSync('base44/functions/verifyAdminGateway/entry.ts', 'utf8');
+ok('verifyAdminGateway imports the active-account guard', adminGateway.includes("import { assertActiveAccount } from '../../shared/accountGuard.ts'"));
+ok('verifyAdminGateway invokes the active-account guard before granting admin identity', adminGateway.includes('await assertActiveAccount(base44)') && adminGateway.indexOf('await assertActiveAccount(base44)') < adminGateway.indexOf('super_admin:true'));
+ok('verifyAdminGateway returns canonical account lifecycle state', adminGateway.includes('account_status:user.account_status||\'active\'') && adminGateway.includes('account_deletion_pending:user.account_deletion_pending===true'));
+
 const sw = readFileSync('base44/functions/stripeWebhook/entry.ts', 'utf8');
 ok('stripeWebhook does not require auth', !sw.includes('assertActiveAccount'));
 
