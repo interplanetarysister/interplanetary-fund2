@@ -108,9 +108,10 @@ export default async function(req) {
       return Response.json({ error: 'Platform cannot be changed for this account.' }, { status: 400 });
     }
     if (incoming.account_identifier) incoming.account_identifier = incoming.account_identifier.trim().slice(0, 254);
-    if (incoming.buymeacoffee_api_token) {
+    for (const secretField of ['buymeacoffee_api_token', 'wordpress_application_password', 'ghost_admin_api_key']) {
+      if (!incoming[secretField]) continue;
       try {
-        incoming.buymeacoffee_api_token = await encryptConnectionSecret(incoming.buymeacoffee_api_token.trim());
+        incoming[secretField] = await encryptConnectionSecret(incoming[secretField].trim());
       } catch {
         // Fail closed rather than saving provider secrets as plaintext records.
         return Response.json({
