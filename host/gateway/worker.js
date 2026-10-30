@@ -102,6 +102,8 @@ async function verifyPlatformAdmin(request, env) {
     if (!response.ok || (response.status >= 300 && response.status < 400)) return null;
     const user = await response.json().catch(() => null);
     return user?.role === "admin" && user?.super_admin === true &&
+      user?.account_deletion_pending !== true &&
+      (!user?.account_status || user.account_status === "active") &&
       typeof user.id === "string" && user.id.length > 0 ? user : null;
   } catch {
     return null;
