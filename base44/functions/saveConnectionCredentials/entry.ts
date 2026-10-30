@@ -108,6 +108,28 @@ export default async function(req) {
       return Response.json({ error: 'Platform cannot be changed for this account.' }, { status: 400 });
     }
     if (incoming.account_identifier) incoming.account_identifier = incoming.account_identifier.trim().slice(0, 254);
+    for (const field of ['wordpress_site_url', 'ghost_site_url']) {
+      if (!incoming[field]) continue;
+      try {
+        const parsed = new URL(incoming[field].trim());
+        if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password ||
+            parsed.search || parsed.hash || (parsed.port && parsed.port !== '443')) {
+          throw new Error('invalid site URL');
+        }
+        incoming[field] = parsed.origin + parsed.pathname.replace(/\/+$/, '');
+      } catch {
+        return Response.json({ error: 'Use a valid HTTPS publication URL without embedded credentials, query parameters, or fragments.' }, { status: 400 });
+      }
+    }
+    const effectiveCredentials = { ...(existing?.credentials || {}), ...incoming };
+    if (platform === 'wordpress_org' &&
+        (!effectiveCredentials.wordpress_site_url || !effectiveCredentials.wordpress_username || !effectiveCredentials.wordpress_application_password)) {
+      return Response.json({ error: 'WordPress.org requires an HTTPS site URL, username, and dedicated Application Password.' }, { status: 400 });
+    }
+    if (platform === 'ghost' &&
+        (!effectiveCredentials.ghost_site_url || !effectiveCredentials.ghost_admin_api_key)) {
+      return Response.json({ error: 'Ghost requires an HTTPS publication URL and a dedicated Admin API key.' }, { status: 400 });
+    }
     for (const secretField of ['buymeacoffee_api_token', 'wordpress_application_password', 'ghost_admin_api_key']) {
       if (!incoming[secretField]) continue;
       try {
