@@ -94,6 +94,8 @@ export default async function(req) {
       buymeacoffee: ['buymeacoffee_api_token'],
       bluesky: ['bluesky_handle', 'bluesky_app_password'],
       mastodon: ['mastodon_instance', 'mastodon_access_token'],
+      wordpress_org: ['wordpress_site_url', 'wordpress_username', 'wordpress_application_password'],
+      ghost: ['ghost_site_url', 'ghost_admin_api_key'],
     };
     const allowed = new Set(['account_identifier', ...(allowedByPlatform[platform] || [])]);
     const incoming: Record<string, string> = {};
