@@ -26,6 +26,7 @@ export const OAUTH_ENV: Record<string, string> = {
   eventbrite: 'APP_USER_CONNECTOR_EVENTBRITE_ID',
   gumroad: 'APP_USER_CONNECTOR_GUMROAD_ID',
   wordpress_com: 'APP_USER_CONNECTOR_WORDPRESS_COM_ID',
+  tumblr: 'APP_USER_CONNECTOR_TUMBLR_ID',
 };
 
 // Platforms that connect via a pasted URL and owner-reported totals. No provider
