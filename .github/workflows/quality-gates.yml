@@ -22,7 +22,7 @@ concurrency:
 jobs:
   quality:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node 24 Base44 compatibility build
+    name: Node 22 Base44 release build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
@@ -217,7 +217,7 @@ jobs:
 
   typecheck:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Typecheck on Base44 baseline
+    name: Typecheck on Node 22 release baseline
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -227,7 +227,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
