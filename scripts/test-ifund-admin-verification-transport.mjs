@@ -51,9 +51,11 @@ try {
   await denied({}, () => new Response("not json", { status: 200 }));
   await denied({}, () => Response.json({ role: "admin", super_admin: true }));
   await denied({}, () => Response.json({ id: "owner", role: "admin", super_admin: false }));
+  await denied({}, () => Response.json({ id: "disabled-owner", role: "admin", super_admin: true, account_status: "disabled" }));
+  await denied({}, () => Response.json({ id: "deleting-owner", role: "admin", super_admin: true, account_status: "active", account_deletion_pending: true }));
   await denied({}, () => { throw Error("provider offline"); });
 
-  const success = await run({}, () => Response.json({ id: "verified-owner", role: "admin", super_admin: true }));
+  const success = await run({}, () => Response.json({ id: "verified-owner", role: "admin", super_admin: true, account_status: "active", account_deletion_pending: false }));
   assert.equal(success.response.status, 200);
   const body = await success.response.json();
   assert.equal(typeof body.sessionId, "string");
