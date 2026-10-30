@@ -17,6 +17,10 @@ assert.match(gateway,/\/v1\/admin\/agents\/message/);
 assert.match(worker,/verifyPlatformAdmin/);
 assert.match(worker,/user\?\.role\s*===\s*"admin"\s*&&\s*user\?\.super_admin\s*===\s*true/,
   "worker must require both admin role and verified super-admin status");
+assert.match(worker,/user\?\.account_deletion_pending\s*!==\s*true/,
+  "worker must reject pending-deletion administrator accounts");
+assert.match(worker,/user\?\.account_status\s*===\s*"active"/,
+  "worker must reject disabled administrator accounts");
 assert.match(worker,/IFUND_ADMIN_AGENT_KEY/);
 assert.match(worker,/sameSecret/);
 assert.match(worker,/IFUND_SESSION_SECRET/);
