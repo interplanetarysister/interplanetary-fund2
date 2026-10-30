@@ -26,6 +26,7 @@ export const OAUTH_ENV: Record<string, string> = {
   eventbrite: 'APP_USER_CONNECTOR_EVENTBRITE_ID',
   gumroad: 'APP_USER_CONNECTOR_GUMROAD_ID',
   wordpress_com: 'APP_USER_CONNECTOR_WORDPRESS_COM_ID',
+  tumblr: 'APP_USER_CONNECTOR_TUMBLR_ID',
 };
 
 // Platforms that connect via a pasted URL and owner-reported totals. No provider
@@ -217,6 +218,9 @@ export async function verifyOAuthConnection(platform: string, oauth: any) {
   if (key === 'eventbrite') return providerProbe('https://www.eventbriteapi.com/v3/users/me/', token);
   if (key === 'wordpress_com') return providerProbe('https://public-api.wordpress.com/rest/v1.1/me', token, {
     validate: (data: any) => !!data?.ID,
+  });
+  if (key === 'tumblr') return providerProbe('https://api.tumblr.com/v2/user/info', token, {
+    validate: (data: any) => !!data?.response?.user?.name,
   });
 
   throw new Error('Live provider verification is not implemented for this connector.');

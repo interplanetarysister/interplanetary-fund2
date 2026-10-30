@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-10-30",
+  "source_repository": "interplanetarysister/interplanetary-fund2",
+  "supabase": {
+    "project_ref": "ssibsfmtodgximseeqsv",
+    "schema": "ifund_integrations",
+    "table": "provider_registry"
+  },
+  "cloudflare": {
+    "zone": "interplanetaryfund.com",
+    "registry_namespace_title": "IFUND_INTEGRATION_REGISTRY",
+    "registry_namespace_id": "0eb694b397d34504821479400733ca01",
+    "registry_key": "ifund-provider-registry-v1",
+    "oauth_worker": "ifund-oauth",
+    "production_worker": "interplanetary-fund2"
+  },
+  "secret_values_included": false,
+  "providers": [
+    {
+      "id": "justgiving",
+      "name": "JustGiving",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "gofundme",
+      "name": "GoFundMe",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "kickstarter",
+      "name": "Kickstarter",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "indiegogo",
+      "name": "Indiegogo",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "fundrazr",
+      "name": "FundRazr",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "givesendgo",
+      "name": "GiveSendGo",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "kofi",
+      "name": "Ko-fi",
+      "category": "fundraising",
+      "auth_method": "webhook",
+      "integration_state": "webhook_supported"
+    },
+    {
+      "id": "buymeacoffee",
+      "name": "Buy Me a Coffee",
+      "category": "fundraising",
+      "auth_method": "manual_token",
+      "integration_state": "manual_credentials_unverified"
+    },
+    {
+      "id": "patreon",
+      "name": "Patreon",
+      "category": "fundraising",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "spotfund",
+      "name": "Spotfund",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "eventbrite",
+      "name": "Eventbrite",
+      "category": "fundraising",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "gumroad",
+      "name": "Gumroad",
+      "category": "fundraising",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "custom",
+      "name": "Custom external campaign",
+      "category": "fundraising",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "wordpress_com",
+      "name": "WordPress.com",
+      "category": "publishing",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "wordpress_org",
+      "name": "WordPress.org (self-hosted)",
+      "category": "publishing",
+      "auth_method": "application_password",
+      "integration_state": "manual_credentials_unverified"
+    },
+    {
+      "id": "ghost",
+      "name": "Ghost",
+      "category": "publishing",
+      "auth_method": "admin_api_key",
+      "integration_state": "manual_credentials_unverified"
+    },
+    {
+      "id": "tumblr",
+      "name": "Tumblr",
+      "category": "social",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "bluesky",
+      "name": "Bluesky",
+      "category": "social",
+      "auth_method": "app_password",
+      "integration_state": "adapter_present_credentials_missing"
+    },
+    {
+      "id": "mastodon",
+      "name": "Mastodon",
+      "category": "social",
+      "auth_method": "manual_token",
+      "integration_state": "blocked_pending_security"
+    },
+    {
+      "id": "facebook",
+      "name": "Facebook Pages",
+      "category": "social",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "instagram",
+      "name": "Instagram",
+      "category": "social",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "threads",
+      "name": "Threads",
+      "category": "social",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "x",
+      "name": "X",
+      "category": "social",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "linkedin",
+      "name": "LinkedIn",
+      "category": "social",
+      "auth_method": "oauth2",
+      "integration_state": "adapter_present_credentials_missing"
+    },
+    {
+      "id": "tiktok",
+      "name": "TikTok",
+      "category": "social",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "pinterest",
+      "name": "Pinterest",
+      "category": "social",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "reddit",
+      "name": "Reddit",
+      "category": "social",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "youtube",
+      "name": "YouTube",
+      "category": "social",
+      "auth_method": "manual_link",
+      "integration_state": "link_only"
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "social",
+      "auth_method": "oauth2",
+      "integration_state": "needs_provider_app_credentials"
+    },
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "googledrive",
+      "name": "Google Drive",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "googlecalendar",
+      "name": "Google Calendar",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "google_contacts",
+      "name": "Google Contacts",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "google_photos",
+      "name": "Google Photos",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "googlesheets",
+      "name": "Google Sheets",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "googledocs",
+      "name": "Google Docs",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "googleforms",
+      "name": "Google Forms",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "googletasks",
+      "name": "Google Tasks",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "notion",
+      "name": "Notion",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "outlook",
+      "name": "Outlook",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "microsoft_teams",
+      "name": "Microsoft Teams",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "one_drive",
+      "name": "OneDrive",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "category": "productivity",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "category": "developer",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    },
+    {
+      "id": "gitlab",
+      "name": "GitLab",
+      "category": "developer",
+      "auth_method": "host_connector",
+      "integration_state": "host_connector_required"
+    }
+  ]
+}

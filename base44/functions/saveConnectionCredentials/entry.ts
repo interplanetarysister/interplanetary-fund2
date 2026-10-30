@@ -94,6 +94,8 @@ export default async function(req) {
       buymeacoffee: ['buymeacoffee_api_token'],
       bluesky: ['bluesky_handle', 'bluesky_app_password'],
       mastodon: ['mastodon_instance', 'mastodon_access_token'],
+      wordpress_org: ['wordpress_site_url', 'wordpress_username', 'wordpress_application_password'],
+      ghost: ['ghost_site_url', 'ghost_admin_api_key'],
     };
     const allowed = new Set(['account_identifier', ...(allowedByPlatform[platform] || [])]);
     const incoming: Record<string, string> = {};
@@ -106,9 +108,32 @@ export default async function(req) {
       return Response.json({ error: 'Platform cannot be changed for this account.' }, { status: 400 });
     }
     if (incoming.account_identifier) incoming.account_identifier = incoming.account_identifier.trim().slice(0, 254);
-    if (incoming.buymeacoffee_api_token) {
+    for (const field of ['wordpress_site_url', 'ghost_site_url']) {
+      if (!incoming[field]) continue;
       try {
-        incoming.buymeacoffee_api_token = await encryptConnectionSecret(incoming.buymeacoffee_api_token.trim());
+        const parsed = new URL(incoming[field].trim());
+        if (parsed.protocol !== 'https:' || !parsed.hostname || parsed.username || parsed.password ||
+            parsed.search || parsed.hash || (parsed.port && parsed.port !== '443')) {
+          throw new Error('invalid site URL');
+        }
+        incoming[field] = parsed.origin + parsed.pathname.replace(/\/+$/, '');
+      } catch {
+        return Response.json({ error: 'Use a valid HTTPS publication URL without embedded credentials, query parameters, or fragments.' }, { status: 400 });
+      }
+    }
+    const effectiveCredentials = { ...(existing?.credentials || {}), ...incoming };
+    if (platform === 'wordpress_org' &&
+        (!effectiveCredentials.wordpress_site_url || !effectiveCredentials.wordpress_username || !effectiveCredentials.wordpress_application_password)) {
+      return Response.json({ error: 'WordPress.org requires an HTTPS site URL, username, and dedicated Application Password.' }, { status: 400 });
+    }
+    if (platform === 'ghost' &&
+        (!effectiveCredentials.ghost_site_url || !effectiveCredentials.ghost_admin_api_key)) {
+      return Response.json({ error: 'Ghost requires an HTTPS publication URL and a dedicated Admin API key.' }, { status: 400 });
+    }
+    for (const secretField of ['buymeacoffee_api_token', 'wordpress_application_password', 'ghost_admin_api_key']) {
+      if (!incoming[secretField]) continue;
+      try {
+        incoming[secretField] = await encryptConnectionSecret(incoming[secretField].trim());
       } catch {
         // Fail closed rather than saving provider secrets as plaintext records.
         return Response.json({
