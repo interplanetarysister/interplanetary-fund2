@@ -70,13 +70,3 @@ test('owner campaign read requires durable consent receipt for exact source and 
   assert.match(sql, /must fail closed if consent-audit storage is not deployed/);
 });
 
-test('campaign read requires an exact durable consent receipt', () => {
-  const executable = sql.replace(/^--.*$/gm, '');
-  const consent = executable.match(/AND EXISTS \(\s*SELECT 1 FROM ifund_migration\.owner_link_consent_audit AS proof([\s\S]*?)\n\s*\)/);
-  assert.ok(consent, 'missing durable consent receipt predicate');
-  assert.match(consent[1], /proof\.source_owner_id = m\.source_owner_id/);
-  assert.match(consent[1], /proof\.destination_auth_uid = m\.destination_auth_uid/);
-  assert.match(consent[1], /proof\.consent_version = 'ifund-owner-link-v1'/);
-  assert.match(consent[1], /proof\.transition IN \('new_link', 'historical_upgrade'\)/);
-  assert.doesNotMatch(consent[1], /\bOR\b|\bCOALESCE\b/i);
-});

@@ -6,6 +6,7 @@ const executable = sql.split('\n').filter(line => !/^\s*--/.test(line)).join('\n
 test('three legacy functions and two audited RPCs are definer-only, pinned search_path, and service role gated', () => {
   assert.equal((sql.match(/SECURITY DEFINER/g) || []).length, 5);
   assert.equal((sql.match(/SET search_path = pg_catalog/g) || []).length, 6);
+  assert.equal((sql.match(/request\.jwt\.claim\.role/g) || []).length, 5);
   assert.equal((sql.match(/request\.jwt\.claims/g) || []).length, 5);
   assert.equal((sql.match(/= 'service_role'/g) || []).length, 3);
 });
@@ -82,7 +83,7 @@ test('new owner link requires atomic audited receipt and service-only execution'
   const body = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_commit_audited(')[1]
     ?.split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit_audited')[0];
   assert.ok(body, 'audited new-link RPC is required');
-  assert.match(body, /request\.jwt\.claims', true\), ''\)::json ->> 'role'\) IS DISTINCT FROM 'service_role'/);
+  assert.match(body, /coalesce\(nullif\(current_setting\('request\.jwt\.claim\.role', true\), ''\), nullif\(current_setting\('request\.jwt\.claims', true\), ''\)::jsonb ->> 'role'\) IS DISTINCT FROM 'service_role'/);
   assert.match(body, /m\.verification_state = 'awaiting_destination_login'/);
   assert.match(body, /m\.destination_auth_uid IS NULL/);
   assert.match(body, /m\.candidate_match_method IS NULL/);
