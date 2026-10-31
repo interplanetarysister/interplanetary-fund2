@@ -6,6 +6,9 @@ export const STAGED_CONTENT = Object.freeze({
   SupportTicket: 1, AgentConversationRun: 13, Notification: 94,
   SocialPost: 10, Agent: 10, Recommendation: 100,
 });
+export const OTHER_STAGED = Object.freeze({
+  Campaign: 27, CampaignUpdate: 10, PlatformConnection: 32,
+});
 export const SOURCE_COUNTS = Object.freeze({
   HelpArticle: 6, FeatureFlag: 24, PublicProfile: 2,
   DiscussionPost: 2, Community: 2, FoundingWaitlist: 2,
@@ -15,7 +18,7 @@ export const SOURCE_COUNTS = Object.freeze({
   User: 10, LegalAcceptance: 5, AuthorizationGrant: 2,
   PayPalBillingWebhook: 1, Donation: 0, Withdrawal: 0,
 });
-export function migrationStatus(type, destinationCount = STAGED_CONTENT[type] || 0) {
+export function migrationStatus(type, destinationCount = STAGED_CONTENT[type] ?? OTHER_STAGED[type] ?? 0) {
   const sourceCount = SOURCE_COUNTS[type];
   if (!Number.isInteger(sourceCount)) throw new Error('unknown_entity_type');
   if (!Number.isInteger(destinationCount) || destinationCount < 0) throw new Error('invalid_destination_count');

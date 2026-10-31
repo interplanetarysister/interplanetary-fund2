@@ -2,9 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('./independent-campaign-read.sql', import.meta.url), 'utf8');
-const worker = process.env.IFUND_WORKER_SOURCE;
 
-test('RPC is read-only and matches existing Worker route', () => {
+test('RPC is read-only, bounded, and uses a pinned search path', () => {
   assert.match(sql, /CREATE OR REPLACE FUNCTION public\.ifund_migration_my_campaigns\(\)/);
   assert.match(sql, /LANGUAGE sql STABLE SECURITY DEFINER/);
   assert.match(sql, /SET search_path = pg_catalog/);

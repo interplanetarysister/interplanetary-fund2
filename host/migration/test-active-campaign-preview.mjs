@@ -9,7 +9,7 @@ test('function is a read-only security-definer with pinned search path', () => {
   assert.doesNotMatch(functionBody, /\b(?:INSERT|UPDATE|DELETE|TRUNCATE|EXECUTE|PERFORM)\b/i);
 });
 test('RPC requires server-side service-role claim and privilege', () => {
-  assert.match(sql, /current_setting\('request\.jwt\.claim\.role', true\) = 'service_role'/);
+  assert.match(sql, /coalesce\(nullif\(current_setting\('request\.jwt\.claim\.role', true\), ''\), nullif\(current_setting\('request\.jwt\.claims', true\), ''\)::jsonb ->> 'role'\) = 'service_role'/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.ifund_migration_active_campaign_preview\(text,integer\)\s+FROM PUBLIC, anon, authenticated/);
   assert.match(sql, /GRANT EXECUTE ON FUNCTION public\.ifund_migration_active_campaign_preview\(text,integer\)\s+TO service_role/);
 });

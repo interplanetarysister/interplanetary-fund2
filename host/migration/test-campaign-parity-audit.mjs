@@ -14,3 +14,8 @@ test('missing timestamps and future-dated destination fail closed',()=>{let d=st
 test('money snapshot cannot confer authority',()=>{const d=staged();d.financial_authoritative=true;assert.throws(()=>auditCampaignParity([source()],[d]),/Financial authority/)});
 test('money snapshots are excluded from comparisons',()=>{const d=staged();d.raised_amount_snapshot=999999;d.donor_count_snapshot=900;const x=auditCampaignParity([source()],[d]);assert.equal(x.contentDrift.length,0);assert.equal(x.financialAuthorityVerified,false)});
 test('no input mutation',()=>{const a=source(),b=staged(),before=JSON.stringify([a,b]);auditCampaignParity([a],[b]);assert.equal(JSON.stringify([a,b]),before)});
+
+test('orphaned shadow rows cannot bypass the financial authority invariant', () => {
+  const orphan = { ...staged(), source_id: 'campaign0002', financial_authoritative: true };
+  assert.throws(() => auditCampaignParity([source()], [orphan]), /Financial authority violation/);
+});

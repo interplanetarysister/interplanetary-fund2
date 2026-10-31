@@ -23,7 +23,7 @@ AS $rpc$
   SELECT c.source_id, c.title, c.summary, c.category,
          c.cover_image_url, true AS preview_only
   FROM ifund_migration.campaign_shadow AS c
-  WHERE current_setting('request.jwt.claim.role', true) = 'service_role'
+  WHERE coalesce(nullif(current_setting('request.jwt.claim.role', true), ''), nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role') = 'service_role'
     AND c.status = 'active'
     AND c.financial_authoritative IS FALSE
     AND (p_after_source_id IS NULL OR c.source_id > p_after_source_id)

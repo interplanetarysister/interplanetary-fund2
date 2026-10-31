@@ -8,8 +8,11 @@ const OPTIONAL = Object.freeze([
   'accept_crypto_donations', 'ai_profile', 'story_versions',
   'outreach_enabled', 'outreach_paused', 'draft_step',
 ]);
+// These small helpers remain local so the zero-write planner is independently runnable;
+// keep their normalization and operational field contract aligned with campaign-parity-audit.mjs.
 const OPERATIONAL = Object.freeze([
-  'outreach_last_run_at', 'outreach_last_attempt_at',
+  'outreach_last_run_at', 'outreach_last_attempt_at', 'outreach_last_error',
+  'social_last_generated_at', 'social_last_generation_attempt_at',
 ]);
 const IDENTIFIER = /^[A-Za-z0-9_-]{8,100}$/;
 const SHA256 = /^[a-f0-9]{64}$/i;

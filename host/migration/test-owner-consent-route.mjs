@@ -138,7 +138,7 @@ test('source mapping mismatch blocks atomic commit', async () => {
  let commits = 0;
  const fetcher = async (url, opts) => {
   if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'other@example.org', verification_state: 'awaiting_destination_login', destination_auth_uid: null, candidate_match_method: null }]), { headers: { 'content-type': 'application/json' } });
-  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  if (url.endsWith('/rpc/ifund_migration_owner_commit') || url.endsWith('/rpc/ifund_migration_owner_commit_audited')) commits++;
   return mockFetch(url, opts);
  };
  assert.equal((await post(ch, '{"consent":true}', {}, base, fetcher)).status, 403);
@@ -149,7 +149,7 @@ test('already verified mapping without consent receipt cannot claim success', as
  let commits = 0;
  const fetcher = async (url, opts) => {
   if (url.endsWith('/rpc/ifund_migration_owner_lookup_v2')) return new Response(JSON.stringify([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: DEST, candidate_match_method: null }]), { headers: { 'content-type': 'application/json' } });
-  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  if (url.endsWith('/rpc/ifund_migration_owner_commit') || url.endsWith('/rpc/ifund_migration_owner_commit_audited')) commits++;
   return mockFetch(url, opts);
  };
  const r = await post(ch, '{"consent":true}', {}, base, fetcher);
@@ -237,7 +237,7 @@ test('legacy lookup missing candidate provenance fails closed at the consent rou
    source_owner_id: SOURCE, source_email: 'owner@example.org',
    verification_state: 'verified', destination_auth_uid: DEST,
   }]), { headers: { 'content-type': 'application/json' } });
-  if (url.endsWith('/rpc/ifund_migration_owner_commit')) commits++;
+  if (url.endsWith('/rpc/ifund_migration_owner_commit') || url.endsWith('/rpc/ifund_migration_owner_commit_audited')) commits++;
   return mockFetch(url, opts);
  };
  const r = await post(ch, '{"consent":true}', {}, base, fetcher);

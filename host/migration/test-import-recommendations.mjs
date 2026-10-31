@@ -5,27 +5,15 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXPECTED_RECOMMENDATION_COUNT, RECOMMENDATION_FIELDS } from './recommendation-import-contract.mjs';
 
 const script = fileURLToPath(new URL('./import-recommendations.mjs', import.meta.url));
-const makeRows = () => Array.from({ length: 836 }, (_, i) => ({
+const sample = Object.fromEntries(RECOMMENDATION_FIELDS.map(field => [field, `source-${field}`]));
+const makeRows = () => Array.from({ length: EXPECTED_RECOMMENDATION_COUNT }, (_, i) => ({
   id: i.toString(16).padStart(24, '0'),
   title: `recommendation-${i}`,
   status: 'open',
-  ...(i === 0 ? {
-    created_by_id: 'creator-001',
-    created_date: '2026-10-24T01:00:00.000Z',
-    updated_date: '2026-10-25T01:00:00.000Z',
-    campaign_id: 'campaign-001',
-    campaign_title: 'Restoration campaign',
-    owner_user_id: 'owner-001',
-    description: 'Full recommendation description',
-    reasoning: 'Reasoning grounded in the source record',
-    evidence: 'Evidence from the source record',
-    confidence: 'high',
-    expected_impact: 'Expected impact from the source record',
-    estimated_effort: 'Two days',
-    agent: 'strategy',
-  } : {}),
+  ...(i === 0 ? sample : {}),
 }));
 
 function run(rows) {
@@ -41,23 +29,21 @@ function run(rows) {
 
 test('imports every Recommendation schema field and source ownership metadata', () => {
   const output = run(makeRows());
-  for (const value of [
-    'creator-001', '2026-10-24T01:00:00.000Z', '2026-10-25T01:00:00.000Z',
-    'campaign-001', 'Restoration campaign', 'owner-001',
-    'Full recommendation description', 'Reasoning grounded in the source record',
-    'Evidence from the source record', 'high',
-    'Expected impact from the source record', 'Two days', 'strategy', 'open',
-  ]) assert.ok(output.includes(value), `missing imported source value: ${value}`);
+  for (const field of RECOMMENDATION_FIELDS) {
+    assert.ok(output.includes(field), `missing schema field: ${field}`);
+    assert.ok(output.includes(`source-${field}`), `missing source value: ${field}`);
+  }
 });
 
 test('re-import merges present fields instead of erasing previously complete content', () => {
   const output = run(makeRows());
   assert.match(output, /source_payload=coalesce\(content_shadow\.source_payload, '\{\}'::jsonb\) \|\| excluded\.source_payload/);
+  assert.match(output, new RegExp(`<> ${EXPECTED_RECOMMENDATION_COUNT} `));
 });
 
 test('rejects incomplete or duplicate source snapshots', () => {
   const rows = makeRows();
-  assert.throws(() => run(rows.slice(0, 835)));
+  assert.throws(() => run(rows.slice(0, EXPECTED_RECOMMENDATION_COUNT - 1)));
   rows[1] = { ...rows[1], id: rows[0].id };
   assert.throws(() => run(rows));
 });

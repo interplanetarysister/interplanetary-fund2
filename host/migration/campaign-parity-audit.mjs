@@ -64,6 +64,10 @@ export function auditCampaignParity(sourceRows, shadowRows) {
   const source = buildMap(sourceRows, 'id');
   const shadow = buildMap(shadowRows, 'source_id');
   const missing = [], orphaned = [], stale = [], contentDrift = [], operationalDrift = [], ownerDrift = [], timestampErrors = [];
+  // The non-authoritative money invariant applies to every staged row, including orphans.
+  for (const staged of shadow.values()) {
+    if (staged.financial_authoritative !== false) throw new TypeError('Financial authority violation');
+  }
   for (const [id, row] of source) {
     const staged = shadow.get(id);
     if (!staged) { missing.push(id); continue; }
@@ -76,8 +80,6 @@ export function auditCampaignParity(sourceRows, shadowRows) {
     const changedOperational = OPERATIONAL.filter(field => differs(row[field], staged[field], field));
     if (changedContent.length) contentDrift.push({ id, fields: changedContent });
     if (changedOperational.length) operationalDrift.push({ id, fields: changedOperational });
-    // Snapshot money is NEVER authoritative. This is an invariant, not a field comparison.
-    if (staged.financial_authoritative !== false) throw new TypeError('Financial authority violation');
   }
   for (const id of shadow.keys()) if (!source.has(id)) orphaned.push(id);
   for (const list of [missing, orphaned, stale, ownerDrift, timestampErrors]) list.sort();
