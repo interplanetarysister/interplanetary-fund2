@@ -87,3 +87,18 @@ test('missing candidate metadata does not falsely claim live JWT proof',()=>{
  assert.equal(result.liveOwnerJwtVerified,false);
  assert.ok(result.records[0].blockers.includes('fresh_owner_session_hash_and_rollback_evidence_required'));
 });
+
+test('all campaign operational fields are tracked as provenance drift', () => {
+ const fields = ['outreach_last_run_at','outreach_last_attempt_at','outreach_last_error',
+   'social_last_generated_at','social_last_generation_attempt_at'];
+ const src = source();
+ const dst = shadow();
+ for (const field of fields) {
+   src[field] = `source-${field}`;
+   dst[field] = `staged-${field}`;
+ }
+ const result = run([src],[dst],[owner()]);
+ assert.deepEqual(result.records[0].operationalFields, fields);
+ assert.ok(result.records[0].blockers.includes('operational_provenance_review'));
+ assert.doesNotMatch(JSON.stringify(result), /source-outreach|staged-outreach/);
+});
