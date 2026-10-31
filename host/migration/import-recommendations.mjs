@@ -25,7 +25,7 @@ for (let i = 0; i < rows.length; i += 25) {
     'insert into ifund_migration.content_shadow(entity_type,source_id,source_payload) ' +
     "select x->>'entity_type',x->>'source_id',x->'source_payload' from jsonb_array_elements(" +
     esc(batch) + ') x on conflict(entity_type,source_id) do update set ' +
-    'source_payload=coalesce(content_shadow.source_payload, '{}'::jsonb) || excluded.source_payload,imported_at=now();\n'
+    "source_payload=coalesce(content_shadow.source_payload, '{}'::jsonb) || excluded.source_payload,imported_at=now();\n"
   );
 }
 process.stdout.write(
