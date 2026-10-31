@@ -56,7 +56,7 @@ test('private consent audit persists replay-resistant receipts with tenant refer
 });
 test('historical owner upgrade is service-only, atomic, and does not reassign destination', () => {
   const body = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_upgrade_historical(')[1].split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_upgrade_historical')[0];
-  assert.match(body, /nullif\(current_setting\('request\.jwt\.claims', true\), ''\)::json ->> 'role'\) IS DISTINCT FROM 'service_role'/);
+  assert.match(body, /coalesce\(nullif\(current_setting\('request\.jwt\.claim\.role', true\), ''\), nullif\(current_setting\('request\.jwt\.claims', true\), ''\)::jsonb ->> 'role'\) IS DISTINCT FROM 'service_role'/);
   assert.match(body, /m\.verification_state = 'verified'/);
   assert.match(body, /m\.candidate_match_method = 'confirmed_exact_email'/);
   assert.match(body, /m\.candidate_auth_uid = p_destination_auth_uid/);

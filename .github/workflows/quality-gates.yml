@@ -180,6 +180,9 @@ jobs:
       - name: Verify external fundraising network contract
         run: npm run verify:external-fund-network
 
+      - name: Staged migration safety and owner-proof tests
+        run: node --test host/migration/test-*.mjs scripts/test-ifund-owner-link-routing-config.mjs
+
       - name: Production build
         run: npm run build
 

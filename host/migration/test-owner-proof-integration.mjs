@@ -22,6 +22,7 @@ function harness({
   }]]);
   let commits = 0;
   const receipts = [];
+  const usedNonces = new Set();
   const fetcher = async (url, opts) => {
     if (url.endsWith('/entities/User/me')) return json(source);
     if (url.endsWith('/auth/v1/user')) return json(destination);
@@ -40,8 +41,10 @@ function harness({
           destination.email.toLowerCase() !== body.p_expected_email.toLowerCase() ||
           destination.id !== body.p_destination_auth_uid || !destination.email_confirmed_at ||
           !/^[a-f0-9]{64}$/.test(body.p_consent_nonce_sha256) ||
+          usedNonces.has(body.p_consent_nonce_sha256) ||
           !['https://interplanetaryfund.com', 'https://www.interplanetaryfund.com'].includes(body.p_consent_origin) ||
           !body.p_source_session_checked_at || !body.p_destination_session_checked_at) return json([]);
+      usedNonces.add(body.p_consent_nonce_sha256);
       row.destination_auth_uid = destination.id;
       row.verification_state = 'verified';
       receipts.push({
@@ -55,6 +58,7 @@ function harness({
         destination_auth_uid: row.destination_auth_uid, verification_state: 'verified',
       }]);
     }
+    if (url.endsWith('/ifund_migration_owner_commit')) throw Error('legacy commit endpoint must never be used');
     throw Error('unexpected endpoint');
   };
   const adapters = makeOwnerProofAdapters({
@@ -125,4 +129,22 @@ test('historical email-only owner candidates require the separate audited upgrad
   const h = harness({ mappings: records });
   assert.equal((await linkVerifiedOwnerSessions(h.gateAdapters)).reason, 'owner_proof_upgrade_required');
   assert.equal(h.commits(), 0);
+});
+
+test('consent nonce cannot be replayed after a mapping rollback', async () => {
+  const h = harness();
+  await linkVerifiedOwnerSessions(h.gateAdapters);
+  const row = h.records.get(sourceId);
+  // Simulate an operator rollback of the mapping while retaining the immutable audit receipt.
+  row.destination_auth_uid = null;
+  row.verification_state = 'awaiting_destination_login';
+  const replay = await h.gateAdapters.commitVerifiedLink({
+    sourceOwnerId: sourceId,
+    destinationAuthUid: destId,
+    expectedEmail: 'owner@example.org',
+    expectedState: 'awaiting_destination_login',
+  });
+  assert.deepEqual(replay, { linked: false });
+  assert.equal(h.commits(), 2);
+  assert.equal(h.receipts.length, 1);
 });
