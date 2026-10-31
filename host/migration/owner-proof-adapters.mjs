@@ -91,9 +91,8 @@ export function makeOwnerProofAdapters({
         throw new Error('invalid_lookup_provenance');
       return row;
     },
-    // STAGED ONLY: a separate, receipt-creating RPC. The public route still
-    // uses the legacy adapter until the entire trusted gate is upgraded.
-    // Never silently fall back to the unaudited RPC on any error.
+    // The consent route supplies this callback through its audited adapter wrapper.
+    // The legacy unaudited RPC is revoked; never fall back to it on any error.
     commitAuditedLink: async ({
       sourceOwnerId, destinationAuthUid, expectedEmail, expectedState,
       consentNonceSha256, consentOrigin, sourceSessionCheckedAt, destinationSessionCheckedAt,
@@ -157,20 +156,6 @@ export function makeOwnerProofAdapters({
       });
       if (!Array.isArray(rows) || rows.length > 1) throw new Error('invalid_historical_upgrade_result');
       return rows[0] || { upgraded: false };
-    },
-    commitVerifiedLink: async ({ sourceOwnerId, destinationAuthUid, expectedEmail, expectedState }) => {
-      requireConfigured();
-      if (expectedState !== 'awaiting_destination_login' ||
-          !/^[0-9a-f]{24}$/i.test(String(sourceOwnerId)) ||
-          !/^[0-9a-f-]{36}$/i.test(String(destinationAuthUid)) ||
-          typeof expectedEmail !== 'string' || expectedEmail.length > 254) throw new Error('invalid_link');
-      const rows = await rpc('ifund_migration_owner_commit', {
-        p_source_owner_id: sourceOwnerId,
-        p_destination_auth_uid: destinationAuthUid,
-        p_expected_email: expectedEmail,
-      });
-      if (!Array.isArray(rows) || rows.length > 1) throw new Error('invalid_commit');
-      return rows[0] || { linked: false };
     },
   };
 }

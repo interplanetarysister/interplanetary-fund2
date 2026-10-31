@@ -14,7 +14,7 @@ AS $rpc$
   SELECT m.source_owner_id, m.source_email, m.verification_state, m.destination_auth_uid
   FROM ifund_migration.owner_identity_map AS m
   WHERE m.source_owner_id = p_source_owner_id
-    AND current_setting('request.jwt.claim.role', true) = 'service_role'
+    AND (nullif(current_setting('request.jwt.claims', true), '')::json ->> 'role') = 'service_role'
 $rpc$;
 
 REVOKE ALL ON FUNCTION public.ifund_migration_owner_lookup(text) FROM PUBLIC, anon, authenticated;
@@ -35,7 +35,7 @@ AS $rpc$
          m.destination_auth_uid, m.candidate_match_method, m.candidate_auth_uid
   FROM ifund_migration.owner_identity_map AS m
   WHERE m.source_owner_id = p_source_owner_id
-    AND current_setting('request.jwt.claim.role', true) = 'service_role'
+    AND (nullif(current_setting('request.jwt.claims', true), '')::json ->> 'role') = 'service_role'
 $rpc$;
 
 REVOKE ALL ON FUNCTION public.ifund_migration_owner_lookup_v2(text) FROM PUBLIC, anon, authenticated;
@@ -60,7 +60,7 @@ AS $rpc$
     -- Defense in depth: the service-only commit must not convert any
     -- candidate/email-only mapping even if a caller bypasses the JS gate.
     AND m.candidate_match_method IS NULL
-    AND current_setting('request.jwt.claim.role', true) = 'service_role'
+    AND (nullif(current_setting('request.jwt.claims', true), '')::json ->> 'role') = 'service_role'
     AND lower(btrim(m.source_email)) = lower(btrim(p_expected_email))
     AND EXISTS (
       SELECT 1 FROM auth.users AS u
@@ -151,7 +151,7 @@ AS $rpc$
 DECLARE v_source_owner_id text;
 DECLARE v_destination_auth_uid uuid;
 BEGIN
-  IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role'
+  IF (nullif(current_setting('request.jwt.claims', true), '')::json ->> 'role') IS DISTINCT FROM 'service_role'
     OR p_consent_nonce_sha256 !~ '^[0-9a-f]{64}$'
     OR p_consent_origin NOT IN ('https://interplanetaryfund.com', 'https://www.interplanetaryfund.com')
     OR p_source_session_checked_at IS NULL OR p_destination_session_checked_at IS NULL
@@ -224,7 +224,7 @@ AS $rpc$
 DECLARE v_source_owner_id text;
 DECLARE v_destination_auth_uid uuid;
 BEGIN
-  IF current_setting('request.jwt.claim.role', true) IS DISTINCT FROM 'service_role'
+  IF (nullif(current_setting('request.jwt.claims', true), '')::json ->> 'role') IS DISTINCT FROM 'service_role'
     OR p_consent_nonce_sha256 IS NULL
     OR p_consent_nonce_sha256 !~ '^[0-9a-f]{64}$'
     OR p_consent_origin NOT IN ('https://interplanetaryfund.com', 'https://www.interplanetaryfund.com')

@@ -2,15 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const sql = readFileSync(new URL('./owner-proof-rpcs.sql', import.meta.url), 'utf8');
+const executable = sql.split('\n').filter(line => !/^\s*--/.test(line)).join('\n');
 test('three legacy functions and two audited RPCs are definer-only, pinned search_path, and service role gated', () => {
   assert.equal((sql.match(/SECURITY DEFINER/g) || []).length, 5);
   assert.equal((sql.match(/SET search_path = pg_catalog/g) || []).length, 6);
-  assert.equal((sql.match(/request\.jwt\.claim\.role/g) || []).length, 5);
+  assert.equal((sql.match(/request\.jwt\.claims/g) || []).length, 5);
   assert.equal((sql.match(/= 'service_role'/g) || []).length, 3);
 });
 test('three legacy functions and two audited RPCs revoke public, anon and authenticated, grant service_role', () => {
-  assert.equal((sql.match(/REVOKE ALL ON FUNCTION .* FROM PUBLIC, anon, authenticated/g) || []).length, 5);
-  assert.equal((sql.match(/GRANT EXECUTE ON FUNCTION .* TO service_role/g) || []).length, 5);
+  assert.equal((executable.match(/REVOKE ALL ON FUNCTION .* FROM PUBLIC, anon, authenticated/g) || []).length, 5);
+  assert.equal((executable.match(/GRANT EXECUTE ON FUNCTION .* TO service_role/g) || []).length, 5);
 });
 test('commit is single atomic UPDATE, requires null link and expected state', () => {
   assert.match(sql, /UPDATE ifund_migration\.owner_identity_map/);
@@ -55,7 +56,7 @@ test('private consent audit persists replay-resistant receipts with tenant refer
 });
 test('historical owner upgrade is service-only, atomic, and does not reassign destination', () => {
   const body = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_upgrade_historical(')[1].split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_upgrade_historical')[0];
-  assert.match(body, /current_setting\('request\.jwt\.claim\.role', true\) IS DISTINCT FROM 'service_role'/);
+  assert.match(body, /nullif\(current_setting\('request\.jwt\.claims', true\), ''\)::json ->> 'role'\) IS DISTINCT FROM 'service_role'/);
   assert.match(body, /m\.verification_state = 'verified'/);
   assert.match(body, /m\.candidate_match_method = 'confirmed_exact_email'/);
   assert.match(body, /m\.candidate_auth_uid = p_destination_auth_uid/);
@@ -81,7 +82,7 @@ test('new owner link requires atomic audited receipt and service-only execution'
   const body = sql.split('CREATE OR REPLACE FUNCTION public.ifund_migration_owner_commit_audited(')[1]
     ?.split('REVOKE ALL ON FUNCTION public.ifund_migration_owner_commit_audited')[0];
   assert.ok(body, 'audited new-link RPC is required');
-  assert.match(body, /request\.jwt\.claim\.role', true\) IS DISTINCT FROM 'service_role'/);
+  assert.match(body, /request\.jwt\.claims', true\), ''\)::json ->> 'role'\) IS DISTINCT FROM 'service_role'/);
   assert.match(body, /m\.verification_state = 'awaiting_destination_login'/);
   assert.match(body, /m\.destination_auth_uid IS NULL/);
   assert.match(body, /m\.candidate_match_method IS NULL/);
@@ -114,8 +115,8 @@ test('owner consent audit receipts cannot be updated or deleted after insertion'
   assert.match(body, /SECURITY INVOKER/);
   assert.match(body, /RAISE EXCEPTION 'owner consent audit is append-only'/);
   assert.match(body, /ERRCODE = '42501'/);
-  assert.match(sql, /CREATE TRIGGER owner_link_consent_audit_append_only\s+BEFORE UPDATE OR DELETE ON ifund_migration\.owner_link_consent_audit/);
-  assert.match(sql, /FOR EACH ROW EXECUTE FUNCTION ifund_migration\.reject_owner_link_consent_audit_mutation\(\)/);
-  assert.match(sql, /REVOKE ALL ON FUNCTION ifund_migration\.reject_owner_link_consent_audit_mutation\(\)\s+FROM PUBLIC, anon, authenticated/);
-  assert.match(sql, /DROP TRIGGER owner_link_consent_audit_append_only ON ifund_migration\.owner_link_consent_audit/);
+  assert.match(executable, /CREATE TRIGGER owner_link_consent_audit_append_only\s+BEFORE UPDATE OR DELETE ON ifund_migration\.owner_link_consent_audit/);
+  assert.match(executable, /FOR EACH ROW EXECUTE FUNCTION ifund_migration\.reject_owner_link_consent_audit_mutation\(\)/);
+  assert.match(executable, /REVOKE ALL ON FUNCTION ifund_migration\.reject_owner_link_consent_audit_mutation\(\)\s+FROM PUBLIC, anon, authenticated/);
+  assert.match(executable, /DROP TRIGGER IF EXISTS owner_link_consent_audit_append_only\s+ON ifund_migration\.owner_link_consent_audit/);
 });

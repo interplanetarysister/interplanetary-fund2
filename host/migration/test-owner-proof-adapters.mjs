@@ -42,16 +42,6 @@ test('legacy lookup response without candidate provenance is rejected', async ()
   const a = make(async () => json([{ source_owner_id: SOURCE, source_email: 'owner@example.org', verification_state: 'verified', destination_auth_uid: DEST }]));
   await assert.rejects(a.loadSourceOwner(SOURCE), /invalid_lookup_provenance/);
 });
-test('commit only calls atomic service RPC with expected state', async () => {
-  const a = make(async (url, opts) => {
-    assert.equal(url, 'https://tzehxfikoslihnclhxuz.supabase.co/rest/v1/rpc/ifund_migration_owner_commit');
-    assert.equal(JSON.parse(opts.body).p_expected_email, 'owner@example.org');
-    assert.equal(opts.headers.apikey, config.supabaseServiceKey);
-    return json([{ linked: true, source_owner_id: SOURCE, destination_auth_uid: DEST, verification_state: 'verified' }]);
-  });
-  const row = await a.commitVerifiedLink({ sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner@example.org', expectedState: 'awaiting_destination_login' });
-  assert.equal(row.linked, true);
-});
 test('unconfigured adapters fail before network request', async () => {
   const a = makeOwnerProofAdapters({ fetcher: () => { throw Error('network called'); } });
   await assert.rejects(a.verifySourceSession(), /not_configured/);
@@ -59,10 +49,6 @@ test('unconfigured adapters fail before network request', async () => {
 test('invalid owner ID fails before network request', async () => {
   const a = make(() => { throw Error('network called'); });
   await assert.rejects(a.loadSourceOwner('not-an-owner'), /invalid_owner/);
-});
-test('wrong expected state fails before network request', async () => {
-  const a = make(() => { throw Error('network called'); });
-  await assert.rejects(a.commitVerifiedLink({ sourceOwnerId: SOURCE, destinationAuthUid: DEST, expectedEmail: 'owner@example.org', expectedState: 'verified' }), /invalid_link/);
 });
 test('redirect is rejected without following it', async () => {
   const a = make(async () => new Response(null, { status: 302, headers: { location: 'https://evil.example' } }));

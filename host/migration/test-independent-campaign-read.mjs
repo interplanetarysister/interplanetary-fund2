@@ -19,7 +19,7 @@ test('requires verified matching source and destination ownership', () => {
   assert.match(sql, /lower\(btrim\(m\.source_email\)\) = lower\(btrim\(u\.email\)\)/);
   assert.match(sql, /u\.id = auth\.uid\(\)/);
   assert.match(sql, /u\.email_confirmed_at IS NOT NULL/);
-  assert.match(sql, /request\.jwt\.claim\.role', true\) = 'authenticated'/);
+  assert.match(sql, /request\.jwt\.claims', true\), ''\)::json ->> 'role'\) = 'authenticated'/);
 });
 test('anonymous and authenticated access remain revoked until owner proof', () => {
   const executable = sql.replace(/^--.*$/gm, '');

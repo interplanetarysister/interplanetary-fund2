@@ -22,7 +22,7 @@ concurrency:
 jobs:
   quality:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Node 24 Base44 compatibility build
+    name: Node 22 Base44 release build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -32,7 +32,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts
@@ -41,7 +41,7 @@ jobs:
       - name: Ensure Android APK builds stay manual-only
         run: node scripts/verify-manual-android-build-contract.mjs
 
-      - name: Verify Node 24.12+ runtime contract
+      - name: Verify Node >=20 runtime contract
         run: npm run verify:node22-release-contract
 
       - name: Test runtime contract failure cases
@@ -201,7 +201,7 @@ jobs:
           test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
 
-  node22-compatibility:
+  node20-compatibility:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
     name: Node current compatibility build
     runs-on: ubuntu-24.04
@@ -210,14 +210,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: npm
       - run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
       - run: npm run build
 
   typecheck:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
-    name: Typecheck on Base44 baseline
+    name: Typecheck on Node 22 release baseline
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -227,7 +227,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
           cache: npm
 
       - name: Install locked dependencies with lifecycle scripts

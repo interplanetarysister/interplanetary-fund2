@@ -4,31 +4,15 @@ import test from 'node:test';
 
 const config = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
 
-test('owner-link has an exact Worker route for both hostnames, without changing DNS', () => {
+test('owner-link is not added to custom-domain routing or DNS configuration', () => {
   for (const hostname of ['interplanetaryfund.com', 'www.interplanetaryfund.com']) {
-    const route = `pattern = "${hostname}/api/v1/migration/owner-link"`;
-    assert.equal(config.split(route).length - 1, 1, `missing or duplicated ${hostname} route`);
+    assert.equal(config.split(`pattern = "${hostname}/api/v1/migration/owner-link"`).length - 1, 0);
   }
+  assert.doesNotMatch(config, /IFUND_OWNER_LINK_LIMITER|IFUND_OWNER_LINK_ENABLED/);
   assert.match(config, /# These hostname routes require authoritative DNS on Cloudflare/);
 });
 
-test('owner-link is handled before SPA fallback, but remains default-off', () => {
-  const first = config.match(/run_worker_first\s*=\s*\[([\s\S]*?)\]/)?.[1] || '';
-  assert.match(first, /"\/api\/v1\/migration\/owner-link"/);
-  const vars = config.split('[vars]')[1]?.split(/\n\[/)[0] || '';
-  assert.doesNotMatch(vars, /IFUND_OWNER_LINK_ENABLED\s*=/);
-});
-
-test('native rate-limit binding is uniquely named and intentionally bounded', () => {
-  const blocks = [...config.matchAll(/^\[\[ratelimits\]\]$/gm)];
-  assert.equal(blocks.length, 1);
-  const block = config.slice(blocks[0].index);
-  assert.match(block, /name\s*=\s*"IFUND_OWNER_LINK_LIMITER"/);
-  assert.match(block, /namespace_id\s*=\s*"58162"/);
-  assert.match(block, /\[ratelimits\.simple\]\s*\nlimit\s*=\s*5\s*\nperiod\s*=\s*60/);
-});
-
-test('all existing routes and assets remain configured', () => {
+test('all pre-existing routes and assets remain configured unchanged', () => {
   for (const hostname of ['interplanetaryfund.com', 'www.interplanetaryfund.com']) {
     for (const path of ['/api/health*', '/api/v1/migration/auth/session',
       '/api/v1/migration/campaigns', '/api/v1/agent/*', '/api/mcp*',
@@ -41,9 +25,8 @@ test('all existing routes and assets remain configured', () => {
   assert.match(config, /keep_vars = true/);
 });
 
-test('binding does not enable a paid service or expose secrets in source', () => {
-  assert.doesNotMatch(config, /\[\[durable_objects\.bindings\]\]|\[\[kv_namespaces\]\]|\[\[d1_databases\]\]/);
+test('owner-link secrets and extra paid or metered bindings are absent from source', () => {
+  assert.doesNotMatch(config, /\[\[ratelimits\]\]|\[\[durable_objects\.bindings\]\]|\[\[kv_namespaces\]\]|\[\[d1_databases\]\]/);
   assert.doesNotMatch(config, /IFUND_SUPABASE_SERVICE_ROLE_KEY\s*=/);
   assert.doesNotMatch(config, /IFUND_OWNER_LINK_CSRF_SECRET\s*=/);
-  assert.match(config, /counters\s*\n# are approximate and local to each Cloudflare location/);
 });

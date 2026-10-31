@@ -23,10 +23,6 @@ pattern = "interplanetaryfund.com/api/v1/migration/campaigns"
 zone_name = "interplanetaryfund.com"
 
 [[routes]]
-pattern = "interplanetaryfund.com/api/v1/migration/owner-link"
-zone_name = "interplanetaryfund.com"
-
-[[routes]]
 pattern = "interplanetaryfund.com/api/v1/agent/*"
 zone_name = "interplanetaryfund.com"
 
@@ -59,10 +55,6 @@ zone_name = "interplanetaryfund.com"
 
 [[routes]]
 pattern = "www.interplanetaryfund.com/api/v1/migration/campaigns"
-zone_name = "interplanetaryfund.com"
-
-[[routes]]
-pattern = "www.interplanetaryfund.com/api/v1/migration/owner-link"
 zone_name = "interplanetaryfund.com"
 
 [[routes]]
@@ -108,7 +100,6 @@ run_worker_first = [
   "/api/v1/campaign-assistant",
   "/api/v1/migration/auth/session",
   "/api/v1/migration/campaigns",
-  "/api/v1/migration/owner-link",
   "/api/v1/agent/*",
   "/api/mcp",
   "/api/mcp/*",
@@ -121,18 +112,3 @@ run_worker_first = [
 # Campaign assistance is dormant until an explicit, budget-verified activation.
 # Provision AI and CAMPAIGN_AI_LIMITER bindings only after free-tier eligibility
 # and quota approval. Never enable paid fallbacks. See host/gateway/README.md.
-
-# Source-only owner-link protection. The route remains OFF unless the operator
-# separately provisions secrets, verifies both identity providers and enables
-# IFUND_OWNER_LINK_ENABLED=enabled after positive end-to-end testing.
-# This native binding has no separate storage service or API key. Its counters
-# are approximate and local to each Cloudflare location, not a strict global
-# abuse quota. Atomic database constraints remain the final link protection.
-# Namespace 58162 is reserved for IFund owner-link, distinct from the observed
-# account binding namespace 40917 (Ring Guardian) on 2026-10-23.
-[[ratelimits]]
-name = "IFUND_OWNER_LINK_LIMITER"
-namespace_id = "58162"
-[ratelimits.simple]
-limit = 5
-period = 60

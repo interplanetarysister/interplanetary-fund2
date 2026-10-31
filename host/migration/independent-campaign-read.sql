@@ -47,7 +47,7 @@ AS $rpc$
   JOIN ifund_migration.campaign_shadow AS c
     ON c.source_owner_id = m.source_owner_id
    AND c.financial_authoritative = false
-  WHERE current_setting('request.jwt.claim.role', true) = 'authenticated'
+  WHERE (nullif(current_setting('request.jwt.claims', true), '')::json ->> 'role') = 'authenticated'
     AND auth.uid() IS NOT NULL
     AND u.id = auth.uid()
     AND u.email_confirmed_at IS NOT NULL

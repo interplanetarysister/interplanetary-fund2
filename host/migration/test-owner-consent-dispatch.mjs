@@ -49,7 +49,7 @@ test('worker source contains early exact-path routing before generic admin fallb
 });
 
 test('owner-only campaign RPC requires audited proof and excludes historical email candidates', () => {
-  const sql = readFileSync(new URL('../../docs/migration/independent-owner-campaigns-rpc.sql', import.meta.url), 'utf8');
+  const sql = readFileSync(new URL('./independent-campaign-read.sql', import.meta.url), 'utf8');
   assert.match(sql, /m\.destination_auth_uid\s*=\s*auth\.uid\(\)/);
   assert.match(sql, /m\.verification_state\s*=\s*'verified'/);
   assert.match(sql, /m\.candidate_match_method\s+IS\s+NULL/i);
