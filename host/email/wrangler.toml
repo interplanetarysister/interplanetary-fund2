@@ -12,4 +12,4 @@ workers_dev = false
 # Never place production secrets in this file.
 
 [vars]
-IFUND_ADMIN_EMAIL_RECEIVER_URL = "https://tzehxfikoslihnclhxuz.supabase.co/functions/v1/ifund-admin-mail-ingest"
+IFUND_ADMIN_EMAIL_RECEIVER_URL = "https://ssibsfmtodgximseeqsv.supabase.co/functions/v1/ifund-admin-mail-ingest"
