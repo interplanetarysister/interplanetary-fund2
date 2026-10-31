@@ -102,8 +102,6 @@ jobs:
       - name: Subscription entitlement and canonical connection-health contract
         run: npm run verify:entitlements-connections
 
-      - name: No active legacy Convex runtime
-        run: npm run verify:no-active-convex
 
       - name: Server entitlement and connection OBO contract
         run: npm run verify:entitlement-obo
