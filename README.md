@@ -1,3 +1,15 @@
+# Interplanetary Fund — original Base44 implementation (legacy reference)
+
+**Official platform URL:** https://interplanetaryfund.com
+
+**Independent canonical source repository:** https://github.com/interplanetarysister/InterplanetaryFund
+
+**Original Base44 app (legacy reference only):** https://interplanetaryfund.base44.app
+
+This repository retains the original Base44 implementation for migration reconciliation. The independent React/Vite + Supabase + Cloudflare implementation belongs in `InterplanetaryFund`; do not treat the Base44 app as the new production destination. The original app and its backend remain in service until verified replacement and owner-approved retirement. The Base44 links and environment values below are deliberately retained for running this historical source, **not** public site links.
+
+---
+
 # Base44 Project
 
 Use this repository to run and edit the app locally, then publish changes back through Base44.
@@ -51,7 +63,7 @@ For frontend-only development, create or update `.env.local` in the project root
 
 ```bash
 VITE_BASE44_APP_ID=your_app_id
-VITE_BASE44_APP_BASE_URL=https://your-app.base44.app
+VITE_BASE44_APP_BASE_URL=https://interplanetaryfund.base44.app
 ```
 
 `VITE_BASE44_APP_ID` identifies the Base44 app.
