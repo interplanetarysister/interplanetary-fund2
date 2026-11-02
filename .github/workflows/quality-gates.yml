@@ -2,15 +2,10 @@ name: Production Quality Gates
 
 # Batch verification marker: 2026-09-30 repair batch
 
+# Automatic Actions triggers paused on 2026-10-13 at user's request.
+# Manual workflow_dispatch remains available; no job or implementation changes.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'recovery/**'
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: read
