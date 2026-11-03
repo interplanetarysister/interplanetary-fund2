@@ -89,23 +89,25 @@ For every Base44 dependency, record:
 
 Agent 1 may add non-destructive adapters, interfaces, configuration switches, tests, documentation, and dormant alternate-host implementations. Agent 1 must not remove the working Base44 path.
 
-### Agent 2 — independent migration and security reviewer
+### Agent 2 — independent migration and security reviewer (advisory; non-blocking)
 
 Agent 2 independently audits Agent 1's inventory and changes. Specifically search for missed RLS/service-role behavior, authentication assumptions, financial invariants, secrets, OAuth grants, connector state, webhooks, scheduled/workflow execution, uploads/storage, environment configuration, agent runtimes, and generated Base44 configuration.
 
-Reject a portability change if it weakens authorization, privacy, idempotency, financial integrity, auditability, rollback capability, or the current Base44 production path.
+Agent 2 reports concrete, evidence-linked findings with severity, affected scope, reproduction/evidence, and a recommended correction. **Agent 2 has no veto, approval, queue-control, or pause authority.** A review finding must not stop Agent 1, unrelated tasks, commits, PR updates, or retries. Agent 1 triages each finding, fixes actionable defects in the owning work item, and records false positives, duplicates, accepted non-critical risks, and unresolved evidence gaps without waiting for Agent 2 permission. A demonstrable security, privacy, financial-integrity, or data-loss defect must be corrected before that specific affected change is promoted; this is an objective release-safety condition, not an Agent 2 decision.
 
-### Agent 3 — parity, recovery, and cutover QA
+### Agent 3 — parity, recovery, and cutover QA (advisory; non-blocking)
 
 Agent 3 establishes and maintains the Base44 reference baseline: routes, components, assets, responsive/mobile behavior, important UI states, auth flows, campaign behavior, donations/withdrawals, administration, agents, community/social behavior, and integrations.
 
-For each alternate implementation, verify parity without changing production authority. Maintain explicit cutover and rollback tests. A dependency is cutover-ready only after Agent 1 implementation, Agent 2 approval, and Agent 3 verification.
+Agent 3 records reproducible parity, recovery, and cutover test results and reports concrete gaps. **Agent 3 has no veto, approval, queue-control, or pause authority.** Missing QA evidence must be recorded as a scoped verification task while all independent implementation and verification work continues. Agent 3 cannot hold a branch, PR, queue item, or unrelated deployment solely by withholding a review or verification response. Production cutover still requires the actual owner-authorized cutover decision and objective security, data-integrity, rollback, and runtime evidence; reviewer opinion is not itself a gate.
 
-### Shared completion gate
+### Shared non-blocking completion protocol
 
 During this freeze, completion means **zero undiscovered Base44 runtime dependencies and a verified reversible alternate path for each dependency**. It does not mean deleting Base44, switching production early, or merely obtaining a successful alternate-host build.
 
 Required sequence: **inventory -> preserve -> abstract safely -> reproduce -> verify parity -> prepare reversible cutover -> await explicit cutover authorization**.
+
+**Queue continuity is mandatory:** Agent 2/3 findings are inputs to the work queue, never stop signals. Continue with the next independent executable item immediately; do not wait for review, approval, or a QA response. Retry blocked items in reverse chronological order (newest blocker first), after checking whether the original cause has changed. Retry only when a new condition, corrected path, or materially different approach exists; preserve the three-distinct-attempt limit for the same unchanged failure. Do not bypass billing limits, credentials, required owner consent, or objective security/financial safeguards.
 
 ## Data source rule
 
