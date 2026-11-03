@@ -42,11 +42,24 @@ export default function PasswordVaultPanel({ platform }) {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [platform.id]);
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") {
+        setUsername(""); setPassword(""); setPassphrase(""); setConfirmPassphrase("");
+        setUnlocked(false); setVisible(false);
+      }
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    return () => document.removeEventListener("visibilitychange", onHidden);
+  }, []);
   const save = async () => {
     setError(""); setNotice(""); setBusy(true);
     try {
       if (!password) throw Error("Enter a password to save.");
       if (!saved && passphrase !== confirmPassphrase) throw Error("Vault passphrases do not match.");
+      // An existing entry may only be replaced by its owner with its current passphrase.
+      // This also prevents accidentally changing the vault passphrase during an edit.
+      if (saved) await unlockVaultEntry(saved, passphrase);
       const sealed = await lockVaultEntry({ username, password }, passphrase);
       const me = await base44.auth.me();
       const data = { user_id: me.id, platform: platform.id, ...sealed, updated_at: new Date().toISOString() };
@@ -95,7 +108,7 @@ export default function PasswordVaultPanel({ platform }) {
           </div>
         </div>
       </>}
-      <div className="space-y-1"><Label htmlFor="vault-master">Vault passphrase (12 characters minimum)</Label>
+      <div className="space-y-1"><Label htmlFor="vault-master">{saved ? "Current vault passphrase (required to unlock or update)" : "Create vault passphrase (12 characters minimum)"}</Label>
         <Input id="vault-master" autoComplete="off" type="password" value={passphrase} onChange={e => setPassphrase(e.target.value)} />
       </div>
       {!saved && <div className="space-y-1"><Label htmlFor="vault-confirm">Confirm vault passphrase</Label>
