@@ -13,7 +13,7 @@ After this branch is merged and both Base44 and Cloudflare deployed, sign in as 
 - Body: none
 - Expect `campaigns` array and `publishing_enabled: false`.
 
-This route is a **read-only campaign feed**, not a webhook or social publishing API. Make can schedule requests to this endpoint. For event-driven campaigns, use a separately authenticated outbound webhook sender and verify user consent before implementing it. Do not claim real-time event delivery based on this feed.
+The GET route is a **read-only campaign feed**, not a webhook or social publishing API. Make can schedule requests to this endpoint. For event-driven campaigns, use a separately authenticated outbound webhook sender and verify user consent before implementing it. Do not claim real-time event delivery based on this feed.
 
 ## Server prerequisites
 - Deploy the `ExternalAgentApiKey` entity schema and the `manageExternalAgentKeys` and `externalAgentCampaigns` server functions to the authoritative Base44 app.
@@ -26,3 +26,18 @@ This route is a **read-only campaign feed**, not a webhook or social publishing 
 
 ## Boundaries
 The key is scoped to `campaigns:read`; it does not authorize posting, messaging, donor records, payment records, or development-agent calls. Make must separately authorize each social platform and must not assume campaign content can be republished without the campaign owner's permission.
+
+## Creator-authorized content writing
+
+- Method: `POST`
+- URL: `https://interplanetaryfund.com/api/v1/agent/content`
+- Headers: `Authorization: Bearer <your-generated-agent-key>` and `Content-Type: application/json`
+- Choose the `Read and write authorized campaign content` scope when creating the key. A read-only key cannot write.
+- Example update: `{"campaign_id":"<real-campaign-id>","action":"create_update","title":"Progress report","content":"A factual campaign update."}`
+- Example summary edit: `{"campaign_id":"<real-campaign-id>","action":"edit_summary","summary":"A factual updated campaign summary."}`
+
+**Critical:** A write-scoped key is necessary but not sufficient. The campaign must be active, outreach-enabled and not paused, and its creator must have an unexpired active `AuthorizationGrant` for this exact agent key ID (`agent_name`), platform `ifund`, and scope `campaign_content_write`. There is no general admin bypass. The current admin key management page does not create that creator grant; until a verified, user-facing consent workflow issues it, expect HTTP 403 and do not manufacture grants. API writes edit campaign content only, not donations, payment state, credentials, or social posts.
+
+In Cloudflare, configure protected `IFUND_AGENT_CONTENT_WRITE_URL` to the **actual deployed HTTPS function URL** of `externalAgentContentWrite`. The URL must not be guessed. Both Worker routes reject upstream login redirects and non-JSON responses with HTTP 502 rather than making integrations consume HTML as successful JSON.
+
+Run `node scripts/verify-external-agent-api-contract.mjs` for the source authorization and response-shape checks, alongside existing deployment tests. Also perform real deployed tests with a revoked key, a read-only key, and a write key with and without creator consent. Source checks do not prove deployment.
