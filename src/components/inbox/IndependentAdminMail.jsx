@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-const base="https://tzehxfikoslihnclhxuz.supabase.co";
-const key="sb_publishable_0Rr_AknA_8YNZZWEYe_laA_h-W5LW1S";
+const base="https://ssibsfmtodgximseeqsv.supabase.co";
+const key="sb_publishable_x9AX2hyHLr_kb2mewuH69Q_T66poFyL";
 
 const request=async(path,options={})=>{const response=await fetch(base+path,{...options,headers:{"apikey":key,"content-type":"application/json",...options.headers}});const data=await response.json().catch(()=>({}));if(!response.ok){const error=new Error(response.status===401?"Please sign in again.":response.status===403?"This account is not authorized for organizational mail.":"The independent inbox is unavailable.");error.status=response.status;throw error;}return data;};
 export default function IndependentAdminMail(){

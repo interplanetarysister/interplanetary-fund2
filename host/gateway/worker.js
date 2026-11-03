@@ -186,7 +186,7 @@ async function verifyIndependentSession(request, env) {
   // bearer credentials to an arbitrary configurable verification URL.
   // Pin this preview to IFund's designated destination project. A mistaken
   // environment value must not authenticate identities from another tenant.
-  if (projectRef !== "tzehxfikoslihnclhxuz" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
+  if (projectRef !== "ssibsfmtodgximseeqsv" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey)) {
     return json({ error: "Independent authentication is not configured" }, 503);
   }
   try {
@@ -232,7 +232,7 @@ async function readIndependentCampaigns(request, env) {
     return json({ error: "Bearer token required" }, 401);
   const projectRef = String(env.IFUND_SUPABASE_PROJECT_REF || "").trim();
   const publishableKey = String(env.IFUND_SUPABASE_PUBLISHABLE_KEY || "").trim();
-  if (projectRef !== "tzehxfikoslihnclhxuz" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey))
+  if (projectRef !== "ssibsfmtodgximseeqsv" || !/^sb_publishable_[a-zA-Z0-9_-]{10,}$/.test(publishableKey))
     return json({ error: "Independent campaign backend is not configured" }, 503);
   const host = `https://${projectRef}.supabase.co`;
   const headers = { authorization, apikey: publishableKey, accept: "application/json" };
