@@ -215,6 +215,51 @@ export const CROWDFUNDING_PLATFORMS = [
 
 export const SOCIAL_PLATFORMS = [
   {
+    id: "tumblr",
+    name: "Tumblr",
+    kind: "social",
+    color: "#35465c",
+    icon: "✍️",
+    tagline: "Connect Tumblr through its registered API application. Account sign-in and posting remain unavailable until IFund's Tumblr OAuth app is configured and verified.",
+    setupKind: "oauth",
+    integrationType: "tumblr",
+    steps: [
+      { id: "oauth", label: "Authorize Tumblr", hint: "Approve IFund's registered Tumblr application. IFund must have its own approved API credentials before sign-in can start." },
+      { id: "auto", label: "Review publishing controls", hint: "Publishing stays disabled until the authorized account and Tumblr posting adapter pass live tests." },
+    ],
+    api: "Tumblr supports OAuth-authorized blog posts and reblogs. IFund publishing remains disabled pending app registration and end-to-end verification.",
+  },
+  {
+    id: "wordpress_org",
+    name: "WordPress.org (Self-hosted)",
+    kind: "social",
+    color: "#21759b",
+    icon: "W",
+    tagline: "Prepare content for a self-hosted WordPress site. API credential verification and direct publishing are not enabled yet.",
+    setupKind: "multi",
+    steps: [
+      { id: "site", label: "Enter your HTTPS WordPress site", hint: "Use your own site's root URL. Do not enter your normal WordPress password." },
+      { id: "credential", label: "Create a dedicated Application Password", hint: "Use Users → Profile → Application Passwords. It is revocable and separate from your main password." },
+      { id: "review", label: "Save as an unverified connection", hint: "IFund will not claim the site is connected or publish until a secure provider check is available." },
+    ],
+    api: "WordPress REST API supports posts, pages, media and comments. Self-hosted site publishing remains disabled until secure site verification is implemented.",
+  },
+  {
+    id: "ghost",
+    name: "Ghost",
+    kind: "social",
+    color: "#15171a",
+    icon: "👻",
+    tagline: "Prepare campaign stories for a Ghost publication. Keep Admin API credentials private; live publishing is not enabled yet.",
+    setupKind: "multi",
+    steps: [
+      { id: "site", label: "Enter your HTTPS Ghost publication URL", hint: "Use the publication's canonical HTTPS site URL." },
+      { id: "credential", label: "Create a Ghost Custom Integration", hint: "Use its Admin API key for future publishing. The public Content API key is read-only and is not sufficient to publish." },
+      { id: "review", label: "Save as an unverified connection", hint: "IFund will not claim the publication is connected or publish until a secure provider check is available." },
+    ],
+    api: "Ghost Content API is read-only; Admin API supports authorized content management. IFund publishing remains disabled pending secure verification.",
+  },
+  {
     id: "wordpress_com",
     name: "WordPress.com",
     kind: "social",

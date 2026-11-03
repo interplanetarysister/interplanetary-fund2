@@ -69,6 +69,8 @@ export const SECRET_FIELDS = [
   "bluesky_app_password",
   "mastodon_access_token",
   "buymeacoffee_api_token",
+  "wordpress_application_password",
+  "ghost_admin_api_key",
 ];
 
 // Strip secret values from a credentials object and report which secrets are

@@ -67,6 +67,27 @@ export default function CredentialFields({ platformId, credentials, credentialsM
         </div>
         {secretField("bluesky_app_password", "Bluesky app password", "From Bluesky Settings → App Passwords", "Use a dedicated app password rather than your main account password.")}
       </>}
+      {platformId === "wordpress_org" && <>
+        <div className="space-y-2">
+          <Label htmlFor="wordpress-site-url">WordPress site URL (HTTPS)</Label>
+          <Input id="wordpress-site-url" value={credentials.wordpress_site_url || ""}
+            onChange={(event) => set("wordpress_site_url", event.target.value)} placeholder="https://example.com" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="wordpress-username">WordPress username</Label>
+          <Input id="wordpress-username" value={credentials.wordpress_username || ""}
+            onChange={(event) => set("wordpress_username", event.target.value)} placeholder="Your WordPress username" />
+        </div>
+        {secretField("wordpress_application_password", "WordPress Application Password", "Create a dedicated revocable Application Password", "Never use your regular account password. Credentials are stored encrypted. This connection remains unverified until IFund can safely test your site's API.") }
+      </>}
+      {platformId === "ghost" && <>
+        <div className="space-y-2">
+          <Label htmlFor="ghost-site-url">Ghost publication URL (HTTPS)</Label>
+          <Input id="ghost-site-url" value={credentials.ghost_site_url || ""}
+            onChange={(event) => set("ghost_site_url", event.target.value)} placeholder="https://publication.example" />
+        </div>
+        {secretField("ghost_admin_api_key", "Ghost Admin API key", "From Ghost Admin → Settings → Integrations", "Use the Admin API key from a dedicated Custom Integration. Do not use the public Content API key for publishing. Credentials are stored encrypted; live verification and publishing are not enabled yet.") }
+      </>}
       {platformId === "mastodon" && <>
         <div className="space-y-2">
           <Label htmlFor="mastodon-instance">Mastodon instance</Label>
@@ -75,7 +96,7 @@ export default function CredentialFields({ platformId, credentials, credentialsM
         </div>
         {secretField("mastodon_access_token", "Mastodon access token", "Provider-issued access token", "Use a token with only the permissions you approve.")}
       </>}
-      {!["kofi", "buymeacoffee", "bluesky", "mastodon"].includes(platformId) && (
+      {!["kofi", "buymeacoffee", "bluesky", "mastodon", "wordpress_org", "ghost"].includes(platformId) && (
         <p className="text-sm text-muted-foreground">For this provider, sign-in must use its supported authorization flow. IFund cannot use a saved website password to bypass provider permissions.</p>
       )}
     </section>
