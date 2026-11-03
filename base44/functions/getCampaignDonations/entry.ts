@@ -1,4 +1,34 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.57';
+
+const ANALYTICS_PAGE_SIZE = 1000;
+const ANALYTICS_MAX_RECORDS = 100000;
+
+async function collectDonationPages(entity, campaignId) {
+  const records = [];
+  const seenCursors = new Set();
+  let cursor = null;
+  do {
+    const page = await entity.filter(
+      { campaign_id: campaignId },
+      { sort: '-created_date', limit: ANALYTICS_PAGE_SIZE, cursor },
+    );
+    if (!page || !Array.isArray(page.items) || typeof page.has_more !== 'boolean') {
+      throw new Error('Malformed donation page');
+    }
+    if (records.length + page.items.length > ANALYTICS_MAX_RECORDS) {
+      throw new Error('Donation analytics exceeds safe limit');
+    }
+    records.push(...page.items);
+    if (!page.has_more) return records;
+    if (page.items.length === 0) throw new Error('Donation cursor made no progress');
+    if (typeof page.next_cursor !== 'string' || page.next_cursor.length === 0) {
+      throw new Error('Malformed donation cursor');
+    }
+    if (seenCursors.has(page.next_cursor)) throw new Error('Donation cursor repeated');
+    seenCursors.add(page.next_cursor);
+    cursor = page.next_cursor;
+  } while (true);
+}
 
 // Returns the donation ledger for a campaign with row-level privacy enforced
 // server-side. Only provider-verified/confirmed donations are returned by
@@ -15,6 +45,7 @@ export default async function(req) {
     const body = await req.json().catch(() => ({}));
     const campaign_id = body.campaign_id;
     const include_pending = body.include_pending === true;
+    const analytics_complete = body.analytics_complete === true;
     if (!campaign_id) return Response.json({ error: 'Campaign is required' }, { status: 400 });
 
     const campaign = await sr.entities.Campaign.get(campaign_id).catch(() => null);
@@ -25,8 +56,13 @@ export default async function(req) {
     if (campaign.status === 'draft' && !isOwner && !isAdmin) {
       return Response.json({ error: 'Campaign not found' }, { status: 404 });
     }
+    if (analytics_complete && !isOwner && !isAdmin) {
+      return Response.json({ error: 'Not authorized' }, { status: 403 });
+    }
 
-    const allDonations = await sr.entities.Donation.filter({ campaign_id }, '-created_date', 1000) || [];
+    const allDonations = analytics_complete
+      ? await collectDonationPages(sr.entities.Donation, campaign_id)
+      : (await sr.entities.Donation.filter({ campaign_id }, '-created_date', 1000) || []);
     const confirmed = allDonations.filter((d) => d.payment_verified === true);
     const pending = allDonations.filter((d) => d.payment_verified !== true);
 
@@ -34,6 +70,7 @@ export default async function(req) {
       return Response.json({
         donations: include_pending ? allDonations : confirmed,
         pending_count: pending.length,
+        complete: analytics_complete,
       });
     }
 
@@ -45,7 +82,7 @@ export default async function(req) {
       message: d.message || '',
       created_date: d.created_date,
     }));
-    return Response.json({ donations: safe });
+    return Response.json({ donations: safe, complete: false });
   } catch (error) {
     console.error('getCampaignDonations error:', error && error.message ? error.message : error);
     return Response.json({ error: 'Unable to load donations.' }, { status: 500 });
