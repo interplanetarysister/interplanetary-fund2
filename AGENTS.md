@@ -54,19 +54,19 @@ For each feature:
 
 **Current milestone:** Buffer personal-API-key integration is an optional admin-account social-publishing adapter, not a replacement for IFund's social messaging, connections hub, or existing publishers. Keep it disconnected/unverified until the secret is securely provisioned and actual Buffer API access and safe publishing behavior are tested. **After that integration is verified functioning, remind the owner to initiate a dedicated GitHub open-source reuse audit of failing IFund software**; do not prematurely claim the audit occurred or automatically replace functionality.
 
-## Owner directive — independent migration without quality loss (2026-11-03)\n\nThe owner has explicitly authorized migrating IFund away from Base44. This supersedes the earlier Base44 portability freeze below wherever it says Base44 is the intended permanent host or forbids implementing independent replacements. Preserve Base44 only as a temporary rollback/reference path until independent parity is verified; do not cut production over prematurely. The full mandatory quality and release contract is `docs/MIGRATION_QUALITY_PRESERVATION.md`. No migration or rebuild may simplify, omit, stub, disable, or lower the quality of an existing capability. Catalogs and staged snapshots are not implementations. Workflow and agent execution, data/auth/payment integrity, and image delivery must reach verified parity before cutover.\n\n## Base44 portability freeze — effective 2026-09-28
+## Owner directive — independent migration without quality loss (2026-11-03)\n\nThe owner has explicitly authorized migrating IFund away from Base44. This supersedes the earlier Base44 portability freeze below wherever it says Base44 is the intended permanent host or forbids implementing independent replacements. Preserve Base44 only as a temporary rollback/reference path until independent parity is verified; do not cut production over prematurely. The full mandatory quality and release contract is `docs/MIGRATION_QUALITY_PRESERVATION.md`. No migration or rebuild may simplify, omit, stub, disable, or lower the quality of an existing capability. Catalogs and staged snapshots are not implementations. Workflow and agent execution, data/auth/payment integrity, and image delivery must reach verified parity before cutover.\n\n## Transitional source-preservation and cutover rule — updated 2026-11-03
 
-Feature development is temporarily frozen while Interplanetary Fund is prepared for host portability.
+Independent migration away from Base44 is authorized and is the active project priority. Preserve the current production implementation as the behavior reference and temporary rollback path while implementing and verifying the independent Cloudflare/Supabase replacement.
 
-This is a **preserve-and-switch** migration, not a Base44-removal project.
+This is an **authorized migration away from Base44 with parity-gated cutover**.
 
 ### Non-destructive migration rule
 
-- Do **not** delete, disable, replace, or deliberately break a working Base44 dependency merely because an alternate host is being prepared.
-- Keep the Base44 version operational and behaviorally authoritative during the preparation period.
-- Preserve Base44 entities, RLS, auth, backend functions, agents, workflows, connectors, storage paths, secrets references, webhooks, and other working integrations until a separately verified cutover is explicitly authorized.
+- Do **not** delete, disable, replace, or deliberately break a working Base44 production dependency before the independent replacement has passed parity verification and cutover is explicitly authorized. Implement the independent replacement rather than treating Base44 as permanent.
+- Keep the Base44 version operational as the production reference and rollback path until the independent implementation is verified and cutover is authorized.
+- Preserve the behavior and recoverability of Base44 entities, RLS, auth, backend functions, agents, workflows, connectors, storage paths, secrets references, webhooks, and integrations while reproducing them independently. Do not remove the legacy path before verified cutover.
 - Prepare dependencies so they can later be suspended, redirected, or switched to an alternate host through documented adapters/configuration/cutover controls.
-- Prefer provider-neutral interfaces and reversible configuration boundaries around existing Base44 behavior. Do not prematurely route production traffic to an unverified replacement.
+- Prefer provider-neutral interfaces and reversible configuration boundaries. Do not prematurely route production traffic to an unverified replacement.
 - Never copy secret values into source control. Record only secret/reference names and migration requirements.
 - A successful alternate deployment does not prove independence. Every runtime dependency must be inventoried and its alternate path verified before cutover.
 - Base44 and alternate-host implementations must not create competing financial ledgers, user identities, or mutable production sources of truth during the preparation phase.
@@ -87,7 +87,7 @@ For every Base44 dependency, record:
 9. verification required before activation;
 10. status.
 
-Agent 1 may add non-destructive adapters, interfaces, configuration switches, tests, documentation, and dormant alternate-host implementations. Agent 1 must not remove the working Base44 path.
+Agent 1 may add independent implementations, adapters, interfaces, configuration switches, tests, and documentation. Agent 1 must not remove the working Base44 path until parity and cutover are verified.
 
 ### Agent 2 — independent migration and security reviewer
 
@@ -103,9 +103,9 @@ For each alternate implementation, verify parity without changing production aut
 
 ### Shared completion gate
 
-During this freeze, completion means **zero undiscovered Base44 runtime dependencies and a verified reversible alternate path for each dependency**. It does not mean deleting Base44, switching production early, or merely obtaining a successful alternate-host build.
+Migration completion means **zero undiscovered Base44 runtime dependencies, verified independent parity for every production capability, a reconciled data plane, and tested rollback/cutover controls**. A successful alternate-host build or catalog-only Worker is not sufficient.
 
-Required sequence: **inventory -> preserve -> abstract safely -> reproduce -> verify parity -> prepare reversible cutover -> await explicit cutover authorization**.
+Required sequence: **inventory -> preserve reference behavior -> implement independent replacements -> verify full parity -> reconcile data -> test rollback -> obtain explicit cutover authorization -> cut over -> verify production**.
 
 ## Data source rule
 
