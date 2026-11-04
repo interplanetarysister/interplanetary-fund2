@@ -117,6 +117,8 @@ Use the existing Base44 application architecture in this repository for product 
 
 ## Key Files
 
+- `docs/AGENT_RUNTIME_UNIFICATION.md`: canonical sequential implementation manual for every configured agent, workflow and Worker, including exact source selections, live connection prerequisites, verification and rollback. Extend this manual rather than creating another agent implementation tracker or runbook.
+
 - `src/`: frontend application source.
 - `src/api/base44Client.js`: frontend Base44 SDK client.
 - `vite.config.js`: Vite config and Base44 Vite plugin setup.

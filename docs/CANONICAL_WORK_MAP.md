@@ -11,7 +11,7 @@ This file is the durable routing table for project work. Search it before creati
 | Runtime, CI and deployment | #481 | `.github/workflows/`, runtime scripts, `wrangler.jsonc`, worker |
 | Base44 sync, portability and source of truth | #482 | `AGENTS.md`, syncGitHub/checkpoints, portability contracts |
 | UX, mobile and accessibility | #483 | shared layout/styles, pages/components, UX regression contracts |
-| AI, agents and automation | #484 | agent/LLM functions, secure LLM gateway, agent contracts |
+| AI, agents and automation | #484 | agent/LLM functions, secure LLM gateway, [sequential agent/worker implementation manual](AGENT_RUNTIME_UNIFICATION.md#sequential-implementation-manual), agent contracts |
 | Data, schema and reliability | #485 | entities, data boundaries, idempotency/concurrency verifiers |
 | Product and future features | #486 | product backlog and intentionally deferred/future capabilities |
 
