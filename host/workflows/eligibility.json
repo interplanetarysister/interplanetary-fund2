@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-22",
+  "checked_at": "2026-11-04",
   "policy": "verify active need, current state, destination parity and duplicate protection before activation",
   "results": [
     {
@@ -48,7 +48,6 @@
       "eligible_for_activation": false,
       "decision": "HOLD",
       "reasons": [
-        "trigger mismatch: named Update but listens to create",
         "live entity event source and replay cursor unknown",
         "independent Cloudflare function implementation and idempotency unverified"
       ]

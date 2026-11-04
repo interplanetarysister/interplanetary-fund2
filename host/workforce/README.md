@@ -1,6 +1,8 @@
 # IFund Cloudflare workforce — preservation stage (inactive)
 
-This folder is a byte-exact, reproducible snapshot of ten Base44 agent JSONC definitions and 26 local skill/guide files, including descriptions, instructions, tool allowlists, role assignments, selected remote skill identifiers, and memory **configuration**. It is **not** a Cloudflare Worker runtime and is not imported by `host/gateway/worker.js`.
+For complete worker setup, exact per-agent settings/tools/skills, live-platform connection requirements, tests and rollback, follow the [canonical sequential implementation manual](../../docs/AGENT_RUNTIME_UNIFICATION.md#sequential-implementation-manual). It covers all ten configured agents, all seventeen workflows and every Worker entrypoint; it distinguishes required future execution adapters from the current inspection-only services.
+
+This folder contains a byte-exact, reproducible snapshot of ten Base44 agent JSONC definitions and 26 local skill/guide files, including descriptions, instructions, tool allowlists, role assignments, selected remote skill identifiers, and memory **configuration**. Its Cloudflare Worker exposes a read-only catalog and readiness service; it does not execute agents and is not imported by `host/gateway/worker.js`. `GET /v1/workforce/readiness` reports unresolved activation requirements.
 
 Run `node scripts/stage-cloudflare-workforce.mjs` to refresh from canonical source and `node scripts/verify-cloudflare-workforce-stage.mjs` to verify exact source parity. No secrets, user conversations, personal agent memories, remote skill bodies, OAuth tokens, or runtime grants are copied. The remote skills inventory and live memory export require separate authorized discovery and access checks.
 
