@@ -2,13 +2,13 @@
 
 ## Project Context
 
-This is the **authoritative user-facing Interplanetary Fund application implementation repository**, prepared for Base44 hosting.
+This is the **authoritative user-facing Interplanetary Fund application source repository**, currently undergoing an owner-authorized migration away from Base44 to an independent Cloudflare + Supabase production architecture. Preserve current Base44 behavior as the reference until equivalent independent implementations are verified; Base44 is not the target host.
 
 ### Current repository ownership
 
-- **Application implementation target:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Current application/backend authority:** the Base44 `interplanetary-fund2` implementation is authoritative for the live application-layer financial boundary, application agents, workflows, and persistence implemented under `base44/`. Historical Convex implementations are read-only evidence unless a specific still-live external dependency is directly verified.
-- **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior when they are not the current owner. Do not copy obsolete hosting/runtime dependencies or create competing state in Base44.
+- **Application source and migration target:** `interplanetarysister/interplanetary-fund2` — user-facing application, frontend, source entities/configuration, agent/workflow definitions, and independent Cloudflare/Supabase implementations.
+- **Current behavior reference:** the existing Base44 implementation and `base44/` definitions remain the reference for production behavior until parity is proven. The independent Cloudflare/Supabase implementation becomes the target authority only after data, identity, authorization, payment, workflow, agent, and operational cutover gates pass. Do not create dual writable sources of truth.
+- **Older Vercel/Convex repositories and implementations:** reference/evidence only unless the owner explicitly reassigns ownership. Adapt verified behavior to the Cloudflare/Supabase target; do not restore obsolete hosting dependencies.
 - **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
 
 A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
@@ -113,7 +113,7 @@ Never assume runtime configuration, payment availability, deployment state, envi
 
 ## Base44 application boundary
 
-Use the existing Base44 application architecture in this repository for product work that it owns. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not introduce an active Convex runtime dependency into `src/` or `base44/`. The current Base44 financial and agent implementations own their live application behavior. Older Convex/Vercel implementations may be inspected only as read-only evidence for behavior that is still needed.
+Use existing Base44 code and definitions as the behavioral reference during migration, not as the permanent runtime architecture. Implement independent product behavior in the Cloudflare/Supabase target with no Base44 runtime dependency after cutover. Do not add Vercel-specific dependencies such as `/_vercel/*`, or restore an active Convex runtime without explicit owner direction. Preserve financial, identity, agent, and workflow invariants exactly.
 
 ## Key Files
 
