@@ -17,11 +17,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 */6 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "run_agent",
           "call": "invoke_backend_function",
           "function_name": "runOutreachAgent",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "runOutreachAgent",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Run outreach agent",
+              "description": "Analyze opted-in campaigns"
+            }
+          }
         }
       ]
     },
@@ -39,11 +69,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "*/15 * * * *",
+        "one_time_date": null,
+        "timezone": "America/Los_Angeles",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "route_questions",
           "call": "invoke_backend_function",
           "function_name": "processAdminActionInbox",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "processAdminActionInbox",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Route admin questions",
+              "description": "Return verified agent information to the same admin action thread"
+            }
+          }
         }
       ]
     },
@@ -64,11 +124,39 @@
       "ends_type": null,
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": "${ .trigger.event_type == \"create\" or any((.trigger.changed_fields // [])[]; IN(\"status\",\"outreach_enabled\",\"title\",\"summary\",\"story\",\"category\",\"cover_image_url\",\"end_date\",\"goal_amount\",\"ai_profile\")) }",
+      "trigger_config": {
+        "trigger_type": "entity",
+        "entity_name": "Campaign",
+        "events": [
+          "create",
+          "update"
+        ]
+      },
       "steps": [
         {
+          "id": "enforce",
           "call": "invoke_backend_function",
           "function_name": "enforceCampaignProtocol",
-          "wait": null
+          "args": {
+            "campaign_id": "${ .trigger.entity_id }"
+          },
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "enforceCampaignProtocol",
+              "args": {
+                "campaign_id": "${ .trigger.entity_id }"
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Enforce Campaign Protocol",
+              "description": "Outreach default, active gate, AI profile check"
+            }
+          }
         }
       ]
     },
@@ -88,11 +176,34 @@
       "ends_type": null,
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "Campaign"
+      },
       "steps": [
         {
+          "id": "sync",
           "call": "invoke_backend_function",
           "function_name": "syncConnections",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "syncConnections",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Sync connections",
+              "description": "Initialize distribution"
+            }
+          }
         }
       ]
     },
@@ -112,11 +223,34 @@
       "ends_type": null,
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "CampaignUpdate"
+      },
       "steps": [
         {
+          "id": "sync",
           "call": "invoke_backend_function",
           "function_name": "syncConnections",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "syncConnections",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Sync connections",
+              "description": "Distribute the new update"
+            }
+          }
         }
       ]
     },
@@ -134,11 +268,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 * * * *",
+        "one_time_date": null,
+        "timezone": "America/Los_Angeles",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "sync_connections",
           "call": "invoke_backend_function",
           "function_name": "syncConnections",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "syncConnections",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Sync connections",
+              "description": "Publish due posts, retry failures, check health"
+            }
+          }
         }
       ]
     },
@@ -156,11 +320,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 * * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "mirror_posts",
           "call": "invoke_backend_function",
           "function_name": "mirrorExternalPosts",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "mirrorExternalPosts",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Mirror external posts",
+              "description": "Sync external feeds into Interplanetary Social"
+            }
+          }
         }
       ]
     },
@@ -180,11 +374,38 @@
       "ends_type": null,
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": "${ .trigger.data.status == \"completed\" and .trigger.old_data.status != \"completed\" }",
+      "trigger_config": {
+        "trigger_type": "entity",
+        "entity_name": "Campaign",
+        "events": [
+          "update"
+        ]
+      },
       "steps": [
         {
+          "id": "discover",
           "call": "invoke_backend_function",
           "function_name": "discoverFeatures",
-          "wait": null
+          "args": {
+            "user_id": "${ .trigger.data.created_by_id }"
+          },
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "discoverFeatures",
+              "args": {
+                "user_id": "${ .trigger.data.created_by_id }"
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Discover features",
+              "description": "Scan account for unused features"
+            }
+          }
         }
       ]
     },
@@ -204,11 +425,38 @@
       "ends_type": null,
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": "${ .trigger.data.status == \"submitted\" }",
+      "trigger_config": {
+        "trigger_type": "entity",
+        "entity_name": "GrantApplication",
+        "events": [
+          "create"
+        ]
+      },
       "steps": [
         {
+          "id": "analyze",
           "call": "invoke_backend_function",
           "function_name": "analyzeGrantApplication",
-          "wait": null
+          "args": {
+            "application_id": "${ .trigger.entity_id }"
+          },
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "analyzeGrantApplication",
+              "args": {
+                "application_id": "${ .trigger.entity_id }"
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Analyze application",
+              "description": "Strategy Agent recommends a decision"
+            }
+          }
         }
       ]
     },
@@ -226,11 +474,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 */4 * * *",
+        "one_time_date": null,
+        "timezone": "America/Los_Angeles",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "prepare_official_posts",
           "call": "invoke_backend_function",
           "function_name": "runOfficialSocialPromotion",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "runOfficialSocialPromotion",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Prepare official social editorials",
+              "description": "Use current brand research to prepare official platform-first promotions and moderation drafts"
+            }
+          }
         }
       ]
     },
@@ -248,11 +526,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "30 17 * * *",
+        "timezone": "America/Los_Angeles",
+        "one_time_date": null,
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "publish_reporter_story",
           "call": "invoke_backend_function",
           "function_name": "runReporterDiary",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "runReporterDiary",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Publish IFund reporter diary",
+              "description": "Create a single source-constrained public newsletter issue and show it in Community Stories"
+            }
+          }
         }
       ]
     },
@@ -270,11 +578,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "30 */6 * * *",
+        "one_time_date": null,
+        "timezone": "America/Los_Angeles",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "validate_integrations",
           "call": "invoke_backend_function",
           "function_name": "validateIntegrationHealth",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "validateIntegrationHealth",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Validate integrations",
+              "description": "Run non-destructive provider health checks and surface unhealthy connections"
+            }
+          }
         }
       ]
     },
@@ -292,11 +630,45 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 * * * *",
+        "one_time_date": null,
+        "timezone": "America/Los_Angeles",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "discover_and_reconcile",
           "call": "invoke_backend_function",
           "function_name": "discoverPayPalHoldingSettlements",
-          "wait": null
+          "args": {
+            "lookback_hours": 24
+          },
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "discoverPayPalHoldingSettlements",
+              "args": {
+                "lookback_hours": 24
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Reconcile PayPal holding receipts",
+              "description": "Verify recent PayPal receipts and allocate only unique exterior-fund matches"
+            }
+          }
         }
       ]
     },
@@ -314,11 +686,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "30 15 * * *",
+        "one_time_date": null,
+        "timezone": "America/Los_Angeles",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "maintain_accounts",
           "call": "invoke_backend_function",
           "function_name": "maintainPlatformOwnedAccounts",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "maintainPlatformOwnedAccounts",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Maintain official accounts",
+              "description": "Check account health, setup needs, and weekly posts"
+            }
+          }
         }
       ]
     },
@@ -336,11 +738,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 14 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "run_autopilot",
           "call": "invoke_backend_function",
           "function_name": "runSocialAutopilot",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "runSocialAutopilot",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Run social autopilot",
+              "description": "Generate and stage cross-platform posts"
+            }
+          }
         }
       ]
     },
@@ -360,21 +792,74 @@
       "ends_type": null,
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "entity",
+        "events": [
+          "create"
+        ],
+        "entity_name": "VolunteerSignup"
+      },
       "steps": [
         {
+          "id": "welcome",
           "call": "invoke_backend_function",
           "function_name": "welcomeVolunteer",
-          "wait": null
+          "args": {
+            "signup_id": "${ .trigger.entity_id }"
+          },
+          "wait": null,
+          "then": "wait_period",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "welcomeVolunteer",
+              "args": {
+                "signup_id": "${ .trigger.entity_id }"
+              }
+            },
+            "then": "wait_period",
+            "x-base44": {
+              "title": "Send welcome",
+              "description": "Email + in-app welcome"
+            }
+          }
         },
         {
+          "id": "wait_period",
           "call": null,
           "function_name": null,
-          "wait": null
+          "args": null,
+          "wait": "P3D",
+          "then": "follow_up",
+          "definition": {
+            "wait": "P3D",
+            "then": "follow_up"
+          }
         },
         {
+          "id": "follow_up",
           "call": "invoke_backend_function",
           "function_name": "volunteerFollowUp",
-          "wait": null
+          "args": {
+            "signup_id": "${ .trigger.entity_id }"
+          },
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "volunteerFollowUp",
+              "args": {
+                "signup_id": "${ .trigger.entity_id }"
+              }
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Follow up",
+              "description": "Invite to complete profile"
+            }
+          }
         }
       ]
     },
@@ -392,11 +877,41 @@
       "ends_type": "never",
       "ends_on_date": null,
       "ends_after_count": null,
+      "condition": null,
+      "trigger_config": {
+        "trigger_type": "scheduled",
+        "events": [],
+        "schedule_mode": "recurring",
+        "cron_expression": "0 16 * * *",
+        "one_time_date": null,
+        "timezone": "UTC",
+        "interval_value": null,
+        "interval_unit": null,
+        "interval_anchor": null,
+        "ends_type": "never",
+        "ends_on_date": null,
+        "ends_after_count": null
+      },
       "steps": [
         {
+          "id": "study_sources",
           "call": "invoke_backend_function",
           "function_name": "refreshWritingResearch",
-          "wait": null
+          "args": {},
+          "wait": null,
+          "then": "end",
+          "definition": {
+            "call": "invoke_backend_function",
+            "with": {
+              "function_name": "refreshWritingResearch",
+              "args": {}
+            },
+            "then": "end",
+            "x-base44": {
+              "title": "Review donation psychology and social trends",
+              "description": "Research real studies and current culture; update sourced writing guidance"
+            }
+          }
         }
       ]
     }
