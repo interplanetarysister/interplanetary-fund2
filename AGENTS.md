@@ -54,7 +54,7 @@ For each feature:
 
 **Current milestone:** Buffer personal-API-key integration is an optional admin-account social-publishing adapter, not a replacement for IFund's social messaging, connections hub, or existing publishers. Keep it disconnected/unverified until the secret is securely provisioned and actual Buffer API access and safe publishing behavior are tested. **After that integration is verified functioning, remind the owner to initiate a dedicated GitHub open-source reuse audit of failing IFund software**; do not prematurely claim the audit occurred or automatically replace functionality.
 
-## Base44 portability freeze — effective 2026-09-28
+## Owner directive — independent migration without quality loss (2026-11-03)\n\nThe owner has explicitly authorized migrating IFund away from Base44. This supersedes the earlier Base44 portability freeze below wherever it says Base44 is the intended permanent host or forbids implementing independent replacements. Preserve Base44 only as a temporary rollback/reference path until independent parity is verified; do not cut production over prematurely. The full mandatory quality and release contract is `docs/MIGRATION_QUALITY_PRESERVATION.md`. No migration or rebuild may simplify, omit, stub, disable, or lower the quality of an existing capability. Catalogs and staged snapshots are not implementations. Workflow and agent execution, data/auth/payment integrity, and image delivery must reach verified parity before cutover.\n\n## Base44 portability freeze — effective 2026-09-28
 
 Feature development is temporarily frozen while Interplanetary Fund is prepared for host portability.
 
