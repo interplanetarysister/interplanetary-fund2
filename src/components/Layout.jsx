@@ -8,6 +8,7 @@ import useSwipeBack from "@/hooks/useSwipeBack";
 import { AnimatePresence, motion } from "framer-motion";
 import OfflineBanner from "@/components/mobile/OfflineBanner";
 import LegalFooter from "@/components/LegalFooter";
+import PlatformSupportHostedButton from "@/components/payments/PlatformSupportHostedButton";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
@@ -320,6 +321,7 @@ export default function Layout() {
         </AnimatePresence>
         <QuickActions user={user} />
         <BackToTop />
+        {!pathname.startsWith("/campaign/") && <PlatformSupportHostedButton />}
         <div><LegalFooter /></div>
       </main>
     </div>
