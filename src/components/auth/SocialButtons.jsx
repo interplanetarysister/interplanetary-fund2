@@ -19,12 +19,23 @@ const FacebookIcon = ({ className }) => (
 );
 
 export default function SocialButtons({ returnTo, label = "Continue with" }) {
+  // Send the provider back to the domain the member actually signed in from.
+  // A bare path makes the provider return to the Base44-hosted address, which
+  // dropped Facebook sign-ins on interplanetaryfund.com onto
+  // interplanetaryfund.base44.app with a session the custom domain could not use.
+  const providerReturnTo = () => {
+    try {
+      return new URL(returnTo || "/dashboard", window.location.origin).href;
+    } catch {
+      return "/dashboard";
+    }
+  };
   return (
     <div className="space-y-3">
       <Button
         variant="outline"
         className="w-full h-12 text-sm font-medium"
-        onClick={() => base44.auth.loginWithProvider("google", returnTo)}
+        onClick={() => base44.auth.loginWithProvider("google", providerReturnTo())}
       >
         <GoogleIcon className="w-5 h-5 mr-2" />
         {label} Google
@@ -33,7 +44,7 @@ export default function SocialButtons({ returnTo, label = "Continue with" }) {
         <Button
           variant="outline"
           className="h-12 text-sm font-medium"
-          onClick={() => base44.auth.loginWithProvider("apple", returnTo)}
+          onClick={() => base44.auth.loginWithProvider("apple", providerReturnTo())}
         >
           <AppleIcon className="w-5 h-5 mr-2" />
           Apple
@@ -41,7 +52,7 @@ export default function SocialButtons({ returnTo, label = "Continue with" }) {
         <Button
           variant="outline"
           className="h-12 text-sm font-medium"
-          onClick={() => base44.auth.loginWithProvider("facebook", returnTo)}
+          onClick={() => base44.auth.loginWithProvider("facebook", providerReturnTo())}
         >
           <FacebookIcon className="w-5 h-5 mr-2" />
           Facebook

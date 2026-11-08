@@ -32,6 +32,23 @@ export default function ShareCampaignKit({ campaign }) {
     setWarning(success ? "" : "Clipboard access is unavailable. Select the text above and use Copy.");
     if (success) setTimeout(() => setCopied(""), 2200);
   };
+  // Open Facebook's share dialog beside the app instead of navigating the tab
+  // to facebook.com, which stranded members (and the installed Android app)
+  // outside Interplanetary Fund with no way back.
+  const shareToFacebook = () => {
+    if (!embed.url) {
+      setWarning("Save this campaign before sharing it.");
+      return;
+    }
+    const sharer = "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(embed.url);
+    const opened = window.open(sharer, "_blank");
+    if (opened) {
+      try { opened.opener = null; } catch { /* Cross-origin window handle. */ }
+      setWarning("");
+    } else {
+      setWarning("Your browser blocked the Facebook share window. Copy the campaign link above and paste it into Facebook.");
+    }
+  };
   const share = async () => {
     if (navigator.share) {
       try { await navigator.share({ title: campaign.title || "Campaign", url: embed.url }); return; }
@@ -113,9 +130,7 @@ export default function ShareCampaignKit({ campaign }) {
           {copied === "link" ? <Check /> : <Copy />} {copied === "link" ? "Link copied" : "Copy link"}
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={share}><Share2 /> Share</Button>
-        <Button type="button" variant="outline" size="sm" onClick={() => {
-          window.location.assign("https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(embed.url));
-        }}>Share on Facebook</Button>
+        <Button type="button" variant="outline" size="sm" onClick={shareToFacebook}>Share on Facebook</Button>
         <Button type="button" variant="outline" size="sm" disabled={imageBusy} onClick={() => exportImage("share")}>
           <ImageIcon /> Share image to Instagram
         </Button>
