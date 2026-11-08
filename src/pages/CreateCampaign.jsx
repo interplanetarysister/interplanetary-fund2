@@ -4,6 +4,8 @@ import { buildCampaignContext } from '@/lib/campaignAI';
 import React, { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/lib/AuthContext";
+import GuestSaveGate from "@/components/campaigns/GuestSaveGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +38,10 @@ export default function CreateCampaign() {
   const importConnectionId = searchParams.get("import_connection");
   const voiceMode = searchParams.get("voice") === "1";
   const { toast } = useToast();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  // Guests explore and build freely; only account-backed actions are gated.
+  const isGuest = !isLoadingAuth && !isAuthenticated;
+  const [gate, setGate] = useState(null);
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [draftNotice, setDraftNotice] = useState("");
@@ -111,6 +117,7 @@ export default function CreateCampaign() {
   };
 
   const generateCover = async () => {
+    if (isGuest) { setGate("image"); return false; }
     setGeneratingImage(true);
     // Generate actual AI art using the campaign context and IFund signature style.
     try {
@@ -145,6 +152,7 @@ export default function CreateCampaign() {
   };
 
   const saveDraft = async () => {
+    if (isGuest) { setGate("save"); return null; }
     if (savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
@@ -181,6 +189,7 @@ export default function CreateCampaign() {
 
   const launch = async (status) => {
     if (status === "draft") return saveDraft();
+    if (isGuest) { setGate("launch"); return; }
     if (status === "active") {
       const missing = [];
       if (!form.title?.trim()) missing.push("title");
@@ -234,6 +243,14 @@ export default function CreateCampaign() {
     <div className="campaign-quest deep-space max-w-3xl mx-auto w-full min-w-0 px-4 sm:px-6 py-8 sm:py-12 overflow-x-hidden rounded-[2rem] sm:my-6">
       <div className="mb-5"><Button type="button" variant="outline" onClick={() => { const next = new URLSearchParams(searchParams); if (voiceMode) next.delete('voice'); else next.set('voice','1'); navigate(`/create?${next.toString()}`, {replace:true}); }}>{voiceMode ? 'Close voice assistant' : 'Create by voice · Alexa+ simulation'}</Button></div>
       {voiceMode && <div className="mb-6"><CampaignVoiceAssistant form={form} onPatch={(patch) => setForm((current) => ({...current,...patch}))} onGenerateImage={generateCover} onSave={saveDraft} saving={saving} /></div>}
+      {isGuest && <div className="mb-6 rounded-2xl border border-cyan-300/30 bg-cyan-400/10 p-4">
+        <p className="text-sm font-semibold text-cyan-100">You're exploring as a guest</p>
+        <p className="text-xs sm:text-sm text-slate-300 mt-1">Build and preview your whole campaign. Saving a draft or launching it needs a free account — or join the founding waitlist for early access.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button type="button" onClick={() => navigate(`/register?returnTo=${encodeURIComponent("/create")}`)} className="min-h-11 rounded-xl bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Create a free account</Button>
+          <Button type="button" variant="outline" onClick={() => navigate("/founding-members")} className="quest-button min-h-11">Join the founding waitlist</Button>
+        </div>
+      </div>}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-3 mb-8 min-w-0" role="list" aria-label={`Campaign setup: step ${step + 1} of ${steps.length}`}>
         {steps.map(({ label, icon: StepIcon }, i) => (
           <div key={label} role="listitem" aria-current={i === step ? "step" : undefined}
@@ -296,6 +313,7 @@ export default function CreateCampaign() {
         <Button type="button" variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0} className="quest-button"><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
         {step < 3 ? <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={!canNext} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">Continue <ArrowRight className="w-4 h-4 ml-2" /></Button> : <div className="flex flex-col sm:flex-row gap-2 min-w-0"><Button type="button" onClick={() => launch("active")} disabled={saving} className="rounded-2xl min-h-12 bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold hover:opacity-90">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Launch campaign"}</Button></div>}
       </div>
+      <GuestSaveGate open={Boolean(gate)} onOpenChange={(next) => { if (!next) setGate(null); }} intent={gate || "save"} />
     </div>
   );
 }
