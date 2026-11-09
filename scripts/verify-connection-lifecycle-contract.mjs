@@ -21,8 +21,11 @@ assert.match(verify, /verification_type: verificationType/);
 assert.match(verify, /verification_type: null/);
 assert.match(verify, /accountAuthenticated = verificationType === 'provider_account'/);
 assert.match(verify, /if \(accountAuthenticated\) await completeVerifiedManagedWork/);
-assert.match(sync, /!isLinkBasedPlatform\(c\.platform\)/);
-assert.match(sync, /verification_type: isLinkBasedPlatform\(c\.platform\) \? 'public_page' : 'provider_account'/);
+assert.match(sync, /isLinkBasedPlatform\(c\.platform\) \|\| c\.platform !== 'bluesky'/);
+assert.match(sync, /verification_type: 'provider_account'/);
+assert.match(sync, /connection\.verification_type === 'provider_account'/);
+assert.match(verify, /verification_type = 'public_page'/);
+assert.match(verify, /verification_type = 'provider_webhook'/);
 // Background workers cannot verify app-user OAuth without the signed-in owner.
 assert.doesNotMatch(sync, /getCurrentAppUserConnection\(/);
 assert.match(sync, /OAUTH_ENV\[c\.platform\]/);
