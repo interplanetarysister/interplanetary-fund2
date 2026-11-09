@@ -133,7 +133,7 @@ function recoveryHint(lifecycle: string, recipe: any, oauth: any, platform: stri
     case 'NOT_CONNECTED':
       if (recipe?.preferred_transport === 'oauth' && !oauth?.configured) return 'Register the workspace connector, then start OAuth.';
       if (recipe?.preferred_transport === 'oauth') return 'Start OAuth to connect this account.';
-      if (recipe?.preferred_transport === 'public_browser') return 'Link the external campaign URL. Existing IFund AI authorization applies automatically.';
+      if (recipe?.preferred_transport === 'public_browser') return 'Link the public campaign page. This verifies page reachability only; account access and AI actions require a separate authenticated account connection.';
       if (recipe?.preferred_transport === 'token') return 'Enter the platform connection credentials.';
       if (recipe?.preferred_transport === 'webhook') return 'Follow the webhook setup steps.';
       return 'Connect this platform to begin.';
@@ -200,7 +200,7 @@ export default async function(req) {
         if (recipe?.preferred_transport === 'webhook' && connection.external_data_source === 'provider_verified') capabilities_verified.push('receive_donation_webhooks');
       }
       if (recipe?.preferred_transport === 'public_browser' && lifecycle === 'CONNECTED' && connection?.external_url) {
-        capabilities_verified.push('observe_external_metrics');
+        capabilities_verified.push('public_campaign_page_reachable');
       }
     }
 
