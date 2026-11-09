@@ -6,6 +6,8 @@ import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionC
 import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
 import { decryptConnectionSecret } from '../../shared/connectionCrypto.ts';
 import { restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
+import { appendHealthEvent, isSetupReason } from '../../shared/connectionHealthHistory.ts';
+import { withVaultCredentials } from '../../shared/userCredentialVault.ts';
 
 const SAFE_ATTENTION = 'This connection needs attention.';
 const SAFE_UNAVAILABLE = 'Live provider verification is unavailable.';
@@ -39,6 +41,8 @@ export default async function(req) {
 
     const now = new Date().toISOString();
     const envName = OAUTH_ENV[connection.platform];
+    // Provider secrets live in the vault now; probes read a hydrated copy.
+    const probeConnection = await withVaultCredentials(sr, connection);
     try {
       let connectionVerified = false;
       let providerBacked = false;
@@ -51,15 +55,15 @@ export default async function(req) {
         connectionVerified = true;
         providerBacked = true;
       } else if (['bluesky', 'mastodon'].includes(connection.platform)) {
-        await verifyManualConnection(connection);
+        await verifyManualConnection(probeConnection);
         connectionVerified = true;
         providerBacked = true;
       } else if (connection.platform === 'buymeacoffee') {
         // A read-only token can verify permitted account data, not authorize
         // web sign-in, posting, payouts, or other write capabilities.
-        const encrypted = connection.credentials?.buymeacoffee_api_token;
-        if (!encrypted) throw new Error('provider_probe_unavailable');
-        const token = await decryptConnectionSecret(encrypted);
+        const raw = probeConnection.credentials?.buymeacoffee_api_token;
+        if (!raw) throw new Error('provider_probe_unavailable');
+        const token = String(raw).startsWith('enc:v1:') ? await decryptConnectionSecret(raw) : raw;
         const response = await fetch('https://developers.buymeacoffee.com/api/v1/supporters?page=1', {
           method: 'GET',
           headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
@@ -124,16 +128,22 @@ export default async function(req) {
       const reason = String(error?.message || '');
       const permissionMissing = reason === 'facebook_page_publish_permission_required';
       const reauth = permissionMissing || reason === 'oauth_reauthorization_required' || reason === 'oauth_not_configured';
-      const message = permissionMissing
-        ? 'Facebook Page publishing permission is missing. Reconnect and approve Page access.'
-        : reauth ? 'Provider authorization needs attention.' : SAFE_UNAVAILABLE;
+      // No adapter / no OAuth client is setup work, not a failing connection.
+      const setup = isSetupReason(reason);
+      const message = setup ? 'This platform needs setup before it can be connected.'
+        : permissionMissing
+          ? 'Facebook Page publishing permission is missing. Reconnect and approve Page access.'
+          : reauth ? 'Provider authorization needs attention.' : SAFE_UNAVAILABLE;
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
-        status: 'error', verification_status: 'unverified', last_error: message,
+        status: setup ? 'needs_setup' : 'error',
+        verification_status: 'unverified',
+        last_error: setup ? '' : message,
         agent_access: {
           ...(connection.agent_access || {}), automation_enabled: false,
         },
         capability_status: reauth ? 'reauthorization_required' : 'unknown',
-        history: [...(connection.history || []), { at: now, event: 'health_check_failed', detail: message }].slice(-30),
+        // At most one failure receipt per connection per 24 hours.
+        history: appendHealthEvent(connection.history, 'health_check_failed', message, now),
       });
       return Response.json({ working: false, provider_verified: false, connection: publicConnection(updated), error: message });
     }

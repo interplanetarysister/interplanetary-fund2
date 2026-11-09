@@ -211,6 +211,36 @@ export const CROWDFUNDING_PLATFORMS = [
     ],
     api: "Link any external campaign page and track its totals here.",
   },
+  {
+    id: "givebutter",
+    name: "Givebutter",
+    kind: "crowdfunding",
+    color: "#00b0ff",
+    icon: "🧈",
+    tagline: "Use your own Givebutter API key to read your campaign totals. Not OAuth.",
+    setupKind: "token",
+    steps: [
+      { id: "key", label: "Create a Givebutter API key", hint: "Settings → Integrations → API Keys → Create New API Key" },
+      { id: "key", label: "Paste the key here", hint: "IFund stores it in your encrypted credential vault and keeps only a masked hint. Givebutter has no OAuth account access." },
+      { id: "link", label: "Link to a campaign (optional)", hint: "Connect these figures to one of your IF campaigns." },
+    ],
+    api: "Member-supplied Givebutter API key. Not OAuth.",
+  },
+  {
+    id: "donorbox",
+    name: "Donorbox",
+    kind: "crowdfunding",
+    color: "#1a2b4b",
+    icon: "🧡",
+    tagline: "Use your own Donorbox login email and API key to read your campaign totals. Not OAuth.",
+    setupKind: "multi",
+    steps: [
+      { id: "email", label: "Your Donorbox login email", hint: "The email on your Donorbox account." },
+      { id: "key", label: "Create a Donorbox API key", hint: "Account → API & Zapier Integration → Enable → Set new API Key. Donorbox charges for API access (paid add-on)." },
+      { id: "key", label: "Paste the key here", hint: "IFund stores it in your encrypted credential vault and keeps only a masked hint. Donorbox has no OAuth account access." },
+    ],
+    api: "Member-supplied Donorbox email and API key. Paid add-on on Donorbox. Not OAuth.",
+  },
 ];
 
 export const SOCIAL_PLATFORMS = [

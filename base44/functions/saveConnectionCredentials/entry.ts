@@ -3,7 +3,7 @@ import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity } from '../../shared/externalBalanceEvidence.ts';
-import { encryptConnectionSecret } from '../../shared/connectionCrypto.ts';
+import { writeVaultSecrets, maskedHint } from '../../shared/userCredentialVault.ts';
 import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
@@ -94,6 +94,8 @@ export default async function(req) {
       buymeacoffee: ['buymeacoffee_api_token'],
       bluesky: ['bluesky_handle', 'bluesky_app_password'],
       mastodon: ['mastodon_instance', 'mastodon_access_token'],
+      givebutter: ['givebutter_api_key'],
+      donorbox: ['donorbox_api_key', 'donorbox_email'],
     };
     const allowed = new Set(['account_identifier', ...(allowedByPlatform[platform] || [])]);
     const incoming: Record<string, string> = {};
@@ -106,9 +108,22 @@ export default async function(req) {
       return Response.json({ error: 'Platform cannot be changed for this account.' }, { status: 400 });
     }
     if (incoming.account_identifier) incoming.account_identifier = incoming.account_identifier.trim().slice(0, 254);
-    if (incoming.buymeacoffee_api_token) {
+    if (incoming.donorbox_email) incoming.donorbox_email = incoming.donorbox_email.trim().slice(0, 254);
+
+    // Provider secrets are written to the encrypted, owner-scoped credential
+    // vault. The connection keeps only a vault reference and a masked hint, so
+    // no plaintext secret is ever stored on PlatformConnection.
+    const secretIncoming: Record<string, string> = {};
+    for (const field of SECRET_FIELDS) {
+      const value = typeof incoming[field] === 'string' ? incoming[field].trim() : '';
+      if (value) secretIncoming[field] = value;
+    }
+    const existingCreds = { ...(existing?.credentials || {}) };
+    for (const field of SECRET_FIELDS) delete existingCreds[field];
+    let vaultRef = String(existingCreds.vault_ref || '');
+    if (Object.keys(secretIncoming).length) {
       try {
-        incoming.buymeacoffee_api_token = await encryptConnectionSecret(incoming.buymeacoffee_api_token.trim());
+        vaultRef = await writeVaultSecrets(base44.asServiceRole, user.id, platform, secretIncoming) || vaultRef;
       } catch {
         // Fail closed rather than saving provider secrets as plaintext records.
         return Response.json({
@@ -116,7 +131,15 @@ export default async function(req) {
         }, { status: 503 });
       }
     }
-    const mergedCreds = existing ? mergeSecrets(existing.credentials, incoming) : incoming;
+    const hints = { ...(existingCreds.secret_hints || {}) };
+    for (const [field, value] of Object.entries(secretIncoming)) hints[field] = maskedHint(value);
+    const mergedCreds: Record<string, any> = { ...existingCreds };
+    for (const [key, value] of Object.entries(incoming)) {
+      if (SECRET_FIELDS.includes(key)) continue;
+      mergedCreds[key] = value;
+    }
+    if (vaultRef) mergedCreds.vault_ref = vaultRef;
+    if (Object.keys(hints).length) mergedCreds.secret_hints = hints;
     const now = new Date().toISOString();
     const credentialsChanged = SECRET_FIELDS.some(field => Boolean(incoming[field])) ||
       (incoming.account_identifier !== undefined &&

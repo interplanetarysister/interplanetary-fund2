@@ -69,6 +69,8 @@ export const SECRET_FIELDS = [
   "bluesky_app_password",
   "mastodon_access_token",
   "buymeacoffee_api_token",
+  "givebutter_api_key",
+  "donorbox_api_key",
 ];
 
 // Strip secret values from a credentials object and report which secrets are
@@ -77,7 +79,8 @@ export const SECRET_FIELDS = [
 export function redactCredentials(creds) {
   const c = creds || {};
   const meta = {};
-  for (const f of SECRET_FIELDS) meta[f + "_set"] = !!c[f];
+  // A vaulted secret is only a masked hint on the record now; still "set".
+  for (const f of SECRET_FIELDS) meta[f + "_set"] = !!c[f] || !!c?.secret_hints?.[f];
   const redacted = { ...c };
   for (const f of SECRET_FIELDS) if (redacted[f]) redacted[f] = "";
   return { credentials: redacted, credentials_meta: meta };

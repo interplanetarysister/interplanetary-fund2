@@ -13,16 +13,19 @@ export default async function(req) {
 
     const { connection_id, platform } = await req.json().catch(() => ({}));
     const key = String(platform || '').toLowerCase();
+    const sr = base44.asServiceRole;
+    // Resolve an exact record when an id is supplied so a duplicate can be
+    // removed by itself. Ownership is proven before any elevated write.
     const connection = connection_id
-      ? await base44.entities.PlatformConnection.get(connection_id).catch(() => null)
-      : (await base44.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }))[0] || null;
+      ? await sr.entities.PlatformConnection.get(connection_id).catch(() => null)
+      : (await sr.entities.PlatformConnection.filter({ created_by_id: user.id, platform: key }, '-updated_date', 1))[0] || null;
     if (!connection || connection.created_by_id !== user.id) {
       return Response.json({ error: 'Connection not found.' }, { status: 404 });
     }
 
     // Remove agent/OBO authority first. Every side-effect path re-checks these
     // fields, so revocation takes effect before provider disconnect is attempted.
-    await base44.entities.PlatformConnection.update(connection.id, {
+    await sr.entities.PlatformConnection.update(connection.id, {
       status: 'disconnected',
       verification_status: 'unverified',
       capability_status: 'unknown',
@@ -62,8 +65,28 @@ export default async function(req) {
       }
     }
 
-    await base44.entities.PlatformConnection.delete(connection.id);
-    return Response.json({ disconnected: true, provider_disconnected: providerDisconnected });
+    // Service-role delete after the ownership check above. A user-token delete
+    // can be refused by record rules, which silently left duplicate gofundme,
+    // mastodon, custom and threads rows undeletable.
+    await sr.entities.PlatformConnection.delete(connection.id);
+
+    // If that was the member's last connection for this platform, revoke the
+    // vaulted provider credentials too instead of leaving them behind.
+    const remaining = await sr.entities.PlatformConnection
+      .filter({ created_by_id: user.id, platform: connection.platform }).catch(() => []);
+    if (Array.isArray(remaining) && remaining.length === 0) {
+      const vaultRows = await sr.entities.UserCredentialVault
+        .filter({ user_id: user.id, platform: connection.platform }).catch(() => []);
+      for (const row of Array.isArray(vaultRows) ? vaultRows : []) {
+        await sr.entities.UserCredentialVault.delete(row.id).catch(() => {});
+      }
+    }
+    return Response.json({
+      disconnected: true,
+      provider_disconnected: providerDisconnected,
+      removed_connection_id: connection.id,
+      remaining_for_platform: Array.isArray(remaining) ? remaining.length : 0,
+    });
   } catch (error) {
     console.error('disconnectPlatformConnection error:', error?.message || error);
     return Response.json({ error: 'Unable to disconnect this platform.' }, { status: 500 });

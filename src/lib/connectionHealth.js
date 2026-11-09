@@ -6,6 +6,18 @@ export function connectionHealth(connection) {
     return { key: "disconnected", label: "Connect", usable: false, needsAttention: false };
   }
 
+  // No adapter / no OAuth client yet is a setup task, not a fault. It must not
+  // read as "Needs attention" on the Connections page.
+  if (connection.status === "needs_setup") {
+    return {
+      key: "needs_setup",
+      label: "Needs setup",
+      usable: false,
+      needsAttention: false,
+      reason: "This platform needs setup before it can be connected.",
+    };
+  }
+
   const hasError = connection.status === "error" || !!connection.last_error;
   const verified = connection.status === "connected" && connection.verification_status === "verified";
 

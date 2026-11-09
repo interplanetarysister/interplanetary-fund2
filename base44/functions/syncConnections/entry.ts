@@ -10,6 +10,8 @@ import { completeVerifiedManagedWork } from '../../shared/managedQueue.ts';
 import { verifiedConnectionCapabilities } from '../../shared/verifiedConnectionCapabilities.ts';
 import { hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
+import { appendHealthEvent, isSetupReason } from '../../shared/connectionHealthHistory.ts';
+import { withVaultCredentials } from '../../shared/userCredentialVault.ts';
 
 // Hourly synchronization worker (invoked by the "Connection Sync Engine"
 // workflow, no user context — service-scoped like runOutreachAgent):
@@ -197,10 +199,23 @@ export default async function(req) {
     const connections = await sr.entities.PlatformConnection.filter({}, '-updated_date', 200);
     let probes = 0;
     for (const c of connections) {
-      // Per-user OAuth is never tested in a scheduled service context.
+      // Per-user OAuth is never tested in a scheduled service context, and a
+      // platform with no probe adapter cannot be probed at all. Neither is a
+      // failure: it is setup that has not been completed. Re-evaluate rows
+      // older hourly runs left at status:error so the wall clears.
+      const oauthEnv = OAUTH_ENV[c.platform];
+      const oauthConfigured = !!(oauthEnv && Deno.env.get(oauthEnv));
       if (OAUTH_ENV[c.platform] || c.platform === 'kofi' ||
           !(c.platform === 'bluesky' || isLinkBasedPlatform(c.platform))) {
         report.health_deferred++;
+        if (c.status === 'error' && (!oauthConfigured || c.platform === 'kofi')) {
+          await sr.entities.PlatformConnection.update(c.id, {
+            status: 'needs_setup',
+            verification_status: 'unverified',
+            last_error: '',
+          });
+          report.health_needs_setup = (report.health_needs_setup || 0) + 1;
+        }
         continue;
       }
       const lastEvent = (c.history || []).filter((item) =>
@@ -214,7 +229,7 @@ export default async function(req) {
       probes++;
       try {
         if (['bluesky'].includes(c.platform)) {
-          await verifyManualConnection(c);
+          await verifyManualConnection(await withVaultCredentials(sr, c));
         } else if (isLinkBasedPlatform(c.platform)) {
           await verifyPublicCampaignConnection(c);
         } else {
@@ -255,15 +270,22 @@ export default async function(req) {
       } catch (e) {
         console.error('syncConnections provider verification failed:', e?.name || 'UnknownError');
         const reason = String(e?.message || '');
+        const setup = isSetupReason(reason);
         const reauth = reason === 'Provider authorization needs to be renewed.' || reason === 'Provider sign-in is not configured yet.';
-        const message = reauth ? 'Provider authorization needs attention.' : 'Live provider verification could not be completed.';
+        const message = setup ? 'Provider setup is not complete yet.'
+          : reauth ? 'Provider authorization needs attention.' : 'Live provider verification could not be completed.';
         await sr.entities.PlatformConnection.update(c.id, {
-          status: 'error', verification_status: 'unverified', last_error: message,
+          // Missing adapter / missing OAuth client is setup, never an error.
+          status: setup ? 'needs_setup' : 'error',
+          verification_status: 'unverified',
+          last_error: setup ? '' : message,
           capability_status: c.capability_status || 'unknown',
           agent_access: { ...(c.agent_access || {}), automation_enabled: false },
-          history: [...(c.history || []), { at: now.toISOString(), event: 'health_check_failed', detail: message }].slice(-30),
+          // At most one failure receipt per connection per 24 hours.
+          history: appendHealthEvent(c.history, 'health_check_failed', message, now.toISOString()),
         });
-        report.needs_attention++;
+        if (setup) report.health_needs_setup = (report.health_needs_setup || 0) + 1;
+        else report.needs_attention++;
       }
     }
 

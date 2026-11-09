@@ -98,6 +98,8 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
     return 'NOT_CONNECTED';
   }
   if (connection.status === 'disconnected') return 'DISCONNECTED';
+  // Setup not completed is not a failure; it resolves like "not connected yet".
+  if (connection.status === 'needs_setup') return 'NOT_CONNECTED';
   if (connection.status === 'error') {
     return oauth?.transport_ok ? 'DEGRADED' : 'RECONNECT_REQUIRED';
   }

@@ -75,7 +75,21 @@ export default function CredentialFields({ platformId, credentials, credentialsM
         </div>
         {secretField("mastodon_access_token", "Mastodon access token", "Provider-issued access token", "Use a token with only the permissions you approve.")}
       </>}
-      {!["kofi", "buymeacoffee", "bluesky", "mastodon"].includes(platformId) && (
+      {platformId === "givebutter" && <>
+        {secretField("givebutter_api_key", "Givebutter API key", "Paste your Givebutter API key",
+          "Settings → Integrations → API Keys → Create New API Key. Givebutter has no OAuth account access; this key is the only way IFund can read your campaigns. Stored in your encrypted credential vault.")}
+      </>}
+      {platformId === "donorbox" && <>
+        <div className="space-y-2">
+          <Label htmlFor="donorbox-email">Donorbox login email</Label>
+          <Input id="donorbox-email" autoComplete="off" maxLength={254}
+            value={credentials.donorbox_email || credentials.account_identifier || ""}
+            onChange={(event) => set("donorbox_email", event.target.value)} placeholder="you@example.org" />
+        </div>
+        {secretField("donorbox_api_key", "Donorbox API key", "Paste your Donorbox API key",
+          "Account → API & Zapier Integration → Enable → Set new API Key. Donorbox charges for API access (paid add-on) and has no OAuth account access. Stored in your encrypted credential vault.")}
+      </>}
+      {!["kofi", "buymeacoffee", "bluesky", "mastodon", "givebutter", "donorbox"].includes(platformId) && (
         <p className="text-sm text-muted-foreground">For this provider, sign-in must use its supported authorization flow. IFund cannot use a saved website password to bypass provider permissions.</p>
       )}
     </section>

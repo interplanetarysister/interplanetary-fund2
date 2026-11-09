@@ -11,6 +11,8 @@
         "fundrazr",
         "givesendgo",
         "spotfund",
+        "givebutter",
+        "donorbox",
         "kofi",
         "buymeacoffee",
         "patreon",
@@ -75,9 +77,10 @@
     },
     "status": {
       "type": "string",
-      "description": "Provider transport state. Configuration alone must not set connected; only successful provider verification may do so.",
+      "description": "Provider transport state. needs_setup means no working adapter or OAuth client exists yet: it is a setup task, not a failure. Configuration alone must not set connected; only successful provider verification may do so.",
       "enum": [
         "connected",
+        "needs_setup",
         "error",
         "disconnected"
       ],
@@ -165,7 +168,11 @@
         },
         "scope_choice": {
           "type": "string",
-          "enum": ["full", "posting", "read_only"]
+          "enum": [
+            "full",
+            "posting",
+            "read_only"
+          ]
         },
         "requested_capabilities": {
           "type": "array",
@@ -213,7 +220,7 @@
     },
     "credentials": {
       "type": "object",
-      "description": "Per-platform integration credentials. Raw secret values are service/admin-only; owner-facing reads use the redacted listConnections function.",
+      "description": "Per-platform integration credentials. Raw secret values are service/admin-only; owner-facing reads use the redacted listConnections function. Provider secrets live in UserCredentialVault; this object keeps only a vault reference and masked hints.",
       "rls": {
         "read": {
           "user_condition": {
@@ -224,14 +231,14 @@
       "properties": {
         "kofi_verification_token": {
           "type": "string",
-          "description": "Ko-fi webhook verification token \u2014 enables live donation sync."
+          "description": "Deprecated plaintext location. Migrated to UserCredentialVault and blanked."
         },
         "bluesky_handle": {
           "type": "string"
         },
         "bluesky_app_password": {
           "type": "string",
-          "description": "Bluesky app password \u2014 enables direct publishing."
+          "description": "Deprecated plaintext location. Migrated to UserCredentialVault and blanked."
         },
         "mastodon_instance": {
           "type": "string",
@@ -239,7 +246,7 @@
         },
         "mastodon_access_token": {
           "type": "string",
-          "description": "Mastodon access token \u2014 enables direct publishing."
+          "description": "Deprecated plaintext location. Migrated to UserCredentialVault and blanked."
         },
         "account_identifier": {
           "type": "string",
@@ -247,7 +254,26 @@
         },
         "buymeacoffee_api_token": {
           "type": "string",
-          "description": "AES-GCM ciphertext of a Buy Me a Coffee read-only developer access token; never a website password."
+          "description": "Deprecated plaintext location. Migrated to UserCredentialVault and blanked."
+        },
+        "givebutter_api_key": {
+          "type": "string",
+          "description": "Never stored here. The key lives in UserCredentialVault."
+        },
+        "donorbox_api_key": {
+          "type": "string",
+          "description": "Never stored here. The key lives in UserCredentialVault."
+        },
+        "vault_ref": {
+          "type": "string",
+          "description": "Reference to this platform's encrypted UserCredentialVault record for this member."
+        },
+        "secret_hints": {
+          "type": "object",
+          "description": "Masked last-four hints per secret field, e.g. givebutter_api_key: \u2022\u2022\u2022\u20221234.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -380,5 +406,5 @@
       ]
     }
   },
-  "description": "Per-user or authorized shared fundraising, social, and app connections. Connection success and granted capabilities require real provider verification; account authorization and secret references are managed separately."
+  "description": "Per-user or authorized shared fundraising, social, and app connections. Connection success and granted capabilities require real provider verification; account authorization and secret references are managed separately. Provider secrets live in UserCredentialVault."
 }

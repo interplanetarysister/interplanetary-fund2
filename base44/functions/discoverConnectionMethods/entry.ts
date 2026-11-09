@@ -67,7 +67,9 @@ export default async function(req: Request) {
       provider_policy_verified:false,
       rediscovery_required:requiresRouteRediscovery(recipe,candidates),
       methods,
-      next_step:methods.some((m:any)=>m.method==='oauth'&&m.can_attempt)
+      next_step:methods.some((m:any)=>m.method==='api_key')
+        ? 'Ask the member for their own provider API key, store it in the credential vault, then verify it against the provider.'
+        : methods.some((m:any)=>m.method==='oauth'&&m.can_attempt)
         ? 'Open the configured IFund OAuth connection flow and verify capabilities after provider consent.'
         : methods.some((m:any)=>m.method==='public_browser')
           ? 'Ask for a public campaign URL and verify only the public link.'
