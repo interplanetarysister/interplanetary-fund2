@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { secrets } from 'base44:runtime';
-import { IFUND_PAYPAL_BUSINESS_EMAIL } from '../../shared/paypal.ts';
+import { IFUND_PAYPAL_BUSINESS_EMAIL, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
+import { PAYPAL_CAMPAIGN_WEBHOOK_URL, PAYPAL_CAMPAIGN_WEBHOOK_EVENTS } from '../../shared/paypalCampaignWebhookContract.js';
 import { logAudit } from '../../shared/auditLog.ts';
 import { emitIntegrationAlert, isUnhealthy, STATUS_LABEL } from '../../shared/integrationRegistry.ts';
 
@@ -32,12 +33,11 @@ async function verifyPayPalRestConfiguration(sr, entry) {
   const expectedMerchant = IFUND_PAYPAL_BUSINESS_EMAIL.toLowerCase();
   const recordedMerchant = String(entry.account_identifier || '').toLowerCase();
   const merchantReferenceMatches = recordedMerchant.includes(expectedMerchant);
-  const campaignWebhookConfigured = Boolean(String(secrets.get('PAYPAL_WEBHOOK_ID') || '').trim());
+  let campaignWebhookConfigured = false;
   checks.push({ check: 'paypal_merchant_reference_matches', ok: merchantReferenceMatches,
     detail: merchantReferenceMatches ? 'Configured registry reference matches the designated IFund business merchant; provider ownership still needs verification.' : 'PayPal registry reference does not match the designated IFund business merchant.' });
-  checks.push({ check: 'paypal_campaign_webhook_id_configured', ok: campaignWebhookConfigured,
-    detail: campaignWebhookConfigured ? 'Campaign webhook ID is present; event registration and receiver still need verification.' : 'Campaign webhook ID is missing. Subscription webhook registration is a separate integration.' });
   if (!id || !secret) {
+    checks.push({ check: 'paypal_campaign_webhook_id_configured', ok: false, detail: 'Campaign webhook cannot be verified until PayPal REST credentials work.' });
     checks.push({ check: 'paypal_oauth_token', ok: false, detail: 'PayPal REST credentials are missing.' });
     return { checks, merchantReferenceMatches, campaignWebhookConfigured, oauthVerified: false, subscriptionWebhookVerified: false, mode };
   }
@@ -66,12 +66,29 @@ async function verifyPayPalRestConfiguration(sr, entry) {
             local.some(row => row.webhook_id === h.id && row.url === expectedUrl) &&
             (h.event_types || []).some(t => t.name === 'BILLING.SUBSCRIPTION.ACTIVATED' || t.name === '*') &&
             (h.event_types || []).some(t => t.name === 'PAYMENT.SALE.REFUNDED' || t.name === '*'));
+          const campaigns = await sr.entities.PayPalCampaignWebhook.filter({
+            provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF, environment: mode,
+          }).catch(() => []);
+          if (Array.isArray(campaigns) && campaigns.length === 1) {
+            const registered = campaigns[0];
+            campaignWebhookConfigured = (remote.webhooks || []).some(h => {
+              const events = new Set((h.event_types || []).map(t => t.name));
+              return h.id === registered.webhook_id &&
+                h.url === PAYPAL_CAMPAIGN_WEBHOOK_URL &&
+                registered.url === PAYPAL_CAMPAIGN_WEBHOOK_URL &&
+                PAYPAL_CAMPAIGN_WEBHOOK_EVENTS.every(name => events.has(name) || events.has('*'));
+            });
+          }
         }
       }
     }
   } catch (_) {
     // Transient provider errors never imply readiness and never expose secrets.
   }
+  checks.push({ check: 'paypal_campaign_webhook_id_configured', ok: campaignWebhookConfigured,
+    detail: campaignWebhookConfigured
+      ? 'Campaign webhook matches the existing PayPal REST app, callback and required events.'
+      : 'Campaign webhook has not been verified against PayPal. Subscription webhook is separate.' });
   checks.push({ check: 'paypal_oauth_token', ok: oauthVerified,
     detail: oauthVerified ? 'PayPal ' + mode + ' REST OAuth token accepted.' : 'PayPal REST OAuth could not be verified.' });
   checks.push({ check: 'paypal_subscription_webhook', ok: subscriptionWebhookVerified,
