@@ -23,6 +23,10 @@ const syncImportedCampaign = read('base44/functions/syncImportedCampaign/entry.t
 const importedCampaignUi = read('src/components/campaigns/ImportedCampaignSync.jsx');
 const saveConnectionCredentials = read('base44/functions/saveConnectionCredentials/entry.ts');
 const syncExternalFunds = read('base44/functions/syncExternalFunds/entry.ts');
+const publishPost = read('base44/functions/publishPost/entry.ts');
+const broadcastPosts = read('base44/functions/broadcastPosts/entry.ts');
+const crossPost = read('base44/shared/crossPost.ts');
+const verifyPlatformConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
 const providerCapabilities = read('base44/shared/providerCapabilities.ts');
 const integrationRegistry = read('base44/shared/integrationRegistry.ts');
 const publicCampaignSnapshot = read('base44/shared/publicCampaignSnapshot.ts');
@@ -82,6 +86,10 @@ expect(!connectionStatus.includes("last_error: shared?.last_error || connection?
 expect(!sharedConnectorStatus.includes("String(auth.error"), 'shared status must not expose provider error strings');
 expect(!sharedConnectorStatus.includes("Wix verification failed (${res.status})"), 'shared status must not expose provider HTTP detail');
 expect(importExternalCampaign.includes('discover: discoverPublicCampaignSnapshot'), 'external imports must use provider-backed discovery');
+expect(importExternalCampaign.includes("'campaign_import'"), 'campaign import must use the public-page-specific authorization purpose');
+expect(syncImportedCampaign.includes("'campaign_refresh'"), 'campaign refresh must use the public-page-specific authorization purpose');
+expect(verifyPlatformConnection.includes("verification_type: verificationType"), 'connection verification must persist its evidence class');
+expect(providerCapabilities.includes('Stored research rows may narrow availability'), 'capability resolver must distinguish research metadata from executable adapters');
 expect(importOperation.includes('snapshot = await discover(connection)'), 'external import discovery must remain server-side');
 expect(importOperation.includes("key === 'goal_amount'"), 'owner goal provenance must remain explicit');
 expect(importOperation.includes("? 'system_default'"), 'system default category provenance must remain explicit');
