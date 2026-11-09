@@ -7,6 +7,8 @@ const sync = fs.readFileSync('base44/functions/syncConnections/entry.ts', 'utf8'
 const health = fs.readFileSync('src/lib/connectionHealth.js', 'utf8');
 const disconnect = fs.readFileSync('base44/functions/disconnectPlatformConnection/entry.ts', 'utf8');
 const card = fs.readFileSync('src/components/connections/ConnectionCard.jsx', 'utf8');
+const connectRows = fs.readFileSync('src/components/connections/connectAccountRows.js', 'utf8');
+const gofundmePro = fs.readFileSync('base44/functions/verifyGoFundMeProConnection/entry.ts', 'utf8');
 const resolver = fs.readFileSync('base44/functions/resolveConnectionStatus/entry.ts', 'utf8');
 const recipe = fs.readFileSync('base44/entities/PlatformConnectionRecipe.jsonc', 'utf8');
 const recipeRouting = fs.readFileSync('base44/shared/platformConnectionRecipes.ts', 'utf8');
@@ -45,6 +47,11 @@ assert.match(card, /onClick=\{onManage\}/);
 assert.match(card, /const accountAuthenticated = verified && connection\.verification_type === "provider_account"/);
 assert.match(card, /Link verified/);
 assert.match(card, /Payment webhook verified/);
+assert.match(card, /verifyGoFundMeProConnection/);
+assert.match(connectRows, /Link verified/);
+assert.match(connectRows, /Webhook verified/);
+assert.match(gofundmePro, /account_authenticated: true/);
+assert.match(resolver, /oauth_variant === 'gofundme_pro'/);
 
 assert.match(recipeRouting, /TRANSPORT_PRIORITY/);
 assert.match(resolver, /orderedTransports/);
