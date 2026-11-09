@@ -95,6 +95,15 @@
       ],
       "default": "unverified"
     },
+    "verification_type": {
+      "type": "string",
+      "description": "Evidence class for the last successful check. public_page proves only that a public URL is reachable; provider_account proves an authenticated account probe; provider_webhook proves a validated signed provider event. Missing legacy values are not account-authentication evidence.",
+      "enum": [
+        "public_page",
+        "provider_account",
+        "provider_webhook"
+      ]
+    },
     "capability_status": {
       "type": "string",
       "description": "Truth state for provider-reported capabilities. Unknown never behaves as granted.",
