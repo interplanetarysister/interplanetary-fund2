@@ -45,7 +45,7 @@ const PROVIDER_ALIASES: Record<string, string> = {
 };
 
 export function canonicalProviderId(value: unknown): string {
-  const normalized = String(value || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+  const normalized = String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
   return PROVIDER_ALIASES[normalized] || normalized;
 }
 
