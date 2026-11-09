@@ -131,7 +131,7 @@ export default async function(req) {
           (!connection?.campaign_id || connection.campaign_id === campaign.id);
         const gate = ownerMatch && canEnterMemberQueue(owner, campaign) &&
           hasAiPublishingConsent(owner) && connection.automation_mode === 'auto' &&
-          connection.status === 'connected' && connection.verification_status === 'verified';
+          connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account';
         const capability = connection
           ? await resolveCapabilityForPlatform(sr, connection.platform) : null;
         const executable = !!capability?.direct_publish_verified &&
