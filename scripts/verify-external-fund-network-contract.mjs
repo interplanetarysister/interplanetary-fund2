@@ -49,6 +49,9 @@ assert.match(registry,/\(connection\.automation_mode \|\| 'manual'\) !== 'auto'/
 assert.doesNotMatch(autopilot,/c\.obo_consent\?\.granted === true/);
 assert.doesNotMatch(connectionSync,/connectionAutomationAllowed/);
 assert.match(platformConnection,/"external_balance_observed_at"/);
+assert.match(platformConnection,/"verification_type"/);
+assert.match(externalSync,/crowdfundingConnectionEligibility\(conn, campaign\.created_by_id, 'external_funds'\)/);
+assert.match(kofiWebhook,/verification_type: 'provider_webhook'/);
 assert.match(prepare,/connection\.external_balance_observed_at \|\| null/);
 assert.doesNotMatch(prepare,/observedAt = connection\.last_synced/);
 assert.match(externalSync,/external_balance_observed_at = now/);
