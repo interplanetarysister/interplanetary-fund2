@@ -4,7 +4,7 @@
   "properties": {
     "platform": {
       "type": "string",
-      "description": "Stable provider key matching PlatformConnection.platform (e.g. 'gofundme', 'kofi')."
+      "description": "Canonical lowercase provider key matching PlatformConnection.platform. Duplicate records for one canonical key are treated as ambiguous and disable executable actions."
     },
     "display_name": {
       "type": "string",
@@ -40,15 +40,18 @@
     },
     "campaign_import": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-page import is available only when the current runtime ships an allowlisted discovery/import adapter. A stored true value alone never enables it."
     },
     "campaign_sync": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Authenticated ongoing provider synchronization. A public-page metadata refresh or successful import is not ongoing sync."
     },
     "balance_read": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-authenticated balance read. Owner-reported totals and public page metadata do not qualify."
     },
     "payout_model": {
       "type": "string",
@@ -68,7 +71,8 @@
     },
     "api_transfer": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-specific executable transfer adapter. Documentation or payout availability at the provider does not qualify."
     },
     "authenticated_browser": {
       "type": "boolean",
@@ -107,7 +111,8 @@
     },
     "campaign_create_verified": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "True only when an allowlisted runtime campaign writer, authenticated provider permission, passing tests, and a dated successful test receipt all exist."
     },
     "campaign_create_tested_at": {
       "type": "string",
@@ -189,6 +194,7 @@
     },
     "capability_status": {
       "type": "string",
+      "description": "Provider-side capability evidence only; independent from IFund implementation and test status.",
       "enum": [
         "verified",
         "partial",
@@ -199,6 +205,7 @@
     },
     "implementation_status": {
       "type": "string",
+      "description": "IFund code implementation state, independent from what the provider documents.",
       "enum": [
         "not_started",
         "in_progress",
@@ -209,6 +216,7 @@
     },
     "test_status": {
       "type": "string",
+      "description": "Automated test state for the IFund adapter; this does not grant a user's account permission.",
       "enum": [
         "untested",
         "passing",
