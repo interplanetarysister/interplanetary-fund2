@@ -37,8 +37,8 @@ assert.equal(giftOf({amount:100,platform_contribution:10}),90);
 assert.equal(recipientGift(100,true),90, 'legacy helper retained for saved allocations');
 assert.equal(giftOf({amount:100}),100);
 assert.equal(giftOf({amount:10,platform_contribution:20}),0);
-assert.equal(computeWithdrawal(100).fee,3);
-assert.equal(computeWithdrawal(100).net,97);
+assert.equal(computeWithdrawal(100).fee,7);
+assert.equal(computeWithdrawal(100).net,93);
 assert.ok(computePayPalProcessingFee(100)>0);
 for (const [amount,allowed] of [[1,true],[100,true],[1_000_000,true],[0,false],[-5,false],[.5,false],[1_000_001,false],[null,false]]) {
   assert.equal(validateDonationAmount(amount).ok,allowed,'amount validation '+amount);
