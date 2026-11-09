@@ -126,7 +126,12 @@ assert.equal(authorizeExternalSyncScope({ actorId:'u1', actorRole:'user', scope:
 assert.equal(authorizeExternalSyncScope({ actorId:'a1', actorRole:'admin', scope:'user', oboUserId:'u2' }).ok, true);
 
 const eligible = { kind:'crowdfunding', created_by_id:'u1', status:'connected', verification_status:'verified', capability_status:'confirmed' };
-assert.equal(crowdfundingConnectionEligibility(eligible,'u1').ok,true);
+assert.equal(crowdfundingConnectionEligibility(eligible,'u1').ok,true,'public campaign discovery accepts a verified public-page link');
+assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'public_page'},'u1','campaign_import').ok,true,'public-page verification permits only bounded user-requested campaign import');
+assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'public_page',external_data_source:'provider_verified'},'u1','external_funds').reason,'provider_account_verification_required','a public page cannot authorize external-fund reads even when a legacy balance label exists');
+assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'provider_account',external_data_source:'provider_verified'},'u1','external_funds').ok,true,'provider-account verification plus provider-backed evidence permits the bounded external-fund path');
+assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'provider_webhook',external_data_source:'provider_verified'},'u1','external_funds').ok,true,'verified provider webhook evidence permits provider-reported external observations');
+assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'provider_account',external_data_source:'owner_reported'},'u1','external_funds').reason,'provider_fundraising_evidence_required','account authentication alone does not make owner-entered totals provider evidence');
 for (const row of [
   {...eligible,status:'disconnected'},
   {...eligible,verification_status:'unverified'},
