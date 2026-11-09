@@ -6,9 +6,9 @@
       "workflow": "Connect outside app",
       "help_slug": "connect-another-platform",
       "tracked_files": {
-        "src/components/connections/ConnectDialog.jsx": "54959f5f8be02711e7747e220e794c4b537f963bc1c1a93deb47b4f8ae394ea7",
+        "src/components/connections/ConnectDialog.jsx": "b3e4b9f06aac45eea2740835b30d9750363f5e8ba3e95f093aedfdecb6afdb6f",
         "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "c20b8c58b9d8ba8c6baf674c069ee371716e1b3e7d2a7e260088bf97a013095c",
-        "base44/functions/saveConnectionCredentials/entry.ts": "541e8cf4c031a01ff64dee9e3ebba53f9bd8bc3b4db65c2760c8b99279e6590c"
+        "base44/functions/saveConnectionCredentials/entry.ts": "d45201726a168d984f74d2dd7d542ba26ea9cbc7cbe9fab535e62bae5f012944"
       }
     },
     {
@@ -33,7 +33,7 @@
       "workflow": "Save a private password",
       "help_slug": "save-platform-password",
       "tracked_files": {
-        "src/components/connections/PasswordVaultPanel.jsx": "490fd3c6c824a86756b908dc5bd5e11630791c2cb42269fdeca98b503fa3a15c",
+        "src/components/connections/PasswordVaultPanel.jsx": "bd4d644d21a9a4f49a3cf9528e8c8298a513c6dc7365068d4c43877bbfb225e4",
         "src/lib/credentialVault.js": "90133cafbf04a766588cd5f878d095ced01f676929fe2147a6c19dca779b123d"
       }
     },

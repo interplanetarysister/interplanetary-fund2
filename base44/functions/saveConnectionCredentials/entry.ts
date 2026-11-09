@@ -127,7 +127,7 @@ export default async function(req) {
       const value = currentCreds[field];
       if (typeof value !== 'string' || !value) continue;
       if (value.startsWith('enc:v1:')) {
-        try { legacySecrets[field] = await decryptConnectionSecret(value); } catch { /* unreadable legacy value is dropped, never re-saved */ }
+        try { legacySecrets[field] = await decryptConnectionSecret(value, base44.asServiceRole); } catch { /* unreadable legacy value is dropped, never re-saved */ }
       } else {
         legacySecrets[field] = value;
       }

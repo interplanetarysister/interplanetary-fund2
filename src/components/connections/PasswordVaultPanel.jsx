@@ -37,7 +37,10 @@ export default function PasswordVaultPanel({ platform }) {
     setError(""); setNotice(""); setLoading(true);
     base44.auth.me()
       .then(me => base44.entities.UserCredentialVault.filter({ user_id: me.id, platform: platform.id }))
-      .then(rows => { if (active) setSaved(rows?.[0] || null); })
+      // Server-vault rows (enc:v1:…) are managed by the provider connection
+      // itself and cannot be opened with a passphrase; only passphrase entries
+      // belong in this panel.
+      .then(rows => { if (active) setSaved((rows || []).find(r => !String(r?.ciphertext || "").startsWith("enc:v1:")) || null); })
       .catch(() => { if (active) setError("The vault is unavailable. Passwords were not loaded."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };

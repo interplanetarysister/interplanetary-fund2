@@ -63,7 +63,7 @@ export default async function(req) {
         // web sign-in, posting, payouts, or other write capabilities.
         const raw = probeConnection.credentials?.buymeacoffee_api_token;
         if (!raw) throw new Error('provider_probe_unavailable');
-        const token = String(raw).startsWith('enc:v1:') ? await decryptConnectionSecret(raw) : raw;
+        const token = String(raw).startsWith('enc:v1:') ? await decryptConnectionSecret(raw, base44.asServiceRole) : raw;
         const response = await fetch('https://developers.buymeacoffee.com/api/v1/supporters?page=1', {
           method: 'GET',
           headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },

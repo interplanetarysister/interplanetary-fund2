@@ -1,0 +1,61 @@
+{
+  "name": "VaultMasterKey",
+  "type": "object",
+  "properties": {
+    "key_id": {
+      "type": "string",
+      "description": "Stable logical key slot. 'primary' is the active credential-vault key."
+    },
+    "key_b64": {
+      "type": "string",
+      "description": "Random 32-byte AES-GCM key, base64 encoded. Server-side only: never returned to a browser, logged, or sent to an AI model."
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "generated",
+        "operator"
+      ],
+      "default": "generated",
+      "description": "generated = created by the vault on first use; operator = provisioned deliberately."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rotated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "key_id",
+    "key_b64"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  },
+  "description": "Admin-only record holding the self-provisioned AES key that encrypts member provider credentials in UserCredentialVault. Platform secrets cannot be written from code, so this record is the durable key store that survives restarts and redeploys."
+}

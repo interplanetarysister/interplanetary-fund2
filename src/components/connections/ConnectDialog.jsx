@@ -282,6 +282,11 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
         <DialogHeader>
           <DialogTitle className="font-display text-xl">{existing ? "Manage" : platform.setupKind === "link" ? "Link a page on" : "Connect"} {platform.name}</DialogTitle>
         </DialogHeader>
+        {platform.setupKind === "link" && (
+          <p className="w-fit rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+            Public link only — not account access
+          </p>
+        )}
         <p className="text-xs text-muted-foreground -mt-2">{existing?.status === "connected" && existing?.verification_status === "verified" ? "On" : existing ? "Needs attention" : "Off"} · {usesProviderOAuth ? "Sign in on the platform and approve its permissions. No post will be sent." : platform.setupKind === "link" ? "This links an existing public fundraising page. It does not authorize account access or publishing." : "Follow the official connection steps below."}</p>
         {usesProviderOAuth && <AccountAiScope platform={platform} checked={accountAiAllowed} onChange={changeAccountAi} existing={!!existing} legacyScope={!!existing && !existing.obo_consent?.scope_choice} scopeChoice={scopeChoice} onScopeChange={setScopeChoice} globalEnabled={aiAuthorized} busy={permissionBusy} />}
         {usesProviderOAuth && (

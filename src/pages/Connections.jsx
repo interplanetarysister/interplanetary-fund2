@@ -489,7 +489,7 @@ export default function Connections() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-slate-950 dark:text-white truncate">{p.name}</span>
                   <span className="block text-xs text-slate-500 dark:text-slate-300 mt-0.5">
-                    {p.setupKind === "link" ? "Link an existing page" : p.setupKind === "oauth" ? "Check sign-in options" : "Guided setup"}
+                    {p.setupKind === "link" ? "Public link only — not account access" : p.setupKind === "oauth" ? "Check sign-in options" : "Guided setup"}
                   </span>
                 </span>
               </button>

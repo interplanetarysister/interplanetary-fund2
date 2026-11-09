@@ -22,16 +22,22 @@ export function maskedHint(value: string): string {
   return text.length <= 4 ? '••••' : '•••• ' + text.slice(-4);
 }
 
+// The same table also holds owner-passphrase entries written by the browser
+// vault (PBKDF2, separate salt/iv/iterations columns, base64 ciphertext). Those
+// are client-only by design and are never read, rewritten or deleted here: a
+// server key cannot open them, so a matching row is simply left untouched.
+const isServerCiphertext = (value: unknown) => String(value || '').startsWith('enc:v1:');
+
 async function readBundle(sr: any, userId: string, platform: string) {
   const rows = await sr.entities.UserCredentialVault
     .filter({ user_id: userId, platform })
     .catch(() => []);
-  if (!Array.isArray(rows) || rows.length === 0) return { row: null, bundle: {} };
-  if (rows.length > 1) throw new Error('vault_duplicate');
-  const row = rows[0];
+  const serverRows = (Array.isArray(rows) ? rows : []).filter((entry) => isServerCiphertext(entry?.ciphertext));
+  if (serverRows.length === 0) return { row: null, bundle: {} };
+  const row = serverRows[0];
   if (!row?.ciphertext) return { row, bundle: {} };
   try {
-    const parsed = JSON.parse(await decryptConnectionSecret(row.ciphertext));
+    const parsed = JSON.parse(await decryptConnectionSecret(row.ciphertext, sr));
     return { row, bundle: parsed && typeof parsed === 'object' ? parsed : {} };
   } catch {
     // An unreadable bundle never becomes a plaintext fallback.
@@ -52,7 +58,7 @@ export async function writeVaultSecrets(sr: any, userId: string, platform: strin
   if (!Object.keys(clean).length) return '';
   const { row, bundle } = await readBundle(sr, userId, platform);
   const next = { ...bundle, ...clean };
-  const ciphertext = await encryptConnectionSecret(JSON.stringify(next));
+  const ciphertext = await encryptConnectionSecret(JSON.stringify(next), sr);
   const now = new Date().toISOString();
   if (row) {
     await sr.entities.UserCredentialVault.update(row.id, { ciphertext, updated_at: now });
