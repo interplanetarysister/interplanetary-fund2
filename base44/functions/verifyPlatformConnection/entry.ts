@@ -46,6 +46,7 @@ export default async function(req) {
     try {
       let connectionVerified = false;
       let providerBacked = false;
+      let verificationType = 'provider_account';
       if (envName) {
         const connectorId = Deno.env.get(envName) || '';
         if (!connectorId) throw new Error('oauth_not_configured');
@@ -82,12 +83,14 @@ export default async function(req) {
           && connection.external_data_source === 'provider_verified';
         providerBacked = connectionVerified;
         if (!connectionVerified) throw new Error('kofi_webhook_required');
+        verificationType = 'provider_webhook';
       } else if (isLinkBasedPlatform(connection.platform)) {
         // For public campaign trackers, a bounded read of the exact provider
         // domain proves the saved link is reachable. It does NOT convert the
         // owner-entered totals into provider-verified financial data.
         await verifyPublicCampaignConnection(connection);
         connectionVerified = true;
+        verificationType = 'public_page';
       } else {
         throw new Error('provider_probe_unavailable');
       }
@@ -106,7 +109,7 @@ export default async function(req) {
         : [];
       const publishEligible = grantedForAgent.includes('create_post');
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
-        status: 'connected', verification_status: 'verified', last_synced: now, last_error: '',
+        status: 'connected', verification_status: 'verified', verification_type: verificationType, last_synced: now, last_error: '',
         obo_consent: {
           ...(connection.obo_consent || {}),
           provider_capabilities: verifiedCapabilities,
@@ -137,6 +140,7 @@ export default async function(req) {
       const updated = await sr.entities.PlatformConnection.update(connection.id, {
         status: setup ? 'needs_setup' : 'error',
         verification_status: 'unverified',
+        verification_type: null,
         last_error: setup ? '' : message,
         agent_access: {
           ...(connection.agent_access || {}), automation_enabled: false,
