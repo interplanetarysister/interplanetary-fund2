@@ -126,7 +126,7 @@ export async function assertPlatformAccess(sr, platform) {
 export async function assertOboGrant(sr, agentName, userId, platform, connection = null) {
   if (connection) {
     const sameOwner = connection.created_by_id === userId;
-    const activeConnection = connection.status === 'connected' && connection.verification_status === 'verified';
+    const activeConnection = connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account';
     const shared = connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
     if (sameOwner && activeConnection && shared) return { ok: true, connectionGrant: true };
     return { ok: false, reason: 'connection OBO authorization is not active' };
@@ -170,7 +170,7 @@ export async function assertExternalAgentAction(sr, {
   if (!hasUnifiedOboConsent(ownerUser)) return { ok: false, reason: 'owner OBO authorization is not active' };
   if (!connection || connection.created_by_id !== ownerUserId) return { ok: false, reason: 'connection owner mismatch' };
   if (campaign && campaign.created_by_id !== ownerUserId) return { ok: false, reason: 'campaign owner mismatch' };
-  if (connection.status !== 'connected' || connection.verification_status !== 'verified') {
+  if (connection.status !== 'connected' || connection.verification_status !== 'verified' || connection.verification_type !== 'provider_account') {
     return { ok: false, reason: 'connection is not verified and active' };
   }
   // Global OBO is necessary but not sufficient. Respect individual account
