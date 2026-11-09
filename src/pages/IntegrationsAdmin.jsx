@@ -62,6 +62,7 @@ export default function IntegrationsAdmin() {
   const [checking, setChecking] = useState(false);
   const [paypalRegistering, setPaypalRegistering] = useState(false);
   const [paypalRegistrationStatus, setPaypalRegistrationStatus] = useState('');
+  const [paypalInventory, setPaypalInventory] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
@@ -129,7 +130,41 @@ export default function IntegrationsAdmin() {
     }
   };
 
+  const inspectExistingPayPalWebhooks = async () => {
+    const request = invokeWithLock(paypalRegisterLock,
+      () => base44.functions.invoke('setupPayPalCampaignWebhook', { inspect_only: true }));
+    if (!request) return;
+    setPaypalRegistering(true);
+    setPaypalInventory(null);
+    setPaypalRegistrationStatus('');
+    try {
+      const response = await request;
+      const data = response?.data || response;
+      if (data?.inspect_only !== true || !Array.isArray(data?.webhook_inventory))
+        throw new Error('Provider webhook inventory was not verified.');
+      if (mounted.current) {
+        setPaypalInventory(data);
+        setPaypalRegistrationStatus(
+          'Existing PayPal webhooks: ' + data.existing_count +
+          '. Matching campaign receivers: ' + data.matching_count +
+          '. Inspection did not register or delete anything.'
+        );
+      }
+    } catch (error) {
+      console.error('PayPal webhook inspection:', error?.name || 'ProviderError');
+      if (mounted.current) setPaypalRegistrationStatus(
+        'PayPal did not return a verified webhook inventory. No registration was attempted.'
+      );
+    } finally {
+      if (mounted.current) setPaypalRegistering(false);
+    }
+  };
+
   const registerPayPalCampaignWebhook = async () => {
+    if (!paypalInventory || (paypalInventory.existing_count > 0 && paypalInventory.matching_count < 1)) {
+      setPaypalRegistrationStatus('Review the existing PayPal webhooks first. Unrelated registrations must not be duplicated.');
+      return;
+    }
     const request = invokeWithLock(paypalRegisterLock, () => base44.functions.invoke('setupPayPalCampaignWebhook', {}));
     if (!request) return;
     setPaypalRegistering(true);
@@ -202,7 +237,11 @@ export default function IntegrationsAdmin() {
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={registerPayPalCampaignWebhook} disabled={paypalRegistering || checking} variant="outline" className="rounded-xl" aria-busy={paypalRegistering}>
+          <Button onClick={inspectExistingPayPalWebhooks} disabled={paypalRegistering || checking} variant="outline" className="rounded-xl" aria-busy={paypalRegistering}>
+            {paypalRegistering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
+            Inspect existing PayPal webhooks
+          </Button>
+          <Button onClick={registerPayPalCampaignWebhook} disabled={paypalRegistering || checking || !paypalInventory || (paypalInventory.existing_count > 0 && paypalInventory.matching_count < 1)} variant="outline" className="rounded-xl" aria-busy={paypalRegistering}>
             {paypalRegistering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
             {paypalRegistering ? "Verifying PayPal…" : "Register PayPal webhook"}
           </Button>
@@ -215,6 +254,25 @@ export default function IntegrationsAdmin() {
 
       {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
       {paypalRegistrationStatus && <p role="status" className="mt-3 text-sm text-amber-800">{paypalRegistrationStatus}</p>}
+      {paypalInventory && (
+        <section className="mt-3 rounded-xl border p-4" aria-label="Existing PayPal developer webhooks">
+          <h3 className="font-semibold">Existing PayPal webhooks ({paypalInventory.existing_count})</h3>
+          <p className="text-sm">Environment: {paypalInventory.environment}. Matching campaign callbacks: {paypalInventory.matching_count}. Existing registrations are never deleted or overwritten by inspection.</p>
+          <ul className="mt-2 space-y-2 text-xs break-all">
+            {paypalInventory.webhook_inventory.map((hook, index) => (
+              <li key={hook.id || index} className="rounded-md border p-2">
+                <strong>{hook.is_campaign_callback ? 'Campaign callback' : 'Other registered callback'}</strong>
+                {' — '}{hook.url}
+                {' — '}Event subscriptions: {(hook.event_types || []).length}
+                {hook.has_required_campaign_events ? ' — Required campaign events present' : ''}
+              </li>
+            ))}
+          </ul>
+          {paypalInventory.existing_count > 0 && paypalInventory.matching_count === 0 && (
+            <p className="mt-2 text-sm text-amber-800">No existing webhook matches this campaign receiver. New registration is blocked pending explicit review of the existing application webhooks.</p>
+          )}
+        </section>
+      )}
       {paypalHealth && (
         <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="PayPal REST integration verification" role="status">
           <h2 className="text-base font-semibold text-amber-900">PayPal REST verification — {paypalHealth.status}</h2>
