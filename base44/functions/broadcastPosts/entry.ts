@@ -81,7 +81,7 @@ export default async function(req) {
       const capability = await resolveCapabilityForPlatform(sr, connection.platform);
       const directPublishVerified = capability?.direct_publish_verified === true && capability?.test_status === 'passing' && capability?.implementation_status === 'implemented';
       const implementedAdapterReady = ['bluesky', 'linkedin'].includes(connection.platform) &&
-        connection.status === 'connected' && connection.verification_status === 'verified' &&
+        connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account' &&
         capability?.test_status !== 'failed' && capability?.implementation_status !== 'disabled';
       if (!directPublishVerified && !implementedAdapterReady) {
         const updated = await base44.entities.DistributedPost.update(post.id, { status: 'approved' });
@@ -119,6 +119,7 @@ export default async function(req) {
         await base44.entities.PlatformConnection.update(connection.id, {
           status: 'connected',
           verification_status: 'verified',
+          verification_type: 'provider_account',
           last_synced: new Date().toISOString(),
           history: [...(connection.history || []), {
             at: new Date().toISOString(),
