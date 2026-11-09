@@ -2,12 +2,12 @@
 // allocations; new PayPal orders use gift-first checkout quotes below.
 // Donor selects the campaign gift. Optional 10% platform support is an
 // ADDITIONAL CHARGE, not a deduction from that gift. Processor fees are also
-// separately included in the explicitly displayed total. IFund's 3% fee is
+// separately included in the explicitly displayed total. IFund's 7% fee is
 // deducted once at withdrawal and is disclosed to the campaign owner there.
 // Quotes are estimates until the provider's capture is verified. Never credit
 // unverified funds or silently reduce a promised campaign gift.
 
-export const PLATFORM_FEE_RATE = 0.03;
+export const PLATFORM_FEE_RATE = 0.07;
 export const CONTRIBUTION_RATE = 0.10;
 export const PROCESSING_RATE = 0.029;
 export const PROCESSING_FIXED = 0.30;
@@ -87,13 +87,13 @@ export function computePayPalWalletProcessingFee(total) { return feeFromTotal(to
 
 export function computeChargeTotal(total) { return round2(Number(total) || 0); }
 
-// 3% platform fee on the recipient's gift (deducted at payout). Never negative.
+// 7% platform fee on the recipient's gift (deducted at payout). Never negative.
 export function computePlatformFee(amount, optedIn) {
   const gift = toCents(recipientGift(amount, optedIn));
   return fromCents(Math.max(0, Math.round(gift * PLATFORM_FEE_RATE)));
 }
 
-// What the campaign actually receives, after the 3% platform fee. Never negative.
+// What the campaign actually receives, after the 7% platform fee. Never negative.
 export function computeRecipientNet(amount, optedIn) {
   const gift = toCents(recipientGift(amount, optedIn));
   const fee = toCents(computePlatformFee(amount, optedIn));
@@ -153,7 +153,7 @@ export function quoteGiftFirst(gift, optedIn, rate, fixedDollars) {
   };
 }
 
-// Withdrawal math for a set of recipient gifts: the single 3% platform fee and
+// Withdrawal math for a set of recipient gifts: the single 7% platform fee and
 // net payout. No processing fee here — the processor already took its one fee
 // at checkout, so deducting it again at payout would double-charge. Never negative.
 export function computeWithdrawal(giftsTotal) {
