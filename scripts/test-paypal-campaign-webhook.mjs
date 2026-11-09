@@ -69,6 +69,13 @@ assert.match(shared,/paypalWebhookAdminRequest/);
 assert.match(readiness,/sr\.entities\.PayPalCampaignWebhook\.filter/);
 assert.match(admin,/registerPayPalCampaignWebhook/);
 assert.match(admin,/setupPayPalCampaignWebhook/);
+assert.match(setup,/inspect_only: true/);
+assert.match(setup,/registered.length > 0 && sameUrl.length === 0/);
+assert.match(setup,/registration_performed: false/);
+assert.match(setup,/Array\.isArray\(all\?\.webhooks\)/);
+assert.match(admin,/inspectExistingPayPalWebhooks/);
+assert.match(admin,/webhook_inventory\.map/);
+assert.match(admin,/matching_count/);
 for (const action of ['read','create','update','delete'])
   assert.equal(schema.rls[action]?.user_condition?.role,'admin');
 console.log('PayPal campaign webhook: contract, provider checks, no financial writes, signature and admin boundaries passed.');
