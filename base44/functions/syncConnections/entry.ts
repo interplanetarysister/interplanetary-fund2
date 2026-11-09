@@ -203,10 +203,14 @@ export default async function(req) {
       // platform with no probe adapter cannot be probed at all. Neither is a
       // failure: it is setup that has not been completed. Re-evaluate rows
       // older hourly runs left at status:error so the wall clears.
+      //
+      // A public campaign link is not an authorization: a linked page is never
+      // re-read on a schedule, so no public-link platform (GoFundMe, Fundly,
+      // Kickstarter, Indiegogo and the rest) enters a verification loop here.
       const oauthEnv = OAUTH_ENV[c.platform];
       const oauthConfigured = !!(oauthEnv && Deno.env.get(oauthEnv));
       if (OAUTH_ENV[c.platform] || c.platform === 'kofi' ||
-          !(c.platform === 'bluesky' || isLinkBasedPlatform(c.platform))) {
+          isLinkBasedPlatform(c.platform) || c.platform !== 'bluesky') {
         report.health_deferred++;
         if (c.status === 'error' && (!oauthConfigured || c.platform === 'kofi')) {
           await sr.entities.PlatformConnection.update(c.id, {
@@ -240,14 +244,14 @@ export default async function(req) {
         }
         const owner = await sr.entities.User.get(c.created_by_id).catch(() => null);
         const version = String(owner?.ai_obo_consent?.permission_version || '');
-        const delegated = !isLinkBasedPlatform(c.platform) && !!owner && hasUnifiedOboConsent(owner) && !!version &&
+        const delegated = c.verification_type === 'provider_account' && !!owner && hasUnifiedOboConsent(owner) && !!version &&
           c.obo_consent?.granted === true &&
           c.obo_consent?.opted_out !== true &&
           c.obo_consent?.permission_version === version;
         const verifiedCaps = c.platform === 'bluesky' ? verifiedConnectionCapabilities(c) : [];
         const agentCaps = delegated ? restrictedAgentScope(c.obo_consent?.requested_capabilities, verifiedCaps) : [];
         const checked = await sr.entities.PlatformConnection.update(c.id, {
-          status: 'connected', verification_status: 'verified', verification_type: isLinkBasedPlatform(c.platform) ? 'public_page' : 'provider_account', last_synced: now.toISOString(), last_error: '',
+          status: 'connected', verification_status: 'verified', verification_type: 'provider_account', last_synced: now.toISOString(), last_error: '',
           obo_consent: {
             ...(c.obo_consent || {}),
             provider_capabilities: verifiedCaps,
@@ -262,7 +266,7 @@ export default async function(req) {
           history: [...(c.history || []), { at: now.toISOString(), event: 'health_check', detail: 'Scheduled provider verification succeeded' }].slice(-30),
         });
         report.verified++;
-        if (!isLinkBasedPlatform(c.platform)) report.delegations_completed += await completeVerifiedManagedWork(sr, checked, now.toISOString()).catch((error) => {
+        if (checked.verification_type === 'provider_account') report.delegations_completed += await completeVerifiedManagedWork(sr, checked, now.toISOString()).catch((error) => {
           console.error('Managed work reconciliation could not finish:', error?.name || 'UnknownError');
           return 0;
         });
