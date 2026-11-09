@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import AgentChat from "@/components/agents/AgentChat";
 import AgentContentReview from "@/components/agents/AgentContentReview";
 import AdminDevelopmentChat from "@/components/agents/AdminDevelopmentChat";
-import BrandLogo from "@/components/brand/BrandLogo";
+import { AgentIdentityIcon } from "@/components/agents/AgentIdentityIcon";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { RefreshCw, Search, ChevronRight } from "lucide-react";
 
@@ -30,11 +30,11 @@ function readSeen(userId, names) {
   return next;
 }
 
-function AgentPlanet({ kind }) {
+function AgentPlanet({ kind, identity = "nexus" }) {
   const halo = kind === "working" ? "ring-2 ring-cyan-500" :
     kind === "new" ? "ring-2 ring-amber-500" : "ring-1 ring-border";
   return <span className={"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl " + halo}>
-    <BrandLogo size="sm" showName={false} />
+    <AgentIdentityIcon identity={identity} size={39} />
   </span>;
 }
 
@@ -154,7 +154,7 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     agent, signal: classify(agent, work, drafts, suggestions, seen[agent.name] || 0, statusLoaded),
   })), [agents, work, drafts, suggestions, seen, statusLoaded]);
 
-  const canChatWithAgent = (agent) => agent.name === "chief_of_staff" || agent.name === "support" || agent.name === "support_agent";
+  const canChatWithAgent = (agent) => !agent.adminOnly || canUseAdminTools;
 
   const openAgent = (agent) => {
     if (!canChatWithAgent(agent)) return;
@@ -162,25 +162,25 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     try { window.localStorage.setItem(readKey(user.id, agent.name), String(now)); }
     catch { /* A private browser may not persist read indicators. */ }
     setSeen((current) => ({ ...current, [agent.name]: now }));
-    setChatMode("chat");
+    setChatMode(agent.adminOnly ? "admin" : "chat");
     setSelected(agent);
     setOpen(true);
   };
 
-  const selectedAgent = selected && agents.find((agent) => agent.name === selected.name);
+  const selectedAgent = selected && agents.find((agent) => agent.identity === selected.identity);
   const activeCount = states.filter((row) => row.signal.kind === "working").length;
   const attentionCount = states.filter((row) => row.signal.kind === "new").length;
 
   const visibleStates = states.filter(({ agent, signal }) =>
     (filter === "all" || (filter === "updates" && signal.kind === "new") || (filter === "working" && signal.kind === "working")) &&
-    agent.label.toLowerCase().includes(query.trim().toLowerCase())
+    (agent.label + " " + (agent.role || "")).toLowerCase().includes(query.trim().toLowerCase())
   );
 
   return <div className="mx-auto max-w-5xl px-3 pb-24 pt-4 sm:px-6 sm:pt-7">
     <header className="mb-4 flex items-center justify-between gap-3">
       <div className="min-w-0">
         <h1 className="font-display text-2xl font-bold text-foreground">Your AI Team</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Chat with the Chief of Staff or Support. Follow specialist progress below.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Select an agent icon to start a conversation, or review its progress.</p>
       </div>
       <button type="button" onClick={refresh} disabled={loading} aria-label="Refresh agent activity"
         className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-foreground" title="Refresh">
@@ -218,17 +218,16 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
     <section aria-label="Monitored agents" className="space-y-2">
       {visibleStates.length === 0 && <div className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">No agents match. Try All or clear your search.</div>}
       {visibleStates.map(({ agent, signal }) => {
-        const Icon = agent.icon;
-        return <button type="button" key={agent.name} onClick={() => openAgent(agent)}
+        return <button type="button" key={agent.identity} onClick={() => openAgent(agent)}
           className="flex min-h-[76px] w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left shadow-sm transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           aria-label={(canChatWithAgent(agent) ? "Talk to " : "Specialist status: ") + agent.label + ", " + signal.text}>
-          <AgentPlanet kind={signal.kind} />
+          <AgentPlanet kind={signal.kind} identity={agent.identity} />
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-2 text-base font-semibold text-foreground">
-              <Icon className="h-4 w-4 shrink-0 text-primary" />
+              
               <span className="truncate">{agent.label}</span>
             </span>
-            <span className="mt-1 block truncate text-sm text-muted-foreground">{signal.kind === "idle" && signal.text === "Available" ? (canChatWithAgent(agent) ? "Tap to chat" : "Works through Chief of Staff") : signal.detail}</span>
+            <span className="mt-1 block truncate text-sm text-muted-foreground">{agent.role ? agent.role + " · " : ""}{signal.kind === "idle" && signal.text === "Available" ? (canChatWithAgent(agent) ? "Tap to chat" : "Works through Chief of Staff") : signal.detail}</span>
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <span className="flex max-w-[80px] flex-col items-end text-right">
@@ -246,17 +245,17 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
       <SheetContent side="right" className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-12 sm:w-[min(95vw,48rem)] sm:max-w-[48rem]">
         {selectedAgent && <>
           <SheetHeader className="shrink-0 text-left">
-            <SheetTitle className="flex items-center gap-3 text-lg"><AgentPlanet kind={states.find((s) => s.agent.name === selectedAgent.name)?.signal.kind || "idle"} />{selectedAgent.label}</SheetTitle>
+            <SheetTitle className="flex items-center gap-3 text-lg"><AgentPlanet kind={states.find((s) => s.agent.identity === selectedAgent.identity)?.signal.kind || "idle"} identity={selectedAgent.identity} />{selectedAgent.label}</SheetTitle>
             <SheetDescription>Ask about your campaigns, account, or the work you want this agent to do.</SheetDescription>
           </SheetHeader>
-          {canUseAdminTools && selectedAgent.name === "chief_of_staff" && <div role="group" aria-label="Admin chat access" className="mt-2 flex shrink-0 gap-2">
+          {canUseAdminTools && selectedAgent.identity === "nexus" && <div role="group" aria-label="Admin chat access" className="mt-2 flex shrink-0 gap-2">
             <button type="button" aria-pressed={chatMode === "chat"} onClick={() => setChatMode("chat")} className={"min-h-11 rounded-lg border px-3 text-sm font-semibold " + (chatMode === "chat" ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}>Chat</button>
             <button type="button" aria-pressed={chatMode === "admin"} onClick={() => setChatMode("admin")} className={"min-h-11 rounded-lg border px-3 text-sm font-semibold " + (chatMode === "admin" ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}>Admin tools</button>
           </div>}
           <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card p-2 sm:p-3">
-            {canUseAdminTools && selectedAgent.name === "chief_of_staff" && chatMode === "admin"
+            {canUseAdminTools && (selectedAgent.identity === "forge" || (selectedAgent.identity === "nexus" && chatMode === "admin"))
               ? <div className="min-h-0 flex-1 overflow-y-auto"><AdminDevelopmentChat user={user} /></div>
-              : <AgentChat key={selectedAgent.name} agentName={selectedAgent.name} agentLabel={selectedAgent.label} greeting={selectedAgent.greeting} overlayMode />}
+              : <AgentChat key={selectedAgent.identity} agentName={selectedAgent.name} agentLabel={selectedAgent.label} greeting={selectedAgent.greeting} overlayMode />}
           </div>
           <details className="mt-3 shrink-0 rounded-xl border border-border bg-card p-3">
             <summary className="cursor-pointer text-sm font-semibold text-foreground">Review suggestions and prepared content</summary>
