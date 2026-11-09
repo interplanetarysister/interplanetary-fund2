@@ -119,7 +119,8 @@ export default async function (req: Request) {
     let connection = body?.connection_id
       ? await sr.entities.PlatformConnection.get(body.connection_id).catch(() => null)
       : null;
-    if (connection && (connection.created_by_id !== user.id || connection.platform !== 'gofundme')) connection = null;
+    if (body?.connection_id && (!connection || connection.created_by_id !== user.id || connection.platform !== 'gofundme'))
+      return Response.json({ ok: false, reason: 'GoFundMe Pro connection not found.' }, { status: 404 });
     if (!connection)
       connection = (await sr.entities.PlatformConnection
         .filter({ created_by_id: user.id, platform: 'gofundme' }, '-updated_date', 1).catch(() => []))[0] || null;
