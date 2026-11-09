@@ -214,7 +214,7 @@ export default function IntegrationsAdmin() {
       </div>
 
       {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
-      {paypalRegistrationStatus && <p role="status" className="mt-3 text-sm text-amber-800">{paypalRegistrationStatus}</p>
+      {paypalRegistrationStatus && <p role="status" className="mt-3 text-sm text-amber-800">{paypalRegistrationStatus}</p>}
       {paypalHealth && (
         <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="PayPal REST integration verification" role="status">
           <h2 className="text-base font-semibold text-amber-900">PayPal REST verification — {paypalHealth.status}</h2>
