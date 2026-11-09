@@ -21,7 +21,7 @@
     },
     "platform_fee": {
       "type": "number",
-      "description": "3% Interplanetary Fund fee deducted once at payout."
+      "description": "7% Interplanetary Fund fee deducted once at payout."
     },
     "net_amount": {
       "type": "number",
