@@ -98,6 +98,21 @@ export async function resolveCapabilities(sr) {
     }
     map.set(key, merged);
   }
+  // Apply runtime gates to seed-only providers as well as stored rows. A
+  // registry record is research data, never a substitute for shipped code.
+  for (const [key, capability] of map.entries()) {
+    for (const [action, platforms] of Object.entries(RUNTIME_ACTION_PLATFORMS)) {
+      const requested = capability[action] === true;
+      capability[action] = platforms.has(key) && requested;
+    }
+    capability.withdrawal_initiation = false;
+    capability.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS.has(key) && capability.direct_publish_verified === true && capability.implementation_status === 'implemented' && capability.test_status === 'passing' && !!capability.adapter_reference && !!capability.publish_tested_at;
+    capability.campaign_create_verified = CAMPAIGN_CREATE_RUNTIME_PLATFORMS.has(key) && capability.campaign_create_verified === true && capability.implementation_status === 'implemented' && capability.test_status === 'passing' && !!capability.adapter_reference && !!capability.campaign_create_tested_at;
+    if (!capability.campaign_sync) {
+      capability.supported_actions = (Array.isArray(capability.supported_actions) ? capability.supported_actions : []).filter((action) => action !== 'campaign_sync');
+      capability.manual_required_actions = [...new Set([...(capability.manual_required_actions || []), 'campaign_refresh'])];
+    }
+  }
   // Duplicate canonical provider rows are ambiguous. Disable every executable
   // capability for that provider until an administrator reconciles the data.
   for (const key of duplicates) {
