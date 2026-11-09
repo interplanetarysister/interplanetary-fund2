@@ -6,6 +6,7 @@
 export const TRANSPORT_PRIORITY = [
   'oauth',
   'api',
+  'api_key',
   'webhook',
   'token',
   'authenticated_browser',
@@ -32,6 +33,9 @@ export const STATIC_CONNECTION_RECIPES: Record<string, Record<string, any>> = {
   fundrazr: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   givesendgo: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
   spotfund: { read_metrics: { preferred_transport: 'public_browser', worker_key: 'runBrowserConnection' } },
+  // Member-supplied API key. Neither provider offers OAuth account access.
+  givebutter: { connect: { preferred_transport: 'api_key', fallback_transports: ['public_browser'] } },
+  donorbox: { connect: { preferred_transport: 'api_key' } },
   wix: { connect: { preferred_transport: 'oauth', connector_type: 'wix', shared: true } },
 };
 

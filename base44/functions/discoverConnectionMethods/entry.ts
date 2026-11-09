@@ -7,7 +7,7 @@ import { staticRecipe, orderedTransports, requiresRouteRediscovery } from '../..
 // It does not issue OAuth URLs, provision credentials or authorize external changes.
 const clean = (value: unknown) => String(value ?? '').trim().toLowerCase().slice(0,80);
 const OWNER_EMAILS = new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com']);
-const permitted = new Set(['oauth','api','webhook','token','authenticated_browser','public_browser','manual']);
+const permitted = new Set(['oauth','api','api_key','webhook','token','authenticated_browser','public_browser','manual']);
 export default async function(req: Request) {
   try {
     const base44 = createClientFromRequest(req);
@@ -36,7 +36,16 @@ export default async function(req: Request) {
     const candidates = recipe ? orderedTransports(recipe).filter((t:string)=>permitted.has(t)) : [];
     const env = OAUTH_ENV[platform];
     const registrationPresent = !!(env && Deno.env.get(env));
-    const methods = candidates.map((transport:string) => ({
+    const methods = candidates.map((transport:string) => transport === 'api_key' ? {
+      // Member-supplied provider key. This is a real, user-startable route:
+      // it does not need IFund-owned OAuth client registration.
+      method:'api_key',
+      requires_user_developer_credentials:true,
+      can_attempt:true,
+      verified:false,
+      requires_human_interaction:false,
+      note:"Uses the member's own API key for this provider. Not OAuth.",
+    } : ({
       method:transport,
       requires_user_developer_credentials: transport === 'api' || transport === 'token' || transport === 'webhook',
       can_attempt: transport === 'oauth' ? registrationPresent : transport === 'public_browser',
