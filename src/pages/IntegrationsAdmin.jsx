@@ -57,6 +57,7 @@ export default function IntegrationsAdmin() {
   const [entries, setEntries] = useState(null);
   const [registryError, setRegistryError] = useState(null);
   const [healthError, setHealthError] = useState(null);
+  const [paypalHealth, setPaypalHealth] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -109,9 +110,13 @@ export default function IntegrationsAdmin() {
     if (!request) return;
     setChecking(true);
     setHealthError(null);
+    setPaypalHealth(null);
     try {
       const response = await request;
       if (!isHealthResponse(response)) throw new Error("Malformed health response");
+      const report = response?.data || response;
+      const paypal = report.report.find((item) => String(item.platform || '').toLowerCase() === 'paypal');
+      if (mounted.current) setPaypalHealth(paypal || null);
       reload();
     } catch (e) {
       console.error("IntegrationsAdmin health check failed:", e?.name || "UnknownError");
@@ -180,6 +185,17 @@ export default function IntegrationsAdmin() {
       </div>
 
       {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
+      {paypalHealth && (
+        <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="PayPal REST integration verification" role="status">
+          <h2 className="text-base font-semibold text-amber-900">PayPal REST verification — {paypalHealth.status}</h2>
+          <p className="text-sm text-amber-800 mt-1">Read-only provider checks. Passing OAuth alone does not enable donations or payouts.</p>
+          <ul className="mt-2 space-y-1 text-sm text-amber-950">
+            {(Array.isArray(paypalHealth.checks) ? paypalHealth.checks : []).filter((check) => check.check?.startsWith('paypal_')).map((check, index) => (
+              <li key={check.check + index}>{check.ok ? '✓' : '•'} {check.detail}</li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
         <Stat label="Registered" value={visibleEntries.length} />
