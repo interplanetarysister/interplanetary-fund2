@@ -17,6 +17,9 @@ assert.match(provider, /Live Mastodon verification is unavailable in this runtim
 assert.doesNotMatch(provider, /api\/v1\/accounts\/verify_credentials/);
 assert.match(verify, /verification_status: 'verified'/);
 assert.match(verify, /verification_status: 'unverified'/);
+assert.match(verify, /verification_type: verificationType/);
+assert.match(verify, /verification_type: null/);
+assert.match(sync, /verification_type: isLinkBasedPlatform\(c\.platform\) \? 'public_page' : 'provider_account'/);
 // Background workers cannot verify app-user OAuth without the signed-in owner.
 assert.doesNotMatch(sync, /getCurrentAppUserConnection\(/);
 assert.match(sync, /OAUTH_ENV\[c\.platform\]/);
