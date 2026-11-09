@@ -40,7 +40,7 @@ export default async function(req){
       });
     }
 
-    const fee=round2(gross*0.03);
+    const fee=round2(gross*0.07);
     const net=round2(gross-fee);
     const record=await sr.entities.ExternalFundMigrationRecord.create({
       request_id:requestId,
