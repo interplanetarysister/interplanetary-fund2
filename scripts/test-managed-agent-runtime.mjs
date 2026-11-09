@@ -22,7 +22,7 @@ const owner = {
 };
 const connection = {
   id: 'connection-1', created_by_id: owner.id,
-  platform: 'bluesky', status: 'connected', verification_status: 'verified',
+  platform: 'bluesky', status: 'connected', verification_status: 'verified', verification_type: 'provider_account',
   obo_consent: { granted: true, permission_version: 'v-1', opted_out: false },
   agent_access: { shared_with_agents: true },
 };
@@ -60,6 +60,8 @@ for (const restricted of [
   { name: 'different connection', work: { ...work, continuation_state: { continuation_ref: 'another-id' } } },
   { name: 'account creation not verified', work: { ...work, objective: 'create_account bluesky' } },
   { name: 'provider not verified', connection: { ...connection, verification_status: 'unverified' } },
+  { name: 'public page is not an account', connection: { ...connection, verification_type: 'public_page' } },
+  { name: 'webhook is not an account', connection: { ...connection, verification_type: 'provider_webhook' } },
 ]) {
   const testing = mock({ owner: restricted.owner || owner, work: restricted.work || work });
   assert.equal(
@@ -79,6 +81,7 @@ assert.match(revoked, /opted_out: true/);
 const access = fs.readFileSync('base44/shared/integrationRegistry.ts', 'utf8');
 assert.match(access, /connection\.obo_consent\?\.opted_out === true/);
 assert.match(access, /connection\.agent_access\?\.shared_with_agents !== true/);
+assert.match(access, /connection\.verification_type !== 'provider_account'/);
 const scheduled = fs.readFileSync('base44/functions/syncConnections/entry.ts', 'utf8');
 assert.doesNotMatch(scheduled, /getCurrentAppUserConnection\(/);
 assert.match(scheduled, /completeVerifiedManagedWork\(/);
