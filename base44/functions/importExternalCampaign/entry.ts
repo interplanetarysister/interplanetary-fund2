@@ -20,7 +20,7 @@ export default async function(req) {
     if (!validExternalSyncRequestId(requestId)) return Response.json({ error: 'A valid request_id is required for an explicit import.' }, { status: 400 });
     sr = base44.asServiceRole;
     const connection = await sr.entities.PlatformConnection.get(body.connection_id);
-    const eligibility = crowdfundingConnectionEligibility(connection, user.id);
+    const eligibility = crowdfundingConnectionEligibility(connection, user.id, 'campaign_import');
     if (!eligibility.ok) return Response.json({ error: 'Connected, verified fundraiser authorization is required.' }, { status: 409 });
     const incoming = body.campaign && typeof body.campaign === 'object' ? body.campaign : {};
     const ownerGoal = Number(incoming.goal_amount);
