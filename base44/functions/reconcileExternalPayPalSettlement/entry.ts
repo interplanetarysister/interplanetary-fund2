@@ -63,7 +63,7 @@ export default async function (req) {
     if (!connection || connection.campaign_id !== campaign_id || connection.created_by_id !== campaign.created_by_id) {
       return Response.json({ error: 'External connection does not belong to this campaign.' }, { status: 409 });
     }
-    if (connection.verification_status !== 'verified' || connection.external_data_source !== 'provider_verified') {
+    if (connection.verification_status !== 'verified' || !['provider_account', 'provider_webhook'].includes(connection.verification_type) || connection.external_data_source !== 'provider_verified') {
       return Response.json({ error: 'Exterior source is not provider verified.' }, { status: 409 });
     }
 
