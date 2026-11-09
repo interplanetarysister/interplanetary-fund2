@@ -240,13 +240,11 @@ export default async function(req) {
         }
         const owner = await sr.entities.User.get(c.created_by_id).catch(() => null);
         const version = String(owner?.ai_obo_consent?.permission_version || '');
-        const delegated = !!owner && hasUnifiedOboConsent(owner) && !!version &&
+        const delegated = !isLinkBasedPlatform(c.platform) && !!owner && hasUnifiedOboConsent(owner) && !!version &&
           c.obo_consent?.granted === true &&
           c.obo_consent?.opted_out !== true &&
           c.obo_consent?.permission_version === version;
-        const verifiedCaps = c.platform === 'bluesky'
-          ? verifiedConnectionCapabilities(c)
-          : (c.obo_consent?.provider_capabilities || []);
+        const verifiedCaps = c.platform === 'bluesky' ? verifiedConnectionCapabilities(c) : [];
         const agentCaps = delegated ? restrictedAgentScope(c.obo_consent?.requested_capabilities, verifiedCaps) : [];
         const checked = await sr.entities.PlatformConnection.update(c.id, {
           status: 'connected', verification_status: 'verified', verification_type: isLinkBasedPlatform(c.platform) ? 'public_page' : 'provider_account', last_synced: now.toISOString(), last_error: '',
