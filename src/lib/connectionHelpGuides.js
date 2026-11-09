@@ -11,7 +11,7 @@ const entries = [
 3. To use AI, make sure the big IFund AI switch is on. Then switch AI on for this app.
 4. Choose what AI can do. Full supported access is the usual choice.
 5. Tap Connect to sign in on the app's own page. Your phone may offer a saved password. Some apps ask you to say Yes to sharing access.
-6. If the app does not have a sign-in button here, follow the steps in its connection window. You may need to paste your public page link or use a special app token.
+6. If the app does not have a sign-in button here, follow the steps in its connection window. You may need to paste your public page link or use a special app token. Donorbox asks for a paid plan that includes API access before it will give you a key. GoFundMe, Fundly, Kickstarter and Indiegogo have no account API, so IFund can only link their public page.
 7. If you change an already-linked fundraiser's page address, currency, or connection details, IFund may need to clear the old amount and donor count.
 8. If the numbers shown still belong to the NEW connection, check the confirmation box before saving. If you cannot confirm them, do not keep the old numbers; IFund clears them until you enter or verify new amounts.
 9. Come back to IFund. Tap Check connection. Only a verified connection says it is working.

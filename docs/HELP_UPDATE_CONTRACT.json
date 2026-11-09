@@ -6,7 +6,7 @@
       "workflow": "Connect outside app",
       "help_slug": "connect-another-platform",
       "tracked_files": {
-        "src/components/connections/ConnectDialog.jsx": "b3e4b9f06aac45eea2740835b30d9750363f5e8ba3e95f093aedfdecb6afdb6f",
+        "src/components/connections/ConnectDialog.jsx": "7c816c712c317e0f36f48314e056c1ef171666c7abb97a5b6363a98dc45652dc",
         "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "c20b8c58b9d8ba8c6baf674c069ee371716e1b3e7d2a7e260088bf97a013095c",
         "base44/functions/saveConnectionCredentials/entry.ts": "d45201726a168d984f74d2dd7d542ba26ea9cbc7cbe9fab535e62bae5f012944"
       }

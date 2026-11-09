@@ -59,7 +59,9 @@ export function methodBadge(platform, method, meta) {
   const found = String(method || '');
   if (found === 'api_key') return 'API key';
   if (found === 'oauth') return 'OAuth 2.0';
-  if (meta?.kind === 'social') return 'No method yet';
+  // Social destinations sign in with OAuth or not at all; the disabled gate
+  // states when IFund's own registration and the provider's review are done.
+  if (meta?.kind === 'social') return 'OAuth 2.0';
   return 'Public link only';
 }
 
@@ -71,5 +73,7 @@ export function statusChip(connection) {
     return { text: 'Error', className: 'border-red-300 bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200' };
   if (connection.status === 'connected')
     return { text: 'Needs attention', className: 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' };
-  return { text: 'Needs setup', className: 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' };
+  if (connection.status === 'needs_setup')
+    return { text: 'Needs setup', className: 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-200' };
+  return { text: 'Not connected', className: 'border-border bg-muted text-muted-foreground' };
 }
