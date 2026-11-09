@@ -38,11 +38,12 @@ export default async function(req: Request) {
     if (!connection.obo_consent?.scope_choice || !chosen.length) {
       return Response.json({error:'Disconnect and reconnect to select the AI permission scope.'},{status:409});
     }
+    const alreadyVerified = connection.status === 'connected' &&
+      connection.verification_status === 'verified' && connection.verification_type === 'provider_account';
+    if (!alreadyVerified) return Response.json({error:'AI actions require a verified provider account. A public campaign link or webhook is not account access.'},{status:409});
     const permitted = restrictedAgentScope(
       chosen, connection.obo_consent?.provider_capabilities || []
     );
-    const alreadyVerified = connection.status === 'connected' &&
-      connection.verification_status === 'verified';
     const updated = await base44.asServiceRole.entities.PlatformConnection.update(connection.id, {
       obo_consent: {
         ...(connection.obo_consent || {}),
