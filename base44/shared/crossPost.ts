@@ -139,6 +139,7 @@ Return JSON only.`;
     const shouldAutoPublish = canAuto &&
       (explicitPublish || conn.automation_mode === 'auto') &&
       directPublishVerified &&
+      conn.verification_type === 'provider_account' &&
       (canAutoPublish(conn) || canPublishViaConnector(conn.platform));
 
     if (shouldAutoPublish) {
@@ -170,6 +171,7 @@ Return JSON only.`;
           await base44.entities.PlatformConnection.update(conn.id, {
             status: 'connected',
             verification_status: 'verified',
+            verification_type: 'provider_account',
             last_synced: new Date().toISOString(),
             last_error: '',
           });
