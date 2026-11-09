@@ -106,26 +106,26 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
   // Connection record present + status connected — refine by transport verification.
   if (recipe?.preferred_transport === 'oauth') {
     if (!oauth?.transport_ok) return 'RECONNECT_REQUIRED';
-    return connection.status === 'connected' && connection.verification_status === 'verified'
+    return connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account'
       ? 'CONNECTED'
       : 'CONNECTING';
   }
   if (recipe?.preferred_transport === 'token') {
     // bluesky/mastodon: provider-verified at save time; stale credentials surface on next verify.
-    return connection.verification_status === 'verified' ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
+    return connection.verification_status === 'verified' && connection.verification_type === 'provider_account' ? 'CONNECTED' : 'AUTHORIZATION_REQUIRED';
   }
   if (recipe?.preferred_transport === 'webhook') {
     // kofi: connected only when a provider webhook has verified the link.
-    return (connection.verification_status === 'verified' && connection.external_data_source === 'provider_verified')
+    return (connection.verification_status === 'verified' && connection.verification_type === 'provider_webhook' && connection.external_data_source === 'provider_verified')
       ? 'CONNECTED' : 'CONNECTING';
   }
   if (recipe?.preferred_transport === 'public_browser') {
     if (!connection?.external_url) return 'AUTHORIZATION_REQUIRED';
-    return connection.status === 'connected' && connection.verification_status === 'verified'
+    return connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'public_page'
       ? 'CONNECTED'
       : 'CONNECTING';
   }
-  return connection.status === 'connected' ? 'CONNECTED' : 'NOT_CONNECTED';
+  return connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account' ? 'CONNECTED' : 'NOT_CONNECTED';
 }
 
 function recoveryHint(lifecycle: string, recipe: any, oauth: any, platform: string): string {
