@@ -10,17 +10,25 @@ export function externalSyncRequestKey(jobType, actorUserId, requestId) {
   return `${String(jobType)}:${String(actorUserId)}:${String(requestId).toLowerCase()}`;
 }
 
-export function crowdfundingConnectionEligibility(connection, ownerUserId) {
+export function crowdfundingConnectionEligibility(connection, ownerUserId, purpose = 'public_campaign') {
   if (!connection || connection.kind !== 'crowdfunding') return { ok: false, reason: 'not_crowdfunding' };
   if (!ownerUserId || connection.created_by_id !== ownerUserId) return { ok: false, reason: 'owner_mismatch' };
   if (connection.status !== 'connected') return { ok: false, reason: 'disconnected' };
   if (connection.verification_status !== 'verified') return { ok: false, reason: 'unverified' };
   if (connection.capability_status === 'reauthorization_required') return { ok: false, reason: 'reauthorization_required' };
-  // Purpose-specific provider consent is optional on legacy link connections.
-  // When present, an explicit refusal/revocation always fails closed. AI/OBO
-  // publishing consent is deliberately not treated as fundraising-data consent.
   const consent = connection.fundraising_data_consent;
   if (consent?.granted === false || consent?.revoked_at) return { ok: false, reason: 'consent_revoked' };
+  // A reachable public campaign page is enough for a user-requested metadata
+  // discovery/import/refresh. It is never proof of an authenticated account,
+  // provider donation feed, balance, publishing permission, or payout authority.
+  if (!['public_campaign', 'campaign_discovery', 'campaign_import', 'campaign_refresh'].includes(purpose)) {
+    if (!['provider_account', 'provider_webhook'].includes(connection.verification_type)) {
+      return { ok: false, reason: 'provider_account_verification_required' };
+    }
+    if (purpose === 'external_funds' && connection.external_data_source !== 'provider_verified') {
+      return { ok: false, reason: 'provider_fundraising_evidence_required' };
+    }
+  }
   return { ok: true, reason: '' };
 }
 
