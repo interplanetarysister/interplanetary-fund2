@@ -125,7 +125,7 @@ export default async function(req) {
       // scheduled worker. Account creation is not proven by a login check.
       if (accountAuthenticated) await completeVerifiedManagedWork(sr, updated, now).catch((error) =>
         console.warn('Could not reconcile verified agent work:', error?.name || 'UnknownError'));
-      return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
+      return Response.json({ working: true, provider_verified: providerBacked, account_authenticated: accountAuthenticated, verification_type: verificationType, connection: publicConnection(updated) });
     } catch (error) {
       const reason = String(error?.message || '');
       const permissionMissing = reason === 'facebook_page_publish_permission_required';
