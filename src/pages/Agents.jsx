@@ -2,22 +2,19 @@ import React, { useEffect, useState } from "react";
 import AgentMonitor from "@/components/agents/AgentMonitor";
 import { base44 } from "@/api/base44Client";
 import { getFrontendIdentity } from "@/lib/adminBootstrap";
-import { Sparkles, TrendingUp, MessageSquare, PenLine, Wallet, Megaphone, Crown, Compass, Link2 } from "lucide-react";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
 import { Link } from "react-router-dom";
 
 // Always-on AI agent team. The Chief of Staff coordinates; each specialist
 // handles one domain. Switching agents starts a fresh conversation.
 const AGENTS = [
-  { name: "chief_of_staff", label: "Chief of Staff", icon: Crown, greeting: "I'm your Chief of Staff — always on. I coordinate your full AI team and can pull up any campaign's status, finances, and outreach. What would you like to work on?" },
-  { name: "strategy_agent", label: "Strategy", icon: Sparkles, greeting: "I'm your Strategy Agent. Tell me which campaign you're focused on and I'll help you decide where to push for the greatest impact." },
-  { name: "growth_agent", label: "Growth", icon: TrendingUp, greeting: "I'm your Growth Agent. I analyze donations and your connected platforms to find new supporter opportunities." },
-  { name: "communications_agent", label: "Communications", icon: MessageSquare, greeting: "I'm your Communications Agent. I'll draft updates and thank-you messages for your supporters — you approve everything before it sends." },
-  { name: "story_agent", label: "Story", icon: PenLine, greeting: "I'm your Story Agent. Share your campaign and I'll help you tell its story authentically." },
-  { name: "finance_agent", label: "Finance", icon: Wallet, greeting: "I'm your Finance Agent. Ask me about raised amounts, clearing funds, fees, or payouts for any of your campaigns." },
-  { name: "outreach_agent", label: "Outreach", icon: Megaphone, greeting: "I'm your Outreach Agent. I'll surface open recommendations and the autonomous agent's activity for your opted-in campaigns." },
-  { name: "connection_discovery_agent", label: "Discovery", icon: Compass, greeting: "I'm your Connection Discovery Agent. I research fundraising and social platforms, verify their capabilities, and record what Interplanetary Fund can do with each one. Ask me about any platform or request a discovery scan." },
-  { name: "managed_connection_agent", label: "Managed Connections", icon: Link2, minLevel: 2, greeting: "Tell me which account you want to connect or fix. I'll give you the right IFund connection link and check what can be completed for you. You just sign in and approve any permissions requested by the provider." },
+  { name: "chief_of_staff", identity: "nexus", label: "NEXUS", role: "Chief of Staff", greeting: "I'm NEXUS, your Chief of Staff. I coordinate the IFund team. What are we working on?" },
+  { name: "communications_agent", identity: "echo", label: "ECHO", role: "Communications", greeting: "I'm ECHO. Let's work on supporter updates and messages; you approve anything before it sends." },
+  { name: "outreach_agent", identity: "pulse", label: "PULSE", role: "Outreach", greeting: "I'm PULSE. Ask me about outreach recommendations and your campaign's audience." },
+  { name: "growth_agent", identity: "orbit", label: "ORBIT", role: "Financial Growth", greeting: "I'm ORBIT. I can help identify fundraising growth opportunities, without promising outcomes." },
+  { name: "strategy_agent", identity: "polaris", label: "POLARIS", role: "Strategy", greeting: "I'm POLARIS. Tell me your goal and I'll help set clear priorities." },
+  { name: "chief_of_staff", identity: "forge", label: "FORGE", role: "Builder", adminOnly: true, greeting: "FORGE offers owner-only development tools." },
+  { name: "managed_connection_agent", identity: "link", label: "LINK", role: "Connections", minLevel: 2, greeting: "I'm LINK. Tell me which account you want to connect; you complete provider sign-in and consent." },
 ];
 
 export default function Agents() {
@@ -38,7 +35,7 @@ export default function Agents() {
     </div>
   </div>;
 
-  const visibleAgents = AGENTS.filter((agent) => !agent.minLevel || hasPlanLevel(user, agent.minLevel));
   const canUseAdminTools = getFrontendIdentity(user).superAdminOwner;
+  const visibleAgents = AGENTS.filter((agent) => (!agent.minLevel || hasPlanLevel(user, agent.minLevel)) && (!agent.adminOnly || canUseAdminTools));
   return <AgentMonitor user={user} agents={visibleAgents} canUseAdminTools={canUseAdminTools} />;
 }
