@@ -105,6 +105,7 @@ export default async function(req) {
     const updated = await sr.entities.PlatformConnection.update(connection.id, {
       status: 'connected',
       verification_status: 'verified',
+      verification_type: 'provider_account',
       capability_status: 'confirmed',
       last_synced: now,
       last_error: '',
@@ -130,6 +131,7 @@ async function recordFailure(sr, connection, reason, now) {
   await sr.entities.PlatformConnection.update(connection.id, {
     status: 'needs_setup',
     verification_status: 'unverified',
+    verification_type: null,
     capability_status: 'unknown',
     last_error: '',
     history: appendHealthEvent(connection.history, 'health_check_failed', reason, now),
