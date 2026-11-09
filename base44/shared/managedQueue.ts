@@ -8,7 +8,7 @@ const ACTIVE = new Set(['requested', 'assigned', 'in_progress', 'waiting_user', 
 // app-user OAuth sessions, create accounts, or cross authorization boundaries.
 export async function completeVerifiedManagedWork(sr: any, connection: any, now: string) {
   const ownerId = String(connection?.created_by_id || '');
-  if (!ownerId || connection?.status !== 'connected' || connection?.verification_status !== 'verified') return 0;
+  if (!ownerId || connection?.status !== 'connected' || connection?.verification_status !== 'verified' || connection?.verification_type !== 'provider_account') return 0;
   const owner = await sr.entities.User.get(ownerId).catch(() => null);
   const version = String(owner?.ai_obo_consent?.permission_version || '');
   if (!owner || owner.account_deletion_pending ||
