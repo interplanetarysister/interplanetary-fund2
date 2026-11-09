@@ -102,6 +102,10 @@ expect(verifyPlatformConnection.includes('await verifyPublicCampaignConnection(c
 expect(syncConnections.includes('await verifyPublicCampaignConnection(c)'), 'scheduled connection sync must re-verify the provider page before green state');
 expect(syncExternalFunds.includes("crowdfundingConnectionEligibility(conn, campaign.created_by_id, 'external_funds')"), 'fund sync must require provider-account or verified-webhook evidence');
 expect(verifyPlatformConnection.includes('verification_type: verificationType'), 'owner verification must persist its evidence class');
+expect(verifyPlatformConnection.includes("const accountAuthenticated = verificationType === 'provider_account'"), 'public links and webhooks must not receive account-level agent permissions');
+expect(verifyPlatformConnection.includes('const verifiedCapabilities = accountAuthenticated ? verifiedConnectionCapabilities(connection) : []'), 'non-account verification must not reuse stored provider capability claims');
+expect(integrationRegistry.includes("connection.verification_type !== 'provider_account'"), 'agent execution must require authenticated provider-account evidence');
+expect(syncExternalFunds.includes("crowdfundingConnectionEligibility(conn, campaign.created_by_id, 'external_funds')"), 'fund sync must require provider-account or verified-webhook evidence');
 expect(syncConnections.includes("verification_type: isLinkBasedPlatform(c.platform) ? 'public_page' : 'provider_account'"), 'scheduled checks must not promote a public link to account authentication');
 expect(!syncExternalFunds.includes("last_error: String(err?.message"), 'external fund sync must not persist raw provider errors');
 expect(providerCapabilities.includes('RUNTIME_ACTION_PLATFORMS'), 'executable capabilities must be gated by code-backed runtime adapters');
