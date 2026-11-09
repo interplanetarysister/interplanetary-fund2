@@ -212,7 +212,7 @@ export default async function(req) {
       if (OAUTH_ENV[c.platform] || c.platform === 'kofi' ||
           isLinkBasedPlatform(c.platform) || c.platform !== 'bluesky') {
         report.health_deferred++;
-        if (c.status === 'error' && (!oauthConfigured || c.platform === 'kofi')) {
+        if (c.status === 'error' && OAUTH_ENV[c.platform] && !oauthConfigured) {
           await sr.entities.PlatformConnection.update(c.id, {
             status: 'needs_setup',
             verification_status: 'unverified',
