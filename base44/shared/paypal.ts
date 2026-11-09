@@ -427,3 +427,32 @@ export async function listTransactions({ startDate, endDate, pageSize = 100 } = 
   }
   return [...resultsById.values()];
 }
+
+
+// Explicit, server-only PayPal webhook administration. Reuses the existing
+// REST application's credentials and active environment. Never creates an
+// order or payout and does not expose an access token or provider errors.
+export async function paypalWebhookAdminRequest(path, options = {}) {
+  if (!/^\\/v1\\/notifications\\/webhooks(?:\\/[A-Za-z0-9_-]+)?$/.test(path))
+    throw new Error('Unsupported webhook administration path.');
+  const method = options.method || 'GET';
+  if (!['GET', 'POST'].includes(method)) throw new Error('Unsupported webhook method.');
+  const token = await getAccessToken();
+  const response = await fetch(apiBase() + path, {
+    method,
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...(options.requestId ? { 'PayPal-Request-Id': String(options.requestId).slice(0,38) } : {}),
+    },
+    ...(method === 'POST' ? { body: JSON.stringify(options.body || {}) } : {}),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error('PayPal webhook management request failed.');
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
