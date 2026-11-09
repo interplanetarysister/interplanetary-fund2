@@ -8,7 +8,7 @@
       "tracked_files": {
         "src/components/connections/ConnectDialog.jsx": "54959f5f8be02711e7747e220e794c4b537f963bc1c1a93deb47b4f8ae394ea7",
         "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "c20b8c58b9d8ba8c6baf674c069ee371716e1b3e7d2a7e260088bf97a013095c",
-        "base44/functions/saveConnectionCredentials/entry.ts": "6a4f1321d47630eaba027c63dd1480cba4619031f1f2f03fa3a167a961c4011e"
+        "base44/functions/saveConnectionCredentials/entry.ts": "541e8cf4c031a01ff64dee9e3ebba53f9bd8bc3b4db65c2760c8b99279e6590c"
       }
     },
     {
