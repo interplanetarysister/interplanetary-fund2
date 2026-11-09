@@ -92,11 +92,12 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       });
       if (!data?.connection) throw new Error("No verification result.");
       onUpdated?.(data.connection);
-      const isLinkOnly = platform?.setupKind === "link";
       setCheckMessage(data.working === true
-        ? isLinkOnly
+        ? data.verification_type === "public_page"
           ? "Fundraising page is reachable. Account access, publishing permissions and donation totals were not verified."
-          : "Account connection verified."
+          : data.verification_type === "provider_webhook"
+            ? "Payment webhook verified. This does not connect your provider account or enable account actions."
+            : "Account connection verified."
         : data?.error || "This connection needs attention. Choose Manage to reconnect.");
     } catch {
       setCheckMessage("The connection could not be checked. Try again.");
