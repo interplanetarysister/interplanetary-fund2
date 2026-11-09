@@ -43,7 +43,6 @@ const RUNTIME_ACTION_PLATFORMS = {
   balance_read: new Set(),
   api_transfer: new Set(),
   authenticated_browser: new Set(),
-  webhook_support: new Set(['kofi']),
 };
 const CAMPAIGN_CREATE_RUNTIME_PLATFORMS = new Set();
 
