@@ -96,12 +96,13 @@ export default async function(req) {
       }
 
       if (!connectionVerified) throw new Error('provider_probe_unavailable');
-      const aiAllowed = providerBacked && user.ai_obo_consent?.granted === true &&
+      const accountAuthenticated = verificationType === 'provider_account';
+      const aiAllowed = accountAuthenticated && user.ai_obo_consent?.granted === true &&
         connection.obo_consent?.granted === true &&
         connection.obo_consent?.opted_out !== true &&
         String(connection.obo_consent?.permission_version || '') ===
         String(user.ai_obo_consent?.permission_version || '');
-      const verifiedCapabilities = providerBacked ? verifiedConnectionCapabilities(connection) : [];
+      const verifiedCapabilities = accountAuthenticated ? verifiedConnectionCapabilities(connection) : [];
       const grantedForAgent = aiAllowed
         ? restrictedAgentScope(connection.obo_consent?.requested_capabilities, verifiedCapabilities)
         : [];
@@ -116,13 +117,13 @@ export default async function(req) {
         agent_access: {
           ...(connection.agent_access || {}),
           shared_with_agents: aiAllowed,
-          automation_enabled: aiAllowed && connection.automation_mode === 'auto' && providerBacked && publishEligible,
+          automation_enabled: aiAllowed && connection.automation_mode === 'auto' && accountAuthenticated && publishEligible,
         },
         history: [...(connection.history || []), { at: now, event: 'health_check', detail: 'Provider connection verified' }].slice(-30),
       });
       // One authoritative completion rule for owner-triggered checks and the
       // scheduled worker. Account creation is not proven by a login check.
-      await completeVerifiedManagedWork(sr, updated, now).catch((error) =>
+      if (accountAuthenticated) await completeVerifiedManagedWork(sr, updated, now).catch((error) =>
         console.warn('Could not reconcile verified agent work:', error?.name || 'UnknownError'));
       return Response.json({ working: true, provider_verified: providerBacked, connection: publicConnection(updated) });
     } catch (error) {
