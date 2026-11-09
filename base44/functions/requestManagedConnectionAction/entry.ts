@@ -99,6 +99,9 @@ export default async function(req: Request) {
       if (!connection || connection.created_by_id !== user.id || connection.platform !== platform) {
         return Response.json({ error: 'Connection not found.' }, { status: 404 });
       }
+      if (['public_page', 'provider_webhook'].includes(connection.verification_type)) {
+        return Response.json({ error: 'This connection verifies a public page or payment webhook, not a provider account. Manage it directly or connect an authenticated account.' }, { status: 409 });
+      }
       if (
         connection.obo_consent?.granted !== true ||
         connection.obo_consent?.opted_out === true ||
@@ -193,7 +196,7 @@ export default async function(req: Request) {
         connection_id: connection.id,
       }).catch(() => null);
       const verified = verification?.data;
-      if (verified?.working === true) {
+      if (verified?.working === true && verified?.account_authenticated === true) {
         await base44.entities.AgentDelegation.update(delegation.id, {
           status: 'completed',
           result_summary: 'The existing connection passed a live provider verification check.',
