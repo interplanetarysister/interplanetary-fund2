@@ -15,6 +15,7 @@ export function crowdfundingConnectionEligibility(connection, ownerUserId, purpo
   if (!ownerUserId || connection.created_by_id !== ownerUserId) return { ok: false, reason: 'owner_mismatch' };
   if (connection.status !== 'connected') return { ok: false, reason: 'disconnected' };
   if (connection.verification_status !== 'verified') return { ok: false, reason: 'unverified' };
+  if (!['public_page', 'provider_account', 'provider_webhook'].includes(connection.verification_type)) return { ok: false, reason: 'verification_evidence_required' };
   if (connection.capability_status === 'reauthorization_required') return { ok: false, reason: 'reauthorization_required' };
   const consent = connection.fundraising_data_consent;
   if (consent?.granted === false || consent?.revoked_at) return { ok: false, reason: 'consent_revoked' };
