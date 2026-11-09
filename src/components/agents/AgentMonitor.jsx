@@ -248,6 +248,16 @@ export default function AgentMonitor({ user, agents, canUseAdminTools }) {
             <SheetTitle className="flex items-center gap-3 text-lg"><AgentPlanet kind={states.find((s) => s.agent.identity === selectedAgent.identity)?.signal.kind || "idle"} identity={selectedAgent.identity} />{selectedAgent.label}</SheetTitle>
             <SheetDescription>Ask about your campaigns, account, or the work you want this agent to do.</SheetDescription>
           </SheetHeader>
+          <nav aria-label="Choose AI agent conversation" className="mt-2 flex shrink-0 gap-2 overflow-x-auto pb-2">
+            {agents.map((agent) => <button key={agent.identity} type="button"
+              aria-label={"Chat with " + agent.label + " — " + agent.role}
+              aria-pressed={selectedAgent.identity === agent.identity}
+              title={agent.label + " · " + agent.role}
+              onClick={() => openAgent(agent)}
+              className={"rounded-xl p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary " + (selectedAgent.identity === agent.identity ? "ring-2 ring-cyan-400" : "border border-border")}>
+              <AgentIdentityIcon identity={agent.identity} size={40}/>
+            </button>)}
+          </nav>
           {canUseAdminTools && selectedAgent.identity === "nexus" && <div role="group" aria-label="Admin chat access" className="mt-2 flex shrink-0 gap-2">
             <button type="button" aria-pressed={chatMode === "chat"} onClick={() => setChatMode("chat")} className={"min-h-11 rounded-lg border px-3 text-sm font-semibold " + (chatMode === "chat" ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}>Chat</button>
             <button type="button" aria-pressed={chatMode === "admin"} onClick={() => setChatMode("admin")} className={"min-h-11 rounded-lg border px-3 text-sm font-semibold " + (chatMode === "admin" ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}>Admin tools</button>
