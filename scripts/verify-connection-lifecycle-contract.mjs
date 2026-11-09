@@ -36,6 +36,9 @@ assert.match(card, /connectionHealth\(connection\)/);
 assert.match(card, /needsReauthorization \? "Reconnect"/);
 assert.match(card, /failed \? "Fix Connection"/);
 assert.match(card, /onClick=\{onManage\}/);
+assert.match(card, /const accountAuthenticated = verified && connection\.verification_type === "provider_account"/);
+assert.match(card, /Link verified/);
+assert.match(card, /Payment webhook verified/);
 
 assert.match(recipeRouting, /TRANSPORT_PRIORITY/);
 assert.match(resolver, /orderedTransports/);
