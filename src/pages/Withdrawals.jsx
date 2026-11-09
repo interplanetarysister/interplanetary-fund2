@@ -135,7 +135,7 @@ export default function Withdrawals() {
 
         <div className="flex items-start gap-2 text-xs text-stone-600 bg-white rounded-xl border border-stone-200/70 p-3">
           <ShieldCheck className="w-4 h-4 mt-0.5 text-cyan-600 shrink-0" />
-          <p>Fraud protection: a 7-day clearing hold on donations, one withdrawal per day without an active subscription, payouts only to the PayPal email you enter and confirm, and a 3% platform fee deducted at payout. Withdrawals over $1,000 get a manual review.</p>
+          <p>Fraud protection: a 7-day clearing hold on donations, one withdrawal per day without an active subscription, payouts only to the PayPal email you enter and confirm, and a 7% platform fee deducted at payout. Withdrawals over $1,000 get a manual review.</p>
         </div>
       </header>
 

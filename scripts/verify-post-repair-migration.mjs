@@ -107,7 +107,7 @@ assert.match(donateDialog, /Give with PayPal/);
 assert.match(donateDialog, /<PayPalCheckoutButton campaign=\{campaign\}/);
 assert.match(donateDialog, /Give with Google Pay/);
 assert.match(donateDialog, /<GooglePayButton campaign=\{campaign\}/);
-assert.match(fees, /PLATFORM_FEE_RATE = 0\.03/);
+assert.match(fees, /PLATFORM_FEE_RATE = 0\.07/);
 assert.match(paymentTests, /test:paypal-financial-recovery/);
 assert.match(paymentTests, /test-paypal-wallet-readiness\.mjs/);
 const legacyVault = read('base44/entities/AdminCredentialVault.jsonc');

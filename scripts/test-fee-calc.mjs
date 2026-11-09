@@ -18,7 +18,7 @@ for (const [rail, quote] of [['PayPal', computePayPalBreakdown], ['PayPal wallet
       assert.equal(Math.round(b.totalCharged * 100), Math.round(b.amount * 100) + Math.round(b.processing * 100));
       assert.equal(Math.round(b.amount * 100), pledgedCents + tipCents);
       assert.ok(b.totalCharged >= pledge + (tipCents / 100));
-      assert.equal(b.platformFee, computeWithdrawal(pledge).fee, '3% only at withdrawal');
+      assert.equal(b.platformFee, computeWithdrawal(pledge).fee, '7% only at withdrawal');
       assert.equal(b.recipientNet, computeWithdrawal(pledge).net);
     }
   }

@@ -87,10 +87,10 @@ export default function FundMigrationDashboard() {
 
   const billable = migrations.filter((m) => parseFloat(m.grossAmount) > 0);
   const totalGross = billable.reduce((s, m) => s + (parseFloat(m.grossAmount) || 0), 0);
-  // Approved Interplanetary Fund fee is 3% (not 5%). Processing fees are covered
+  // Approved Interplanetary Fund fee is 7% (deducted at withdrawal). Processing fees are covered
   // by Interplanetary Fund and shown for transparency only — never deducted from
   // the recipient's net, matching the approved fee policy.
-  const totalPlatformFee = totalGross * 0.03;
+  const totalPlatformFee = totalGross * 0.07;
   const totalNet = totalGross - totalPlatformFee;
 
   const handleSubmit = async () => {
@@ -157,7 +157,7 @@ export default function FundMigrationDashboard() {
             </div>
           ))}
           <div className="pt-2 border-t border-white/10 space-y-1">
-            <div className="flex justify-between text-xs text-slate-400"><span>Interplanetary Fund fee (3%)</span><span>− {fmt(totalPlatformFee)}</span></div>
+            <div className="flex justify-between text-xs text-slate-400"><span>Interplanetary Fund fee (7%)</span><span>− {fmt(totalPlatformFee)}</span></div>
             <div className="flex justify-between font-bold text-slate-100"><span>Net to owner</span><span>{fmt(totalNet)}</span></div>
           </div>
           <div className="pt-2 border-t border-white/10 text-xs text-slate-400">
@@ -277,7 +277,7 @@ export default function FundMigrationDashboard() {
           {totalGross > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs space-y-1">
               <div className="flex justify-between text-slate-300"><span>Total gross</span><span className="font-semibold">{fmt(totalGross)}</span></div>
-              <div className="flex justify-between text-slate-500"><span>Interplanetary Fund fee (3%)</span><span>− {fmt(totalPlatformFee)}</span></div>
+              <div className="flex justify-between text-slate-500"><span>Interplanetary Fund fee (7%)</span><span>− {fmt(totalPlatformFee)}</span></div>
               <div className="flex justify-between text-emerald-400 font-bold"><span>Prospective net if later withdrawn</span><span>{fmt(totalNet)}</span></div>
             </div>
           )}
