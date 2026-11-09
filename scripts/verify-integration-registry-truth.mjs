@@ -100,9 +100,14 @@ expect(saveConnectionCredentials.includes('balanceReconciliation.reset'), 'ident
 const verifyPlatformConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
 expect(verifyPlatformConnection.includes('await verifyPublicCampaignConnection(connection)'), 'link-based connections must verify the provider page before green state');
 expect(syncConnections.includes('await verifyPublicCampaignConnection(c)'), 'scheduled connection sync must re-verify the provider page before green state');
-expect(syncExternalFunds.includes('crowdfundingConnectionEligibility(conn'), 'fund sync must consume connections only through the verified-state eligibility gate');
+expect(syncExternalFunds.includes("crowdfundingConnectionEligibility(conn, campaign.created_by_id, 'external_funds')"), 'fund sync must require provider-account or verified-webhook evidence');
+expect(verifyPlatformConnection.includes('verification_type: verificationType'), 'owner verification must persist its evidence class');
+expect(syncConnections.includes("verification_type: isLinkBasedPlatform(c.platform) ? 'public_page' : 'provider_account'"), 'scheduled checks must not promote a public link to account authentication');
 expect(!syncExternalFunds.includes("last_error: String(err?.message"), 'external fund sync must not persist raw provider errors');
-expect(providerCapabilities.includes("merged[key] = Boolean(base[key]) && Boolean(merged[key])"), 'stored capability rows must not manufacture unsupported runtime capabilities');
+expect(providerCapabilities.includes('RUNTIME_ACTION_PLATFORMS'), 'executable capabilities must be gated by code-backed runtime adapters');
+expect(providerCapabilities.includes('campaign_sync: new Set()'), 'campaign metadata import must not be advertised as ongoing synchronization');
+expect(providerCapabilities.includes('CAMPAIGN_CREATE_RUNTIME_PLATFORMS = new Set()'), 'campaign creation must remain disabled until a real writer adapter is shipped');
+expect(providerCapabilities.includes('Duplicate capability records detected'), 'duplicate provider records must disable executable capabilities');
 expect(!providerCapabilities.includes('balance_read:true'), 'runtime registry must not advertise an unimplemented balance-read adapter');
 expect(providerCapabilities.includes("platform:'custom', display_name:'Custom Campaign URL', category:'custom', campaign_import:false"), 'custom URLs must not advertise provider-backed import support');
 for (const platform of ['kickstarter','indiegogo','fundrazr','givesendgo','buymeacoffee','patreon','spotfund','eventbrite']) {
