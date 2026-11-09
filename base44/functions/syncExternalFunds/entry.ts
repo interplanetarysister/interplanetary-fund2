@@ -188,7 +188,7 @@ export default async function (req) {
       const connections = await sr.entities.PlatformConnection.filter({ campaign_id: campaign.id, kind: 'crowdfunding' }, '-updated_date', 50);
       for (const conn of connections) {
         try {
-          const eligibility = crowdfundingConnectionEligibility(conn, campaign.created_by_id);
+          const eligibility = crowdfundingConnectionEligibility(conn, campaign.created_by_id, 'external_funds');
           if (!eligibility.ok) continue;
 
           // Fence the exact attempt immediately before provider work. A stale
