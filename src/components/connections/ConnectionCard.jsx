@@ -87,18 +87,26 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
     setCheckBusy(true);
     setCheckMessage("");
     try {
-      const { data } = await base44.functions.invoke("verifyPlatformConnection", {
-        connection_id: connection.id,
-      });
+      const isGoFundMePro = connection.platform === "gofundme" &&
+        connection.credentials?.oauth_variant === "gofundme_pro" &&
+        !!connection.credentials?.vault_ref;
+      const { data } = await base44.functions.invoke(
+        isGoFundMePro ? "verifyGoFundMeProConnection" : "verifyPlatformConnection",
+        isGoFundMePro
+          ? { connection_id: connection.id, vault_ref: connection.credentials.vault_ref }
+          : { connection_id: connection.id }
+      );
       if (!data?.connection) throw new Error("No verification result.");
       onUpdated?.(data.connection);
-      setCheckMessage(data.working === true
-        ? data.verification_type === "public_page"
+      const verificationType = data.verification_type || data.connection.verification_type;
+      const succeeded = data.working === true || data.account_authenticated === true;
+      setCheckMessage(succeeded
+        ? verificationType === "public_page"
           ? "Fundraising page is reachable. Account access, publishing permissions and donation totals were not verified."
-          : data.verification_type === "provider_webhook"
+          : verificationType === "provider_webhook"
             ? "Payment webhook verified. This does not connect your provider account or enable account actions."
             : "Account connection verified."
-        : data?.error || "This connection needs attention. Choose Manage to reconnect.");
+        : data?.error || data?.reason || "This connection needs attention. Choose Manage to reconnect.");
     } catch {
       setCheckMessage("The connection could not be checked. Try again.");
     } finally {
