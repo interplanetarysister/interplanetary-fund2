@@ -28,6 +28,8 @@ assert.match(resolver, /connection\.verification_type === 'provider_account'/);
 assert.match(resolver, /connection\.verification_type === 'provider_webhook'/);
 assert.match(resolver, /connection\.verification_type === 'public_page'/);
 assert.match(sync, /verification_type: 'provider_account'/);
+assert.match(sync, /c\.status === 'error' && OAUTH_ENV\[c\.platform\] && !oauthConfigured/);
+assert.doesNotMatch(sync, /c\.platform === 'kofi'\)\s*\{/);
 assert.match(sync, /connection\.verification_type === 'provider_account'/);
 assert.match(verify, /verification_type = 'public_page'/);
 assert.match(verify, /verification_type = 'provider_webhook'/);
