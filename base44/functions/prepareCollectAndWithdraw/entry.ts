@@ -41,6 +41,8 @@ export default async function(req) {
       // A provider's direct/automatic payout model describes provider behavior;
       // it is not evidence that IFund can initiate that payout.
       const technicallyEligible = connection.status === 'connected' && connection.verification_status === 'verified' &&
+        ['provider_account', 'provider_webhook'].includes(connection.verification_type) &&
+        connection.external_data_source === 'provider_verified' && !!connection.external_balance_observed_at &&
         amount > 0 && cap?.capability_status === 'verified' &&
         cap?.api_transfer === true &&
         String(cap?.adapter_reference || '').startsWith('transfer:');
