@@ -67,7 +67,7 @@ export default async function(req) {
     // block an owner-approved live attempt on a separately verified connection.
     // Only a successful provider write will ever mark the post as published.
     const implementedAdapterReady = ['bluesky', 'linkedin'].includes(connection.platform) &&
-      connection.status === 'connected' && connection.verification_status === 'verified' &&
+      connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account' &&
       capability?.test_status !== 'failed' && capability?.implementation_status !== 'disabled';
     const manualShareVerified = capability?.manual_share_verified === true;
     if (!directPublishVerified && !implementedAdapterReady) {
@@ -85,7 +85,7 @@ export default async function(req) {
     }
     const actionAuthorization = hasPerPostHumanAuthorization
       ? {
-        ok: connection.status === 'connected' && connection.verification_status === 'verified',
+        ok: connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account',
         reason: 'The destination connection must be verified before publishing.',
       }
       : await assertExternalAgentAction(sr, {
@@ -137,6 +137,7 @@ export default async function(req) {
       await base44.entities.PlatformConnection.update(connection.id, {
         status: 'connected',
         verification_status: 'verified',
+        verification_type: 'provider_account',
         last_synced: new Date().toISOString(),
         history: [...(connection.history || []), { at: new Date().toISOString(), event: 'published', detail: `Published post for "${post.campaign_title}"` }].slice(-30),
       });
