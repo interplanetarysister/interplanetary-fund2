@@ -149,6 +149,7 @@ export default async function(req) {
       // provider call must still succeed before the connection is shown as working.
       status: 'disconnected',
       verification_status: 'unverified',
+      verification_type: null,
       capability_status: confirmed.length ? 'confirmed' : 'unknown',
       ...oauthBalanceEvidence,
       last_error: 'Provider authorization received; live provider verification is pending.',
