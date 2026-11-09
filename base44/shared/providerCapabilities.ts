@@ -27,12 +27,26 @@ export const CAPABILITY_SEED = [
   { platform:'custom', display_name:'Custom Campaign URL', category:'custom', campaign_import:false, campaign_sync:false, balance_read:false, payout_model:'observe_only', payout_destination_configurable:false, api_transfer:false, authenticated_browser:false, connection_strategy:'observe_only', webhook_support:false, poll_support:false, capability_status:'research_required', implementation_status:'implemented', test_status:'passing', supported_actions:[], unsupported_actions:['campaign_import','balance_read','api_transfer','withdrawal_initiation'], manual_required_actions:[], notes:'Observation/import only until a provider-specific adapter is verified.' },
 ];
 
-export const REGISTRY_VERSION = '2026-10-v1';
+export const REGISTRY_VERSION = '2026-11-v2';
 
 // Runtime-backed direct publishing adapters that are safe to execute in the
 // current Base44 build. Stored research rows may verify/test these adapters,
 // but cannot manufacture a direct-publish implementation for another platform.
 const DIRECT_PUBLISH_RUNTIME_PLATFORMS = new Set(['bluesky', 'linkedin']);
+
+// Runtime action allowlists are code evidence, not admin-editable research.
+// Public-page metadata import is implemented for these providers. It is not
+// authenticated account sync, balance access, publishing, or payout authority.
+const RUNTIME_ACTION_PLATFORMS = {
+  campaign_import: new Set(['gofundme', 'kickstarter', 'indiegogo', 'fundrazr', 'givesendgo', 'kofi', 'buymeacoffee', 'patreon', 'spotfund', 'eventbrite']),
+  campaign_sync: new Set(),
+  balance_read: new Set(),
+  api_transfer: new Set(),
+  authenticated_browser: new Set(),
+  webhook_support: new Set(['kofi']),
+};
+const DIRECT_PUBLISH_RUNTIME_PLATFORMS = new Set(['bluesky', 'linkedin']);
+const CAMPAIGN_CREATE_RUNTIME_PLATFORMS = new Set();
 
 // Fail-closed fallback for any platform not present in the SEED or storage.
 // Unknown capability must never be treated as verified.
@@ -50,32 +64,52 @@ const FALLBACK_CAPABILITY = {
   notes: 'Provider capability has not been registered; treated as unsupported.',
 };
 
-// Merges the SEED baseline with stored FundraisingProviderCapability records.
-// Stored values override SEED defaults so admin edits are authoritative. A
-// platform present only in storage (not in the SEED) is included as-is.
-// Callers receive the same canonical interpretation the UI shows.
+// Merges provider research with the executable actions in this exact build.
+// Admin records may narrow availability and add research, but cannot create an
+// adapter, test result, permission, or write capability that runtime lacks.
 export async function resolveCapabilities(sr) {
   const stored = await sr.entities.FundraisingProviderCapability.list('display_name', 1000).catch(() => []);
-  const map = new Map(CAPABILITY_SEED.map((x) => [x.platform, { ...x }]));
+  const map = new Map(CAPABILITY_SEED.map((x) => [String(x.platform).toLowerCase(), { ...x }]));
+  const seen = new Set();
+  const duplicates = new Set();
   for (const row of stored || []) {
-    const seed = map.get(row.platform);
-    const base = seed || { ...FALLBACK_CAPABILITY, platform: row.platform, display_name: row.display_name || row.platform };
-    const merged = { ...base, ...row };
-
-    // Stored research/admin rows may disable a runtime capability, but they
-    // cannot manufacture an implementation that does not exist in this build.
-    // Unknown platforms inherit the fail-closed false baseline.
-    for (const key of ['campaign_import', 'campaign_sync', 'balance_read', 'api_transfer', 'authenticated_browser']) {
-      merged[key] = Boolean(base[key]) && Boolean(merged[key]);
+    const key = String(row?.platform || '').trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) { duplicates.add(key); continue; }
+    seen.add(key);
+    const seed = map.get(key);
+    const base = seed || { ...FALLBACK_CAPABILITY, platform: key, display_name: row.display_name || key };
+    const merged = { ...base, ...row, platform: key };
+    for (const [action, platforms] of Object.entries(RUNTIME_ACTION_PLATFORMS)) {
+      const requested = row[action] === undefined ? base[action] === true : row[action] === true;
+      merged[action] = platforms.has(key) && requested;
     }
-    merged.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS.has(String(row.platform || '').toLowerCase()) && merged.direct_publish_verified === true;
-    // Never let a stored research row invent a campaign-creation write adapter.
-    merged.campaign_create_verified = false;
-    map.set(row.platform, merged);
+    merged.withdrawal_initiation = false;
+    merged.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS.has(key) &&
+      row.direct_publish_verified === true && row.implementation_status === 'implemented' &&
+      row.test_status === 'passing' && !!row.adapter_reference && !!row.publish_tested_at;
+    merged.campaign_create_verified = CAMPAIGN_CREATE_RUNTIME_PLATFORMS.has(key) &&
+      row.campaign_create_verified === true && row.implementation_status === 'implemented' &&
+      row.test_status === 'passing' && !!row.adapter_reference && !!row.campaign_create_tested_at;
+    if (!merged.campaign_sync) {
+      merged.supported_actions = (Array.isArray(merged.supported_actions) ? merged.supported_actions : [])
+        .filter((action) => action !== 'campaign_sync');
+      merged.manual_required_actions = [...new Set([...(merged.manual_required_actions || []), 'campaign_refresh'])];
+    }
+    map.set(key, merged);
   }
-  // Current runtime has no authorized external crowdfunding campaign writer,
-  // even where the external provider documents an API.
-  for (const capability of map.values()) capability.campaign_create_verified = false;
+  // Duplicate canonical provider rows are ambiguous. Disable every executable
+  // capability for that provider until an administrator reconciles the data.
+  for (const key of duplicates) {
+    const row = map.get(key);
+    if (!row) continue;
+    for (const action of Object.keys(RUNTIME_ACTION_PLATFORMS)) row[action] = false;
+    row.direct_publish_verified = false;
+    row.campaign_create_verified = false;
+    row.capability_status = 'research_required';
+    row.health_state = 'unknown';
+    row.notes = [row.notes, 'Duplicate capability records detected; executable actions are disabled until records are reconciled.'].filter(Boolean).join(' ');
+  }
   return [...map.values()];
 }
 
