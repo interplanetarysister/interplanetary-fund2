@@ -28,6 +28,7 @@ export default async function(req) {
     await sr.entities.PlatformConnection.update(connection.id, {
       status: 'disconnected',
       verification_status: 'unverified',
+      verification_type: null,
       capability_status: 'unknown',
       automation_mode: 'manual',
       obo_consent: {
