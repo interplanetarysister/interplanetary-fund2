@@ -103,7 +103,8 @@
     },
     "publishing_capabilities": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-side publishing feature research only. IFund publishing requires a separately verified runtime adapter and account permission."
     },
     "campaign_create_documented": {
       "type": "boolean",
@@ -150,15 +151,18 @@
     },
     "webhook_support": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-side webhook availability research only; this does not prove IFund has a configured and tested receiver."
     },
     "poll_support": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-side polling research only. Never authorizes unattended, scheduled, page-load, login, or agent-proactive sync."
     },
     "withdrawal_initiation": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "Provider-side withdrawal feature research only. IFund withdrawal remains disabled until a separately allowlisted and verified transfer adapter exists."
     },
     "session_persistence": {
       "type": "boolean",
@@ -241,7 +245,8 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "description": "IFund actions only. The runtime resolver removes actions without a code-backed adapter and passing evidence; do not list provider-only features here."
     },
     "unsupported_actions": {
       "type": "array",
