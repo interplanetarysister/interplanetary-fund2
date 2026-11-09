@@ -1,6 +1,7 @@
 // Offline, no credentials and no money. Exercises the common PayPal
 // webhook contract and guards the production fail-closed code paths.
 import assert from 'node:assert/strict';
+import { transformSync } from 'esbuild';
 import { readFileSync } from 'node:fs';
 import {
   PAYPAL_CAMPAIGN_WEBHOOK_EVENTS, PAYPAL_CAMPAIGN_WEBHOOK_URL,
@@ -13,6 +14,10 @@ const setup = source('base44/functions/setupPayPalCampaignWebhook/entry.ts');
 const admin = source('src/pages/IntegrationsAdmin.jsx');
 const readiness = source('base44/functions/validateIntegrationHealth/entry.ts');
 const shared = source('base44/shared/paypal.ts');
+// The Base44 site build normally transpiles only frontend modules. Independently
+// compile each edited backend TypeScript file so preview detects syntax errors
+// before production deploys attempt the server function bundles.
+for (const script of [shared,receiver,setup,readiness]) transformSync(script, { loader:'ts',format:'esm' });
 const schema = JSON.parse(source('base44/entities/PayPalCampaignWebhook.jsonc'));
 const types = ['PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.PENDING','PAYMENT.CAPTURE.DENIED',
   'PAYMENT.CAPTURE.REFUNDED','PAYMENT.CAPTURE.REVERSED','CHECKOUT.ORDER.APPROVED',
