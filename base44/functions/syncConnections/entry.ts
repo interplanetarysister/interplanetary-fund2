@@ -212,6 +212,7 @@ export default async function(req) {
           await sr.entities.PlatformConnection.update(c.id, {
             status: 'needs_setup',
             verification_status: 'unverified',
+            verification_type: null,
             last_error: '',
           });
           report.health_needs_setup = (report.health_needs_setup || 0) + 1;
@@ -248,7 +249,7 @@ export default async function(req) {
           : (c.obo_consent?.provider_capabilities || []);
         const agentCaps = delegated ? restrictedAgentScope(c.obo_consent?.requested_capabilities, verifiedCaps) : [];
         const checked = await sr.entities.PlatformConnection.update(c.id, {
-          status: 'connected', verification_status: 'verified', last_synced: now.toISOString(), last_error: '',
+          status: 'connected', verification_status: 'verified', verification_type: isLinkBasedPlatform(c.platform) ? 'public_page' : 'provider_account', last_synced: now.toISOString(), last_error: '',
           obo_consent: {
             ...(c.obo_consent || {}),
             provider_capabilities: verifiedCaps,
@@ -278,6 +279,7 @@ export default async function(req) {
           // Missing adapter / missing OAuth client is setup, never an error.
           status: setup ? 'needs_setup' : 'error',
           verification_status: 'unverified',
+          verification_type: null,
           last_error: setup ? '' : message,
           capability_status: c.capability_status || 'unknown',
           agent_access: { ...(c.agent_access || {}), automation_enabled: false },
