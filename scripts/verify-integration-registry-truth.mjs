@@ -47,6 +47,14 @@ expect(admin.includes('isHealthResponse'), 'health responses must be validated b
 
 expect(health.includes("let status = e.status === 'REVOKED' ? 'REVOKED' : 'DISCONNECTED'"), 'health validation must fail closed');
 expect(health.includes('providerVerified = false'), 'health validation must track provider evidence');
+expect(health.includes('verifyPayPalRestConfiguration'), 'PayPal integration health must run provider-side REST checks');
+expect(health.includes('paypal_merchant_reference_matches'), 'PayPal merchant reference must be checked against the canonical business account');
+expect(health.includes('IFUND_PAYPAL_BUSINESS_EMAIL'), 'PayPal merchant evidence must use the shared merchant reference');
+expect(health.includes('paypal_campaign_webhook_id_configured'), 'campaign webhook readiness must be independently checked');
+expect(health.includes('paypal_subscription_webhook'), 'subscription webhook must be verified with PayPal rather than inferred from local rows');
+expect(health.includes('paypal_oauth_token'), 'PayPal credentials must be verified by OAuth before reporting readiness');
+expect(health.includes("status = 'MISCONFIGURED'"), 'unverified PayPal integration must remain fail closed');
+expect(admin.includes('paypalHealth'), 'administrator must see a PayPal-specific REST readiness report');
 expect(health.includes("if (result.status === 'ACTIVE' && result.providerVerified)"), 'last successful verification requires provider evidence');
 expect(health.includes("Historical backend record retained; not health-gated by Base44."), 'legacy Convex evidence must remain historical');
 
