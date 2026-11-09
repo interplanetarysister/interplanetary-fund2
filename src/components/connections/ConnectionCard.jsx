@@ -32,7 +32,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   // the local record heuristic when the resolver result is not yet available.
   const health = lifecycleHealth(resolved) || connectionHealth(connection);
   const verified = health.usable;
-  const accountAuthenticated = connection.verification_type === "provider_account";
+  const accountAuthenticated = verified && connection.verification_type === "provider_account";
   const providerVerifiedFinancialData = verified && ["provider_account", "provider_webhook"].includes(connection.verification_type) && connection.external_data_source === "provider_verified";
   const aiEnabled = accountAuthenticated && connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
   const failed = health.needsAttention;
