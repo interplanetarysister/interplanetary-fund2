@@ -4,6 +4,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 import { mergeSecrets, redactCredentials, SECRET_FIELDS, hasUnifiedOboConsent } from '../../shared/integrationRegistry.ts';
 import { externalBalanceEvidenceChanged, reconcileExternalBalanceIdentity } from '../../shared/externalBalanceEvidence.ts';
 import { writeVaultSecrets, maskedHint } from '../../shared/userCredentialVault.ts';
+import { decryptConnectionSecret } from '../../shared/connectionCrypto.ts';
 import { requestedAgentScope, AI_CONNECTION_SCOPE_VERSION, restrictedAgentScope } from '../../shared/aiConnectionScope.ts';
 
 // Creates or updates a PlatformConnection, merging credential edits so secret
@@ -118,26 +119,44 @@ export default async function(req) {
       const value = typeof incoming[field] === 'string' ? incoming[field].trim() : '';
       if (value) secretIncoming[field] = value;
     }
-    const existingCreds = { ...(existing?.credentials || {}) };
-    for (const field of SECRET_FIELDS) delete existingCreds[field];
-    let vaultRef = String(existingCreds.vault_ref || '');
-    if (Object.keys(secretIncoming).length) {
-      try {
-        vaultRef = await writeVaultSecrets(base44.asServiceRole, user.id, platform, secretIncoming) || vaultRef;
-      } catch {
-        // Fail closed rather than saving provider secrets as plaintext records.
-        return Response.json({
-          error: 'Secure token storage is not configured yet. Your token was not saved. IFund must enable its encrypted credential key first.',
-        }, { status: 503 });
+    const currentCreds = { ...(existing?.credentials || {}) };
+    // Any surviving plaintext secret on an older record moves into the vault on
+    // this save, so a settings update never drops a working credential.
+    const legacySecrets: Record<string, string> = {};
+    for (const field of SECRET_FIELDS) {
+      const value = currentCreds[field];
+      if (typeof value !== 'string' || !value) continue;
+      if (value.startsWith('enc:v1:')) {
+        try { legacySecrets[field] = await decryptConnectionSecret(value); } catch { /* unreadable legacy value is dropped, never re-saved */ }
+      } else {
+        legacySecrets[field] = value;
       }
     }
-    const hints = { ...(existingCreds.secret_hints || {}) };
+    const toVault = { ...legacySecrets, ...secretIncoming };
+    let vaultRef = String(currentCreds.vault_ref || '');
+    let vaultFailed = false;
+    if (Object.keys(toVault).length) {
+      try {
+        vaultRef = await writeVaultSecrets(base44.asServiceRole, user.id, platform, toVault) || vaultRef;
+      } catch {
+        vaultFailed = true;
+        // A newly supplied secret must never fall back to plaintext storage.
+        if (Object.keys(secretIncoming).length) {
+          return Response.json({
+            error: 'Secure token storage is not configured yet. Your token was not saved. IFund must enable its encrypted credential key first.',
+          }, { status: 503 });
+        }
+      }
+    }
+    const hints = { ...(currentCreds.secret_hints || {}) };
     for (const [field, value] of Object.entries(secretIncoming)) hints[field] = maskedHint(value);
-    const mergedCreds: Record<string, any> = { ...existingCreds };
+    const mergedCreds: Record<string, any> = { ...currentCreds };
     for (const [key, value] of Object.entries(incoming)) {
       if (SECRET_FIELDS.includes(key)) continue;
       mergedCreds[key] = value;
     }
+    // Blank plaintext secrets only once they are safely inside the vault.
+    if (!vaultFailed) for (const field of SECRET_FIELDS) delete mergedCreds[field];
     if (vaultRef) mergedCreds.vault_ref = vaultRef;
     if (Object.keys(hints).length) mergedCreds.secret_hints = hints;
     const now = new Date().toISOString();

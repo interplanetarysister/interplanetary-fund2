@@ -23,5 +23,10 @@ export const SETUP_REASONS = new Set([
 ]);
 
 export function isSetupReason(reason: string) {
-  return SETUP_REASONS.has(String(reason || ''));
+  const text = String(reason || '');
+  if (SETUP_REASONS.has(text)) return true;
+  // A missing or unparseable external link, or a platform with no public probe,
+  // is configuration the member can still finish — not a failed connection.
+  if (text === 'Invalid URL') return true;
+  return text.startsWith('Public-page verification is not available');
 }

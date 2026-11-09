@@ -8,7 +8,7 @@
       "tracked_files": {
         "src/components/connections/ConnectDialog.jsx": "54959f5f8be02711e7747e220e794c4b537f963bc1c1a93deb47b4f8ae394ea7",
         "base44/functions/finalizeAppUserOAuthConnection/entry.ts": "c20b8c58b9d8ba8c6baf674c069ee371716e1b3e7d2a7e260088bf97a013095c",
-        "base44/functions/saveConnectionCredentials/entry.ts": "f5b11950a8aa06286509e2801c2f2da91200ec1b82c5febbcf7b5bdc8bd31d50"
+        "base44/functions/saveConnectionCredentials/entry.ts": "6a4f1321d47630eaba027c63dd1480cba4619031f1f2f03fa3a167a961c4011e"
       }
     },
     {
@@ -25,7 +25,7 @@
       "workflow": "Change outside app permissions",
       "help_slug": "change-connection-permissions",
       "tracked_files": {
-        "base44/functions/disconnectPlatformConnection/entry.ts": "645b91d6760862cb027a52af33d22a6f9b1e2e2c664959bb73686cfcb8930b8e",
+        "base44/functions/disconnectPlatformConnection/entry.ts": "0734cd206a11939fa8bf04b07768c314317b205c1229250c6d6fe49eedb83c4a",
         "base44/shared/aiConnectionScope.ts": "86aa144c356a7f97ffe40b1f3af8f018ac4c7a8340f5dd474d2e86e38e015eab"
       }
     },
