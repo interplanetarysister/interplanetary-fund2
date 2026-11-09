@@ -111,7 +111,7 @@ expect(saveConnectionCredentials.includes('balanceReconciliation.reset'), 'ident
 // consumes verified state only via the eligibility gate.
 const verifyPlatformConnection = read('base44/functions/verifyPlatformConnection/entry.ts');
 expect(verifyPlatformConnection.includes('await verifyPublicCampaignConnection(connection)'), 'link-based connections must verify the provider page before green state');
-expect(syncConnections.includes('await verifyPublicCampaignConnection(c)'), 'scheduled connection sync must re-verify the provider page before green state');
+expect(syncConnections.includes("isLinkBasedPlatform(c.platform) || c.platform !== 'bluesky'"), 'scheduled connection sync must not crawl public campaign pages');
 expect(syncExternalFunds.includes("crowdfundingConnectionEligibility(conn, campaign.created_by_id, 'external_funds')"), 'fund sync must require provider-account or verified-webhook evidence');
 expect(verifyPlatformConnection.includes('verification_type: verificationType'), 'owner verification must persist its evidence class');
 expect(verifyPlatformConnection.includes("const accountAuthenticated = verificationType === 'provider_account'"), 'public links and webhooks must not receive account-level agent permissions');
@@ -126,6 +126,8 @@ expect(syncConnections.includes("verification_type: 'provider_account'"), 'sched
 expect(verifyGoFundMeProConnection.includes("verification_type: 'provider_account'"), 'GoFundMe Pro API verification must persist account evidence');
 expect(verifyDonorboxConnection.includes("verification_type: 'provider_account'"), 'Donorbox API verification must persist account evidence');
 expect(verifyGivebutterConnection.includes("verification_type: 'provider_account'"), 'Givebutter API verification must persist account evidence');
+expect(verifyGoFundMeProConnection.includes('account_authenticated: true'), 'GoFundMe Pro must report authenticated account verification');
+expect(verifyPlatformConnection.includes("verification_type = 'public_page'"), 'public-link verification must remain distinct from account authentication');
 expect(!syncExternalFunds.includes("last_error: String(err?.message"), 'external fund sync must not persist raw provider errors');
 expect(providerCapabilities.includes('RUNTIME_ACTION_PLATFORMS'), 'executable capabilities must be gated by code-backed runtime adapters');
 expect(providerCapabilities.includes('campaign_sync: new Set()'), 'campaign metadata import must not be advertised as ongoing synchronization');
