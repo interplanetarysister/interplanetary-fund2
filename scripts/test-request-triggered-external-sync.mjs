@@ -125,8 +125,9 @@ assert.equal(authorizeExternalSyncScope({ actorId:'a1', actorRole:'admin', scope
 assert.equal(authorizeExternalSyncScope({ actorId:'u1', actorRole:'user', scope:'all' }).reason, 'admin_required');
 assert.equal(authorizeExternalSyncScope({ actorId:'a1', actorRole:'admin', scope:'user', oboUserId:'u2' }).ok, true);
 
-const eligible = { kind:'crowdfunding', created_by_id:'u1', status:'connected', verification_status:'verified', capability_status:'confirmed' };
+const eligible = { kind:'crowdfunding', created_by_id:'u1', status:'connected', verification_status:'verified', verification_type:'public_page', capability_status:'confirmed' };
 assert.equal(crowdfundingConnectionEligibility(eligible,'u1').ok,true,'public campaign discovery accepts a verified public-page link');
+assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:undefined},'u1').reason,'verification_evidence_required','legacy verified status without typed evidence must not authorize external actions');
 assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'public_page'},'u1','campaign_import').ok,true,'public-page verification permits only bounded user-requested campaign import');
 assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'public_page'},'u1','campaign_discovery').ok,true,'public-page verification permits bounded user-requested discovery');
 assert.equal(crowdfundingConnectionEligibility({...eligible,verification_type:'public_page'},'u1','campaign_refresh').ok,true,'public-page verification permits bounded user-requested refresh');
