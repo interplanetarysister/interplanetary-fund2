@@ -195,6 +195,7 @@ export default async function(req) {
       external_donor_count: reportedDonors,
       status: 'disconnected',
       verification_status: 'unverified',
+      verification_type: null,
       external_data_source: balanceReconciliation.identityChanged
         ? 'owner_reported'
         : (balanceEvidenceChanged ? 'owner_reported' : (existing?.external_data_source || 'owner_reported')),
