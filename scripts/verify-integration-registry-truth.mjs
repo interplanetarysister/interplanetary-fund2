@@ -24,6 +24,7 @@ const importedCampaignUi = read('src/components/campaigns/ImportedCampaignSync.j
 const saveConnectionCredentials = read('base44/functions/saveConnectionCredentials/entry.ts');
 const syncExternalFunds = read('base44/functions/syncExternalFunds/entry.ts');
 const providerCapabilities = read('base44/shared/providerCapabilities.ts');
+const integrationRegistry = read('base44/shared/integrationRegistry.ts');
 const publicCampaignSnapshot = read('base44/shared/publicCampaignSnapshot.ts');
 const discoverSnapshotLocal = read('base44/functions/discoverExternalCampaignSnapshot/publicCampaignSnapshot.ts');
 const importSnapshotLocal = read('base44/functions/importExternalCampaign/publicCampaignSnapshot.ts');
