@@ -9,6 +9,7 @@ import PlatformLogo from "@/components/connections/PlatformLogo";
 import AIConsentCard from "@/components/connections/AIConsentCard";
 import AgentWorkPanel from "@/components/connections/AgentWorkPanel";
 import ConnectionCard from "@/components/connections/ConnectionCard";
+import ConnectAccountsRows from "@/components/connections/ConnectAccountsRows";
 import ConnectDialog from "@/components/connections/ConnectDialog";
 import PublishFromConnections from "@/components/connections/PublishFromConnections";
 import SyncRunHistory from "@/components/connections/SyncRunHistory";
@@ -324,6 +325,12 @@ export default function Connections() {
           {connectionNotice.text}
         </div>
       )}
+
+      <ConnectAccountsRows
+        connections={connections}
+        onChoose={(platform) => choosePlatform(platform)}
+        onNotice={setConnectionNotice}
+      />
 
       <PublishFromConnections />
 

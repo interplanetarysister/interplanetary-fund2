@@ -310,6 +310,9 @@ export default function ConnectDialog({ platform, existing, aiAuthorized, manage
             <Label>{isCrowd ? "External campaign URL" : "Profile URL"}</Label>
             <Input value={form.external_url} onChange={(e) => set("external_url", e.target.value)} placeholder="https://…" />
           </div>}
+          {!usesProviderOAuth && platform.costWarning && (
+            <p role="note" className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">{platform.costWarning}</p>
+          )}
           {!usesProviderOAuth && <div ref={accountDetailsRef}><CredentialFields platformId={platform.id} credentials={credentials} credentialsMeta={existing?.credentials_meta || {}} onChange={(nextCredentials) => { setCredentials(nextCredentials); setBalanceReaffirmed(false); }} /></div>}
           {!usesProviderOAuth && <div className="space-y-1.5">
             <Label>{platform.kind === "app" ? "Linked Interplanetary Fund campaign" : "Optional campaign to promote"}</Label>

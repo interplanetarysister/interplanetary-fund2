@@ -40,6 +40,7 @@ const PUBLIC_LINK_HOSTS: Record<string, Set<string>> = {
   kickstarter: new Set(['kickstarter.com', 'www.kickstarter.com']),
   indiegogo: new Set(['indiegogo.com', 'www.indiegogo.com']),
   fundrazr: new Set(['fundrazr.com', 'www.fundrazr.com']),
+  fundly: new Set(['fundly.com', 'www.fundly.com']),
   givesendgo: new Set(['givesendgo.com', 'www.givesendgo.com']),
   spotfund: new Set(['spotfund.com', 'www.spotfund.com']),
   buymeacoffee: new Set(['buymeacoffee.com', 'www.buymeacoffee.com']),

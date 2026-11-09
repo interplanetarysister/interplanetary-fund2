@@ -203,10 +203,14 @@ export default async function(req) {
       // platform with no probe adapter cannot be probed at all. Neither is a
       // failure: it is setup that has not been completed. Re-evaluate rows
       // older hourly runs left at status:error so the wall clears.
+      //
+      // A public campaign link is not an authorization: a linked page is never
+      // re-read on a schedule, so no public-link platform (GoFundMe, Fundly,
+      // Kickstarter, Indiegogo and the rest) enters a verification loop here.
       const oauthEnv = OAUTH_ENV[c.platform];
       const oauthConfigured = !!(oauthEnv && Deno.env.get(oauthEnv));
       if (OAUTH_ENV[c.platform] || c.platform === 'kofi' ||
-          !(c.platform === 'bluesky' || isLinkBasedPlatform(c.platform))) {
+          isLinkBasedPlatform(c.platform) || c.platform !== 'bluesky') {
         report.health_deferred++;
         if (c.status === 'error' && (!oauthConfigured || c.platform === 'kofi')) {
           await sr.entities.PlatformConnection.update(c.id, {

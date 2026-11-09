@@ -92,6 +92,21 @@ export const CROWDFUNDING_PLATFORMS = [
     api: "Link your campaign now. We’ll use the best available way to keep it updated.",
   },
   {
+    id: "fundly",
+    name: "Fundly",
+    kind: "crowdfunding",
+    color: "#00a651",
+    icon: "🪙",
+    tagline: "Link your Fundly campaign page and keep its total here.",
+    setupKind: "link",
+    steps: [
+      { id: "url",    label: "Paste your Fundly campaign URL", hint: "Copy the URL from your Fundly campaign page." },
+      { id: "totals", label: "Enter your current totals",      hint: "Enter the amount shown on your campaign." },
+      { id: "link",   label: "Link to a campaign (optional)",  hint: "Connect these figures to one of your IF campaigns." },
+    ],
+    api: "Existing-page link only. Fundly has no public API for account access.",
+  },
+  {
     id: "givesendgo",
     name: "GiveSendGo",
     kind: "crowdfunding",
@@ -233,6 +248,7 @@ export const CROWDFUNDING_PLATFORMS = [
     color: "#1a2b4b",
     icon: "🧡",
     tagline: "Use your own Donorbox login email and API key to read your campaign totals. Not OAuth.",
+    costWarning: "Donorbox requires a paid plan that includes API access.",
     setupKind: "multi",
     steps: [
       { id: "email", label: "Your Donorbox login email", hint: "The email on your Donorbox account." },
