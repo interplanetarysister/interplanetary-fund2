@@ -32,7 +32,9 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   // the local record heuristic when the resolver result is not yet available.
   const health = lifecycleHealth(resolved) || connectionHealth(connection);
   const verified = health.usable;
-  const providerVerifiedFinancialData = verified && connection.external_data_source === "provider_verified";
+  const accountAuthenticated = connection.verification_type === "provider_account";
+  const providerVerifiedFinancialData = verified && ["provider_account", "provider_webhook"].includes(connection.verification_type) && connection.external_data_source === "provider_verified";
+  const aiEnabled = accountAuthenticated && connection.obo_consent?.granted === true && connection.agent_access?.shared_with_agents === true;
   const failed = health.needsAttention;
   const needsReauthorization =
     connection.capability_status === "reauthorization_required" ||
@@ -56,7 +58,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
   };
 
   const toggleAi = async (enabled) => {
-    if (revokeBusy || (enabled && !aiAuthorized)) return;
+    if (revokeBusy || (enabled && (!aiAuthorized || !accountAuthenticated))) return;
     setRevokeBusy(true);setPermissionError("");
     try {
       const { data }=await base44.functions.invoke("setConnectionAiToggle",{
@@ -126,7 +128,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
             )}
           </p>
           <p className="text-xs text-stone-400 mt-1">
-            {verified ? "Connected" : failed ? "Needs reconnect" : "Not connected"}
+            {connection.verification_type === "public_page" && verified ? "Link verified" : connection.verification_type === "provider_webhook" && verified ? "Payment webhook verified" : verified ? "Connected" : failed ? "Needs reconnect" : "Not connected"}
             {connection.last_synced && (
               <> · checked {formatDistanceToNow(new Date(connection.last_synced), { addSuffix: true })}</>
             )}
@@ -157,17 +159,17 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
       <div className="mt-3 rounded-lg border border-border bg-muted/30 px-3 py-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">AI for {platform?.name || connection.platform}</p>
-          <p className="text-sm text-muted-foreground">{connection.obo_consent?.granted === true ? "On — saved permission scope applies" : "Off — your account stays linked"}</p>
+          <p className="text-sm text-muted-foreground">{!accountAuthenticated ? "AI actions require a verified provider account." : aiEnabled ? "On — saved permission scope applies" : "Off — your account stays linked"}</p>
         </div>
-        <button type="button" role="switch" aria-checked={connection.obo_consent?.granted === true}
+        <button type="button" role="switch" aria-checked={aiEnabled}
           aria-label={"AI access for " + (platform?.name || connection.platform)}
-          disabled={revokeBusy || (!aiAuthorized && connection.obo_consent?.granted !== true)}
-          onClick={() => toggleAi(connection.obo_consent?.granted !== true)}
+          disabled={!accountAuthenticated || revokeBusy || (!aiAuthorized && !aiEnabled)}
+          onClick={() => toggleAi(!aiEnabled)}
           className={"min-h-11 rounded-full px-4 text-sm font-bold border " +
-          (connection.obo_consent?.granted === true ? "bg-emerald-600 text-white border-emerald-600" : "bg-card text-foreground border-border")}>
-          {revokeBusy ? "Saving…" : connection.obo_consent?.granted === true ? "On · turn off" : "Off · turn on"}
+          (aiEnabled ? "bg-emerald-600 text-white border-emerald-600" : "bg-card text-foreground border-border")}>
+          {revokeBusy ? "Saving…" : !accountAuthenticated ? "Unavailable" : aiEnabled ? "On · turn off" : "Off · turn on"}
         </button>
-        <p className="w-full text-sm text-muted-foreground">To change what AI may do, disconnect, then reconnect and choose a new scope.</p>
+        <p className="w-full text-sm text-muted-foreground">{!accountAuthenticated ? "A public campaign link or payment webhook does not provide account access. Connect an authenticated account to enable AI actions." : "To change what AI may do, disconnect, then reconnect and choose a new scope."}</p>
       </div>
       {permissionError && <p className="mt-2 text-xs text-red-700" role="alert">{permissionError}</p>}
       {checkMessage && <p className="mt-2 text-xs text-stone-700" role="status">{checkMessage}</p>}
@@ -179,7 +181,7 @@ export default function ConnectionCard({ connection, platform, resolved, onManag
         <Button size="sm" variant="outline" onClick={onManage} className="rounded-lg">
           {needsReauthorization ? "Reconnect" : failed ? "Fix Connection" : "Manage"}
         </Button>
-        {failed && managedAvailable && connection.obo_consent?.granted === true && connection.obo_consent?.opted_out !== true && onManagedRepair && (
+        {failed && managedAvailable && accountAuthenticated && aiEnabled && connection.obo_consent?.opted_out !== true && onManagedRepair && (
           <Button size="sm" variant="outline" onClick={managedRepair} disabled={managedBusy} className="rounded-lg">
             <Wrench className="w-3.5 h-3.5" />{managedBusy ? "Checking…" : "Let IFund repair"}
           </Button>
