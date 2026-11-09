@@ -17,7 +17,7 @@ export default async function(req) {
     if (!validExternalSyncRequestId(requestId)) return Response.json({ error: 'A valid request_id is required for explicit discovery.' }, { status: 400 });
     sr = base44.asServiceRole;
     const connection = await sr.entities.PlatformConnection.get(body.connection_id);
-    const eligibility = crowdfundingConnectionEligibility(connection, user.id);
+    const eligibility = crowdfundingConnectionEligibility(connection, user.id, 'campaign_discovery');
     if (!eligibility.ok) return Response.json({ error: 'Connected, verified fundraiser authorization is required.' }, { status: 409 });
     const fingerprint = JSON.stringify({ connection_id: connection.id });
     const request = await beginExternalSyncRequest(sr, { jobType: 'campaign_discovery', actorUserId: user.id, requestId, fingerprint, scope: 'user' });
