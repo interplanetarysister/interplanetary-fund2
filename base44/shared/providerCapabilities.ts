@@ -5,7 +5,8 @@
 // The SEED below describes the current IFund runtime capability baseline, not
 // theoretical provider features. A capability is true only when the authoritative
 // Base44 build currently has a provider-backed implementation for it. Stored FundraisingProviderCapability
-// records override/extend it. Unknown capability NEVER becomes verified
+// records may narrow it and contribute research metadata, but cannot enable an
+// action without an allowlisted runtime adapter. Unknown capability NEVER becomes verified
 // capability — a platform missing from both SEED and storage resolves to a
 // fail-closed observe_only/research_required entry.
 // poll_support is research metadata about a provider's technical interface.
@@ -63,8 +64,8 @@ const FALLBACK_CAPABILITY = {
 };
 
 // Merges provider research with the executable actions in this exact build.
-// Admin records may narrow availability and add research, but cannot create an
-// adapter, test result, permission, or write capability that runtime lacks.
+// Stored research rows may narrow availability and add research, but cannot
+// create an adapter, test result, permission, or write capability that runtime lacks.
 export async function resolveCapabilities(sr) {
   const stored = await sr.entities.FundraisingProviderCapability.list('display_name', 1000).catch(() => []);
   const map = new Map(CAPABILITY_SEED.map((x) => [String(x.platform).toLowerCase(), { ...x }]));
