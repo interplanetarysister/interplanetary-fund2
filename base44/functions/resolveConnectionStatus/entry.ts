@@ -119,6 +119,11 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
     return (connection.verification_status === 'verified' && connection.verification_type === 'provider_webhook' && connection.external_data_source === 'provider_verified')
       ? 'CONNECTED' : 'CONNECTING';
   }
+  if (recipe?.preferred_transport === 'public_browser' && platform === 'gofundme' && connection.credentials?.oauth_variant === 'gofundme_pro') {
+    return connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account'
+      ? 'CONNECTED'
+      : 'AUTHORIZATION_REQUIRED';
+  }
   if (recipe?.preferred_transport === 'public_browser') {
     if (!connection?.external_url) return 'AUTHORIZATION_REQUIRED';
     return connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'public_page'
@@ -128,9 +133,10 @@ function deriveLifecycle(connection: any | null, shared: any, oauth: any, recipe
   return connection.status === 'connected' && connection.verification_status === 'verified' && connection.verification_type === 'provider_account' ? 'CONNECTED' : 'NOT_CONNECTED';
 }
 
-function recoveryHint(lifecycle: string, recipe: any, oauth: any, platform: string): string {
+function recoveryHint(lifecycle: string, recipe: any, oauth: any, platform: string, connection: any = null): string {
   switch (lifecycle) {
     case 'NOT_CONNECTED':
+      if (platform === 'gofundme' && connection?.credentials?.oauth_variant === 'gofundme_pro') return 'Verify your GoFundMe Pro account using its saved client credentials.';
       if (recipe?.preferred_transport === 'oauth' && !oauth?.configured) return 'Register the workspace connector, then start OAuth.';
       if (recipe?.preferred_transport === 'oauth') return 'Start OAuth to connect this account.';
       if (recipe?.preferred_transport === 'public_browser') return 'Link the public campaign page. This verifies page reachability only; account access and AI actions require a separate authenticated account connection.';
@@ -199,7 +205,9 @@ export default async function(req) {
         if (recipe?.preferred_transport === 'token') capabilities_verified.push('provider_verified');
         if (recipe?.preferred_transport === 'webhook' && connection.external_data_source === 'provider_verified') capabilities_verified.push('receive_donation_webhooks');
       }
-      if (recipe?.preferred_transport === 'public_browser' && lifecycle === 'CONNECTED' && connection?.external_url) {
+      if (recipe?.preferred_transport === 'public_browser' && lifecycle === 'CONNECTED' && platform === 'gofundme' && connection?.credentials?.oauth_variant === 'gofundme_pro') {
+        capabilities_verified.push('provider_account_authenticated');
+      } else if (recipe?.preferred_transport === 'public_browser' && lifecycle === 'CONNECTED' && connection?.external_url) {
         capabilities_verified.push('public_campaign_page_reachable');
       }
     }
@@ -219,7 +227,7 @@ export default async function(req) {
       },
       last_verified: shared?.verified ? shared?.verified_at : connection?.last_synced || null,
       last_error: shared?.last_error ? 'Shared connector verification needs attention.' : connection?.last_error ? 'This connection needs attention.' : null,
-      recovery_hint: recoveryHint(lifecycle, recipe, oauth, key),
+      recovery_hint: recoveryHint(lifecycle, recipe, oauth, key, connection),
       // Sanitized: no tokens, no credentials, no raw provider responses.
     });
   } catch (error) {
