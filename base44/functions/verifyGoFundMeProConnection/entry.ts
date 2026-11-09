@@ -156,7 +156,11 @@ export default async function (req: Request) {
       provider: 'gofundme_pro',
       organization_name: organizationName,
       organization_id: organizationId,
-      connection: { id: updated.id, status: updated.status, verification_status: updated.verification_status },
+      working: true,
+      provider_verified: true,
+      account_authenticated: true,
+      verification_type: 'provider_account',
+      connection: { id: updated.id, status: updated.status, verification_status: updated.verification_status, verification_type: updated.verification_type },
     });
   } catch (error) {
     console.error('verifyGoFundMeProConnection:', error instanceof Error ? error.name : 'UnknownError');
