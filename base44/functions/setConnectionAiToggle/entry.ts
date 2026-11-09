@@ -27,7 +27,9 @@ export default async function(req: Request) {
     const requested=Array.isArray(previous.requested_capabilities) ? previous.requested_capabilities : [];
     if(body.enabled && !requested.length)
       return Response.json({error:'Reconnect and select an AI permission scope first.'},{status:409});
-    const eligible=full.status==='connected' && full.verification_status==='verified';
+    const eligible=full.status==='connected' && full.verification_status==='verified' && full.verification_type==='provider_account';
+    if(body.enabled && !eligible)
+      return Response.json({error:'AI actions require a verified provider account. A public campaign link or webhook is not account access.'},{status:409});
     const effective=body.enabled ? restrictedAgentScope(requested,previous.provider_capabilities || []) : [];
     const version=String(user.ai_obo_consent?.permission_version || '');
     const updated=await api.asServiceRole.entities.PlatformConnection.update(full.id,{
