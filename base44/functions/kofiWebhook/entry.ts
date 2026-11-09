@@ -159,6 +159,7 @@ export default async function(req) {
       await sr.entities.PlatformConnection.update(connection.id, {
         status: 'error',
         verification_status: 'verified',
+        verification_type: 'provider_webhook',
         last_synced: now,
         last_error: mismatchDetail,
         history: [
@@ -173,6 +174,7 @@ export default async function(req) {
         external_currency: currency,
         status: 'connected',
         verification_status: 'verified',
+        verification_type: 'provider_webhook',
         external_data_source: 'provider_verified',
         external_balance_observed_at: now,
         last_synced: now,
