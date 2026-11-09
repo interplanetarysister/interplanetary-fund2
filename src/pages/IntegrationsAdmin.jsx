@@ -60,10 +60,13 @@ export default function IntegrationsAdmin() {
   const [paypalHealth, setPaypalHealth] = useState(null);
   const [selected, setSelected] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [paypalRegistering, setPaypalRegistering] = useState(false);
+  const [paypalRegistrationStatus, setPaypalRegistrationStatus] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const requestGeneration = useRef(0);
   const mounted = useRef(true);
   const healthLock = useRef(false);
+  const paypalRegisterLock = useRef(false);
 
   const loadRegistry = useCallback(async () => {
     const generation = ++requestGeneration.current;
@@ -126,6 +129,28 @@ export default function IntegrationsAdmin() {
     }
   };
 
+  const registerPayPalCampaignWebhook = async () => {
+    const request = invokeWithLock(paypalRegisterLock, () => base44.functions.invoke('setupPayPalCampaignWebhook', {}));
+    if (!request) return;
+    setPaypalRegistering(true);
+    setPaypalRegistrationStatus('');
+    try {
+      const response = await request;
+      const data = response?.data || response;
+      if (data?.ok !== true || data.webhook_registered !== true)
+        throw new Error('PayPal did not confirm campaign webhook registration.');
+      if (mounted.current) {
+        setPaypalRegistrationStatus('PayPal confirmed the campaign webhook registration. Payment checkout remains disabled until sandbox acceptance tests pass.');
+      }
+      await runHealthCheck();
+    } catch (error) {
+      console.error('PayPal webhook registration failed:', error?.name || 'UnknownError');
+      if (mounted.current) setPaypalRegistrationStatus('Campaign webhook registration needs attention. No payment or payout was started.');
+    } finally {
+      if (mounted.current) setPaypalRegistering(false);
+    }
+  };
+
   const sectionNavigation = (
     <nav aria-label="Admin integration sections" className="flex flex-wrap gap-2 mb-6">
       <Link to="/admin/integrations" aria-current={!aiView ? "page" : undefined}
@@ -177,7 +202,11 @@ export default function IntegrationsAdmin() {
           <p className="text-stone-500 mt-1">One secure source of truth for external-platform access — status, health, authorized agents, and reauthorization.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={runHealthCheck} disabled={checking} className="rounded-xl" aria-busy={checking}>
+          <Button onClick={registerPayPalCampaignWebhook} disabled={paypalRegistering || checking} variant="outline" className="rounded-xl" aria-busy={paypalRegistering}>
+            {paypalRegistering ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ShieldCheck className="w-4 h-4 mr-2" />}
+            {paypalRegistering ? "Verifying PayPal…" : "Register PayPal webhook"}
+          </Button>
+          <Button onClick={runHealthCheck} disabled={checking || paypalRegistering} className="rounded-xl" aria-busy={checking}>
             {checking ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Activity className="w-4 h-4 mr-2" />}
             {checking ? "Checking…" : "Run health check"}
           </Button>
@@ -185,6 +214,7 @@ export default function IntegrationsAdmin() {
       </div>
 
       {healthError && <div className="mt-4"><PageError message={healthError} onRetry={runHealthCheck} /></div>}
+      {paypalRegistrationStatus && <p role="status" className="mt-3 text-sm text-amber-800">{paypalRegistrationStatus}</p>
       {paypalHealth && (
         <section className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="PayPal REST integration verification" role="status">
           <h2 className="text-base font-semibold text-amber-900">PayPal REST verification — {paypalHealth.status}</h2>
