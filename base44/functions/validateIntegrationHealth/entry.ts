@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
 import { secrets } from 'base44:runtime';
+import { IFUND_PAYPAL_BUSINESS_EMAIL } from '../../shared/paypal.ts';
 import { logAudit } from '../../shared/auditLog.ts';
 import { emitIntegrationAlert, isUnhealthy, STATUS_LABEL } from '../../shared/integrationRegistry.ts';
 
@@ -28,7 +29,7 @@ async function verifyPayPalRestConfiguration(sr, entry) {
   const id = String(secrets.get('PAYPAL_CLIENT_ID') || '').trim();
   const secret = String(secrets.get('PAYPAL_CLIENT_SECRET') || '').trim();
   const mode = secrets.get('PAYPAL_MODE') === 'live' ? 'live' : 'sandbox';
-  const expectedMerchant = 'cuddlemeplatonically@gmail.com';
+  const expectedMerchant = IFUND_PAYPAL_BUSINESS_EMAIL.toLowerCase();
   const recordedMerchant = String(entry.account_identifier || '').toLowerCase();
   const merchantReferenceMatches = recordedMerchant.includes(expectedMerchant);
   const campaignWebhookConfigured = Boolean(String(secrets.get('PAYPAL_WEBHOOK_ID') || '').trim());
