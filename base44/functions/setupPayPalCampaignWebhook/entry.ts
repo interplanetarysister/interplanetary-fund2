@@ -26,6 +26,8 @@ export default async function(req) {
         callback.search || callback.hash)
       return Response.json({ error: 'The trusted PayPal callback URL is invalid.', stage }, { status: 503 });
 
+    const body = await req.json().catch(() => ({}));
+    const inspectOnly = body?.inspect_only === true;
     const sr = base44.asServiceRole;
     stage = 'local_webhook';
     const local = await sr.entities.PayPalCampaignWebhook.filter({
@@ -39,7 +41,7 @@ export default async function(req) {
       return remote?.url === PAYPAL_CAMPAIGN_WEBHOOK_URL &&
         PAYPAL_CAMPAIGN_WEBHOOK_EVENTS.every(e => enabled.has(e) || enabled.has('*'));
     };
-    if ((local || []).length === 1) {
+    if ((local || []).length === 1 && !inspectOnly) {
       stage = 'verify_existing_registration';
       const row = local[0];
       if (row.url !== PAYPAL_CAMPAIGN_WEBHOOK_URL || !row.webhook_id)
@@ -52,7 +54,35 @@ export default async function(req) {
 
     stage = 'list_registered_webhooks';
     const all = await paypalWebhookAdminRequest('/v1/notifications/webhooks');
-    const sameUrl = (all?.webhooks || []).filter(h => h.url === PAYPAL_CAMPAIGN_WEBHOOK_URL);
+    if (!Array.isArray(all?.webhooks)) {
+      return Response.json({ error: 'PayPal did not return a verified webhook inventory; no registration attempted.', stage }, { status: 503 });
+    }
+    const registered = all.webhooks;
+    const sameUrl = registered.filter(h => h.url === PAYPAL_CAMPAIGN_WEBHOOK_URL);
+    // A business app may already have multiple subscription, campaign, and
+    // legacy receivers. Preserve all of them; do not assume a new one is needed.
+    const inventory = registered.map(h => ({
+      id: String(h.id || ''),
+      url: String(h.url || ''),
+      event_types: (h.event_types || []).map(e => e.name).filter(Boolean),
+      is_campaign_callback: h.url === PAYPAL_CAMPAIGN_WEBHOOK_URL,
+      has_required_campaign_events: hasEvents(h),
+    }));
+    if (inspectOnly) {
+      return Response.json({
+        ok: true, inspect_only: true, environment: mode,
+        existing_count: inventory.length, matching_count: sameUrl.length,
+        webhook_inventory: inventory,
+        registration_performed: false,
+      });
+    }
+    // Reuse exactly matching registrations. Existing unrelated callbacks
+    // require an explicit audit before a seventh webhook can be considered.
+    if (registered.length > 0 && sameUrl.length === 0)
+      return Response.json({
+        error: 'Existing PayPal webhooks require review; no new webhook was registered.',
+        stage, existing_count: registered.length, registration_performed: false,
+      }, { status: 409 });
     if (sameUrl.length > 1 || (sameUrl.length && !hasEvents(sameUrl[0])))
       return Response.json({ error: 'Existing PayPal webhook needs reconciliation; no duplicate created.', stage }, { status: 409 });
     stage = 'register_webhook';
