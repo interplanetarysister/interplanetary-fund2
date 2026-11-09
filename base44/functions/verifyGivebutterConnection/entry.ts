@@ -76,12 +76,22 @@ export default async function(req) {
       });
     }
 
-    const response = await fetch('https://api.givebutter.com/v1/campaigns', {
-      method: 'GET',
-      headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' },
-      redirect: 'error',
-      signal: AbortSignal.timeout(15000),
-    });
+    let response;
+    try {
+      response = await fetch('https://api.givebutter.com/v1/campaigns', {
+        method: 'GET',
+        headers: { Authorization: 'Bearer ' + key, Accept: 'application/json' },
+        // This runtime only supports 'follow' | 'manual'. 'manual' keeps the
+        // Authorization header from being replayed to a redirect target.
+        redirect: 'manual',
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (error) {
+      // A transport failure is not a rejected key. Never report it as one, and
+      // never echo the key or the request headers.
+      console.error('verifyGivebutterConnection transport:', error instanceof Error ? `${error.name}: ${error.message}` : 'UnknownError');
+      return Response.json({ ok: false, reason: 'Givebutter could not be reached from IFund right now. Try again shortly.' }, { status: 502 });
+    }
 
     if (response.status === 401) {
       await recordFailure(sr, connection, REJECTED, now);
