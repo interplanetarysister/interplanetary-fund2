@@ -36,7 +36,7 @@ export default async function(req) {
       // A global authorization cannot override a provider-specific refusal.
       // Preserve the original grant timestamp when globally disabled so a
       // later global re-enable restores formerly approved accounts.
-      const approvedForAccount = granted && currentObo.opted_out !== true &&
+      const approvedForAccount = granted && connection.verification_type === 'provider_account' && currentObo.opted_out !== true &&
         (currentObo.granted === true || !!currentObo.granted_at);
       const patch = {
         obo_consent: {
@@ -52,7 +52,7 @@ export default async function(req) {
           ...currentAgent,
           shared_with_agents: approvedForAccount,
           automation_enabled: approvedForAccount && connection.verification_status === 'verified'
-            && connection.status === 'connected' && (connection.automation_mode || 'manual') === 'auto'
+            && connection.verification_type === 'provider_account' && connection.status === 'connected' && (connection.automation_mode || 'manual') === 'auto'
             && (currentObo.provider_capabilities || []).includes('create_post'),
         },
         automation_mode: connection.automation_mode || 'manual',
