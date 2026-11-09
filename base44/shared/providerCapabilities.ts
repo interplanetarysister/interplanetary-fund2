@@ -28,6 +28,27 @@ export const CAPABILITY_SEED = [
   { platform:'custom', display_name:'Custom Campaign URL', category:'custom', campaign_import:false, campaign_sync:false, balance_read:false, payout_model:'observe_only', payout_destination_configurable:false, api_transfer:false, authenticated_browser:false, connection_strategy:'observe_only', webhook_support:false, poll_support:false, capability_status:'research_required', implementation_status:'implemented', test_status:'passing', supported_actions:[], unsupported_actions:['campaign_import','balance_read','api_transfer','withdrawal_initiation'], manual_required_actions:[], notes:'Observation/import only until a provider-specific adapter is verified.' },
 ];
 
+const PROVIDER_ALIASES: Record<string, string> = {
+  'go_fund_me': 'gofundme',
+  'go_fund_me_pro': 'gofundme',
+  'gofundme_pro': 'gofundme',
+  'gofundmepro': 'gofundme',
+  'classy': 'gofundme',
+  'kick_starter': 'kickstarter',
+  'fund_razr': 'fundrazr',
+  'give_send_go': 'givesendgo',
+  'ko_fi': 'kofi',
+  'buy_me_a_coffee': 'buymeacoffee',
+  'spot_fund': 'spotfund',
+  'event_brite': 'eventbrite',
+  'just_giving': 'justgiving',
+};
+
+export function canonicalProviderId(value: unknown): string {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[\\s-]+/g, '_');
+  return PROVIDER_ALIASES[normalized] || normalized;
+}
+
 export const REGISTRY_VERSION = '2026-11-v2';
 
 // Runtime-backed direct publishing adapters that are safe to execute in the
@@ -72,7 +93,7 @@ export async function resolveCapabilities(sr) {
   const seen = new Set();
   const duplicates = new Set();
   for (const row of stored || []) {
-    const key = String(row?.platform || '').trim().toLowerCase();
+    const key = canonicalProviderId(row?.platform);
     if (!key) continue;
     if (seen.has(key)) { duplicates.add(key); continue; }
     seen.add(key);
@@ -90,9 +111,18 @@ export async function resolveCapabilities(sr) {
     merged.campaign_create_verified = CAMPAIGN_CREATE_RUNTIME_PLATFORMS.has(key) &&
       row.campaign_create_verified === true && row.implementation_status === 'implemented' &&
       row.test_status === 'passing' && !!row.adapter_reference && !!row.campaign_create_tested_at;
+    merged.supported_actions = (Array.isArray(merged.supported_actions) ? merged.supported_actions : [])
+      .filter((action) => {
+        if (action === 'campaign_import') return merged.campaign_import === true;
+        if (action === 'campaign_sync') return merged.campaign_sync === true;
+        if (action === 'balance_read') return merged.balance_read === true;
+        if (action === 'api_transfer' || action === 'withdrawal_initiation') return false;
+        if (action === 'campaign_create') return merged.campaign_create_verified === true;
+        if (action === 'direct_publish') return merged.direct_publish_verified === true;
+        if (action === 'webhook_events') return key === 'kofi' && merged.implementation_status === 'implemented' && merged.test_status === 'passing';
+        return true;
+      });
     if (!merged.campaign_sync) {
-      merged.supported_actions = (Array.isArray(merged.supported_actions) ? merged.supported_actions : [])
-        .filter((action) => action !== 'campaign_sync');
       merged.manual_required_actions = [...new Set([...(merged.manual_required_actions || []), 'campaign_refresh'])];
     }
     map.set(key, merged);
@@ -107,8 +137,18 @@ export async function resolveCapabilities(sr) {
     capability.withdrawal_initiation = false;
     capability.direct_publish_verified = DIRECT_PUBLISH_RUNTIME_PLATFORMS.has(key) && capability.direct_publish_verified === true && capability.implementation_status === 'implemented' && capability.test_status === 'passing' && !!capability.adapter_reference && !!capability.publish_tested_at;
     capability.campaign_create_verified = CAMPAIGN_CREATE_RUNTIME_PLATFORMS.has(key) && capability.campaign_create_verified === true && capability.implementation_status === 'implemented' && capability.test_status === 'passing' && !!capability.adapter_reference && !!capability.campaign_create_tested_at;
+    capability.supported_actions = (Array.isArray(capability.supported_actions) ? capability.supported_actions : [])
+      .filter((action) => {
+        if (action === 'campaign_import') return capability.campaign_import === true;
+        if (action === 'campaign_sync') return capability.campaign_sync === true;
+        if (action === 'balance_read') return capability.balance_read === true;
+        if (action === 'api_transfer' || action === 'withdrawal_initiation') return false;
+        if (action === 'campaign_create') return capability.campaign_create_verified === true;
+        if (action === 'direct_publish') return capability.direct_publish_verified === true;
+        if (action === 'webhook_events') return key === 'kofi' && capability.implementation_status === 'implemented' && capability.test_status === 'passing';
+        return true;
+      });
     if (!capability.campaign_sync) {
-      capability.supported_actions = (Array.isArray(capability.supported_actions) ? capability.supported_actions : []).filter((action) => action !== 'campaign_sync');
       capability.manual_required_actions = [...new Set([...(capability.manual_required_actions || []), 'campaign_refresh'])];
     }
   }
@@ -118,6 +158,7 @@ export async function resolveCapabilities(sr) {
     const row = map.get(key);
     if (!row) continue;
     for (const action of Object.keys(RUNTIME_ACTION_PLATFORMS)) row[action] = false;
+    row.supported_actions = [];
     row.direct_publish_verified = false;
     row.campaign_create_verified = false;
     row.capability_status = 'research_required';
@@ -130,7 +171,7 @@ export async function resolveCapabilities(sr) {
 // Resolves a single platform's capability. Returns the fail-closed fallback
 // when the platform is unknown to both SEED and storage.
 export async function resolveCapabilityForPlatform(sr, platform) {
-  const key = String(platform || '').toLowerCase();
+  const key = canonicalProviderId(platform);
   const all = await resolveCapabilities(sr);
   const found = all.find((c) => String(c.platform).toLowerCase() === key);
   if (found) return found;
