@@ -45,7 +45,6 @@ const RUNTIME_ACTION_PLATFORMS = {
   authenticated_browser: new Set(),
   webhook_support: new Set(['kofi']),
 };
-const DIRECT_PUBLISH_RUNTIME_PLATFORMS = new Set(['bluesky', 'linkedin']);
 const CAMPAIGN_CREATE_RUNTIME_PLATFORMS = new Set();
 
 // Fail-closed fallback for any platform not present in the SEED or storage.
