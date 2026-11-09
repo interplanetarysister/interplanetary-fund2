@@ -26,7 +26,7 @@ export default async function(req){
       sr.entities.Campaign.get(record.campaign_id),
       sr.entities.PlatformConnection.get(record.connection_id),
     ]);
-    if(!campaign||campaign.created_by_id!==record.owner_user_id||!crowdfundingConnectionEligibility(connection,record.owner_user_id).ok) return Response.json({error:'Campaign connection is not available.'},{status:409});
+    if(!campaign||campaign.created_by_id!==record.owner_user_id||!crowdfundingConnectionEligibility(connection,record.owner_user_id,'campaign_refresh').ok) return Response.json({error:'Campaign connection is not available.'},{status:409});
     const fingerprint=JSON.stringify({import_id:record.id,owner_user_id:record.owner_user_id});
     const request=await beginExternalSyncRequest(sr,{jobType:'imported_campaign_refresh',actorUserId:user.id,requestId,fingerprint,initiatorType:isAdmin?'admin':'user',scope:'campaign',campaignId:campaign.id});
     if(request.disposition==='completed') return Response.json({...request.run.result_payload,deduplicated:true});
