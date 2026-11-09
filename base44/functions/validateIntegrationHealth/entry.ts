@@ -20,6 +20,64 @@ function checkSecrets(platform) {
   return { names, missing };
 }
 
+
+async function verifyPayPalRestConfiguration(sr, entry) {
+  // Read-only PayPal OAuth and webhook probes: no orders, captures, payouts,
+  // simulated transactions or credential values are ever returned.
+  const checks = [];
+  const id = String(secrets.get('PAYPAL_CLIENT_ID') || '').trim();
+  const secret = String(secrets.get('PAYPAL_CLIENT_SECRET') || '').trim();
+  const mode = secrets.get('PAYPAL_MODE') === 'live' ? 'live' : 'sandbox';
+  const expectedMerchant = 'cuddlemeplatonically@gmail.com';
+  const recordedMerchant = String(entry.account_identifier || '').toLowerCase();
+  const merchantReferenceMatches = recordedMerchant.includes(expectedMerchant);
+  const campaignWebhookConfigured = Boolean(String(secrets.get('PAYPAL_WEBHOOK_ID') || '').trim());
+  checks.push({ check: 'paypal_merchant_reference_matches', ok: merchantReferenceMatches,
+    detail: merchantReferenceMatches ? 'Configured registry reference matches the designated IFund business merchant; provider ownership still needs verification.' : 'PayPal registry reference does not match the designated IFund business merchant.' });
+  checks.push({ check: 'paypal_campaign_webhook_id_configured', ok: campaignWebhookConfigured,
+    detail: campaignWebhookConfigured ? 'Campaign webhook ID is present; event registration and receiver still need verification.' : 'Campaign webhook ID is missing. Subscription webhook registration is a separate integration.' });
+  if (!id || !secret) {
+    checks.push({ check: 'paypal_oauth_token', ok: false, detail: 'PayPal REST credentials are missing.' });
+    return { checks, merchantReferenceMatches, campaignWebhookConfigured, oauthVerified: false, subscriptionWebhookVerified: false, mode };
+  }
+  const base = mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+  let oauthVerified = false;
+  let subscriptionWebhookVerified = false;
+  try {
+    const res = await fetch(base + '/v1/oauth2/token', {
+      method: 'POST',
+      headers: { Authorization: 'Basic ' + btoa(id + ':' + secret), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials',
+    });
+    if (res.ok) {
+      const token = String((await res.json().catch(() => ({}))).access_token || '');
+      oauthVerified = Boolean(token);
+      if (oauthVerified) {
+        const list = await fetch(base + '/v1/notifications/webhooks', {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        if (list.ok) {
+          const remote = await list.json().catch(() => ({}));
+          const expectedUrl = 'https://interplanetaryfund.base44.app/functions/payPalSubscriptionWebhook';
+          const local = await sr.entities.PayPalBillingWebhook.filter({ provider: 'paypal', account_ref: 'interplanetary_business_paypal' }).catch(() => []);
+          subscriptionWebhookVerified = Array.isArray(local) && (remote.webhooks || []).some(h =>
+            h.url === expectedUrl &&
+            local.some(row => row.webhook_id === h.id && row.url === expectedUrl) &&
+            (h.event_types || []).some(t => t.name === 'BILLING.SUBSCRIPTION.ACTIVATED' || t.name === '*') &&
+            (h.event_types || []).some(t => t.name === 'PAYMENT.SALE.REFUNDED' || t.name === '*'));
+        }
+      }
+    }
+  } catch (_) {
+    // Transient provider errors never imply readiness and never expose secrets.
+  }
+  checks.push({ check: 'paypal_oauth_token', ok: oauthVerified,
+    detail: oauthVerified ? 'PayPal ' + mode + ' REST OAuth token accepted.' : 'PayPal REST OAuth could not be verified.' });
+  checks.push({ check: 'paypal_subscription_webhook', ok: subscriptionWebhookVerified,
+    detail: subscriptionWebhookVerified ? 'Subscription webhook matches both PayPal and the local registry.' : 'Subscription webhook registration is not currently verified against PayPal.' });
+  return { checks, merchantReferenceMatches, campaignWebhookConfigured, oauthVerified, subscriptionWebhookVerified, mode };
+}
+
 async function verifyCloudflareToken() {
   const token = secrets.get('Cloudflare_api_token');
   if (!token) return { ok: false, detail: 'Cloudflare API token is not configured.' };
@@ -133,6 +191,24 @@ async function validateEntry(sr, e) {
       status = 'REAUTH_REQUIRED';
       lastFailure = 'Cloudflare authorization needs attention.';
     }
+  }
+
+
+  if (p === 'paypal' && status !== 'REVOKED') {
+    const proof = await verifyPayPalRestConfiguration(sr, e);
+    checks.push(...proof.checks);
+    // A valid OAuth token is not proof of merchant ownership or working
+    // campaign-donation webhooks. Never promote this registry entry to ACTIVE
+    // based solely on configured credentials or a subscription webhook.
+    status = 'MISCONFIGURED';
+    providerVerified = false;
+    lastFailure = !proof.merchantReferenceMatches
+      ? 'PayPal registry merchant reference differs from the designated business account.'
+      : !proof.oauthVerified
+        ? 'PayPal REST OAuth must be verified against the configured environment.'
+        : !proof.campaignWebhookConfigured
+          ? 'Campaign donation webhook registration and ID are missing.'
+          : 'Merchant ownership, signed campaign webhook handling, and sandbox reconciliation still require proof.';
   }
 
   // Convex is historical evidence only in the Base44-authoritative runtime.
