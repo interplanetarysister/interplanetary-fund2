@@ -29,11 +29,11 @@
     },
     "prospective_platform_fee": {
       "type": "number",
-      "description": "Informational 3% IFund fee if this amount later becomes verified settled recipient funds and is withdrawn."
+      "description": "Informational 7% IFund fee if this amount later becomes verified settled recipient funds and is withdrawn."
     },
     "prospective_net": {
       "type": "number",
-      "description": "Informational amount after the prospective 3% fee; not a payout amount."
+      "description": "Informational amount after the prospective 7% fee; not a payout amount."
     },
     "state": {
       "type": "string",
