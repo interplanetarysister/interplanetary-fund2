@@ -11,6 +11,7 @@ import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
 import CryptoCampaignSettings from "@/components/campaigns/CryptoCampaignSettings";
 import CampaignHealth from "@/components/campaigns/CampaignHealth";
+import CampaignPlatformAnalytics from "@/components/campaigns/CampaignPlatformAnalytics";
 import ImportedCampaignSync from "@/components/campaigns/ImportedCampaignSync";
 import AICoach from "@/components/campaigns/AICoach";
 import UpdatesSection from "@/components/campaigns/UpdatesSection";
@@ -138,6 +139,11 @@ export default function CampaignDetail() {
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
               <p dir={textDirection} className="text-stone-600 leading-relaxed whitespace-pre-wrap">{displayed.story}</p>
             </div>
+          )}
+          {isOwner && (
+            <section id="campaign-analytics" tabIndex={-1} className="scroll-mt-24">
+              <CampaignPlatformAnalytics campaign={campaign} />
+            </section>
           )}
           <section id="campaign-updates" tabIndex={-1} className="scroll-mt-24">
             <UpdatesSection campaign={campaign} campaignId={campaign.id} updates={updates} isOwner={isOwner} onPosted={load} />
