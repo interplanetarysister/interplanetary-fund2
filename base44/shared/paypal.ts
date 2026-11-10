@@ -31,7 +31,7 @@ export async function isLivePayPalRestReady() {
   const key = `${mode}:${id}`;
   if (restAccessProbe.key === key && restAccessProbe.until > Date.now()) return restAccessProbe.ok;
   if (restAccessProbe.key === key && restAccessProbe.pending) return restAccessProbe.pending;
-  const pending = getAccessToken()
+  const pending = getAccessToken('live')
     .then((token) => Boolean(token))
     .catch(() => false)
     .then((ok) => {
@@ -44,12 +44,12 @@ export async function isLivePayPalRestReady() {
 
 let payoutAccessProbe: { until: number; ok: boolean; pending: Promise<boolean> | null } = { until: 0, ok: false, pending: null };
 export async function isLivePayPalPayoutReady() {
-  if (secrets.get('PAYPAL_MODE') !== 'live') return false;
+  if (secrets.get('PAYPAL_MODE') !== 'live' || resolvePayPalEnvironment() !== 'live') return false;
   if (payoutAccessProbe.until > Date.now()) return payoutAccessProbe.ok;
   if (payoutAccessProbe.pending) return payoutAccessProbe.pending;
-  const pending = getAccessToken()
+  const pending = getAccessToken('live')
     .then(async (token) => {
-      const res = await fetch(`${apiBase()}/v1/payments/payouts/IFUND_READINESS_PROBE_DO_NOT_CREATE`, {
+      const res = await fetch(`${apiBase('live')}/v1/payments/payouts/IFUND_READINESS_PROBE_DO_NOT_CREATE`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return ![401, 403].includes(res.status) && res.status < 500;
@@ -84,7 +84,11 @@ function stableProviderKey(prefix, value, max = 80) {
 }
 
 export async function sendPayout({ receiver, amount, note, itemId }) {
-  const token = await getAccessToken();
+  // Sandbox checkout never authorizes or executes withdrawals.
+  if (secrets.get('PAYPAL_MODE') !== 'live' || resolvePayPalEnvironment() !== 'live') {
+    throw new Error('Live payout disabled while sandbox checkout is active.');
+  }
+  const token = await getAccessToken('live');
   const senderBatchId = stableProviderKey('IFW', itemId, 70);
   let res;
   try {
