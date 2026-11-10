@@ -88,10 +88,11 @@
       "type": "string",
       "enum": [
         "paypal",
+        "card",
         "googlepay",
         "applepay"
       ],
-      "description": "PayPal-backed checkout channel. Preserved so partial capture recovery cannot silently relabel Apple Pay, Google Pay, or PayPal."
+      "description": "PayPal-backed checkout channel. Preserved so partial capture recovery cannot silently relabel Apple Pay, Google Pay, or PayPal or direct cards."
     },
     "withdrawal_id": {
       "type": "string"
