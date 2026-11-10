@@ -118,7 +118,7 @@ assert.match(create, /validateDonationAmount\(amount\)/);
 assert.doesNotMatch(create, /validateDonationAmount\(value\)/);
 assert.match(paypal, /isLivePayPalRestReady\(\)/);
 assert.match(capabilities, /isLivePayPalRestReady\(\)/);
-assert.match(sdk, /components=buttons,googlepay,applepay&/);
+assert.match(sdk, /components=buttons,card-fields,googlepay,applepay&/);
 assert.match(sdk, /window\.paypal\?\.Buttons/);
 assert.match(wallet, /paypal\.Googlepay\(\)/);
 assert.match(wallet, /result\?\.ok !== true/);
