@@ -69,8 +69,11 @@ export default async function (req) {
       if (savedOrder.campaign_id !== campaign_id || String(savedOrder.environment) !== environment) {
         return Response.json({ error: 'PayPal order does not match this campaign.' }, { status: 409 });
       }
-    } else if (environment === 'sandbox') {
-      return Response.json({ error: 'This sandbox order was not created by this app.' }, { status: 409 });
+    } else if (!recovering) {
+      // Never capture an unrecognized order in either environment. Even a real
+      // PayPal capture is not enough to assign funds to a campaign without
+      // the validated server-side intent recorded before the charge.
+      return Response.json({ error: 'This PayPal order was not created and recorded by iFund. No capture was attempted.' }, { status: 409 });
     }
 
     let cap;
