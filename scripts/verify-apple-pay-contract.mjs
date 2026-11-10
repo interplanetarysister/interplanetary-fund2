@@ -15,7 +15,7 @@ const recovery = read("base44/functions/reconcileDirectPayPalCampaignDonation/en
 const donation = read("base44/entities/Donation.jsonc");
 const holding = read("base44/entities/HoldingLedgerEntry.jsonc");
 
-assert.match(sdk, /components=buttons,googlepay,applepay&intent=capture/);
+assert.match(sdk, /components=buttons,card-fields,googlepay,applepay&intent=capture/);
 assert.match(sdk, /applepay\.cdn-apple\.com\/jsapi\/1\.latest\/apple-pay-sdk\.js/);
 assert.match(apple, /window\.ApplePaySession\?\.canMakePayments/);
 assert.match(apple, /eligibility\?\.isEligible !== true/);
