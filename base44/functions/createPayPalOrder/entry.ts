@@ -48,7 +48,7 @@ export default async function (req) {
     if (!amountCheck.ok) return Response.json({ error: amountCheck.error }, { status: 400 });
     if (!campaign_id) return Response.json({ error: 'A campaign is required' }, { status: 400 });
     if (!intent_id || !/^[A-Za-z0-9_-]{16,100}$/.test(String(intent_id))) return Response.json({ error: 'A stable payment intent is required' }, { status: 400 });
-    const channel = ['paypal', 'googlepay', 'applepay'].includes(payment_channel) ? payment_channel : '';
+    const channel = ['paypal', 'card', 'googlepay', 'applepay'].includes(payment_channel) ? payment_channel : '';
     if (!channel) return Response.json({ error: 'A supported payment channel is required' }, { status: 400 });
     if (environment === 'live' && !(await areFeaturesEnabled(base44, ['payment_checkout_enabled', channel === 'googlepay' ? 'google_pay_checkout' : channel === 'applepay' ? 'apple_pay_checkout' : 'paypal_checkout']))) return featureUnavailable('This payment method');
 
