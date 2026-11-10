@@ -11,6 +11,7 @@ const PLATFORM_LABELS = {
   stripe: 'Stripe',
   paypal: 'PayPal',
   card: 'Credit or debit card',
+  card: 'Credit or debit card',
   cashapp: 'Cash App',
   googlepay: 'Google Pay',
   applepay: 'Apple Pay',
