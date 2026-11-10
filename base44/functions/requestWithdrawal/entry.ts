@@ -333,6 +333,8 @@ export default async function(req) {
     const cutoff = new Date(Date.now() - CLEARING_DAYS * 86400000);
     const allDonations = await sr.entities.Donation.filter({ campaign_id });
     const available = (allDonations || []).filter((d) => {
+      // Sandbox demo money is never withdrawable.
+      if (String(d.environment || 'live') === 'sandbox') return false;
       if (d.withdrawal_id) return false;
       if (d.cleared) return d.payment_verified === true;
       if (d.payment_verified !== true || d.is_institutional) return false;
@@ -348,7 +350,8 @@ export default async function(req) {
     if (settledExternal.length >= 5000) {
       return Response.json({ error: 'External settlement history is too large for a safe single withdrawal. Contact support.' }, { status: 409 });
     }
-    const availableExternal = settledExternal.filter((entry) => !entry.withdrawal_id && Number(entry.amount || 0) > 0);
+    const availableExternal = settledExternal.filter((entry) =>
+      !entry.withdrawal_id && Number(entry.amount || 0) > 0 && String(entry.environment || 'live') !== 'sandbox');
     let gross = round2(
       available.reduce((s, d) => s + giftOf(d), 0) +
       availableExternal.reduce((s, entry) => s + Number(entry.amount || 0), 0)

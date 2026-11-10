@@ -89,6 +89,19 @@ Base44 CLI command reference: [https://docs.base44.com/developers/references/cli
 Support: [https://app.base44.com/support](https://app.base44.com/support)
 
 
+## PayPal sandbox demonstration (no real money)
+
+Live fundraising is intentionally paused. A sandbox demonstration path exists so the checkout flow can be shown safely, and it is **off by default**.
+
+To enable it:
+
+1. In the PayPal developer dashboard (Sandbox → Apps & Credentials), copy the sandbox **Client ID** and **Secret**.
+2. Add secrets `PAYPAL_SANDBOX_CLIENT_ID`, `PAYPAL_SANDBOX_CLIENT_SECRET`, and (optional) `PAYPAL_SANDBOX_MERCHANT_EMAIL`.
+3. Register the webhook URL `https://interplanetaryfund.base44.app/functions/payPalCampaignWebhook` for sandbox events `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, and `PAYMENT.CAPTURE.REFUNDED`, then add its ID as `PAYPAL_SANDBOX_WEBHOOK_ID`.
+4. Turn on the `paypal_sandbox_demo` feature flag.
+
+Check readiness any time with the admin function `paypalSandboxReadiness`. Sandbox money is recorded with `environment: "sandbox"` and is never counted in campaign totals, the financial ledger, analytics, withdrawal balances, or payouts. Use a PayPal sandbox **personal** account to pay.
+
 ## Copyright and reuse
 
 © 2026 Interplanetary Fund. All rights reserved in original protectable IFund materials held by their lawful owners. Details: [LICENSE](LICENSE) and [Copyright & Intellectual Property](https://interplanetaryfund.com/help/copyright-and-intellectual-property). Third-party open-source software and member submissions remain governed by their own rights and licenses.

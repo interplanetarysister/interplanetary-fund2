@@ -67,6 +67,7 @@ export default async function(req) {
     for (const entry of holdings) {
       const amount = Number(entry.amount || 0);
       if (!(amount > 0)) continue;
+      if (String(entry.environment || 'live') === 'sandbox') continue;
       if (entry.withdrawal_id) externalWithdrawn += amount;
       else externalAvailable += amount;
     }
