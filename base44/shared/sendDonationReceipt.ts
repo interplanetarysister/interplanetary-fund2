@@ -28,6 +28,7 @@ function providerLabel(method) {
     case "stripe": return "Card (Stripe)";
     case "paypal": return "PayPal";
     case "card": return "Credit or debit card via PayPal";
+    case "card": return "Credit or debit card via PayPal";
     case "cashapp": return "Cash App";
     case "googlepay": return "Google Pay via PayPal";
     case "applepay": return "Apple Pay via PayPal";
