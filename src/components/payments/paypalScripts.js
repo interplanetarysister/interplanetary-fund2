@@ -46,7 +46,7 @@ export function loadPayPalSdk(clientId) {
     // Google Pay may be ineligible for this merchant; PayPal Buttons must still work.
     if (window.paypal?.Buttons) return resolve();
     const script = document.createElement("script");
-    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,googlepay,applepay&intent=capture&currency=USD`;
+    script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons,card-fields,googlepay,applepay&intent=capture&currency=USD`;
     script.async = true;
     script.onload = () => {
       if (window.paypal?.Buttons) resolve();
