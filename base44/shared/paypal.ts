@@ -1,16 +1,22 @@
 import { secrets } from "base44:runtime";
 
+import {
+  IFUND_PAYPAL_BUSINESS_EMAIL, resolvePayPalEnvironment, paypalCredentials,
+  paypalApiBase, paypalMerchantEmail, paypalWebhookId, type PayPalEnvironment,
+} from "./paypalEnvironment.ts";
+
+export { IFUND_PAYPAL_BUSINESS_EMAIL };
+
 export const IFUND_PAYPAL_ACCOUNT_REF = "interplanetary_business_paypal";
 export const IFUND_PAYPAL_ACCOUNT_TYPE = "business";
-export const IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail.com";
 
 // Shared PayPal helpers. All platform money moves use deterministic provider
 // request identities so retries cannot create a second capture or payout.
+// Sandbox and live use different REST applications; the environment is passed
+// explicitly by checkout code and defaults to the resolved deployment mode.
 
-function apiBase() {
-  return secrets.get("PAYPAL_MODE") === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
+function apiBase(environment: PayPalEnvironment = resolvePayPalEnvironment()) {
+  return paypalApiBase(environment);
 }
 
 // Read-only API credential probe. A populated client ID is not proof that
@@ -57,11 +63,10 @@ export async function isLivePayPalPayoutReady() {
   return await pending;
 }
 
-async function getAccessToken() {
-  const id = secrets.get("PAYPAL_CLIENT_ID");
-  const secret = secrets.get("PAYPAL_CLIENT_SECRET");
+async function getAccessToken(environment: PayPalEnvironment = resolvePayPalEnvironment()) {
+  const { clientId: id, clientSecret: secret } = paypalCredentials(environment);
   if (!id || !secret) throw new Error("PayPal credentials are not configured.");
-  const res = await fetch(`${apiBase()}/v1/oauth2/token`, {
+  const res = await fetch(`${apiBase(environment)}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: "Basic " + btoa(`${id}:${secret}`),
@@ -143,24 +148,27 @@ export async function sendPayout({ receiver, amount, note, itemId }) {
 // Google Pay donations flow through the same PayPal business account as a
 // standard PayPal v2 order: create an order on approval, capture it once the
 // Google Pay payment data is confirmed.
-export async function createOrder({ amount, description, customId, requestId }) {
-  const token = await getAccessToken();
-  const res = await fetch(`${apiBase()}/v2/checkout/orders`, {
+export async function createOrder({ amount, description, customId, requestId, environment = resolvePayPalEnvironment() }) {
+  const token = await getAccessToken(environment);
+  const merchantEmail = paypalMerchantEmail(environment);
+  const res = await fetch(`${apiBase(environment)}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      ...(requestId ? { "PayPal-Request-Id": stableProviderKey("IF_ORDER", requestId, 70) } : {}),
+      ...(requestId ? { "PayPal-Request-Id": stableProviderKey(environment === "sandbox" ? "IFS_ORDER" : "IF_ORDER", requestId, 70) } : {}),
     },
     body: JSON.stringify({
       intent: "CAPTURE",
       purchase_units: [
         {
           amount: { currency_code: "USD", value: Number(amount).toFixed(2) },
-          // Explicitly bind new orders to the designated IFund business
-          // recipient. PayPal must reject mismatched/unauthorized credentials
-          // rather than silently route donations to another merchant.
-          payee: { email_address: IFUND_PAYPAL_BUSINESS_EMAIL },
+          // Explicitly bind new orders to the configured recipient for this
+          // environment. PayPal must reject mismatched/unauthorized credentials
+          // rather than silently route donations to another merchant. A sandbox
+          // deployment without a configured merchant email settles to the owner
+          // of the sandbox REST application rather than inventing an address.
+          ...(merchantEmail ? { payee: { email_address: merchantEmail } } : {}),
           description: (description || "Donation").slice(0, 120),
           ...(customId ? { custom_id: customId } : {}),
         },
@@ -205,11 +213,11 @@ function normalizeOrderResult(data) {
   };
 }
 
-export async function getOrder(orderId) {
+export async function getOrder(orderId, environment: PayPalEnvironment = resolvePayPalEnvironment()) {
   const id = String(orderId || '').trim();
   if (!id) throw new Error('PayPal order id is required.');
-  const token = await getAccessToken();
-  const res = await fetch(`${apiBase()}/v2/checkout/orders/${encodeURIComponent(id)}`, {
+  const token = await getAccessToken(environment);
+  const res = await fetch(`${apiBase(environment)}/v2/checkout/orders/${encodeURIComponent(id)}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -220,14 +228,14 @@ export async function getOrder(orderId) {
   return normalizeOrderResult(data);
 }
 
-export async function captureOrder(orderId) {
-  const token = await getAccessToken();
-  const stableRequestId = stableProviderKey('IF_CAPTURE', orderId, 70);
+export async function captureOrder(orderId, environment: PayPalEnvironment = resolvePayPalEnvironment()) {
+  const token = await getAccessToken(environment);
+  const stableRequestId = stableProviderKey(environment === 'sandbox' ? 'IFS_CAPTURE' : 'IF_CAPTURE', orderId, 70);
   let res;
   let data = {};
   let captureFailure = null;
   try {
-    res = await fetch(`${apiBase()}/v2/checkout/orders/${orderId}/capture`, {
+    res = await fetch(`${apiBase(environment)}/v2/checkout/orders/${orderId}/capture`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -249,7 +257,7 @@ export async function captureOrder(orderId) {
   // IFund's ledger. A GET is read-only and succeeds only when PayPal itself
   // reports a completed order with a completed capture.
   try {
-    const recovered = await getOrder(orderId);
+    const recovered = await getOrder(orderId, environment);
     if (
       recovered.status === 'COMPLETED' &&
       recovered.capture_status === 'COMPLETED' &&
@@ -270,8 +278,8 @@ export async function captureOrder(orderId) {
 // Verify a transaction against the designated business PayPal account before
 // exterior funds are admitted to the custody ledger. This is intentionally a
 // read-only provider check; it does not create financial value by itself.
-export async function verifyWebhookSignature(rawEvent, headers, verifiedBillingWebhookId = '') {
-  const webhookId = String(verifiedBillingWebhookId || secrets.get('PAYPAL_WEBHOOK_ID') || '').trim();
+export async function verifyWebhookSignature(rawEvent, headers, verifiedBillingWebhookId = '', environment: PayPalEnvironment = resolvePayPalEnvironment()) {
+  const webhookId = String(verifiedBillingWebhookId || paypalWebhookId(environment) || '').trim();
   if (!webhookId) throw new Error('PayPal webhook id is not configured.');
   const transmissionId = String(headers?.get?.('paypal-transmission-id') || '').trim();
   const transmissionTime = String(headers?.get?.('paypal-transmission-time') || '').trim();
@@ -285,7 +293,7 @@ export async function verifyWebhookSignature(rawEvent, headers, verifiedBillingW
   // webhook_event before verification.
   const raw = String(rawEvent || '').trim();
   if (!raw || !raw.startsWith('{') || !raw.endsWith('}')) return false;
-  const token = await getAccessToken();
+  const token = await getAccessToken(environment);
   const body = [
     '{',
     `"transmission_id":${JSON.stringify(transmissionId)},`,

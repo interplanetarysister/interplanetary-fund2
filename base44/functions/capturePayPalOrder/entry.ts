@@ -9,6 +9,7 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
+import { resolvePayPalEnvironment } from '../../shared/paypalEnvironment.ts';
 
 // Captures a PayPal/Google Pay/Apple Pay order and applies the resulting donation through
 // Base44's canonical transactional financial boundary. Provider capture idempotency + the
@@ -19,7 +20,13 @@ export default async function (req) {
     const base44 = createClientFromRequest(req);
     // Finalize an already initiated provider order even if the admin has since
     // paused NEW donations. Never strand an authorized order or its ledger.
-    if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
+    // Sandbox captures are allowed only for orders this app created (proved by
+    // the persisted PayPalOrder row below), so the demo gate cannot be bypassed
+    // by calling this function with an arbitrary order id.
+    const environment = resolvePayPalEnvironment();
+    if (environment === 'live' && secrets.get('PAYPAL_MODE') !== 'live') {
+      return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
+    }
     const sr = base44.asServiceRole;
 
     const { order_id, campaign_id, donor_name, message, is_recurring, reconcile_only, paypal_transaction_id } = await req.json();
@@ -51,9 +58,24 @@ export default async function (req) {
     if (!donorGuard.ok) return Response.json({ error: donorGuard.error }, { status: donorGuard.status });
     const donor = donorGuard.donor;
 
+    // A capture is only accepted for a checkout this app prepared for the same
+    // campaign and environment. Sandbox orders carry no exception.
+    const orderRows = await sr.entities.PayPalOrder.filter({ order_id }).catch(() => []);
+    if (!Array.isArray(orderRows) || orderRows.length > 1) {
+      return Response.json({ error: 'This checkout requires reconciliation.' }, { status: 409 });
+    }
+    const savedOrder = orderRows[0] || null;
+    if (savedOrder) {
+      if (savedOrder.campaign_id !== campaign_id || String(savedOrder.environment) !== environment) {
+        return Response.json({ error: 'PayPal order does not match this campaign.' }, { status: 409 });
+      }
+    } else if (environment === 'sandbox') {
+      return Response.json({ error: 'This sandbox order was not created by this app.' }, { status: 409 });
+    }
+
     let cap;
     try {
-      cap = recovering ? await getOrder(order_id) : await captureOrder(order_id);
+      cap = recovering ? await getOrder(order_id, environment) : await captureOrder(order_id, environment);
     } catch (capErr) {
       console.error(recovering ? 'capturePayPalOrder verification error:' : 'capturePayPalOrder capture error:', capErr?.name || 'PayPalError');
       const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
@@ -77,6 +99,17 @@ export default async function (req) {
     }
     if (cap.currency !== 'USD') {
       return Response.json({ error: 'Captured payment currency does not match this campaign.' }, { status: 409 });
+    }
+    // The captured amount must equal the server-validated total for the saved
+    // checkout, never a browser-supplied value.
+    if (!(Number(cap.amount) > 0) ||
+        (savedOrder && Math.abs(round2(savedOrder.total_charge) - round2(cap.amount)) > 0.01)) {
+      await logAudit(base44, {
+        action: 'capture_amount_mismatch', target_type: 'campaign', target_id: campaign_id,
+        detail: 'PayPal capture amount does not match the validated checkout.',
+        status: 'failure',
+      });
+      return Response.json({ error: 'PayPal captured a different amount than this checkout requested. No totals were changed.' }, { status: 409 });
     }
     if (recovering) {
       // Independent read-only transaction evidence must agree with the
@@ -180,6 +213,7 @@ export default async function (req) {
         paymentMethod: paymentChannel,
         paymentVerified: true,
         source: 'paypal_capture',
+        environment,
         isRecurring: !!is_recurring,
       });
 
@@ -235,6 +269,7 @@ export default async function (req) {
         payment_channel: paymentChannel,
         canonical_operation_id: String(canonical.operationId),
         settled_at: new Date().toISOString(),
+        environment,
         reconciliation_note: 'Verified PayPal capture received into the designated Interplanetary Fund business PayPal holding account.',
       }], { key: 'operation_key' });
     const persistedHoldings = await sr.entities.HoldingLedgerEntry.filter({ operation_key: holdingOperationKey }).catch(() => []);
@@ -256,18 +291,33 @@ export default async function (req) {
       payment_method: paymentChannel,
       payment_verified: true,
       cleared: false,
+      environment,
       provider_transaction_id: String(cap.capture_id),
     });
 
     if (campaign.created_by_id) {
       await reconcileNotificationMirror(sr, canonical.operationId, {
         user_id: campaign.created_by_id,
-        title: 'New donation received',
-        body: `${displayName} gave USD ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : paymentChannel === 'applepay' ? 'Apple Pay' : 'PayPal'}`,
+        title: environment === 'sandbox' ? 'Sandbox test donation received' : 'New donation received',
+        body: `${displayName} gave USD ${total.toLocaleString()} to \"${campaign.title}\" via ${paymentChannel === 'googlepay' ? 'Google Pay' : paymentChannel === 'applepay' ? 'Apple Pay' : 'PayPal'}${environment === 'sandbox' ? ' (sandbox test — no real money)' : ''}`,
         type: 'donation',
         link: `/campaign/${campaign_id}`,
         read: false,
       });
+    }
+
+    if (savedOrder) {
+      await sr.entities.PayPalOrder.update(savedOrder.id, {
+        state: 'captured',
+        capture_id: String(cap.capture_id),
+        captured_amount: round2(cap.amount),
+        captured_currency: cap.currency,
+        canonical_operation_id: String(canonical.operationId),
+        donor_name: displayName,
+        message: message || '',
+        captured_at: new Date().toISOString(),
+        last_error: '',
+      }).catch(() => null);
     }
 
     if (canonical.applied) {
@@ -282,7 +332,8 @@ export default async function (req) {
     }
 
     // Automated receipt: email the donor a receipt for every verified gift.
-    if (canonical.applied) {
+    // Sandbox test captures never send receipts or marketing analytics.
+    if (canonical.applied && environment !== 'sandbox') {
       await sendDonationReceipt(sr, { ...donation, donor_email: donor?.email }, campaign);
       // Marketing KPI: a verified, canonically-applied donation is the ultimate proof of trust.
       try { await base44.analytics.track({ eventName: 'donation_completed', properties: { campaign_id, amount: total, is_recurring: !!is_recurring } }); } catch (_) { /* non-fatal */ }
@@ -294,6 +345,9 @@ export default async function (req) {
       amount: total,
       duplicate: !canonical.applied,
       canonical_operation_id: String(canonical.operationId),
+      environment,
+      test_mode: environment === 'sandbox',
+      capture_id: String(cap.capture_id),
     });
   } catch (error) {
     console.error('capturePayPalOrder error:', error?.message || error);

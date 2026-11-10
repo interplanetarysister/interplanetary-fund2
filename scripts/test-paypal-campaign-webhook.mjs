@@ -52,9 +52,15 @@ assert.equal(confirmedCampaignCapture(order,{...event,resource:{...event.resourc
 assert.equal(paypalCampaignEventInfo({...event,id:'bad'}).ok,false);
 assert.equal(paypalCampaignEventInfo({...event,event_type:'UNKNOWN'}).relevant,false);
 assert.equal(paypalCampaignEventInfo({...event,resource:{...event.resource,id:'!' }}).ok,false);
-assert.match(receiver,/verifyWebhookSignature\(raw, req\.headers, hooks\[0\]\.webhook_id\)/);
+assert.match(receiver,/verifyWebhookSignature\(raw, req\.headers, webhookId, environment\)/);
 assert.match(receiver,/confirmedCampaignCapture\(order, event\)/);
-assert.match(receiver,/getOrder\(info\.orderId\)/);
+assert.match(receiver,/getOrder\(info\.orderId, environment\)/);
+assert.match(receiver,/resolvePayPalEnvironment\(\)/);
+assert.match(receiver,/paypalWebhookId\(environment\)/);
+assert.match(receiver,/WebhookEvent\.upsert/);
+assert.match(receiver,/key: \['source', 'event_key'\]/);
+assert.match(receiver,/PAYMENT\.CAPTURE\.REFUNDED/);
+assert.match(receiver,/state: 'reversed'/);
 assert.match(receiver,/sr\.entities\.FinancialOperation\.filter/);
 assert.match(receiver,/canonical_reconciled: false, pending_review: true/);
 assert.match(receiver,/status: 202/);

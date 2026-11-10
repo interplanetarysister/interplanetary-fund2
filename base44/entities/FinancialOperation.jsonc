@@ -48,6 +48,15 @@
       "type": "string",
       "description": "Server-verified checkout or verification channel retained for truthful recovery."
     },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "live",
+        "sandbox"
+      ],
+      "default": "live",
+      "description": "Payment environment that produced this operation. Sandbox money is never counted in live campaign totals, withdrawals or analytics."
+    },
     "gross_amount": {
       "type": "number",
       "default": 0

@@ -40,15 +40,19 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const [capabilityError, setCapabilityError] = useState(false);
   const [googlePayReady, setGooglePayReady] = useState(false);
   const [applePayReady, setApplePayReady] = useState(false);
+  // Sandbox demo checkout is a separate path: fake money, never counted live.
+  const [sandboxAmount, setSandboxAmount] = useState("");
+  const [sandboxConfirmed, setSandboxConfirmed] = useState(false);
   const idempotencyRef = useRef(crypto.randomUUID());
   const newIntent = () => { idempotencyRef.current = crypto.randomUUID(); };
   const paypalBd = computePayPalBreakdown(parseFloat(amount) || 0, platformContribution);
 
   useEffect(() => {
     let cancelled = false;
-    // Public prelaunch donations use only the separately labeled platform link;
-    // do not probe PayPal REST credentials for every preview visitor.
-    if (!open || platformOnlyMode) return undefined;
+    // Payment capabilities are public-safe and do not contact PayPal unless a
+    // live probe is warranted. They also report whether the sandbox demo path
+    // is open while live campaign donations stay paused.
+    if (!open) return undefined;
     setCapabilityError(false);
     base44.functions.invoke("getPaymentCapabilities", {})
       .then(({ data }) => { if (!cancelled) setCapabilities(data || {}); })
@@ -57,6 +61,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   }, [open, platformOnlyMode]);
 
   const platformOnlyPrelaunch = platformOnlyMode;
+  const sandboxReady = capabilities?.paypal?.sandbox?.ready === true;
   const paypalApiAvailable = newCheckoutEnabled && paypalEnabled && capabilities?.paypal?.api_live === true;
   const googlePayAvailable = newCheckoutEnabled && googlePayEnabled && capabilities?.paypal?.api_live === true;
   const applePayAvailable = newCheckoutEnabled && applePayEnabled && capabilities?.paypal?.api_live === true;
@@ -89,6 +94,46 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
           <div className="space-y-4">
             <PrelaunchNotice payment />
             <p className="text-sm leading-relaxed text-slate-100">This campaign is live and shareable, but it cannot accept donations while campaign fundraising is paused. The support button below helps Interplanetary Fund, not this campaign.</p>
+            {sandboxReady && (
+              <div className="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-3 text-amber-950">
+                <p className="text-[11px] font-bold uppercase tracking-wide">Sandbox test checkout — no real money</p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  Live campaign donations are paused. This uses PayPal's sandbox so the full checkout can be
+                  demonstrated with fake funds. Test gifts never appear in live campaign totals, My Campaigns or analytics.
+                </p>
+                {sandboxConfirmed ? (
+                  <p className="mt-2 rounded-lg bg-emerald-100 px-2 py-2 text-xs font-semibold text-emerald-900">
+                    Sandbox test complete. The server verified the capture; live campaign totals are unchanged.
+                  </p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <Input
+                      type="number" min={MIN_DONATION} step="1"
+                      placeholder={`Test amount (min $${MIN_DONATION})`}
+                      value={sandboxAmount}
+                      onChange={(e) => setSandboxAmount(e.target.value)}
+                      className="bg-white text-slate-900"
+                    />
+                    {Number(sandboxAmount) >= MIN_DONATION ? (
+                      <PayPalCheckoutButton
+                        testMode
+                        campaign={campaign}
+                        amount={sandboxAmount}
+                        donorName="" message="" platformContribution={false}
+                        onPaid={() => { setSandboxConfirmed(true); if (onDonated) onDonated(); }}
+                      />
+                    ) : (
+                      <p className="text-xs">Enter at least ${MIN_DONATION} of fake money to load the sandbox button.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {sandboxReady && (
+              <p className="text-xs leading-relaxed text-slate-300">
+                The button below is the separate real-money platform-support link. It does not donate to this campaign.
+              </p>
+            )}
             <PayPalDonateButton label="Support Interplanetary Fund with PayPal" />
             <CryptoDonateOption platformSupport />
           </div>

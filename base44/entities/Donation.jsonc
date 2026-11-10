@@ -68,6 +68,15 @@
       ],
       "default": "paypal"
     },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "live",
+        "sandbox"
+      ],
+      "default": "live",
+      "description": "Payment environment. Sandbox test gifts are excluded from live campaign totals, withdrawals and analytics."
+    },
     "payment_verified": {
       "type": "boolean",
       "default": false,

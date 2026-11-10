@@ -34,6 +34,8 @@ export default async function(req) {
     let donationWithdrawn = 0;
     for (const donation of donations) {
       if (donation.payment_verified !== true) continue;
+      // Sandbox demo money is never withdrawable.
+      if (String(donation.environment || 'live') === 'sandbox') continue;
       const amount = giftOf(donation);
       if (donation.withdrawal_id) {
         donationWithdrawn += amount;

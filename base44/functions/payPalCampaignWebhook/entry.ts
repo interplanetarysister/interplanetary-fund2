@@ -1,36 +1,44 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { secrets } from 'base44:runtime';
 import { verifyWebhookSignature, getOrder, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
+import { resolvePayPalEnvironment, paypalWebhookId } from '../../shared/paypalEnvironment.ts';
+import { reconcileCanonicalCampaignProjection } from '../../shared/base44Financial.ts';
 import {
   PAYPAL_CAMPAIGN_WEBHOOK_URL, paypalCampaignEventInfo, confirmedCampaignCapture,
 } from '../../shared/paypalCampaignWebhookContract.js';
 
-// Public endpoint with authenticated PayPal signatures. It records verified
-// evidence and checks existing canonical operations; it NEVER initiates charges,
-// grants funds, changes balances, clears holds, refunds or triggers payouts.
-// Captures not already present in canonical accounting stay pending review.
+// Public HTTPS endpoint authenticated by PayPal's own webhook signature
+// verification against the webhook registered for THIS environment (sandbox or
+// live). It never initiates a charge, refund or payout and never trusts a
+// client. Completed captures only reconcile to a canonical donation that a real
+// server capture already wrote; pending/denied/refunded/reversed events update
+// provider state and reverse ledger entries without duplicating money.
 export default async function(req) {
   if (req.method === 'GET')
     return Response.json({ type: 'ifund_paypal_campaign_webhook', ready: true, financial_actions: false });
   if (req.method !== 'POST')
     return Response.json({ error: 'Method not allowed.' }, { status: 405 });
   try {
-    const mode = secrets.get('PAYPAL_MODE');
-    if (!['live', 'sandbox'].includes(mode))
-      return Response.json({ error: 'PayPal environment is not configured.' }, { status: 503 });
+    const environment = resolvePayPalEnvironment();
     const base44 = createClientFromRequest(req);
     const sr = base44.asServiceRole;
-    const hookRows = await sr.entities.PayPalCampaignWebhook.filter({
-      provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF, environment: mode,
-    });
-    const hooks = (hookRows || []).filter(x => x.url === PAYPAL_CAMPAIGN_WEBHOOK_URL && x.webhook_id);
-    if (hookRows.length !== 1 || hooks.length !== 1)
-      return Response.json({ error: 'Campaign webhook is not uniquely registered.' }, { status: 503 });
+
+    // Sandbox and live webhooks are different registrations; never verify a
+    // sandbox delivery with the live webhook id or vice versa.
+    let webhookId = paypalWebhookId(environment);
+    if (!webhookId) {
+      const rows = await sr.entities.PayPalCampaignWebhook.filter({
+        provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF, environment,
+      }).catch(() => []);
+      const registered = (Array.isArray(rows) ? rows : []).filter((row) => row.url === PAYPAL_CAMPAIGN_WEBHOOK_URL && row.webhook_id);
+      if (registered.length === 1) webhookId = String(registered[0].webhook_id);
+    }
+    if (!webhookId) return Response.json({ error: 'Campaign webhook is not registered for this environment.' }, { status: 503 });
 
     const raw = await req.text();
     if (!raw || raw.length > 150000)
       return Response.json({ error: 'Webhook payload is empty or too large.' }, { status: 413 });
-    const verified = await verifyWebhookSignature(raw, req.headers, hooks[0].webhook_id);
+
+    const verified = await verifyWebhookSignature(raw, req.headers, webhookId, environment);
     if (!verified)
       return Response.json({ error: 'Webhook signature was not verified.' }, { status: 401 });
 
@@ -40,64 +48,167 @@ export default async function(req) {
       return Response.json({ error: 'Invalid webhook event identity.' }, { status: 400 });
     if (!info.relevant) return Response.json({ received: true, ignored: true });
 
-    const key = 'paypal_campaign:' + info.eventId;
-    const existing = await sr.entities.WebhookEvent.filter({ source: 'paypal_campaign', event_key: key });
+    const eventKey = `${environment}:${info.eventId}`;
+    const existing = await sr.entities.WebhookEvent.filter({ source: 'paypal_campaign', event_key: eventKey }).catch(() => []);
+    if (!Array.isArray(existing)) return Response.json({ error: 'Webhook receipt unavailable.' }, { status: 503 });
     if (existing.length > 1)
       return Response.json({ error: 'Duplicate webhook receipts require manual reconciliation.' }, { status: 409 });
     let record = existing[0] || null;
     if (record && record.event_type !== info.type)
       return Response.json({ error: 'Webhook event identity conflict.' }, { status: 409 });
-    if (record?.state === 'financial_applied' || record?.state === 'side_effects_complete')
+    if (record && ['financial_applied', 'side_effects_complete', 'nonfinancial_complete'].includes(record.state))
       return Response.json({ received: true, duplicate: true });
 
-    // The event is only a trigger for read-only provider verification. Its
-    // resource data cannot credit a campaign without an authoritative PayPal
-    // order and the canonical financial operation.
-    let financialState = 'awaiting_canonical_reconciliation';
-    let canonicalId = '';
+    if (!record) {
+      // Durable uniqueness for provider event ids: the (source, event_key) key
+      // makes a replayed delivery converge on the same row instead of a clone.
+      const claimed = await sr.entities.WebhookEvent.upsert([{
+        source: 'paypal_campaign', event_key: eventKey, event_type: info.type,
+        state: 'claimed', attempt_count: 1, description: `environment=${environment}`,
+      }], { key: ['source', 'event_key'] });
+      record = claimed?.records?.[0] || null;
+      const confirm = await sr.entities.WebhookEvent.filter({ source: 'paypal_campaign', event_key: eventKey }).catch(() => []);
+      if (!record || !Array.isArray(confirm) || confirm.length !== 1) {
+        return Response.json({ error: 'Webhook receipt could not be confirmed uniquely.' }, { status: 503 });
+      }
+      record = confirm[0];
+    }
+
+    const orders = info.orderId ? await sr.entities.PayPalOrder.filter({ order_id: info.orderId }).catch(() => []) : [];
+    if (!Array.isArray(orders) || orders.length > 1)
+      return Response.json({ error: 'PayPal order requires reconciliation.' }, { status: 409 });
+    const savedOrder = orders[0] || null;
+    if (savedOrder && String(savedOrder.environment) !== environment)
+      return Response.json({ error: 'PayPal order belongs to another environment.' }, { status: 409 });
+
+    const markOrder = async (state, extra = {}) => {
+      if (!savedOrder) return;
+      await sr.entities.PayPalOrder.update(savedOrder.id, { state, ...extra }).catch(() => null);
+    };
+
+    // ---- Non-financial provider state -------------------------------------
+    if (info.type === 'CHECKOUT.ORDER.APPROVED') {
+      if (savedOrder && savedOrder.state !== 'captured') await markOrder('approved');
+      await sr.entities.WebhookEvent.update(record.id, {
+        state: 'nonfinancial_complete', processed_at: new Date().toISOString(),
+        description: `order approved; environment=${environment}`,
+      });
+      return Response.json({ received: true, state: 'approved' });
+    }
+    if (info.type === 'PAYMENT.CAPTURE.PENDING') {
+      if (savedOrder && savedOrder.state !== 'captured') await markOrder('pending');
+      await sr.entities.WebhookEvent.update(record.id, {
+        state: 'nonfinancial_complete', processed_at: new Date().toISOString(),
+        description: `capture pending; no ledger change; environment=${environment}`,
+      });
+      return Response.json({ received: true, state: 'pending' });
+    }
+    if (info.type === 'PAYMENT.CAPTURE.DENIED') {
+      if (savedOrder && savedOrder.state !== 'captured') await markOrder('denied', { last_error: 'provider_denied' });
+      await sr.entities.WebhookEvent.update(record.id, {
+        state: 'nonfinancial_complete', processed_at: new Date().toISOString(),
+        description: `capture denied; no ledger change; environment=${environment}`,
+      });
+      return Response.json({ received: true, state: 'denied' });
+    }
+
+    // ---- Completed capture: reconcile to an existing canonical donation ---
     if (info.type === 'PAYMENT.CAPTURE.COMPLETED') {
       if (!info.orderId || !info.captureId)
         return Response.json({ error: 'Captured payment requires its PayPal order reference.' }, { status: 503 });
-      const order = await getOrder(info.orderId);
+      const order = await getOrder(info.orderId, environment);
       if (!confirmedCampaignCapture(order, event))
         return Response.json({ error: 'PayPal capture and originating order disagree.' }, { status: 409 });
       const campaignId = String(order.custom_id).split('|')[0];
-      const ops = await sr.entities.FinancialOperation.filter({ operation_key: 'paypal:' + info.orderId });
-      if (ops.length > 1)
+      const ops = await sr.entities.FinancialOperation.filter({ operation_key: 'paypal:' + info.orderId }).catch(() => []);
+      if (!Array.isArray(ops) || ops.length > 1)
         return Response.json({ error: 'Canonical financial operation requires reconciliation.' }, { status: 409 });
+
       if (ops.length === 1) {
         const op = ops[0];
         if (op.state !== 'applied' || op.provider !== 'paypal' ||
             op.operation_type !== 'donation' || op.campaign_id !== campaignId ||
-            String(op.provider_transaction_id) !== info.captureId)
+            String(op.provider_transaction_id) !== info.captureId ||
+            String(op.environment || 'live') !== environment)
           return Response.json({ error: 'PayPal capture conflicts with canonical donation.' }, { status: 409 });
-        canonicalId = String(op.id);
-        financialState = 'canonical_donation_verified';
+        await sr.entities.WebhookEvent.update(record.id, {
+          state: 'financial_applied', canonical_operation_id: String(op.id),
+          financial_applied_at: new Date().toISOString(),
+          description: `canonical donation verified; environment=${environment}`, last_error: '',
+        });
+        return Response.json({ received: true, canonical_reconciled: true });
       }
+
+      // A signed capture not present in canonical accounting is NOT a donation.
+      // Never create money from a webhook; keep it visible for admin recovery.
+      await sr.entities.WebhookEvent.update(record.id, {
+        state: 'claimed',
+        description: `awaiting_canonical_reconciliation; environment=${environment}`,
+        last_error: 'no_canonical_operation',
+      });
+      return Response.json({ received: true, canonical_reconciled: false, pending_review: true }, { status: 202 });
     }
 
-    if (!record) {
-      record = await sr.entities.WebhookEvent.create({
-        source: 'paypal_campaign', event_key: key, event_type: info.type,
-        state: 'claimed', description: financialState,
+    // ---- Refund / reversal: reverse the exact canonical donation ----------
+    if (['PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED', 'CHECKOUT.PAYMENT-APPROVAL.REVERSED'].includes(info.type)) {
+      if (!info.orderId) return Response.json({ error: 'A PayPal order reference is required.' }, { status: 503 });
+      const ops = await sr.entities.FinancialOperation.filter({ operation_key: 'paypal:' + info.orderId }).catch(() => []);
+      if (!Array.isArray(ops) || ops.length > 1)
+        return Response.json({ error: 'Canonical financial operation requires reconciliation.' }, { status: 409 });
+      const op = ops[0] || null;
+      const terminalState = info.type === 'PAYMENT.CAPTURE.REFUNDED' ? 'refunded' : 'reversed';
+
+      if (!op) {
+        // Nothing was ever booked for this order: record provider state only.
+        await markOrder(terminalState);
+        await sr.entities.WebhookEvent.update(record.id, {
+          state: 'nonfinancial_complete', processed_at: new Date().toISOString(),
+          description: `no canonical donation to reverse; environment=${environment}`,
+        });
+        return Response.json({ received: true, reversed: false });
+      }
+      if (op.state === 'cancelled') {
+        await sr.entities.WebhookEvent.update(record.id, {
+          state: 'side_effects_complete', processed_at: new Date().toISOString(),
+          description: `already reversed; environment=${environment}`,
+        });
+        return Response.json({ received: true, duplicate: true });
+      }
+      if (String(op.environment || 'live') !== environment)
+        return Response.json({ error: 'Canonical donation belongs to another environment.' }, { status: 409 });
+      if (info.captureId && String(op.provider_transaction_id) !== info.captureId)
+        return Response.json({ error: 'Refunded capture does not match the canonical donation.' }, { status: 409 });
+
+      await sr.entities.FinancialOperation.update(op.id, {
+        state: 'cancelled', cancelled_at: new Date().toISOString(),
+        note: `PayPal ${terminalState} (${info.captureId || info.orderId})`,
       });
-    }
-    if (canonicalId) {
+      const donations = await sr.entities.Donation.filter({ canonical_operation_id: op.id }).catch(() => []);
+      for (const donation of Array.isArray(donations) ? donations : []) {
+        await sr.entities.Donation.update(donation.id, {
+          payment_verified: false, cleared: false,
+          description: `Reversed by PayPal (${terminalState}).`,
+        }).catch(() => null);
+      }
+      const holdings = await sr.entities.HoldingLedgerEntry.filter({ canonical_operation_id: op.id }).catch(() => []);
+      for (const entry of Array.isArray(holdings) ? holdings : []) {
+        if (entry.state === 'settled') await sr.entities.HoldingLedgerEntry.update(entry.id, { state: 'reversed' }).catch(() => null);
+      }
+      await reconcileCanonicalCampaignProjection(sr, op.campaign_id);
+      await markOrder(terminalState, { last_error: '' });
       await sr.entities.WebhookEvent.update(record.id, {
-        state: 'financial_applied', canonical_operation_id: canonicalId,
-        financial_applied_at: new Date().toISOString(),
-        description: financialState, last_error: '',
+        state: 'side_effects_complete', processed_at: new Date().toISOString(),
+        canonical_operation_id: String(op.id),
+        description: `canonical donation ${terminalState}; environment=${environment}`,
       });
-      return Response.json({ received: true, canonical_reconciled: true });
+      return Response.json({ received: true, reversed: true, state: terminalState });
     }
-    // A signed capture not yet found in canonical operations is NOT a donation.
-    // Keep it visible to admin reconciliation, even if PayPal retries delivery.
-    if (record.description !== financialState) {
-      await sr.entities.WebhookEvent.update(record.id, {
-        state: 'claimed', description: financialState,
-      });
-    }
-    return Response.json({ received: true, canonical_reconciled: false, pending_review: true }, { status: 202 });
+
+    await sr.entities.WebhookEvent.update(record.id, {
+      state: 'nonfinancial_complete', processed_at: new Date().toISOString(),
+      description: `unhandled event type; environment=${environment}`,
+    });
+    return Response.json({ received: true, ignored: true });
   } catch (error) {
     console.error('payPalCampaignWebhook:', error?.name || 'UnknownError');
     return Response.json({ error: 'Webhook verification or reconciliation did not complete.' }, { status: 503 });

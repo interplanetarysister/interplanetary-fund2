@@ -4,6 +4,9 @@
 export const FEATURE_SCOPES: Record<string, string> = {
   public_campaign_fundraising: 'global',
   payment_checkout_enabled: 'global',
+  // Fake-money demo checkout. Independent of live campaign payments so the
+  // paused live policy never blocks a sandbox judge test.
+  paypal_sandbox_demo: 'global',
   paypal_checkout: 'beta', // Canonical scope, normalized from historical record.
   stripe_checkout: 'beta',
   google_pay_checkout: 'beta',
@@ -68,6 +71,7 @@ export function featureUnavailable(name = 'This feature'): Response {
 export const CODE_CONNECTED_FEATURES = [
   'public_campaign_fundraising',
   'payment_checkout_enabled',
+  'paypal_sandbox_demo',
   'paypal_checkout', 'google_pay_checkout', 'apple_pay_checkout',
   'subscription_checkout',
   'outbound_payout_execution',

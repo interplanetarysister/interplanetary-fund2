@@ -78,6 +78,8 @@ export default async function(req) {
     for (const op of operations) {
       if (op.operation_type !== 'donation') continue;
       if (!['applied', 'completed'].includes(op.state)) continue;
+      // Sandbox test money never mixes into live platform analytics.
+      if (String(op.environment || 'live') === 'sandbox') continue;
       const amount = Number(op.gross_amount || 0);
       if (!(amount > 0)) continue;
       add({
@@ -93,6 +95,7 @@ export default async function(req) {
     for (const entry of holdings) {
       if (entry.direction !== 'in' || entry.state !== 'settled') continue;
       if (entry.source_type !== 'external_platform') continue;
+      if (String(entry.environment || 'live') === 'sandbox') continue;
       if (!entry.source_provider) continue;
       const amount = Number(entry.amount || 0);
       if (!(amount > 0)) continue;

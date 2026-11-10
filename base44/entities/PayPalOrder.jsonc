@@ -1,0 +1,153 @@
+{
+  "name": "PayPalOrder",
+  "type": "object",
+  "properties": {
+    "request_key": {
+      "type": "string",
+      "description": "Server-derived idempotency identity: environment + checkout intent. Durable uniqueness key for order creation retries."
+    },
+    "order_id": {
+      "type": "string",
+      "description": "PayPal Orders v2 order id. No money is written from this row; the canonical FinancialOperation remains authoritative."
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "sandbox",
+        "live"
+      ],
+      "default": "sandbox",
+      "description": "PayPal environment this order was created in. Sandbox money is never mixed into live campaign totals."
+    },
+    "campaign_id": {
+      "type": "string"
+    },
+    "campaign_title": {
+      "type": "string"
+    },
+    "validated_gift": {
+      "type": "number",
+      "description": "Campaign gift validated server-side before the PayPal order existed."
+    },
+    "platform_contribution": {
+      "type": "number",
+      "default": 0
+    },
+    "processing_fee": {
+      "type": "number",
+      "default": 0
+    },
+    "total_charge": {
+      "type": "number",
+      "description": "Exact amount sent to PayPal as the order total."
+    },
+    "currency": {
+      "type": "string",
+      "default": "USD"
+    },
+    "payment_channel": {
+      "type": "string",
+      "enum": [
+        "paypal",
+        "googlepay",
+        "applepay"
+      ],
+      "default": "paypal"
+    },
+    "merchant_email": {
+      "type": "string",
+      "description": "Sandbox or live merchant that must receive the capture. Empty means the owner of the active REST application credentials."
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "creating",
+        "created",
+        "approved",
+        "pending",
+        "captured",
+        "denied",
+        "failed",
+        "cancelled",
+        "refunded",
+        "reversed"
+      ],
+      "default": "creating"
+    },
+    "capture_id": {
+      "type": "string"
+    },
+    "captured_amount": {
+      "type": "number"
+    },
+    "captured_currency": {
+      "type": "string"
+    },
+    "canonical_operation_id": {
+      "type": "string",
+      "description": "Canonical FinancialOperation id created by the verified capture. Empty until real provider capture succeeded."
+    },
+    "donor_user_id": {
+      "type": "string"
+    },
+    "donor_name": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "custom_id": {
+      "type": "string",
+      "description": "Server-generated PayPal custom_id binding campaign and validated allocation."
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Sanitized failure reason. Never stores credentials or tokens."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "request_key",
+    "environment",
+    "campaign_id",
+    "total_charge",
+    "currency"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  },
+  "description": "Server-written PayPal checkout intents. Records the validated donation amount before the provider order exists and binds each order to one campaign, environment and merchant. Not a donation ledger."
+}

@@ -38,6 +38,7 @@ export default async function(req) {
         kind: op.operation_type || 'operation',
         state: op.state || 'unknown',
         provider: op.provider || '',
+        environment: String(op.environment || 'live'),
         gross_amount: round2(op.gross_amount),
         platform_contribution: round2(op.platform_contribution),
         processing_fee: round2(op.processing_fee),
@@ -57,6 +58,7 @@ export default async function(req) {
         state: entry.state || 'unknown',
         provider: entry.source_provider || '',
         source_type: entry.source_type || '',
+        environment: String(entry.environment || 'live'),
         amount: round2(entry.amount),
         currency: String(entry.currency || 'USD').toUpperCase(),
       });
@@ -65,7 +67,8 @@ export default async function(req) {
     entries.sort((a, b) => String(b.occurred_at || '').localeCompare(String(a.occurred_at || '')));
 
     const settledHeld = holdings
-      .filter((entry) => entry.direction === 'in' && entry.state === 'settled' && !entry.withdrawal_id)
+      .filter((entry) => entry.direction === 'in' && entry.state === 'settled' && !entry.withdrawal_id &&
+        String(entry.environment || 'live') !== 'sandbox')
       .reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
 
     return Response.json({

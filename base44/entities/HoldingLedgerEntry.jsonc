@@ -49,6 +49,15 @@
       "type": "string",
       "description": "Non-secret provider/account reference."
     },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "live",
+        "sandbox"
+      ],
+      "default": "live",
+      "description": "Payment environment for this custody movement. Sandbox entries are excluded from live available and settled balances."
+    },
     "provider_transaction_id": {
       "type": "string",
       "description": "Provider/bank transaction or settlement identifier used for reconciliation."

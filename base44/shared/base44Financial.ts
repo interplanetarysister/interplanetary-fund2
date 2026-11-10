@@ -117,7 +117,10 @@ export async function ensureCanonicalCampaign(sr, campaign, currentWithdrawalId 
   if (!campaign?.id) throw new Error('Campaign is required for financial registration.');
   const rows = await sr.entities.Donation.filter({ campaign_id: campaign.id }, '-created_date', 5000).catch(() => []);
   if (rows.length >= 5000) throw new Error('Campaign financial baseline exceeds the safe batch size.');
-  const verified = rows.filter((d) => d.payment_verified === true && (!d.is_institutional || d.cleared === true));
+  // Sandbox test money is never a live campaign total, and must not become
+  // withdrawable. Rows written before the environment field existed are live.
+  const verified = rows.filter((d) => d.payment_verified === true && (!d.is_institutional || d.cleared === true) &&
+    String(d.environment || 'live') !== 'sandbox');
   const raisedAmount = round2(verified.reduce((s,d) => s + giftOf(d), 0));
   const donorCount = verified.length;
   const donationAvailable = round2(verified.filter((d) => !d.withdrawal_id || d.withdrawal_id === currentWithdrawalId).reduce((s,d) => s + giftOf(d), 0));
@@ -134,6 +137,7 @@ export async function ensureCanonicalCampaign(sr, campaign, currentWithdrawalId 
   }, '-created_date', 5000).catch(() => []);
   if (settledExternal.length >= 5000) throw new Error('Campaign external settlement baseline exceeds the safe batch size.');
   const externalAvailable = round2(settledExternal
+    .filter((entry) => String(entry.environment || 'live') !== 'sandbox')
     .filter((entry) => !entry.withdrawal_id || entry.withdrawal_id === currentWithdrawalId)
     .reduce((sum, entry) => sum + Number(entry.amount || 0), 0));
   const availableBalance = round2(donationAvailable + externalAvailable);
@@ -141,11 +145,13 @@ export async function ensureCanonicalCampaign(sr, campaign, currentWithdrawalId 
 }
 
 export async function recordCanonicalDonation(sr, args) {
+  const environment = args.environment === 'sandbox' ? 'sandbox' : 'live';
   const allocation = {
     operation_key: args.operationKey, operation_type: 'donation', state: 'applied',
     campaign_id: args.campaignId, campaign_owner_user_id: args.campaignOwnerUserId || '',
     provider: args.provider || '', provider_transaction_id: args.providerTransactionId || '',
     payment_channel: normalizePaymentChannel(args.paymentMethod),
+    environment,
     gross_amount: round2(Number(args.grossAmount || 0)), platform_contribution: round2(Number(args.platformContribution || 0)),
     processing_fee: round2(Number(args.processingFee || 0))
   };
@@ -171,6 +177,10 @@ export async function recordCanonicalDonation(sr, args) {
     if (expectedChannel && priorRows.some((row) => !row.payment_channel)) {
       await flagAllocationConflict(sr, priorRows, args.operationKey);
       throw new Error('Legacy donation operation is missing immutable payment-channel evidence. Manual reconciliation required.');
+    }
+    if (priorRows.some((row) => String(row.environment || 'live') !== environment)) {
+      await flagAllocationConflict(sr, priorRows, args.operationKey);
+      throw new Error('Donation operation key is already bound to a different payment environment.');
     }
     const prior = await one(sr, args.operationKey);
     const campaign = await sr.entities.Campaign.get(args.campaignId);
