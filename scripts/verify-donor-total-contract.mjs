@@ -28,7 +28,7 @@ const giving=fs.readFileSync('base44/functions/getMyGiving/entry.ts','utf8');
 const donorUi=fs.readFileSync('src/components/campaigns/DonateDialog.jsx','utf8');
 assert.match(receipt,/const gift = Math.max\(0, Number\(donation.amount \|\| 0\) - contribution\)/);
 assert.match(receipt,/const total = Number\(donation.amount \|\| 0\) \+ fee/);
-assert.match(giving,/round2\\(giftOf\\(d\\)\\)/);
+assert.ok(giving.includes('round2(giftOf(d))'));
 assert.match(giving,/operation.state !== 'applied'/);
 assert.match(giving,/platform_support_amount/);
 assert.match(donorUi,/Gift to this campaign/);
