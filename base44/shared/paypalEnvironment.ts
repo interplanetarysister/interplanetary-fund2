@@ -15,8 +15,9 @@ export const PAYPAL_SANDBOX_DEMO_FLAG = 'paypal_sandbox_demo';
 const text = (name: string) => String(secrets.get(name) || '').trim();
 
 export function resolvePayPalEnvironment(): PayPalEnvironment {
-  if (text('PAYPAL_SANDBOX_CLIENT_ID') || text('PAYPAL_SANDBOX_CLIENT_SECRET')) return 'sandbox';
-  return text('PAYPAL_MODE') === 'live' ? 'live' : 'sandbox';
+  // Explicit operational switch: storing sandbox credentials alone never
+  // changes live payment routing, payouts or webhook verification.
+  return text('PAYPAL_MODE') === 'sandbox' ? 'sandbox' : 'live';
 }
 
 export function paypalCredentials(environment: PayPalEnvironment = resolvePayPalEnvironment()) {
@@ -24,10 +25,8 @@ export function paypalCredentials(environment: PayPalEnvironment = resolvePayPal
     const dedicatedId = text('PAYPAL_SANDBOX_CLIENT_ID');
     const dedicatedSecret = text('PAYPAL_SANDBOX_CLIENT_SECRET');
     if (dedicatedId && dedicatedSecret) return { clientId: dedicatedId, clientSecret: dedicatedSecret };
-    // Reuse the primary names only when the whole deployment is sandboxed.
-    if (text('PAYPAL_MODE') === 'sandbox') {
-      return { clientId: text('PAYPAL_CLIENT_ID'), clientSecret: text('PAYPAL_CLIENT_SECRET') };
-    }
+    // Fail closed rather than accidentally sending live credentials to the
+    // sandbox OAuth endpoint when the deployment is switched.
     return { clientId: '', clientSecret: '' };
   }
   return { clientId: text('PAYPAL_CLIENT_ID'), clientSecret: text('PAYPAL_CLIENT_SECRET') };
