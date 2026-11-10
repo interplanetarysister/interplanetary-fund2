@@ -29,7 +29,7 @@ assert.match(button,/amount: value/);
 assert.match(button,/platform_contribution: selectedContribution/);
 assert.match(button,/intent_id: intentId/);
 assert.doesNotMatch(button,/\.message\b/,"provider exception messages must not reach PayPal UI");
-assert.match(scripts,/components=buttons,googlepay,applepay&/);
+assert.match(scripts,/components=buttons,card-fields,googlepay,applepay&/);
 assert.doesNotMatch(scripts,/googlepay-payments/, "v5 PayPal Buttons cannot load a v6 SDK component");
 assert.match(scripts,/window\.paypal\?\.Buttons/);
 const wallet=read("src/components/payments/GooglePayButton.jsx");
