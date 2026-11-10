@@ -40,8 +40,10 @@ async function readBundle(sr: any, userId: string, platform: string) {
     const parsed = JSON.parse(await decryptConnectionSecret(row.ciphertext, sr));
     return { row, bundle: parsed && typeof parsed === 'object' ? parsed : {} };
   } catch {
-    // An unreadable bundle never becomes a plaintext fallback.
-    return { row, bundle: {} };
+    // Fail closed: never replace an existing ciphertext bundle if the key is
+    // unavailable or the payload is corrupted. A silent empty bundle would
+    // erase the member's previously vaulted provider credentials on save.
+    throw new Error('credential_vault_decryption_failed');
   }
 }
 
