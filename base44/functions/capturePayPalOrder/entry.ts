@@ -141,7 +141,7 @@ export default async function (req) {
     const donCents = Number.parseInt(parts[1], 10);
     const procCents = Number.parseInt(parts[2], 10);
     const contributionCents = Number.parseInt(parts[3], 10);
-    const paymentChannel = ['paypal', 'googlepay', 'applepay'].includes(parts[4]) ? parts[4] : '';
+    const paymentChannel = ['paypal', 'card', 'googlepay', 'applepay'].includes(parts[4]) ? parts[4] : '';
     if (!paymentChannel || ![donCents, procCents, contributionCents].every(Number.isInteger) || donCents <= 0 || procCents < 0 || contributionCents < 0 || contributionCents > donCents) {
       return Response.json({ error: 'PayPal order financial metadata is invalid.' }, { status: 409 });
     }
