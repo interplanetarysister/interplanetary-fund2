@@ -30,8 +30,7 @@ const isServerCiphertext = (value: unknown) => String(value || '').startsWith('e
 
 async function readBundle(sr: any, userId: string, platform: string) {
   const rows = await sr.entities.UserCredentialVault
-    .filter({ user_id: userId, platform })
-    .catch(() => []);
+    .filter({ user_id: userId, platform });
   const serverRows = (Array.isArray(rows) ? rows : []).filter((entry) => isServerCiphertext(entry?.ciphertext));
   if (serverRows.length === 0) return { row: null, bundle: {} };
   const row = serverRows[0];
