@@ -12,6 +12,7 @@ import ApplePayButton from "@/components/payments/ApplePayButton";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import CryptoDonateOption from "@/components/payments/CryptoDonateOption";
 import PayPalCheckoutButton from "@/components/payments/PayPalCheckoutButton";
+import PayPalCardFields from "@/components/payments/PayPalCardFields";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
@@ -154,6 +155,8 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {capabilityError && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">We couldn’t check payment choices right now. Please try again.</p>}
             {capabilities && !paypalApiAvailable && (platformOnlyMode || !campaign.cashapp_tag) && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">Campaign donations are not available through a verified payment method right now. No payment has been started.</p>}
 
+
+            {paypalApiAvailable && Number(amount) >= MIN_DONATION && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><PayPalCardFields campaign={campaign} amount={amount} platformContribution={platformContribution} onCheckoutStart={() => setPaypalHandoff(true)} onCheckoutEnd={() => setPaypalHandoff(false)} onPaid={() => { setPaypalHandoff(false); setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
             {paypalApiAvailable && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName="" message="" platformContribution={platformContribution} onCheckoutStart={() => setPaypalHandoff(true)} onCheckoutEnd={() => setPaypalHandoff(false)} onPaid={() => { setPaypalHandoff(false); setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
