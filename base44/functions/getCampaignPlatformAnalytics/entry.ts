@@ -10,6 +10,7 @@ const round2 = (n) => Math.round((Number(n || 0) + Number.EPSILON) * 100) / 100;
 const PLATFORM_LABELS = {
   stripe: 'Stripe',
   paypal: 'PayPal',
+  card: 'Credit or debit card',
   cashapp: 'Cash App',
   googlepay: 'Google Pay',
   applepay: 'Apple Pay',
