@@ -40,7 +40,7 @@ export function confirmedCampaignCapture(order, event) {
   // event alone. The order's server-generated custom_id binds the campaign.
   const parts = String(order?.custom_id || '').split('|');
   if (!((parts.length === 6 && parts[5] === 'gift_first_v2') || parts.length === 5)) return false;
-  if (!parts[0] || !['paypal','googlepay','applepay'].includes(parts[4])) return false;
+  if (!parts[0] || !['paypal','card','googlepay','applepay'].includes(parts[4])) return false;
   const allocations = parts.slice(1,4).map(x => Number(x));
   if (allocations.some(x => !Number.isSafeInteger(x) || x < 0) || allocations[0] <= 0 ||
       allocations[2] > allocations[0]) return false;
