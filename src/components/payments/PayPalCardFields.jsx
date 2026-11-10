@@ -108,7 +108,7 @@ export default function PayPalCardFields({ campaign, amount, platformContributio
         onClick={async () => {
           setError(""); callbacks.current.onCheckoutStart?.();
           try { await fieldsRef.current?.submit(); }
-          catch (_) { if (!cancelled) { setError("Card authorization failed. Check your details and try again."); setStatus("ready"); } callbacks.current.onCheckoutEnd?.(); }
+          catch (_) { setError("Card authorization failed. Check your details and try again."); setStatus("ready"); callbacks.current.onCheckoutEnd?.(); }
         }}>
         {status === "capturing" ? "Verifying payment…" : "Donate securely with card"}
       </button>
