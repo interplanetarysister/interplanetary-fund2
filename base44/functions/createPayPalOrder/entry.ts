@@ -158,11 +158,28 @@ export default async function (req) {
       return Response.json({ error: 'PayPal returned an order already bound to another checkout.' }, { status: 409 });
     }
 
-    await sr.entities.PayPalOrder.update(savedRow?.records?.[0]?.id || prior?.id, {
+    // Do not return an order to the browser unless we can subsequently
+    // authenticate it against exactly one durable, matching server-side row.
+    // An approved PayPal order with no persisted mapping cannot be safely
+    // captured or reconciled against campaign finances.
+    const matchingRows = await sr.entities.PayPalOrder.filter({ request_key: requestKey });
+    if (!Array.isArray(matchingRows) || matchingRows.length !== 1 ||
+        matchingRows[0].environment !== environment ||
+        matchingRows[0].campaign_id !== campaign_id ||
+        Math.abs(round2(matchingRows[0].total_charge) - round2(totalCharge)) > 0.01) {
+      return Response.json({ error: 'Payment order could not be safely recorded. Nothing was charged.' }, { status: 503 });
+    }
+    await sr.entities.PayPalOrder.update(matchingRows[0].id, {
       order_id: order.id,
       state: 'created',
       last_error: '',
-    }).catch(() => null);
+    });
+    const confirmedRows = await sr.entities.PayPalOrder.filter({ request_key: requestKey });
+    if (!Array.isArray(confirmedRows) || confirmedRows.length !== 1 ||
+        confirmedRows[0].order_id !== order.id ||
+        confirmedRows[0].state !== 'created') {
+      return Response.json({ error: 'Payment order could not be verified. Nothing was charged.' }, { status: 503 });
+    }
 
     return Response.json({
       id: order.id,
