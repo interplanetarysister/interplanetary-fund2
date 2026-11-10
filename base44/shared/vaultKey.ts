@@ -91,8 +91,7 @@ export async function resolveVaultKey(sr: any): Promise<{ bytes: Uint8Array; sou
 
 async function readStoredKey(sr: any, options: { withBase64?: boolean } = {}) {
   const rows = await sr.entities.VaultMasterKey
-    .filter({ key_id: ROW_KEY_ID }, 'created_date', 20)
-    .catch(() => []);
+    .filter({ key_id: ROW_KEY_ID }, 'created_date', 20);
   for (const row of Array.isArray(rows) ? rows : []) {
     const bytes = decodeVaultKey(row?.key_b64);
     if (!bytes) continue;
