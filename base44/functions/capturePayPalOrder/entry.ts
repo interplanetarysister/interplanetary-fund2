@@ -29,7 +29,7 @@ export default async function (req) {
     }
     const sr = base44.asServiceRole;
 
-    const { order_id, campaign_id, donor_name, message, is_recurring, reconcile_only, paypal_transaction_id } = await req.json();
+    const { order_id, campaign_id, donor_name, message, reconcile_only, paypal_transaction_id } = await req.json();
     if (!order_id || !campaign_id) {
       return Response.json({ error: 'Order id and campaign are required' }, { status: 400 });
     }
@@ -65,6 +65,10 @@ export default async function (req) {
       return Response.json({ error: 'This checkout requires reconciliation.' }, { status: 409 });
     }
     const savedOrder = orderRows[0] || null;
+    // Never let an unrelated signed-in caller reassign a prepared checkout.
+    if (savedOrder?.donor_user_id && savedOrder.donor_user_id !== donor?.id) {
+      return Response.json({ error: 'This checkout belongs to another donor.' }, { status: 403 });
+    }
     if (savedOrder) {
       if (savedOrder.campaign_id !== campaign_id || String(savedOrder.environment) !== environment) {
         return Response.json({ error: 'PayPal order does not match this campaign.' }, { status: 409 });
@@ -217,7 +221,7 @@ export default async function (req) {
         paymentVerified: true,
         source: 'paypal_capture',
         environment,
-        isRecurring: !!is_recurring,
+        isRecurring: false,
       });
 
       // A concurrent handler may have won the atomic claim. Mirror only the
@@ -288,8 +292,8 @@ export default async function (req) {
       processing_fee: processingFee,
       donor_name: displayName,
       message: message || '',
-      is_recurring: !!is_recurring,
-      ...(is_recurring ? { recurring_status: 'active' } : {}),
+      is_recurring: false,
+      
       ...(donor?.id ? { donor_user_id: donor.id } : {}),
       payment_method: paymentChannel,
       payment_verified: true,
@@ -339,7 +343,7 @@ export default async function (req) {
     if (canonical.applied && environment !== 'sandbox') {
       await sendDonationReceipt(sr, { ...donation, donor_email: donor?.email }, campaign);
       // Marketing KPI: a verified, canonically-applied donation is the ultimate proof of trust.
-      try { await base44.analytics.track({ eventName: 'donation_completed', properties: { campaign_id, amount: total, is_recurring: !!is_recurring } }); } catch (_) { /* non-fatal */ }
+      try { await base44.analytics.track({ eventName: 'donation_completed', properties: { campaign_id, amount: total, is_recurring: false } }); } catch (_) { /* non-fatal */ }
     }
 
     return Response.json({
