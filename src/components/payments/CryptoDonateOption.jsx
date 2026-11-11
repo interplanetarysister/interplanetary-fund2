@@ -6,7 +6,7 @@ import { reownConfigured, openReownWallet } from "@/lib/reownWallet";
 // Wallet-neutral setup does not authorize, send, capture or record a payment.
 // IFund will only offer a checkout when a non-Stripe settlement provider and
 // signature-verified campaign crediting are implemented and approved.
-export default function CryptoDonateOption({ campaign = null, platformSupport = false }) {
+export default function CryptoDonateOption({ campaign = null, platformSupport = false, settlementReason = "" }) {
   const optedIn = platformSupport || campaign?.accept_crypto_donations === true;
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
@@ -24,7 +24,7 @@ export default function CryptoDonateOption({ campaign = null, platformSupport = 
         <Wallet className="w-4 h-4" /> Cryptocurrency donations
       </h3>
       <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-950 dark:border-amber-400/30 dark:bg-amber-200/10 dark:text-amber-100">
-        Coming soon. Wallet setup does not accept or transfer donations yet.
+        Coming soon. {settlementReason || "Wallet setup does not accept or transfer donations yet."}
       </p>
       {reownConfigured() &&
       <Button type="button" variant="outline"

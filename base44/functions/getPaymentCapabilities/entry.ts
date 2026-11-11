@@ -22,7 +22,45 @@ export default async function (_req) {
   const paypalPayoutLive = paypalApiLive && await isLivePayPalPayoutReady();
   const sandboxClientId = sandboxReady ? paypalCredentials('sandbox').clientId : '';
 
+  // Card, Google Pay and Apple Pay are PayPal-backed wallet channels: they can
+  // only complete when the same live REST app and verified capture webhook are
+  // in place, so they inherit that readiness instead of being asserted.
+  const walletReason = paypalApiLive ? ''
+    : !paypalConfigured ? 'PayPal REST credentials are not configured for this environment.'
+    : isSandbox ? 'PayPal is in sandbox mode; live campaign payments are unavailable.'
+    : 'The live PayPal REST app or verified capture webhook is not ready.';
+  const cryptoBlockedReason = 'No verified crypto settlement provider is connected, so on-chain gifts cannot be confirmed or credited.';
+  const blockedReasons = [
+    ...(paypalApiLive ? [] : [walletReason]),
+    cryptoBlockedReason,
+  ];
+
   return Response.json({
+    // True only when money can be captured and reconciled live. Sandbox test
+    // money never satisfies this.
+    live_donations: paypalApiLive,
+    card: { available: paypalApiLive, via: 'paypal', reason: walletReason },
+    google_pay: {
+      available: paypalApiLive, via: 'paypal', requires_device_eligibility: true, reason: walletReason,
+    },
+    apple_pay: {
+      available: paypalApiLive, via: 'paypal', requires_device_eligibility: true, reason: walletReason,
+    },
+    // Cash App is a campaign-owner-provided destination, not an IFund processor
+    // channel. Reports stay unverified until a provider settlement confirms them.
+    cash_app: {
+      available: 'owner_provided', verified: false, requires_campaign_tag: true,
+      reason: 'Cash App has no settlement API for IFund. A campaign owner supplies their own tag and reported gifts stay unverified.',
+    },
+    crypto: {
+      available: false, status: 'awaiting_verified_settlement_gateway',
+      reason: cryptoBlockedReason,
+    },
+    payout: {
+      paypal_live: paypalPayoutLive,
+      reason: paypalPayoutLive ? '' : 'Live PayPal Payouts scope and merchant authorization are not verified.',
+    },
+    blocked_reasons: blockedReasons,
     paypal: {
       // The canonical paypal.com donation-link path is independently available
       // and does not require REST API credentials. Do not conflate it with SDK/API checkout.

@@ -65,8 +65,9 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   const platformOnlyPrelaunch = platformOnlyMode;
   const sandboxReady = capabilities?.paypal?.sandbox?.ready === true;
   const paypalApiAvailable = newCheckoutEnabled && paypalEnabled && capabilities?.paypal?.api_live === true;
-  const googlePayAvailable = newCheckoutEnabled && googlePayEnabled && capabilities?.paypal?.api_live === true;
-  const applePayAvailable = newCheckoutEnabled && applePayEnabled && capabilities?.paypal?.api_live === true;
+  const googlePayAvailable = newCheckoutEnabled && googlePayEnabled && capabilities?.google_pay?.available !== false && capabilities?.paypal?.api_live === true;
+  const applePayAvailable = newCheckoutEnabled && applePayEnabled && capabilities?.apple_pay?.available !== false && capabilities?.paypal?.api_live === true;
+  const cryptoSettlementReason = capabilities?.crypto?.reason || "";
 
   const confirmManualDonation = async (payment_method) => {
     const value = parseFloat(amount);
@@ -136,7 +137,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
                 The button below is the separate real-money platform-support link. It does not donate to this campaign.
               </p>
             )}
-            <CryptoDonateOption platformSupport />
+            <CryptoDonateOption platformSupport settlementReason={cryptoSettlementReason} />
             <div className="sticky bottom-0 z-10 -mx-4 -mb-4 rounded-b-2xl border-t border-cyan-400/30 bg-[#101a32]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
               <PayPalDonateButton label="Support Interplanetary Fund with PayPal" />
             </div>
@@ -168,7 +169,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {!platformOnlyMode && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><p className="mb-2 text-xs text-amber-800">Cash App sends your chosen amount directly to the campaign owner. The optional IFund tip above does not apply to Cash App.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
 
-            {<CryptoDonateOption campaign={campaign} amount={amount}
+            {<CryptoDonateOption campaign={campaign} amount={amount} settlementReason={cryptoSettlementReason}
               donorName="" message="" platformContribution={platformContribution} />}
             <section aria-label="Payment actions" className="sticky bottom-0 z-10 -mx-4 -mb-4 space-y-3 border-t border-slate-200 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_25px_rgba(15,23,42,0.09)] backdrop-blur-sm sm:-mx-6 sm:px-6">
               <h3 className="text-center text-sm font-bold text-slate-900">Choose how to pay</h3>
