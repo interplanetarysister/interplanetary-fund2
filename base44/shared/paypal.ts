@@ -309,7 +309,7 @@ export async function verifyWebhookSignature(rawEvent, headers, verifiedBillingW
     `"webhook_event":${raw}`,
     '}',
   ].join('');
-  const res = await fetch(`${apiBase()}/v1/notifications/verify-webhook-signature`, {
+  const res = await fetch(`${apiBase(environment)}/v1/notifications/verify-webhook-signature`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
