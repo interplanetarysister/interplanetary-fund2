@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { verifyWebhookSignature, getOrder, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
-import { resolvePayPalEnvironment, paypalWebhookId } from '../../shared/paypalEnvironment.ts';
+import { verifyWebhookSignature, getOrder } from '../../shared/paypal.ts';
+import { resolvePayPalEnvironment } from '../../shared/paypalEnvironment.ts';
+import { resolveVerifiedCampaignWebhookId } from '../../shared/paypalCampaignReadiness.ts';
 import { reconcileCanonicalCampaignProjection } from '../../shared/base44Financial.ts';
 import {
   PAYPAL_CAMPAIGN_WEBHOOK_URL, paypalCampaignEventInfo, confirmedCampaignCapture,
@@ -24,14 +25,7 @@ export default async function(req) {
 
     // Sandbox and live webhooks are different registrations; never verify a
     // sandbox delivery with the live webhook id or vice versa.
-    let webhookId = paypalWebhookId(environment);
-    if (!webhookId) {
-      const rows = await sr.entities.PayPalCampaignWebhook.filter({
-        provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF, environment,
-      }).catch(() => []);
-      const registered = (Array.isArray(rows) ? rows : []).filter((row) => row.url === PAYPAL_CAMPAIGN_WEBHOOK_URL && row.webhook_id);
-      if (registered.length === 1) webhookId = String(registered[0].webhook_id);
-    }
+    const webhookId = await resolveVerifiedCampaignWebhookId(sr, environment);
     if (!webhookId) return Response.json({ error: 'Campaign webhook is not registered for this environment.' }, { status: 503 });
 
     const raw = await req.text();
