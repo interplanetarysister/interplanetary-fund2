@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
-import { createOrder, isLivePayPalCampaignWebhookReady } from '../../shared/paypal.ts';
+import { createOrder } from '../../shared/paypal.ts';
+import { resolveVerifiedCampaignWebhookId } from '../../shared/paypalCampaignReadiness.ts';
 import {
   resolvePayPalEnvironment, isPayPalSandboxDemoEnabled, paypalCredentials,
   paypalMerchantEmail, paypalSandboxCredentialsPresent,
@@ -38,7 +39,7 @@ export default async function (req) {
       if (secrets.get('PAYPAL_MODE') !== 'live') return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
       const { clientId, clientSecret } = paypalCredentials('live');
       if (!clientId || !clientSecret) return Response.json({ error: 'PayPal campaign payments are not currently available.' }, { status: 503 });
-      if (!(await isLivePayPalCampaignWebhookReady())) return Response.json({ error: 'Live PayPal capture webhook is not verified. No order was created.' }, { status: 503 });
+      if (!(await resolveVerifiedCampaignWebhookId(sr, 'live'))) return Response.json({ error: 'Live PayPal capture webhook is not verified. No order was created.' }, { status: 503 });
     }
 
     const donorGuard = await assertActiveAccountIfSignedIn(base44);
