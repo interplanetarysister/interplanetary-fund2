@@ -10,6 +10,7 @@ import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
 export default function Subscriptions() {
   const checkoutEnabled = useFeatureEnabled("subscription_checkout");
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [annual, setAnnual] = useState(false);
   const [subscribing, setSubscribing] = useState(null);
   const [paypal, setPaypal] = useState({ plans: [], live_configured: false, webhook_configured: false, readiness: "checking", saved_plan_mapping_count: null });
@@ -21,15 +22,23 @@ export default function Subscriptions() {
 
   const refresh = useCallback(async () => {
     const [{ data }, currentUser] = await Promise.all([
-      base44.functions.invoke("getPayPalSubscriptionOptions", {}).catch(() => ({ data: null })),
-      base44.auth.me().catch(() => null),
+      base44.functions.invoke("getPayPalSubscriptionOptions", {}),
+      base44.auth.me(),
     ]);
-    if (Array.isArray(data?.plans)) setPaypal(data);
-    if (currentUser) setUser(currentUser);
+    if (!Array.isArray(data?.plans) || !currentUser) throw new Error("Subscription status unavailable");
+    setPaypal(data);
+    setUser(currentUser);
+    setError("");
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    refresh().catch(() => setError("Unable to load subscription options."));
+    const update = () => refresh().catch(() => { setError("Unable to load subscription options. Please retry."); setLoading(false); });
+    update();
+    const onVisible = () => { if (document.visibilityState === "visible") update(); };
+    window.addEventListener("focus", update);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { window.removeEventListener("focus", update); document.removeEventListener("visibilitychange", onVisible); };
   }, [refresh]);
 
   useEffect(() => {
@@ -160,7 +169,9 @@ export default function Subscriptions() {
     }
   };
 
-  if (!user) {
+  if (!loading && !user) return <div role="alert" className="mx-auto max-w-xl p-8"><p>{error || "Sign in to view your subscription."}</p><Button onClick={() => { setLoading(true); refresh().catch(() => { setError("Unable to load subscription options. Please retry."); setLoading(false); }); }}>Retry</Button></div>;
+
+  if (loading) {
     return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 

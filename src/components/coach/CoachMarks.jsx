@@ -9,8 +9,8 @@ import { coachTours } from "./coachTours";
 // auto-appears again on future logins or other devices — it no longer relies
 // on per-session localStorage. The CoachTourButton / PageTips "Take a tour"
 // control can restart it on demand.
-export default function CoachMarks({ tourId }) {
-  const tour = coachTours[tourId];
+export default function CoachMarks({ tourId, tour: suppliedTour, repeatOnVisit = false }) {
+  const tour = suppliedTour || coachTours[tourId];
   const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
   const [rect, setRect] = useState(null);
@@ -25,7 +25,8 @@ export default function CoachMarks({ tourId }) {
       try {
         const me = await base44.auth.me();
         if (cancelled) return;
-        if (!me?.tips_completed) {
+        if (!suppliedTour && me?.email?.toLowerCase() === "user@interplanetaryfund.com") return;
+        if (repeatOnVisit || !me?.tips_completed) {
           setActive(true);
           setStep(0);
         }
@@ -34,7 +35,7 @@ export default function CoachMarks({ tourId }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [tourId]);
+  }, [tourId, suppliedTour, repeatOnVisit]);
 
   // Restart on demand (from CoachTourButton / PageTips).
   useEffect(() => {
@@ -78,7 +79,7 @@ export default function CoachMarks({ tourId }) {
   const finish = () => {
     setActive(false);
     // Persist dismissal so the tour never auto-shows again, across devices.
-    base44.auth.updateMe({ tips_completed: true }).catch(() => {});
+    if (!repeatOnVisit) base44.auth.updateMe({ tips_completed: true }).catch(() => {});
   };
   const next = () => (step < tour.steps.length - 1 ? setStep(step + 1) : finish());
   const back = () => step > 0 && setStep(step - 1);
@@ -103,8 +104,8 @@ export default function CoachMarks({ tourId }) {
   const cardW = 320;
   const cardStyle = { position: "fixed", zIndex: 61, width: cardW, maxWidth: "calc(100vw - 24px)" };
   if (rect) {
-    if (below) cardStyle.top = rect.bottom + 16;
-    else cardStyle.bottom = window.innerHeight - rect.top + 16;
+    if (below) cardStyle.top = Math.max(12, Math.min(rect.bottom + 16, window.innerHeight - 280));
+    else cardStyle.bottom = Math.max(12, Math.min(window.innerHeight - rect.top + 16, window.innerHeight - 280));
     let left = rect.left + rect.width / 2 - cardW / 2;
     left = Math.max(12, Math.min(left, window.innerWidth - cardW - 12));
     cardStyle.left = left;
@@ -117,7 +118,7 @@ export default function CoachMarks({ tourId }) {
   return (
     <>
       <div style={spotlightStyle} />
-      <div style={cardStyle} className="rounded-2xl bg-card border border-border shadow-xl p-4">
+      <div role="dialog" aria-label={tour.name || "Page walkthrough"} aria-live="polite" style={cardStyle} className="rounded-2xl bg-card border border-border shadow-xl p-4">
         <div className="flex items-start justify-between gap-2 mb-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary">Step {step + 1} of {tour.steps.length}</p>
           <button onClick={finish} aria-label="Close tour" className="text-muted-foreground hover:text-foreground p-1 -mr-1 min-h-[44px] min-w-[44px] flex items-center justify-center">
