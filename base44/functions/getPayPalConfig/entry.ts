@@ -1,7 +1,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { campaignPaymentAccess } from '../../shared/prelaunchPayments.ts';
 import { areFeaturesEnabled } from '../../shared/featureFlagGate.ts';
-import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady, isLivePayPalCampaignWebhookReady } from '../../shared/paypal.ts';
+import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady } from '../../shared/paypal.ts';
+import { resolveVerifiedCampaignWebhookId } from '../../shared/paypalCampaignReadiness.ts';
 import { resolvePayPalEnvironment, paypalCredentials } from '../../shared/paypalEnvironment.ts';
 
 // Public-safe PayPal SDK configuration. Only the browser-publishable client ID
@@ -13,7 +14,13 @@ export default async function (req) {
   const configured = Boolean(clientId && clientSecret);
   const isSandbox = environment === 'sandbox';
   const oauthReady = configured && !isSandbox ? await isLivePayPalRestReady() : false;
-  const webhookReady = oauthReady && await isLivePayPalCampaignWebhookReady();
+  let webhookReady = false;
+  if (oauthReady) {
+    try {
+      const checkClient = createClientFromRequest(req);
+      webhookReady = Boolean(await resolveVerifiedCampaignWebhookId(checkClient.asServiceRole, 'live'));
+    } catch { webhookReady = false; }
+  }
   const providerReady = oauthReady && webhookReady;
   let checkoutReady = false;
   if (providerReady && !isSandbox) {
