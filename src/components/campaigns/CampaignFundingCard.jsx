@@ -1,5 +1,5 @@
 import React from "react";
-import { Progress } from "@/components/ui/progress";
+import FundraisingProgress from "@/components/campaigns/FundraisingProgress";
 import { Button } from "@/components/ui/button";
 import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import { format } from "date-fns";
@@ -11,12 +11,12 @@ import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 // donation action is above the fold) and in the sticky sidebar on desktop.
 export default function CampaignFundingCard({ campaign, onDonate, className = "" }) {
   const platformOnlyMode = !usePublicCampaignFundraising();
-  const pct = Math.min(100, ((campaign.raised_amount || 0) / campaign.goal_amount) * 100);
   return (
     <div className={`bg-white rounded-2xl border border-stone-200/70 p-5 sm:p-6 shadow-sm ${className}`}>
       <p className="font-display text-3xl text-stone-900">${(campaign.raised_amount || 0).toLocaleString()}</p>
       <p className="text-sm text-stone-500 mb-3">raised of ${campaign.goal_amount.toLocaleString()} goal</p>
-      <Progress value={pct} className="h-2 mb-4" />
+      <FundraisingProgress raised={campaign.raised_amount} goal={campaign.goal_amount} />
+      <p className="mt-1 mb-4 text-[11px] text-stone-400">Updates as gifts are verified · milestones at 25%, 50% and 100%</p>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-stone-500 mb-4">
         <span className="flex items-center gap-1.5"><Users className="w-4 h-4" />{campaign.donor_count || 0} donors</span>
         {campaign.end_date && (

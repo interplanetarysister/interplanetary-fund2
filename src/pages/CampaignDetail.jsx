@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import DonateDialog from "@/components/campaigns/DonateDialog";
 import CampaignTranslation from "@/components/campaigns/CampaignTranslation";
 import CampaignFundingCard from "@/components/campaigns/CampaignFundingCard";
+import DonorLeaderboard from "@/components/campaigns/DonorLeaderboard";
 import ShareCampaignKit from "@/components/campaigns/ShareCampaignKit";
 import CrossPlatformTotals from "@/components/campaigns/CrossPlatformTotals";
 import CashAppSettings from "@/components/campaigns/CashAppSettings";
@@ -69,6 +70,16 @@ export default function CampaignDetail() {
     load();
     base44.auth.me().then(setUser).catch(() => {});
   }, [load]);
+
+  // Real-time progress: the server updates the campaign total when a gift is
+  // verified, and this subscription reflects it without a page reload.
+  useEffect(() => {
+    if (!id) return undefined;
+    const unsubscribe = base44.entities.Campaign.subscribe((event) => {
+      if (event?.type === "update" && event.data?.id === id) setCampaign(event.data);
+    });
+    return () => { if (typeof unsubscribe === "function") unsubscribe(); };
+  }, [id]);
 
   useEffect(() => {
     if (!campaign || !location.hash) return;
@@ -164,6 +175,8 @@ export default function CampaignDetail() {
           </div>}
 
           {isOwner && <CrossPlatformTotals campaign={campaign} />}
+
+          <DonorLeaderboard campaignId={campaign.id} />
 
           {donations.length > 0 && (
             <div className="bg-white rounded-2xl border border-stone-200/70 p-5 shadow-sm">

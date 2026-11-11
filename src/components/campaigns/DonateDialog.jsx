@@ -16,7 +16,8 @@ import PayPalCardFields from "@/components/payments/PayPalCardFields";
 import PrelaunchNotice from "@/components/prelaunch/PrelaunchNotice";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 import { useFeatureEnabled } from "@/lib/useFeatureEnabled";
-import { Heart, Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Heart, Loader2, CheckCircle2, Sparkles, ReceiptText } from "lucide-react";
 import { computePayPalBreakdown, MIN_DONATION } from "@/lib/fees";
 
 const presets = [25, 50, 100, 250];
@@ -171,6 +172,13 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
         )}
+        <div className="mt-4 border-t border-border pt-1 text-center">
+          <Button asChild variant="ghost" size="sm" className="text-primary">
+            <Link to="/giving" onClick={() => setOpen(false)}>
+              <ReceiptText className="mr-2 h-4 w-4" aria-hidden="true" />View My Donations
+            </Link>
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

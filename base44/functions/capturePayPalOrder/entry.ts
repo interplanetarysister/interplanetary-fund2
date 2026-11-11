@@ -9,6 +9,7 @@ import { assertActiveAccountIfSignedIn } from '../../shared/accountGuard.ts';
 import { ensureCanonicalCampaign, recordCanonicalDonation } from '../../shared/base44Financial.ts';
 import { reconcileDonationMirror, reconcileNotificationMirror } from '../../shared/financialMirrors.ts';
 import { sendDonationReceipt } from '../../shared/sendDonationReceipt.ts';
+import { sendDonationThankYou } from '../../shared/sendDonationThankYou.ts';
 import { resolvePayPalEnvironment } from '../../shared/paypalEnvironment.ts';
 
 // Captures a PayPal/Google Pay/Apple Pay order and applies the resulting donation through
@@ -355,6 +356,11 @@ export default async function (req) {
     // Sandbox test captures never send receipts or marketing analytics.
     if (canonical.applied && environment !== 'sandbox') {
       await sendDonationReceipt(sr, { ...donation, donor_email: donor?.email }, campaign);
+      // Personalized thank-you through the connected Gmail account. Best effort:
+      // a mail failure never alters or repeats a settled donation.
+      try {
+        await sendDonationThankYou(sr, { donation, campaign, donorEmail: donor?.email, amount: total });
+      } catch (_) { /* thank-you delivery is non-fatal */ }
       // Marketing KPI: a verified, canonically-applied donation is the ultimate proof of trust.
       try { await base44.analytics.track({ eventName: 'donation_completed', properties: { campaign_id, amount: total, is_recurring: false } }); } catch (_) { /* non-fatal */ }
     }

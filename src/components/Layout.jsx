@@ -100,6 +100,7 @@ const navSections = [
       { to: "/platform", label: "Platform", icon: Server },
       { to: "/admin/integrations", label: "Admin Integrations", icon: Plug },
       { to: "/admin/audit", label: "Audit Log", icon: Server },
+      { to: "/admin/donation-export", label: "Donation Export", icon: BarChart3 },
       { to: "/admin/sustainability", label: "Planet Impact", icon: Leaf },
       { to: "/admin/help", label: "Help Center Editor", icon: BookOpen },
       { to: "/admin/founding-members", label: "Founding Members", icon: Users },

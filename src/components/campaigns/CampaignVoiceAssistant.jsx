@@ -4,11 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Image } from '@/components/ui/image';
 import { secureInvokeLLM } from '@/lib/secureLLM';
 import { buildCampaignContext, COMPLIANCE_RULES } from '@/lib/campaignAI';
-import { campaignVoiceCommand, initialVoiceBrief } from '@/lib/campaignVoiceCommands';
+import { campaignVoiceCommand, extractCampaignDetails, missingCampaignFields, spokenProgress } from '@/lib/campaignVoiceCommands';
 import { useFeatureEnabled } from '@/lib/useFeatureEnabled';
 import { Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
 
-const HELP='Tell me your campaign purpose, then who it helps. Say show five titles, choose the second title, write my story, create a picture, read my campaign, or save as a draft. You can also type these commands.';
+const HELP='Just talk normally. Tell me what you are raising money for, who it helps, and your goal — for example, "I am raising twelve thousand dollars to help my sister with medical bills." I save each detail as you speak and tell you what is still needed. You can also say show five titles, write my story, create a picture, read my campaign, or save as a draft.';
 export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage, onSave, saving }) {
   const available=useFeatureEnabled('ai_campaign_assistant');
   const [input,setInput]=useState('');
@@ -17,7 +17,7 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
   const [busy,setBusy]=useState(false);
   const [stage,setStage]=useState(form.ai_profile?.who_helping ? 'ready' : form.ai_profile?.primary_goal ? 'beneficiary' : 'purpose');
   const [options,setOptions]=useState([]);
-  const [history,setHistory]=useState([{role:'assistant',text:form.ai_profile?.primary_goal ? 'Your campaign details are already here. Say show five titles, write my story, create a picture, or save as a draft.' : 'Welcome to the simulated Alexa+ campaign experience. Tell me what you want to raise funds for.'}]);
+  const [history,setHistory]=useState([{role:'assistant',text:form.ai_profile?.primary_goal ? 'Your campaign details are already here. Tell me anything else about it, or say show five titles, write my story, create a picture, or save as a draft.' : 'Hi. Tell me in your own words what you are raising money for, who it helps, and your goal — for example, "I am raising twelve thousand dollars to help my sister with medical bills." I will save each detail and ask for anything still missing.'}]);
   const [notice,setNotice]=useState('');
   const [receipt,setReceipt]=useState('');
   const lock=useRef(false), recognition=useRef(null), mounted=useRef(true), generation=useRef(0), latestForm=useRef(form);
@@ -29,13 +29,45 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
     mounted.current=true;
     return ()=>{mounted.current=false;generation.current++;recognition.current?.abort();window.speechSynthesis?.cancel();};
   },[]);
+  const voiceRef=useRef(null);
+  const pickVoice=()=>{
+    const voices=window.speechSynthesis?.getVoices?.() || [];
+    const english=voices.filter(v=>/^en([-_]|$)/i.test(String(v.lang || '')));
+    for(const name of ['Google US English','Samantha','Microsoft Aria','Microsoft Jenny','Microsoft Michelle','Karen','Serena']){
+      const match=english.find(v=>String(v.name || '').includes(name));
+      if(match)return match;
+    }
+    return english.find(v=>/female|natural/i.test(String(v.name || ''))) || english[0] || null;
+  };
+  useEffect(()=>{
+    const load=()=>{voiceRef.current=pickVoice();};
+    load();
+    window.speechSynthesis?.addEventListener?.('voiceschanged',load);
+    return ()=>window.speechSynthesis?.removeEventListener?.('voiceschanged',load);
+  },[]);
+  // Speak in short sentence groups: long answers keep natural pacing, the best
+  // available English voice is used, and every chunk is queued in order.
   const speak=(text)=>{
     if(!audio || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
-    const utterance=new SpeechSynthesisUtterance(text.slice(0,3500));
-    utterance.lang='en-US';utterance.rate=1;
-    utterance.onerror=(event)=>{if(mounted.current && !['canceled','interrupted'].includes(event.error))setNotice('Audio could not play. Read the response below or tap Read response.');};
-    window.speechSynthesis.speak(utterance);
+    const sentences=String(text || '').replace(/\s+/g,' ').trim().match(/[^.!?]+[.!?]*/g) || [];
+    const chunks=[];let current='';
+    for(const sentence of sentences){
+      const next=(current+' '+sentence).trim();
+      if(next.length>190 && current){chunks.push(current);current=sentence.trim();}
+      else current=next;
+    }
+    if(current)chunks.push(current);
+    const speakChunk=(index)=>{
+      if(!mounted.current || index>=chunks.length) return;
+      const utterance=new SpeechSynthesisUtterance(chunks[index].slice(0,700));
+      if(voiceRef.current)utterance.voice=voiceRef.current;
+      utterance.lang='en-US';utterance.rate=0.98;utterance.pitch=1.02;
+      utterance.onend=()=>speakChunk(index+1);
+      utterance.onerror=(event)=>{if(mounted.current && !['canceled','interrupted'].includes(event.error))setNotice('Audio could not play. Read the response below or tap Read response.');};
+      window.speechSynthesis.speak(utterance);
+    };
+    speakChunk(0);
   };
   const reply=(text)=>{
     if(!mounted.current)return;
@@ -50,7 +82,11 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
     const command=campaignVoiceCommand(text);
     if(command.action==='stop'){reply('Stopped. Your campaign is unchanged.');window.speechSynthesis?.cancel();return;}
     if(command.action==='help'){reply(HELP);return;}
-    if(command.action==='review'){reply([form.title || 'No title selected.',`Goal: ${Number(form.goal_amount || 0).toLocaleString()} dollars.`,form.story || form.summary || form.ai_profile?.primary_goal || 'No story yet.'].join(' '));return;}
+    if(command.action==='review'){
+      const missing=missingCampaignFields(form);
+      const nextStep=missing.length?`Still needed: ${missing.slice(0,2).map(item=>item.ask).join(' ')}`:'Everything needed is in place.';
+      reply([form.title || 'No title selected.',`Goal: ${Number(form.goal_amount || 0).toLocaleString()} dollars.`,form.story || form.summary || form.ai_profile?.primary_goal || 'No story yet.',nextStep].join(' '));return;
+    }
     if(command.action==='goal'){
       if(!(command.amount>0) || !Number.isFinite(command.amount)){reply('Please give a goal greater than zero.');return;}
       onPatch({goal_amount:command.amount});setReceipt('');reply(`Your goal is now ${command.amount} dollars.`);return;
@@ -61,15 +97,31 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
       onPatch({title:options[command.index],summary:''});setReceipt('');reply(`Selected ${options[command.index]}. Say write my story.`);return;
     }
     if(command.action==='details'){
-      if(stage==='purpose'){
-        const brief=initialVoiceBrief(command.text);
-        onPatch({ai_profile:{...form.ai_profile,primary_goal:brief.purpose},...(brief.goal>0?{goal_amount:brief.goal}:{})});
-        setStage('beneficiary');setReceipt('');reply('I have your campaign purpose. Who or what will this help?');return;
+      // Natural speech fills every campaign field it mentions in one turn. A
+      // sentence with no new field is kept as additional campaign context.
+      const found=extractCampaignDetails(command.text);
+      const profile={...(form.ai_profile || {})};
+      const patch={};
+      if(found.purpose && !String(profile.primary_goal || '').trim()) profile.primary_goal=found.purpose;
+      if(found.who_helping && !String(profile.who_helping || '').trim()) profile.who_helping=found.who_helping;
+      if(found.tone && !String(profile.tone || '').trim()) profile.tone=found.tone;
+      if(found.title && !String(form.title || '').trim()) patch.title=found.title;
+      if(found.goal_amount>0 && !(Number(form.goal_amount)>0)) patch.goal_amount=found.goal_amount;
+      if(found.location && !String(form.location || '').trim()) patch.location=found.location;
+      if(found.category && !String(form.category || '').trim()) patch.category=found.category;
+      const captured=Boolean(found.purpose || found.who_helping || found.title || found.goal_amount || found.location || found.category);
+      if(!captured){
+        const detail=String(command.text || '').trim().slice(0,600);
+        if(!detail){reply('I did not catch that. '+HELP);return;}
+        profile.primary_goal=[profile.primary_goal,detail].filter(Boolean).join(' ').slice(0,1200);
       }
-      if(stage==='beneficiary'){
-        onPatch({ai_profile:{...form.ai_profile,who_helping:command.text}});setStage('ready');setReceipt('');reply('Thank you. Say show five titles, or set my title to your own title. Supporter ideas are optional in the campaign form.');return;
-      }
-      reply('I did not change your campaign. '+HELP);return;
+      patch.ai_profile=profile;
+      onPatch(patch);
+      const merged={...form,...patch,ai_profile:profile};
+      setStage(String(profile.who_helping || '').trim() ? 'ready' : 'beneficiary');
+      setReceipt('');
+      reply(spokenProgress(merged, captured?found:{}));
+      return;
     }
     if(['titles','story','image'].includes(command.action) && !available){reply('AI generation is unavailable right now. You can type your title and story in the form and still save a private draft.');return;}
     lock.current=true;setBusy(true);const requestGeneration=generation.current;
