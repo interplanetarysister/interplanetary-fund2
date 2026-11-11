@@ -18,14 +18,36 @@ export function paypalCampaignEventInfo(event) {
   if (!/^WH-[A-Za-z0-9-]{8,90}$/.test(eventId)) return { ok: false, reason: 'invalid_event_id' };
   if (!PAYPAL_CAMPAIGN_WEBHOOK_EVENT_SET.has(type)) return { ok: true, relevant: false, type, eventId };
   const resource = event?.resource || {};
-  const orderId = String(resource?.supplementary_data?.related_ids?.order_id ||
+  const related = resource?.supplementary_data?.related_ids || {};
+  const orderId = String(related.order_id ||
     (type.startsWith('CHECKOUT.') ? resource?.id : '') || '').trim();
-  const captureId = type.startsWith('PAYMENT.CAPTURE.') ? String(resource?.id || '').trim() : '';
+
+  // A PAYMENT.CAPTURE.REFUNDED resource is a *refund*, not a capture.
+  // Its resource.id is the refund ID and must never be compared with the
+  // canonical provider_transaction_id (the original capture ID).
+  const refunded = type === 'PAYMENT.CAPTURE.REFUNDED';
+  const upCapture = refunded
+    ? (Array.isArray(resource?.links) ? resource.links : []).find(link => {
+        if (link?.rel !== 'up' || typeof link?.href !== 'string') return false;
+        try {
+          const uri = new URL(link.href);
+          return /^api(?:-m)?(?:\\.sandbox)?\\.paypal\\.com$/.test(uri.hostname) &&
+            /^\\/v2\\/payments\\/captures\\/[A-Za-z0-9_-]{8,90}$/.test(uri.pathname);
+        } catch { return false; }
+      })
+    : null;
+  const linkedCapture = upCapture ? new URL(upCapture.href).pathname.split('/').pop() : '';
+  const captureId = String(refunded
+    ? (related.capture_id || linkedCapture || '')
+    : (type.startsWith('PAYMENT.CAPTURE.') ? resource?.id : '') || '').trim();
+  const refundId = refunded ? String(resource?.id || '').trim() : '';
   if (orderId && !/^[A-Za-z0-9_-]{8,90}$/.test(orderId))
     return { ok: false, reason: 'invalid_order_id' };
   if (captureId && !/^[A-Za-z0-9_-]{8,90}$/.test(captureId))
     return { ok: false, reason: 'invalid_capture_id' };
-  return { ok: true, relevant: true, type, eventId, orderId, captureId };
+  if (refunded && !/^[A-Za-z0-9_-]{8,90}$/.test(refundId))
+    return { ok: false, reason: 'invalid_refund_id' };
+  return { ok: true, relevant: true, type, eventId, orderId, captureId, refundId };
 }
 export function confirmedCampaignCapture(order, event) {
   const info = paypalCampaignEventInfo(event);
