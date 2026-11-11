@@ -84,13 +84,26 @@ export default async function (req) {
     try {
       cap = recovering ? await getOrder(order_id, environment) : await captureOrder(order_id, environment);
     } catch (capErr) {
-      console.error(recovering ? 'capturePayPalOrder verification error:' : 'capturePayPalOrder capture error:', capErr?.name || 'PayPalError');
-      const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
-      if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
-      await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: 'Capture failed', status: 'failure' });
-      return Response.json({ error: recovering
-        ? 'PayPal could not verify the original order without charging. No records were changed.'
-        : 'Unable to complete your donation. Please try again or contact support.' }, { status: 502 });
+      // Capture is irreversible even when its network response is lost.
+      // Never issue a second provider capture just because the first request
+      // timed out or PayPal returned an already-captured response.
+      if (!recovering && savedOrder) {
+        const providerOrder = await getOrder(order_id, environment).catch(() => null);
+        if (providerOrder?.status === 'COMPLETED' &&
+            providerOrder?.capture_status === 'COMPLETED' &&
+            providerOrder?.capture_id) {
+          cap = providerOrder; // independently verified below before accounting
+        }
+      }
+      if (!cap) {
+        console.error(recovering ? 'capturePayPalOrder verification error:' : 'capturePayPalOrder capture error:', capErr?.name || 'PayPalError');
+        const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
+        if (!fl.allowed) return Response.json({ error: 'Too many failed attempts. Please try again later.' }, { status: 429 });
+        await logAudit(base44, { action: 'capture_failed', target_type: 'campaign', target_id: campaign_id, detail: 'Capture requires provider reconciliation', status: 'failure' });
+        return Response.json({ error: recovering
+          ? 'PayPal could not verify the original order without charging. No records were changed.'
+          : 'Capture is not verified. Check PayPal before retrying; do not create a second payment.' }, { status: 502 });
+      }
     }
     if (cap.status !== 'COMPLETED' || cap.capture_status !== 'COMPLETED' || !cap.capture_id) {
       const fl = await checkRateLimit(base44, `captureFail:${order_id}`, 5, 600);
