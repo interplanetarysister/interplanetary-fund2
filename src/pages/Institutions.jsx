@@ -23,6 +23,7 @@ export default function Institutions() {
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [researchSources, setResearchSources] = useState([]);
+  const [verifiedPrograms, setVerifiedPrograms] = useState([]);
   const [researchState, setResearchState] = useState("loading");
   const [researchType, setResearchType] = useState("all");
   useEffect(() => {
@@ -31,8 +32,8 @@ export default function Institutions() {
     fetch("https://interplanetaryfund.com/api/public/opportunity-sources", { cache:"no-store", signal:AbortSignal.timeout(10000) })
       .then(async response => {
         const result = await response.json().catch(() => ({}));
-        if (!response.ok || !Array.isArray(result.sources) || result.source !== "canonical_supabase_rls") throw Error("Canonical opportunity source unavailable");
-        if (active) { setResearchSources(result.sources); setResearchState("ready"); }
+        if (!response.ok || !Array.isArray(result.sources) || !Array.isArray(result.opportunities) || result.source !== "canonical_supabase_rls") throw Error("Canonical opportunity source unavailable");
+        if (active) { setResearchSources(result.sources); setVerifiedPrograms(result.opportunities); setResearchState("ready"); }
       })
       .catch(() => { if (active) setResearchState("error"); });
     return () => { active = false; };
@@ -44,15 +45,11 @@ export default function Institutions() {
       .catch((e) => { console.error("Institutions load failed:", e?.name || "UnknownError"); setError("We couldn't load institutions. Please try again."); });
   }, [reloadKey]);
 
-  if (error) {
-    return <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10"><PageError message={error} onRetry={() => { setError(null); setInstitutions(null); setReloadKey((key) => key + 1); }} /></div>;
-  }
-  if (!institutions) {
-    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
-  }
+  // Keep external verified source research visible if Base44's private Institution API is unavailable.
+  // Private member application errors must not be replaced with fictional institutions.
 
   const q = query.toLowerCase();
-  const filtered = institutions.filter(
+  const filtered = (institutions || []).filter(
     (i) =>
       (typeFilter === "all" || i.type === typeFilter) &&
       (programFilter === "all" || i[programFilter]) &&
@@ -90,6 +87,24 @@ export default function Institutions() {
         {researchState==="error" && <div role="alert" className="rounded-xl border border-amber-500/40 p-3 text-sm">Live source verification is temporarily unavailable. No unverified listings were substituted.
           <a href="https://interplanetaryfund.com/institutions" target="_blank" rel="noopener noreferrer" className="ml-2 font-bold underline">Browse live directory</a>
         </div>}
+        {researchState==="ready" && <div className="space-y-3" aria-label="Provider-verified external programs">
+          <h3 className="text-lg font-semibold">Source-verified grants and programs</h3>
+          <p className="text-xs text-muted-foreground">Applications and actual vacancies are controlled by official providers. Program directories are not individual confirmed open positions.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {verifiedPrograms.filter(o=>researchType==="all" ||
+              (researchType==="grants" && o.type==="grant") || o.type===researchType).map(o=>
+              <article key={o.id} className="rounded-xl border border-cyan-500/25 bg-card p-4">
+                <p className="text-xs font-bold uppercase text-cyan-700">{o.type} · {o.status==="open"?"Published application window":"Provider program"}</p>
+                <h4 className="mt-2 text-lg font-bold">{o.title}</h4>
+                <p className="mt-1 text-xs text-muted-foreground">{o.provider} · {o.geography||"Regional eligibility varies"}</p>
+                <p className="mt-3 text-sm">{o.description}</p>
+                {o.deadline_date&&<p className="mt-2 text-sm font-semibold">Provider deadline: {o.deadline_date}</p>}
+                <p className="mt-2 text-xs"><strong>Eligibility:</strong> {o.eligibility}</p>
+                {o.source_note&&<p className="mt-2 text-xs text-muted-foreground">{o.source_note}</p>}
+                <a href={o.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-[#FFC439] px-4 py-2 text-sm font-bold text-[#003087]">Review official opportunity</a>
+              </article>)}
+          </div>
+        </div>}
         {researchState==="ready" && <div className="grid gap-3 sm:grid-cols-2">
           {researchSources.filter(s=>researchType==="all" || s.industry===researchType).map(s=>
             <article key={s.id} className="rounded-xl border border-border bg-card p-4">
@@ -103,7 +118,12 @@ export default function Institutions() {
         <p className="text-xs text-muted-foreground">The research source's current listings, dates, and eligibility must be reviewed before contacting or applying. Your campaign is not automatically eligible; no applications are sent.</p>
       </section>
 
-      <MyApplications />
+      {error && <div role="alert" className="rounded-xl border border-amber-500/40 p-4 text-sm">
+        Private institution records could not be loaded. Public verified research remains available above.
+        <button type="button" className="ml-2 font-bold underline" onClick={() => {setError(null);setInstitutions(null);setReloadKey(x=>x+1);}}>Retry private records</button>
+      </div>}
+      {!institutions && !error && <p role="status" className="text-sm text-stone-500">Loading institution member records…</p>}
+      {!error && <MyApplications />}
 
       <div className="relative mt-8 mb-4">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -134,7 +154,7 @@ export default function Institutions() {
 
       {filtered.length === 0 ? (
         <p className="text-sm text-stone-400 text-center py-16">
-          {institutions.length === 0 ? "No institutions yet — register the first one." : "No institutions match your filters."}
+          {(institutions || []).length === 0 ? "No institution member records currently available." : "No institutions match your filters."}
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
