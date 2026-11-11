@@ -4,20 +4,20 @@ import { Input } from '@/components/ui/input';
 import { Image } from '@/components/ui/image';
 import { secureInvokeLLM } from '@/lib/secureLLM';
 import { buildCampaignContext, COMPLIANCE_RULES } from '@/lib/campaignAI';
-import { campaignVoiceCommand, extractCampaignDetails, missingCampaignFields, spokenProgress } from '@/lib/campaignVoiceCommands';
+import { campaignVoiceCommand, extractCampaignDetails, missingCampaignFields } from '@/lib/campaignVoiceCommands';
 import { useFeatureEnabled } from '@/lib/useFeatureEnabled';
 import { Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
 
-const HELP='Just talk normally. Tell me what you are raising money for, who it helps, and your goal — for example, "I am raising twelve thousand dollars to help my sister with medical bills." I save each detail as you speak and tell you what is still needed. You can also say show five titles, write my story, create a picture, read my campaign, or save as a draft.';
+const HELP='Tell me your campaign purpose, then who it helps, then your goal or budget — say the amount, for example five thousand. I save each answer and ask for the next one. You can also say show five titles, choose the second title, write my story, create a picture, read my campaign, or save as a draft.';
+const GREETING_START='Welcome to the simulated Alexa+ campaign experience. Tell me what you want to raise funds for, and I will walk you through each detail one step at a time.';
 export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage, onSave, saving }) {
   const available=useFeatureEnabled('ai_campaign_assistant');
   const [input,setInput]=useState('');
   const [listening,setListening]=useState(false);
   const [audio,setAudio]=useState(true);
   const [busy,setBusy]=useState(false);
-  const [stage,setStage]=useState(form.ai_profile?.who_helping ? 'ready' : form.ai_profile?.primary_goal ? 'beneficiary' : 'purpose');
   const [options,setOptions]=useState([]);
-  const [history,setHistory]=useState([{role:'assistant',text:form.ai_profile?.primary_goal ? 'Your campaign details are already here. Tell me anything else about it, or say show five titles, write my story, create a picture, or save as a draft.' : 'Hi. Tell me in your own words what you are raising money for, who it helps, and your goal — for example, "I am raising twelve thousand dollars to help my sister with medical bills." I will save each detail and ask for anything still missing.'}]);
+  const [history,setHistory]=useState([{role:'assistant',text:form.ai_profile?.primary_goal ? 'Your campaign details are already here. Tell me anything you want to change, or say show five titles, write my story, create a picture, or save as a draft.' : GREETING_START}]);
   const [notice,setNotice]=useState('');
   const [receipt,setReceipt]=useState('');
   const lock=useRef(false), recognition=useRef(null), mounted=useRef(true), generation=useRef(0), latestForm=useRef(form);
@@ -73,6 +73,24 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
     if(!mounted.current)return;
     setHistory(items=>[...items.slice(-39),{role:'assistant',text}]);speak(text);
   };
+  // Guided walkthrough in the same voice as before: confirm what was just
+  // saved, then ask for exactly one next detail — including the creator's own
+  // goal or budget, which they choose aloud and can change at any time.
+  const guide=(merged,captured)=>{
+    const saved=[];
+    if(captured.purpose)saved.push('I have your campaign purpose.');
+    if(captured.who_helping)saved.push('Thank you, I saved who this helps.');
+    if(captured.goal_amount)saved.push(`Your goal is ${Number(captured.goal_amount).toLocaleString()} dollars.`);
+    if(captured.title)saved.push(`Your title is ${captured.title}.`);
+    const missing=missingCampaignFields(merged).map(item=>item.key);
+    let ask;
+    if(missing.includes('purpose'))ask='Tell me what you want to raise funds for.';
+    else if(missing.includes('who_helping'))ask='Who or what will this help?';
+    else if(missing.includes('goal_amount'))ask='What is your fundraising goal or budget in dollars? You choose the amount — for example, say five thousand.';
+    else if(missing.includes('title'))ask='Say show five titles, set my title to your own title, or write my story.';
+    else ask='Everything I need is in place. Say write my story, or save as a draft.';
+    return saved.length ? `${saved.join(' ')} ${ask}` : ask;
+  };
   const run=async(raw)=>{
     if(lock.current || saving)return;
     const text=String(raw || '').trim().slice(0,4000);if(!text)return;
@@ -89,7 +107,8 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
     }
     if(command.action==='goal'){
       if(!(command.amount>0) || !Number.isFinite(command.amount)){reply('Please give a goal greater than zero.');return;}
-      onPatch({goal_amount:command.amount});setReceipt('');reply(`Your goal is now ${command.amount} dollars.`);return;
+      onPatch({goal_amount:command.amount});setReceipt('');
+      reply(guide({...form,goal_amount:command.amount},{goal_amount:command.amount}));return;
     }
     if(command.action==='title'){onPatch({title:command.text});setReceipt('');reply(`Your title is ${command.text}. Say write my story when you are ready.`);return;}
     if(command.action==='choose'){
@@ -97,30 +116,57 @@ export default function CampaignVoiceAssistant({ form, onPatch, onGenerateImage,
       onPatch({title:options[command.index],summary:''});setReceipt('');reply(`Selected ${options[command.index]}. Say write my story.`);return;
     }
     if(command.action==='details'){
-      // Natural speech fills every campaign field it mentions in one turn. A
-      // sentence with no new field is kept as additional campaign context.
+      // Guided conversation: each answer is saved the moment it is spoken, then
+      // the next single question is asked. The creator names their own goal or
+      // budget, and saying a new amount later updates it.
+      const pending=missingCampaignFields(form)[0]?.key || '';
       const found=extractCampaignDetails(command.text);
+      const spoken=String(command.text || '').trim();
+      const hasWords=/[a-z]{3}/i.test(spoken);
       const profile={...(form.ai_profile || {})};
       const patch={};
+      const captured={...found};
+      // A full sentence can fill several details at once.
       if(found.purpose && !String(profile.primary_goal || '').trim()) profile.primary_goal=found.purpose;
       if(found.who_helping && !String(profile.who_helping || '').trim()) profile.who_helping=found.who_helping;
       if(found.tone && !String(profile.tone || '').trim()) profile.tone=found.tone;
       if(found.title && !String(form.title || '').trim()) patch.title=found.title;
-      if(found.goal_amount>0 && !(Number(form.goal_amount)>0)) patch.goal_amount=found.goal_amount;
+      // A spoken amount is the creator choosing their own goal or budget, so it
+      // also replaces an earlier number when they change their mind.
+      if(found.goal_amount>0) patch.goal_amount=found.goal_amount;
       if(found.location && !String(form.location || '').trim()) patch.location=found.location;
       if(found.category && !String(form.category || '').trim()) patch.category=found.category;
-      const captured=Boolean(found.purpose || found.who_helping || found.title || found.goal_amount || found.location || found.category);
-      if(!captured){
-        const detail=String(command.text || '').trim().slice(0,600);
-        if(!detail){reply('I did not catch that. '+HELP);return;}
-        profile.primary_goal=[profile.primary_goal,detail].filter(Boolean).join(' ').slice(0,1200);
+      // A plain answer to the question just asked lands in that detail, even
+      // when it is not phrased as "to help ...". This is what keeps the
+      // conversation moving one question at a time.
+      if(pending==='purpose' && !captured.purpose && hasWords && !String(profile.primary_goal || '').trim()){
+        profile.primary_goal=spoken.slice(0,600);captured.purpose=profile.primary_goal;
+      }
+      if(pending==='who_helping' && !captured.who_helping && hasWords && !String(profile.who_helping || '').trim()){
+        profile.who_helping=spoken.slice(0,400);captured.who_helping=profile.who_helping;
+      }
+      // The goal is the creator's own number. Never invent one: ask again.
+      if(pending==='goal_amount' && !(found.goal_amount>0)){
+        patch.ai_profile=profile;onPatch(patch);setReceipt('');
+        reply('I just need the dollar amount for your goal or budget. For example, say eight thousand.');return;
+      }
+      if(!(captured.purpose || captured.who_helping || captured.title || captured.goal_amount || captured.location || captured.category)){
+        const missing=missingCampaignFields(form)[0];
+        reply(missing ? `I did not catch a campaign detail in that. ${missing.ask}` : 'I have the basics. Say write my story to turn these details into your campaign story, or save as a draft.');
+        return;
       }
       patch.ai_profile=profile;
       onPatch(patch);
       const merged={...form,...patch,ai_profile:profile};
-      setStage(String(profile.who_helping || '').trim() ? 'ready' : 'beneficiary');
+      // Only confirm details that actually changed, so a repeated sentence never
+      // claims the same detail twice.
+      const saved={};
+      if(String(profile.primary_goal || '').trim() && profile.primary_goal !== form.ai_profile?.primary_goal) saved.purpose=profile.primary_goal;
+      if(String(profile.who_helping || '').trim() && profile.who_helping !== form.ai_profile?.who_helping) saved.who_helping=profile.who_helping;
+      if(patch.title) saved.title=patch.title;
+      if(patch.goal_amount) saved.goal_amount=patch.goal_amount;
       setReceipt('');
-      reply(spokenProgress(merged, captured?found:{}));
+      reply(guide(merged,saved));
       return;
     }
     if(['titles','story','image'].includes(command.action) && !available){reply('AI generation is unavailable right now. You can type your title and story in the form and still save a private draft.');return;}

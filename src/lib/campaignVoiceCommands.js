@@ -51,7 +51,7 @@ function findGoal(text) {
     const value = Number(String(suffixed[1]).replaceAll(",", ""));
     if (Number.isFinite(value) && value > 0) return value * 1000;
   }
-  const numeric = text.match(/\b(?:raise|raises|goal|target|need|needs|hoping for|aiming for)\D{0,20}([\d,]+(?:\.\d{1,2})?)\b/i);
+  const numeric = text.match(/\b(?:raise|raises|goal|target|budget|need|needs|hoping for|aiming for)\D{0,20}([\d,]+(?:\.\d{1,2})?)\b/i);
   if (numeric) {
     const value = Number(String(numeric[1]).replaceAll(",", ""));
     if (Number.isFinite(value) && value > 0) return value;
@@ -224,7 +224,7 @@ export function campaignVoiceCommand(value) {
   if (/^(generate|create|make|show)( me)? (five |5 |some )?(titles|title ideas|title choices)$/.test(lower)) return { action: "titles" };
   const choice = lower.match(/^(?:use|choose|pick|select)(?: the)? (first|second|third|fourth|fifth|one|two|three|four|five|[1-5])(?: title| option| choice)?$/);
   if (choice) return { action: "choose", index: ({ first: 0, second: 1, third: 2, fourth: 3, fifth: 4, one: 0, two: 1, three: 2, four: 3, five: 4 })[choice[1]] ?? Number(choice[1]) - 1 };
-  const goal = lower.match(/^(?:set|change)(?: the| my)? goal to \$?([\d,]+(?:\.\d{1,2})?)(?: dollars)?$/);
+  const goal = lower.match(/^(?:set|change|make)(?: the| my)? (?:goal|budget|target)(?: to| at| be)? \$?([\d,]+(?:\.\d{1,2})?)(?: dollars)?$/);
   if (goal) return { action: "goal", amount: Number(goal[1].replaceAll(",", "")) };
   const title = text.match(/^(?:set|change)(?: the| my)? title to (.+)$/i);
   if (title) return { action: "title", text: title[1].slice(0, 160) };
