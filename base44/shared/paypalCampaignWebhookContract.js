@@ -31,8 +31,8 @@ export function paypalCampaignEventInfo(event) {
         if (link?.rel !== 'up' || typeof link?.href !== 'string') return false;
         try {
           const uri = new URL(link.href);
-          return /^api(?:-m)?(?:\\.sandbox)?\\.paypal\\.com$/.test(uri.hostname) &&
-            /^\\/v2\\/payments\\/captures\\/[A-Za-z0-9_-]{8,90}$/.test(uri.pathname);
+          return /^api(?:-m)?(?:\.sandbox)?\.paypal\.com$/.test(uri.hostname) &&
+            /^\/v2\/payments\/captures\/[A-Za-z0-9_-]{8,90}$/.test(uri.pathname);
         } catch { return false; }
       })
     : null;
