@@ -68,7 +68,19 @@ export default async function(req) {
       record = confirm[0];
     }
 
-    const orders = info.orderId ? await sr.entities.PayPalOrder.filter({ order_id: info.orderId }).catch(() => []) : [];
+    // Refund webhooks frequently carry a refund ID and an original capture
+    // reference but no order_id. Resolve only against a UNIQUE locally
+    // persisted capture; never misinterpret the refund ID as a capture ID.
+    let resolvedOrderId = info.orderId;
+    if (!resolvedOrderId && info.captureId &&
+        ['PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED'].includes(info.type)) {
+      const capturedRows = await sr.entities.PayPalOrder.filter({ capture_id: info.captureId }).catch(() => null);
+      if (!Array.isArray(capturedRows) || capturedRows.length > 1)
+        return Response.json({ error: 'PayPal capture reference needs reconciliation.' }, { status: 409 });
+      if (capturedRows.length === 1 && capturedRows[0].environment === environment)
+        resolvedOrderId = String(capturedRows[0].order_id || '');
+    }
+    const orders = resolvedOrderId ? await sr.entities.PayPalOrder.filter({ order_id: resolvedOrderId }).catch(() => null) : [];
     if (!Array.isArray(orders) || orders.length > 1)
       return Response.json({ error: 'PayPal order requires reconciliation.' }, { status: 409 });
     const savedOrder = orders[0] || null;
@@ -145,8 +157,14 @@ export default async function(req) {
 
     // ---- Refund / reversal: reverse the exact canonical donation ----------
     if (['PAYMENT.CAPTURE.REFUNDED', 'PAYMENT.CAPTURE.REVERSED', 'CHECKOUT.PAYMENT-APPROVAL.REVERSED'].includes(info.type)) {
-      if (!info.orderId) return Response.json({ error: 'A PayPal order reference is required.' }, { status: 503 });
-      const ops = await sr.entities.FinancialOperation.filter({ operation_key: 'paypal:' + info.orderId }).catch(() => []);
+      if (!resolvedOrderId) {
+        await sr.entities.WebhookEvent.update(record.id, {
+          state: 'claimed', last_error: 'refund_order_reference_missing',
+          description: 'Signed PayPal reversal cannot yet be matched to a unique order.',
+        });
+        return Response.json({ received: true, pending_review: true }, { status: 202 });
+      }
+      const ops = await sr.entities.FinancialOperation.filter({ operation_key: 'paypal:' + resolvedOrderId }).catch(() => []);
       if (!Array.isArray(ops) || ops.length > 1)
         return Response.json({ error: 'Canonical financial operation requires reconciliation.' }, { status: 409 });
       const op = ops[0] || null;
@@ -168,14 +186,46 @@ export default async function(req) {
         });
         return Response.json({ received: true, duplicate: true });
       }
-      if (String(op.environment || 'live') !== environment)
-        return Response.json({ error: 'Canonical donation belongs to another environment.' }, { status: 409 });
+      if (String(op.environment || 'live') !== environment ||
+          op.operation_type !== 'donation' || op.provider !== 'paypal' || op.state !== 'applied')
+        return Response.json({ error: 'Canonical donation state or environment does not match the PayPal reversal.' }, { status: 409 });
       if (info.captureId && String(op.provider_transaction_id) !== info.captureId)
         return Response.json({ error: 'Refunded capture does not match the canonical donation.' }, { status: 409 });
+      if (info.type === 'CHECKOUT.PAYMENT-APPROVAL.REVERSED') {
+        // Revoked approval is NOT proof that a completed capture was refunded.
+        await sr.entities.WebhookEvent.update(record.id, {
+          state: 'claimed', last_error: 'approval_reversed_after_capture',
+          description: 'Approval reversal arrived for an already-booked capture; manual review required.',
+        });
+        return Response.json({ received: true, pending_review: true }, { status: 202 });
+      }
+      if (info.type === 'PAYMENT.CAPTURE.REFUNDED') {
+        const refund = event?.resource || {};
+        const grossCents = Math.round(
+          Number(savedOrder?.captured_amount || (Number(op.gross_amount) + Number(op.processing_fee))) * 100
+        );
+        // PayPal includes cumulative refunded amount when available. A partial
+        // refund needs a proportional ledger adjustment and may not cancel the
+        // entire donor gift. Queue review instead of zeroing the full donation.
+        const totalRefunded = refund?.seller_payable_breakdown?.total_refunded_amount || refund?.amount || {};
+        const refundedCents = Math.round(Number(totalRefunded.value) * 100);
+        if (String(refund.status || '').toUpperCase() !== 'COMPLETED' ||
+            String(totalRefunded.currency_code || '').toUpperCase() !== 'USD' ||
+            !Number.isSafeInteger(refundedCents) || refundedCents <= 0 ||
+            !Number.isSafeInteger(grossCents) || grossCents <= 0 || refundedCents > grossCents + 1)
+          return Response.json({ error: 'PayPal refund amount or completion is not verified.' }, { status: 409 });
+        if (refundedCents < grossCents - 1) {
+          await sr.entities.WebhookEvent.update(record.id, {
+            state: 'claimed', last_error: 'partial_refund_requires_adjustment',
+            description: 'Partial PayPal refund requires a proportional canonical ledger adjustment.',
+          });
+          return Response.json({ received: true, pending_review: true, partial_refund: true }, { status: 202 });
+        }
+      }
 
       await sr.entities.FinancialOperation.update(op.id, {
         state: 'cancelled', cancelled_at: new Date().toISOString(),
-        note: `PayPal ${terminalState} (${info.captureId || info.orderId})`,
+        note: `PayPal ${terminalState} (${info.refundId || info.captureId || resolvedOrderId})`,
       });
       const donations = await sr.entities.Donation.filter({ canonical_operation_id: op.id }).catch(() => []);
       for (const donation of Array.isArray(donations) ? donations : []) {
