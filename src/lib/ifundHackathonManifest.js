@@ -1,3 +1,3 @@
-// Shared reference to the independent judge-facing iFund demo.
-// This is a navigation constant only: no payment or admin credentials are stored here.
-export const IFUND_HACKATHON_ENTRY = "https://feature-hackathon-unified-journey-20261111.interplanetaryfund-migration.pages.dev/hackathon";
+// Canonical judge entrypoint for the independent iFund preview.
+// Preview is sandbox-only; this constant grants no payment credentials or authorization.
+export const IFUND_HACKATHON_ENTRY = "https://feature-hackathon-unified-jo.interplanetaryfund-migration.pages.dev/hackathon";
