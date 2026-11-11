@@ -77,12 +77,16 @@ export default async function(req) {
         registration_performed: false,
       });
     }
+    // Existing callbacks require reconciliation before adding a new listener.
+    if (registered.length > 0 && sameUrl.length === 0)
+      return Response.json({
+        error: 'Existing PayPal webhooks require review; no new webhook was registered.',
+        stage, existing_count: registered.length, registration_performed: false,
+      }, { status: 409 });
     // A PayPal REST app may have up to ten callback URLs. Preserve unrelated
     // billing, Cloudflare and legacy listeners, and never create a duplicate.
     if (sameUrl.length > 1 || (sameUrl.length && !hasEvents(sameUrl[0])))
       return Response.json({ error: 'Existing PayPal campaign callback requires reconciliation; no duplicate created.', stage }, { status: 409 });
-    if (sameUrl.length === 0 && registered.length >= 10)
-      return Response.json({ error: 'This PayPal app has reached its ten-webhook limit. No other callback was modified.', stage, existing_count: registered.length }, { status: 409 });
     stage = 'register_webhook';
     const hook = sameUrl[0] || await paypalWebhookAdminRequest('/v1/notifications/webhooks', {
       method: 'POST', requestId: 'IFUND_CAMPAIGN_WEBHOOK_20261108',
