@@ -22,6 +22,21 @@ export default function Institutions() {
   const [programFilter, setProgramFilter] = useState("all");
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [researchSources, setResearchSources] = useState([]);
+  const [researchState, setResearchState] = useState("loading");
+  const [researchType, setResearchType] = useState("all");
+  useEffect(() => {
+    let active = true;
+    setResearchState("loading");
+    fetch("https://interplanetaryfund.com/api/public/opportunity-sources", { cache:"no-store", signal:AbortSignal.timeout(10000) })
+      .then(async response => {
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(result.sources) || result.source !== "canonical_supabase_rls") throw Error("Canonical opportunity source unavailable");
+        if (active) { setResearchSources(result.sources); setResearchState("ready"); }
+      })
+      .catch(() => { if (active) setResearchState("error"); });
+    return () => { active = false; };
+  }, [reloadKey]);
 
   useEffect(() => {
     base44.entities.Institution.list("-created_date", 100)
@@ -58,6 +73,35 @@ export default function Institutions() {
         </div>
         <CreateInstitutionDialog />
       </div>
+
+
+      <section className="my-6 space-y-4 rounded-2xl border border-cyan-500/30 bg-cyan-950/5 p-4 sm:p-6" aria-label="AI opportunity research sources">
+        <div>
+          <h2 className="text-xl font-bold">Worldwide grant, business & volunteer research</h2>
+          <p className="mt-2 text-sm text-muted-foreground">This source directory is shared live with interplanetaryfund.com from canonical Supabase. The AI research agent is evaluating campaign relevance and will add independently verified opportunities. These are external research portals, not IFund partners or guaranteed awards.</p>
+        </div>
+        <div className="flex flex-wrap gap-2" aria-label="Filter research source">
+          {[["all","All sources"],["grants","Grants"],["business","Business"],["volunteer","Volunteer"]].map(([key,label])=>
+            <button key={key} type="button" aria-pressed={researchType===key} onClick={()=>setResearchType(key)}
+              className={`min-h-10 rounded-full border px-4 py-2 text-sm font-semibold ${researchType===key?"border-cyan-500 bg-cyan-600 text-white":"border-border bg-background"}`}>{label}</button>
+          )}
+        </div>
+        {researchState==="loading" && <p role="status" className="text-sm">Loading verified source directory…</p>}
+        {researchState==="error" && <div role="alert" className="rounded-xl border border-amber-500/40 p-3 text-sm">Live source verification is temporarily unavailable. No unverified listings were substituted.
+          <a href="https://interplanetaryfund.com/institutions" target="_blank" rel="noopener noreferrer" className="ml-2 font-bold underline">Browse live directory</a>
+        </div>}
+        {researchState==="ready" && <div className="grid gap-3 sm:grid-cols-2">
+          {researchSources.filter(s=>researchType==="all" || s.industry===researchType).map(s=>
+            <article key={s.id} className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{s.industry} · {s.location}</p>
+              <h3 className="mt-2 text-lg font-bold">{s.name}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{s.description}</p>
+              <a href={s.website} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white">Browse current provider listings</a>
+            </article>
+          )}
+        </div>}
+        <p className="text-xs text-muted-foreground">The research source's current listings, dates, and eligibility must be reviewed before contacting or applying. Your campaign is not automatically eligible; no applications are sent.</p>
+      </section>
 
       <MyApplications />
 
