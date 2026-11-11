@@ -20,7 +20,7 @@ import { Link } from "react-router-dom";
 import { Heart, Loader2, CheckCircle2, Sparkles, ReceiptText } from "lucide-react";
 import { computePayPalBreakdown, MIN_DONATION } from "@/lib/fees";
 
-const presets = [25, 50, 100, 250];
+const presets = [5, 10, 25, 50];
 
 export default function DonateDialog({ campaign, onDonated, open: controlledOpen, onOpenChange: controlledOnOpenChange, hideTrigger }) {
   const platformOnlyMode = !usePublicCampaignFundraising();
@@ -90,7 +90,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
   return (
     <Dialog modal={!paypalHandoff} open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setPaypalHandoff(false); setConfirmed(false); newIntent(); } }}>
       {!hideTrigger && <div className="space-y-2"><DialogTrigger asChild><Button size="lg" className="w-full rounded-xl h-12 text-base bg-gradient-to-r from-cyan-400 to-blue-600 text-white border-0 shadow-lg shadow-blue-500/20 hover:opacity-90"><Heart className="w-4 h-4 mr-2" /> {platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Donate"}</Button></DialogTrigger>{platformOnlyPrelaunch && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center"><p className="text-xs font-semibold text-amber-900">Donate to the platform, not this campaign</p><p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">This payment supports Interplanetary Fund itself and is not credited to the campaign shown.</p></div>}</div>}
-      <DialogContent className={`w-[calc(100vw-1rem)] sm:max-w-lg rounded-2xl max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] ${platformOnlyPrelaunch ? "border border-cyan-400/50 bg-[#101a32] text-white shadow-2xl shadow-black/70 [&>button]:text-white [&>button]:opacity-100 [&>button]:hover:bg-white/15" : ""}`}>
+      <DialogContent className={`w-[calc(100vw-1rem)] sm:max-w-xl rounded-3xl max-h-[calc(100dvh-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] ${platformOnlyPrelaunch ? "border border-cyan-400/50 bg-[#101a32] text-white shadow-2xl shadow-black/70 [&>button]:text-white [&>button]:opacity-100 [&>button]:hover:bg-white/15" : ""}`}>
         <DialogHeader><DialogTitle className={`font-display text-xl ${platformOnlyPrelaunch ? "pr-10 text-white" : ""}`}>{platformOnlyPrelaunch ? "Support Interplanetary Fund" : "Support this campaign"}</DialogTitle></DialogHeader>
         {platformOnlyPrelaunch ? (
           <div className="space-y-4">
@@ -136,20 +136,27 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
                 The button below is the separate real-money platform-support link. It does not donate to this campaign.
               </p>
             )}
-            <PayPalDonateButton label="Support Interplanetary Fund with PayPal" />
             <CryptoDonateOption platformSupport />
+            <div className="sticky bottom-0 z-10 -mx-4 -mb-4 rounded-b-2xl border-t border-cyan-400/30 bg-[#101a32]/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
+              <PayPalDonateButton label="Support Interplanetary Fund with PayPal" />
+            </div>
           </div>
         ) : confirmed ? (
           <div className="text-center py-6"><CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" /><p className="font-display text-lg text-stone-900 mb-1">Thank you.</p><p className="text-sm text-stone-500">Your gift has been added to this campaign.</p></div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Choose your gift. PayPal securely handles the payment.</p>
-            <div className="grid grid-cols-4 gap-2">{presets.map((p) => <button key={p} onClick={() => setAmount(String(p))} className={`rounded-xl border py-2.5 text-sm font-semibold transition-colors ${amount === String(p) ? "border-primary bg-primary/10 text-primary" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}>${p}</button>)}</div>
+            <p className="text-sm text-muted-foreground">Choose your donation, review the total, then select a secure payment method below.</p>
+            <div className="grid grid-cols-4 gap-2">{presets.map((p) => <button key={p} type="button" aria-pressed={amount === String(p)} onClick={() => setAmount(String(p))} className={`min-h-11 rounded-xl border px-2 py-2.5 text-sm font-semibold transition-colors ${amount === String(p) ? "border-cyan-500 bg-cyan-50 text-cyan-900 shadow-sm" : "border-slate-200 text-slate-700 hover:border-cyan-400"}`}>${p}</button>)}</div>
             <Input type="number" min={MIN_DONATION} step="1" placeholder="Custom amount ($)" value={amount} onChange={(e) => setAmount(e.target.value)} />
 
             <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5"><div><Label htmlFor="contrib" className="text-sm flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> Add 10% to support IFund (optional)</Label><p className="text-xs text-muted-foreground">Your campaign gift stays the same.</p></div><Switch id="contrib" checked={platformContribution} onCheckedChange={setPlatformContribution} /></div>
             {paypalApiAvailable && Number(amount) >= MIN_DONATION && (
-              <p className="text-xs text-muted-foreground" role="status">Gift to this campaign: ${paypalBd.recipientGift.toFixed(2)} · Estimated total with PayPal processing: ${paypalBd.totalCharged.toFixed(2)}. Confirm the final amount in PayPal.</p>
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50/80 p-3 text-sm text-slate-900" role="status" aria-live="polite">
+                <div className="flex items-center justify-between gap-3"><span>Campaign gift</span><strong>${paypalBd.recipientGift.toFixed(2)}</strong></div>
+                {platformContribution && <p className="mt-1 text-xs text-slate-700">Optional IFund support selected; separate from this campaign.</p>}
+                <div className="mt-2 flex items-center justify-between gap-3 border-t border-cyan-200 pt-2 font-bold"><span>Estimated total at checkout</span><span>${paypalBd.totalCharged.toFixed(2)}</span></div>
+                <p className="mt-1 text-[11px] text-slate-600">PayPal calculates processing and confirms the final charge before approval.</p>
+              </div>
             )}
 
             {!capabilities && !capabilityError && <div className="flex items-center justify-center py-4 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking available payment methods…</div>}
@@ -159,16 +166,21 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {paypalApiAvailable && Number(amount) >= MIN_DONATION && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><PayPalCardFields campaign={campaign} amount={amount} platformContribution={platformContribution} onCheckoutStart={() => setPaypalHandoff(true)} onCheckoutEnd={() => setPaypalHandoff(false)} onPaid={() => { setPaypalHandoff(false); setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
+            {!platformOnlyMode && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><p className="mb-2 text-xs text-amber-800">Cash App sends your chosen amount directly to the campaign owner. The optional IFund tip above does not apply to Cash App.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
+
+            {<CryptoDonateOption campaign={campaign} amount={amount}
+              donorName="" message="" platformContribution={platformContribution} />}
+            <section aria-label="Payment actions" className="sticky bottom-0 z-10 -mx-4 -mb-4 space-y-3 border-t border-slate-200 bg-white/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_25px_rgba(15,23,42,0.09)] backdrop-blur-sm sm:-mx-6 sm:px-6">
+              <h3 className="text-center text-sm font-bold text-slate-900">Choose how to pay</h3>
             {paypalApiAvailable && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with PayPal</p><PayPalCheckoutButton campaign={campaign} amount={amount} donorName="" message="" platformContribution={platformContribution} onCheckoutStart={() => setPaypalHandoff(true)} onCheckoutEnd={() => setPaypalHandoff(false)} onPaid={() => { setPaypalHandoff(false); setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
             {googlePayAvailable && <div className={googlePayReady ? "min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Give with Google Pay</p><GooglePayButton campaign={campaign} amount={amount} donorName="" message="" recurring={false} platformContribution={platformContribution} onReadyChange={setGooglePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
             {applePayAvailable && <div className={applePayReady ? "min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4" : "hidden"}><p className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-3">Pay with Apple Pay</p><ApplePayButton campaign={campaign} amount={amount} donorName="" message="" platformContribution={platformContribution} onReadyChange={setApplePayReady} onPaid={() => { setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
 
-            {!platformOnlyMode && campaign.cashapp_tag && <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">Give with Cash App — owner-provided</p><p className="text-xs text-amber-800 mb-3">Manual, unverified payment method. Interplanetary Fund has not verified this Cash App tag or payment destination.</p><p className="mb-2 text-xs text-amber-800">Cash App sends your chosen amount directly to the campaign owner. The optional IFund tip above does not apply to Cash App.</p><CashAppDonateButton cashtag={campaign.cashapp_tag} amount={amount} /><Button onClick={() => confirmManualDonation("cashapp")} disabled={saving || !amount} variant="outline" className="w-full mt-3 h-10 rounded-xl">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "I sent this Cash App payment"}</Button><p className="text-[11px] text-amber-800 mt-2 text-center">Your report remains pending and does not increase the campaign total until the payment is separately verified.</p></div>}
 
-            {<CryptoDonateOption campaign={campaign} amount={amount}
-              donorName="" message="" platformContribution={platformContribution} />}
+              <p className="text-center text-[11px] text-slate-500">Only payment methods verified as eligible by PayPal and your device are offered. No card numbers are stored by IFund.</p>
+            </section>
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
         )}
