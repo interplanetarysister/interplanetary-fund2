@@ -1,4 +1,5 @@
 import { secrets } from "base44:runtime";
+import { PAYPAL_CAMPAIGN_WEBHOOK_URL } from "./paypalCampaignWebhookContract.js";
 
 import {
   IFUND_PAYPAL_BUSINESS_EMAIL, resolvePayPalEnvironment, paypalCredentials,
@@ -467,4 +468,33 @@ export async function paypalWebhookAdminRequest(path, options = {}) {
     throw error;
   }
   return data;
+}
+
+// Read-only provider verification. Credentials saved in Base44 do not by
+// themselves prove a live capture webhook will reach this app.
+const liveWebhookProbe = { key: "", until: 0, ok: false, pending: null as Promise<boolean> | null };
+export async function isLivePayPalCampaignWebhookReady(): Promise<boolean> {
+  if (resolvePayPalEnvironment() !== "live" || secrets.get("PAYPAL_MODE") !== "live") return false;
+  const id = paypalWebhookId("live");
+  if (!/^[A-Za-z0-9_-]{8,100}$/.test(id)) return false;
+  const identity = "live:" + id;
+  if (liveWebhookProbe.key === identity && liveWebhookProbe.until > Date.now()) return liveWebhookProbe.ok;
+  if (liveWebhookProbe.key === identity && liveWebhookProbe.pending) return await liveWebhookProbe.pending;
+  const pending = (async () => {
+    try {
+      const webhook = await paypalWebhookAdminRequest("/v1/notifications/webhooks/" + encodeURIComponent(id));
+      const subscribed = Array.isArray(webhook.event_types) &&
+        webhook.event_types.some((event: {name?: string}) =>
+          event?.name === "PAYMENT.CAPTURE.COMPLETED" || event?.name === "*");
+      return webhook.id === id && webhook.url === PAYPAL_CAMPAIGN_WEBHOOK_URL && subscribed;
+    } catch { return false; }
+  })().then(ok => {
+    liveWebhookProbe.key = identity;
+    liveWebhookProbe.ok = ok;
+    liveWebhookProbe.until = Date.now() + (ok ? 90000 : 20000);
+    liveWebhookProbe.pending = null;
+    return ok;
+  });
+  liveWebhookProbe.key = identity; liveWebhookProbe.pending = pending;
+  return await pending;
 }
