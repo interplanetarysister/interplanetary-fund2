@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { secrets } from 'base44:runtime';
 import { assertActiveAccount } from '../../shared/accountGuard.ts';
+import { paypalCredentials, resolvePayPalEnvironment } from '../../shared/paypalEnvironment.ts';
 import { paypalWebhookAdminRequest, IFUND_PAYPAL_ACCOUNT_REF } from '../../shared/paypal.ts';
 import { PAYPAL_CAMPAIGN_WEBHOOK_URL, PAYPAL_CAMPAIGN_WEBHOOK_EVENTS } from '../../shared/paypalCampaignWebhookContract.js';
 
@@ -16,10 +17,10 @@ export default async function(req) {
     if (guard.user.role !== 'admin') return Response.json({ error: 'Administrator access required.' }, { status: 403 });
 
     stage = 'configuration';
-    const mode = secrets.get('PAYPAL_MODE');
-    if (!['live', 'sandbox'].includes(mode) ||
-        !secrets.get('PAYPAL_CLIENT_ID') || !secrets.get('PAYPAL_CLIENT_SECRET'))
-      return Response.json({ error: 'Existing PayPal REST app configuration is incomplete.', stage }, { status: 503 });
+    const mode = resolvePayPalEnvironment();
+    const credentials = paypalCredentials(mode);
+    if (secrets.get('PAYPAL_MODE') !== mode || !credentials.clientId || !credentials.clientSecret)
+      return Response.json({ error: 'Existing PayPal REST app configuration is incomplete for this environment.', stage }, { status: 503 });
     const callback = new URL(PAYPAL_CAMPAIGN_WEBHOOK_URL);
     if (callback.origin !== 'https://interplanetaryfund.base44.app' ||
         callback.pathname !== '/functions/payPalCampaignWebhook' ||
@@ -76,15 +77,12 @@ export default async function(req) {
         registration_performed: false,
       });
     }
-    // Reuse exactly matching registrations. Existing unrelated callbacks
-    // require an explicit audit before a seventh webhook can be considered.
-    if (registered.length > 0 && sameUrl.length === 0)
-      return Response.json({
-        error: 'Existing PayPal webhooks require review; no new webhook was registered.',
-        stage, existing_count: registered.length, registration_performed: false,
-      }, { status: 409 });
+    // A PayPal REST app may have up to ten callback URLs. Preserve unrelated
+    // billing, Cloudflare and legacy listeners, and never create a duplicate.
     if (sameUrl.length > 1 || (sameUrl.length && !hasEvents(sameUrl[0])))
-      return Response.json({ error: 'Existing PayPal webhook needs reconciliation; no duplicate created.', stage }, { status: 409 });
+      return Response.json({ error: 'Existing PayPal campaign callback requires reconciliation; no duplicate created.', stage }, { status: 409 });
+    if (sameUrl.length === 0 && registered.length >= 10)
+      return Response.json({ error: 'This PayPal app has reached its ten-webhook limit. No other callback was modified.', stage, existing_count: registered.length }, { status: 409 });
     stage = 'register_webhook';
     const hook = sameUrl[0] || await paypalWebhookAdminRequest('/v1/notifications/webhooks', {
       method: 'POST', requestId: 'IFUND_CAMPAIGN_WEBHOOK_20261108',
@@ -103,6 +101,13 @@ export default async function(req) {
       events: PAYPAL_CAMPAIGN_WEBHOOK_EVENTS, environment: mode,
       verified_at: new Date().toISOString(),
     });
+    const confirmedLocal = await sr.entities.PayPalCampaignWebhook.filter({
+      provider: 'paypal', account_ref: IFUND_PAYPAL_ACCOUNT_REF, environment: mode,
+    });
+    if (!Array.isArray(confirmedLocal) || confirmedLocal.length !== 1 ||
+        confirmedLocal[0].webhook_id !== hook.id ||
+        confirmedLocal[0].url !== PAYPAL_CAMPAIGN_WEBHOOK_URL)
+      return Response.json({ error: 'PayPal registered the callback but its local verification record needs reconciliation.', stage }, { status: 503 });
     return Response.json({ ok: true, webhook_registered: true, existing: Boolean(sameUrl.length), environment: mode, event_count: PAYPAL_CAMPAIGN_WEBHOOK_EVENTS.length });
   } catch (error) {
     console.error('setupPayPalCampaignWebhook failed:', error?.name || 'ProviderError');
