@@ -1,4 +1,4 @@
-import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady } from '../../shared/paypal.ts';
+import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady, isLivePayPalCampaignWebhookReady } from '../../shared/paypal.ts';
 import { resolvePayPalEnvironment, paypalCredentials } from '../../shared/paypalEnvironment.ts';
 
 // Public-safe PayPal SDK configuration. Only the browser-publishable client ID
@@ -9,7 +9,9 @@ export default async function (_req) {
   const { clientId, clientSecret } = paypalCredentials(environment);
   const configured = Boolean(clientId && clientSecret);
   const isSandbox = environment === 'sandbox';
-  const liveReady = configured && !isSandbox ? await isLivePayPalRestReady() : false;
+  const oauthReady = configured && !isSandbox ? await isLivePayPalRestReady() : false;
+  const webhookReady = oauthReady && await isLivePayPalCampaignWebhookReady();
+  const liveReady = oauthReady && webhookReady;
 
   return Response.json({
     provider: 'paypal',
@@ -19,7 +21,8 @@ export default async function (_req) {
     configured,
     api_configured: configured,
     live: liveReady,
-    api_live: liveReady,
+    api_live: oauthReady,
+    webhook_ready: webhookReady,
     client_id: configured && (isSandbox || liveReady) ? clientId : null,
     currency: 'USD',
     donation_link_available: true,
