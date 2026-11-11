@@ -14,10 +14,11 @@ const setup = source('base44/functions/setupPayPalCampaignWebhook/entry.ts');
 const admin = source('src/pages/IntegrationsAdmin.jsx');
 const readiness = source('base44/functions/validateIntegrationHealth/entry.ts');
 const shared = source('base44/shared/paypal.ts');
+const campaignReadiness = source('base44/shared/paypalCampaignReadiness.ts');
 // The Base44 site build normally transpiles only frontend modules. Independently
 // compile each edited backend TypeScript file so preview detects syntax errors
 // before production deploys attempt the server function bundles.
-for (const script of [shared,receiver,setup,readiness]) transformSync(script, { loader:'ts',format:'esm' });
+for (const script of [shared,receiver,setup,readiness,campaignReadiness]) transformSync(script, { loader:'ts',format:'esm' });
 const schema = JSON.parse(source('base44/entities/PayPalCampaignWebhook.jsonc'));
 const types = ['PAYMENT.CAPTURE.COMPLETED','PAYMENT.CAPTURE.PENDING','PAYMENT.CAPTURE.DENIED',
   'PAYMENT.CAPTURE.REFUNDED','PAYMENT.CAPTURE.REVERSED','CHECKOUT.ORDER.APPROVED',
@@ -39,7 +40,7 @@ const order = { status: 'COMPLETED', capture_status: 'COMPLETED',
 };
 assert.deepEqual(paypalCampaignEventInfo(event), {
   ok: true, relevant: true, type: 'PAYMENT.CAPTURE.COMPLETED',
-  eventId: 'WH-TEST-0123456789', orderId: 'ORD-1234567890', captureId: 'CAP-1234567890',
+  eventId: 'WH-TEST-0123456789', orderId: 'ORD-1234567890', captureId: 'CAP-1234567890', refundId: '',
 });
 assert.equal(confirmedCampaignCapture(order,event),true);
 assert.equal(confirmedCampaignCapture({...order,capture_id:'CAP-OTHER'},event),false);
@@ -56,7 +57,10 @@ assert.match(receiver,/verifyWebhookSignature\(raw, req\.headers, webhookId, env
 assert.match(receiver,/confirmedCampaignCapture\(order, event\)/);
 assert.match(receiver,/getOrder\(info\.orderId, environment\)/);
 assert.match(receiver,/resolvePayPalEnvironment\(\)/);
-assert.match(receiver,/paypalWebhookId\(environment\)/);
+assert.match(receiver,/resolveVerifiedCampaignWebhookId\(sr, environment\)/);
+assert.match(campaignReadiness,/paypalWebhookId\(environment\)/);
+assert.match(campaignReadiness,/hook\?\.url !== PAYPAL_CAMPAIGN_WEBHOOK_URL/);
+assert.match(campaignReadiness,/PAYPAL_CAMPAIGN_WEBHOOK_EVENTS\.every/);
 assert.match(receiver,/WebhookEvent\.upsert/);
 assert.match(receiver,/key: \['source', 'event_key'\]/);
 assert.match(receiver,/PAYMENT\.CAPTURE\.REFUNDED/);
