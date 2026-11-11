@@ -29,3 +29,15 @@ Still blocked (needs provider credentials, not code):
 - A real sandbox order → approval → capture → webhook completion has not been executed.
 - `PAYPAL_SANDBOX_CLIENT_ID`, `PAYPAL_SANDBOX_CLIENT_SECRET` and `PAYPAL_SANDBOX_WEBHOOK_ID` are not set, and the `paypal_sandbox_demo` flag is off.
 - Capture-side rejection of a sandbox order not created by this app is therefore unexercised.
+
+## Owner-ledger reporting repair
+
+The owner ledger previously swallowed failed financial/custody/campaign reads and returned successful empty history. The repair propagates failures to its existing safe 500 response, rejects truncated campaign metadata, and excludes explicit sandbox operations and custody entries from live history and counts. No payment gates, provider credentials, payout paths, authentication controls, or entitlement checks were changed.
+
+Verification: `node scripts/verify-owner-financial-ledger.mjs` executes isolated handler stubs for each failed read, malformed results, mixed sandbox/live history and campaign truncation. It passes. Fee, Stripe idempotency and 67 financial integrity static checks pass. The aggregate payment suite is blocked by an existing assertion looking for `const order = await createOrder` although main now uses `let order; order = await createOrder`; this is not evidence of live payment readiness.
+
+Reuse discovery: inspected MIT-licensed https://github.com/Ai-Automators/base44-to-supabase-sdk (last pushed 2025-08-14). Rejected: replaces the authoritative data plane, adds migration/privacy/dependency risk and cannot fix this handler's error handling. No dependency/service added; security/dependency audit is unnecessary for an unadopted package. Chose the small existing-handler repair, with no new cost or runtime dependency. Rollback: revert the repair commit.
+
+Account access evidence: the approved invitation for user@interplanetaryfund.com already carries enterprise/active/admin-provider entitlement with ordinary user role. It has not joined the app, so no registered User row exists. The requested password login returned HTTP 400 without a session; password configuration and first sign-in remain unverified. Never store the requested password in source or grant administrator privileges to solve membership access.
+
+Remaining release blockers: direct sandbox edits require Base44 Builder plan; metered operations remain constrained by the zero-credit directive; provider sandbox credentials and live acceptance evidence remain unavailable. This repair has local deterministic proof only and is not claimed deployed. Live payments, currency reconciliation, withdrawal reservation accounting, provider trace reconciliation, frontend connection end-to-end verification and website remakes remain incomplete.

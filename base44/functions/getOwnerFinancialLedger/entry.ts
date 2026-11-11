@@ -13,18 +13,21 @@ export default async function(req) {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const sr = base44.asServiceRole;
-    const [operations, holdings, campaigns] = await Promise.all([
-      sr.entities.FinancialOperation.filter({ campaign_owner_user_id: user.id }, '-created_date', MAX_ROWS).catch(() => []),
-      sr.entities.HoldingLedgerEntry.filter({ beneficiary_user_id: user.id }, '-created_date', MAX_ROWS).catch(() => []),
-      base44.entities.Campaign.filter({ created_by_id: user.id }, '-created_date', 1000).catch(() => []),
+    const [allOperations, allHoldings, campaigns] = await Promise.all([
+      sr.entities.FinancialOperation.filter({ campaign_owner_user_id: user.id }, '-created_date', MAX_ROWS),
+      sr.entities.HoldingLedgerEntry.filter({ beneficiary_user_id: user.id }, '-created_date', MAX_ROWS),
+      base44.entities.Campaign.filter({ created_by_id: user.id }, '-created_date', 1000),
     ]);
-    if (![operations, holdings, campaigns].every(Array.isArray)) {
+    if (![allOperations, allHoldings, campaigns].every(Array.isArray)) {
       return Response.json({ error: 'Could not load financial history.' }, { status: 500 });
     }
-    if (operations.length >= MAX_ROWS || holdings.length >= MAX_ROWS) {
+    if (allOperations.length >= MAX_ROWS || allHoldings.length >= MAX_ROWS || campaigns.length >= 1000) {
       return Response.json({ error: 'Financial history is too large for a safe single request.' }, { status: 409 });
     }
 
+    // Legacy rows predate environment partitioning; explicit sandbox rows never enter live reports.
+    const operations = allOperations.filter((row) => row.environment !== 'sandbox');
+    const holdings = allHoldings.filter((row) => row.environment !== 'sandbox');
     const campaignMap = new Map(campaigns.map((campaign) => [campaign.id, campaign.title || 'Campaign']));
     const entries = [];
 
