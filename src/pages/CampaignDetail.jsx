@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { blueskyCampaignComposeUrl } from "@/lib/campaignSharing";
 import { Image } from "@/components/ui/image";
 import { Badge } from "@/components/ui/badge";
 import DonateDialog from "@/components/campaigns/DonateDialog";
@@ -105,10 +106,9 @@ export default function CampaignDetail() {
   const displayed = translation || campaign;
   const textDirection = translation?.language_code === "ar" ? "rtl" : "auto";
   const isOwner = user && campaign.created_by_id === user.id;
-  // Embed/share controls are a management capability — visible only to the
-  // authenticated campaign owner or an admin (authorized manager). Never shown
-  // on the public donation experience.
+  // The full embed kit remains visible to authorized campaign managers.
   const canManage = !!user && (campaign.created_by_id === user.id || user.role === "admin");
+  const blueskyCompose = canManage ? "" : blueskyCampaignComposeUrl(campaign);
   const justDonated = new URLSearchParams(window.location.search).get("donation") === "success";
 
   return (
@@ -145,6 +145,12 @@ export default function CampaignDetail() {
           <div id="campaign-funding-mobile" tabIndex={-1} className="scroll-mt-24 lg:hidden">
             <CampaignFundingCard campaign={campaign} onDonate={() => setDonateOpen(true)} />
           </div>
+          {blueskyCompose && (
+            <a href={blueskyCompose} target="_blank" rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center rounded-xl border border-stone-300 bg-white px-4 text-sm font-semibold text-slate-900 hover:border-primary">
+              Post on Bluesky
+            </a>
+          )}
           {displayed.story && (
             <div id="campaign-story" tabIndex={-1} className="scroll-mt-24 bg-white rounded-2xl border border-stone-200/70 p-6 shadow-sm">
               <h3 className="font-display text-xl text-stone-900 mb-3">The story</h3>
