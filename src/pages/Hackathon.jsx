@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import DemoJourney from "@/components/hackathon/DemoJourney";
+import AIExperience from "@/components/hackathon/AIExperience";
+import LiveDemographics from "@/components/insights/LiveDemographics";
+import LiveCampaignGrid from "@/components/globe/LiveCampaignGrid";
+import useLiveCampaigns from "@/hooks/useLiveCampaigns";
 import FinanceDataGrid, { formatUsdCents } from "@/components/finance/FinanceDataGrid";
 import { financeDemoRows, demoFinanceStats } from "@/lib/hackathonFinanceDemo.mjs";
 import { IFUND_HACKATHON_ENTRY } from "@/lib/ifundHackathonManifest";
@@ -19,6 +23,7 @@ const button = "inline-flex min-h-11 items-center justify-center rounded-xl bord
 
 export default function Hackathon() {
   const [search, setSearch] = useState("");
+  const { campaigns, error: liveError } = useLiveCampaigns();
   const stats = demoFinanceStats();
   return <main className="mx-auto max-w-6xl space-y-7 px-4 py-8 pb-24 text-slate-100 sm:py-12">
     <header className="rounded-3xl border border-cyan-400/50 bg-[#090f25] px-5 py-8 sm:px-9">
@@ -32,6 +37,7 @@ export default function Hackathon() {
       </div>
       <p className="mt-4 text-xs text-slate-400">For a single shareable Devpost URL, use the canonical judge demo above. This page is the Base44 companion integration; neither page collects live payments during the example walkthrough.</p>
     </header>
+    <AIExperience campaigns={campaigns || []} loading={campaigns === null}/>
     <DemoJourney onFinanceFilter={setSearch}/>
     <section id="sandbox-checkout" className="space-y-3 rounded-2xl border border-cyan-400/40 bg-[#09132c] p-5" aria-label="Verified PayPal sandbox handoff">
       <p className="text-xs font-bold uppercase tracking-[0.17em] text-cyan-300">Step 4 · PayPal developer integration</p>
@@ -39,6 +45,22 @@ export default function Hackathon() {
       <p className="text-sm text-slate-300">Real PayPal Orders v2 sandbox checkout is hosted on IFund's designated Cloudflare preview. It uses a separate Personal sandbox buyer and a real published campaign in the sandbox database. This original Base44 page does not initiate or capture a live PayPal charge.</p>
       <a href={PAYPAL_SANDBOX} target="_blank" rel="noopener noreferrer" className={button}>Open verified sandbox checkout · test money only</a>
       <p className="text-xs text-amber-200">Do not enter a real card or live PayPal account into the sandbox. A fictional example shown elsewhere on this page is not an actual payment receipt.</p>
+    </section>
+    <section id="live-insights" className="space-y-5 rounded-2xl border border-cyan-400/40 bg-[#071023] p-5" aria-label="Live platform demographics">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.17em] text-cyan-300">Live data · connected to this app</p>
+        <h2 className="mt-2 text-xl font-bold">Demographics of everything the demo covers</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          Discovery, campaign writing, promotion and finance — each donut and every grid row below is computed from live published campaigns in Interplanetary Fund. No sample figures are mixed in.
+        </p>
+      </div>
+      {liveError ? <p role="alert" className="rounded-xl border border-amber-400/50 bg-amber-400/10 p-3 text-sm text-amber-100">{liveError}</p>
+        : campaigns === null ? <p role="status" className="text-sm text-slate-400">Loading live campaign data…</p>
+        : campaigns.length === 0 ? <p className="rounded-xl border border-dashed border-slate-700 p-5 text-sm text-slate-400">No published campaigns exist yet, so there is nothing live to chart.</p>
+        : <>
+          <LiveDemographics campaigns={campaigns} heading="Live campaign demographics" description="Cause mix, funding progress, goal size and campaign cities — straight from published records." />
+          <LiveCampaignGrid campaigns={campaigns} label="Live campaign records" csvName="ifund-live-campaigns.csv" />
+        </>}
     </section>
     <section id="finance-demo" className="space-y-4 rounded-2xl border border-cyan-400/40 bg-[#071023] p-5" aria-label="AG Grid Community financial showcase">
       <p className="text-xs font-bold uppercase tracking-[0.17em] text-cyan-300">Step 5 · AG Grid Community sponsor integration</p>

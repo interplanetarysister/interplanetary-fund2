@@ -1,0 +1,86 @@
+{
+  "name": "DemoCampaign",
+  "type": "object",
+  "description": "Clearly fictional judge showcase records. Never count as live contributions or actual campaign totals. Only used when admin-controlled demo_mode is enabled.",
+  "properties": {
+    "fixture_key": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "story": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "organizer": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "goal_amount": {
+      "type": "number"
+    },
+    "simulated_raised_amount": {
+      "type": "number"
+    },
+    "simulated_donor_count": {
+      "type": "integer"
+    },
+    "simulated_updates_count": {
+      "type": "integer"
+    },
+    "simulated_supporters_count": {
+      "type": "integer"
+    },
+    "campaign_status": {
+      "type": "string"
+    },
+    "art_style": {
+      "type": "string"
+    },
+    "is_fictional": {
+      "type": "boolean",
+      "default": true
+    },
+    "demo_data_version": {
+      "type": "string"
+    },
+    "world_lat": {
+      "type": "number"
+    },
+    "world_lng": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "fixture_key",
+    "title",
+    "is_fictional",
+    "demo_data_version"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

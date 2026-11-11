@@ -8,6 +8,8 @@ import { FALLBACK_IMAGE } from "@/components/brand/brand";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { Loader2, Globe2, MapPin, X } from "lucide-react";
 import PageError from "@/components/PageError";
+import LiveDemographics from "@/components/insights/LiveDemographics";
+import LiveCampaignGrid from "@/components/globe/LiveCampaignGrid";
 
 const SAFE_GLOBE_ERROR = "We couldn't load the globe right now. Please try again.";
 const MAX_CAMPAIGNS = 200;
@@ -102,6 +104,20 @@ export default function GlobalGlobe() {
             </div>
             <button onClick={() => setSelected(null)} className="self-start text-stone-400 hover:text-stone-600" aria-label="Close"><X className="w-5 h-5" /></button>
           </div>
+        )}
+
+        {campaigns && campaigns.length > 0 && (
+          <section className="mt-10 space-y-6 rounded-3xl border border-slate-700 bg-[#071023] p-4 text-slate-100 sm:p-6" aria-label="Live campaign insights">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.17em] text-cyan-300">Live data · AG Grid Community</p>
+              <h2 className="mt-2 font-display text-2xl text-white">Campaign intelligence across the network</h2>
+              <p className="mt-2 text-sm text-slate-300">
+                Every figure below is computed from the live published campaigns in this app. Sort, filter and page the grid, or export the current view.
+              </p>
+            </div>
+            <LiveDemographics campaigns={campaigns} heading="Live demographics" description="Cause mix, funding progress, goal size and the cities live campaigns name — only from real published records." />
+            <LiveCampaignGrid campaigns={campaigns} label="Live campaign records" csvName="ifund-live-campaigns.csv" />
+          </section>
         )}
 
         {campaigns && withCoords.length > 0 && (
