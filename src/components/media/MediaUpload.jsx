@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import DriveImageButton from "@/components/DriveImageButton";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Image } from "@/components/ui/image";
@@ -54,6 +55,7 @@ export default function MediaUpload({
             type="button"
             onClick={clearMedia}
             className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1 hover:bg-black/80"
+            disabled={uploading}
             aria-label="Remove media"
           >
             <X className="w-4 h-4" />
@@ -84,6 +86,10 @@ export default function MediaUpload({
         )}
         {value ? "Replace media" : label}
       </Button>
+      {accept.split(",").some(type => type.trim().startsWith("image/")) && (
+        <DriveImageButton onFile={handleFile} disabled={uploading} maxBytes={10 * 1024 * 1024}
+          className="min-h-11 rounded-xl border border-cyan-500 px-4 text-sm font-semibold disabled:opacity-50" />
+      )}
     </div>
   );
 }

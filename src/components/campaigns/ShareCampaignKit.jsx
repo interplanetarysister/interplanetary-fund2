@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Copy, Check, Code2, QrCode, Download, Image as ImageIcon } from "lucide-react";
 import html2canvas from "html2canvas";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
-import { buildCampaignEmbed } from "@/lib/campaignSharing";
+import { blueskyCampaignComposeUrl, buildCampaignEmbed } from "@/lib/campaignSharing";
 import { copyText } from "@/lib/copyText";
 
 // Both embed snippets are always visible, selectable, and copyable even when
@@ -19,6 +19,7 @@ export default function ShareCampaignKit({ campaign }) {
   const buttonRef = useRef(null);
   const linkRef = useRef(null);
   const embed = buildCampaignEmbed(campaign, platformOnlyMode);
+  const blueskyCompose = blueskyCampaignComposeUrl(campaign);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=12&data=${encodeURIComponent(embed.url)}`;
   const shareCaption = [
     campaign.title || "Support this campaign",
@@ -131,6 +132,9 @@ export default function ShareCampaignKit({ campaign }) {
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={share}><Share2 /> Share</Button>
         <Button type="button" variant="outline" size="sm" onClick={shareToFacebook}>Share on Facebook</Button>
+        {blueskyCompose && <Button variant="outline" size="sm" asChild>
+          <a href={blueskyCompose} target="_blank" rel="noopener noreferrer">Post on Bluesky</a>
+        </Button>}
         <Button type="button" variant="outline" size="sm" disabled={imageBusy} onClick={() => exportImage("share")}>
           <ImageIcon /> Share image to Instagram
         </Button>

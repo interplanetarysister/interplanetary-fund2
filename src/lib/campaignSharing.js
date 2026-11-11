@@ -60,3 +60,11 @@ export function buildCampaignEmbed(campaign, platformOnly = true) {
   const button = `<a href="${url}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:12px 20px;border-radius:12px;background:#4f46e5;color:#ffffff;font-family:Arial,sans-serif;font-weight:700;text-decoration:none">${escapeHtml(label)}</a>`;
   return { url, card, button, previewImage: image };
 }
+
+export function blueskyCampaignComposeUrl(campaign) {
+  if (campaign?.status !== "active" || !validCampaignId(campaign.id)) return "";
+  const link = new URL("/campaign/" + encodeURIComponent(campaign.id), "https://interplanetaryfund.base44.app");
+  const caption = [campaign.title || "Support this campaign", campaign.summary].filter(Boolean).join(" — ");
+  const text = Array.from(caption).slice(0, 100).join("").trimEnd() + "\n\n" + link;
+  return "https://bsky.app/intent/compose?" + new URLSearchParams({ text });
+}
