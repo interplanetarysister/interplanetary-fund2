@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { BarChart3, Loader2 } from "lucide-react";
+import FinanceDonutChart from "@/components/finance/FinanceDonutChart";
 
 const money = (value, currency = "USD") => {
   const amount = Number(value || 0);
@@ -62,6 +63,13 @@ export default function CampaignPlatformAnalytics({ campaign }) {
         <p className="text-sm text-stone-500 py-4">No verified donations yet. Gifts appear here as soon as the ledger confirms them from any platform.</p>
       )}
 
+      {data && platforms.length > 0 && !data.mixed_currency && (
+        <FinanceDonutChart
+          title="Verified contributions by connected platform · AG Charts Community"
+          rows={platforms.filter(row=>Number.isFinite(Number(row.amount)) && Number(row.amount)>0)
+            .map(row=>({name:String(row.label || row.platform || "Verified platform"),value:Number(row.amount)}))}
+        />
+      )}
       {data && platforms.length > 0 && (
         <ul className="space-y-3">
           {platforms.map((row) => (
