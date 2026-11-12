@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MetricsGrid from "@/components/analytics/MetricsGrid";
-import RevenueChart from "@/components/analytics/RevenueChart";
+import { Link } from "react-router-dom";
 import CampaignPerformance from "@/components/analytics/CampaignPerformance";
 import AlertCenter from "@/components/analytics/AlertCenter";
 import ReportsPanel from "@/components/analytics/ReportsPanel";
@@ -121,7 +121,7 @@ export default function Analytics() {
         </TabsList>
         <TabsContent value="overview" className="space-y-4">
           <MetricsGrid data={data} />
-          <RevenueChart donations={data.donations} />
+          <p className="rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">Verified donation receipts, fundraising distributions and owner ledger figures are available in the <Link className="underline font-semibold" to="/finances">Financial Center</Link>. This command center covers operations and opportunities.</p>
           <CampaignPerformance campaigns={data.campaigns} />
         </TabsContent>
         <TabsContent value="alerts">
