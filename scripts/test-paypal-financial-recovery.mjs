@@ -90,7 +90,9 @@ assert.equal(holdingModel.size === 1, false, 'duplicate holdings are not already
 for (const key of [...holdingModel.keys()]) if (key !== 'holding:paypal:CAPTURE-1') holdingModel.delete(key);
 assert.equal(holdingModel.size, 1);
 
-assert.ok(create.indexOf('round2(value - contribution) > 0') < create.indexOf('const order = await createOrder'), 'allocation must be valid before order creation');
+const allocationGuardIndex = create.indexOf('round2(value - contribution) > 0');
+const providerOrderIndex = create.indexOf('order = await createOrder');
+assert.ok(allocationGuardIndex >= 0 && providerOrderIndex >= 0 && allocationGuardIndex < providerOrderIndex, 'allocation must be valid before order creation');
 assert.doesNotMatch(create, /validateDonationAmount\(value\)/, 'valid $1 donor charges must not be rejected by the smaller post-fee allocation');
 assert.match(capture, /chargedAmount: cap\.amount/);
 assert.match(capture, /Math\.abs\(round2\(total \+ processingFee\) - round2\(cap\.amount\)\)/);
@@ -137,7 +139,7 @@ assert.match(googlePayButton, /intent_id: intentId/);
 assert.doesNotMatch(googlePayButton, /propsRef = useRef\(\{[^}]*platformContribution/);
 assert.match(donateDialog, /computePayPalBreakdown/);
 assert.match(donateDialog, /<GooglePayButton /);
-assert.match(donateDialog, /Gift to this campaign/);
-assert.match(donateDialog, /Confirm the final amount in PayPal/);
+assert.match(donateDialog, /Campaign gift/);
+assert.match(donateDialog, /confirms the final charge before approval/);
 
 console.log('PayPal financial recovery contracts verified.');
