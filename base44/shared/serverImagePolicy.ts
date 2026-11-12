@@ -27,11 +27,15 @@ export function validIfundMediaUrl(value: unknown): string {
 // redirect:'error' caused free-member campaign saves to fail on valid uploads.
 async function fetchTrustedMedia(source: string): Promise<Response> {
   let url = source;
-  for (let hop = 0; hop < 3; hop++) {
+  for (let hop = 0; hop < 4; hop++) {
     const response = await fetch(url, { signal: AbortSignal.timeout(12000), redirect: 'manual' });
     if (![301, 302, 303, 307, 308].includes(response.status)) return response;
     const location = response.headers.get('location');
-    const next = location ? validIfundMediaUrl(new URL(location, url).href) : '';
+    if (!location) throw new Error('Image redirect missing location');
+    const candidate = new URL(location, url);
+    // Follow redirects only to the same verified IFund application media
+    // namespace. Never fetch arbitrary URLs supplied by users.
+    const next = validIfundMediaUrl(candidate.href);
     if (!next) throw new Error('Image redirected outside IFund media');
     url = next;
   }
@@ -48,6 +52,8 @@ export async function enforceImagePolicy(base44: any, user: any, submittedUrl: u
 
   const response = await fetchTrustedMedia(source);
   if (!response.ok) throw new Error('Image unavailable');
+  const mediaType = (response.headers.get('content-type') || '').split(';')[0].toLowerCase();
+  if (mediaType && !['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/tiff', 'application/octet-stream'].includes(mediaType)) throw new Error('Unsupported image content type');
   const declaredSize = Number(response.headers.get('content-length') || 0);
   if (declaredSize > MAX_BYTES) throw new Error('Image exceeds size limit');
   const bytes = new Uint8Array(await response.arrayBuffer());
