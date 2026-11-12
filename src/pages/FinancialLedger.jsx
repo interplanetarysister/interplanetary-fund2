@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PageError from "@/components/PageError";
 import PullToRefresh from "@/components/mobile/PullToRefresh";
+import FinanceDonutChart from "@/components/finance/FinanceDonutChart";
+import FinanceDataGrid from "@/components/finance/FinanceDataGrid";
 
 const money = (value, currency = "USD") => {
   const amount = Number(value || 0);
@@ -53,6 +55,17 @@ export default function FinancialLedger() {
     );
   }, [entries, query]);
 
+  const liveTypes = useMemo(() => {
+    const groups = new Map();
+    for (const row of entries || []) {
+      if (row.environment !== "live") continue;
+      if (!["operation", "custody"].includes(row.entry_type)) continue;
+      const key = row.entry_type === "custody" ? "Custody records" : "Financial operations";
+      groups.set(key, (groups.get(key)||0)+1);
+    }
+    return [...groups].map(([name,value])=>({name,value}));
+  },[entries]);
+
   if (entries === null) {
     return <div className="flex items-center justify-center h-[60vh]" role="status" aria-live="polite"><Loader2 className="w-6 h-6 animate-spin text-primary" /><span className="sr-only">Loading financial ledger</span></div>;
   }
@@ -79,6 +92,19 @@ export default function FinancialLedger() {
         </div>
       )}
 
+      <FinanceDonutChart rows={liveTypes} title="Live financial record composition · AG Charts Community" />
+      <section className="mb-6 rounded-2xl border border-border bg-card p-4" aria-label="Searchable owner financial ledger">
+        <h2 className="mb-2 text-lg font-semibold">AG Grid · owner-authorized ledger records</h2>
+        <p className="mb-3 text-xs text-muted-foreground">These are actual operations and custody records, not donor payment verification claims. Sandbox records are marked separately and are never counted as live funds.</p>
+        <FinanceDataGrid rows={filtered} label="Owner financial records" columns={[
+          {field:"campaign_title",headerName:"Campaign",minWidth:180},
+          {field:"entry_type",headerName:"Record type",minWidth:150},
+          {field:"kind",headerName:"Operation",minWidth:170},
+          {field:"state",headerName:"Status",minWidth:130},
+          {field:"environment",headerName:"Environment",minWidth:150},
+          {field:"provider",headerName:"Provider",minWidth:150},
+        ]}/>
+      </section>
       <div className="relative max-w-md mb-5">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
         <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search campaign, provider, or state…" className="pl-9" />
