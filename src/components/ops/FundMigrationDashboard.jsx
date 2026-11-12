@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { computeWithdrawal, PLATFORM_FEE_RATE } from "@/lib/fees";
 import { Loader2, ArrowRightLeft, Plus, X, CheckCircle2, AlertCircle } from "lucide-react";
 
 const fmt = (n) => `$${(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -261,7 +262,7 @@ export default function FundMigrationDashboard() {
               </div>
               {parseFloat(m.grossAmount) > 0 && (
                 <p className="text-[11px] text-slate-500">
-                  Prospective net ≈ {fmt(parseFloat(m.grossAmount) * 0.97)} after the 3% IFund withdrawal fee, only if this amount later becomes verified settled funds.
+                  Prospective net ≈ {fmt(computeWithdrawal(parseFloat(m.grossAmount)).net)} after the {Math.round(PLATFORM_FEE_RATE * 100)}% IFund withdrawal fee, only if this amount later becomes verified settled funds.
                 </p>
               )}
             </div>

@@ -14,7 +14,7 @@ const assertions = [
   [webhook.includes("role !== 'admin'"), "Stripe lifecycle must not downgrade admin entitlement state"],
   [health.includes("verification_status === \"verified\""), "connected UI must require verification"],
   [health.includes("!!connection.last_error"), "connected UI must reject errored records"],
-  [sync.includes("status: 'error'") && sync.includes("verification_status: 'unverified'"), "stale sync must become needs-attention"],
+  [sync.includes("status: setup ? 'needs_setup' : 'error'") && sync.includes("verification_status: 'unverified'"), "stale sync must become needs-attention"],
 ];
 
 const failed = assertions.filter(([ok]) => !ok).map(([, message]) => message);

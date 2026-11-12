@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const paypal = read('base44/shared/paypal.ts');
+const environment = read('base44/shared/paypalEnvironment.ts');
 const config = read('base44/functions/getPayPalConfig/entry.ts');
 const caps = read('base44/functions/getPaymentCapabilities/entry.ts');
 const link = read('src/lib/paypalLink.js');
@@ -10,14 +11,16 @@ const custody = read('docs/CUSTODY_HOLDING_LEDGER_CONTRACT.md');
 
 assert.match(paypal, /IFUND_PAYPAL_ACCOUNT_REF = "interplanetary_business_paypal"/);
 assert.match(paypal, /IFUND_PAYPAL_ACCOUNT_TYPE = "business"/);
-assert.match(paypal, /IFUND_PAYPAL_BUSINESS_EMAIL = "cuddlemeplatonically@gmail\.com"/);
-assert.match(paypal, /payee:\s*\{\s*email_address:\s*IFUND_PAYPAL_BUSINESS_EMAIL\s*\}/);
-assert.match(paypal, /https:\/\/api-m\.paypal\.com/);
-assert.match(paypal, /https:\/\/api-m\.sandbox\.paypal\.com/);
+assert.match(environment, /IFUND_PAYPAL_BUSINESS_EMAIL = ['"]cuddlemeplatonically@gmail\.com['"]/);
+assert.match(paypal, /export \{ IFUND_PAYPAL_BUSINESS_EMAIL \}/);
+assert.match(paypal, /const merchantEmail = paypalMerchantEmail\(environment\)/);
+assert.match(paypal, /payee:\s*\{\s*email_address:\s*merchantEmail\s*\}/);
+assert.match(environment, /https:\/\/api-m\.paypal\.com/);
+assert.match(environment, /https:\/\/api-m\.sandbox\.paypal\.com/);
 
 assert.match(config, /account_ref: IFUND_PAYPAL_ACCOUNT_REF/);
 assert.match(config, /account_type: IFUND_PAYPAL_ACCOUNT_TYPE/);
-assert.match(config, /business_email: IFUND_PAYPAL_BUSINESS_EMAIL/);
+assert.doesNotMatch(config, /business_email:/, 'Public SDK configuration must not expose merchant email');
 assert.match(caps, /account_ref: IFUND_PAYPAL_ACCOUNT_REF/);
 assert.match(caps, /account_type: IFUND_PAYPAL_ACCOUNT_TYPE/);
 

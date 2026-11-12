@@ -9,7 +9,6 @@ import FinanceDataGrid, { formatUsdCents } from "@/components/finance/FinanceDat
 import { financeDemoRows, demoFinanceStats } from "@/lib/hackathonFinanceDemo.mjs";
 import { IFUND_HACKATHON_ENTRY } from "@/lib/ifundHackathonManifest";
 
-const PAYPAL_SANDBOX = "https://feature-paypal-sandbox-secur.interplanetaryfund-migration.pages.dev/hackathon";
 const POSTMAN_COLLECTION = "https://github.com/interplanetarysister/InterplanetaryFund/blob/main/apps/web/public/docs/postman/ifund-paypal-sandbox-readonly.postman_collection.json";
 const columns = [
   { field: "id", headerName: "Fictional record", minWidth: 155 },
@@ -42,8 +41,8 @@ export default function Hackathon() {
     <section id="sandbox-checkout" className="space-y-3 rounded-2xl border border-cyan-400/40 bg-[#09132c] p-5" aria-label="Verified PayPal sandbox handoff">
       <p className="text-xs font-bold uppercase tracking-[0.17em] text-cyan-300">Step 4 · PayPal developer integration</p>
       <h2 className="text-xl font-bold">Test with PayPal Sandbox</h2>
-      <p className="text-sm text-slate-300">Real PayPal Orders v2 sandbox checkout is hosted on IFund's designated Cloudflare preview. It uses a separate Personal sandbox buyer and a real published campaign in the sandbox database. This original Base44 page does not initiate or capture a live PayPal charge.</p>
-      <a href={PAYPAL_SANDBOX} target="_blank" rel="noopener noreferrer" className={button}>Open verified sandbox checkout · test money only</a>
+      <p className="text-sm text-slate-300">Real PayPal Orders v2 sandbox checkout is hosted on IFund's independent Cloudflare demo. It uses a separate Personal sandbox buyer, fictional published campaigns and an isolated demo ledger. This original Base44 page does not initiate or capture a live PayPal charge.</p>
+      <a href={IFUND_HACKATHON_ENTRY} target="_blank" rel="noopener noreferrer" className={button}>Open verified sandbox checkout · test money only</a>
       <p className="text-xs text-amber-200">Do not enter a real card or live PayPal account into the sandbox. A fictional example shown elsewhere on this page is not an actual payment receipt.</p>
     </section>
     <section id="live-insights" className="space-y-5 rounded-2xl border border-cyan-400/40 bg-[#071023] p-5" aria-label="Live platform demographics">

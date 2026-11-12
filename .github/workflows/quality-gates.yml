@@ -56,6 +56,9 @@ jobs:
       - name: Verify shared text contrast and one-finger scroll contract
         run: node scripts/verify-text-contrast-contract.mjs
 
+      - name: Patched dependency security compatibility
+        run: npm run test:dependency-security
+
       - name: Verify route code splitting contract
         run: npm run verify:route-code-splitting
 
@@ -198,6 +201,22 @@ jobs:
           done
           test -s /tmp/ifund-render.html || { cat /tmp/ifund-preview.log; exit 1; }
           grep -q '<div id="root"></div>' /tmp/ifund-render.html || { cat /tmp/ifund-render.html; exit 1; }
+
+  dependency-audit:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')
+    name: Dependency audit — high and critical block release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked graph without package lifecycle execution
+        run: npm ci --legacy-peer-deps --ignore-scripts --no-audit --no-fund
+      - name: Audit locked dependencies
+        run: npm audit --audit-level=high
 
   node20-compatibility:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.actor == 'base44-builder[bot]' || contains(github.event.head_commit.message, '[batch-check]') || contains(github.event.head_commit.message, '[release-check]')

@@ -20,7 +20,9 @@ assert.doesNotMatch(fn, /Withdrawal\.create/);
 assert.doesNotMatch(fn, /paypal_email|payout_destination|payout_method/);
 assert.match(fn, /state:"recorded"/);
 assert.match(fn, /does not represent provider verification, IFund custody, withdrawal eligibility, or a payout/);
-assert.match(fn, /gross\*0\.03/);
+assert.match(fn, /gross\*0\.07/);
+assert.match(ui, /computeWithdrawal\(parseFloat\(m\.grossAmount\)\)\.net/);
+assert.match(ui, /PLATFORM_FEE_RATE \* 100/);
 assert.match(schema, /not a withdrawal, payout, settlement, or proof of custody/);
 assert.match(fraud, /canonical_reservation_id && !!row\.paypal_email/);
 

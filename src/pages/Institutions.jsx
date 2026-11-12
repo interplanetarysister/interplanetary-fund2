@@ -4,9 +4,8 @@ import { Input } from "@/components/ui/input";
 import InstitutionCard from "@/components/institutions/InstitutionCard";
 import CreateInstitutionDialog from "@/components/institutions/CreateInstitutionDialog";
 import MyApplications from "@/components/institutions/MyApplications";
-import { Search, Loader2 } from "lucide-react";
+import { Search } from "lucide-react";
 import { institutionTypes } from "@/components/institutions/institutionTypes";
-import PageError from "@/components/PageError";
 
 const programFilters = [
   { value: "all", label: "All" },
