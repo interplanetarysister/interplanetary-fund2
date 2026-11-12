@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import DonationRow from "@/components/giving/DonationRow";
+import FinanceDonutChart from "@/components/finance/FinanceDonutChart";
 import PageError from "@/components/PageError";
 import { Compass, HeartHandshake, ReceiptText, FlaskConical, ShieldCheck, Loader2, RefreshCw, Info, Sparkles } from "lucide-react";
 
@@ -10,7 +11,7 @@ const modes = [{ key: "live", title: "Live giving" }, { key: "sandbox", title: "
 
 export default function MyGiving() {
   const [donations, setDonations] = useState(null);
-  const [mode, setMode] = useState("sandbox");
+  const [mode, setMode] = useState("live");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const load = useCallback(async () => {
@@ -31,6 +32,16 @@ export default function MyGiving() {
   const completed = records.filter(d => d.status === "completed" && d.currency === "USD");
   const lifetime = completed.reduce((sum, d) => sum + Number(d.amount || 0), 0);
   const supported = new Set(completed.map(d => d.campaign_id).filter(Boolean)).size;
+  const campaignDistribution = useMemo(() => {
+    const campaignAmounts = new Map();
+    for (const gift of completed) {
+      if (!gift.campaign_id || !Number.isFinite(Number(gift.amount)) || Number(gift.amount) <= 0) continue;
+      const id = String(gift.campaign_id);
+      const existing = campaignAmounts.get(id);
+      campaignAmounts.set(id, { name: String(gift.campaign_title || "Campaign"), value: (existing?.value || 0) + Number(gift.amount) });
+    }
+    return [...campaignAmounts.values()].sort((a,b) => b.value-a.value);
+  }, [completed]);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
@@ -61,6 +72,14 @@ export default function MyGiving() {
             <p className="mt-1 text-xs text-muted-foreground">Unique campaigns with completed gifts</p>
           </div>
         </div>
+        {!loading && !error && campaignDistribution.length > 0 && (
+          <div className="mb-6">
+            <FinanceDonutChart rows={campaignDistribution} title={mode === "live" ? "Verified live giving by campaign · AG Charts Community" : "Sandbox test giving by campaign · AG Charts Community"} />
+            <p className="mt-2 text-xs text-muted-foreground">
+              {mode === "live" ? "Only completed live captures verified against the provider ledger are charted." : "Sandbox amounts are test funds only, never real donations or eligible withdrawal balances."}
+            </p>
+          </div>
+        )}
         <section aria-labelledby="giving-history-heading" className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 id="giving-history-heading" className="flex items-center gap-2 text-xl font-semibold text-foreground"><ReceiptText className="h-5 w-5 text-cyan-500" aria-hidden="true"/>Donation history</h2>
