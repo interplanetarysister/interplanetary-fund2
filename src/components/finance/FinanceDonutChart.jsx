@@ -20,7 +20,7 @@ function charts() {
   }).catch(e=>{loading=null;throw e;});
   return loading;
 }
-export default function FinanceDonutChart({ rows, title }) {
+export default function FinanceDonutChart({ rows, title, compact = false, dark = false }) {
   const host=useRef(null);
   const [error,setError]=useState(false);
   const data=useMemo(()=>Array.isArray(rows)
@@ -31,14 +31,19 @@ export default function FinanceDonutChart({ rows, title }) {
     let alive=true,chart;
     charts().then(api=>{
       if(!alive||!host.current)return;
-      chart=api.create({container:host.current,height:260,
-        background:{fill:"#fff"},data,legend:{position:"bottom"},
+      chart=api.create({container:host.current,height:compact ? 205 : 260,
+        background:{fill:dark ? "#071023" : "#fff"},data,legend:{position:"bottom"},
         series:[{type:"donut",angleKey:"value",legendItemKey:"name",
           calloutLabelKey:"name",calloutLabel:{enabled:false},innerRadiusRatio:.72}]});
       setError(false);
     }).catch(()=>{if(alive)setError(true)});
     return ()=>{alive=false;chart?.destroy()};
-  },[data]);
+  },[data,compact,dark]);
+  if (compact) return <div className="min-w-0">
+    {data.length ? <div ref={host} role="img" aria-label={title+" — actual campaign records"} /> :
+      <p className="text-xs text-slate-400">No published data to chart.</p>}
+    {error && <p role="status" className="text-xs text-slate-400">Chart unavailable; data is listed below.</p>}
+  </div>;
   return <section className="rounded-2xl border border-border bg-card p-5" aria-label={title}>
     <h2 className="mb-2 text-lg font-semibold">{title}</h2>
     {data.length ? <div ref={host} role="img" aria-label={title+" based on actual records"} /> :
