@@ -22,7 +22,7 @@ import { LifeBuoy, ArrowUpRight, Sun, Moon } from "lucide-react";
 const PAGE_TITLES = {
   "/my-campaigns": "My Campaigns",
   "/dashboard": "Overview", "/help": "Help Center", "/admin/help": "Help Center Editor", "/devices": "Connected Devices",
-  "/discover": "Discover", "/globe": "Global Globe", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Team",
+  "/discover": "Discover", "/globe": "Global Globe", "/finances": "Financial Center", "/giving": "My Giving", "/communications": "Messages", "/agents": "AI Team",
   "/inbox": "Inbox", "/following": "Following", "/mission": "Mission Control", "/ai-images": "AI Image Studio", "/ops": "Ops Center",
   "/connections": "Connections", "/community": "Community", "/institutions": "Institutions",
   "/analytics": "Command Center", "/subscriptions": "Plans", "/withdrawals": "Withdrawals",
@@ -57,10 +57,10 @@ const navSections = [
       { to: "/create", label: "New Campaign", icon: PlusCircle },
       { to: "/my-campaigns", label: "My Campaigns", icon: Target },
       { to: "/donors", label: "Supporters", icon: Users },
-      { to: "/giving", label: "My Giving", icon: HeartHandshake },
+      { to: "/finances", label: "Financial Center", icon: Wallet },
       { to: "/following", label: "Following", icon: Heart },
       { to: "/withdrawals", label: "Withdrawals", icon: Wallet },
-      { to: "/ledger", label: "Financial Ledger", icon: BookOpen },
+
     ],
   },
   {
