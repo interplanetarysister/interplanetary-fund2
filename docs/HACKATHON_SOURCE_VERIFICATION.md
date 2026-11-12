@@ -2,6 +2,8 @@
 
 Verified locally on 2026-11-12 against upstream base `a171ced67a547760955e8d5c0b59c67946abd900`, using Node 24.22.1 and npm 11.9.0. This report covers the original Base44 source companion. It does not certify a production deployment, real provider transaction, or Devpost submission.
 
+**Production status: BLOCKED.** The follow-up dependency audit below still contains unresolved high findings. Functional test success does not clear this release gate; PR #550 must remain unmerged and the Base44 application must not be published from this branch.
+
 The companion now sends both judge and sandbox-checkout links to the dedicated demonstration:
 <https://ifund-hackathon-demo.interplanetary-fund.workers.dev/hackathon>.
 The independent demo is responsible for its sandbox payment and AI execution evidence.
@@ -62,7 +64,7 @@ The final local browser artifact was built with the existing public app ID and `
 
 The branch fast-forwarded from `3179761` to upstream `a171ced` before these repairs were reapplied. Open PRs #548, #547, #538 and #540 were inspected by changed paths; none overlaps this batch's source paths. They retain their own functional and financial review requirements.
 
-Existing implementations were reused instead of adding dependencies or services: React lazy/Suspense (<https://github.com/react/react>, MIT), ESLint (<https://github.com/eslint/eslint>, MIT), Node assert/test execution (<https://github.com/nodejs/node>; core permissive license inspected in `LICENSE`, with separate bundled third-party notices), the existing Playwright/Vite fixtures and the internal fee calculator. The source repositories were active and unarchived when checked. No third-party implementation was copied, no dependency was added and no additional recurring service was enabled. The repair is reversible by reverting this source batch; existing PayPal/backend authorization stays intact.
+Existing implementations were reused instead of adding dependencies or services: React lazy/Suspense (<https://github.com/react/react>, MIT), ESLint (<https://github.com/eslint/eslint>, MIT), Node assert/test execution (<https://github.com/nodejs/node>; core permissive license inspected in `LICENSE`, with separate bundled third-party notices), the existing Playwright/Vite fixtures and the internal fee calculator. The source repositories were active and unarchived when checked. In the initial companion repair, no third-party implementation was copied, no dependency was added and no additional recurring service was enabled. The repair is reversible by reverting this source batch; existing PayPal/backend authorization stays intact.
 
 ## Release gates owned outside this source report
 
@@ -70,3 +72,32 @@ Existing implementations were reused instead of adding dependencies or services:
 - Verify the deployed companion and actual authenticated financial views; preserve current production payment settings and live/sandbox separation.
 - Attach genuine independent-demo PayPal capture, webhook, replay, ledger and receipt evidence, and real AI execution evidence. Fixture success above cannot substitute for those records.
 - Complete the current official hackathon rules/video/submission matrix and judge walkthrough in the demo repository. No compliance or deadline eligibility claim is made here.
+
+
+## Dependency audit follow-up
+
+The locked audit decreased from **34 findings (2 critical, 25 high, 7 moderate)** to **16 high findings, zero critical and zero moderate**. The remaining package entries propagate from two underlying advisories; they are not repaired or waived. `npm audit` continues to exit nonzero. A separate dependency-audit CI job is configured to fail on high or critical findings; its identical local command exited 1. Functional checks cannot present this branch as ready for release.
+
+| Dependency | Reviewed correction |
+| --- | --- |
+| `bitcoinjs-lib` | 6.1.7 → 6.1.10; reject duplicated transaction lists with a matching merkle root. |
+| `axios`, `follow-redirects` | Pin compatible 1.x patches 1.21.1 and 1.16.3 throughout the graph, including Base44 SDK transport. |
+| `@grpc/grpc-js` | 1.9.16 → 1.14.7, preserving Firebase 12 and its existing consent-gated diagnostic imports. |
+| `vite` | 6.4.3 → 6.4.6; retain the existing Vite 6/Base44 plugin architecture. |
+| `@sats-connect/core`, `valibot` | Patch core 0.6.5 → 0.6.11; explicitly provide its supported Valibot 1.x peer at patched 1.5.0. All prior core exports remain available. |
+| `jayson` | 4.3.0 → 5.0.0 removes vulnerable UUID/stream-json dependencies. Its Node >=20 baseline matches IFund. The exact CommonJS browser client used by Solana remains supported; both that client and an actual Solana `Connection.getBalance` call were tested against local/stub transports. No wallet RPC was sent. |
+
+These libraries are used by retained features; removing the Reown adapters or Firebase package would remove functionality. No forced audit fix or Zod major replacement was applied. No provider, payment, payout, credential, database or hosting configuration changed.
+
+The maintained upstream projects and their licenses were inspected: [BitcoinJS](https://github.com/bitcoinjs/bitcoinjs-lib) (MIT), [Axios](https://github.com/axios/axios) (MIT), [follow-redirects](https://github.com/follow-redirects/follow-redirects) (MIT), [gRPC Node](https://github.com/grpc/grpc-node) (Apache-2.0), [Vite](https://github.com/vitejs/vite) (MIT), [Sats core](https://github.com/secretkeylabs/sats-connect-core) (installed package ISC), [Valibot](https://github.com/open-circle/valibot) (MIT), and [Jayson](https://github.com/tedeh/jayson) (MIT). These are local library changes with no service or recurring charge.
+
+After a clean locked installation, the patched build/postbuild, lint, typecheck, payment suite, **44/44 functional workflow checks**, full design/browser suite, campaign draft/media cases, Reown import/crypto contracts, Firebase consent contract and companion browser checks at 320/390/768/1440px all passed. These are local fixture checks, not provider execution or a clean security audit. The fixture artifact retains the loopback-only boundary described above.
+
+### Remaining upstream blockers and reachability
+
+- **Zod 3 — [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5):** the fixed release is 4.6.6; no patched 3.x release is published. Reown wallet 1.8.24 pins 3.22.4 and Coinbase CDP uses `^3.25.76`. `src/lib/reownWallet.js` dynamically imports the retained adapters only after a configured project ID and explicit wallet-connect action. That imports Reown wallet frame schemas (`W3mFrameSchema.js`) and Coinbase/abitype validation. This is an optional wallet setup path, not the PayPal capture or ledger path, but its oversized-message validation exposure has not been cleared. An unsupported blanket Zod 4 override would require a separately verified integration change; it is not a safe audit-only fix.
+- **bigint-buffer 1.1.5 — [GHSA-3gc7-fjrx-p6mg](https://github.com/advisories/GHSA-3gc7-fjrx-p6mg):** no patched upstream release is available. Solana SPL Token imports it through `@solana/buffer-layout-utils`. The advisory concerns native Node `toBigIntLE`; Vite resolves the package's explicit browser mapping to `dist/browser.js`, which performs pure-JavaScript buffer/BigInt conversion. The dependency regression checks that actual Vite resolution. IFund does not run this wallet library as a payment server. The installed native dependency remains vulnerable and the audit remains unresolved; this is not a claim that the package was fixed.
+
+`npm run test:dependency-security` now runs in the quality workflow. It exercises the BitcoinJS advisory regression, valid/invalid Sats schemas and message bounds, safe Valibot error flattening, Jayson/Solana transport compatibility, actual Vite browser resolution, and Axios local JSON/response limits. All transports are loopback or stubs; no provider success is inferred.
+
+Detailed audit JSON, version trees, compatibility output and release-check logs remain in `work/build-review/dependency-*-release.*`, `reown-compatibility-release.log` and `firebase-compatibility-release.log`. Revert this dependency repair to roll back the package graph. Keep PR #550 open until the remaining security findings are safely resolved and the production gates are actually clean.
