@@ -110,7 +110,7 @@ assert.match(bridge,/paymentChannel: normalizePaymentChannel\(value\.payment_cha
 assert.match(bridge,/Legacy donation operation is missing immutable payment-channel evidence/);
 assert.match(paypal,/feeAmount/);
 assert.match(paypal,/fee_amount/);
-assert.match(paypal,/export async function getOrder\(orderId\)/);
+assert.match(paypal,/export async function getOrder\(orderId, environment: PayPalEnvironment/);
 assert.match(paypal,/\/v2\/checkout\/orders\/\$\{encodeURIComponent\(id\)\}/);
 assert.match(paypal,/recovered_after_capture_error: true/);
 assert.match(paypal,/recovered\.status === 'COMPLETED'/);
