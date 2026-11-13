@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { runtimeContract } from "@/lib/runtimeContract";
 import { appParams } from "@/lib/app-params";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { safeReturnTo } from "@/lib/authReturnTo";
 import { safeAuthErrorMessage } from "@/lib/safe-auth-error";
 
 export default function Register() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -82,7 +83,16 @@ export default function Register() {
       setResendAvailableAt(Date.now() + 60000);
       setResendSeconds(60);
     } catch (err) {
-      setError(safeAuthErrorMessage("register"));
+      // Only a provider-confirmed conflict qualifies as an existing account.
+      // Never infer account existence from a generic failure or resend response.
+      if (err?.status === 409) {
+        const params = new URLSearchParams({ notice: "account-exists" });
+        const returnTo = safeReturnTo();
+        if (returnTo !== "/") params.set("returnTo", returnTo);
+        navigate(`/login?${params.toString()}`, { replace: true });
+      } else {
+        setError(safeAuthErrorMessage("register"));
+      }
     } finally {
       setLoading(false);
     }
