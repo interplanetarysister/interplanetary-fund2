@@ -40,7 +40,7 @@ assert.match(capture, /operationKey = `paypal:\$\{order_id\}`/);
 assert.match(flags, /apple_pay_checkout: 'beta'/);
 assert.match(readiness, /apple_pay_checkout: settled\(false/);
 assert.match(listing, /payment_method: 'applepay'/);
-assert.match(recovery, /\['paypal', 'googlepay', 'applepay'\]/);
+assert.match(recovery, /\['paypal', 'card', 'googlepay', 'applepay'\]/);
 assert.ok(JSON.parse(donation).properties.payment_method.enum.includes("applepay"));
 assert.ok(JSON.parse(holding).properties.payment_channel.enum.includes("applepay"));
 for (const total of [1, 25, 100]) {
