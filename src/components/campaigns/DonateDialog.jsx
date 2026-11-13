@@ -53,7 +53,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
     let cancelled = false;
     // Payment capabilities are public-safe and do not contact PayPal unless a
     // live probe is warranted. They also report whether the sandbox demo path
-    // is open while live campaign donations stay paused.
+    // is available separately from the live campaign donation path.
     if (!open) return undefined;
     setCapabilityError(false);
     base44.functions.invoke("getPaymentCapabilities", {})
@@ -96,12 +96,12 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
         {platformOnlyPrelaunch ? (
           <div className="space-y-4">
             <PrelaunchNotice payment />
-            <p className="text-sm leading-relaxed text-slate-100">This campaign is live and shareable, but it cannot accept donations while campaign fundraising is paused. The support button below helps Interplanetary Fund, not this campaign.</p>
+            <p className="text-sm leading-relaxed text-slate-100">Live PayPal campaign donations are enabled. If this secure checkout status screen appears because the payment service is temporarily unavailable, no campaign payment has been started. The platform-support button below remains separate.</p>
             {sandboxReady && (
               <div className="rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 p-3 text-amber-950">
                 <p className="text-[11px] font-bold uppercase tracking-wide">Sandbox test checkout — no real money</p>
                 <p className="mt-1 text-xs leading-relaxed">
-                  Live campaign donations are paused. This uses PayPal's sandbox so the full checkout can be
+                  This separate PayPal sandbox demonstrates checkout with fake funds and is not the live donation path.
                   demonstrated with fake funds. Test gifts never appear in live campaign totals, My Campaigns or analytics.
                 </p>
                 {sandboxConfirmed ? (
@@ -162,7 +162,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
 
             {!capabilities && !capabilityError && <div className="flex items-center justify-center py-4 text-sm text-stone-500"><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking available payment methods…</div>}
             {capabilityError && <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">We couldn’t check payment choices right now. Please try again.</p>}
-            {capabilities && !paypalApiAvailable && (platformOnlyMode || !campaign.cashapp_tag) && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">Campaign donations are not available through a verified payment method right now. No payment has been started.</p>}
+            {capabilities && !paypalApiAvailable && (platformOnlyMode || !campaign.cashapp_tag) && <p className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm text-stone-600">Live donation checkout is temporarily unavailable from the verified payment service. No payment has been started.</p>}
 
 
             {paypalApiAvailable && Number(amount) >= MIN_DONATION && <div className="min-w-0 w-full rounded-xl border border-stone-200 p-2 sm:p-4"><PayPalCardFields campaign={campaign} amount={amount} platformContribution={platformContribution} onCheckoutStart={() => setPaypalHandoff(true)} onCheckoutEnd={() => setPaypalHandoff(false)} onPaid={() => { setPaypalHandoff(false); setConfirmed(true); if (onDonated) onDonated(); }} /></div>}
