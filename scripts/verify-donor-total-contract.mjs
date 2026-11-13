@@ -31,7 +31,7 @@ assert.match(receipt,/const total = Number\(donation.amount \|\| 0\) \+ fee/);
 assert.ok(giving.includes('round2(giftOf(d))'));
 assert.match(giving,/operation.state !== 'applied'/);
 assert.match(giving,/platform_support_amount/);
-assert.match(donorUi,/Gift to this campaign/);
+assert.match(donorUi,/Campaign gift/);
 assert.doesNotMatch(donorUi,/IF fee at withdrawal \(3%\)/);
 
 console.log('Donor pledge, tip, receipts, historical ledgers and wallet totals passed.');
