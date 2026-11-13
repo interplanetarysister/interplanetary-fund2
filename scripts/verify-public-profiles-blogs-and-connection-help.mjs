@@ -54,7 +54,7 @@ const float=read('src/components/QuickActions.jsx');
 for(const item of ['Create a campaign','Saved / followed campaigns','My campaigns and drafts','Campaign command center','Log out','Log in'])assert.ok(float.includes(item));
 assert.match(read('src/pages/Home.jsx'),/MobileBottomNav/);
 assert.match(read('src/components/Layout.jsx'),/MobileBottomNav/);
-assert.match(read('src/pages/Community.jsx'),/Read the newsletter and blogs/);
+assert.match(read('src/pages/Community.jsx'),/Stories & blogs/);
 assert.match(read('src/pages/CommunityDetail.jsx'),/Browse the newsletter and member blogs/);
 const guided=read('src/components/connections/ConnectDialog.jsx');
 assert.match(guided,/Ask IFund to connect this account now/);
