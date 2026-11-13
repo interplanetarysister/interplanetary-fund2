@@ -89,6 +89,7 @@ try {
     await page.goto(origin+'/community',{waitUntil:'domcontentloaded'});
     const aside=page.locator('.ifund-desktop-sidebar');
     await aside.getByRole('link',{name:'Discover'}).waitFor({timeout:14000});
+    await page.waitForFunction(() => { const aside=document.querySelector('.ifund-desktop-sidebar');const main=document.querySelector('main');return !!aside&&!!main&&Math.abs(main.getBoundingClientRect().left-aside.getBoundingClientRect().right)<2; },{timeout:12000}).catch(() => {});
     const measurement=await checkSize(page,'.ifund-desktop-sidebar',width);
     const bounds=await page.locator('main').boundingBox();
     assert.ok(bounds,'Desktop content exists');
