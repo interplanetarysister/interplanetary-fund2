@@ -32,8 +32,8 @@ export default function CampaignFundingCard({ campaign, onDonate, className = ""
       </Button>
       {platformOnlyMode ? (
         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
-          <p className="text-xs font-semibold text-amber-900">Platform support only</p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">Your campaign is published and shareable. Campaign donations are currently paused; the separate platform donation link supports Interplanetary Fund, not this campaign.</p>
+          <p className="text-xs font-semibold text-amber-900">Live donation checkout status</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">Live PayPal campaign donations are enabled. If the payment service is temporarily unavailable, no payment is started; the separate platform-support link supports Interplanetary Fund, not this campaign.</p>
         </div>
       ) : (
         <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400 mt-3">
