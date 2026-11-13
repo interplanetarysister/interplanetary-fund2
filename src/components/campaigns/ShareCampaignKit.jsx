@@ -118,7 +118,7 @@ export default function ShareCampaignKit({ campaign }) {
         <Share2 className="w-4 h-4 text-primary" /> Share & embed campaign
       </h3>
       <p className="text-xs text-stone-500 mb-4">
-        {platformOnlyMode ? "Your campaign stays public and shareable. Individual campaign donations are currently paused." :
+        {platformOnlyMode ? "Your campaign stays public and shareable. Live PayPal donations are enabled; secure checkout may be temporarily unavailable until the payment service health check recovers." :
           "Copy a permanent IFund link or paste the campaign card into a website, blog or profile."}
       </p>
 
