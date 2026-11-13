@@ -20,10 +20,18 @@ export default async function (req) {
     }
 
     const sr = base44.asServiceRole;
-    const accepted = await sr.entities.LegalAcceptance.filter({
-      owner_user_id: userId, terms_version: TERMS_VERSION,
-    });
-    if (accepted?.length) return Response.json({ accepted: true, terms_version: TERMS_VERSION });
+    // RLS-scoped owner read first; retain service-role fallback for older clients.
+    const predicate = { owner_user_id: userId, terms_version: TERMS_VERSION };
+    let accepted;
+    try {
+      accepted = await base44.entities.LegalAcceptance.filter(predicate);
+    } catch (memberError) {
+      console.warn('legal_member_read_failed', String(memberError?.code || memberError?.status || memberError?.name || 'unknown').slice(0,70));
+      accepted = await sr.entities.LegalAcceptance.filter(predicate);
+    }
+    if (Array.isArray(accepted) && accepted.some(row =>
+      row.owner_user_id === userId && row.terms_version === TERMS_VERSION))
+      return Response.json({ accepted: true, terms_version: TERMS_VERSION });
     if (mode === 'status') return Response.json({ accepted: false, terms_version: TERMS_VERSION });
 
     // Explicit assent must be separate from clicking a page or accessing a URL.
