@@ -1,0 +1,14 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+const campaignList=readFileSync(new URL("../src/pages/MyCampaigns.jsx",import.meta.url),"utf8");
+const institutions=readFileSync(new URL("../src/pages/Institutions.jsx",import.meta.url),"utf8");
+const support=readFileSync(new URL("../src/components/payments/PlatformSupportHostedButton.jsx",import.meta.url),"utf8");
+const legal=readFileSync(new URL("../base44/functions/recordLegalAcceptance/entry.ts",import.meta.url),"utf8");
+assert.match(campaignList,/Campaign\.filter\([\s\S]*?\{ status: "active", created_by_id: me\.id \},\s*"-created_date",\s*100/);
+assert.doesNotMatch(campaignList,/\{ sort: "-created_date", limit: 100 \}/);
+assert.match(institutions,/interplanetaryfund-migration\.pages\.dev\/api\/public\/opportunity-sources/);
+assert.match(support,/IFUND_PLATFORM_SUPPORT_PAYMENT_LINK/);
+assert.doesNotMatch(support,/HostedButtons\(|https:\/\/www\.paypal\.com\/sdk\/js/);
+assert.match(legal,/base44\.entities\.LegalAcceptance\.filter\(predicate\)/);
+assert.match(legal,/row\.owner_user_id === userId && row\.terms_version === TERMS_VERSION/);
+console.log("Judge route repairs, secure legal status, provider directory and PayPal support link verified.");
