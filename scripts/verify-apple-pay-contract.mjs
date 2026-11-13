@@ -34,7 +34,7 @@ assert.match(dialog, /<ApplePayButton /);
 assert.match(create, /\['paypal', 'card', 'googlepay', 'applepay'\]\.includes\(payment_channel\)/);
 assert.match(create, /channel === 'applepay' \? 'apple_pay_checkout'/);
 assert.match(create, /computePayPalBreakdown\(Number\(amount\), platform_contribution === true, channel\)/);
-assert.match(capture, /\['paypal', 'googlepay', 'applepay'\]\.includes\(parts\[4\]\)/);
+assert.match(capture, /\['paypal', 'card', 'googlepay', 'applepay'\]\.includes\(parts\[4\]\)/);
 assert.match(capture, /paymentChannel === 'applepay' \? 'Apple Pay'/);
 assert.match(capture, /operationKey = `paypal:\$\{order_id\}`/);
 assert.match(flags, /apple_pay_checkout: 'beta'/);
