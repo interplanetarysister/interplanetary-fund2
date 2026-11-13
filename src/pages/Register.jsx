@@ -21,6 +21,15 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendAvailableAt, setResendAvailableAt] = useState(0);
+  const [resendSeconds, setResendSeconds] = useState(0);
+
+  React.useEffect(() => {
+    if (!showOtp || resendSeconds <= 0) return;
+    const timer = window.setTimeout(() => setResendSeconds(Math.max(0, Math.ceil((resendAvailableAt - Date.now()) / 1000))), 1000);
+    return () => window.clearTimeout(timer);
+  }, [showOtp, resendAvailableAt, resendSeconds]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,7 +41,10 @@ export default function Register() {
     setLoading(true);
     try {
       await base44.auth.register({ email, password });
+      setOtpCode("");
       setShowOtp(true);
+      setResendAvailableAt(Date.now() + 60000);
+      setResendSeconds(60);
     } catch (err) {
       setError(safeAuthErrorMessage("register"));
     } finally {
@@ -68,15 +80,29 @@ export default function Register() {
   };
 
   const handleResend = async () => {
+    if (resending || loading || Date.now() < resendAvailableAt) return;
     setError("");
+    setResending(true);
     try {
-      await base44.auth.resendOtp(email);
+      await base44.auth.resendOtp(email.trim());
+      setOtpCode("");
+      setResendAvailableAt(Date.now() + 60000);
+      setResendSeconds(60);
       toast({
-        title: "Code sent",
-        description: "Check your email for the new code.",
+        title: "Verification requested",
+        description: "If delivery is available, a new code will arrive shortly. Check your inbox and spam folder.",
       });
     } catch (err) {
-      setError(safeAuthErrorMessage("resend"));
+      const status = err?.response?.status ?? err?.status;
+      if (status === 429) {
+        setResendAvailableAt(Date.now() + 60000);
+        setResendSeconds(60);
+        setError("Too many code requests. Wait a minute before trying again.");
+      } else {
+        setError(safeAuthErrorMessage("resend"));
+      }
+    } finally {
+      setResending(false);
     }
   };
 
@@ -126,8 +152,8 @@ export default function Register() {
         </Button>
         <p className="text-center text-sm text-muted-foreground mt-4">
           Didn't receive the code?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
+          <button type="button" onClick={handleResend} disabled={resending || loading || resendSeconds > 0} className="text-primary font-medium hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
+            {resending ? "Requesting..." : resendSeconds > 0 ? `Resend in ${resendSeconds}s` : "Resend code"}
           </button>
         </p>
       </AuthLayout>
