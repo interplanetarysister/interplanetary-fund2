@@ -41,10 +41,12 @@ const sha=async(t:string)=>{
  return [...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,'0')).join('').slice(0,40);
 };
 export default async function(req:Request){
+  let isPublicReport=false;
   try{
     const base44=createClientFromRequest(req);
     const body=await req.json().catch(()=>({}));
     const mode=clean(body.mode||'report',24);
+    isPublicReport = mode === 'report';
     const sr=base44.asServiceRole;
     if(mode==='report'){
       const source=clean(body.source||'app_request',32);
@@ -175,6 +177,10 @@ export default async function(req:Request){
     }
   }catch(error){
     console.error('managePlatformIncidents:',error instanceof Error?error.name:'Error');
+    // Incident telemetry is best-effort and must not make ordinary page loads
+    // fail when the external Base44 incident store is temporarily unavailable.
+    // Never claim a report was recorded if the backend rejected it.
+    if (isPublicReport) return Response.json({ok:false,recorded:false,reason:'incident_tracking_unavailable'},{status:202});
     return Response.json({error:'Platform incident request could not be completed'},{status:500});
   }
 }
