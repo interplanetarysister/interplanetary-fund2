@@ -24,7 +24,7 @@ export default function CryptoCampaignSettings({ campaign, onSaved }) {
 
   return <section className="bg-white rounded-2xl border border-stone-200 p-5">
     <h3 className="flex items-center gap-2 font-display text-lg text-stone-900"><Wallet className="w-4 h-4 text-primary" /> Cryptocurrency donations</h3>
-    <p className="text-xs text-stone-600 mt-1">Choose whether this campaign will offer crypto giving when verified receiving becomes available.</p>
+    <p className="text-xs text-stone-600 mt-1">Offer cryptocurrency donations on this campaign. Supporters pay on the payment provider's secure page, and gifts appear only once the provider confirms the payment.</p>
     <label className="flex items-center gap-3 text-sm text-stone-800 mt-3">
       <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
       Allow supporters to donate using a crypto wallet
@@ -32,7 +32,7 @@ export default function CryptoCampaignSettings({ campaign, onSaved }) {
     <Button type="button" onClick={save} disabled={saving || enabled === (campaign?.accept_crypto_donations === true)} className="mt-3 rounded-xl">
       {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Save preference
     </Button>
-    <p className="text-xs text-amber-800 mt-2">Opt-in does not enable live crypto transfers until the receiving and accounting system is verified.</p>
+    <p className="text-xs text-amber-800 mt-2">Your choice is saved now. The crypto button appears once the payment provider confirms crypto settlement is ready.</p>
     {error && <p role="alert" className="text-xs text-red-700 mt-2">{error}</p>}
   </section>;
 }

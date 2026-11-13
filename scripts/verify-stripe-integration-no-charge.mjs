@@ -30,5 +30,9 @@ assert.match(webhook, /StripeReversalHold\.create/);
 assert.match(webhook, /reconcileCanonicalCampaignProjection/);
 assert.match(webhook, /STRIPE_REVERSAL_HOLD/);
 assert.match(read('base44/functions/getStripeSubscriptionOptions/entry.ts'), /retired: true/);
-assert.match(read('base44/functions/getCryptoDonationReadiness/entry.ts'), /verified_checkout_live: false/);
+// Stripe's only remaining role is provider-verified crypto settlement; the
+// public status must come from that provider probe, never from a local toggle.
+const cryptoReadiness = read('base44/functions/getCryptoDonationReadiness/entry.ts');
+assert.match(cryptoReadiness, /stripeCryptoGatewayReadiness/);
+assert.doesNotMatch(cryptoReadiness, /available:\s*true/);
 console.log('PASS: Stripe checkout retired, PayPal offered, historical Stripe refund/ledger reconciliation retained.');

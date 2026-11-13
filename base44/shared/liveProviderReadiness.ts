@@ -1,5 +1,6 @@
 import { secrets } from 'base44:runtime';
 import { FEATURE_SCOPES, CODE_CONNECTED_FEATURES } from './featureFlagGate.ts';
+import { stripeCryptoGatewayReadiness } from './stripeCryptoReadiness.ts';
 import { isLivePayPalRestReady, isLivePayPalPayoutReady } from './paypal.ts';
 import { IFUND_PAYPAL_ACCOUNT_REF, paypalBillingRequest, verifiedPayPalPlan } from './paypalSubscriptions.ts';
 import { subscriptionPrices } from './subscriptionCatalog.js';
@@ -66,12 +67,18 @@ export async function probeLiveProviders(sr?: any) {
   const nowpaymentsConfigured = !!(secrets.get('NOWPAYMENTS_API_KEY') && secrets.get('NOWPAYMENTS_IPN_SECRET'));
   const reownConfigured = !!secrets.get('REOWN_PROJECT_ID');
   const openaiConfigured = !!secrets.get('OPENAI_API_KEY');
+  // Crypto gifts settle through the Stripe merchant, so its crypto method and
+  // live settlement webhook are the authority — not a local switch.
+  const cryptoGateway = await stripeCryptoGatewayReadiness()
+    .catch(() => ({ ready: false, reason: 'Crypto provider readiness could not be verified.' }));
   return {
     paypal_checkout: settled(paypal, paypal ? 'Verified live PayPal REST account' : 'Live PayPal account verification required'),
     paypal_payouts: settled(payouts, payouts ? 'Verified PayPal payouts' : 'PayPal payouts must be verified separately'),
     paypal_subscriptions: settled(paypalSubscriptions, paypalSubscriptions ? 'Verified PayPal billing plans and webhook' : 'PayPal billing plans and webhook verification required'),
     stripe_checkout: settled(false, 'Stripe has been retired from IFund checkout.'),
-    crypto_gateway: settled(false, 'Awaiting a non-Stripe crypto settlement provider and verified accounting.'),
+    crypto_gateway: settled(cryptoGateway.ready,
+      cryptoGateway.ready ? 'Verified Stripe crypto method and live settlement webhook'
+        : cryptoGateway.reason || 'Crypto provider approval and webhook verification required'),
     nowpayments: settled(false, nowpaymentsConfigured ? 'Credentials present; merchant approval, IPN and settlement are not verified' : 'NOWPayments merchant account, API key and IPN setup required'),
     reown: settled(false, reownConfigured ? 'Server-side project reference exists; website allowlist and client configuration unverified' : 'Reown Project ID and allowed website origins required'),
     openai: settled(false, openaiConfigured ? 'API key configured; agent execution not independently verified' : 'An authorized AI execution provider and runtime test are required'),

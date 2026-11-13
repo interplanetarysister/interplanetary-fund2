@@ -20,12 +20,13 @@ assert.match(save, /accept_crypto_donations/, "server save persists opt-in");
 assert.match(update, /accept_crypto_donations/, "authorized campaign settings persist opt-in");
 assert.match(detail, /CryptoCampaignSettings/, "existing campaign owners can change preference");
 assert.match(donate, /CryptoDonateOption campaign=\{campaign\}/, "campaign checkout respects opt-in");
-assert.match(donate, /CryptoDonateOption platformSupport/, "platform mode shows distinct crypto support");
+assert.doesNotMatch(donate, /CryptoDonateOption platformSupport/, "platform support never uses the campaign crypto rail");
 assert.match(home, /Cryptocurrency donations — Coming soon/, "homepage must not promise unverified live crypto payments");
 assert.doesNotMatch(home, /CryptoDonateOption platformSupport/, "homepage must not expose a non-settling platform crypto checkout");
-assert.match(crypto, /optedIn = platformSupport \|\| campaign\?\.accept_crypto_donations === true/, "inactive campaigns are hidden");
-assert.match(readiness, /verified_checkout_live: false/, "no unverified live receipt route");
-assert.match(readiness, /settlement_ready: false/, "no unverified settlement");
+assert.match(crypto, /campaign\?\.accept_crypto_donations === true/, "inactive campaigns are hidden");
+assert.match(crypto, /createCryptoDonationCheckout/, "a gift starts the server-verified provider checkout");
+assert.match(readiness, /stripeCryptoGatewayReadiness/, "readiness is probed from the settlement provider");
+assert.doesNotMatch(readiness, /verified_checkout_live: true|settlement_ready: true/, "no unverified live receipt route or settlement");
 assert.doesNotMatch(crypto, /sendTransaction|writeContract|recordDonation|\.Donation\.create|asServiceRole/, "wallet connection never credits ledger or sends");
 assert.doesNotMatch(wallet, /sendTransaction|writeContract|\.transfer\(/, "wallet modal never starts a transfer");
 for (const packageName of ["@reown/appkit","@reown/appkit-adapter-ethers","@reown/appkit-adapter-solana","@reown/appkit-adapter-bitcoin"]) {

@@ -354,7 +354,8 @@ export default async function(req) {
           });
           const charge = typeof intent.latest_charge === 'object' ? intent.latest_charge : null;
           if (intent.status !== 'succeeded' || intent.currency !== 'usd' ||
-              charge?.paid !== true || charge?.payment_method_details?.type !== 'crypto' ||
+              charge?.paid !== true ||
+              !['crypto', 'stablecoin'].includes(String(charge?.payment_method_details?.type || '')) ||
               Number(intent.amount_received || 0) !== Number(session.amount_total || 0)) {
             throw new Error('Crypto donation charge is not confirmed by the payment provider.');
           }

@@ -1,5 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { IFUND_PAYPAL_ACCOUNT_REF, IFUND_PAYPAL_ACCOUNT_TYPE, isLivePayPalRestReady, isLivePayPalPayoutReady } from '../../shared/paypal.ts';
+import { stripeCryptoGatewayReadiness } from '../../shared/stripeCryptoReadiness.ts';
+import { isFeatureEnabled } from '../../shared/featureFlagGate.ts';
 import {
   resolvePayPalEnvironment, paypalCredentials, isPayPalSandboxDemoEnabled, paypalSandboxCredentialsPresent,
 } from '../../shared/paypalEnvironment.ts';
@@ -29,10 +31,17 @@ export default async function (_req) {
     : !paypalConfigured ? 'PayPal REST credentials are not configured for this environment.'
     : isSandbox ? 'PayPal is in sandbox mode; live campaign payments are unavailable.'
     : 'The live PayPal REST app or verified capture webhook is not ready.';
-  const cryptoBlockedReason = 'No verified crypto settlement provider is connected, so on-chain gifts cannot be confirmed or credited.';
+  const [cryptoEnabled, cryptoReadiness] = await Promise.all([
+    isFeatureEnabled(base44, 'crypto_donations'),
+    stripeCryptoGatewayReadiness().catch(() => ({ ready: false })),
+  ]);
+  const cryptoAvailable = cryptoEnabled === true && cryptoReadiness.ready === true;
+  const cryptoBlockedReason = cryptoAvailable ? ''
+    : cryptoEnabled !== true ? 'Cryptocurrency donations are turned off for the platform.'
+    : 'Crypto donations are awaiting verified payment provider approval, so on-chain gifts cannot be confirmed or credited yet.';
   const blockedReasons = [
     ...(paypalApiLive ? [] : [walletReason]),
-    cryptoBlockedReason,
+    ...(cryptoAvailable ? [] : [cryptoBlockedReason]),
   ];
 
   return Response.json({
@@ -53,7 +62,8 @@ export default async function (_req) {
       reason: 'Cash App has no settlement API for IFund. A campaign owner supplies their own tag and reported gifts stay unverified.',
     },
     crypto: {
-      available: false, status: 'awaiting_verified_settlement_gateway',
+      available: cryptoAvailable,
+      status: cryptoAvailable ? 'ready' : 'awaiting_provider_setup',
       reason: cryptoBlockedReason,
     },
     payout: {

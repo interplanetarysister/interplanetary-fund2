@@ -17,6 +17,11 @@ export const PAYPAL_PROCESSING_RATE = 0.0349;
 export const PAYPAL_PROCESSING_FIXED = 0.49;
 export const PAYPAL_WALLET_PROCESSING_RATE = 0.0289;
 export const PAYPAL_WALLET_PROCESSING_FIXED = 0.29;
+// Stripe's published US cryptocurrency (stablecoin) checkout rate. It is taken
+// from the merchant balance, so new crypto gifts are grossed up by this amount
+// to keep the donor's promised campaign gift intact.
+export const CRYPTO_PROCESSING_RATE = 0.015;
+export const CRYPTO_PROCESSING_FIXED = 0;
 
 // Minimum donation: one dollar. Sub-dollar charges are rejected by most
 // processors and cannot yield a meaningful recipient payout after fees.
@@ -127,6 +132,13 @@ export function computePayPalBreakdown(gift, optedIn, paymentChannel = 'paypal')
 
 export function computePayPalWalletBreakdown(gift, optedIn) {
   return quoteGiftFirst(gift, optedIn, PAYPAL_WALLET_PROCESSING_RATE, PAYPAL_WALLET_PROCESSING_FIXED);
+}
+
+// Crypto checkout quote: the entered gift plus the optional 10% platform
+// support, grossed up for the crypto processor's fee so the campaign receives
+// the gift the donor typed.
+export function computeCryptoBreakdown(gift, optedIn) {
+  return quoteGiftFirst(gift, optedIn, CRYPTO_PROCESSING_RATE, CRYPTO_PROCESSING_FIXED);
 }
 
 // Gift-first quote in integer cents. Gross up for the processor's percentage

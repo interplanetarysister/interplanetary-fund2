@@ -28,6 +28,11 @@ function traverse(file){
 for(const file of files)traverse(file);
 assert.deepEqual(found,[],'Circular static JavaScript imports would break production initialization: '+JSON.stringify(found.slice(0,4)));
 const react=files.find(f=>/^react-runtime-.*\.js$/.test(f));
+assert.ok(react,'Framework runtime must be its own coherent chunk');
+// Wallet SDKs ship only where a page offers one. When a wallet runtime is
+// emitted, viem must own a coherent chunk of its own rather than being merged
+// into the framework runtime; with no wallet surface, no viem chunk is expected.
+const wallet=files.filter(f=>/^(?:reown-|walletconnect-|coinbase-wallet-|base-wallet-)/.test(f));
 const viem=files.find(f=>/^viem-runtime-.*\.js$/.test(f));
-assert.ok(react&&viem,'Framework and viem must each have a coherent runtime chunk');
+assert.ok(!wallet.length||viem,'viem must own a coherent runtime chunk whenever a wallet runtime ships');
 console.log('PASS: '+files.length+' JavaScript chunks have no circular static imports.');
