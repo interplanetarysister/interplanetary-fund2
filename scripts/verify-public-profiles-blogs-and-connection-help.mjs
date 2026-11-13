@@ -57,7 +57,7 @@ assert.match(read('src/components/Layout.jsx'),/MobileBottomNav/);
 assert.match(read('src/pages/Community.jsx'),/Stories & blogs/);
 assert.match(read('src/pages/CommunityDetail.jsx'),/Browse the newsletter and member blogs/);
 const guided=read('src/components/connections/ConnectDialog.jsx');
-assert.match(guided,/Ask IFund to connect this account now/);
+assert.match(guided,/Ask IFund to help set up a new account/);
 assert.match(guided,/onManagedConnect/);
 assert.match(guided,/connectWithProvider/);
 assert.match(guided,/connectors.connectAppUser/);
