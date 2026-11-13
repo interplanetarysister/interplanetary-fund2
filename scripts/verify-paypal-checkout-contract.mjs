@@ -23,7 +23,7 @@ assert.doesNotMatch(dialog,/stripeAvailable|startStripeCheckout|createDonationCh
 assert.match(button,/createPayPalOrder/);
 assert.match(button,/capturePayPalOrder/);
 assert.match(button,/result\?\.ok !== true/);
-assert.match(button,/data\?\.orderID/);
+assert.match(button,/approval\?\.orderID/);
 assert.match(button,/campaign\.id, value\.toFixed\(2\), "paypal", selectedContribution/);
 assert.match(button,/amount: value/);
 assert.match(button,/platform_contribution: selectedContribution/);
