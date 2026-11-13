@@ -4,7 +4,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 
 const SUPER_ADMIN_OWNER_EMAILS = new Set([
   'cuddlemeplatonically@gmail.com',
-  'interplanetarysister@gmail.com',
+  'interplanetarysister@gmail.com','unrewound@gmail.com',
 ]);
 const ALLOWED = new Set([
   'admin_builder_agent',

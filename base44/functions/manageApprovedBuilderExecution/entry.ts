@@ -5,7 +5,7 @@ import { builderConfiguration, submitApprovedBuilderTurn, checkBuilderAppState, 
 
 // Only this protected function can resume an approved real builder job,
 // check its coarse platform status or approve a separate release.
-const OWNER_EMAILS=new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com']);
+const OWNER_EMAILS=new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com','unrewound@gmail.com']);
 const isOwner=(u:any)=>u?.role==='admin'&&OWNER_EMAILS.has(String(u?.email||'').trim().toLowerCase());
 const safe=(v:unknown,n=180)=>String(v??'').trim().slice(0,n);
 const read=(p:any)=>({

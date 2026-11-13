@@ -5,6 +5,7 @@ export const ADMIN_BOOTSTRAP_EMAILS = Object.freeze([
 ]);
 
 export const SUPER_ADMIN_OWNER_EMAILS = Object.freeze([
+  "unrewound@gmail.com",
   "cuddlemeplatonically@gmail.com",
   "interplanetarysister@gmail.com",
 ]);

@@ -4,7 +4,7 @@ import { logAudit } from '../../shared/auditLog.ts';
 
 // Server-enforced super-admin-only build-work intake.
 // Queues auditable build tasks; DOES NOT claim to edit source or deploy code.
-const SUPER_ADMIN_OWNER_EMAILS=new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com']);
+const SUPER_ADMIN_OWNER_EMAILS=new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com','unrewound@gmail.com']);
 const isSuperAdmin=(user:any)=>user?.role==='admin'&&SUPER_ADMIN_OWNER_EMAILS.has(String(user?.email||'').trim().toLowerCase());
 const safe=(v:any,n:number)=>String(v??'').trim().slice(0,n);
 export default async function(req:Request) {

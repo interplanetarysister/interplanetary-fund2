@@ -7,7 +7,7 @@ import { builderConfiguration, submitApprovedBuilderTurn } from '../../shared/ap
 // Frontend reports are untrusted evidence, NOT instructions for an agent.
 // Reporting is also available on login/public pages. Every privileged mode
 // independently verifies the current server-authenticated super-admin owner.
-const OWNER_EMAILS = new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com']);
+const OWNER_EMAILS = new Set(['cuddlemeplatonically@gmail.com','interplanetarysister@gmail.com','unrewound@gmail.com']);
 const canReview = (u:any) => u?.role === 'admin' && OWNER_EMAILS.has(String(u?.email||'').trim().toLowerCase());
 const clean = (value:any,n=400) => String(value??'')
   .replace(/https?:\/\/\S+/gi,'[url]')

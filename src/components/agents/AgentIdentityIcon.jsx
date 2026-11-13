@@ -8,6 +8,8 @@ export const AGENT_IDENTITIES = Object.freeze({
   orbit: { name: "ORBIT", role: "Financial Growth", color: "#39D6A0" },
   polaris: { name: "POLARIS", role: "Strategy", color: "#A98BFF" },
   forge: { name: "FORGE", role: "Builder", color: "#FFB35B" },
+  story: { name: "STORY", role: "Campaign Writing", color: "#F0A6DE" },
+  finance: { name: "FINANCE", role: "Financial Guidance", color: "#E4C873" },
   link: { name: "LINK", role: "Connections", color: "#8294FF" },
 });
 export function AgentIdentityIcon({ identity = "nexus", size = 48, className = "" }) {
@@ -21,6 +23,8 @@ export function AgentIdentityIcon({ identity = "nexus", size = 48, className = "
       {identity === "orbit" && <><circle cx="23" cy="25" r="11"/><path d="M5 35c8 7 26-3 37-22m-13-2 13 2-1 12"/></>}
       {identity === "polaris" && <><circle cx="24" cy="24" r="19" strokeDasharray="9 6"/><path d="m24 6 4.5 13.5L42 24l-13.5 4.5L24 42l-4.5-13.5L6 24l13.5-4.5Z"/></>}
       {identity === "forge" && <><path d="m24 5 11 6v12l-11 6-11-6V11Zm0 0v12m-11-6 11 6 11-6M24 29v12l-11 6-11-6V29l11-6 11 6Zm11-6 11 6v12l-11 6-11-6V35"/></>}
+      {identity === "story" && <><path d="M10 11h27v28H10zM16 17h15M16 24h15M16 31h10"/></>}
+      {identity === "finance" && <><circle cx="24" cy="24" r="18"/><path d="M30 15h-8a6 6 0 1 0 0 12h4a6 6 0 0 1 0 12H16m8-29v28"/></>}
       {identity === "link" && <><ellipse cx="24" cy="24" rx="21" ry="10" transform="rotate(-37 24 24)"/><ellipse cx="24" cy="24" rx="21" ry="10" transform="rotate(37 24 24)"/><circle cx="10" cy="34" r="3" fill={color}/><circle cx="38" cy="34" r="3" fill={color}/></>}
     </svg>
   </span>;
