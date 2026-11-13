@@ -24,7 +24,8 @@ export default function MyCampaigns() {
       if (!me?.id) throw new Error("No signed-in member");
       const page = await base44.entities.Campaign.filter(
         { status: "active", created_by_id: me.id },
-        { sort: "-created_date", limit: 100 }
+        "-created_date",
+        100
       );
       const items = Array.isArray(page) ? page : page?.items;
       if (!Array.isArray(items)) throw new Error("Malformed campaigns response");
