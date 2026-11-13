@@ -90,7 +90,7 @@ assert.equal(holdingModel.size === 1, false, 'duplicate holdings are not already
 for (const key of [...holdingModel.keys()]) if (key !== 'holding:paypal:CAPTURE-1') holdingModel.delete(key);
 assert.equal(holdingModel.size, 1);
 
-assert.ok(create.indexOf('round2(value - contribution) > 0') < create.indexOf('const order = await createOrder'), 'allocation must be valid before order creation');
+assert.ok(create.indexOf('round2(value - contribution) > 0') < create.indexOf('order = await createOrder'), 'allocation must be valid before order creation');
 assert.doesNotMatch(create, /validateDonationAmount\(value\)/, 'valid $1 donor charges must not be rejected by the smaller post-fee allocation');
 assert.match(capture, /chargedAmount: cap\.amount/);
 assert.match(capture, /Math\.abs\(round2\(total \+ processingFee\) - round2\(cap\.amount\)\)/);
