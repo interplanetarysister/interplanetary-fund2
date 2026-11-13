@@ -63,7 +63,7 @@ assert.match(guided,/connectWithProvider/);
 assert.match(guided,/connectors.connectAppUser/);
 assert.match(guided,/platform.steps/);
 assert.match(read('src/pages/Connections.jsx'),/id="connection-help"/);
-assert.match(read('src/pages/Help.jsx'),/Open IFund connection helper/);
+assert.match(read('src/pages/Help.jsx'),/Open connection helper/);
 assert.match(read('base44/functions/requestManagedConnectionAction/entry.ts'),/provider_verification_code_issuer/);
 assert.match(read('base44/functions/runReporterDiary/entry.ts'),/BlogEntry.create/);
 const workflow=JSON.parse(read('base44/workflows/IFund Reporter Daily Diary.jsonc'));
