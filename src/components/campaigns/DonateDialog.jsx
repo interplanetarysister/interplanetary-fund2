@@ -102,7 +102,7 @@ export default function DonateDialog({ campaign, onDonated, open: controlledOpen
                 <p className="text-[11px] font-bold uppercase tracking-wide">Sandbox test checkout — no real money</p>
                 <p className="mt-1 text-xs leading-relaxed">
                   This separate PayPal sandbox demonstrates checkout with fake funds and is not the live donation path.
-                  demonstrated with fake funds. Test gifts never appear in live campaign totals, My Campaigns or analytics.
+                  Test gifts never appear in live campaign totals, My Campaigns or analytics.
                 </p>
                 {sandboxConfirmed ? (
                   <p className="mt-2 rounded-lg bg-emerald-100 px-2 py-2 text-xs font-semibold text-emerald-900">
