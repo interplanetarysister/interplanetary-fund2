@@ -29,7 +29,7 @@ export default function Institutions() {
   useEffect(() => {
     let active = true;
     setResearchState("loading");
-    fetch("https://interplanetaryfund.com/api/public/opportunity-sources", { cache:"no-store", signal:AbortSignal.timeout(10000) })
+    fetch("https://interplanetaryfund-migration.pages.dev/api/public/opportunity-sources", { cache:"no-store", signal:AbortSignal.timeout(10000) })
       .then(async response => {
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !Array.isArray(result.sources) || !Array.isArray(result.opportunities) || result.source !== "canonical_supabase_rls") throw Error("Canonical opportunity source unavailable");
