@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { runtimeContract } from "@/lib/runtimeContract";
+import { appParams } from "@/lib/app-params";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -31,6 +34,39 @@ export default function Register() {
     return () => window.clearTimeout(timer);
   }, [showOtp, resendAvailableAt, resendSeconds]);
 
+  // Match the login transport: web requests use the current origin, while
+  // native Android uses the canonical Base44 HTTPS endpoint.
+  const authRequest = async (operation, payload) => {
+    const appId = runtimeContract.appId || appParams.appId;
+    if (!appId) throw new Error("IFund app ID unavailable");
+    const path = `/api/apps/${encodeURIComponent(appId)}/auth/${operation}`;
+    const native = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+    if (native) {
+      const response = await CapacitorHttp.post({
+        url: `https://interplanetaryfund.base44.app${path}`,
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        data: payload,
+      });
+      if (response.status < 200 || response.status >= 300) {
+        const error = new Error("Authentication request failed");
+        error.status = response.status;
+        throw error;
+      }
+      return typeof response.data === "string" ? JSON.parse(response.data) : response.data;
+    }
+    const response = await fetch(path, {
+      method: "POST", credentials: "same-origin", cache: "no-store",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const error = new Error("Authentication request failed");
+      error.status = response.status;
+      throw error;
+    }
+    return response.json().catch(() => ({}));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -40,7 +76,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await base44.auth.register({ email, password });
+      await authRequest("register", { email: email.trim().toLowerCase(), password });
       setOtpCode("");
       setShowOtp(true);
       setResendAvailableAt(Date.now() + 60000);
@@ -56,7 +92,7 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      const result = await base44.auth.verifyOtp({ email, otpCode });
+      const result = await authRequest("verify-otp", { email: email.trim().toLowerCase(), otp_code: otpCode });
       if (result?.access_token) {
         base44.auth.setToken(result.access_token);
         if (username.trim()) {
@@ -84,7 +120,7 @@ export default function Register() {
     setError("");
     setResending(true);
     try {
-      await base44.auth.resendOtp(email.trim());
+      await authRequest("resend-otp", { email: email.trim().toLowerCase() });
       setOtpCode("");
       setResendAvailableAt(Date.now() + 60000);
       setResendSeconds(60);
