@@ -31,7 +31,7 @@ assert.doesNotMatch(apple, /type", "donate"/); // reserved for approved charitie
 assert.doesNotMatch(apple, /window\.location|location\.href|window\.open\(/);
 assert.match(dialog, /useFeatureEnabled\("apple_pay_checkout"\)/);
 assert.match(dialog, /<ApplePayButton /);
-assert.match(create, /\['paypal', 'googlepay', 'applepay'\]\.includes\(payment_channel\)/);
+assert.match(create, /\['paypal', 'card', 'googlepay', 'applepay'\]\.includes\(payment_channel\)/);
 assert.match(create, /channel === 'applepay' \? 'apple_pay_checkout'/);
 assert.match(create, /computePayPalBreakdown\(Number\(amount\), platform_contribution === true, channel\)/);
 assert.match(capture, /\['paypal', 'googlepay', 'applepay'\]\.includes\(parts\[4\]\)/);
