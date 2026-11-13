@@ -137,7 +137,7 @@ assert.match(googlePayButton, /intent_id: intentId/);
 assert.doesNotMatch(googlePayButton, /propsRef = useRef\(\{[^}]*platformContribution/);
 assert.match(donateDialog, /computePayPalBreakdown/);
 assert.match(donateDialog, /<GooglePayButton /);
-assert.match(donateDialog, /Gift to this campaign/);
-assert.match(donateDialog, /Confirm the final amount in PayPal/);
+assert.match(donateDialog, /Campaign gift/);
+assert.match(donateDialog, /PayPal calculates processing and confirms the final charge before approval/);
 
 console.log('PayPal financial recovery contracts verified.');
