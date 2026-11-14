@@ -5,4 +5,5 @@ let r=await get('/health');assert.equal(r.status,200);let b=await r.json();asser
 r=await get('/v1/workforce/catalog');assert.equal(r.status,200);b=await r.json();assert.equal(b.agents.length,10);assert.equal(b.skill_file_count,26);assert.equal(b.activation,'disabled');
 for(const method of ['GET','POST']){r=await get('/v1/workforce/execute',method);assert.equal(r.status,503);b=await r.json();assert.equal(b.code,'workforce_not_ready');}
 r=await get('/unknown');assert.equal(r.status,404);
+r=await get('/v1/workforce/readiness');b=await r.json();assert.equal(b.ready,false);assert.equal(b.execution,'disabled');assert.ok(b.blockers.length>0);
 console.log('PASS: workforce bootstrap catalog and health are accurate; execution fails closed');

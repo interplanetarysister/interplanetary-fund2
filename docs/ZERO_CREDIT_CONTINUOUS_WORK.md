@@ -30,8 +30,8 @@ One blocked action must not stop unrelated work.
 ## Three-attempt rule
 After three materially different legitimate attempts at the same failing operation, classify the failure and stop retrying that operation. Repair the underlying path if possible; otherwise checkpoint it and continue with another useful task. Repeated retries are not progress.
 
-## Current project scope
-`interplanetarysister/interplanetary-fund2` is the authoritative user-facing application implementation target and is being prepared for Base44 hosting. Do not resume Vercel-specific or Convex-specific feature development. Do not migrate Vercel-only dependencies or duplicate Convex runtime/backend implementation into this repository. Older Vercel/Convex implementations may be inspected as read-only evidence for useful application behavior, which must be adapted to the current Base44 application architecture rather than copied blindly.
+## Current project scope (owner directive 2026-11-03)
+`interplanetarysister/interplanetary-fund2` is the authoritative product source and the target for migration away from Base44 to Cloudflare Workers/Pages + Supabase. The existing Base44 implementation remains the behavior reference and temporary rollback path until independent parity is verified; it is not the permanent target. Do not resume Vercel-specific or Convex-specific feature development. Adapt verified legacy behavior to the Cloudflare/Supabase architecture rather than copying obsolete infrastructure. Migration work must not simplify, omit, stub, or downgrade any existing feature or quality dimension.
 
 ## Source-of-truth rule
 Never invent or assume runtime configuration, payment availability, deployment state, environment state, account state, or integration state. Trace data to an authoritative source. If authoritative information cannot be retrieved without unavailable paid/external resources, mark it unresolved rather than manufacturing a value.
