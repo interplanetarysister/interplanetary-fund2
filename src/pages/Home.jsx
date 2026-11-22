@@ -11,6 +11,7 @@ import PayPalDonateButton from "@/components/payments/PayPalDonateButton";
 import { usePublicCampaignFundraising } from "@/lib/useFundraisingMode";
 import QuickActions from "@/components/QuickActions";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import AgentTeamDrawer from "@/components/agents/AgentTeamDrawer";
 
 const HERO_IMAGE = "https://media.base44.com/images/public/6a67a778342a8fe05ee79cba/b8b47ec6a_generated_image.png";
 
@@ -39,10 +40,12 @@ export default function Home() {
   const platformOnlyMode = !usePublicCampaignFundraising();
   const { isAuthenticated, user } = useAuth();
   const [expanded, setExpanded] = useState(false);
+  const [agentTeamOpen, setAgentTeamOpen] = useState(false);
 
   return (
     <div className="ifund-public min-h-dvh bg-background pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
-      <MobileBottomNav user={isAuthenticated ? user : null} />
+      <MobileBottomNav user={isAuthenticated ? user : null} onOpenAgents={() => setAgentTeamOpen(true)} isAgentTeamOpen={agentTeamOpen} />
+      <AgentTeamDrawer user={isAuthenticated ? user : null} open={agentTeamOpen} onOpenChange={setAgentTeamOpen} />
       <QuickActions user={isAuthenticated ? user : null} />
       {platformOnlyMode && (
         <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-4">
