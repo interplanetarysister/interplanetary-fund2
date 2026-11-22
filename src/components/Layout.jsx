@@ -13,6 +13,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import BackToTop from "@/components/BackToTop";
 import QuickActions from "@/components/QuickActions";
 import MobileBottomNav from "@/components/MobileBottomNav";
+import AgentTeamDrawer from "@/components/agents/AgentTeamDrawer";
 import { useAuth } from "@/lib/AuthContext";
 import { navigationBackFallback, canReturnWithinApp } from "@/lib/navigation";
 import { hasPlanLevel } from "@/lib/subscriptionEntitlements";
@@ -125,6 +126,7 @@ const publicNavItems = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false);
+  const [agentTeamOpen, setAgentTeamOpen] = useState(false);
   const drawerCloseRef = useRef(null);
   const [darkTheme, setDarkTheme] = useState(() => typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
   const toggleTheme = () => {
@@ -165,7 +167,7 @@ export default function Layout() {
     else navigate(navigationBackFallback(pathname, !!user), { replace: true });
   };
   useSwipeBack(!isRoot, goBack);
-  useEffect(() => { setOpen(false); }, [pathname]);
+  useEffect(() => { setOpen(false); setAgentTeamOpen(false); }, [pathname]);
   useEffect(() => {
     if (!open) return;
     const previouslyFocused = document.activeElement;
@@ -285,7 +287,8 @@ export default function Layout() {
         </>
       )}
 
-      <MobileBottomNav user={user} onNavigate={() => setOpen(false)} />
+      <MobileBottomNav user={user} onNavigate={() => setOpen(false)} onOpenAgents={() => setAgentTeamOpen(true)} isAgentTeamOpen={agentTeamOpen} />
+      <AgentTeamDrawer user={user} open={agentTeamOpen} onOpenChange={setAgentTeamOpen} />
 
       <main data-page-scroll className="ifund-experience ifund-stage flex-1 min-h-0 w-full min-w-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 overflow-x-hidden overflow-y-auto overscroll-y-contain bg-background text-foreground">
         <div className="ifund-workspace-bar hidden md:flex sticky top-0 z-20 items-center justify-between gap-3 px-4 py-3 sm:px-7">
