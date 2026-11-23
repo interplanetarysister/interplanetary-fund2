@@ -1,0 +1,8 @@
+[functions.ifund-member-mail-ingress]
+verify_jwt = false
+
+[functions.ifund-admin-mail-ingest]
+verify_jwt = false
+
+[functions.ifund-admin-mailbox]
+verify_jwt = false

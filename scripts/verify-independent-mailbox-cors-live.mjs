@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-const endpoint = "https://tzehxfikoslihnclhxuz.supabase.co/functions/v1/ifund-admin-mailbox";
+const endpoint = "https://ssibsfmtodgximseeqsv.supabase.co/functions/v1/ifund-admin-mailbox";
 const expected = [
   "https://interplanetaryfund.com",
   "https://www.interplanetaryfund.com",

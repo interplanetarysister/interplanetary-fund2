@@ -1,15 +1,25 @@
 # Interplanetary Fund — inbound email routing
 
 ## Current state
-Code staged and Cloudflare Email Worker deployed. **Not live yet.**
-Cloudflare domain remains pending Wix nameserver switch, and the current
-remote Base44 function is an earlier deployed revision.
+Cloudflare zone is **active** and delegated to Cloudflare nameservers.
+Email Routing is enabled, and the catch-all rule is enabled and points to
+the deployed `ifund-email-ingress` Worker.
+
+The admin mirror now targets the production `InterplanetaryFund` Supabase
+project (`ssibsfmtodgximseeqsv`), and paid-member ingress targets its
+`ifund-member-mail-ingress` Edge Function. The signing private key remains
+stored only in Cloudflare Worker secrets.
+
+Verification aliases still use the separate Base44 `receiveCloudflareEmail`
+function through `IFUND_EMAIL_RECEIVER_URL`; that path has not been migrated
+in this Supabase project transfer. External inbound-message delivery has not
+been re-tested after the endpoint switch.
 
 ## Delivery flow
 Cloudflare catch-all for all valid `*@interplanetaryfund.com` recipients
 → `ifund-email-ingress` dedicated Email Worker
 → verified owner forwarding destination `cuddlemeplatonically@gmail.com`
-→ ECDSA P-256 signed HTTPS mirror to independent Supabase
+→ ECDSA P-256 signed HTTPS mirror to production Supabase
 `ifund-admin-mail-ingest` → private `admin_inbound_email` storage
 → Supabase-authenticated organizational mailbox in IFund Notifications.
 Verification aliases retain a separate receiver. Paid member addresses use
@@ -40,46 +50,35 @@ nine separate mailbox accounts.
   in Cloudflare Email Routing.
 - Local compiled Worker in-memory signed-delivery and forwarding simulation
   passed. This is **not** evidence of external SMTP receipt.
-- Cloudflare catch-all rule points to the Worker but is disabled.
-- Cloudflare Email Routing activation returned `Active zone required`.
-- Wix still serves authoritative DNS; Cloudflare zone status `pending`.
-- The deployed Base44 `receiveCloudflareEmail` function returned 503
-  `Email intake not configured` when probed, demonstrating that Base44's
-  **older** HMAC/secret-based version is still deployed. The new public-key
-  verifier is committed and checkpointed but must be deployed.
+- Cloudflare zone status is `active`; nameservers are
+  `angelina.ns.cloudflare.com` and `ed.ns.cloudflare.com`.
+- Email Routing settings are enabled and the catch-all rule is enabled.
+- The admin and member Supabase receiver URLs were switched to the
+  `InterplanetaryFund` destination on 2026-10-31.
+- The verification-alias path still points to Base44. Its previously probed
+  `receiveCloudflareEmail` revision returned 503 `Email intake not configured`;
+  verification aliases therefore remain a separate unfinished migration.
+- No external SMTP round-trip has been run after the Supabase endpoint switch.
 - Base44 CLI function deployment requested interactive device authentication.
   Do not interpret a saved checkpoint as proof of published backend updates.
 
-## Required activation
+## Remaining validation
 
-1. Confirm `ifund-email-ingress` deploy contains the root-domain organization
-   classifier, separate member subdomain and isolated verification rule.
-   Check `IFUND_ADMIN_EMAIL_RECEIVER_URL` points at the Supabase
-   `ifund-admin-mail-ingest` endpoint while existing signing and
-   verification secrets remain bound. Never inspect or print secret values.
-2. Verify the Supabase administrator account by Auth user ID, then confirm its
-   `ifund_admin_mail_access` allowlist membership and mail tables' RLS.
-   Test the standalone `/admin/organization-mail` route with a real authenticated
+1. Test the deployed admin and member Edge Function endpoints with invalid
+   signatures and expired timestamps; both must reject with 401.
+2. Test an authorized signed synthetic message, persistence and deduplication
+   without sending real email to users. Confirm member mailbox entitlement,
+   quota and duplicate handling.
+3. Test the standalone `/admin/organization-mail` route with an authenticated
    administrator, including list, read/unread, audit, sign-out and denied users.
-3. Test bad signatures and expired timestamps on both signed ingestion paths:
-   both must reject with 401. Test an authorized signed synthetic message,
-   persistence and deduplication without sending real email to users.
-   Verification aliases must not enter organization or paid-member storage.
-4. Independently publish and verify the website build at
-   `interplanetaryfund.com` and its Cloudflare preview; verify Capacitor web
-   assets and Android authentication/CORS parity. Keep Base44 operational.
-5. Only after signed delivery, tenant isolation and web/APK checks pass, inventory
-   existing DNS and mail records. Change Wix **registrar nameservers** (not
-   DNS NS records) to `angelina.ns.cloudflare.com` and `ed.ns.cloudflare.com`;
-   confirm rollback and MX/SPF/DKIM before changing delegation.
-6. Wait for Cloudflare zone Active; only then enable Email Routing and the
-   Worker catch-all. Send separate external messages to a priority root alias,
-   an arbitrary root alias, a verification alias and an authorized member
-   subdomain mailbox; verify destinations, signed persistence, privacy, Gmail
-   forwarding and audit. Roll back Email Routing immediately on any failure.
-7. Do not cancel Base44 or replace the final Android package until independent
-   website, authentication, database, server functions and agent functions pass
-   migration parity and a separate full release gate.
+4. Before sending external mail, verify Gmail forwarding, signed persistence,
+   privacy, audit and the member mailbox's no-fallback rejection behavior.
+5. Migrate the verification-alias receiver from Base44 separately. Keep
+   verification messages encrypted, user-scoped and excluded from the general
+   organization inbox and agent tools.
+6. Independently verify the website build, Capacitor web assets and Android
+   authentication/CORS parity. Do not cancel Base44 or replace the final
+   Android package until the independent release gate passes.
 
 ## Known limitations
 
