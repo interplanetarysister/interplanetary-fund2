@@ -8,6 +8,7 @@ export default {
   const url=new URL(request.url);
   if(request.method==='GET'&&url.pathname==='/health')return respond({service:'ifund-workforce',runtime:'cloudflare-worker',alive:true,ready:false,execution:'disabled',reason:'tool_memory_auth_adapters_unverified',agent_count:roles.length});
   if(request.method==='GET'&&url.pathname==='/v1/workforce/catalog')return respond({version:catalog.schema_version,activation:'disabled',agents:roles,skill_file_count:catalog.entries.length-roles.length,unverified:catalog.unverified});
+  if(request.method==='GET'&&url.pathname==='/v1/workforce/readiness')return respond({ready:false,execution:'disabled',agent_count:roles.length,blockers:catalog.unverified});
   if(!url.pathname.startsWith('/v1/workforce/'))return respond({error:'not_found'},404);
   return respond({error:'service_unavailable',code:'workforce_not_ready',message:'Agent workforce migration is in progress; no agent action was executed.'},503);
  }

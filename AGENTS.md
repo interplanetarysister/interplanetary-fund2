@@ -2,13 +2,13 @@
 
 ## Project Context
 
-This is the **authoritative user-facing Interplanetary Fund application implementation repository**, prepared for Base44 hosting.
+This is the **authoritative user-facing Interplanetary Fund application source repository**, currently undergoing an owner-authorized migration away from Base44 to an independent Cloudflare + Supabase production architecture. Preserve current Base44 behavior as the reference until equivalent independent implementations are verified; Base44 is not the target host.
 
 ### Current repository ownership
 
-- **Application implementation target:** `interplanetarysister/interplanetary-fund2` — user-facing Base44 application, frontend, application entities/configuration, application-layer agents and workflows.
-- **Current application/backend authority:** the Base44 `interplanetary-fund2` implementation is authoritative for the live application-layer financial boundary, application agents, workflows, and persistence implemented under `base44/`. Historical Convex implementations are read-only evidence unless a specific still-live external dependency is directly verified.
-- **Older Vercel/Convex repositories and implementations:** reference/evidence only for recovering useful application behavior when they are not the current owner. Do not copy obsolete hosting/runtime dependencies or create competing state in Base44.
+- **Application source and migration target:** `interplanetarysister/interplanetary-fund2` — user-facing application, frontend, source entities/configuration, agent/workflow definitions, and independent Cloudflare/Supabase implementations.
+- **Current behavior reference:** the existing Base44 implementation and `base44/` definitions remain the reference for production behavior until parity is proven. The independent Cloudflare/Supabase implementation becomes the target authority only after data, identity, authorization, payment, workflow, agent, and operational cutover gates pass. Do not create dual writable sources of truth.
+- **Older Vercel/Convex repositories and implementations:** reference/evidence only unless the owner explicitly reassigns ownership. Adapt verified behavior to the Cloudflare/Supabase target; do not restore obsolete hosting dependencies.
 - **Legacy backend snapshots:** reference only unless the user explicitly changes scope.
 
 A PR must target the repository that owns the current change. Never merge a PR from one repository into another. Recover useful behavior by adapting it to the current application architecture, not by blindly copying infrastructure.
@@ -54,19 +54,23 @@ For each feature:
 
 **Current milestone:** Buffer personal-API-key integration is an optional admin-account social-publishing adapter, not a replacement for IFund's social messaging, connections hub, or existing publishers. Keep it disconnected/unverified until the secret is securely provisioned and actual Buffer API access and safe publishing behavior are tested. **After that integration is verified functioning, remind the owner to initiate a dedicated GitHub open-source reuse audit of failing IFund software**; do not prematurely claim the audit occurred or automatically replace functionality.
 
-## Base44 portability freeze — effective 2026-09-28
+## Owner directive — independent migration without quality loss (2026-11-03)
 
-Feature development is temporarily frozen while Interplanetary Fund is prepared for host portability.
+The owner has explicitly authorized migrating IFund away from Base44. This supersedes the earlier Base44 portability freeze below wherever it says Base44 is the intended permanent host or forbids implementing independent replacements. Preserve Base44 only as a temporary rollback/reference path until independent parity is verified; do not cut production over prematurely. The full mandatory quality and release contract is `docs/MIGRATION_QUALITY_PRESERVATION.md`. No migration or rebuild may simplify, omit, stub, disable, or lower the quality of an existing capability. Catalogs and staged snapshots are not implementations. Workflow and agent execution, data/auth/payment integrity, and image delivery must reach verified parity before cutover.
 
-This is a **preserve-and-switch** migration, not a Base44-removal project.
+## Transitional source-preservation and cutover rule — updated 2026-11-03
+
+Independent migration away from Base44 is authorized and is the active project priority. Preserve the current production implementation as the behavior reference and temporary rollback path while implementing and verifying the independent Cloudflare/Supabase replacement.
+
+This is an **authorized migration away from Base44 with parity-gated cutover**.
 
 ### Non-destructive migration rule
 
-- Do **not** delete, disable, replace, or deliberately break a working Base44 dependency merely because an alternate host is being prepared.
-- Keep the Base44 version operational and behaviorally authoritative during the preparation period.
-- Preserve Base44 entities, RLS, auth, backend functions, agents, workflows, connectors, storage paths, secrets references, webhooks, and other working integrations until a separately verified cutover is explicitly authorized.
+- Do **not** delete, disable, replace, or deliberately break a working Base44 production dependency before the independent replacement has passed parity verification and cutover is explicitly authorized. Implement the independent replacement rather than treating Base44 as permanent.
+- Keep the Base44 version operational as the production reference and rollback path until the independent implementation is verified and cutover is authorized.
+- Preserve the behavior and recoverability of Base44 entities, RLS, auth, backend functions, agents, workflows, connectors, storage paths, secrets references, webhooks, and integrations while reproducing them independently. Do not remove the legacy path before verified cutover.
 - Prepare dependencies so they can later be suspended, redirected, or switched to an alternate host through documented adapters/configuration/cutover controls.
-- Prefer provider-neutral interfaces and reversible configuration boundaries around existing Base44 behavior. Do not prematurely route production traffic to an unverified replacement.
+- Prefer provider-neutral interfaces and reversible configuration boundaries. Do not prematurely route production traffic to an unverified replacement.
 - Never copy secret values into source control. Record only secret/reference names and migration requirements.
 - A successful alternate deployment does not prove independence. Every runtime dependency must be inventoried and its alternate path verified before cutover.
 - Base44 and alternate-host implementations must not create competing financial ledgers, user identities, or mutable production sources of truth during the preparation phase.
@@ -87,7 +91,7 @@ For every Base44 dependency, record:
 9. verification required before activation;
 10. status.
 
-Agent 1 may add non-destructive adapters, interfaces, configuration switches, tests, documentation, and dormant alternate-host implementations. Agent 1 must not remove the working Base44 path.
+Agent 1 may add independent implementations, adapters, interfaces, configuration switches, tests, and documentation. Agent 1 must not remove the working Base44 path until parity and cutover are verified.
 
 ### Agent 2 — independent migration and security reviewer
 
@@ -103,9 +107,9 @@ For each alternate implementation, verify parity without changing production aut
 
 ### Shared completion gate
 
-During this freeze, completion means **zero undiscovered Base44 runtime dependencies and a verified reversible alternate path for each dependency**. It does not mean deleting Base44, switching production early, or merely obtaining a successful alternate-host build.
+Migration completion means **zero undiscovered Base44 runtime dependencies, verified independent parity for every production capability, a reconciled data plane, and tested rollback/cutover controls**. A successful alternate-host build or catalog-only Worker is not sufficient.
 
-Required sequence: **inventory -> preserve -> abstract safely -> reproduce -> verify parity -> prepare reversible cutover -> await explicit cutover authorization**.
+Required sequence: **inventory -> preserve reference behavior -> implement independent replacements -> verify full parity -> reconcile data -> test rollback -> obtain explicit cutover authorization -> cut over -> verify production**.
 
 ## Data source rule
 
@@ -113,9 +117,11 @@ Never assume runtime configuration, payment availability, deployment state, envi
 
 ## Base44 application boundary
 
-Use the existing Base44 application architecture in this repository for product work that it owns. Do not add Vercel-specific dependencies such as `/_vercel/*`, and do not introduce an active Convex runtime dependency into `src/` or `base44/`. The current Base44 financial and agent implementations own their live application behavior. Older Convex/Vercel implementations may be inspected only as read-only evidence for behavior that is still needed.
+Use existing Base44 code and definitions as the behavioral reference during migration, not as the permanent runtime architecture. Implement independent product behavior in the Cloudflare/Supabase target with no Base44 runtime dependency after cutover. Do not add Vercel-specific dependencies such as `/_vercel/*`, or restore an active Convex runtime without explicit owner direction. Preserve financial, identity, agent, and workflow invariants exactly.
 
 ## Key Files
+
+- `docs/AGENT_RUNTIME_UNIFICATION.md`: canonical sequential implementation manual for every configured agent, workflow and Worker, including exact source selections, live connection prerequisites, verification and rollback. Extend this manual rather than creating another agent implementation tracker or runbook.
 
 - `src/`: frontend application source.
 - `src/api/base44Client.js`: frontend Base44 SDK client.

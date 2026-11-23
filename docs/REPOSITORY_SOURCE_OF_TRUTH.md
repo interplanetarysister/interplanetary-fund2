@@ -1,13 +1,13 @@
 # Interplanetary Fund — Repository Source-of-Truth Guide
 
-**Effective:** 2026-09-06
+**Effective:** 2026-11-03 (supersedes prior Base44-hosted ownership direction)
 
-This document tells application agents what belongs in this repository and where internal-agent/backend knowledge lives.
+This document identifies the application source repository and the independent production target. Owner directive dated 2026-11-03 supersedes earlier statements that Base44 is the permanent application runtime.
 
 ## Repository ownership
 
-- **This repository (`interplanetarysister/interplanetary-fund2`, aka ifund2)**: authoritative consolidation destination for the user-facing Interplanetary Fund Base44 / React+Vite application, frontend, application entities/configuration, application-layer functions/agents, onboarding, Mission Control, Agent Chat, campaign/user UX, integrations presented to users, and application-specific behavior.
-- **`interplanetarysister/InterplanetaryFund`**: historical/reference source for Convex-era backend and internal-agent behavior. It is not an active dependency of the Base44 application unless a specific runtime bridge is directly verified.
+- **This repository (`interplanetarysister/interplanetary-fund2`, aka ifund2)**: authoritative source for the user-facing Interplanetary Fund product, React/Vite frontend, entities/configuration, application functions, agent/workflow definitions, onboarding, Mission Control, Agent Chat, campaigns, user UX, integrations, and application behavior. It is being migrated to Cloudflare Workers/Pages and Supabase.
+- **`interplanetarysister/InterplanetaryFund`**: historical/reference source for Convex-era backend and internal-agent behavior. Reuse verified product behavior when needed, but do not blindly restore legacy infrastructure.
 - **`interplanetarysister/interplanetary-fund-backend`**: legacy/reference only unless explicitly reassigned by the owner; do not add new production backend architecture there by default.
 - Other historical, Vercel-only, duplicate, preview, or migration repositories are not alternate application targets. Treat them as evidence/migration sources unless explicitly reassigned.
 
@@ -15,14 +15,14 @@ This September 6, 2026 owner-authorized boundary supersedes historical documents
 
 ## Consolidation policy
 
-All pending or newly discovered **application-owned** updates that have not reached ifund2 must be reconciled into this repository rather than continuing parallel implementation elsewhere.
+All pending or newly discovered **application-owned** updates must be reconciled into this repository. Independent runtime implementation belongs in this repository's Cloudflare/Supabase architecture.
 
 For every candidate update:
 1. Verify the source behavior/data; never infer from labels, filenames, stale docs, or repository names.
 2. Verify the current ifund2 implementation first.
 3. Classify the difference as already consolidated, application migration candidate, backend-owned dependency, historical-only, or UNKNOWN.
 4. Merge only verified application-owned behavior into the existing ifund2 implementation, preserving stable IDs/interfaces and valid current behavior.
-5. Keep live application behavior in the current Base44 implementation unless a still-active external backend dependency is directly verified; do not recreate legacy bridges by assumption.
+5. Preserve current production behavior as the reference while implementing the independent Cloudflare/Supabase destination; do not recreate legacy bridges by assumption.
 6. Verify authentication, authorization, payment/provider configuration, data ownership, and end-to-end runtime behavior before declaring consolidation complete.
 7. Do not delete/archive a source implementation until equivalence and dependency removal are verified.
 
@@ -52,7 +52,7 @@ The internal-agent reference index is:
 
 ## Agent runtime boundary
 
-Base44 is the current application runtime for agent identity/configuration, application memory behavior, permissions, outcomes, and backend behavior implemented in this repository. Do not add or restore a Convex agent-memory/runtime bridge without direct evidence that the live application still requires it.
+The existing Base44 agent runtime is the current behavior reference during migration, not the target runtime. The independent workforce must reproduce identity, scoped memory, permissions, outcomes, tools, delegation, and audit behavior before cutover. Do not restore a Convex agent-memory/runtime bridge without direct owner direction.
 
 See `docs/AGENT_RUNTIME_UNIFICATION.md` for the current Base44 agent-runtime model and historical bridge context; any Convex bridge described there is non-authoritative unless directly verified as live.
 
