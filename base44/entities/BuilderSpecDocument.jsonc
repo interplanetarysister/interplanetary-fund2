@@ -1,0 +1,70 @@
+{
+  "name": "BuilderSpecDocument",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Stable document identifier used by the builder assistant, e.g. \"provider-matrix\"."
+    },
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "overview",
+        "provider",
+        "architecture",
+        "ui",
+        "security",
+        "acceptance",
+        "open-items"
+      ],
+      "default": "overview"
+    },
+    "order": {
+      "type": "number",
+      "description": "Reading order inside the specification."
+    },
+    "body_markdown": {
+      "type": "string",
+      "description": "Document body in Markdown. Long text; never holds credentials or member data."
+    },
+    "spec_version": {
+      "type": "string"
+    },
+    "source_branch": {
+      "type": "string",
+      "description": "Branch the document was authored on, for provenance."
+    }
+  },
+  "required": [
+    "key",
+    "title",
+    "category",
+    "order"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  },
+  "description": "Admin-only connection-layer specification documents read by the IFund Builder Assistant. Bodies are authored separately; not seeded by the schema."
+}
